@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Not, Repository } from "typeorm";
+import { In, IsNull, Not, Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
 import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import {
@@ -157,8 +157,15 @@ export class RubberDeliveryNoteService {
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
     const siblingCounts = await this.documentPathSiblingCounts(notes);
+    const rollNumbersMap = await this.rollNumbersByDeliveryNoteIds(noteIds);
     return notes.map((dn) =>
-      this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null, siblingCounts.get(dn.id) ?? 1),
+      this.mapDeliveryNoteToDto(
+        dn,
+        auCocMap.get(dn.id) ?? null,
+        siblingCounts.get(dn.id) ?? 1,
+        [],
+        rollNumbersMap.get(dn.id) ?? [],
+      ),
     );
   }
 
@@ -234,9 +241,16 @@ export class RubberDeliveryNoteService {
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
     const siblingCounts = await this.documentPathSiblingCounts(notes);
+    const rollNumbersMap = await this.rollNumbersByDeliveryNoteIds(noteIds);
     return {
       items: notes.map((dn) =>
-        this.mapDeliveryNoteToDto(dn, auCocMap.get(dn.id) ?? null, siblingCounts.get(dn.id) ?? 1),
+        this.mapDeliveryNoteToDto(
+          dn,
+          auCocMap.get(dn.id) ?? null,
+          siblingCounts.get(dn.id) ?? 1,
+          [],
+          rollNumbersMap.get(dn.id) ?? [],
+        ),
       ),
       total,
       page,
@@ -260,11 +274,13 @@ export class RubberDeliveryNoteService {
     const sourceSupplierCocs = isCustomerSide
       ? await this.sourceSupplierCocsForCustomerDn(note.id)
       : [];
+    const rollNumbersMap = await this.rollNumbersByDeliveryNoteIds([note.id]);
     return this.mapDeliveryNoteToDto(
       note,
       null,
       siblingCounts.get(note.id) ?? 1,
       sourceSupplierCocs,
+      rollNumbersMap.get(note.id) ?? [],
     );
   }
 
@@ -273,6 +289,30 @@ export class RubberDeliveryNoteService {
       { id, status: DeliveryNoteStatus.PENDING },
       { status: DeliveryNoteStatus.FAILED },
     );
+  }
+
+  // Batched roll-number fetch for a set of DN ids — one query rather than N.
+  // Reads from rubber_delivery_note_items (where the analyze-and-create flow
+  // stores rolls). Returns DN id → ordered, de-duped roll numbers.
+  private async rollNumbersByDeliveryNoteIds(noteIds: number[]): Promise<Map<number, string[]>> {
+    if (noteIds.length === 0) return new Map();
+    const rows = await this.deliveryNoteItemRepository
+      .createQueryBuilder("dni")
+      .select("dni.delivery_note_id", "deliveryNoteId")
+      .addSelect("dni.roll_number", "rollNumber")
+      .where("dni.delivery_note_id IN (:...ids)", { ids: noteIds })
+      .andWhere("dni.roll_number IS NOT NULL")
+      .orderBy("dni.id", "ASC")
+      .getRawMany<{ deliveryNoteId: number; rollNumber: string }>();
+    const map = new Map<number, string[]>();
+    for (const row of rows) {
+      const id = Number(row.deliveryNoteId);
+      const list = map.get(id) ?? [];
+      const rn = String(row.rollNumber).trim();
+      if (rn.length > 0 && !list.includes(rn)) list.push(rn);
+      map.set(id, list);
+    }
+    return map;
   }
 
   private async documentPathSiblingCounts(
@@ -750,14 +790,14 @@ export class RubberDeliveryNoteService {
 
   private triggerDownstreamAuCocGeneration(supplierDn: RubberDeliveryNote): void {
     this.findAndLinkMatchingCustomerDeliveryNotes(supplierDn)
-      .then((customerDnIds) => {
-        if (customerDnIds.length > 0) {
+      .then(({ matchedIds }) => {
+        if (matchedIds.length > 0) {
           this.logger.log(
-            `SDN ${supplierDn.deliveryNoteNumber} linked to CoC — found and linked ${customerDnIds.length} matching CDN(s): ${customerDnIds.join(", ")}`,
+            `SDN ${supplierDn.deliveryNoteNumber} linked to CoC — found ${matchedIds.length} matching CDN(s): ${matchedIds.join(", ")}`,
           );
         }
         return Promise.all(
-          customerDnIds.map((cdnId) =>
+          matchedIds.map((cdnId) =>
             this.auCocReadinessService.checkAndAutoGenerateForDeliveryNote(cdnId),
           ),
         );
@@ -771,18 +811,19 @@ export class RubberDeliveryNoteService {
 
   private async findAndLinkMatchingCustomerDeliveryNotes(
     supplierDn: RubberDeliveryNote,
-  ): Promise<number[]> {
+  ): Promise<{ matchedIds: number[]; changedIds: number[] }> {
+    const empty = { matchedIds: [] as number[], changedIds: [] as number[] };
     const sdnRollNumbers = (supplierDn.extractedData?.rolls || [])
       .map((r) => r.rollNumber)
       .filter(Boolean) as string[];
 
-    if (sdnRollNumbers.length === 0) return [];
+    if (sdnRollNumbers.length === 0) return empty;
 
     const customers = await this.companyRepository.find({
       where: { companyType: CompanyType.CUSTOMER },
     });
 
-    if (customers.length === 0) return [];
+    if (customers.length === 0) return empty;
 
     const customerIds = customers.map((c) => c.id);
 
@@ -792,7 +833,7 @@ export class RubberDeliveryNoteService {
       .andWhere("dn.delivery_note_type = :type", { type: DeliveryNoteType.ROLL })
       .getMany();
 
-    if (customerDns.length === 0) return [];
+    if (customerDns.length === 0) return empty;
 
     const sdnRollSet = new Set(sdnRollNumbers.map((rn) => rn.trim()));
     const sdnRollSuffixes = new Set(
@@ -817,6 +858,7 @@ export class RubberDeliveryNoteService {
       });
     });
 
+    const changedIds: number[] = [];
     const cocId = supplierDn.linkedCocId;
     if (cocId) {
       const unlinkedCdns = matchingCdns.filter((cdn) => !cdn.linkedCocId);
@@ -828,22 +870,30 @@ export class RubberDeliveryNoteService {
           return this.linkToCoc(cdn.id, cocId);
         }),
       );
+      changedIds.push(...unlinkedCdns.map((cdn) => cdn.id));
 
+      // Repair CDNs that carry a CoC link but never had their status advanced —
+      // but never downgrade one that already reached STOCK_CREATED.
       const linkedButNotStatusUpdated = matchingCdns.filter(
-        (cdn) => cdn.linkedCocId && cdn.status !== DeliveryNoteStatus.LINKED,
+        (cdn) =>
+          cdn.linkedCocId &&
+          cdn.status !== DeliveryNoteStatus.LINKED &&
+          cdn.status !== DeliveryNoteStatus.STOCK_CREATED,
       );
       await Promise.all(
         linkedButNotStatusUpdated.map(async (cdn) => {
           cdn.status = DeliveryNoteStatus.LINKED;
           await this.deliveryNoteRepository.save(cdn);
-          this.logger.log(
-            `Fixed status for CDN ${cdn.deliveryNoteNumber} (id=${cdn.id}): ${cdn.status} → LINKED`,
-          );
+          this.logger.log(`Fixed status for CDN ${cdn.deliveryNoteNumber} (id=${cdn.id}) → LINKED`);
         }),
       );
+      changedIds.push(...linkedButNotStatusUpdated.map((cdn) => cdn.id));
     }
 
-    return matchingCdns.map((cdn) => cdn.id);
+    // matchedIds = every CDN whose rolls match (downstream AU CoC generation
+    // re-attempts all of them); changedIds = only those we actually linked or
+    // status-corrected this run, so the operator's "N linked" count is truthful.
+    return { matchedIds: matchingCdns.map((cdn) => cdn.id), changedIds };
   }
 
   async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto | null> {
@@ -1617,6 +1667,7 @@ export class RubberDeliveryNoteService {
     auCoc?: { id: number; cocNumber: string } | null,
     documentPathSiblingCount: number = 1,
     sourceSupplierCocs: SourceSupplierCocDto[] = [],
+    rollNumbers: string[] = [],
   ): RubberDeliveryNoteDto {
     return {
       id: note.id,
@@ -1651,6 +1702,15 @@ export class RubberDeliveryNoteService {
         : null,
       documentPathSiblingCount,
       sourceSupplierCocs,
+      // Prefer the batched items-table roll numbers; fall back to
+      // extracted_data.rolls for legacy DNs / the detail view (where the
+      // jsonb is loaded). Either way the column populates.
+      rollNumbers:
+        rollNumbers.length > 0
+          ? rollNumbers
+          : (note.extractedData?.rolls ?? [])
+              .map((r) => r.rollNumber)
+              .filter((rn): rn is string => typeof rn === "string" && rn.trim().length > 0),
     };
   }
 
@@ -1854,19 +1914,26 @@ export class RubberDeliveryNoteService {
 
     if (!coc) return [];
 
+    // Consider EVERY unlinked DN for this supplier regardless of how far it
+    // has progressed — a DN that's already STOCK_CREATED (or APPROVED /
+    // LINKED) is just as eligible to be linked to a freshly-uploaded CoC as
+    // a PENDING one. The previous PENDING/EXTRACTED-only filter meant that
+    // any DN whose stock had already been created (the common case by the
+    // time the matching CoC arrives) was silently skipped and stayed "Not
+    // linked" forever. Only FAILED notes (no usable extracted data) are
+    // excluded.
     const unlinkedNotes = await this.deliveryNoteRepository.find({
-      where: [
-        {
-          supplierCompanyId: coc.supplierCompanyId,
-          linkedCocId: IsNull(),
-          status: DeliveryNoteStatus.PENDING,
-        },
-        {
-          supplierCompanyId: coc.supplierCompanyId,
-          linkedCocId: IsNull(),
-          status: DeliveryNoteStatus.EXTRACTED,
-        },
-      ],
+      where: {
+        supplierCompanyId: coc.supplierCompanyId,
+        linkedCocId: IsNull(),
+        status: In([
+          DeliveryNoteStatus.PENDING,
+          DeliveryNoteStatus.EXTRACTED,
+          DeliveryNoteStatus.APPROVED,
+          DeliveryNoteStatus.LINKED,
+          DeliveryNoteStatus.STOCK_CREATED,
+        ]),
+      },
     });
 
     this.logger.log(
@@ -2079,14 +2146,14 @@ export class RubberDeliveryNoteService {
     const results = await sdns.reduce(
       async (accPromise, sdn) => {
         const acc = await accPromise;
-        const cdnIds = await this.findAndLinkMatchingCustomerDeliveryNotes(sdn);
-        if (cdnIds.length === 0) return acc;
+        const { changedIds } = await this.findAndLinkMatchingCustomerDeliveryNotes(sdn);
+        if (changedIds.length === 0) return acc;
 
         return {
-          linked: acc.linked + cdnIds.length,
+          linked: acc.linked + changedIds.length,
           details: [
             ...acc.details,
-            `SDN ${sdn.deliveryNoteNumber} (CoC ${sdn.linkedCocId}): linked ${cdnIds.length} CDN(s) [${cdnIds.join(", ")}]`,
+            `SDN ${sdn.deliveryNoteNumber} (CoC ${sdn.linkedCocId}): linked ${changedIds.length} CDN(s) [${changedIds.join(", ")}]`,
           ],
         };
       },

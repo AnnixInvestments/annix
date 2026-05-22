@@ -291,6 +291,11 @@ export class RubberDeliveryNoteDto {
   sourcePageNumbers: number[] | null;
   siblingsBackfilledAt: string | null;
   documentPathSiblingCount: number;
+  // Roll numbers for the DN, sourced from rubber_delivery_note_items (the
+  // canonical store once items exist). Surfaced on list rows so the
+  // "Roll Numbers" column populates even when extracted_data.rolls is empty
+  // (the analyze-and-create flow stores rolls in items, not the JSON column).
+  rollNumbers: string[];
   // Customer-side DNs only: the upstream Supplier CoCs that the dispatched
   // rolls on this CDN originated from. Each roll on the CDN was issued via
   // an SDN at receipt, and that SDN was linked to a Supplier CoC. This
