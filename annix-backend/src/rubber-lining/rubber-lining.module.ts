@@ -15,6 +15,7 @@ import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.en
 import { BlogPostsController } from "./blog-posts.controller";
 import { BlogPostsService } from "./blog-posts.service";
 import { AuRubberCapabilities } from "./capabilities/au-rubber.capabilities";
+import { ChemicalDocExtractionService } from "./chemical-document-extraction.service";
 import { ChemicalSupplierDocumentController } from "./chemical-supplier-document.controller";
 import { ChemicalSupplierDocumentService } from "./chemical-supplier-document.service";
 import { BlogPost } from "./entities/blog-post.entity";
@@ -203,6 +204,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberCocService,
     RubberCocExtractionService,
     ChemicalSupplierDocumentService,
+    ChemicalDocExtractionService,
     RubberDeliveryNoteService,
     RubberRollStockService,
     RubberAuCocService,

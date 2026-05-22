@@ -15,6 +15,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
+import { ChemicalDocExtractionService } from "./chemical-document-extraction.service";
 import { ChemicalSupplierDocumentService } from "./chemical-supplier-document.service";
 import {
   type ChemicalSupplierDocumentDto,
@@ -29,7 +30,10 @@ import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
 @ApiBearerAuth()
 export class ChemicalSupplierDocumentController {
-  constructor(private readonly chemicalDocumentService: ChemicalSupplierDocumentService) {}
+  constructor(
+    private readonly chemicalDocumentService: ChemicalSupplierDocumentService,
+    private readonly chemicalDocExtractionService: ChemicalDocExtractionService,
+  ) {}
 
   @Get()
   @ApiOperation({ summary: "List chemical supplier documents" })
@@ -62,6 +66,12 @@ export class ChemicalSupplierDocumentController {
       productName: body.productName ?? null,
     };
     return this.chemicalDocumentService.uploadDocument(file, dto, req.user?.email);
+  }
+
+  @Post(":id/extract")
+  @ApiOperation({ summary: "Run Gemini extraction on a chemical supplier document" })
+  async extract(@Param("id") id: string): Promise<ChemicalSupplierDocumentDto> {
+    return this.chemicalDocExtractionService.extractDocument(Number(id));
   }
 
   @Get(":id")
