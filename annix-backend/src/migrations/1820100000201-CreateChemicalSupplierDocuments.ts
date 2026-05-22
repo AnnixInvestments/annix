@@ -34,7 +34,7 @@ export class CreateChemicalSupplierDocuments1820100000201 implements MigrationIn
       DO $$ BEGIN
         ALTER TABLE "chemical_supplier_documents"
           ADD CONSTRAINT "FK_chemical_supplier_documents_supplier_company"
-          FOREIGN KEY ("supplier_company_id") REFERENCES "rubber_companies"("id")
+          FOREIGN KEY ("supplier_company_id") REFERENCES "rubber_company"("id")
           ON DELETE NO ACTION ON UPDATE NO ACTION;
       EXCEPTION WHEN duplicate_object THEN NULL; END $$;
     `);
