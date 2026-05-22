@@ -15,7 +15,10 @@ import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.en
 import { BlogPostsController } from "./blog-posts.controller";
 import { BlogPostsService } from "./blog-posts.service";
 import { AuRubberCapabilities } from "./capabilities/au-rubber.capabilities";
+import { ChemicalSupplierDocumentController } from "./chemical-supplier-document.controller";
+import { ChemicalSupplierDocumentService } from "./chemical-supplier-document.service";
 import { BlogPost } from "./entities/blog-post.entity";
+import { ChemicalSupplierDocument } from "./entities/chemical-supplier-document.entity";
 import { RubberAccountSignOff } from "./entities/rubber-account-sign-off.entity";
 import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
 import {
@@ -145,6 +148,7 @@ import { WebsitePagesService } from "./website-pages.service";
       RubberProduction,
       RubberCompoundOrder,
       RubberSupplierCoc,
+      ChemicalSupplierDocument,
       RubberCompoundBatch,
       RubberDeliveryNote,
       RubberDeliveryNoteCorrection,
@@ -190,6 +194,7 @@ import { WebsitePagesService } from "./website-pages.service";
     TestimonialsController,
     BlogPostsController,
     PublicAuIndustriesController,
+    ChemicalSupplierDocumentController,
   ],
   providers: [
     RubberLiningService,
@@ -197,6 +202,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberBrandingService,
     RubberCocService,
     RubberCocExtractionService,
+    ChemicalSupplierDocumentService,
     RubberDeliveryNoteService,
     RubberRollStockService,
     RubberAuCocService,

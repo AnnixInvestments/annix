@@ -5,6 +5,7 @@ export enum AuRubberDocumentType {
   TAX_INVOICE = "tax-invoices",
   COC = "cocs",
   PURCHASE_ORDER = "purchase-orders",
+  CHEMICAL_DOC = "chemical-docs",
 }
 
 export type AuRubberPartyType = "customers" | "suppliers";
