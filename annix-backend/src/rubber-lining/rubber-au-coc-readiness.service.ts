@@ -12,7 +12,7 @@ import {
   RubberAuCoc,
 } from "./entities/rubber-au-coc.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
-import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { CocProcessingStatus, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 
 export interface ReadinessResult {
@@ -93,6 +93,13 @@ export class RubberAuCocReadinessService {
       ]);
     } else if (!probe.hasGraph) {
       result = make(false, AuCocReadinessStatus.WAITING_FOR_GRAPH, ["Rheometer graph PDF"]);
+    } else if (
+      !(await this.batchSourceApproved(probe.resolvedCompounderCocId, probe.resolvedSupplierCocId))
+    ) {
+      // Lab data + graph present, but auto-send must wait for the supplier CoC
+      // that provides the batches to be APPROVED (QC sign-off) — never email a
+      // customer a certificate built from raw, unapproved extracted data.
+      result = make(false, AuCocReadinessStatus.WAITING_FOR_APPROVAL, ["Supplier CoC approval"]);
     } else {
       result = make(true, AuCocReadinessStatus.READY_FOR_GENERATION, []);
       this.logger.log(
@@ -102,6 +109,20 @@ export class RubberAuCocReadinessService {
 
     await this.updateReadinessStatus(auCoc, result);
     return result;
+  }
+
+  // The CoC that actually supplies the lab batches (compounder if resolved,
+  // else the calenderer/calender-roll itself) must be APPROVED before we
+  // auto-send. Permissive when the source can't be identified (e.g. roll-stock
+  // / items path) so we never falsely block a manual generation.
+  private async batchSourceApproved(
+    compounderCocId: number | null,
+    supplierCocId: number | null,
+  ): Promise<boolean> {
+    const batchSourceId = compounderCocId ?? supplierCocId;
+    if (!batchSourceId) return true;
+    const coc = await this.supplierCocRepository.findOne({ where: { id: batchSourceId } });
+    return !coc || coc.processingStatus === CocProcessingStatus.APPROVED;
   }
 
   async checkAndAutoGenerateForDeliveryNote(customerDeliveryNoteId: number): Promise<void> {
