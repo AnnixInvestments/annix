@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import {
   Pagination,
@@ -74,13 +74,10 @@ export default function AuCocsPage() {
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [emailModalMode, setEmailModalMode] = useState<CocEmailMode | null>(null);
-  // Multi-select for the "Send Selected" workflow. Pre-ticked on first load
-  // with the CoC numbers that were regenerated via the new fallback paths
-  // (the previously-broken ones that now have proper lab tables + graph).
-  // Operator can untick / tick others manually.
+  // Multi-select for the "Send Selected" workflow — the operator ticks the
+  // CoCs they want to (re)send; nothing is pre-selected.
   const [selectedCocIds, setSelectedCocIds] = useState<Set<number>>(new Set());
   const [restrictSendToIds, setRestrictSendToIds] = useState<number[] | undefined>(undefined);
-  const didApplyDefaultSelection = useRef(false);
   const pdfPreview = usePdfPreview();
   const [progressModal, setProgressModal] = useState<{
     visible: boolean;
@@ -292,36 +289,6 @@ export default function AuCocsPage() {
       return 0;
     });
   };
-
-  // Pre-tick the CoCs that were regenerated via the new fallback chains
-  // (the ones that previously had empty tables / no graph). Runs once, the
-  // first time the CoCs list arrives — operator can adjust freely after.
-  useEffect(() => {
-    if (didApplyDefaultSelection.current) return;
-    if (cocs.length === 0) return;
-    const REGENERATED_VIA_FALLBACK: string[] = [
-      "AU-COC-0039",
-      "AU-COC-0040",
-      "AU-COC-0041",
-      "AU-COC-0042",
-      "AU-COC-0043",
-      "AU-COC-0044",
-      "AU-COC-0045",
-      "AU-COC-0046",
-      "AU-COC-0047",
-      "AU-COC-0048",
-      "AU-COC-0049",
-      "AU-COC-0050",
-      "AU-COC-0051",
-      "AU-COC-0053",
-    ];
-    const allowedNumbers = new Set(REGENERATED_VIA_FALLBACK);
-    const ids = cocs.filter((c) => allowedNumbers.has(c.cocNumber)).map((c) => c.id);
-    if (ids.length > 0) {
-      setSelectedCocIds(new Set(ids));
-      didApplyDefaultSelection.current = true;
-    }
-  }, [cocs]);
 
   const toggleCocSelection = (id: number) => {
     setSelectedCocIds((prev) => {
