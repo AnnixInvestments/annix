@@ -282,7 +282,11 @@ export function ChemicalSupplierDocsSection() {
               const productLabel = productName || "—";
               const batchLabel = batchNumber || "—";
               return (
-                <tr key={doc.id} className="hover:bg-gray-50">
+                <tr
+                  key={doc.id}
+                  onClick={() => handleView(doc)}
+                  className="cursor-pointer hover:bg-gray-50"
+                >
                   <td className="px-6 py-4 text-sm font-medium text-gray-900">
                     {deliveryNoteLabel}
                   </td>
@@ -294,7 +298,10 @@ export function ChemicalSupplierDocsSection() {
                         <span className="italic text-gray-500">{extractedSupplierName}</span>
                         <button
                           type="button"
-                          onClick={() => handleCreateSupplier(doc)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCreateSupplier(doc);
+                          }}
                           className="text-left text-xs text-teal-600 hover:underline"
                         >
                           + Create supplier
@@ -319,7 +326,10 @@ export function ChemicalSupplierDocsSection() {
                     <div className="flex items-center justify-end space-x-3">
                       <button
                         type="button"
-                        onClick={() => handleView(doc)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleView(doc);
+                        }}
                         title="View document"
                         className="text-gray-500 hover:text-teal-600"
                       >
@@ -327,7 +337,10 @@ export function ChemicalSupplierDocsSection() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleReextract(doc)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReextract(doc);
+                        }}
                         title="Re-extract"
                         className="text-gray-500 hover:text-blue-600"
                       >
@@ -336,7 +349,10 @@ export function ChemicalSupplierDocsSection() {
                       {isApprovable && (
                         <button
                           type="button"
-                          onClick={() => handleApprove(doc)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleApprove(doc);
+                          }}
                           title="Approve"
                           className="text-gray-500 hover:text-green-600"
                         >
@@ -345,7 +361,10 @@ export function ChemicalSupplierDocsSection() {
                       )}
                       <button
                         type="button"
-                        onClick={() => handleDelete(doc)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(doc);
+                        }}
                         title="Delete"
                         className="text-gray-500 hover:text-red-600"
                       >
