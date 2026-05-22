@@ -12,6 +12,12 @@ export interface ChatGenerationOptions {
   temperature?: number;
   maxOutputTokens?: number;
   responseFormat?: "json" | "text";
+  // Gemini 2.5 thinking budget. Set to 0 to disable reasoning entirely so the
+  // full output budget goes to the answer — required for large structured-JSON
+  // extractions where thinking tokens would otherwise truncate the reply.
+  // Opt-in only (some accounts reject the field), so default behaviour is
+  // unchanged for callers that don't set it.
+  thinkingBudget?: number;
 }
 
 @Injectable()
@@ -181,6 +187,9 @@ export class GeminiChatProvider {
     };
     if (options?.responseFormat === "json") {
       generationConfig.responseMimeType = "application/json";
+    }
+    if (options?.thinkingBudget !== undefined) {
+      generationConfig.thinkingConfig = { thinkingBudget: options.thinkingBudget };
     }
 
     const response = await fetch(

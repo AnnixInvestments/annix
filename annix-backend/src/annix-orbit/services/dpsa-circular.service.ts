@@ -137,11 +137,14 @@ export class DpsaCircularService {
       fresh.map((v) =>
         this.externalJobRepo.save(
           this.externalJobRepo.create({
-            title: v.title,
-            company: v.department ?? "Department of Public Service and Administration",
+            title: truncate(v.title, 500),
+            company: truncate(
+              v.department ?? "Department of Public Service and Administration",
+              500,
+            ),
             country: "za",
-            locationRaw: v.centre,
-            locationArea: v.centre,
+            locationRaw: truncate(v.centre, 500),
+            locationArea: truncate(v.centre, 255),
             salaryMin: null,
             salaryMax: null,
             salaryCurrency: "ZAR",
@@ -276,7 +279,14 @@ export class DpsaCircularService {
       [{ role: "user", content: `${DPSA_EXTRACTION_PROMPT}\n\nSource: ${pdfUrl}\n\n${chunkText}` }],
       undefined,
       undefined,
-      { maxOutputTokens: DPSA_CHUNK_MAX_OUTPUT_TOKENS, temperature: 0.1, responseFormat: "json" },
+      {
+        maxOutputTokens: DPSA_CHUNK_MAX_OUTPUT_TOKENS,
+        temperature: 0.1,
+        responseFormat: "json",
+        // Disable reasoning so the full budget goes to JSON — gemini-2.5-flash
+        // otherwise spends tokens thinking and truncates large chunks mid-array.
+        thinkingBudget: 0,
+      },
     );
     const parsed = parseJsonFromAi<DpsaVacancy[]>(result.content);
     if (!Array.isArray(parsed)) {
@@ -324,6 +334,11 @@ function findCombinedCircularPdfHref(html: string): string | null {
   if (combined) return combined;
   const nonLetterSplit = pdfs.find((p) => !/\/[a-z]\.pdf$/i.test(p));
   return nonLetterSplit ?? pdfs[0];
+}
+
+function truncate<T extends string | null>(value: T, max: number): T {
+  if (typeof value !== "string") return value;
+  return (value.length > max ? value.slice(0, max) : value) as T;
 }
 
 function buildPostExternalId(pdfUrl: string, postNumber: string): string {
