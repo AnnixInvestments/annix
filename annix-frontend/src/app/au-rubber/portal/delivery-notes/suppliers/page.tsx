@@ -340,9 +340,15 @@ export default function SupplierDeliveryNotesPage() {
   };
 
   const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
+    // Prefer the server-computed rollNumbers (from the items table, with an
+    // extracted_data fallback on the backend). List responses don't ship the
+    // heavy extracted_data, so reading it client-side returns nothing — which
+    // is why this column was blank for every supplier DN.
+    if (note.rollNumbers && note.rollNumbers.length > 0) {
+      return note.rollNumbers;
+    }
     const ed = extractedDataSingle(note.extractedData);
-    const rawEdRolls = ed?.rolls;
-    return (rawEdRolls || []).map((r) => r.rollNumber).filter(Boolean);
+    return (ed?.rolls || []).map((r) => r.rollNumber).filter(Boolean);
   };
 
   if (error) {
