@@ -103,7 +103,7 @@ export function JobBasicsStep({ draft, onChange, onTitlePreview }: JobBasicsStep
               type="button"
               disabled={isLoadingSuggestions || !titleInput.trim()}
               onClick={() => titleSuggestions.mutate({ id: draft.id, title: titleInput.trim() })}
-              className="px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-sm"
+              className="px-4 py-2 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-sm"
             >
               {isLoadingSuggestions ? "Asking Nix…" : "Ask Nix"}
             </button>

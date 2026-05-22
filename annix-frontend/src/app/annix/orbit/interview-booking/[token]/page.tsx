@@ -208,7 +208,7 @@ export default function InterviewBookingPage() {
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] py-12 px-4">
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="bg-white rounded-2xl shadow-xl p-6">
-          <p className="text-xs uppercase tracking-widest text-[#FFA500] font-semibold">
+          <p className="text-xs uppercase tracking-widest text-[#FF8A00] font-semibold">
             Interview booking
           </p>
           <h1 className="text-2xl font-bold text-[#1a1a40] mt-1">
@@ -298,7 +298,7 @@ export default function InterviewBookingPage() {
                         className={`text-sm px-4 py-2 rounded-lg font-semibold whitespace-nowrap transition-all disabled:opacity-50 ${
                           isBookedByMe
                             ? "bg-emerald-600 text-white"
-                            : "bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733]"
+                            : "bg-[#FF8A00] text-[#1a1a40] hover:bg-[#FF9C33]"
                         }`}
                       >
                         {submittingSlotId === slot.id

@@ -179,7 +179,7 @@ export default function SupplierScorecardPage() {
                     {sup.rejections}
                   </td>
                   <td className="px-4 py-3 text-sm">
-                    <div className="text-[#FFA500] text-base leading-none">{stars}</div>
+                    <div className="text-[#FF8A00] text-base leading-none">{stars}</div>
                     <div className="text-xs text-gray-500 mt-0.5">{sup.starRating.toFixed(1)}</div>
                   </td>
                 </tr>

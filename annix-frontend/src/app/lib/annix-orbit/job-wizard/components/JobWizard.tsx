@@ -174,7 +174,7 @@ export function JobWizard({ jobId }: JobWizardProps) {
               <button
                 type="button"
                 onClick={handleNext}
-                className="px-5 py-2 text-sm font-semibold bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733] rounded-lg shadow-md"
+                className="px-5 py-2 text-sm font-semibold bg-[#FF8A00] text-[#1a1a40] hover:bg-[#FF9C33] rounded-lg shadow-md"
               >
                 Save & continue →
               </button>

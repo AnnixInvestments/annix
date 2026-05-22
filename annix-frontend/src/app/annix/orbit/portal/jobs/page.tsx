@@ -53,7 +53,7 @@ export default function JobsPage() {
         </div>
         <Link
           href="/annix/orbit/portal/jobs/new"
-          className="inline-flex items-center px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-colors"
+          className="inline-flex items-center px-4 py-2 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-colors"
         >
           <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -187,7 +187,7 @@ export default function JobsPage() {
                           )}
                           <button
                             onClick={() => router.push(`/annix/orbit/portal/jobs/${job.id}/slots`)}
-                            className="text-[#FFA500] hover:text-[#FFB733]"
+                            className="text-[#FF8A00] hover:text-[#FF9C33]"
                           >
                             Slots
                           </button>

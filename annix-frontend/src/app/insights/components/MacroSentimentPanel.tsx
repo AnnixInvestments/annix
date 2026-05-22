@@ -34,7 +34,7 @@ export function MacroSentimentPanel() {
     return (
       <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 mt-6">
         <div className="flex items-center gap-2 mb-2">
-          <Globe2 className="w-5 h-5 text-[#FFA500]" strokeWidth={2} />
+          <Globe2 className="w-5 h-5 text-[#FF8A00]" strokeWidth={2} />
           <h3 className="text-base font-semibold">Macro sentiment</h3>
         </div>
         <p className="text-sm text-gray-400">
@@ -55,7 +55,7 @@ export function MacroSentimentPanel() {
     <div className="bg-gray-900/50 border border-gray-800 rounded-2xl p-6 mt-6">
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <div className="flex items-center gap-2">
-          <Globe2 className="w-5 h-5 text-[#FFA500]" strokeWidth={2} />
+          <Globe2 className="w-5 h-5 text-[#FF8A00]" strokeWidth={2} />
           <h3 className="text-base font-semibold">Macro sentiment · {todayRow.snapshotDate}</h3>
         </div>
         <span className="text-xs text-gray-500">

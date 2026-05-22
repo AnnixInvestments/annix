@@ -32,7 +32,7 @@ export default function InsightsHomePage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -72,7 +72,7 @@ function InsightsLoginCard() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FFA500] mb-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FF8A00] mb-4">
             <TrendingUp className="w-7 h-7 text-gray-900" strokeWidth={2.5} />
           </div>
           <h1 className="text-3xl font-bold text-white tracking-tight">Annix Insights</h1>
@@ -96,7 +96,7 @@ function InsightsLoginCard() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+                className="w-full px-3 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF8A00] focus:border-transparent"
                 autoComplete="email"
               />
             </div>
@@ -114,7 +114,7 @@ function InsightsLoginCard() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-3 py-2 pr-10 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+                  className="w-full px-3 py-2 pr-10 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-[#FF8A00] focus:border-transparent"
                   autoComplete="current-password"
                 />
                 <button
@@ -140,7 +140,7 @@ function InsightsLoginCard() {
             <button
               type="submit"
               disabled={submitting}
-              className="w-full bg-[#FFA500] hover:bg-[#CC8400] disabled:bg-slate-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-900 font-semibold py-2.5 rounded-lg transition-colors"
+              className="w-full bg-[#FF8A00] hover:bg-[#CC6900] disabled:bg-slate-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-900 font-semibold py-2.5 rounded-lg transition-colors"
             >
               {submitting ? "Signing in…" : "Sign in"}
             </button>
@@ -183,11 +183,11 @@ function InsightsDashboard(props: { userEmail: string }) {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
           <Link
             href="/insights/watchlist"
-            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FFA500] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
+            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FF8A00] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
           >
             <div className="flex items-center justify-between mb-3">
-              <ListChecks className="w-6 h-6 text-[#FFA500]" strokeWidth={2} />
-              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
+              <ListChecks className="w-6 h-6 text-[#FF8A00]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FF8A00] transition-colors" />
             </div>
             <h3 className="text-base font-semibold">Watchlist</h3>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
@@ -196,11 +196,11 @@ function InsightsDashboard(props: { userEmail: string }) {
           </Link>
           <Link
             href="/insights/paper-portfolios"
-            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FFA500] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
+            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FF8A00] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
           >
             <div className="flex items-center justify-between mb-3">
-              <Briefcase className="w-6 h-6 text-[#FFA500]" strokeWidth={2} />
-              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
+              <Briefcase className="w-6 h-6 text-[#FF8A00]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FF8A00] transition-colors" />
             </div>
             <h3 className="text-base font-semibold">Paper portfolios</h3>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
@@ -210,11 +210,11 @@ function InsightsDashboard(props: { userEmail: string }) {
           </Link>
           <Link
             href="/insights/signals"
-            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FFA500] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
+            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FF8A00] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
           >
             <div className="flex items-center justify-between mb-3">
-              <Signal className="w-6 h-6 text-[#FFA500]" strokeWidth={2} />
-              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
+              <Signal className="w-6 h-6 text-[#FF8A00]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FF8A00] transition-colors" />
             </div>
             <h3 className="text-base font-semibold">Signals</h3>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
@@ -224,11 +224,11 @@ function InsightsDashboard(props: { userEmail: string }) {
           </Link>
           <Link
             href="/insights/news"
-            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FFA500] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
+            className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 hover:border-[#FF8A00] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
           >
             <div className="flex items-center justify-between mb-3">
-              <Newspaper className="w-6 h-6 text-[#FFA500]" strokeWidth={2} />
-              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FFA500] transition-colors" />
+              <Newspaper className="w-6 h-6 text-[#FF8A00]" strokeWidth={2} />
+              <ArrowRight className="w-4 h-4 text-gray-500 group-hover:text-[#FF8A00] transition-colors" />
             </div>
             <h3 className="text-base font-semibold">News</h3>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
@@ -362,7 +362,7 @@ function AdminActions() {
           type="button"
           onClick={handleRun}
           disabled={isRunning || runMutation.isPending}
-          className="inline-flex items-center gap-2 bg-[#FFA500] hover:bg-[#CC8400] disabled:bg-slate-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-900 font-semibold px-4 py-2 rounded-lg transition-colors"
+          className="inline-flex items-center gap-2 bg-[#FF8A00] hover:bg-[#CC6900] disabled:bg-slate-300 dark:disabled:bg-gray-700 disabled:cursor-not-allowed text-gray-900 font-semibold px-4 py-2 rounded-lg transition-colors"
         >
           <PlayCircle className="w-4 h-4" />
           {isRunning ? "Running…" : runMutation.isPending ? "Starting…" : "Run daily cron now"}

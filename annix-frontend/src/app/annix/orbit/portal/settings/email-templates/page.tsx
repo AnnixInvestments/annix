@@ -66,7 +66,7 @@ export default function EmailTemplatesSettingsPage() {
             onClick={() => setActiveKind(tpl.kind)}
             className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
               tpl.kind === active.kind
-                ? "bg-[#FFA500] text-[#1a1a40]"
+                ? "bg-[#FF8A00] text-[#1a1a40]"
                 : "bg-white/10 text-white hover:bg-white/20"
             }`}
           >
@@ -199,7 +199,7 @@ function TemplateEditor({ template }: TemplateEditorProps) {
           />
         </div>
 
-        <div className="rounded-lg border border-[#FFA500]/40 bg-[#FFA500]/10 p-3 space-y-2">
+        <div className="rounded-lg border border-[#FF8A00]/40 bg-[#FF8A00]/10 p-3 space-y-2">
           <p className="text-xs font-semibold text-[#1a1a40]">Draft with Nix</p>
           <textarea
             value={instructions}
@@ -212,7 +212,7 @@ function TemplateEditor({ template }: TemplateEditorProps) {
             type="button"
             onClick={handleNixDraft}
             disabled={nixDraftMutation.isPending}
-            className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+            className="text-xs px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
           >
             {nixDraftMutation.isPending ? "Nix is drafting…" : "Generate with Nix"}
           </button>

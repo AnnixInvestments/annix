@@ -183,7 +183,7 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
                 type="button"
                 onClick={onRegenerateAll}
                 disabled={isRegeneratingAll}
-                className="inline-flex items-center gap-1 px-3 py-2 border border-[#FFA500] text-[#92400e] bg-[#fff6e5] rounded-lg text-sm hover:bg-[#FFE0A0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                className="inline-flex items-center gap-1 px-3 py-2 border border-[#FF8A00] text-[#92400e] bg-[#fff6e5] rounded-lg text-sm hover:bg-[#FFE0A0] disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
               >
                 <RefreshCw className={`w-4 h-4 ${isRegeneratingAll ? "animate-spin" : ""}`} />
                 {isRegeneratingAll ? "Regenerating…" : "Regenerate all"}

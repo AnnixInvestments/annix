@@ -12,7 +12,7 @@ export const ANNIX_PALETTE = {
   /** Primary Orange — orbit ring, A monogram, ORBIT wordmark, accent rules. */
   orange: "#FF8A00",
   /** Glow Orange — orbiting satellite, hover states. */
-  orangeLight: "#FFA500",
+  orangeLight: "#FF8A00",
   /** Deeper orange used only inside the bright-satellite radial gradient. */
   orangeDeep: "#C9560A",
   /** Pure white — N monogram, ANNIX wordmark, headlines on dark. */

@@ -65,7 +65,7 @@ export default function InsightsAssetDetailPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -82,7 +82,7 @@ export default function InsightsAssetDetailPage() {
           <button
             type="button"
             onClick={() => router.push("/insights/watchlist")}
-            className="bg-[#FFA500] hover:bg-[#CC8400] text-gray-900 px-4 py-2 rounded-lg font-semibold"
+            className="bg-[#FF8A00] hover:bg-[#CC6900] text-gray-900 px-4 py-2 rounded-lg font-semibold"
           >
             Back to watchlist
           </button>
@@ -145,13 +145,13 @@ export default function InsightsAssetDetailPage() {
             <button
               type="button"
               onClick={() => router.push("/insights/watchlist")}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FF8A00] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Watchlist
             </button>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight font-mono text-[#FFA500]">
+              <h1 className="text-2xl font-bold tracking-tight font-mono text-[#FF8A00]">
                 {symbol}
               </h1>
               <p className="text-sm text-slate-600 dark:text-gray-400">
@@ -168,7 +168,7 @@ export default function InsightsAssetDetailPage() {
                   onClick={() => setRange(r.value)}
                   className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
                     r.value === range
-                      ? "bg-[#FFA500] text-gray-900"
+                      ? "bg-[#FF8A00] text-gray-900"
                       : "text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white"
                   }`}
                 >
@@ -190,11 +190,11 @@ export default function InsightsAssetDetailPage() {
         <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-6 text-slate-900 dark:text-white">
           {historyQuery.isLoading ? (
             <div className="h-[360px] flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
             </div>
           ) : bars.length === 0 ? (
             <div className="h-[360px] flex flex-col items-center justify-center text-center">
-              <TrendingUp className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
+              <TrendingUp className="w-10 h-10 text-[#FF8A00] mx-auto mb-3" strokeWidth={1.5} />
               <h2 className="text-lg font-semibold">No price history yet.</h2>
               <p className="text-sm text-slate-600 dark:text-gray-400 mt-1 max-w-md">
                 Run a backfill to pull 20 years of daily OHLCV bars from Yahoo Finance. Or wait for
@@ -203,7 +203,7 @@ export default function InsightsAssetDetailPage() {
               <button
                 type="button"
                 onClick={handleBackfill}
-                className="mt-4 inline-flex items-center gap-1.5 bg-[#FFA500] hover:bg-[#CC8400] text-gray-900 px-4 py-2 rounded-lg font-semibold"
+                className="mt-4 inline-flex items-center gap-1.5 bg-[#FF8A00] hover:bg-[#CC6900] text-gray-900 px-4 py-2 rounded-lg font-semibold"
               >
                 <RefreshCw className="w-4 h-4" />
                 Run backfill now

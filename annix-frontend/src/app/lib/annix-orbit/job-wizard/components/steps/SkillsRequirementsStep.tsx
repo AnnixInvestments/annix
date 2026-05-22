@@ -140,7 +140,7 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
             type="button"
             onClick={handleSuggest}
             disabled={isSuggesting}
-            className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+            className="text-xs px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
           >
             {isSuggesting ? "Nix thinking…" : "Suggest skills"}
           </button>
@@ -218,7 +218,7 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
           type="button"
           onClick={handleSuggestRequirements}
           disabled={isSuggestingReqs || !titleReady}
-          className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+          className="text-xs px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
         >
           {isSuggestingReqs ? "Nix thinking…" : "Suggest with Nix"}
         </button>

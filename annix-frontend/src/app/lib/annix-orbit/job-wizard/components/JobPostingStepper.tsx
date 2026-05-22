@@ -40,9 +40,9 @@ export function JobPostingStepper(props: JobPostingStepperProps) {
               <span
                 className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-sm font-bold ${
                   isCurrent
-                    ? "bg-[#FFA500] text-[#1a1a40]"
+                    ? "bg-[#FF8A00] text-[#1a1a40]"
                     : isPast
-                      ? "bg-[#FFA500]/80 text-[#1a1a40]"
+                      ? "bg-[#FF8A00]/80 text-[#1a1a40]"
                       : "bg-white/15 text-white"
                 }`}
               >

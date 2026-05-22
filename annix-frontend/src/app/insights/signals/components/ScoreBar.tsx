@@ -7,7 +7,7 @@ const VARIANT_COLOURS: Record<NonNullable<ScoreBarProps["variant"]>, string> = {
   opportunity: "bg-green-500",
   risk: "bg-red-500",
   confidence: "bg-blue-500",
-  neutral: "bg-[#FFA500]",
+  neutral: "bg-[#FF8A00]",
 };
 
 export function ScoreBar(props: ScoreBarProps) {

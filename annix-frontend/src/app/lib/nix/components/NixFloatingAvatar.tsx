@@ -152,7 +152,7 @@ export default function NixFloatingAvatar(props: NixFloatingAvatarProps) {
 
         <div
           className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full animate-pulse"
-          style={{ backgroundColor: "#FFA500" }}
+          style={{ backgroundColor: "#FF8A00" }}
         />
 
         <div className="absolute -top-1 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs px-2 py-1 rounded whitespace-nowrap pointer-events-none">

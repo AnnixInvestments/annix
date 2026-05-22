@@ -119,7 +119,7 @@ function StockControlLoginContent() {
   if (!mounted || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -128,7 +128,7 @@ function StockControlLoginContent() {
     <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#FFA500] mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#FF8A00] mb-4">
             <svg
               className="w-10 h-10 text-white"
               fill="none"
@@ -144,7 +144,7 @@ function StockControlLoginContent() {
             </svg>
           </div>
           <h1 className="text-3xl font-bold text-white">Annix Stock Control</h1>
-          <p className="mt-2 text-xl text-[#FFB733]">Sign in to manage stock</p>
+          <p className="mt-2 text-xl text-[#FF9C33]">Sign in to manage stock</p>
         </div>
       </div>
 
@@ -339,7 +339,7 @@ function StockControlLoginContent() {
         </div>
 
         <div className="mt-6 text-center">
-          <Link href="/" className="text-sm text-[#FFB733] hover:text-white">
+          <Link href="/" className="text-sm text-[#FF9C33] hover:text-white">
             Back to Home
           </Link>
         </div>
@@ -353,7 +353,7 @@ export default function StockControlLoginPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
         </div>
       }
     >

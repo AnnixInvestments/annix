@@ -23,7 +23,7 @@ export default function AnnixOrbitHomePage() {
             </svg>
           </div>
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2">Annix Orbit</h1>
-          <p className="text-sm sm:text-base font-semibold tracking-widest uppercase text-[#FFA500] mb-3">
+          <p className="text-sm sm:text-base font-semibold tracking-widest uppercase text-[#FF8A00] mb-3">
             Hiring &bull; Talent &bull; Compliance
           </p>
           <p className="text-lg text-[#c0c0eb] max-w-2xl mx-auto">

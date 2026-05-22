@@ -336,7 +336,7 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
             type="button"
             onClick={handleGuidance}
             disabled={isGuiding}
-            className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+            className="text-xs px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
           >
             {isGuiding ? "Nix thinking…" : guidanceData ? "Refresh" : "Ask Nix"}
           </button>

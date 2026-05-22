@@ -173,7 +173,7 @@ export default function CompanyCalendarPage() {
               <div
                 key={dayKey}
                 className={`bg-white rounded-xl shadow-sm border ${
-                  isToday ? "border-[#FFA500] ring-1 ring-[#FFA500]" : "border-[#e0e0f5]"
+                  isToday ? "border-[#FF8A00] ring-1 ring-[#FF8A00]" : "border-[#e0e0f5]"
                 } p-3 min-h-[12rem]`}
               >
                 <div className="flex items-baseline justify-between mb-2">

@@ -4072,8 +4072,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               className="px-4 py-2 rounded-lg font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: currentStep === 1 ? "transparent" : "#4a4da3",
-                color: "#FFA500",
-                border: "1px solid #FFA500",
+                color: "#FF8A00",
+                border: "1px solid #FF8A00",
               }}
             >
               ← Previous
@@ -4097,13 +4097,13 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                     style={{
                       backgroundColor:
                         step.number === currentStep
-                          ? "#FFA500"
+                          ? "#FF8A00"
                           : step.number < currentStep
                             ? "#4a4da3"
                             : "transparent",
                       border:
                         step.number === currentStep
-                          ? "2px solid #FFA500"
+                          ? "2px solid #FF8A00"
                           : step.number < currentStep
                             ? "1px solid #4CAF50"
                             : "1px solid rgba(255, 165, 0, 0.3)",
@@ -4159,8 +4159,8 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
               className="px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               style={{
                 backgroundColor: "#4a4da3",
-                color: "#FFA500",
-                border: "1px solid #FFA500",
+                color: "#FF8A00",
+                border: "1px solid #FF8A00",
               }}
             >
               {isSavingDraft ? (
@@ -4215,7 +4215,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   <button
                     onClick={nextStep}
                     className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                    style={{ backgroundColor: "#FFA500", color: "#323288" }}
+                    style={{ backgroundColor: "#FF8A00", color: "#323288" }}
                   >
                     Next →
                   </button>
@@ -4226,7 +4226,7 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   <button
                     onClick={handleNextStep}
                     className="px-4 py-2 rounded-lg font-medium text-sm transition-all hover:opacity-90"
-                    style={{ backgroundColor: "#FFA500", color: "#323288" }}
+                    style={{ backgroundColor: "#FF8A00", color: "#323288" }}
                   >
                     Next →
                   </button>

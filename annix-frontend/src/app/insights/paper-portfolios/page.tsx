@@ -36,7 +36,7 @@ export default function InsightsPaperPortfoliosPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -63,7 +63,7 @@ export default function InsightsPaperPortfoliosPage() {
           <button
             type="button"
             onClick={() => router.push("/insights")}
-            className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FF8A00] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
@@ -79,11 +79,11 @@ export default function InsightsPaperPortfoliosPage() {
 
         {query.isLoading ? (
           <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
           </div>
         ) : portfolios.length === 0 ? (
           <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 text-center text-slate-900 dark:text-white">
-            <Briefcase className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
+            <Briefcase className="w-10 h-10 text-[#FF8A00] mx-auto mb-3" strokeWidth={1.5} />
             <h2 className="text-lg font-semibold">No portfolios seeded yet.</h2>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1">
               Run migration 1820100000084 to seed the six paper portfolios.
@@ -102,7 +102,7 @@ export default function InsightsPaperPortfoliosPage() {
                 <Link
                   key={p.id}
                   href={`/insights/paper-portfolios/${encodeURIComponent(p.slug)}`}
-                  className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-5 hover:border-[#FFA500] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
+                  className="group bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-5 hover:border-[#FF8A00] hover:bg-slate-100 dark:hover:bg-gray-900/70 transition-colors text-slate-900 dark:text-white"
                 >
                   <div className="flex items-start justify-between mb-3 gap-2">
                     <div>
@@ -154,7 +154,7 @@ export default function InsightsPaperPortfoliosPage() {
                       {totalReturnPct >= 0 ? "+" : ""}
                       {totalReturnPct.toFixed(2)}% total
                     </span>
-                    <ArrowRight className="w-4 h-4 text-slate-500 dark:text-gray-500 group-hover:text-[#FFA500] transition-colors" />
+                    <ArrowRight className="w-4 h-4 text-slate-500 dark:text-gray-500 group-hover:text-[#FF8A00] transition-colors" />
                   </div>
                 </Link>
               );

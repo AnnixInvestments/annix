@@ -45,7 +45,7 @@ export default function BrandingPreviewPage() {
             <Swatch label="Primary Navy" hex="#001B8F" />
             <Swatch label="Dark Navy" hex="#00135F" />
             <Swatch label="Orange" hex="#FF8A00" />
-            <Swatch label="Glow Orange" hex="#FFA500" />
+            <Swatch label="Glow Orange" hex="#FF8A00" />
             <Swatch label="White" hex="#FFFFFF" textOnBlack />
             <Swatch label="White 80%" hex="rgba(255,255,255,0.80)" textOnBlack />
           </div>

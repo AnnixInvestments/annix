@@ -195,7 +195,7 @@ function PublicJobCard(props: { job: PublicJob }) {
           <div className="flex items-center gap-2 flex-wrap">
             <h2 className="text-lg font-semibold text-gray-900">{job.title}</h2>
             {isAnnixJob ? (
-              <span className="text-[10px] uppercase tracking-wider bg-[#FFA500]/15 text-[#9c5800] px-2 py-0.5 rounded-full font-semibold">
+              <span className="text-[10px] uppercase tracking-wider bg-[#FF8A00]/15 text-[#9c5800] px-2 py-0.5 rounded-full font-semibold">
                 Posted on Annix
               </span>
             ) : null}

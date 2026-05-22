@@ -59,7 +59,7 @@ export default function Navigation() {
 
             {showHomeNav && (
               <div className="flex gap-1">
-                <span className="px-4 py-2 rounded-lg font-semibold" style={{ color: "#FFA500" }}>
+                <span className="px-4 py-2 rounded-lg font-semibold" style={{ color: "#FF8A00" }}>
                   Select an application below
                 </span>
               </div>
@@ -70,9 +70,9 @@ export default function Navigation() {
                 <Link
                   href="/rfq-portal"
                   className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                    pathname === "/rfq-portal" ? "bg-[#FFA500]" : "hover:bg-[#4a4da3]"
+                    pathname === "/rfq-portal" ? "bg-[#FF8A00]" : "hover:bg-[#4a4da3]"
                   }`}
-                  style={{ color: pathname === "/rfq-portal" ? "#323288" : "#FFA500" }}
+                  style={{ color: pathname === "/rfq-portal" ? "#323288" : "#FF8A00" }}
                 >
                   RFQ Home
                 </Link>
@@ -81,7 +81,7 @@ export default function Navigation() {
                   className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
                     pathname === "/rfq" ||
                     (pathname.startsWith("/rfq/") && !pathname.startsWith("/rfq-portal"))
-                      ? "bg-[#FFA500]"
+                      ? "bg-[#FF8A00]"
                       : "hover:bg-[#4a4da3]"
                   }`}
                   style={{
@@ -89,7 +89,7 @@ export default function Navigation() {
                       pathname === "/rfq" ||
                       (pathname.startsWith("/rfq/") && !pathname.startsWith("/rfq-portal"))
                         ? "#323288"
-                        : "#FFA500",
+                        : "#FF8A00",
                   }}
                 >
                   Create an RFQ
@@ -97,18 +97,18 @@ export default function Navigation() {
                 <Link
                   href="/pricing"
                   className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                    pathname === "/pricing" ? "bg-[#FFA500]" : "hover:bg-[#4a4da3]"
+                    pathname === "/pricing" ? "bg-[#FF8A00]" : "hover:bg-[#4a4da3]"
                   }`}
-                  style={{ color: pathname === "/pricing" ? "#323288" : "#FFA500" }}
+                  style={{ color: pathname === "/pricing" ? "#323288" : "#FF8A00" }}
                 >
                   Pricing
                 </Link>
                 <Link
                   href="/about"
                   className={`px-4 py-2 rounded-lg font-semibold transition-all whitespace-nowrap ${
-                    pathname === "/about" ? "bg-[#FFA500]" : "hover:bg-[#4a4da3]"
+                    pathname === "/about" ? "bg-[#FF8A00]" : "hover:bg-[#4a4da3]"
                   }`}
-                  style={{ color: pathname === "/about" ? "#323288" : "#FFA500" }}
+                  style={{ color: pathname === "/about" ? "#323288" : "#FF8A00" }}
                 >
                   About
                 </Link>

@@ -66,7 +66,7 @@ export default function TeacherAssistantPage() {
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -130,7 +130,7 @@ export default function TeacherAssistantPage() {
     <button
       type="button"
       onClick={handleReset}
-      className="text-sm text-white/80 hover:text-[#FFA500] transition-colors px-3 py-2"
+      className="text-sm text-white/80 hover:text-[#FF8A00] transition-colors px-3 py-2"
     >
       Start new assignment
     </button>

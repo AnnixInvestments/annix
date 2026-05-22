@@ -237,7 +237,7 @@ function SendInviteButton(props: SendInviteButtonProps) {
       type="button"
       onClick={props.onClick}
       disabled={buttonDisabled}
-      className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] rounded-lg hover:bg-[#FFB733] disabled:opacity-50 font-semibold"
+      className="text-xs px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] rounded-lg hover:bg-[#FF9C33] disabled:opacity-50 font-semibold"
     >
       {label}
     </button>

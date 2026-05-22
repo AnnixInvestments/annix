@@ -19,7 +19,7 @@ export default function InsightsError(props: {
   }, [error]);
 
   if (isChunkLoadError(error)) {
-    return <AppUpdateNotice brandButtonClass="bg-[#FFA500] hover:bg-[#CC8400] text-gray-900" />;
+    return <AppUpdateNotice brandButtonClass="bg-[#FF8A00] hover:bg-[#CC6900] text-gray-900" />;
   }
 
   return (
@@ -28,7 +28,7 @@ export default function InsightsError(props: {
       error={error}
       reset={reset}
       backHref="/insights"
-      brandButtonClass="bg-[#FFA500] hover:bg-[#CC8400] text-gray-900"
+      brandButtonClass="bg-[#FF8A00] hover:bg-[#CC6900] text-gray-900"
     />
   );
 }

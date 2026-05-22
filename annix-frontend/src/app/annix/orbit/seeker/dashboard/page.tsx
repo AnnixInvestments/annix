@@ -64,7 +64,7 @@ export default function SeekerDashboardPage() {
       ) : null}
 
       {openInvites.length > 0 ? (
-        <div className="bg-gradient-to-br from-[#FFA500] to-[#FFB733] rounded-xl shadow-lg p-5">
+        <div className="bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] rounded-xl shadow-lg p-5">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-2xl shrink-0">
               ✉
@@ -115,7 +115,7 @@ export default function SeekerDashboardPage() {
       ) : null}
 
       {!hasCv && (
-        <div className="rounded-xl bg-gradient-to-br from-[#FFA500] to-[#FFB733] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-xl bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
               Ready to find your next role?

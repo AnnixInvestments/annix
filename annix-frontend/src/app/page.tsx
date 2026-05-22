@@ -213,7 +213,7 @@ export default function HomePage() {
             rel="noopener noreferrer"
             className="group"
           >
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-[#FFA500] hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-[#FF8A00] hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-[#f5f6ff] rounded-2xl text-[#323288] mb-6 group-hover:bg-[#323288] group-hover:text-white transition-colors">
                   <GraduationCap {...iconProps} />
@@ -275,9 +275,9 @@ export default function HomePage() {
           </Link>
 
           <Link href="/insights" target="_blank" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-[#FFA500] hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-[#FF8A00] hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-900 rounded-2xl text-[#FFA500] mb-6 group-hover:bg-[#FFA500] group-hover:text-gray-900 transition-colors">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-900 rounded-2xl text-[#FF8A00] mb-6 group-hover:bg-[#FF8A00] group-hover:text-gray-900 transition-colors">
                   <TrendingUp {...iconProps} />
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Insights</h3>
@@ -285,7 +285,7 @@ export default function HomePage() {
                   Private investment-intelligence and paper-trading test harness. Six fake-money
                   portfolios + signal engine, no real-money execution.
                 </p>
-                <span className="inline-flex items-center text-[#CC8400] font-semibold group-hover:translate-x-1 transition-transform">
+                <span className="inline-flex items-center text-[#CC6900] font-semibold group-hover:translate-x-1 transition-transform">
                   Sign in
                   <svg
                     className="w-5 h-5 ml-2"

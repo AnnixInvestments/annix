@@ -99,7 +99,7 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
                 className="absolute inset-y-0 left-0 rounded-full transition-all duration-500 ease-out"
                 style={{
                   width: `${progress}%`,
-                  background: "linear-gradient(90deg, #FFA500 0%, #FF8C00 50%, #FFA500 100%)",
+                  background: "linear-gradient(90deg, #FF8A00 0%, #FF8C00 50%, #FF8A00 100%)",
                   backgroundSize: "200% 100%",
                   animation: "shimmer 2s infinite linear",
                 }}
@@ -144,7 +144,7 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
           </div>
         </div>
 
-        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
+        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FF8A00" }} />
       </div>
 
       <style jsx>{`

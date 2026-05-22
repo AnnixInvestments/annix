@@ -25,7 +25,7 @@ export function NixAssistantPanel(props: NixAssistantPanelProps) {
   return (
     <aside className="bg-white rounded-xl shadow-md border border-[#252560]/30 p-6 flex flex-col gap-5 sticky top-20">
       <header className="flex items-center gap-3">
-        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#FFA500] to-[#FFB733] text-[#1a1a40] font-bold">
+        <span className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] text-[#1a1a40] font-bold">
           N
         </span>
         <div>

@@ -519,14 +519,14 @@ export default function NixClarificationPopup(props: NixClarificationPopupProps)
                 onClick={handleSubmit}
                 disabled={isSubmitting || !response.trim()}
                 className="flex-1 py-2 px-3 rounded-lg font-medium text-white transition-colors disabled:opacity-50 hover:opacity-90 text-sm"
-                style={{ backgroundColor: "#FFA500" }}
+                style={{ backgroundColor: "#FF8A00" }}
               >
                 {isSubmitting ? "Submitting..." : "Submit"}
               </button>
             </div>
           </div>
 
-          <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
+          <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FF8A00" }} />
         </div>
       </div>
     </div>

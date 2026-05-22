@@ -128,7 +128,7 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
       subtitle="Describe what this person will do and what success looks like. Phase 2 lets Nix turn these into a polished candidate-facing description."
     >
       {ConfirmDialog}
-      <div className="rounded-lg border border-[#FFA500]/40 bg-[#FFA500]/10 p-4 flex items-start gap-3 -mt-2">
+      <div className="rounded-lg border border-[#FF8A00]/40 bg-[#FF8A00]/10 p-4 flex items-start gap-3 -mt-2">
         <div className="flex-1">
           <p className="text-sm font-semibold text-[#1a1a40]">Let Nix draft this for you</p>
           <p className="text-xs text-[#1a1a40]/70 mt-0.5">
@@ -141,7 +141,7 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
           type="button"
           disabled={isAutofilling || !titleReady}
           onClick={handleAutofill}
-          className="px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-sm"
+          className="px-4 py-2 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap text-sm"
         >
           {isAutofilling ? "Drafting…" : "Draft with Nix"}
         </button>
@@ -190,7 +190,7 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
             type="button"
             disabled={isDrafting}
             onClick={handleDraft}
-            className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+            className="text-xs px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
           >
             {isDrafting ? "Nix is drafting…" : "Help me write this"}
           </button>

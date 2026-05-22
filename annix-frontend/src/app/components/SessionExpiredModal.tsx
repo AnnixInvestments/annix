@@ -261,7 +261,7 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
             onClick={handleRefresh}
             disabled={isRefreshing}
             className="w-full py-3 px-6 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98] disabled:opacity-60 disabled:cursor-wait"
-            style={{ backgroundColor: "#FFA500" }}
+            style={{ backgroundColor: "#FF8A00" }}
           >
             {isRefreshing ? "Refreshing…" : "Refresh page"}
           </button>
@@ -277,7 +277,7 @@ export default function SessionExpiredModal(props: SessionExpiredModalProps) {
           </button>
         </div>
 
-        <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
+        <div className="h-1.5" style={{ backgroundColor: "#FF8A00" }} />
       </div>
     </div>,
     document.body,

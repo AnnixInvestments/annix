@@ -16,7 +16,7 @@ export function AuthShell(props: AuthShellProps) {
     <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#FFA500] rounded-2xl text-white mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#FF8A00] rounded-2xl text-white mb-4 shadow-lg">
             <GraduationCap className="w-9 h-9" strokeWidth={1.75} />
           </div>
           <h1 className="text-2xl font-bold text-white mb-1">{title}</h1>

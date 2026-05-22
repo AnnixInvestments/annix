@@ -125,7 +125,7 @@ export default function PerJobSlotsPage() {
         <button
           type="button"
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-[#FFA500] text-[#1a1a40] rounded-lg hover:bg-[#FFB733] font-semibold"
+          className="px-4 py-2 bg-[#FF8A00] text-[#1a1a40] rounded-lg hover:bg-[#FF9C33] font-semibold"
         >
           + Add slot
         </button>

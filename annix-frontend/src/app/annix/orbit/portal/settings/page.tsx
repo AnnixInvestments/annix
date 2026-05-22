@@ -248,7 +248,7 @@ export default function SettingsPage() {
 
       <Link
         href="/annix/orbit/portal/settings/email-templates"
-        className="block bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6 hover:border-[#FFA500] transition-all"
+        className="block bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6 hover:border-[#FF8A00] transition-all"
       >
         <div className="flex items-center justify-between">
           <div>
@@ -258,7 +258,7 @@ export default function SettingsPage() {
               requests and acknowledgement. Nix can draft them for you.
             </p>
           </div>
-          <span className="text-[#FFA500] text-sm font-semibold">Manage →</span>
+          <span className="text-[#FF8A00] text-sm font-semibold">Manage →</span>
         </div>
       </Link>
 

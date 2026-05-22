@@ -66,8 +66,8 @@ export function PriceChart(props: PriceChartProps) {
         secondsVisible: false,
       },
       crosshair: {
-        vertLine: { color: "#FFA500", style: 3 },
-        horzLine: { color: "#FFA500", style: 3 },
+        vertLine: { color: "#FF8A00", style: 3 },
+        horzLine: { color: "#FF8A00", style: 3 },
       },
     });
     chartRef.current = chart;

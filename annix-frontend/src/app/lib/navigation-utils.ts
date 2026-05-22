@@ -19,7 +19,10 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
-  if (pathname.startsWith("/annix/orbit/seeker")) {
+  // The entire Annix Orbit app has its own PortalToolbar / standalone headers —
+  // never overlay the global marketing nav on top of it (was causing a double
+  // toolbar on seeker pages, and would on any other orbit route).
+  if (pathname.startsWith("/annix/orbit")) {
     return false;
   }
 

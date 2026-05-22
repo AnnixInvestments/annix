@@ -39,6 +39,8 @@ export default function RemoteAccessApprovalModal(props: RemoteAccessApprovalMod
   if (!isOpen) return null;
 
   const rawName = request.requestedBy?.name;
+  const rawEmail = request.requestedBy?.email;
+  const requesterLabel = rawName || rawEmail || "Unknown";
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -77,9 +79,7 @@ export default function RemoteAccessApprovalModal(props: RemoteAccessApprovalMod
             <div className="space-y-2">
               <div>
                 <span className="text-sm text-gray-500">Requested by:</span>
-                <p className="font-medium text-gray-900">
-                  {rawName || request.requestedBy?.email || "Unknown"}
-                </p>
+                <p className="font-medium text-gray-900">{requesterLabel}</p>
               </div>
               <div>
                 <span className="text-sm text-gray-500">Access type:</span>
@@ -150,7 +150,7 @@ export default function RemoteAccessApprovalModal(props: RemoteAccessApprovalMod
           </div>
         </div>
 
-        <div className="h-1.5" style={{ backgroundColor: "#FFA500" }} />
+        <div className="h-1.5" style={{ backgroundColor: "#FF8A00" }} />
       </div>
     </div>,
     document.body,

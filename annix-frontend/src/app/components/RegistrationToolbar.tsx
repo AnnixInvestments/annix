@@ -40,7 +40,7 @@ export function RegistrationTopToolbar(props: { title: string; homeHref?: string
           <Link
             href={homeHref}
             className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:bg-[#4a4da3]"
-            style={{ color: "#FFA500" }}
+            style={{ color: "#FF8A00" }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -91,7 +91,7 @@ export function RegistrationBottomToolbar(props: {
             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
               isFirstStep ? "opacity-40 cursor-not-allowed" : "hover:bg-[#4a4da3] cursor-pointer"
             }`}
-            style={{ color: "#FFA500" }}
+            style={{ color: "#FF8A00" }}
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -118,7 +118,7 @@ export function RegistrationBottomToolbar(props: {
                   disabled={!canNavigate}
                   className={`flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-all ${
                     isActive
-                      ? "bg-[#FFA500] text-[#323288]"
+                      ? "bg-[#FF8A00] text-[#323288]"
                       : isPast
                         ? "bg-green-500/20 text-green-400 hover:bg-green-500/30 cursor-pointer"
                         : canNavigate
@@ -160,7 +160,7 @@ export function RegistrationBottomToolbar(props: {
                 ? "opacity-40 cursor-not-allowed"
                 : "hover:bg-[#4a4da3] cursor-pointer"
             }`}
-            style={{ color: "#FFA500" }}
+            style={{ color: "#FF8A00" }}
           >
             <span className="hidden sm:inline">{rawLabel2 || "Next"}</span>
             <span className="sm:hidden">Next</span>

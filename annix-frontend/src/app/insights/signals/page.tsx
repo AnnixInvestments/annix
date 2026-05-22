@@ -63,7 +63,7 @@ export default function InsightsSignalsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -97,7 +97,7 @@ export default function InsightsSignalsPage() {
             <button
               type="button"
               onClick={() => router.push("/insights")}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FF8A00] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -115,17 +115,17 @@ export default function InsightsSignalsPage() {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter by symbol, name, sector…"
-            className="w-64 px-3 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FFA500] focus:border-transparent"
+            className="w-64 px-3 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF8A00] focus:border-transparent"
           />
         </div>
 
         {query.isLoading ? (
           <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
           </div>
         ) : signals.length === 0 ? (
           <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 text-center text-slate-900 dark:text-white">
-            <Signal className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
+            <Signal className="w-10 h-10 text-[#FF8A00] mx-auto mb-3" strokeWidth={1.5} />
             <h2 className="text-lg font-semibold">No signal snapshots yet.</h2>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1 max-w-md mx-auto">
               The signal engine runs daily at 06:00 SAST. Wait for the next cron tick, or ensure
@@ -207,7 +207,7 @@ function SortHeader(props: SortHeaderProps) {
       type="button"
       onClick={props.onClick}
       className={`inline-flex items-center gap-1 hover:text-slate-900 dark:hover:text-white transition-colors ${
-        props.active ? "text-[#FFA500]" : ""
+        props.active ? "text-[#FF8A00]" : ""
       }`}
     >
       {props.label}
@@ -236,7 +236,7 @@ function RowGroup(props: { sig: SignalSnapshotResponse; expanded: boolean; onTog
           <Link
             href={`/insights/assets/${encodeURIComponent(sig.symbol)}`}
             onClick={(e) => e.stopPropagation()}
-            className="font-mono text-[#FFA500] hover:underline"
+            className="font-mono text-[#FF8A00] hover:underline"
           >
             {sig.symbol}
           </Link>

@@ -12,6 +12,12 @@ interface AmixLogoProps {
   className?: string;
   /** Use the signature font for text */
   useSignatureFont?: boolean;
+  /**
+   * Which wordmark to render next to the icon.
+   * - "investments" (default): the global "Annix Investments" cursive wordmark.
+   * - "orbit": the "Annix Orbit" wordmark — use inside the Annix Orbit app only.
+   */
+  wordmark?: "investments" | "orbit";
 }
 
 const sizeMap = {
@@ -43,7 +49,14 @@ const sizeMap = {
  * pick up the new icon automatically — no per-call-site changes needed.
  */
 export default function AmixLogo(props: AmixLogoProps) {
-  const { size = "md", showText = true, className = "", useSignatureFont = true } = props;
+  const {
+    size = "md",
+    showText = true,
+    className = "",
+    useSignatureFont = true,
+    wordmark: wordmarkProp,
+  } = props;
+  const wordmark = wordmarkProp || "investments";
   const { logo: logoSize } = sizeMap[size];
 
   // Match the icon size to the existing flower-icon dimensions so layouts
@@ -52,6 +65,9 @@ export default function AmixLogo(props: AmixLogoProps) {
     const iconSize = logoSize * 1.5;
     const textHeight = 48.4;
     const textWidth = Math.round(textHeight * 2.5);
+    const wordmarkSrc =
+      wordmark === "orbit" ? "/branding/annix-orbit-wordmark.png" : "/images/annix-text.png";
+    const wordmarkAlt = wordmark === "orbit" ? "Annix Orbit" : "Annix Investments";
 
     log.debug("AmixLogo rendering inline parts", {
       size,
@@ -59,6 +75,7 @@ export default function AmixLogo(props: AmixLogoProps) {
       iconSize,
       textWidth,
       textHeight,
+      wordmark,
     });
 
     return (
@@ -72,8 +89,8 @@ export default function AmixLogo(props: AmixLogoProps) {
           style={{ width: iconSize, height: iconSize, borderRadius: "18%" }}
         />
         <Image
-          src="/images/annix-text.png"
-          alt="Annix Investments"
+          src={wordmarkSrc}
+          alt={wordmarkAlt}
           width={textWidth}
           height={textHeight}
           priority

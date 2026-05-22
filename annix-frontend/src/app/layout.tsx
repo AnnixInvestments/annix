@@ -49,6 +49,15 @@ export const metadata: Metadata = {
   title: "Annix App - RFQ System",
   description: "Annix App Request for Quotation Management System",
   manifest: "/manifest.json",
+  // Global Annix favicon (the orbital-AN brand mark) so every tab shows it
+  // consistently. Per-app layouts (e.g. Annix Orbit) may still override.
+  icons: {
+    icon: [
+      { url: "/branding/annix-orbit-icon.png", type: "image/png", sizes: "any" },
+      { url: "/branding/annix-orbit-favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/branding/annix-orbit-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

@@ -35,7 +35,7 @@ export default function InsightsNewsPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -65,7 +65,7 @@ export default function InsightsNewsPage() {
             <button
               type="button"
               onClick={() => router.push("/insights")}
-              className="inline-flex items-center gap-1.5 text-sm text-slate-300 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
+              className="inline-flex items-center gap-1.5 text-sm text-slate-300 dark:text-gray-300 hover:text-[#FF8A00] transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -87,14 +87,14 @@ export default function InsightsNewsPage() {
                 setSymbolFilter(e.target.value);
                 setOffset(0);
               }}
-              className="px-3 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FFA500]"
+              className="px-3 py-2 bg-slate-50 dark:bg-gray-800 border border-slate-300 dark:border-gray-700 text-slate-900 dark:text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#FF8A00]"
             />
           </div>
         </div>
 
         {query.isLoading ? (
           <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
           </div>
         ) : errorMessage ? (
           <div
@@ -105,7 +105,7 @@ export default function InsightsNewsPage() {
           </div>
         ) : items.length === 0 ? (
           <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl p-12 text-center text-slate-900 dark:text-white">
-            <Newspaper className="w-10 h-10 text-[#FFA500] mx-auto mb-3" strokeWidth={1.5} />
+            <Newspaper className="w-10 h-10 text-[#FF8A00] mx-auto mb-3" strokeWidth={1.5} />
             <h2 className="text-lg font-semibold">No news yet.</h2>
             <p className="text-sm text-slate-600 dark:text-gray-400 mt-1 max-w-md mx-auto">
               News ingestion runs as part of the 06:00 SAST cron. Trigger the cron manually from the
@@ -191,7 +191,7 @@ function NewsCard({ item }: { item: NewsItemDto }) {
             href={item.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-base font-semibold hover:text-[#FFA500] transition-colors inline-flex items-start gap-1.5"
+            className="text-base font-semibold hover:text-[#FF8A00] transition-colors inline-flex items-start gap-1.5"
           >
             {item.title}
             <ExternalLink className="w-3.5 h-3.5 mt-1 flex-shrink-0 opacity-60" />
@@ -219,7 +219,7 @@ function NewsCard({ item }: { item: NewsItemDto }) {
         {item.relatedSymbols.length > 0 ? (
           <>
             <span>·</span>
-            <span className="font-mono text-[#FFA500]">
+            <span className="font-mono text-[#FF8A00]">
               {item.relatedSymbols.slice(0, 6).join(" · ")}
               {item.relatedSymbols.length > 6 ? ` +${item.relatedSymbols.length - 6}` : ""}
             </span>

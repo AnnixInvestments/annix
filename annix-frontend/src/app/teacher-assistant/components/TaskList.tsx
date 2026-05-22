@@ -15,7 +15,7 @@ export function TaskList(props: TaskListProps) {
   return (
     <ol className="space-y-4">
       {tasks.map((task, index) => (
-        <li key={task.step} className="border-l-4 border-[#FFA500] pl-4 py-2">
+        <li key={task.step} className="border-l-4 border-[#FF8A00] pl-4 py-2">
           <div className="flex items-baseline justify-between gap-2 mb-1 flex-wrap">
             <div className="flex items-baseline gap-2">
               <span className="text-sm font-semibold text-[#323288]">Step {task.step}</span>
@@ -110,7 +110,7 @@ interface AiCritiqueBlockProps {
 function AiCritiqueBlock(props: AiCritiqueBlockProps) {
   const { critique } = props;
   return (
-    <div className="mt-2 bg-[#fff6e5] border border-[#FFA500]/30 rounded-lg p-3">
+    <div className="mt-2 bg-[#fff6e5] border border-[#FF8A00]/30 rounded-lg p-3">
       <span className="text-xs font-semibold text-[#252560] uppercase tracking-wide">
         AI critique
       </span>

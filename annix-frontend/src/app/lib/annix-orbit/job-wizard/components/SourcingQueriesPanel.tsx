@@ -51,7 +51,7 @@ export function SourcingQueriesPanel({ jobId }: SourcingQueriesPanelProps) {
           type="button"
           onClick={handleGenerate}
           disabled={isPending}
-          className="text-sm px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+          className="text-sm px-4 py-2 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
         >
           {isPending ? "Nix thinking…" : data ? "Regenerate" : "Generate Boolean queries"}
         </button>

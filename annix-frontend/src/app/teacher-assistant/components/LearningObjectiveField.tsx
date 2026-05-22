@@ -79,7 +79,7 @@ export function LearningObjectiveField(props: LearningObjectiveFieldProps) {
         <p className="mt-1.5 text-xs text-gray-500">Enter a topic above to get Nix suggestions.</p>
       ) : null}
       {suggestions.length > 0 ? (
-        <div className="mt-3 rounded-lg border border-[#FFA500]/40 bg-[#fffbf2] p-3">
+        <div className="mt-3 rounded-lg border border-[#FF8A00]/40 bg-[#fffbf2] p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-semibold text-[#92400e] uppercase tracking-wide">
               Nix suggests — click to use
@@ -99,7 +99,7 @@ export function LearningObjectiveField(props: LearningObjectiveFieldProps) {
                 <button
                   type="button"
                   onClick={() => pickSuggestion(suggestion)}
-                  className="w-full text-left px-3 py-2 text-sm text-gray-800 bg-white rounded-md border border-gray-200 hover:border-[#FFA500] hover:bg-[#fff6e5] transition-colors"
+                  className="w-full text-left px-3 py-2 text-sm text-gray-800 bg-white rounded-md border border-gray-200 hover:border-[#FF8A00] hover:bg-[#fff6e5] transition-colors"
                 >
                   {suggestion}
                 </button>

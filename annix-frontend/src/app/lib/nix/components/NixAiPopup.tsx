@@ -61,7 +61,7 @@ export default function NixAiPopup(props: NixAiPopupProps) {
             <button
               onClick={onYes}
               className="flex-1 py-2.5 px-4 rounded-lg font-semibold text-white transition-all duration-200 hover:opacity-90 hover:shadow-lg active:scale-[0.98] text-sm"
-              style={{ backgroundColor: "#FFA500" }}
+              style={{ backgroundColor: "#FF8A00" }}
             >
               Yes, Use Nix
             </button>
@@ -72,7 +72,7 @@ export default function NixAiPopup(props: NixAiPopupProps) {
           </p>
         </div>
 
-        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
+        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FF8A00" }} />
       </div>
     </div>
   );

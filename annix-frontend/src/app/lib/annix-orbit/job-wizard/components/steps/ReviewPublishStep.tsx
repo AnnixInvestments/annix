@@ -154,7 +154,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
             type="button"
             onClick={handlePredict}
             disabled={isPredicting}
-            className="text-sm px-4 py-2 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+            className="text-sm px-4 py-2 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
           >
             {isPredicting
               ? "Predicting…"
@@ -200,7 +200,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
               type="button"
               onClick={() => handlePublish(false)}
               disabled={!canPublish || isPublishing}
-              className="px-6 py-3 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg shadow-md hover:bg-[#FFB733] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-6 py-3 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg shadow-md hover:bg-[#FF9C33] hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isPublishing ? "Publishing…" : "Publish Job (live)"}
             </button>
@@ -250,7 +250,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
                 type="button"
                 onClick={handleSeed}
                 disabled={seedMutation.isPending}
-                className="text-xs px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FFB733] transition-all disabled:opacity-50"
+                className="text-xs px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] font-semibold rounded-lg hover:bg-[#FF9C33] transition-all disabled:opacity-50"
               >
                 {seedMutation.isPending ? "Seeding…" : "Seed test applicants"}
               </button>
@@ -390,7 +390,7 @@ interface VolumePredictionCardProps {
 function VolumePredictionCard({ data }: VolumePredictionCardProps) {
   const confidencePct = Math.round(data.confidence * 100);
   return (
-    <div className="rounded-lg bg-gradient-to-br from-[#252560]/5 to-[#FFA500]/10 border border-[#252560]/30 p-5 space-y-3">
+    <div className="rounded-lg bg-gradient-to-br from-[#252560]/5 to-[#FF8A00]/10 border border-[#252560]/30 p-5 space-y-3">
       <div className="flex items-center justify-between">
         <span className="text-xs uppercase tracking-wider text-gray-500">
           Predicted candidate volume
@@ -402,7 +402,7 @@ function VolumePredictionCard({ data }: VolumePredictionCardProps) {
           <div className="text-xs text-gray-500">Lower</div>
           <div className="text-base font-semibold text-[#1a1a40]">{data.lowerBound}</div>
         </div>
-        <div className="bg-[#FFA500]/10 rounded p-2 border border-[#FFA500]/40">
+        <div className="bg-[#FF8A00]/10 rounded p-2 border border-[#FF8A00]/40">
           <div className="text-xs text-gray-500">Expected</div>
           <div className="text-2xl font-bold text-[#1a1a40]">{data.expectedApplicants}</div>
         </div>

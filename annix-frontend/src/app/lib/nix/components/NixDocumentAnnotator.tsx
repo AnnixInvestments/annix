@@ -124,7 +124,7 @@ export default function NixDocumentAnnotator(props: NixDocumentAnnotatorProps) {
 
     if (selection) {
       ctx.fillStyle = "rgba(255, 165, 0, 0.3)";
-      ctx.strokeStyle = "#FFA500";
+      ctx.strokeStyle = "#FF8A00";
       ctx.lineWidth = 2;
 
       const x = Math.min(selection.startX, selection.endX) * scale;
@@ -519,7 +519,7 @@ export default function NixDocumentAnnotator(props: NixDocumentAnnotatorProps) {
           </div>
         </div>
 
-        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FFA500" }} />
+        <div className="h-1 flex-shrink-0" style={{ backgroundColor: "#FF8A00" }} />
       </div>
     </div>
   );

@@ -472,7 +472,7 @@ export default function CandidatesPage() {
               type="button"
               onClick={() => handleBulkStatusChange("reference_check", "Send to reference check")}
               disabled={bulkPending}
-              className="px-3 py-1.5 text-xs font-semibold bg-[#FFA500] text-[#1a1a40] rounded-lg hover:bg-[#FFB733] disabled:opacity-50"
+              className="px-3 py-1.5 text-xs font-semibold bg-[#FF8A00] text-[#1a1a40] rounded-lg hover:bg-[#FF9C33] disabled:opacity-50"
             >
               Reference check
             </button>

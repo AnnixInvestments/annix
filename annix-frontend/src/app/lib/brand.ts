@@ -13,9 +13,9 @@ export const brandColors = {
   navyDark: "#252560",
 
   // Accent orange color
-  orange: "#FFA500",
-  orangeLight: "#FFB733",
-  orangeDark: "#CC8400",
+  orange: "#FF8A00",
+  orangeLight: "#FF9C33",
+  orangeDark: "#CC6900",
 
   // Supporting colors
   white: "#FFFFFF",
@@ -76,5 +76,5 @@ export const brandStyles = {
 // Tailwind-compatible color values for use in className strings
 export const tw = {
   navy: "[#323288]",
-  orange: "[#FFA500]",
+  orange: "[#FF8A00]",
 } as const;

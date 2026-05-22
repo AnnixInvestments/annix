@@ -246,8 +246,8 @@ export function TeacherAssistantForm(props: TeacherAssistantFormProps) {
                 key={option}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer transition-colors ${
                   checked
-                    ? "border-[#FFA500] bg-[#fff6e5] text-[#323288]"
-                    : "border-gray-200 bg-white text-gray-700 hover:border-[#FFA500]"
+                    ? "border-[#FF8A00] bg-[#fff6e5] text-[#323288]"
+                    : "border-gray-200 bg-white text-gray-700 hover:border-[#FF8A00]"
                 }`}
               >
                 <input

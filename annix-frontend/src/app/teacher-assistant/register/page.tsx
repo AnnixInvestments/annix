@@ -54,7 +54,7 @@ function RegisterInner() {
           Already have an account?{" "}
           <Link
             href={`/teacher-assistant/login${returnUrl ? `?returnUrl=${encodeURIComponent(returnUrl)}` : ""}`}
-            className="text-[#FFA500] font-semibold hover:underline"
+            className="text-[#FF8A00] font-semibold hover:underline"
           >
             Sign in
           </Link>
@@ -154,7 +154,7 @@ export default function RegisterPage() {
     <Suspense
       fallback={
         <div className="min-h-screen bg-[#0d0d20] flex items-center justify-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
         </div>
       }
     >

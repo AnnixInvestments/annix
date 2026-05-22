@@ -110,7 +110,7 @@ function DropdownMenu({
         type="button"
         onClick={onToggle}
         className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
-          active ? "bg-[#FFA500] text-[#323288]" : "text-[#FFA500] hover:bg-[#4a4da3]"
+          active ? "bg-[#FF8A00] text-[#323288]" : "text-[#FF8A00] hover:bg-[#4a4da3]"
         }`}
       >
         {group.label}
@@ -297,8 +297,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
                     isRouteActive(pathname, item.href)
-                      ? "bg-[#FFA500] text-[#323288]"
-                      : "text-[#FFA500] hover:bg-[#4a4da3]"
+                      ? "bg-[#FF8A00] text-[#323288]"
+                      : "text-[#FF8A00] hover:bg-[#4a4da3]"
                   }`}
                 >
                   {item.label}

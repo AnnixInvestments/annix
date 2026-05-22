@@ -49,7 +49,7 @@ export default function InsightsPaperPortfolioTradesPage() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FFA500]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
@@ -81,7 +81,7 @@ export default function InsightsPaperPortfolioTradesPage() {
             onClick={() =>
               router.push(`/insights/paper-portfolios/${encodeURIComponent(slug ?? "")}`)
             }
-            className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
+            className="inline-flex items-center gap-1.5 text-sm text-slate-700 dark:text-gray-300 hover:text-[#FF8A00] transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Portfolio
@@ -117,7 +117,7 @@ export default function InsightsPaperPortfolioTradesPage() {
         <div className="bg-white dark:bg-gray-900/50 border border-slate-200 dark:border-gray-800 rounded-2xl overflow-hidden text-slate-900 dark:text-white">
           {tradesQuery.isLoading ? (
             <div className="h-48 flex items-center justify-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFA500]" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
             </div>
           ) : trades.length === 0 ? (
             <div className="py-16 text-center">
@@ -160,7 +160,7 @@ export default function InsightsPaperPortfolioTradesPage() {
                       <td className="px-4 py-3">
                         <ActionBadge action={t.action} />
                       </td>
-                      <td className="px-4 py-3 font-mono text-[#FFA500]">{symbolDisplay}</td>
+                      <td className="px-4 py-3 font-mono text-[#FF8A00]">{symbolDisplay}</td>
                       <td className="px-4 py-3 text-right font-mono text-slate-700 dark:text-gray-300">
                         {t.quantity > 0 ? fmtNumber(t.quantity) : "—"}
                       </td>
@@ -196,7 +196,7 @@ function FilterPill(props: { active: boolean; onClick: () => void; label: string
       onClick={props.onClick}
       className={`px-3 py-1 text-xs font-semibold rounded-md transition-colors ${
         props.active
-          ? "bg-[#FFA500] text-gray-900"
+          ? "bg-[#FF8A00] text-gray-900"
           : "bg-slate-100 dark:bg-gray-900 border border-slate-300 dark:border-gray-800 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white"
       }`}
     >
@@ -217,7 +217,7 @@ function TradeNewsDisclosure(props: { news: TradeNewsProvenance[] }) {
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-gray-500 hover:text-[#FFA500] transition-colors"
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-gray-500 hover:text-[#FF8A00] transition-colors"
       >
         <Newspaper className="w-3 h-3" />
         {count} news article{count === 1 ? "" : "s"} considered
@@ -259,7 +259,7 @@ function TradeNewsRow(props: { item: TradeNewsProvenance }) {
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="inline-flex items-start gap-1 text-slate-700 dark:text-gray-300 hover:text-[#FFA500] transition-colors"
+        className="inline-flex items-start gap-1 text-slate-700 dark:text-gray-300 hover:text-[#FF8A00] transition-colors"
       >
         <span>{item.title}</span>
         <ExternalLink className="w-3 h-3 shrink-0 mt-0.5" />

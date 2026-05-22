@@ -108,7 +108,10 @@ export default function PortalToolbar(props: PortalToolbarProps) {
     return roleCheck && flagCheck;
   });
 
-  const titleText = config.title;
+  const isOrbit = portalType === "annixOrbit";
+  // In Orbit the wordmark already reads "Annix Orbit", so don't repeat the
+  // title text — show only the version chip alongside it.
+  const titleText = isOrbit ? "" : config.title;
   const showTitleOrVersion = Boolean(titleText) || Boolean(version);
 
   return (
@@ -118,13 +121,13 @@ export default function PortalToolbar(props: PortalToolbarProps) {
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
               <Link href={config.homeHref} className="flex items-center space-x-3">
-                <AmixLogo size="sm" showText={true} />
+                <AmixLogo size="sm" showText={true} wordmark={isOrbit ? "orbit" : "investments"} />
                 {showTitleOrVersion && (
                   <span
                     className="text-lg font-semibold hidden md:block"
                     style={{ color: corpId.colors.accent.orange }}
                   >
-                    {config.title}
+                    {titleText}
                     {version && (
                       <span className="ml-1.5 text-xs font-mono opacity-50">v{version}</span>
                     )}

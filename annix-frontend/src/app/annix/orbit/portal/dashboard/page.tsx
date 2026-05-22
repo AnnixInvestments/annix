@@ -25,7 +25,7 @@ function PostJobButton({
   const palette =
     variant === "navy"
       ? "bg-[#252560] text-white hover:bg-[#1a1a40]"
-      : "bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733]";
+      : "bg-[#FF8A00] text-[#1a1a40] hover:bg-[#FF9C33]";
   return (
     <Link
       href={POST_JOB_HREF}
@@ -51,7 +51,7 @@ function UploadCvButton({
   const palette =
     variant === "navy"
       ? "bg-[#252560] text-white hover:bg-[#1a1a40]"
-      : "bg-[#FFA500] text-[#1a1a40] hover:bg-[#FFB733]";
+      : "bg-[#FF8A00] text-[#1a1a40] hover:bg-[#FF9C33]";
   return (
     <Link
       href={UPLOAD_CV_HREF}
@@ -110,7 +110,7 @@ export default function DashboardPage() {
         </div>
 
         {!hasCv && (
-          <div className="rounded-xl bg-gradient-to-br from-[#FFA500] to-[#FFB733] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="rounded-xl bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
               <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
                 Ready to find your next role?
@@ -194,7 +194,7 @@ export default function DashboardPage() {
       </div>
 
       {!hasActiveJobs && (
-        <div className="rounded-xl bg-gradient-to-br from-[#FFA500] to-[#FFB733] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="rounded-xl bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
               {isIndividual ? "Ready to find your next role?" : "Ready to find your next hire?"}

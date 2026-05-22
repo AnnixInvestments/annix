@@ -302,7 +302,7 @@ export default function SeekerCalendarPage() {
                   </span>
                   <Link
                     href={`/annix/orbit/interview-booking/${invite.token}`}
-                    className="text-xs font-semibold px-3 py-1.5 bg-[#FFA500] text-[#1a1a40] rounded-lg hover:bg-[#FFB733] whitespace-nowrap"
+                    className="text-xs font-semibold px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] rounded-lg hover:bg-[#FF9C33] whitespace-nowrap"
                   >
                     Pick a time
                   </Link>
