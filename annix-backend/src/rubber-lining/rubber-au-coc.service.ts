@@ -394,10 +394,13 @@ export class RubberAuCocService {
 
       coc.status = AuCocStatus.GENERATED;
       coc.generatedPdfPath = upload.path;
-      if (
-        coc.readinessStatus === AuCocReadinessStatus.GENERATION_FAILED ||
-        coc.readinessStatus === AuCocReadinessStatus.READY_FOR_GENERATION
-      ) {
+      // A successfully generated CoC is no longer waiting for any source
+      // document — clear its readiness to AUTO_GENERATED regardless of the
+      // prior state. The order-prefix readiness check can report
+      // WAITING_FOR_CALENDERER for bare-ticket rolls even when the generator's
+      // fallback match found everything; without this, that stale "Waiting"
+      // badge sticks around on already-generated/sent CoCs.
+      if (coc.readinessStatus !== AuCocReadinessStatus.AUTO_GENERATED) {
         coc.readinessStatus = AuCocReadinessStatus.AUTO_GENERATED;
         coc.readinessDetails = {
           calendererCocId: coc.readinessDetails?.calendererCocId ?? null,
@@ -2133,8 +2136,16 @@ export class RubberAuCocService {
         `AU CoC must be APPROVED before sending (current: ${coc.status})`,
       );
     }
-    const customerEmail = coc.customerCompany ? coc.customerCompany.auCocRecipientEmail : null;
-    const recipientEmail = overrideEmail || customerEmail;
+    // Recipient priority: explicit override (the Send modal's "To") → the
+    // customer's AU-CoC-specific recipient → the general Outgoing COC Email.
+    // That last fallback is what the customer-profile help text promises
+    // ("falls back to Outgoing COC Email if blank") but the code omitted.
+    const company = coc.customerCompany;
+    const recipientEmail =
+      overrideEmail ||
+      company?.auCocRecipientEmail ||
+      company?.emailConfig?.outgoingCocEmail ||
+      null;
     if (!recipientEmail) {
       throw new BadRequestException(
         `No recipient email configured for customer "${coc.customerCompany ? coc.customerCompany.name : "(unknown)"}". ` +

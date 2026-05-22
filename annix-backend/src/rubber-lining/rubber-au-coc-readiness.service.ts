@@ -279,13 +279,15 @@ export class RubberAuCocReadinessService {
       this.notifyAdminForVerification(auCoc);
 
       const customer = auCoc.customerCompany;
-      if (customer?.autoApproveAuCocs && customer.auCocRecipientEmail) {
+      // Same recipient fallback as the manual send: AU-CoC recipient, then the
+      // general Outgoing COC Email.
+      const autoSendEmail =
+        customer?.auCocRecipientEmail || customer?.emailConfig?.outgoingCocEmail;
+      if (customer?.autoApproveAuCocs && autoSendEmail) {
         try {
           await this.auCocService.approveAuCoc(auCocId, "auto-approve (system)");
           await this.auCocService.sendApprovedAuCocToCustomer(auCocId);
-          this.logger.log(
-            `AU CoC ${auCoc.cocNumber} auto-approved + sent to ${customer.auCocRecipientEmail}`,
-          );
+          this.logger.log(`AU CoC ${auCoc.cocNumber} auto-approved + sent to ${autoSendEmail}`);
           return {
             generated: true,
             auCocId,
