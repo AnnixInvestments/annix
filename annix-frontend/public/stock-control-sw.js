@@ -22,6 +22,26 @@ const API_ROUTES = [
   "/stock-control/dashboard",
 ];
 
+// DEV self-destruct: on localhost this service worker must not run. It pins
+// stale (and even crashed) bundles, and the in-app unregister in PwaProvider
+// can't run when the page crashes during module evaluation. The browser always
+// revalidates this script on navigation, so shipping a self-destruct here heals
+// a stuck localhost automatically. Production hosts fall through to the real SW.
+if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
+  self.addEventListener("install", () => self.skipWaiting());
+  self.addEventListener("activate", (event) => {
+    event.waitUntil(
+      (async () => {
+        await self.clients.claim();
+        const keys = await caches.keys();
+        await Promise.all(keys.map((key) => caches.delete(key)));
+        await self.registration.unregister();
+        const windows = await self.clients.matchAll({ type: "window" });
+        await Promise.all(windows.map((client) => client.navigate(client.url).catch(() => {})));
+      })(),
+    );
+  });
+} else {
 self.addEventListener("install", (event) => {
   event.waitUntil(
     Promise.all([
@@ -505,3 +525,4 @@ self.addEventListener("notificationclick", (event) => {
     })
   );
 });
+}

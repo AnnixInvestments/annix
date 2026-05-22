@@ -11,106 +11,132 @@
   "exports": {
     "./pumps": {
       "types": "./pumps/index.ts",
+      "browser": "./pumps/index.ts",
       "default": "./dist/pumps/index.js"
     },
     "./pumps/*": {
       "types": "./pumps/*.ts",
+      "browser": "./pumps/*.ts",
       "default": "./dist/pumps/*.js"
     },
     "./paint": {
       "types": "./paint/index.ts",
+      "browser": "./paint/index.ts",
       "default": "./dist/paint/index.js"
     },
     "./paint/*": {
       "types": "./paint/*.ts",
+      "browser": "./paint/*.ts",
       "default": "./dist/paint/*.js"
     },
     "./rubber": {
       "types": "./rubber/index.ts",
+      "browser": "./rubber/index.ts",
       "default": "./dist/rubber/index.js"
     },
     "./rubber/*": {
       "types": "./rubber/*.ts",
+      "browser": "./rubber/*.ts",
       "default": "./dist/rubber/*.js"
     },
     "./ceramic": {
       "types": "./ceramic/index.ts",
+      "browser": "./ceramic/index.ts",
       "default": "./dist/ceramic/index.js"
     },
     "./ceramic/*": {
       "types": "./ceramic/*.ts",
+      "browser": "./ceramic/*.ts",
       "default": "./dist/ceramic/*.js"
     },
     "./steel": {
       "types": "./steel/index.ts",
+      "browser": "./steel/index.ts",
       "default": "./dist/steel/index.js"
     },
     "./steel/*": {
       "types": "./steel/*.ts",
+      "browser": "./steel/*.ts",
       "default": "./dist/steel/*.js"
     },
     "./valves-instruments": {
       "types": "./valves-instruments/index.ts",
+      "browser": "./valves-instruments/index.ts",
       "default": "./dist/valves-instruments/index.js"
     },
     "./valves-instruments/*": {
       "types": "./valves-instruments/*.ts",
+      "browser": "./valves-instruments/*.ts",
       "default": "./dist/valves-instruments/*.js"
     },
     "./pipe": {
       "types": "./pipe/index.ts",
+      "browser": "./pipe/index.ts",
       "default": "./dist/pipe/index.js"
     },
     "./pipe/*": {
       "types": "./pipe/*.ts",
+      "browser": "./pipe/*.ts",
       "default": "./dist/pipe/*.js"
     },
     "./pvc": {
       "types": "./pvc/index.ts",
+      "browser": "./pvc/index.ts",
       "default": "./dist/pvc/index.js"
     },
     "./pvc/*": {
       "types": "./pvc/*.ts",
+      "browser": "./pvc/*.ts",
       "default": "./dist/pvc/*.js"
     },
     "./hdpe": {
       "types": "./hdpe/index.ts",
+      "browser": "./hdpe/index.ts",
       "default": "./dist/hdpe/index.js"
     },
     "./hdpe/*": {
       "types": "./hdpe/*.ts",
+      "browser": "./hdpe/*.ts",
       "default": "./dist/hdpe/*.js"
     },
     "./rfq": {
       "types": "./rfq/index.ts",
+      "browser": "./rfq/index.ts",
       "default": "./dist/rfq/index.js"
     },
     "./rfq/*": {
       "types": "./rfq/*.ts",
+      "browser": "./rfq/*.ts",
       "default": "./dist/rfq/*.js"
     },
     "./portals": {
       "types": "./portals/index.ts",
+      "browser": "./portals/index.ts",
       "default": "./dist/portals/index.js"
     },
     "./portals/*": {
       "types": "./portals/*.ts",
+      "browser": "./portals/*.ts",
       "default": "./dist/portals/*.js"
     },
     "./teacher-assistant": {
       "types": "./teacher-assistant/index.ts",
+      "browser": "./teacher-assistant/index.ts",
       "default": "./dist/teacher-assistant/index.js"
     },
     "./teacher-assistant/*": {
       "types": "./teacher-assistant/*.ts",
+      "browser": "./teacher-assistant/*.ts",
       "default": "./dist/teacher-assistant/*.js"
     },
     "./sa-market": {
       "types": "./sa-market/index.ts",
+      "browser": "./sa-market/index.ts",
       "default": "./dist/sa-market/index.js"
     },
     "./sa-market/*": {
       "types": "./sa-market/*.ts",
+      "browser": "./sa-market/*.ts",
       "default": "./dist/sa-market/*.js"
     }
   }
