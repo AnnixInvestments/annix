@@ -143,6 +143,12 @@ export default function CustomerDeliveryNotesPage() {
   };
 
   const noteRollNumbers = (note: RubberDeliveryNoteDto): string[] => {
+    // Prefer the server-computed rollNumbers (sourced from the items table) —
+    // list rows don't ship extracted_data, and the analyze-and-create flow
+    // stores rolls in items, not the jsonb.
+    if (note.rollNumbers && note.rollNumbers.length > 0) {
+      return note.rollNumbers;
+    }
     const ed = extractedDataSingle(note.extractedData);
     const rawEdRolls = ed?.rolls;
     return (rawEdRolls || []).map((r) => r.rollNumber).filter(Boolean);

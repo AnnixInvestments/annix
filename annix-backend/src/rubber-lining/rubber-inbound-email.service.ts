@@ -21,6 +21,7 @@ import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
+import { PdfSlicerService } from "./services/pdf-slicer.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 
 export interface ParsedCompoundCode {
@@ -164,6 +165,7 @@ export class RubberInboundEmailService {
     private aiChatService: AiChatService,
     private cocExtractionService: RubberCocExtractionService,
     private extractionOrchestrator: RubberExtractionOrchestratorService,
+    private pdfSlicerService: PdfSlicerService,
   ) {}
 
   async processInboundEmail(emailData: InboundEmailData): Promise<ProcessedEmailResult> {
@@ -2451,8 +2453,48 @@ ${truncatedText}`;
           }
 
           const subPath = `au-rubber/customer-delivery-notes/${customerId}`;
+          // Slice the bundle to just this DN's pages. Each group carries the
+          // page numbers (in the original bundle) of the pages that belong to
+          // it; without this we'd upload the WHOLE multi-DN bundle as every
+          // CDN's document, so opening one CDN shows all the others' pages.
+          const groupPageNumbers = Array.from(
+            new Set(
+              group.files
+                .map((f) => f.pageNumber)
+                .filter((p): p is number => typeof p === "number" && p > 0),
+            ),
+          ).sort((a, b) => a - b);
+          const isPdfBundle =
+            (firstFile.mimetype || "").toLowerCase().includes("pdf") ||
+            (firstFile.originalname || "").toLowerCase().endsWith(".pdf");
+          const fileToUpload = await (async (): Promise<Express.Multer.File> => {
+            if (!isPdfBundle || groupPageNumbers.length === 0) return firstFile;
+            try {
+              const slicedBuffer = await this.pdfSlicerService.slicePages(
+                firstFile.buffer,
+                groupPageNumbers,
+              );
+              this.logger.log(
+                `Sliced DN ${deliveryNoteNumber} to pages [${groupPageNumbers.join(",")}] (${slicedBuffer.length} bytes)`,
+              );
+              return {
+                ...firstFile,
+                buffer: slicedBuffer,
+                size: slicedBuffer.length,
+                originalname: `${deliveryNoteNumber}.pdf`,
+              } as Express.Multer.File;
+            } catch (err) {
+              // If slicing fails (e.g. page numbers out of range), fall back
+              // to the full bundle rather than losing the document entirely.
+              const message = err instanceof Error ? err.message : String(err);
+              this.logger.warn(
+                `Could not slice DN ${deliveryNoteNumber} to pages [${groupPageNumbers.join(",")}]: ${message}; uploading full bundle`,
+              );
+              return firstFile;
+            }
+          })();
           this.logger.log(`Uploading file for DN ${deliveryNoteNumber} to ${subPath}`);
-          const storageResult = await this.storageService.upload(firstFile, subPath);
+          const storageResult = await this.storageService.upload(fileToUpload, subPath);
           this.logger.log(`File uploaded to ${storageResult.path}`);
 
           const existingDn = await this.deliveryNoteService.findByDnNumberAndCompany(

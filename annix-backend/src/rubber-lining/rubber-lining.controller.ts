@@ -226,6 +226,7 @@ import {
   RubberTaxInvoiceService,
   UpdateTaxInvoiceDto,
 } from "./rubber-tax-invoice.service";
+import { AuRubberDocumentFilerService } from "./services/au-rubber-document-filer.service";
 import { PdfPageCacheService } from "./services/pdf-page-cache.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 import { RubberOrderConfirmationService } from "./services/rubber-order-confirmation.service";
@@ -275,6 +276,7 @@ export class RubberLiningController {
     private readonly rubberOrderConfirmationService: RubberOrderConfirmationService,
     private readonly extractionOrchestratorService: RubberExtractionOrchestratorService,
     private readonly pdfPageCacheService: PdfPageCacheService,
+    private readonly documentFilerService: AuRubberDocumentFilerService,
     @InjectRepository(RubberAppProfile)
     private readonly appProfileRepository: Repository<RubberAppProfile>,
   ) {}
@@ -1481,6 +1483,30 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiOperation({ summary: "Bulk link customer DNs to CoCs from already-linked supplier DNs" })
   async bulkLinkCustomerDns(): Promise<{ linked: number; details: string[] }> {
     return this.rubberDeliveryNoteService.bulkLinkCustomerDnsFromLinkedSupplierDns();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/delivery-notes/:id/reslice")
+  @ApiOperation({
+    summary:
+      "Re-slice a CDN whose document is the whole multi-DN bundle down to only the pages that mention its own DN number (fixes 'showing all pages').",
+  })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async resliceDeliveryNote(@Param("id") id: string): Promise<{ pagesKept: number | null }> {
+    const pagesKept = await this.documentFilerService.resliceCustomerDnByDnNumber(Number(id));
+    return { pagesKept };
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Post("portal/customer-delivery-notes/reslice-bundles")
+  @ApiOperation({
+    summary:
+      "Bulk re-slice every customer DN whose stored document is the whole multi-DN bundle, scoping each to its own pages. Idempotent.",
+  })
+  async resliceAllCustomerDnBundles(): Promise<{ checked: number; resliced: number[] }> {
+    return this.documentFilerService.resliceAllCustomerDnBundles();
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
