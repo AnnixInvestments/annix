@@ -7,6 +7,7 @@ import {
   type AuRubberUserAccessDto,
   auRubberApiClient,
   type BlogPostDto,
+  type ChemicalSupplierDocumentDto,
   type CocProcessingStatus,
   type CompoundQualityDetailDto,
   type CompoundQualitySummaryDto,
@@ -532,6 +533,93 @@ export function useAuRubberApproveSupplierCoc() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: rubberKeys.supplierCocs.all });
     },
+  });
+}
+
+export function useAuRubberChemicalDocuments(filters?: {
+  supplierCompanyId?: number;
+  processingStatus?: CocProcessingStatus;
+  search?: string;
+}) {
+  return useQuery<ChemicalSupplierDocumentDto[]>({
+    queryKey: rubberKeys.chemicalDocuments.list(filters),
+    queryFn: () => auRubberApiClient.chemicalDocuments(filters),
+  });
+}
+
+export function useAuRubberChemicalDocument(id: number) {
+  return useQuery<ChemicalSupplierDocumentDto>({
+    queryKey: rubberKeys.chemicalDocuments.detail(id),
+    queryFn: () => auRubberApiClient.chemicalDocumentById(id),
+    enabled: id > 0,
+  });
+}
+
+export function useAuRubberUploadChemicalDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      file,
+      data,
+    }: {
+      file: File;
+      data: Parameters<typeof auRubberApiClient.uploadChemicalDocument>[1];
+    }) => auRubberApiClient.uploadChemicalDocument(file, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.chemicalDocuments.all });
+    },
+  });
+}
+
+export function useAuRubberExtractChemicalDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.extractChemicalDocument(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.chemicalDocuments.all });
+    },
+  });
+}
+
+export function useAuRubberUpdateChemicalDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Parameters<typeof auRubberApiClient.updateChemicalDocument>[1];
+    }) => auRubberApiClient.updateChemicalDocument(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.chemicalDocuments.all });
+    },
+  });
+}
+
+export function useAuRubberApproveChemicalDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.approveChemicalDocument(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.chemicalDocuments.all });
+    },
+  });
+}
+
+export function useAuRubberDeleteChemicalDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.deleteChemicalDocument(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.chemicalDocuments.all });
+    },
+  });
+}
+
+export function useAuRubberChemicalDocumentUrl() {
+  return useMutation({
+    mutationFn: (id: number) => auRubberApiClient.chemicalDocumentUrl(id),
   });
 }
 

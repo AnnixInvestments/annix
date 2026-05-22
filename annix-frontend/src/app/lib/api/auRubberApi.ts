@@ -24,6 +24,8 @@ import type {
   AuRubberRoleDto,
   AuRubberUserAccessDto,
   AuRubberUserProfile,
+  ChemicalDocExtractedData,
+  ChemicalSupplierDocumentDto,
   CocProcessingStatus,
   CompoundCalculationResultDto,
   CompoundMovementReferenceType,
@@ -897,6 +899,94 @@ class AuRubberApiClient {
 
   extractSupplierCoc = createEndpoint<[id: number], RubberSupplierCocDto>(apiClient, "POST", {
     path: (id) => `/rubber-lining/portal/supplier-cocs/${id}/extract`,
+  });
+
+  async chemicalDocuments(filters?: {
+    supplierCompanyId?: number;
+    processingStatus?: CocProcessingStatus;
+    search?: string;
+  }): Promise<ChemicalSupplierDocumentDto[]> {
+    const params = new URLSearchParams();
+    if (filters?.supplierCompanyId)
+      params.set("supplierCompanyId", String(filters.supplierCompanyId));
+    if (filters?.processingStatus) params.set("processingStatus", filters.processingStatus);
+    if (filters?.search) params.set("search", filters.search);
+    const query = params.toString() ? `?${params.toString()}` : "";
+    return this.request(`/rubber-lining/portal/chemical-documents${query}`);
+  }
+
+  chemicalDocumentById = createEndpoint<[id: number], ChemicalSupplierDocumentDto>(
+    apiClient,
+    "GET",
+    {
+      path: (id) => `/rubber-lining/portal/chemical-documents/${id}`,
+    },
+  );
+
+  uploadChemicalDocument(
+    file: File,
+    data: {
+      supplierCompanyId?: number;
+      supplierName?: string;
+      deliveryNoteNumber?: string;
+      batchNumber?: string;
+      productName?: string;
+    },
+  ): Promise<ChemicalSupplierDocumentDto> {
+    return this.requestWithFiles(
+      "/rubber-lining/portal/chemical-documents/upload",
+      [file],
+      {
+        supplierCompanyId: data.supplierCompanyId,
+        supplierName: data.supplierName,
+        deliveryNoteNumber: data.deliveryNoteNumber,
+        batchNumber: data.batchNumber,
+        productName: data.productName,
+      },
+      "file",
+    );
+  }
+
+  extractChemicalDocument = createEndpoint<[id: number], ChemicalSupplierDocumentDto>(
+    apiClient,
+    "POST",
+    {
+      path: (id) => `/rubber-lining/portal/chemical-documents/${id}/extract`,
+    },
+  );
+
+  chemicalDocumentUrl = createEndpoint<[id: number], { url: string }>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/portal/chemical-documents/${id}/document`,
+  });
+
+  updateChemicalDocument = createEndpoint<
+    [
+      id: number,
+      data: {
+        supplierCompanyId?: number;
+        deliveryNoteNumber?: string | null;
+        batchNumber?: string | null;
+        productName?: string | null;
+        extractedData?: ChemicalDocExtractedData | null;
+        reviewNotes?: string | null;
+      },
+    ],
+    ChemicalSupplierDocumentDto
+  >(apiClient, "PATCH", {
+    path: (id) => `/rubber-lining/portal/chemical-documents/${id}`,
+    body: (_id, data) => data,
+  });
+
+  approveChemicalDocument = createEndpoint<[id: number], ChemicalSupplierDocumentDto>(
+    apiClient,
+    "POST",
+    {
+      path: (id) => `/rubber-lining/portal/chemical-documents/${id}/approve`,
+    },
+  );
+
+  deleteChemicalDocument = createEndpoint<[id: number], { success: boolean }>(apiClient, "DELETE", {
+    path: (id) => `/rubber-lining/portal/chemical-documents/${id}`,
   });
 
   reextractNonCanonicalCompounderCocs = createEndpoint<

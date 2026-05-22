@@ -619,6 +619,53 @@ export interface CreateOrderFromAnalysisDto {
   };
 }
 
+export interface ChemicalCoaTestResult {
+  test: string;
+  unit?: string | null;
+  result?: string | null;
+  method?: string | null;
+}
+
+export interface ChemicalDocExtractedData {
+  productName?: string | null;
+  supplierName?: string | null;
+  casNumber?: string | null;
+  deliveryNoteNumber?: string | null;
+  batchNumber?: string | null;
+  manufactureDate?: string | null;
+  expiryDate?: string | null;
+  unNumber?: string | null;
+  hazardClass?: string | null;
+  packingGroup?: string | null;
+  properShippingName?: string | null;
+  environmentalHazard?: string | null;
+  netMassKg?: number | null;
+  volume?: string | null;
+  packagingType?: string | null;
+  packageQuantity?: number | null;
+  coaTestResults?: ChemicalCoaTestResult[];
+}
+
+export interface ChemicalSupplierDocumentDto {
+  id: number;
+  firebaseUid: string;
+  supplierCompanyId: number;
+  supplierName: string | null;
+  deliveryNoteNumber: string | null;
+  batchNumber: string | null;
+  productName: string | null;
+  documentPath: string;
+  processingStatus: CocProcessingStatus;
+  processingStatusLabel: string;
+  extractedData: ChemicalDocExtractedData | null;
+  reviewNotes: string | null;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  version: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RubberSupplierCocDto {
   id: number;
   firebaseUid: string;
@@ -778,6 +825,12 @@ export interface RubberDeliveryNoteDto {
   siblingsBackfilledAt: string | null;
   documentPathSiblingCount: number;
   createdBy: string | null;
+  /**
+   * Roll numbers from rubber_delivery_note_items (with fallback to
+   * extracted_data.rolls). Populated on list rows so the Roll Numbers column
+   * renders even when the jsonb is empty (analyze-and-create flow).
+   */
+  rollNumbers?: string[];
   /**
    * Customer-side DNs only — the upstream supplier CoCs the dispatched
    * rolls came from. Resolved via roll_stock → SDN → linkedCocId.

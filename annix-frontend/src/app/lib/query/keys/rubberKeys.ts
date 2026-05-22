@@ -49,6 +49,15 @@ export const rubberKeys = {
       [...rubberKeys.supplierCocs.all, "pendingAuthorizationCount"] as const,
     pendingAuthorization: () => [...rubberKeys.supplierCocs.all, "pendingAuthorization"] as const,
   },
+  chemicalDocuments: {
+    all: ["rubber", "chemicalDocuments"] as const,
+    list: (filters?: {
+      supplierCompanyId?: number;
+      processingStatus?: CocProcessingStatus;
+      search?: string;
+    }) => [...rubberKeys.chemicalDocuments.all, "list", filters ?? {}] as const,
+    detail: (id: number) => [...rubberKeys.chemicalDocuments.all, "detail", id] as const,
+  },
   deliveryNotes: {
     all: ["rubber", "deliveryNotes"] as const,
     list: (filters?: {
