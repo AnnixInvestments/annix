@@ -1,14 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="2000" height="2000" role="img" aria-label="Annix Orbit">
   <title>Annix Orbit</title>
-  <desc>Orbital AN monogram — orange A on the left, white N on the right, both inside a thin orbital ring. The ring passes behind the A and visibly crosses the N to reinforce motion. A single bright orange satellite sits at the top-right of the ring.</desc>
+  <desc>Orbital AN monogram — slender orange A on the left with a comet-tail swoosh arcing toward the bright top-right satellite, slender white N on the right, both sitting inside a thin orange orbital ring. A small deep-orange satellite balances the composition at the bottom-left of the ring.</desc>
   <defs>
-    <!-- Bright top-right satellite — pale core fading to brand orange. -->
     <radialGradient id="ao-particle-bright" cx="40%" cy="40%" r="60%">
       <stop offset="0%" stop-color="#FFF0CC"/>
       <stop offset="35%" stop-color="#FFA500"/>
       <stop offset="100%" stop-color="#FF8A00"/>
     </radialGradient>
-    <!-- Soft halo behind the bright satellite. -->
     <filter id="ao-glow" x="-50%" y="-50%" width="200%" height="200%">
       <feGaussianBlur stdDeviation="22" result="b"/>
       <feMerge>
@@ -18,55 +16,54 @@
     </filter>
   </defs>
 
-  <!-- Orbit ring (z-index 0): drawn first so the A covers it where they
-       overlap (one orbit BEHIND A) but the cross-N arc segment further
-       down is re-drawn ON TOP of the N. Stroke width 32 (was 22, +20% per
-       spec rounded to 32 for visual weight). -->
-  <circle cx="1000" cy="1000" r="800" fill="none" stroke="#FFFFFF" stroke-width="32" opacity="0.95"/>
+  <!-- Orbit ring (orange, BEHIND A) — radius 760 so the AN can sit inside with breathing room. -->
+  <circle cx="1000" cy="1000" r="760" fill="none" stroke="#FF8A00" stroke-width="36"/>
 
-  <!-- ORANGE A (z-index 1): solid filled angular letterform. Thickness
-       widened ~15% per spec — the wedge now reads as a chunky A with a
-       clear apex, two splayed legs, and a horizontal crossbar near the
-       lower third. -->
-  <g fill="#FF8A00" fill-rule="evenodd">
-    <!-- A as one continuous outline: peak → left-foot → inner-left → crossbar → inner-right → right-foot → back to peak.  -->
-    <path d="M 900 240
-             L 580 1740
-             L 760 1740
-             L 820 1450
-             L 1080 1450
-             L 1140 1740
-             L 1320 1740
-             L 1000 240 Z
-             M 850 1280
-             L 1050 1280
-             L 950 800 Z"/>
-  </g>
+  <!-- ORANGE A — slender blade letterform, centered around x=700. -->
+  <path d="M 700 380
+           L 540 1640
+           L 640 1640
+           L 680 1330
+           L 820 1330
+           L 860 1640
+           L 960 1640
+           L 740 380 Z
+           M 700 1180
+           L 820 1180
+           L 760 740 Z"
+        fill="#FF8A00" fill-rule="evenodd"/>
 
-  <!-- WHITE N (z-index 2): solid filled block letter sitting to the right
-       of the A. Three filled paths: left vertical, diagonal connector,
-       right vertical — modeled as one even-odd path. Thickness widened
-       ~15% per spec. -->
-  <path d="M 1380 280
-           L 1580 280
-           L 1580 920
-           L 1780 280
-           L 1980 280
-           L 1980 1740
-           L 1780 1740
-           L 1780 1100
-           L 1580 1740
-           L 1380 1740 Z"
+  <!-- Orange swoosh / comet tail — filled crescent from the A's apex
+       arcing up and right toward the bright satellite. -->
+  <path d="M 740 380
+           C 950 240, 1280 240, 1480 380
+           C 1580 460, 1620 540, 1600 600
+           C 1500 540, 1380 520, 1260 540
+           C 1100 580, 920 620, 780 580
+           C 720 540, 700 460, 740 380 Z"
+        fill="#FF8A00"/>
+
+  <!-- WHITE N — slender block letterform, two verticals + diagonal going
+       top-left to bottom-right (standard N direction). -->
+  <path d="M 1100 380
+           L 1220 380
+           L 1440 1370
+           L 1440 380
+           L 1560 380
+           L 1560 1640
+           L 1440 1640
+           L 1220 650
+           L 1220 1640
+           L 1100 1640 Z"
         fill="#FFFFFF"/>
 
-  <!-- Orbit segment (z-index 3): re-drawn ARC on top of the N so the orbit
-       visibly "crosses" the N. Arc spans roughly the right third of the
-       ring's circumference where it would naturally pass behind/through
-       the white N. -->
-  <path d="M 1700 380
-           A 800 800 0 0 1 1700 1620"
-        fill="none" stroke="#FFFFFF" stroke-width="32" opacity="0.95"/>
+  <!-- Orbit ARC re-drawn ON TOP of the N so the ring visibly crosses it. -->
+  <path d="M 1672 540 A 760 760 0 0 1 1672 1460"
+        fill="none" stroke="#FF8A00" stroke-width="36"/>
 
-  <!-- Bright satellite at top-right of orbit, with glow halo. -->
+  <!-- Bright top-right satellite with glow halo, anchoring swoosh end. -->
   <circle cx="1580" cy="420" r="62" fill="url(#ao-particle-bright)" filter="url(#ao-glow)"/>
+
+  <!-- Small deep-orange satellite at bottom-left of orbit. -->
+  <circle cx="420" cy="1580" r="42" fill="#FF8A00"/>
 </svg>

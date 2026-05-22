@@ -9,11 +9,14 @@ export const metadata: Metadata = {
   description:
     "Annix Orbit — Hiring, Talent, Compliance. The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.",
   icons: {
+    // Canonical brand mark — the JPEG crop of the real generated artwork.
+    // Browsers downscale cleanly for tab favicons; SVGs are kept as fallbacks
+    // for older browsers that prefer vector icons.
     icon: [
+      { url: "/branding/annix-orbit-icon.png", type: "image/png", sizes: "any" },
       { url: "/branding/annix-orbit-favicon.svg", type: "image/svg+xml" },
-      { url: "/branding/annix-orbit-icon.svg", type: "image/svg+xml", sizes: "any" },
     ],
-    apple: "/branding/annix-orbit-icon.svg",
+    apple: "/branding/annix-orbit-icon.png",
   },
 };
 

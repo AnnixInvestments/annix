@@ -22,22 +22,32 @@ const sizeMap = {
 };
 
 /**
- * Annix App Logo Component
+ * Annix App Logo Component (global Annix branding).
+ *
+ * The icon part is the canonical Annix Orbit orbital-AN mark
+ * (`/branding/annix-orbit-icon.png`) — locked in as the global Annix
+ * brand mark. Rendered with slight corner rounding so it reads as an
+ * app-icon shape rather than a hard-edged photo rectangle.
+ *
+ * The text part still renders the existing "Annix Investments" cursive
+ * wordmark (`/images/annix-text.png`). That part is being redesigned
+ * separately and will be updated in its own change.
  *
  * Usage:
- * - <AmixLogo /> - Default medium size with text
- * - <AmixLogo size="lg" /> - Large logo with text
- * - <AmixLogo showText={false} /> - Logo only
- * - <AmixLogo useSignatureFont /> - Use Great Vibes font for "Annix" text
+ * - <AmixLogo />                 Default medium size with text
+ * - <AmixLogo size="lg" />       Large logo with text
+ * - <AmixLogo showText={false} /> Icon only
  *
- * To use the actual logo image:
- * 1. Save the logo as: public/images/annix-logo.png
- * 2. The component will automatically use it
+ * All 17 consumers (Navigation, PortalToolbar, RegistrationToolbar,
+ * SessionExpiredModal, Comply-SA pages, Nix popups, customer/register)
+ * pick up the new icon automatically — no per-call-site changes needed.
  */
 export default function AmixLogo(props: AmixLogoProps) {
   const { size = "md", showText = true, className = "", useSignatureFont = true } = props;
   const { logo: logoSize } = sizeMap[size];
 
+  // Match the icon size to the existing flower-icon dimensions so layouts
+  // that previously sized around the old icon still look balanced.
   if (showText) {
     const iconSize = logoSize * 1.5;
     const textHeight = 48.4;
@@ -52,14 +62,14 @@ export default function AmixLogo(props: AmixLogoProps) {
     });
 
     return (
-      <div className={`flex items-center ${className}`}>
+      <div className={`flex items-center gap-2 ${className}`}>
         <Image
-          src="/images/annix-icon.png"
+          src="/branding/annix-orbit-icon.png"
           alt="Annix"
           width={iconSize}
           height={iconSize}
           priority
-          style={{ width: iconSize, height: iconSize }}
+          style={{ width: iconSize, height: iconSize, borderRadius: "18%" }}
         />
         <Image
           src="/images/annix-text.png"
@@ -78,19 +88,19 @@ export default function AmixLogo(props: AmixLogoProps) {
   return (
     <div className={`inline-block ${className}`}>
       <Image
-        src="/images/annix-icon.png"
+        src="/branding/annix-orbit-icon.png"
         alt="Annix"
         width={logoSize}
         height={logoSize}
         priority
-        style={{ width: logoSize, height: logoSize }}
+        style={{ width: logoSize, height: logoSize, borderRadius: "18%" }}
       />
     </div>
   );
 }
 
 /**
- * Full logo with navy background - for use on light backgrounds
+ * Full logo with navy background — for use on light backgrounds.
  */
 export function AmixLogoWithBackground(
   props: Omit<AmixLogoProps, "showText" | "useSignatureFont">,

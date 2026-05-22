@@ -1,39 +1,45 @@
 import Link from "next/link";
-import { AnnixOrbitLogo } from "../branding/AnnixOrbitLogo";
 import { ANNIX_BG_GRADIENT, ANNIX_FONT_BODY, ANNIX_PALETTE } from "../branding/tokens";
 
 /**
- * Full Annix Orbit launcher card — the canonical onboarding-card lockup
- * framed in the navy brand surface, with a "Get started" CTA. Faithful
- * reproduction of the brand-guidelines card on Annix Hub.
+ * Full Annix Orbit launcher card.
+ *
+ * Renders the canonical brand artwork directly from the rendered JPEG at
+ * `public/branding/annix-orbit-logo.png`. That file IS the brand — the
+ * SVG approximations under `components/branding/` are kept as fallbacks
+ * for icon-only contexts (favicons, navbar) where an exact pixel
+ * reproduction isn't worth the effort, but for the hub card we want the
+ * actual generated artwork.
+ *
+ * ACTION REQUIRED to make this card show the brand: save your
+ * "Annix Orbit Logo.jpeg" at
+ *   annix-frontend/public/branding/annix-orbit-logo.png
+ * If the file is missing, the card will show a broken-image icon — that's
+ * intentional: a missing brand asset should be visibly missing, not
+ * silently replaced with a worse approximation.
  *
  * Variants:
- *   - `dark`        (default) — navy gradient backdrop
- *   - `light`                 — light surface
+ *   - `dark`        (default) — navy gradient backdrop wrapping the image
+ *   - `light`                 — light backdrop, image still tells the brand story
  *   - `transparent`           — no backdrop, inherits page background
- *
- * Sizing is controlled by the caller via `className` (give it width /
- * height / aspect-ratio classes). The card centers its content.
  */
 type CardVariant = "dark" | "light" | "transparent";
 
 export function AnnixOrbitCard({
   className,
   variant = "dark",
-  showTagline = true,
   ctaHref,
   ctaLabel = "Get started",
+  description,
 }: {
   className?: string;
   variant?: CardVariant;
-  showTagline?: boolean;
   /** Optional CTA destination. If omitted, no CTA is rendered. */
   ctaHref?: string;
   ctaLabel?: string;
+  /** Optional one-line description rendered below the logo. */
+  description?: string;
 }) {
-  const logoVariant: "onDark" | "onLight" | "transparent" =
-    variant === "dark" ? "onDark" : variant === "light" ? "onLight" : "transparent";
-
   const surfaceStyle =
     variant === "dark"
       ? { background: ANNIX_BG_GRADIENT, color: ANNIX_PALETTE.white }
@@ -42,6 +48,7 @@ export function AnnixOrbitCard({
         : undefined;
 
   const borderColor = variant === "dark" ? "rgba(255, 138, 0, 0.25)" : "rgba(0, 27, 143, 0.18)";
+  const descriptionColor = variant === "light" ? ANNIX_PALETTE.slate : "rgba(255, 255, 255, 0.7)";
 
   return (
     <div
@@ -50,12 +57,26 @@ export function AnnixOrbitCard({
       }`}
       style={{ ...surfaceStyle, borderColor }}
     >
-      <AnnixOrbitLogo variant={logoVariant} showTagline={showTagline} className="w-full" />
+      <img
+        src="/branding/annix-orbit-logo.png"
+        alt="Annix Orbit — Hiring, Talent, Compliance. The intelligent workforce ecosystem for modern hiring, talent growth, and compliance."
+        className="w-full h-auto block"
+        style={{ objectFit: "contain" }}
+      />
+
+      {description ? (
+        <p
+          className="px-8 mt-2 text-sm text-center leading-relaxed"
+          style={{ color: descriptionColor, fontFamily: ANNIX_FONT_BODY }}
+        >
+          {description}
+        </p>
+      ) : null}
 
       {ctaHref ? (
         <Link
           href={ctaHref}
-          className="mt-2 mb-8 inline-flex items-center gap-1 text-sm font-semibold hover:translate-x-1 transition-transform"
+          className="mt-4 mb-8 inline-flex items-center gap-1 text-sm font-semibold hover:translate-x-1 transition-transform"
           style={{
             color: variant === "light" ? ANNIX_PALETTE.orange : ANNIX_PALETTE.orangeLight,
             fontFamily: ANNIX_FONT_BODY,

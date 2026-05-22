@@ -1,69 +1,54 @@
 import { AnnixOrbitIcon } from "./AnnixOrbitIcon";
-import { ANNIX_FONT_DISPLAY, ANNIX_PALETTE, ANNIX_TRACKING } from "./tokens";
 
 /**
  * Horizontal Annix Orbit lockup for app navbars / headers.
  *
- *   [ orbit-icon ]  ANNIX
- *                  ORBIT
+ *   [ orbit-icon ]  [ ANNIX ORBIT wordmark image ]
  *
- * Compact: no subtitle, no description, no backdrop. Designed to sit in
- * an existing dark navbar at ~40-56px tall. Typography matches the
- * canonical spec (Exo 2 ExtraBold ANNIX, Exo 2 SemiBold ORBIT, bi-colour X).
- * Pass `onLight` if the navbar background is light.
+ * Uses cropped wordmark PNGs sliced from the canonical full-logo PNG with
+ * the navy background chroma-keyed to transparent, so the typography
+ * (bi-colour X, orange rules around ORBIT, exact font shapes) matches the
+ * canonical lockup. Two variants:
+ *   - dark surface  → `annix-orbit-wordmark.png`        (white ANNIX)
+ *   - light surface → `annix-orbit-wordmark-light.png`  (navy ANNIX)
+ * The `onLight` prop picks the right one so the wordmark stays legible on
+ * either surface.
+ *
+ * Compact: no subtitle, no description, no surrounding backdrop. Designed
+ * to sit in a navbar at ~40-56 px tall.
  */
+// Bump when the crop changes, to bust browser cache.
+const WORDMARK_VERSION = 5;
+
 export function AnnixOrbitNavbar({
   className,
-  onLight = false,
   href,
+  height = 48,
+  onLight = false,
 }: {
   className?: string;
-  onLight?: boolean;
-  /** Optional href — if provided, wraps the lockup in an anchor tag. */
+  /** Optional href — wraps the lockup in an anchor tag if provided. */
   href?: string;
+  /** Lockup height in px. Default 48 (matches a typical navbar). */
+  height?: number;
+  /** Light navbar surface → use the navy-text wordmark variant. */
+  onLight?: boolean;
 }) {
-  const wordmarkColor = onLight ? ANNIX_PALETTE.navy : ANNIX_PALETTE.white;
+  // Wordmark crops are 345 × 78 → aspect ~4.42:1.
+  const wordmarkAspect = 345 / 78;
+  const wordmarkWidth = Math.round(height * wordmarkAspect);
+  const wordmarkSrc = onLight
+    ? `/branding/annix-orbit-wordmark-light.png?v=${WORDMARK_VERSION}`
+    : `/branding/annix-orbit-wordmark.png?v=${WORDMARK_VERSION}`;
 
   const lockup = (
-    <div className={`inline-flex items-center gap-3 ${className ?? ""}`}>
-      <AnnixOrbitIcon className="h-10 w-10 sm:h-12 sm:w-12 flex-shrink-0" />
-      <div className="flex flex-col leading-none">
-        <span
-          className="inline-flex items-baseline text-lg sm:text-xl"
-          style={{
-            color: wordmarkColor,
-            fontFamily: ANNIX_FONT_DISPLAY,
-            fontWeight: 800,
-            letterSpacing: ANNIX_TRACKING.annix,
-          }}
-        >
-          <span>ANNI</span>
-          <span className="relative">
-            <span>X</span>
-            <span
-              aria-hidden
-              className="absolute inset-0 overflow-hidden"
-              style={{
-                color: ANNIX_PALETTE.orange,
-                clipPath: "polygon(50% 0, 100% 0, 100% 100%, 50% 100%)",
-              }}
-            >
-              X
-            </span>
-          </span>
-        </span>
-        <span
-          className="text-[11px] sm:text-sm mt-0.5"
-          style={{
-            color: ANNIX_PALETTE.orange,
-            fontFamily: ANNIX_FONT_DISPLAY,
-            fontWeight: 600,
-            letterSpacing: ANNIX_TRACKING.orbit,
-          }}
-        >
-          ORBIT
-        </span>
-      </div>
+    <div className={`inline-flex items-center gap-3 ${className ?? ""}`} style={{ height }}>
+      <AnnixOrbitIcon className="flex-shrink-0" style={{ width: height, height }} />
+      <img
+        src={wordmarkSrc}
+        alt="Annix Orbit"
+        style={{ height, width: wordmarkWidth, objectFit: "contain" }}
+      />
     </div>
   );
 

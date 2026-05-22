@@ -125,12 +125,7 @@ export default function BrandingPreviewPage() {
           <SectionTitle>Favicon &amp; App icon (with backdrop)</SectionTitle>
           <div className="flex flex-wrap items-center gap-8">
             <figure className="text-center">
-              <img
-                src="/branding/annix-orbit-favicon.svg"
-                alt="Annix Orbit favicon"
-                width={64}
-                height={64}
-              />
+              <AnnixOrbitIcon withBackground className="w-16 h-16" title="Annix Orbit favicon" />
               <figcaption className="text-xs mt-2 opacity-70">Favicon 64px</figcaption>
             </figure>
             <figure className="text-center">
