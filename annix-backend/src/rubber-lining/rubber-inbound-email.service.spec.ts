@@ -9,6 +9,7 @@ import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberInboundEmailService } from "./rubber-inbound-email.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
+import { PdfSlicerService } from "./services/pdf-slicer.service";
 import { RubberExtractionOrchestratorService } from "./services/rubber-extraction-orchestrator.service";
 
 describe("RubberInboundEmailService", () => {
@@ -34,6 +35,7 @@ describe("RubberInboundEmailService", () => {
         { provide: AiChatService, useValue: {} },
         { provide: RubberCocExtractionService, useValue: {} },
         { provide: RubberExtractionOrchestratorService, useValue: {} },
+        { provide: PdfSlicerService, useValue: {} },
       ],
     }).compile();
 

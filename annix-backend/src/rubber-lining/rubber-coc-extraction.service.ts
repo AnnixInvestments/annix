@@ -3,6 +3,7 @@ import { pdfToPng } from "pdf-to-png-converter";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { nowMillis } from "../lib/datetime";
+import { extractTextFromPdf } from "../lib/document-extraction";
 import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import {
   ExtractedCustomerDeliveryNoteData,
@@ -230,6 +231,67 @@ export class RubberCocExtractionService {
 
     const rollRange = this.formatRollRange(allRolls);
     return this.capCocNumber(`${orderNumber}-`, allRolls, `${orderNumber}-${rollRange}`);
+  }
+
+  /**
+   * Deterministic ticket-number recovery, independent of the LLM. Impilo
+   * calenderer CoCs list EVERY ticket on one "Ticket Number:" line
+   * (e.g. "Ticket Number: 42934, 42935, ... 42941"); the model frequently
+   * returns only the first. This parses the line straight from the PDF text and
+   * returns every ticket (ranges like "42934-42941" expanded). Returns [] when
+   * there is no Ticket Number line (e.g. S&N sheeting, scanned image with no
+   * text) so callers can treat it as a safe no-op.
+   */
+  private parseTicketNumbersFromText(pdfText: string | null | undefined): string[] {
+    if (!pdfText) return [];
+    const out = new Set<string>();
+    const lineRe = /ticket\s*(?:number|no\.?|#)?\s*[:-]?\s*([^\n\r]+)/gi;
+    for (let m = lineRe.exec(pdfText); m !== null; m = lineRe.exec(pdfText)) {
+      // Cut the captured value at the next field label, in case the line ran on.
+      const value = m[1].split(/\b(?:compound|batch|order|date|customer|qty|quantity)\b/i)[0];
+      for (const part of value.split(/[,;/]+|\s+/)) {
+        const token = part.trim();
+        const range = token.match(/^(\d{4,6})\s*[-–]\s*(\d{4,6})$/);
+        if (range) {
+          const start = Number(range[1]);
+          const end = Number(range[2]);
+          if (end >= start && end - start <= 500) {
+            for (let n = start; n <= end; n += 1) out.add(String(n));
+            continue;
+          }
+        }
+        if (/^\d{4,6}$/.test(token)) out.add(token);
+      }
+    }
+    return [...out];
+  }
+
+  /**
+   * Merge every ticket number recoverable from the raw PDF text into the
+   * extracted calenderer data, so a single-ticket LLM result never silently
+   * drops the rest. Impilo ticket numbers are the roll-tracking identity, so
+   * they flow into BOTH ticketNumber (display, capped to fit the column) and
+   * rollNumbers[] (matching). No-op when the document carries no ticket line.
+   */
+  private applyCalendererTicketBackstop(data: ExtractedCocData, pdfText: string | null): void {
+    const textTickets = this.parseTicketNumbersFromText(pdfText);
+    if (textTickets.length === 0) return;
+
+    const merged = this.splitMultiValueTokens([data.ticketNumber ?? null, ...textTickets]);
+    if (merged.length === 0) return;
+
+    const modelHad = this.splitMultiValueTokens([data.ticketNumber ?? null]);
+    const fullList = merged.join(", ");
+    // ticket_number is varchar(255); keep the full list when it fits, else a
+    // collapsed range so we never overflow the column or lose information.
+    data.ticketNumber = fullList.length <= 240 ? fullList : this.formatRollRange(merged);
+    data.rollNumbers = this.splitMultiValueTokens([...(data.rollNumbers ?? []), ...merged]);
+
+    if (merged.length > modelHad.length) {
+      this.logger.warn(
+        `Calenderer CoC ticket backstop: recovered ${merged.length} ticket(s) from PDF text (model returned ${modelHad.length}: "${modelHad.join(", ")}")`,
+      );
+    }
   }
 
   private generateCompounderCocNumber(batchNumbers: string[] | null): string | null {
@@ -465,6 +527,8 @@ export class RubberCocExtractionService {
 
     const extractedData = response.data as ExtractedCocData;
 
+    this.applyCalendererTicketBackstop(extractedData, pdfText);
+
     const cocNumber = this.generateCalendererCocNumber(
       extractedData.orderNumber ?? null,
       extractedData.ticketNumber ?? null,
@@ -519,6 +583,12 @@ export class RubberCocExtractionService {
     this.logger.log(`Calenderer CoC extracted via Vision in ${processingTimeMs}ms`);
 
     const extractedData = response.data as ExtractedCocData;
+
+    // Even on the vision path the underlying Impilo PDF is usually digital, so
+    // the ticket line is recoverable as text — use it as a deterministic
+    // backstop against the model returning only the first ticket.
+    const pdfTextForBackstop = await extractTextFromPdf(pdfBuffer).catch(() => "");
+    this.applyCalendererTicketBackstop(extractedData, pdfTextForBackstop);
 
     const cocNumber = this.generateCalendererCocNumber(
       extractedData.orderNumber ?? null,

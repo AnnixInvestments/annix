@@ -243,7 +243,7 @@ Return a JSON object with this structure:
   "customerName": string or null (e.g., "AU INDUSTRIES"),
   "productionDate": string or null (ISO date format YYYY-MM-DD — see PRODUCTION DATE FORMAT section above),
   "orderNumber": string or null (e.g., "154"),
-  "ticketNumber": string or null (e.g., "41210"),
+  "ticketNumber": string or null — capture EVERY ticket number on the page, not just the first. Impilo lists them comma-separated (e.g. "42934, 42935, 42936, 42937, 42938, 42939, 42940, 42941") or as a range ("42934-42941"). Return the COMPLETE list exactly as printed; never truncate to one,
   "compoundCode": string or null (e.g., "RSCA40", "AU-NR-60"),
   "compoundDescription": string or null,
   "batchNumbers": string[] (individual batch numbers like ["209", "210", "211"] or parse range "209-227" into individual numbers),
@@ -295,6 +295,7 @@ Guidelines (Format A — IMPILO):
 - Look for "IMPILO INDUSTRIES" header to confirm this is a calendarer CoC
 - Batch Number field may show a range like "209-227" - expand this to individual batch numbers
 - Page 1 has order details (Customer, Date, Order Number, Ticket Number, Compound, Batch Number range)
+- TICKET NUMBER (CRITICAL — recurring failure): the "Ticket Number" field on page 1 usually lists MULTIPLE tickets — one per roll — e.g. "Ticket Number: 42934, 42935, 42936, 42937, 42938, 42939, 42940, 42941". Capture ALL of them in ticketNumber (comma-separated or as the printed range) AND list every one individually in rollNumbers[]. The ticket numbers ARE the roll-tracking identities. NEVER return only the first ticket.
 - Page 2 has the BATCH CERTIFICATES table with per-batch test results — this is the most important page
 - Page 3 has rheometer graph (set hasGraph: true if graph page exists)
 - Extract every numeric batch row from the page 2 table — do NOT return an empty batches array if the table is present

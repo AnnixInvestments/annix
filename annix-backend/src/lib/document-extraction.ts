@@ -53,15 +53,25 @@ export async function extractTextFromWord(buffer: Buffer): Promise<string> {
 
 export async function extractTextFromPdf(buffer: Buffer): Promise<string> {
   try {
-    const parser = new PDFParseCtor({ data: buffer });
-    const result = await parser.getText();
+    // pdf-parse v2 exports a PDFParse class with `.getText()`; v1 (currently
+    // installed, 1.1.1) is a callable function returning `{ text }`. Invoking
+    // the v1 function as `new PDFParseCtor(...).getText()` throws on EVERY PDF —
+    // which previously fell through to extractTextFromExcel(), returning the raw
+    // PDF bytes as fake CSV "text". That silently broke all PDF text extraction
+    // (the length check then saw garbage, never routed to OCR, and the LLM was
+    // fed nonsense). Use whichever API the installed version actually exposes.
+    if (typeof PDFParseCtor?.prototype?.getText === "function") {
+      const parser = new PDFParseCtor({ data: buffer });
+      const result = await parser.getText();
+      return result?.text || "";
+    }
+    const result = await pdfParseModule(buffer);
     return result?.text || "";
   } catch {
-    try {
-      return extractTextFromExcel(buffer);
-    } catch {
-      return "";
-    }
+    // A PDF that cannot be parsed has no recoverable text layer — return "" so
+    // callers route to OCR/vision. Never fall back to the spreadsheet parser:
+    // it emits the raw PDF bytes as garbage and defeats the OCR length check.
+    return "";
   }
 }
 
