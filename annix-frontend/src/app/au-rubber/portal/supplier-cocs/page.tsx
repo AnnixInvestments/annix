@@ -59,6 +59,7 @@ import {
 import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { FileDropZone } from "../../components/FileDropZone";
+import { ChemicalSupplierDocsSection } from "./ChemicalSupplierDocsSection";
 
 const ITEMS_PER_PAGE = 25;
 
@@ -1102,6 +1103,8 @@ export default function SupplierCocsPage() {
           </label>
         </div>
       </div>
+
+      <ChemicalSupplierDocsSection />
 
       {isLoading ? (
         <div className="bg-white shadow rounded-lg overflow-hidden">
