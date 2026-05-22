@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Logger,
   Param,
   ParseIntPipe,
   Post,
@@ -13,12 +14,15 @@ import {
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
 import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
+import { JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobIngestionService } from "../services/job-ingestion.service";
 import { JobMarketSourceService } from "../services/job-market-source.service";
 
 @Controller("admin/annix-orbit/job-market")
 @UseGuards(AdminAuthGuard)
 export class AdminOrbitJobMarketController {
+  private readonly logger = new Logger(AdminOrbitJobMarketController.name);
+
   constructor(
     private readonly sourceService: JobMarketSourceService,
     private readonly ingestionService: JobIngestionService,
@@ -63,7 +67,23 @@ export class AdminOrbitJobMarketController {
 
   @Post("sources/:id/fetch")
   async fetchOnly(@Param("id", ParseIntPipe) id: number) {
-    await this.sourceService.findByIdPlatformGlobal(id);
+    const source = await this.sourceService.findByIdPlatformGlobal(id);
+
+    // DPSA extraction runs ~36 sequential Gemini calls over a 1MB+ circular
+    // (~60-90s) — far longer than the HTTP proxy timeout. Fire-and-forget so the
+    // request returns immediately; the vacancies land in the background.
+    if (source.provider === JobSourceProvider.DPSA) {
+      void this.ingestionService
+        .triggerIngestion(id, { vetInline: false })
+        .then((result) => this.logger.log(`DPSA background ingestion done: ${result.ingested} new`))
+        .catch((err) =>
+          this.logger.error(
+            `DPSA background ingestion failed: ${err instanceof Error ? err.message : String(err)}`,
+          ),
+        );
+      return { ingested: 0, skipped: 0, savedIds: [] as number[], started: true };
+    }
+
     return this.ingestionService.triggerIngestion(id, { vetInline: false });
   }
 

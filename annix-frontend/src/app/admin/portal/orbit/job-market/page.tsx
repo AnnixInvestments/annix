@@ -107,6 +107,14 @@ export default function AdminOrbitJobMarketPage() {
       const fetched = await adminApiClient.fetchOrbitSource(sourceId);
       hideExtraction();
 
+      if (fetched.started) {
+        setIngestionStatus((prev) => ({
+          ...prev,
+          [sourceId]: "Ingestion started in the background — refresh in ~90s to see results",
+        }));
+        return;
+      }
+
       if (fetched.savedIds.length === 0 || !requiresVetting) {
         const suffix = requiresVetting ? "" : " (no vetting needed)";
         setIngestionStatus((prev) => ({

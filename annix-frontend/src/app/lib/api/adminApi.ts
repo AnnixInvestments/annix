@@ -1026,7 +1026,7 @@ class AdminApiClient {
 
   async fetchOrbitSource(
     sourceId: number,
-  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[]; started?: boolean }> {
     return this.request(`/admin/annix-orbit/job-market/sources/${sourceId}/fetch`, {
       method: "POST",
     });
