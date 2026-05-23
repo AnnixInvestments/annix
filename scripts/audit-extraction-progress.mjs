@@ -3,12 +3,12 @@
  * Long-Running Operations audit (see CLAUDE.md → "Long-Running Operations").
  *
  * Every user-triggered document extraction / AI-analyze / re-extract / reanalyze
- * action MUST surface the branded ExtractionProgressModal — via
- * `useExtractionProgress` (one-shot) or `useAdaptiveExtractionProgress`
- * (`runBulk`). A button stuck on a spinner with no popup timer is a directive
- * violation.
+ * — and certificate/PDF generation + email sending — action MUST surface the
+ * branded ExtractionProgressModal via `useExtractionProgress` (one-shot) or
+ * `useAdaptiveExtractionProgress` (`runBulk`). A button stuck on a spinner with
+ * no popup timer is a directive violation.
  *
- * This script flags extraction/analyze call-sites that have NO progress trigger
+ * This script flags such call-sites that have NO progress trigger
  * nearby. It is a HEURISTIC AID, not a hard gate — it never exits non-zero, so
  * it can run as a non-blocking pre-commit reminder. Sessions should treat any
  * hit as "go wire the progress modal here (or confirm it's a sub-3s op)".
@@ -24,11 +24,21 @@ import { readFileSync } from "node:fs";
 // How many lines around a call we look in for a progress trigger (≈ one handler).
 const PROXIMITY = 70;
 
-// API invocations that do real document extraction / AI analysis (the >3s ops).
-// Matches `<x>Client.extract*/analyze*/reanalyze*(...)` and `<x>Mutation.mutateAsync`
-// where the mutation name itself signals extraction/analysis.
-const EXTRACTION_CALL =
-  /(?:[A-Za-z]*[Cc]lient\.(?:extract|analyze|reanalyze|reExtract)\w*\s*\(|\b\w*(?:[Ee]xtract|[Aa]nalyze|[Rr]eanalyze)\w*Mutation\.mutateAsync\s*\()/;
+// API invocations that do real document work and can take >3s: extraction /
+// AI-analysis, and certificate/PDF generation. Matches `<x>Client.<op>(...)` and
+// `<op>Mutation.mutateAsync(...)`.
+//   • DOC_OP — inherently long doc/AI verbs.
+//   • DOC_SEND — emailing a *generated document* (sendAuCoc, autoSendAuCoc,
+//     resendCocs…). Generic send/resend (chat messages, email verifications,
+//     invites) is deliberately excluded — those are quick and a full-screen
+//     progress modal would be wrong UX; hence the Coc/Cert/Pdf/Invoice suffix.
+const DOC_OP = "(?:extract|analyze|reanalyze|reExtract|generate|regenerate|regenerat)\\w*";
+const DOC_SEND = "(?:send|resend|autoSend)\\w*(?:Coc|Cert|Pdf|Invoice)\\w*";
+const OP = `(?:${DOC_OP}|${DOC_SEND})`;
+const EXTRACTION_CALL = new RegExp(
+  `(?:[A-Za-z]*[Cc]lient\\.${OP}\\s*\\(|\\b\\w*${OP}Mutation\\.mutateAsync\\s*\\()`,
+  "i",
+);
 
 // Evidence that progress feedback is wired in this area. The branded modal
 // (showExtraction / runBulk) is preferred, but a few analyze-and-create flows
@@ -36,7 +46,7 @@ const EXTRACTION_CALL =
 // which also satisfies the "must show progress feedback" rule — recognise those
 // so the audit only flags call-sites with NO feedback at all.
 const PROGRESS_TRIGGER =
-  /\b(?:showExtraction|withExtractionProgress|runBulk|runAdaptiveBulk|NixProcessingPopup|set(?:Analysis|Analyze)Progress|set(?:Analysis|Analyze)Status)\b/;
+  /\b(?:showExtraction|withExtractionProgress|runBulk|runAdaptiveBulk|NixProcessingPopup|setProgressModal|set(?:Analysis|Analyze)Progress|set(?:Analysis|Analyze)Status)\b/;
 
 // Files that are the progress infra itself, or this auditor — never flag them.
 const SKIP_FILE =

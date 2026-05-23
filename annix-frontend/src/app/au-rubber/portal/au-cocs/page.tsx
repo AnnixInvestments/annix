@@ -5,6 +5,7 @@ import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import {
   Pagination,
@@ -41,6 +42,7 @@ type SortColumn =
 export default function AuCocsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const { isAdmin } = useAuRubberAuth();
   const queryClient = useQueryClient();
   const scrollSentinelRef = useScrollRestoration("au-rubber:au-cocs");
@@ -339,11 +341,18 @@ export default function AuCocsPage() {
 
   const handleGeneratePdf = async (id: number) => {
     try {
+      showExtraction({
+        brand: "au-rubber",
+        label: "Generating certificate PDF…",
+        estimatedDurationMs: 30000,
+      });
       await auRubberApiClient.generateAuCocPdf(id);
       showToast("PDF generated successfully", "success");
       refresh();
     } catch (err) {
       toastError(showToast, err, "Failed to generate PDF");
+    } finally {
+      hideExtraction();
     }
   };
 
@@ -388,6 +397,11 @@ export default function AuCocsPage() {
     const bccValue = sendBcc.trim() || undefined;
     try {
       setIsSending(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Sending certificate…",
+        estimatedDurationMs: 15000,
+      });
       await auRubberApiClient.sendAuCoc(sendingId, sendEmail, { cc: ccValue, bcc: bccValue });
       showToast("CoC sent successfully", "success");
       setShowSendModal(false);
@@ -399,6 +413,7 @@ export default function AuCocsPage() {
     } catch (err) {
       toastError(showToast, err, "Failed to send CoC");
     } finally {
+      hideExtraction();
       setIsSending(false);
     }
   };

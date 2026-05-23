@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
@@ -20,6 +21,7 @@ export default function AuCocDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const [coc, setCoc] = useState<RubberAuCocDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
@@ -75,12 +77,18 @@ export default function AuCocDetailPage() {
   const handleGeneratePdf = async () => {
     try {
       setIsGenerating(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Generating certificate PDF…",
+        estimatedDurationMs: 30000,
+      });
       await auRubberApiClient.generateAuCocPdf(cocId);
       showToast("PDF generated successfully", "success");
       fetchData();
     } catch (err) {
       toastError(showToast, err, "Failed to generate PDF");
     } finally {
+      hideExtraction();
       setIsGenerating(false);
     }
   };
@@ -97,12 +105,18 @@ export default function AuCocDetailPage() {
     if (!confirmed) return;
     try {
       setIsRegenerating(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Regenerating certificate PDF…",
+        estimatedDurationMs: 30000,
+      });
       await auRubberApiClient.generateAuCocPdf(cocId);
       showToast("PDF regenerated and re-uploaded", "success");
       fetchData();
     } catch (err) {
       toastError(showToast, err, "Failed to regenerate PDF");
     } finally {
+      hideExtraction();
       setIsRegenerating(false);
     }
   };
@@ -114,6 +128,11 @@ export default function AuCocDetailPage() {
     }
     try {
       setIsSending(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Sending certificate…",
+        estimatedDurationMs: 15000,
+      });
       await auRubberApiClient.sendAuCoc(cocId, sendEmail);
       showToast("Certificate sent successfully", "success");
       setShowSendModal(false);
@@ -122,6 +141,7 @@ export default function AuCocDetailPage() {
     } catch (err) {
       toastError(showToast, err, "Failed to send certificate");
     } finally {
+      hideExtraction();
       setIsSending(false);
     }
   };
@@ -142,12 +162,18 @@ export default function AuCocDetailPage() {
   const handleAutoSend = async () => {
     try {
       setIsAutoSending(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Generating & sending certificate…",
+        estimatedDurationMs: 30000,
+      });
       await auRubberApiClient.autoSendAuCoc(cocId);
       showToast("Certificate sent to customer", "success");
       fetchData();
     } catch (err) {
       toastError(showToast, err, "Failed to send certificate");
     } finally {
+      hideExtraction();
       setIsAutoSending(false);
     }
   };
@@ -155,12 +181,18 @@ export default function AuCocDetailPage() {
   const handleRecheckReadiness = async () => {
     try {
       setIsRechecking(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Re-checking certificate readiness…",
+        estimatedDurationMs: 15000,
+      });
       await auRubberApiClient.recheckAuCocReadiness(cocId);
       showToast("Readiness re-checked", "success");
       fetchData();
     } catch (err) {
       toastError(showToast, err, "Failed to re-check readiness");
     } finally {
+      hideExtraction();
       setIsRechecking(false);
     }
   };
