@@ -1,34 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { resolveOrbitAssetUrl } from "@/app/lib/annix-orbit/branding";
+import { useOrbitBrandingContext } from "@/app/lib/annix-orbit/branding-context";
 
 export default function AnnixOrbitHomePage() {
+  const branding = useOrbitBrandingContext();
+  const logoIcon = resolveOrbitAssetUrl("logoIcon", branding);
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="max-w-4xl w-full">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-white/10 backdrop-blur rounded-2xl mb-6">
-            <svg
-              className="w-10 h-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-              />
-            </svg>
-          </div>
+          <div
+            className="inline-flex w-20 h-20 rounded-2xl mb-6 bg-contain bg-center bg-no-repeat"
+            style={{ backgroundImage: `url('${logoIcon}')` }}
+          />
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2">Annix Orbit</h1>
-          <p className="text-sm sm:text-base font-semibold tracking-widest uppercase text-[#FF8A00] mb-3">
-            Hiring &bull; Talent &bull; Compliance
+          <p
+            className="text-sm sm:text-base font-semibold tracking-widest uppercase mb-3"
+            style={{ color: "var(--orbit-accent, #FF8A00)" }}
+          >
+            {branding.tagline}
           </p>
-          <p className="text-lg text-[#c0c0eb] max-w-2xl mx-auto">
-            The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.
-          </p>
+          <p className="text-lg text-[#c0c0eb] max-w-2xl mx-auto">{branding.description}</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -24,6 +24,8 @@ interface BrandingForm {
   gradientFrom: string;
   gradientVia: string;
   gradientTo: string;
+  tagline: string;
+  description: string;
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
@@ -31,15 +33,26 @@ interface BrandingForm {
 
 const ASSET_FIELDS: { key: OrbitBrandingAssetSlot; label: string; hint: string }[] = [
   { key: "logoIcon", label: "Logo icon", hint: "Square orbital mark shown in the toolbar." },
+  {
+    key: "logoLockup",
+    label: "Full lockup",
+    hint: "The complete brand artwork on the platform hub.",
+  },
   { key: "wordmark", label: "Wordmark", hint: "The 'ANNIX ORBIT' text logo." },
   { key: "favicon", label: "Browser favicon", hint: "Shown in the browser tab." },
   { key: "watermark", label: "Background watermark", hint: "Faded hero behind every page." },
 ];
 
-type OrbitBrandingAssetField = "logoIconPath" | "wordmarkPath" | "faviconPath" | "watermarkPath";
+type OrbitBrandingAssetField =
+  | "logoIconPath"
+  | "logoLockupPath"
+  | "wordmarkPath"
+  | "faviconPath"
+  | "watermarkPath";
 
 const SLOT_TO_FIELD: Record<OrbitBrandingAssetSlot, OrbitBrandingAssetField> = {
   logoIcon: "logoIconPath",
+  logoLockup: "logoLockupPath",
   wordmark: "wordmarkPath",
   favicon: "faviconPath",
   watermark: "watermarkPath",
@@ -54,6 +67,8 @@ function formFromBranding(branding: OrbitBranding): BrandingForm {
     gradientFrom: branding.gradientFrom,
     gradientVia: branding.gradientVia,
     gradientTo: branding.gradientTo,
+    tagline: branding.tagline,
+    description: branding.description,
     watermarkEnabled: branding.watermarkEnabled,
     watermarkOpacity: branding.watermarkOpacity,
     watermarkMaxSizePx: branding.watermarkMaxSizePx,
@@ -69,6 +84,7 @@ export default function AdminOrbitBrandingPage() {
   const [form, setForm] = useState<BrandingForm | null>(null);
   const [assetPreview, setAssetPreview] = useState<Record<OrbitBrandingAssetSlot, string>>({
     logoIcon: ORBIT_STATIC_ASSET_DEFAULTS.logoIcon,
+    logoLockup: ORBIT_STATIC_ASSET_DEFAULTS.logoLockup,
     wordmark: ORBIT_STATIC_ASSET_DEFAULTS.wordmark,
     favicon: ORBIT_STATIC_ASSET_DEFAULTS.favicon,
     watermark: ORBIT_STATIC_ASSET_DEFAULTS.watermark,
@@ -85,6 +101,7 @@ export default function AdminOrbitBrandingPage() {
     setForm(formFromBranding(brandingData));
     setAssetPreview({
       logoIcon: resolveOrbitAssetUrl("logoIcon", brandingData),
+      logoLockup: resolveOrbitAssetUrl("logoLockup", brandingData),
       wordmark: resolveOrbitAssetUrl("wordmark", brandingData),
       favicon: resolveOrbitAssetUrl("favicon", brandingData),
       watermark: resolveOrbitAssetUrl("watermark", brandingData),
@@ -227,6 +244,36 @@ export default function AdminOrbitBrandingPage() {
                 value={form.gradientTo}
                 onChange={(v) => setField("gradientTo", v)}
               />
+            </div>
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Text</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Shown on the Orbit landing page and the platform hub. Editing here updates every place
+              the text appears.
+            </p>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-sm text-gray-700">Tagline (3 words)</span>
+                <input
+                  type="text"
+                  value={form.tagline}
+                  maxLength={200}
+                  onChange={(e) => setField("tagline", e.target.value)}
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm text-gray-700">Description paragraph</span>
+                <textarea
+                  value={form.description}
+                  maxLength={2000}
+                  rows={3}
+                  onChange={(e) => setField("description", e.target.value)}
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm resize-none"
+                />
+              </label>
             </div>
           </section>
 
@@ -381,8 +428,14 @@ export default function AdminOrbitBrandingPage() {
                 />
                 <div className="relative z-10 p-4 space-y-3">
                   <div>
-                    <h3 className="text-xl font-bold text-white">Browse Jobs</h3>
-                    <p className="text-white/70 text-sm">Sample of how seekers see the app.</p>
+                    <h3 className="text-xl font-bold text-white">Annix Orbit</h3>
+                    <p
+                      className="text-xs font-semibold tracking-widest uppercase"
+                      style={{ color: "var(--orbit-accent)" }}
+                    >
+                      {form.tagline}
+                    </p>
+                    <p className="text-white/70 text-xs mt-1">{form.description}</p>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <PreviewJobCard accent={form.accentOrange} />

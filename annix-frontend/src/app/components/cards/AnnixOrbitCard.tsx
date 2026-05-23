@@ -1,4 +1,8 @@
+"use client";
+
 import Link from "next/link";
+import { ORBIT_BRANDING_FALLBACK, resolveOrbitAssetUrl } from "@/app/lib/annix-orbit/branding";
+import { useOrbitBranding } from "@/app/lib/query/hooks";
 import { ANNIX_BG_GRADIENT, ANNIX_FONT_BODY, ANNIX_PALETTE } from "../branding/tokens";
 
 /**
@@ -50,6 +54,11 @@ export function AnnixOrbitCard({
   const borderColor = variant === "dark" ? "rgba(255, 138, 0, 0.25)" : "rgba(0, 27, 143, 0.18)";
   const descriptionColor = variant === "light" ? ANNIX_PALETTE.slate : "rgba(255, 255, 255, 0.7)";
 
+  const brandingQuery = useOrbitBranding();
+  const brandingData = brandingQuery.data;
+  const branding = brandingData || ORBIT_BRANDING_FALLBACK;
+  const lockupUrl = resolveOrbitAssetUrl("logoLockup", branding);
+
   return (
     <div
       className={`flex flex-col items-center justify-between rounded-2xl shadow-xl border-2 overflow-hidden ${
@@ -58,7 +67,7 @@ export function AnnixOrbitCard({
       style={{ ...surfaceStyle, borderColor }}
     >
       <img
-        src="/branding/annix-orbit-logo.png"
+        src={lockupUrl}
         alt="Annix Orbit — Hiring, Talent, Compliance. The intelligent workforce ecosystem for modern hiring, talent growth, and compliance."
         className="w-full h-auto block"
         style={{ objectFit: "contain" }}

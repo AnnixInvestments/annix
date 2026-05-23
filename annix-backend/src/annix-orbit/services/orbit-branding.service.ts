@@ -5,7 +5,12 @@ import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interfac
 import { UpdateOrbitBrandingDto } from "../dto/branding.dto";
 import { AnnixOrbitBranding } from "../entities/annix-orbit-branding.entity";
 
-export type OrbitBrandingAssetSlot = "logoIcon" | "wordmark" | "favicon" | "watermark";
+export type OrbitBrandingAssetSlot =
+  | "logoIcon"
+  | "logoLockup"
+  | "wordmark"
+  | "favicon"
+  | "watermark";
 
 export interface OrbitBrandingView {
   navbarColor: string;
@@ -15,6 +20,8 @@ export interface OrbitBrandingView {
   gradientFrom: string;
   gradientVia: string;
   gradientTo: string;
+  tagline: string;
+  description: string;
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
@@ -24,6 +31,7 @@ export interface OrbitBrandingView {
 
 const SLOT_COLUMN: Record<OrbitBrandingAssetSlot, keyof AnnixOrbitBranding> = {
   logoIcon: "logoIconPath",
+  logoLockup: "logoLockupPath",
   wordmark: "wordmarkPath",
   favicon: "faviconPath",
   watermark: "watermarkPath",
@@ -64,11 +72,14 @@ export class OrbitBrandingService {
       gradientFrom: row.gradientFrom,
       gradientVia: row.gradientVia,
       gradientTo: row.gradientTo,
+      tagline: row.tagline,
+      description: row.description,
       watermarkEnabled: row.watermarkEnabled,
       watermarkOpacity: row.watermarkOpacity,
       watermarkMaxSizePx: row.watermarkMaxSizePx,
       assets: {
         logoIcon: row.logoIconPath != null,
+        logoLockup: row.logoLockupPath != null,
         wordmark: row.wordmarkPath != null,
         favicon: row.faviconPath != null,
         watermark: row.watermarkPath != null,
@@ -96,11 +107,15 @@ export class OrbitBrandingService {
       }
     });
 
+    if (dto.tagline !== undefined) existing.tagline = dto.tagline;
+    if (dto.description !== undefined) existing.description = dto.description;
+
     if (dto.watermarkEnabled !== undefined) existing.watermarkEnabled = dto.watermarkEnabled;
     if (dto.watermarkOpacity !== undefined) existing.watermarkOpacity = dto.watermarkOpacity;
     if (dto.watermarkMaxSizePx !== undefined) existing.watermarkMaxSizePx = dto.watermarkMaxSizePx;
 
     if (dto.logoIconPath !== undefined) existing.logoIconPath = dto.logoIconPath;
+    if (dto.logoLockupPath !== undefined) existing.logoLockupPath = dto.logoLockupPath;
     if (dto.wordmarkPath !== undefined) existing.wordmarkPath = dto.wordmarkPath;
     if (dto.faviconPath !== undefined) existing.faviconPath = dto.faviconPath;
     if (dto.watermarkPath !== undefined) existing.watermarkPath = dto.watermarkPath;

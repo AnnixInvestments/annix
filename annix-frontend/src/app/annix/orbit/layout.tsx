@@ -27,8 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
       template: "%s | Annix Orbit",
       default: "Annix Orbit",
     },
-    description:
-      "Annix Orbit — Hiring, Talent, Compliance. The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.",
+    description: `Annix Orbit — ${branding.tagline}. ${branding.description}`,
     icons: {
       icon: [{ url: faviconUrl, sizes: "any" }],
       apple: faviconUrl,

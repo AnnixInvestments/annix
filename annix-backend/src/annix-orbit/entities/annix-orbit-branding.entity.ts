@@ -26,8 +26,27 @@ export class AnnixOrbitBranding {
   @Column({ name: "gradient_to", type: "varchar", length: 9, default: "#1a1a40" })
   gradientTo: string;
 
+  @Column({
+    name: "tagline",
+    type: "varchar",
+    length: 200,
+    default: "Hiring • Talent • Compliance",
+  })
+  tagline: string;
+
+  @Column({
+    name: "description",
+    type: "text",
+    default:
+      "The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.",
+  })
+  description: string;
+
   @Column({ name: "logo_icon_path", type: "varchar", length: 500, nullable: true })
   logoIconPath: string | null;
+
+  @Column({ name: "logo_lockup_path", type: "varchar", length: 500, nullable: true })
+  logoLockupPath: string | null;
 
   @Column({ name: "wordmark_path", type: "varchar", length: 500, nullable: true })
   wordmarkPath: string | null;

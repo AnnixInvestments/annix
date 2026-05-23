@@ -6,6 +6,7 @@ import {
   IsString,
   Matches,
   Max,
+  MaxLength,
   Min,
   ValidateIf,
 } from "class-validator";
@@ -48,11 +49,29 @@ export class UpdateOrbitBrandingDto {
   @Matches(HEX_COLOR, { message: "gradientTo must be a hex colour" })
   gradientTo?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  tagline?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
+
   @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
   @IsString()
   logoIconPath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  logoLockupPath?: string | null;
 
   @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
   @IsOptional()

@@ -1,4 +1,9 @@
-export type OrbitBrandingAssetSlot = "logoIcon" | "wordmark" | "favicon" | "watermark";
+export type OrbitBrandingAssetSlot =
+  | "logoIcon"
+  | "logoLockup"
+  | "wordmark"
+  | "favicon"
+  | "watermark";
 
 export interface OrbitBranding {
   navbarColor: string;
@@ -8,6 +13,8 @@ export interface OrbitBranding {
   gradientFrom: string;
   gradientVia: string;
   gradientTo: string;
+  tagline: string;
+  description: string;
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
@@ -23,7 +30,10 @@ export interface OrbitBrandingUpdate {
   gradientFrom?: string;
   gradientVia?: string;
   gradientTo?: string;
+  tagline?: string;
+  description?: string;
   logoIconPath?: string | null;
+  logoLockupPath?: string | null;
   wordmarkPath?: string | null;
   faviconPath?: string | null;
   watermarkPath?: string | null;
@@ -40,6 +50,7 @@ export interface OrbitBrandingUploadResult {
 
 export const ORBIT_STATIC_ASSET_DEFAULTS: Record<OrbitBrandingAssetSlot, string> = {
   logoIcon: "/branding/annix-orbit-icon.png",
+  logoLockup: "/branding/annix-orbit-logo.png",
   wordmark: "/branding/annix-orbit-wordmark.png",
   favicon: "/branding/annix-orbit-icon.png",
   watermark: "/branding/annix-orbit-icon.png",
@@ -53,10 +64,19 @@ export const ORBIT_BRANDING_FALLBACK: OrbitBranding = {
   gradientFrom: "#1a1a40",
   gradientVia: "#0d0d20",
   gradientTo: "#1a1a40",
+  tagline: "Hiring • Talent • Compliance",
+  description:
+    "The intelligent workforce ecosystem for modern hiring, talent growth, and compliance.",
   watermarkEnabled: true,
   watermarkOpacity: 0.1,
   watermarkMaxSizePx: 880,
-  assets: { logoIcon: false, wordmark: false, favicon: false, watermark: false },
+  assets: {
+    logoIcon: false,
+    logoLockup: false,
+    wordmark: false,
+    favicon: false,
+    watermark: false,
+  },
   assetVersion: 0,
 };
 
