@@ -2,6 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useExtractionProgress,
+  withExtractionProgress,
+} from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { SeekerBrowseJobCard } from "@/app/lib/annix-orbit/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/annix-orbit/components/SeekerJobCard";
@@ -14,6 +18,7 @@ import {
   type PublicJob,
   type SeekerRecommendedJob,
 } from "@/app/lib/api/annixOrbitApi";
+import { nowMillis } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitDismissSeekerMatch,
@@ -28,9 +33,14 @@ import {
   useOrbitSeekerRematch,
 } from "@/app/lib/query/hooks";
 
+// Paid feature — Nix-powered job matching. Toggled on for testing; will become
+// a subscription gate.
+const HELP_ME_FIND_A_JOB_ENABLED = true;
+
 export default function SeekerJobsPage() {
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+  const extractionProgress = useExtractionProgress();
   const profileStatusQuery = useOrbitMyProfileStatus();
   const profileStatus = profileStatusQuery.data;
   const hasCv = profileStatus ? profileStatus.hasCv : null;
@@ -68,6 +78,7 @@ export default function SeekerJobsPage() {
     minSalary: "",
   });
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
+  const [nixSearching, setNixSearching] = useState<boolean>(false);
   const consentPromptShown = useRef(false);
 
   const browseJobsEnabled = profileReady;
@@ -218,7 +229,7 @@ export default function SeekerJobsPage() {
   };
 
   const promptForConsent = useMemo(
-    () => async () => {
+    () => async (): Promise<boolean> => {
       const accepted = await confirm({
         title: "Use my CV to match me to jobs?",
         message:
@@ -233,12 +244,14 @@ export default function SeekerJobsPage() {
           setConsentDeclined(false);
           showToast("Consent recorded — we'll start matching jobs to your CV", "success");
           consentQuery.refetch();
+          return true;
         } catch {
           showToast("Could not record consent right now — try again", "error");
+          return false;
         }
-      } else {
-        setConsentDeclined(true);
       }
+      setConsentDeclined(true);
+      return false;
     },
     [confirm, grantConsentMutation, showToast, consentQuery],
   );
@@ -269,6 +282,83 @@ export default function SeekerJobsPage() {
       },
     });
   };
+
+  // Matching runs fire-and-forget on the server (~1–2 min), so after the trigger
+  // we poll for results and keep the branded progress modal up until they land.
+  const waitForMatches = async (startCount: number): Promise<boolean> => {
+    const startedAt = nowMillis();
+    const deadline = startedAt + 120_000;
+    const minVisibleMs = 4000;
+    const poll = async (): Promise<boolean> => {
+      if (nowMillis() >= deadline) return false;
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+      const refetched = await recommendedQuery.refetch();
+      const refetchedData = refetched.data;
+      const count = refetchedData ? refetchedData.matches.length : 0;
+      if (count > startCount) return true;
+      const elapsed = nowMillis() - startedAt;
+      if (startCount > 0 && elapsed >= minVisibleMs) return true;
+      return poll();
+    };
+    return poll();
+  };
+
+  const runNixSearch = async () => {
+    setNixSearching(true);
+    try {
+      const result = await rematchMutation.mutateAsync();
+      if (!result.triggered) {
+        if (result.reason === "rate-limited") {
+          await recommendedQuery.refetch().catch(() => {});
+          const mins = Math.max(1, Math.ceil(result.retryAfterSeconds / 60));
+          showToast(
+            `Nix searched recently — your matches are up to date. Try again in about ${mins} min.`,
+            "info",
+          );
+          return;
+        }
+        showToast("Upload your CV first so Nix can match you to jobs.", "error");
+        return;
+      }
+      const recommendedData = recommendedQuery.data;
+      const startCount = recommendedData ? recommendedData.matches.length : 0;
+      const found = await withExtractionProgress(
+        extractionProgress,
+        {
+          brand: "annix-orbit",
+          label: "Nix is finding jobs that match your CV…",
+          estimatedDurationMs: 90_000,
+        },
+        () => waitForMatches(startCount),
+      );
+      showToast(
+        found
+          ? "Nix found jobs that match your CV."
+          : "Nix is still searching — your matches will appear here shortly.",
+        found ? "success" : "info",
+      );
+    } catch {
+      showToast("Couldn't reach Nix right now — please try again.", "error");
+    } finally {
+      setNixSearching(false);
+    }
+  };
+
+  // "Help me Find a Job": no CV → send to the CV page; CV present → fire Nix
+  // (grant consent first if needed, which kicks off matching, otherwise rematch).
+  const handleHelpFindJob = async () => {
+    if (!consentGranted) {
+      consentPromptShown.current = false;
+      setConsentDeclined(false);
+      const granted = await promptForConsent();
+      if (!granted) return;
+    }
+    await runNixSearch();
+  };
+  const isRematching = rematchMutation.isPending;
+  const isGrantingConsent = grantConsentMutation.isPending;
+  const helpSearching = isRematching || isGrantingConsent || nixSearching;
+  const jobCount = browseJobsData ? browseJobsData.total : 0;
 
   const profileLoading = profileStatusQuery.isLoading;
   const profileError = profileStatusQuery.isError;
@@ -310,6 +400,10 @@ export default function SeekerJobsPage() {
         onApply={handleBrowseApply}
         confirmDialog={ConfirmDialog}
         variant="no-cv"
+        jobCount={jobCount}
+        hasCv={false}
+        searching={helpSearching}
+        onHelpFindJob={handleHelpFindJob}
       />
     );
   }
@@ -349,6 +443,10 @@ export default function SeekerJobsPage() {
         onApply={handleBrowseApply}
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
+        jobCount={jobCount}
+        hasCv={true}
+        searching={helpSearching}
+        onHelpFindJob={handleHelpFindJob}
       />
     );
   }
@@ -397,6 +495,10 @@ export default function SeekerJobsPage() {
         onApply={handleBrowseApply}
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
+        jobCount={jobCount}
+        hasCv={true}
+        searching={helpSearching}
+        onHelpFindJob={handleHelpFindJob}
       />
     );
   }
@@ -408,6 +510,13 @@ export default function SeekerJobsPage() {
         showRematch
         onRematch={handleRematch}
         rematching={rematchMutation.isPending}
+      />
+
+      <JobsTopBar
+        jobCount={jobCount}
+        hasCv={true}
+        searching={helpSearching}
+        onHelpFindJob={handleHelpFindJob}
       />
 
       {showColdStart ? (
@@ -451,6 +560,55 @@ export default function SeekerJobsPage() {
   );
 }
 
+function JobsTopBar(props: {
+  jobCount: number;
+  hasCv: boolean;
+  searching: boolean;
+  onHelpFindJob: () => void;
+}) {
+  const { jobCount, hasCv, searching, onHelpFindJob } = props;
+  const countLabel = jobCount > 0 ? jobCount.toLocaleString() : "—";
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <div className="rounded-xl bg-white/5 border border-white/10 p-5 flex flex-col justify-center">
+        <p className="text-sm text-white/60">Jobs listed</p>
+        <p className="text-3xl font-bold text-white mt-1">{countLabel}</p>
+      </div>
+
+      {HELP_ME_FIND_A_JOB_ENABLED ? (
+        hasCv ? (
+          <button
+            type="button"
+            onClick={onHelpFindJob}
+            disabled={searching}
+            className="rounded-xl p-5 text-left transition-opacity hover:opacity-90 disabled:opacity-60"
+            style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+          >
+            <p className="text-lg font-bold text-white">
+              {searching ? "Nix is searching…" : "Help me Find a Job"}
+            </p>
+            <p className="text-sm text-white/85 mt-1">
+              Let Nix match these jobs to your CV and surface the best fits.
+            </p>
+          </button>
+        ) : (
+          <Link
+            href="/annix/orbit/seeker/profile"
+            className="rounded-xl p-5 transition-opacity hover:opacity-90 flex flex-col justify-center"
+            style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+          >
+            <p className="text-lg font-bold text-white">Help me Find a Job</p>
+            <p className="text-sm text-white/85 mt-1">
+              Upload your CV first and Nix will match jobs to you →
+            </p>
+          </Link>
+        )
+      ) : null}
+    </div>
+  );
+}
+
 interface BrowseAllJobsViewProps {
   jobs: PublicJob[];
   loading: boolean;
@@ -458,6 +616,10 @@ interface BrowseAllJobsViewProps {
   onApply: (job: PublicJob) => void;
   confirmDialog: React.ReactNode;
   variant: "no-cv" | "matches-pending";
+  jobCount: number;
+  hasCv: boolean;
+  searching: boolean;
+  onHelpFindJob: () => void;
 }
 
 function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
@@ -471,6 +633,13 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
   return (
     <div className="space-y-6">
       <PageHeader subtitle={subtitle} />
+
+      <JobsTopBar
+        jobCount={props.jobCount}
+        hasCv={props.hasCv}
+        searching={props.searching}
+        onHelpFindJob={props.onHelpFindJob}
+      />
 
       {matchesPending ? (
         <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
