@@ -85,11 +85,8 @@ export function ChemicalSupplierDocsSection() {
     const batch = doc.batchNumber;
     const label = deliveryNote || batch || `chemical-${doc.id}`;
     try {
-      await pdfPreview.openWithFetch(async () => {
-        const result = await auRubberApiClient.chemicalDocumentUrl(doc.id);
-        const response = await fetch(result.url);
-        return response.blob();
-      }, `${label}.pdf`);
+      const { url } = await auRubberApiClient.chemicalDocumentUrl(doc.id);
+      pdfPreview.open(url, `${label}.pdf`);
     } catch (error) {
       toastError(toast, error, "Something went wrong");
     }
