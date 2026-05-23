@@ -18,7 +18,6 @@ import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
-import { AdminOrbitBrandingController } from "./controllers/admin-orbit-branding.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { AnnixOrbitAuthController } from "./controllers/auth.controller";
@@ -38,14 +37,12 @@ import { PublicEeDisclosureController } from "./controllers/public-ee-disclosure
 import { PublicInterviewBookingController } from "./controllers/public-interview-booking.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
-import { PublicOrbitBrandingController } from "./controllers/public-orbit-branding.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { TradeProfileController } from "./controllers/trade-profile.controller";
 import { WorkforceNeedController } from "./controllers/workforce-need.controller";
-import { AnnixOrbitBranding } from "./entities/annix-orbit-branding.entity";
 import { AnnixOrbitCandidateEeAttributes } from "./entities/annix-orbit-candidate-ee-attributes.entity";
 import { AnnixOrbitCompany } from "./entities/annix-orbit-company.entity";
 import { AnnixOrbitEeConsentTextVersion } from "./entities/annix-orbit-ee-consent-text-version.entity";
@@ -113,7 +110,6 @@ import { MarketInsightsService } from "./services/market-insights.service";
 import { NixCvPdfService } from "./services/nix-cv-pdf.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
-import { OrbitBrandingService } from "./services/orbit-branding.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
@@ -131,7 +127,6 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
 @Module({
   imports: [
     TypeOrmModule.forFeature([
-      AnnixOrbitBranding,
       AnnixOrbitProfile,
       User,
       Company,
@@ -215,8 +210,6 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     ComplianceController,
     AdminEeTargetsController,
     AdminOrbitJobMarketController,
-    AdminOrbitBrandingController,
-    PublicOrbitBrandingController,
     SeekerJobsController,
     TradeProfileController,
     CredentialController,
@@ -274,7 +267,6 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     TradeProfileService,
     CredentialService,
     WorkforceNeedService,
-    OrbitBrandingService,
   ],
   exports: [AnnixOrbitAuthService],
 })

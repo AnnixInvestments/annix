@@ -85,13 +85,11 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const colors = corpId.colors.portal[portalType];
   const { maxWidth } = useLayout();
 
-  // DB-backed branding: Annix Orbit reads --orbit-* (set by OrbitBrandingProvider);
-  // brands wired to the generic BrandingProvider (e.g. Annix Rep) read --brand-*.
-  // Fallbacks are each portal's static corpId palette so nothing shifts before
+  // Portals wired to the DB-backed BrandingProvider read --brand-* CSS vars;
+  // fallbacks are each portal's static corpId palette so nothing shifts before
   // branding loads (or for portals with no DB branding).
-  const isOrbitPortal = portalType === "annixOrbit";
-  const isBrandPortal = portalType === "annixRep";
-  const brandPrefix = isOrbitPortal ? "orbit" : isBrandPortal ? "brand" : null;
+  const isBrandPortal = portalType === "annixOrbit" || portalType === "annixRep";
+  const brandPrefix = isBrandPortal ? "brand" : null;
   const navBg = brandPrefix
     ? `var(--${brandPrefix}-navbar, ${colors.background})`
     : colors.background;

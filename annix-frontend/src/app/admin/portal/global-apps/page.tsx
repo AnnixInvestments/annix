@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
-import { ORBIT_BRANDING_FALLBACK, resolveOrbitAssetUrl } from "@/app/lib/annix-orbit/branding";
-import { useOrbitBranding } from "@/app/lib/query/hooks";
+import { brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { useBranding } from "@/app/lib/query/hooks";
 import { useAdminAttention } from "@/app/lib/query/hooks/admin/useAdminAttention";
 
 function RfqIcon() {
@@ -78,10 +78,10 @@ function AnnixRepIcon() {
 }
 
 function AnnixOrbitIcon() {
-  const brandingQuery = useOrbitBranding();
+  const brandingQuery = useBranding("annix-orbit");
   const brandingData = brandingQuery.data;
-  const branding = brandingData || ORBIT_BRANDING_FALLBACK;
-  const logoIcon = resolveOrbitAssetUrl("logoIcon", branding);
+  const branding = brandingData || brandingFallback("annix-orbit");
+  const logoIcon = resolveBrandAssetUrl("logoIcon", branding);
   return (
     <div
       className="w-10 h-10 rounded-lg bg-contain bg-center bg-no-repeat"
@@ -284,7 +284,7 @@ const brandingApps: AppCard[] = [
     hoverColor: "hover:border-indigo-400 group-hover:bg-indigo-600 group-hover:text-white",
   },
   {
-    href: "/admin/portal/orbit/branding",
+    href: "/admin/portal/branding/annix-orbit",
     title: "Annix Orbit",
     description: "Orbit brand — logo, colours, tagline and watermark.",
     icon: <BrandingIcon />,

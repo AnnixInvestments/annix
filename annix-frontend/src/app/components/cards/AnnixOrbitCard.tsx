@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ORBIT_BRANDING_FALLBACK, resolveOrbitAssetUrl } from "@/app/lib/annix-orbit/branding";
-import { useOrbitBranding } from "@/app/lib/query/hooks";
+import { brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { useBranding } from "@/app/lib/query/hooks";
 import { ANNIX_BG_GRADIENT, ANNIX_FONT_BODY, ANNIX_PALETTE } from "../branding/tokens";
 
 /**
@@ -54,10 +54,10 @@ export function AnnixOrbitCard({
   const borderColor = variant === "dark" ? "rgba(255, 138, 0, 0.25)" : "rgba(0, 27, 143, 0.18)";
   const descriptionColor = variant === "light" ? ANNIX_PALETTE.slate : "rgba(255, 255, 255, 0.7)";
 
-  const brandingQuery = useOrbitBranding();
+  const brandingQuery = useBranding("annix-orbit");
   const brandingData = brandingQuery.data;
-  const branding = brandingData || ORBIT_BRANDING_FALLBACK;
-  const lockupUrl = resolveOrbitAssetUrl("logoLockup", branding);
+  const branding = brandingData || brandingFallback("annix-orbit");
+  const lockupUrl = resolveBrandAssetUrl("logoLockup", branding);
 
   return (
     <div

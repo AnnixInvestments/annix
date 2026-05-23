@@ -198,7 +198,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Colours</h2>
             <div className="divide-y divide-gray-100">
               <ColorField
-                label="Navbar"
+                label="Toolbar"
                 value={form.navbarColor}
                 onChange={(v) => setField("navbarColor", v)}
               />

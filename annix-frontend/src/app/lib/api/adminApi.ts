@@ -1,9 +1,3 @@
-import type {
-  OrbitBranding,
-  OrbitBrandingAssetSlot,
-  OrbitBrandingUpdate,
-  OrbitBrandingUploadResult,
-} from "@/app/lib/annix-orbit/branding";
 import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import type {
@@ -1078,27 +1072,6 @@ class AdminApiClient {
     return this.request(`/admin/annix-orbit/job-market/vet-pending${query}`, {
       method: "POST",
     });
-  }
-
-  async orbitBranding(): Promise<OrbitBranding> {
-    return this.request("/admin/annix-orbit/branding");
-  }
-
-  async updateOrbitBranding(data: OrbitBrandingUpdate): Promise<OrbitBranding> {
-    return this.request("/admin/annix-orbit/branding", {
-      method: "PATCH",
-      body: JSON.stringify(data),
-    });
-  }
-
-  async uploadOrbitBrandingAsset(
-    slot: OrbitBrandingAssetSlot,
-    file: File,
-  ): Promise<OrbitBrandingUploadResult> {
-    return apiClient.uploadFile<OrbitBrandingUploadResult>(
-      `/admin/annix-orbit/branding/${slot}/upload`,
-      file,
-    );
   }
 
   async appBranding(brand: string): Promise<Branding> {

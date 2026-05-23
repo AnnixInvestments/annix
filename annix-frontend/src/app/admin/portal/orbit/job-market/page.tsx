@@ -185,7 +185,7 @@ export default function AdminOrbitJobMarketPage() {
           </p>
         </div>
         <Link
-          href="/admin/portal/orbit/branding"
+          href="/admin/portal/branding/annix-orbit"
           className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 whitespace-nowrap"
         >
           Branding

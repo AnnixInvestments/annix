@@ -140,12 +140,6 @@ export {
   useOrbitTimeToFill,
 } from "./annix-orbit/useOrbitAnalytics";
 export {
-  useAdminOrbitBranding,
-  useOrbitBranding,
-  useUpdateOrbitBranding,
-  useUploadOrbitBrandingAsset,
-} from "./annix-orbit/useOrbitBranding";
-export {
   useOrbitCandidateAction,
   useOrbitCandidateStatusUpdate,
   useOrbitCandidates,

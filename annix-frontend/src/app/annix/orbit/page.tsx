@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { resolveOrbitAssetUrl } from "@/app/lib/annix-orbit/branding";
-import { useOrbitBrandingContext } from "@/app/lib/annix-orbit/branding-context";
+import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
+import { brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 
 export default function AnnixOrbitHomePage() {
-  const branding = useOrbitBrandingContext();
-  const logoIcon = resolveOrbitAssetUrl("logoIcon", branding);
+  const ctx = useBrandingContext();
+  const branding = ctx || brandingFallback("annix-orbit");
+  const logoIcon = resolveBrandAssetUrl("logoIcon", branding);
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
@@ -19,7 +20,7 @@ export default function AnnixOrbitHomePage() {
           <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2">Annix Orbit</h1>
           <p
             className="text-sm sm:text-base font-semibold tracking-widest uppercase mb-3"
-            style={{ color: "var(--orbit-accent, #FF8A00)" }}
+            style={{ color: "var(--brand-accent, #FF8A00)" }}
           >
             {branding.tagline}
           </p>

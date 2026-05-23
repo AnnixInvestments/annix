@@ -1,27 +1,25 @@
 import type { Metadata } from "next";
 import { AnnixOrbitAuthProvider } from "@/app/context/AnnixOrbitAuthContext";
-import {
-  ORBIT_BRANDING_FALLBACK,
-  type OrbitBranding,
-  resolveOrbitAssetUrl,
-} from "@/app/lib/annix-orbit/branding";
+import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
+import { type Branding, brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
-import { OrbitBrandingProvider } from "./OrbitBrandingProvider";
 
-async function orbitBrandingForMetadata(): Promise<OrbitBranding> {
+async function orbitBrandingForMetadata(): Promise<Branding> {
   try {
-    const url = ipv4LocalhostUrl(`${API_BASE_URL}/public/annix-orbit/branding`);
-    const res = await fetch(url, { next: { revalidate: 60 } });
-    if (!res.ok) return ORBIT_BRANDING_FALLBACK;
-    return (await res.json()) as OrbitBranding;
+    const url = ipv4LocalhostUrl(`${API_BASE_URL}/public/branding/annix-orbit`);
+    // Short timeout + fallback so a production build (no backend reachable)
+    // never hangs prerendering these pages.
+    const res = await fetch(url, { next: { revalidate: 60 }, signal: AbortSignal.timeout(2500) });
+    if (!res.ok) return brandingFallback("annix-orbit");
+    return (await res.json()) as Branding;
   } catch {
-    return ORBIT_BRANDING_FALLBACK;
+    return brandingFallback("annix-orbit");
   }
 }
 
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await orbitBrandingForMetadata();
-  const faviconUrl = resolveOrbitAssetUrl("favicon", branding);
+  const faviconUrl = resolveBrandAssetUrl("favicon", branding);
   return {
     title: {
       template: "%s | Annix Orbit",
@@ -39,7 +37,7 @@ export default function AnnixOrbitLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   return (
     <AnnixOrbitAuthProvider>
-      <OrbitBrandingProvider>{children}</OrbitBrandingProvider>
+      <BrandingProvider brand="annix-orbit">{children}</BrandingProvider>
     </AnnixOrbitAuthProvider>
   );
 }
