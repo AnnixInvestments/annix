@@ -17,6 +17,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
+import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   type AuCocStatus,
@@ -74,7 +75,7 @@ export default function AuCocsPage() {
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
-  const [pageSize, setPageSize] = useState<number | "all">(25);
+  const [pageSize, setPageSize] = usePersistedState<number | "all">("auRubber.auCocs.pageSize", 25);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [sendingId, setSendingId] = useState<number | null>(null);
