@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -14,6 +15,7 @@ import {
 export default function ScanDeliveryNotePage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,12 +48,18 @@ export default function ScanDeliveryNotePage() {
 
     try {
       setIsAnalyzing(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Analyzing delivery note…",
+        estimatedDurationMs: 30000,
+      });
       const analysisResult = await auRubberApiClient.analyzeDeliveryNotePhoto(selectedFile);
       setResult(analysisResult);
       showToast("Delivery note analyzed successfully", "success");
     } catch (err) {
       toastError(showToast, err, "Failed to analyze delivery note");
     } finally {
+      hideExtraction();
       setIsAnalyzing(false);
     }
   };

@@ -1152,6 +1152,11 @@ export default function SupplierTaxInvoicesPage() {
                             <button
                               onClick={async () => {
                                 try {
+                                  showExtraction({
+                                    brand: "au-rubber",
+                                    label: "Extracting credit note…",
+                                    estimatedDurationMs: 45000,
+                                  });
                                   await auRubberApiClient.extractTaxInvoice(cn.id);
                                   showToast("Credit note extracted", "success");
                                   refresh();
@@ -1160,6 +1165,8 @@ export default function SupplierTaxInvoicesPage() {
                                     err instanceof Error ? err.message : "Extraction failed",
                                     "error",
                                   );
+                                } finally {
+                                  hideExtraction();
                                 }
                               }}
                               className="p-1 text-gray-400 hover:text-blue-600"

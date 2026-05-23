@@ -334,12 +334,18 @@ export default function CustomerDeliveryNotesPage() {
   const handleReanalyze = async (noteId: number) => {
     try {
       setReanalyzingId(noteId);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Re-analyzing delivery note…",
+        estimatedDurationMs: 45000,
+      });
       await auRubberApiClient.extractDeliveryNote(noteId);
       showToast("Re-analysis complete", "success");
       await notesQuery.refetch();
     } catch (err) {
       toastError(showToast, err, "Failed to re-analyze delivery note");
     } finally {
+      hideExtraction();
       setReanalyzingId(null);
     }
   };

@@ -17,6 +17,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
   SortDirection,
@@ -95,6 +96,7 @@ export default function SupplierCocsPage() {
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
   const { runBulk: runAdaptiveBulk } = useAdaptiveExtractionProgress();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const scrollSentinelRef = useScrollRestoration("au-rubber:supplier-cocs");
   const { isAdmin } = useAuRubberAuth();
   const { colors, branding } = useAuRubberBranding();
@@ -500,12 +502,18 @@ export default function SupplierCocsPage() {
   const handleReextract = async (id: number) => {
     try {
       setReextractingId(id);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Re-extracting supplier CoC…",
+        estimatedDurationMs: 60000,
+      });
       await extractSupplierCocMutation.mutateAsync(id);
       showToast("Data re-extracted successfully", "success");
       cocsQuery.refetch();
     } catch (err) {
       toastError(showToast, err, "Failed to re-extract data");
     } finally {
+      hideExtraction();
       setReextractingId(null);
     }
   };

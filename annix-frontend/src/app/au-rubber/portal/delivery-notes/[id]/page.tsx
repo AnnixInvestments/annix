@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { formatDeliveryNoteNumber } from "@/app/au-rubber/utils/deliveryNoteName";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   ImageViewerToolbar,
   imageViewerTransform,
@@ -117,6 +118,7 @@ export default function DeliveryNoteDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const noteId = Number(params.id);
 
   const noteQuery = useAuRubberDeliveryNoteDetail(noteId);
@@ -528,12 +530,18 @@ export default function DeliveryNoteDetailPage() {
   const handleExtract = async () => {
     try {
       setIsExtracting(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: hasExtractedData ? "Re-extracting delivery note…" : "Extracting delivery note…",
+        estimatedDurationMs: 45000,
+      });
       await extractDeliveryNoteMutation.mutateAsync(noteId);
       showToast("Data extracted successfully", "success");
       fetchData();
     } catch (err) {
       toastError(showToast, err, "Failed to extract data");
     } finally {
+      hideExtraction();
       setIsExtracting(false);
     }
   };
@@ -692,6 +700,11 @@ export default function DeliveryNoteDetailPage() {
     if (!confirmed) return;
     try {
       setIsBackfilling(true);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Scanning PDF for missing delivery notes…",
+        estimatedDurationMs: 60000,
+      });
       const result = await backfillSiblingsMutation.mutateAsync(noteId);
       if (result.created === 0) {
         showToast(
@@ -714,6 +727,7 @@ export default function DeliveryNoteDetailPage() {
     } catch (err) {
       toastError(showToast, err, "Failed to backfill siblings");
     } finally {
+      hideExtraction();
       setIsBackfilling(false);
     }
   };

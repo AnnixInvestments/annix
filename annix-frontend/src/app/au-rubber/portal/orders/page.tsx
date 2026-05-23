@@ -8,6 +8,7 @@ import {
 import { FileUp, Loader2, Plus, Upload } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   Pagination,
   SortDirection,
@@ -63,6 +64,7 @@ const isDeletable = (status: number): boolean => DELETABLE_STATUSES.includes(sta
 
 export default function AuRubberOrdersPage() {
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const scrollSentinelRef = useScrollRestoration("au-rubber:orders");
 
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
@@ -169,6 +171,15 @@ export default function AuRubberOrdersPage() {
 
       setIsAnalyzingDrop(true);
       try {
+        showExtraction({
+          brand: "au-rubber",
+          label:
+            validFiles.length > 1
+              ? `Analyzing ${validFiles.length} order files…`
+              : "Analyzing order file…",
+          estimatedDurationMs: 30000,
+          itemCount: validFiles.length,
+        });
         const result = await auRubberApiClient.analyzeOrderFiles(validFiles);
         setDropAnalysis(result);
         setDropFiles(validFiles);
@@ -177,10 +188,11 @@ export default function AuRubberOrdersPage() {
         const errorMessage = err instanceof Error ? err.message : "Failed to analyze files";
         showToast(errorMessage, "error");
       } finally {
+        hideExtraction();
         setIsAnalyzingDrop(false);
       }
     },
-    [isAcceptedFile, showToast],
+    [isAcceptedFile, showToast, showExtraction, hideExtraction],
   );
 
   const handleSort = (column: SortColumn) => {

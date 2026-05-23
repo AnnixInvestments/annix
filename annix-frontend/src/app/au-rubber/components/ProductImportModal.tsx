@@ -4,6 +4,7 @@ import { keys } from "es-toolkit/compat";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import * as XLSX from "xlsx";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FileImportModal } from "@/app/components/modals/FileImportModal";
 import {
   type AnalyzedProductData,
@@ -165,6 +166,7 @@ export function ProductImportModal(props: ProductImportModalProps) {
   const [updateExisting, setUpdateExisting] = useState(false);
 
   const fileUpload = useFileUpload({ accept: ACCEPTED_FILE_TYPES, multiple: true });
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const handleAnalyze = async () => {
     if (fileUpload.files.length === 0) return;
@@ -173,6 +175,15 @@ export function ProductImportModal(props: ProductImportModalProps) {
     setError(null);
 
     try {
+      showExtraction({
+        brand: "au-rubber",
+        label:
+          fileUpload.files.length > 1
+            ? `Analyzing ${fileUpload.files.length} product files…`
+            : "Analyzing product file…",
+        estimatedDurationMs: 30000,
+        itemCount: fileUpload.files.length,
+      });
       const { allLines, analyzedFiles } = await fileUpload.files.reduce(
         async (accPromise, file) => {
           const acc = await accPromise;
@@ -242,6 +253,7 @@ export function ProductImportModal(props: ProductImportModalProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze files");
     } finally {
+      hideExtraction();
       setIsAnalyzing(false);
     }
   };

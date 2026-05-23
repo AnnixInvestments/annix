@@ -2,6 +2,7 @@
 
 import { Loader2, Sparkles } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FileImportModal } from "@/app/components/modals/FileImportModal";
 import {
   type AnalyzedOrderData,
@@ -44,6 +45,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
   const [newCompanyDetails, setNewCompanyDetails] = useState<NewCompanyDetails | null>(null);
 
   const fileUpload = useFileUpload({ accept: ORDER_ACCEPTED_TYPES, multiple: true });
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   useEffect(() => {
     if (isOpen && initialAnalysis) {
@@ -66,6 +68,15 @@ export function OrderImportModal(props: OrderImportModalProps) {
     setError(null);
 
     try {
+      showExtraction({
+        brand: "au-rubber",
+        label:
+          fileUpload.files.length > 1
+            ? `Analyzing ${fileUpload.files.length} order files…`
+            : "Analyzing order file…",
+        estimatedDurationMs: 30000,
+        itemCount: fileUpload.files.length,
+      });
       const result = await auRubberApiClient.analyzeOrderFiles(fileUpload.files);
       setAnalysisResult(result);
       setEditedAnalyses(result.files);
@@ -74,6 +85,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze files");
     } finally {
+      hideExtraction();
       setIsAnalyzing(false);
     }
   };
@@ -176,6 +188,12 @@ export function OrderImportModal(props: OrderImportModalProps) {
     if (fileUpload.files.length > 0) {
       setIsAnalyzing(true);
       try {
+        showExtraction({
+          brand: "au-rubber",
+          label: "Re-analyzing order files…",
+          estimatedDurationMs: 30000,
+          itemCount: fileUpload.files.length,
+        });
         const result = await auRubberApiClient.analyzeOrderFiles(fileUpload.files);
         setAnalysisResult(result);
         setEditedAnalyses(result.files);
@@ -184,6 +202,7 @@ export function OrderImportModal(props: OrderImportModalProps) {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to re-analyze files");
       } finally {
+        hideExtraction();
         setIsAnalyzing(false);
       }
     }

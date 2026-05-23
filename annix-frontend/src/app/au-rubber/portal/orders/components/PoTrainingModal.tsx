@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import {
   auRubberApiClient,
   type PdfPageImage,
@@ -70,6 +71,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
   const [extractedText, setExtractedText] = useState<string | null>(null);
   const [extractionConfidence, setExtractionConfidence] = useState<number>(0);
   const [extracting, setExtracting] = useState(false);
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const [saving, setSaving] = useState(false);
 
   const [trainedRegions, setTrainedRegions] = useState<TrainedRegion[]>([]);
@@ -347,6 +349,11 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
 
     setExtracting(true);
     try {
+      showExtraction({
+        brand: "au-rubber",
+        label: "Extracting selected region…",
+        estimatedDurationMs: 15000,
+      });
       if (labelRegion) {
         const labelResult = await auRubberApiClient.extractOrderRegion(
           file,
@@ -366,6 +373,7 @@ export function PoTrainingModal(props: PoTrainingModalProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Extraction failed");
     } finally {
+      hideExtraction();
       setExtracting(false);
     }
   };
