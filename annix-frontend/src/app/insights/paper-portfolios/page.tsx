@@ -22,6 +22,11 @@ function fmtCurrency(value: number, currency: string): string {
   })}`;
 }
 
+function returnPct(p: PaperPortfolioSummary): number {
+  if (p.startingCapital <= 0) return 0;
+  return ((p.totalValue - p.startingCapital) / p.startingCapital) * 100;
+}
+
 export default function InsightsPaperPortfoliosPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useInsightsAuth();
@@ -47,6 +52,8 @@ export default function InsightsPaperPortfoliosPage() {
 
   const queryData = query.data;
   const portfolios: PaperPortfolioSummary[] = queryData ?? [];
+  // Best performer top-left, worst bottom-right — re-sorts as returns change daily.
+  const sortedPortfolios = [...portfolios].sort((a, b) => returnPct(b) - returnPct(a));
 
   return (
     <div className="min-h-screen text-white">
@@ -91,11 +98,8 @@ export default function InsightsPaperPortfoliosPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {portfolios.map((p) => {
-              const totalReturnPct =
-                p.startingCapital > 0
-                  ? ((p.totalValue - p.startingCapital) / p.startingCapital) * 100
-                  : 0;
+            {sortedPortfolios.map((p) => {
+              const totalReturnPct = returnPct(p);
               const sparklineCloses = p.valueSparkline;
               const drawdownPct = p.maxDrawdownPercent;
               return (
