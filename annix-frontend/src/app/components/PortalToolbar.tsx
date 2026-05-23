@@ -85,17 +85,27 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const colors = corpId.colors.portal[portalType];
   const { maxWidth } = useLayout();
 
-  // Annix Orbit pulls its palette from the DB-backed branding (set as
-  // --orbit-* CSS variables by OrbitBrandingProvider); every other portal
-  // keeps its static corpId palette. Fallbacks match the current defaults so
-  // nothing shifts before branding loads.
+  // DB-backed branding: Annix Orbit reads --orbit-* (set by OrbitBrandingProvider);
+  // brands wired to the generic BrandingProvider (e.g. Annix Rep) read --brand-*.
+  // Fallbacks are each portal's static corpId palette so nothing shifts before
+  // branding loads (or for portals with no DB branding).
   const isOrbitPortal = portalType === "annixOrbit";
-  const navBg = isOrbitPortal ? "var(--orbit-navbar, #323288)" : colors.background;
-  const navActive = isOrbitPortal ? "var(--orbit-navbar-active, #252560)" : colors.active;
-  const navHover = isOrbitPortal ? "var(--orbit-navbar-hover, #4a4da3)" : colors.hover;
-  const accentColor = isOrbitPortal ? "var(--orbit-accent, #FF8A00)" : corpId.colors.accent.orange;
-  const accentColorLight = isOrbitPortal
-    ? "var(--orbit-accent-light, #FF9C33)"
+  const isBrandPortal = portalType === "annixRep";
+  const brandPrefix = isOrbitPortal ? "orbit" : isBrandPortal ? "brand" : null;
+  const navBg = brandPrefix
+    ? `var(--${brandPrefix}-navbar, ${colors.background})`
+    : colors.background;
+  const navActive = brandPrefix
+    ? `var(--${brandPrefix}-navbar-active, ${colors.active})`
+    : colors.active;
+  const navHover = brandPrefix
+    ? `var(--${brandPrefix}-navbar-hover, ${colors.hover})`
+    : colors.hover;
+  const accentColor = brandPrefix
+    ? `var(--${brandPrefix}-accent, ${corpId.colors.accent.orange})`
+    : corpId.colors.accent.orange;
+  const accentColorLight = brandPrefix
+    ? `var(--${brandPrefix}-accent-light, ${corpId.colors.accent.orangeLight})`
     : corpId.colors.accent.orangeLight;
 
   useEffect(() => {

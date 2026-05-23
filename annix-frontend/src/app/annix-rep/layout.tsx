@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import AnnixRepLayoutClient from "./AnnixRepLayoutClient";
 
@@ -15,7 +16,9 @@ export default function AnnixRepLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   return (
     <NixAppProvider appCode="annix-rep">
-      <AnnixRepLayoutClient>{children}</AnnixRepLayoutClient>
+      <BrandingProvider brand="annix-rep" surface={false}>
+        <AnnixRepLayoutClient>{children}</AnnixRepLayoutClient>
+      </BrandingProvider>
       <NixAssistant
         context="general"
         pageContext={{ currentPage: "Annix Rep", portalContext: "general" }}
