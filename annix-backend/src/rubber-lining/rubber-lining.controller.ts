@@ -1512,6 +1512,17 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
   @ApiBearerAuth()
+  @Post("portal/delivery-notes/reslice-bundles")
+  @ApiOperation({
+    summary:
+      "Bulk re-slice EVERY delivery note (customer + supplier) whose stored document is a multi-page PDF, scoping each to only the pages that mention its own DN number. Fixes 'showing all pages'. Idempotent.",
+  })
+  async resliceAllDeliveryNoteBundles(): Promise<{ checked: number; resliced: number[] }> {
+    return this.documentFilerService.resliceAllDeliveryNoteBundles();
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
   @Post("portal/delivery-notes/backfill-missing-items")
   @ApiOperation({
     summary:

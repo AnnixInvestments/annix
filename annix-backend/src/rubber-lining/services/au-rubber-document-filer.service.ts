@@ -4,6 +4,7 @@ import { PDFDocument } from "pdf-lib";
 import { Repository } from "typeorm";
 import { extractTextFromPdf } from "../../lib/document-extraction";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { DocumentVersionStatus } from "../entities/document-version.types";
 import { CompanyType, RubberCompany } from "../entities/rubber-company.entity";
 import { DeliveryNoteStatus, RubberDeliveryNote } from "../entities/rubber-delivery-note.entity";
 import { RubberSupplierCoc } from "../entities/rubber-supplier-coc.entity";
@@ -216,6 +217,38 @@ export class AuRubberDocumentFilerService {
         this.logger.warn(`reslice DN ${note.id} failed: ${message}`);
       }
     }
+    return { checked: candidates.length, resliced };
+  }
+
+  /**
+   * Global version: re-slice EVERY active delivery note — customer AND supplier
+   * — whose stored document is a multi-page PDF, scoping each down to the pages
+   * that mention its own DN number. Idempotent: single-page docs, docs where no
+   * page matches, and docs where every page already matches are left untouched.
+   * `resliceCustomerDnByDnNumber` is DN-number driven, so it works the same for
+   * supplier DNs (it just files the slice under suppliers/ vs customers/).
+   */
+  async resliceAllDeliveryNoteBundles(): Promise<{ checked: number; resliced: number[] }> {
+    const notes = await this.deliveryNoteRepository.find({
+      where: { versionStatus: DocumentVersionStatus.ACTIVE },
+    });
+    const candidates = notes.filter(
+      (n) =>
+        n.documentPath?.toLowerCase().endsWith(".pdf") && n.status !== DeliveryNoteStatus.FAILED,
+    );
+    const resliced: number[] = [];
+    for (const note of candidates) {
+      try {
+        const kept = await this.resliceCustomerDnByDnNumber(note.id);
+        if (kept !== null) resliced.push(note.id);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`reslice DN ${note.id} failed: ${message}`);
+      }
+    }
+    this.logger.log(
+      `resliceAllDeliveryNoteBundles: checked ${candidates.length}, resliced ${resliced.length} [${resliced.join(",")}]`,
+    );
     return { checked: candidates.length, resliced };
   }
 

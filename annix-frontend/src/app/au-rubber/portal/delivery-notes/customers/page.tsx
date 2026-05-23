@@ -459,6 +459,39 @@ export default function CustomerDeliveryNotesPage() {
           <button
             onClick={async () => {
               const confirmed = await confirmDialog({
+                title: "Fix document pages for all delivery notes?",
+                message:
+                  "Re-slices every customer AND supplier delivery note whose scanned PDF still has extra pages, so each note shows only the page(s) that mention its own DN number. Safe to run repeatedly; single-page documents are left untouched. This can take a couple of minutes.",
+                confirmLabel: "Fix Document Pages",
+              });
+              if (!confirmed) return;
+              showExtraction({
+                brand: "au-rubber",
+                label: "Re-slicing delivery-note documents…",
+                estimatedDurationMs: 120000,
+              });
+              try {
+                const result = await auRubberApiClient.resliceAllDeliveryNoteBundles();
+                showToast(
+                  result.resliced.length > 0
+                    ? `Fixed ${result.resliced.length} of ${result.checked} document(s) to show only their own page(s).`
+                    : `Checked ${result.checked} document(s) — all already show only their own page(s).`,
+                  "success",
+                );
+                await notesQuery.refetch();
+              } catch (err) {
+                toastError(showToast, err, "Failed to fix document pages");
+              } finally {
+                hideExtraction();
+              }
+            }}
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            Fix Document Pages
+          </button>
+          <button
+            onClick={async () => {
+              const confirmed = await confirmDialog({
                 title: "Re-extract all customer delivery notes?",
                 message:
                   "This re-runs Vision AI on every customer DN with a document attached. Existing extracted data will be overwritten. The job runs in the background and can take several minutes.",
