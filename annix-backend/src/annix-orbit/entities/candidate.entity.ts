@@ -139,6 +139,9 @@ export class Candidate {
   @Column({ name: "target_categories", type: "jsonb", nullable: true })
   targetCategories: string[] | null;
 
+  @Column({ name: "match_tier", type: "varchar", length: 16, default: "soft" })
+  matchTier: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

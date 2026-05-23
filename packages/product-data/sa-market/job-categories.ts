@@ -560,3 +560,62 @@ export function matchAllJobCategoriesRuleBased(
     .slice(0, limit)
     .map((entry) => entry.key);
 }
+
+export const MATCH_TIERS = ["soft", "medium", "hard"] as const;
+
+export type MatchTier = (typeof MATCH_TIERS)[number];
+
+export const DEFAULT_MATCH_TIER: MatchTier = "soft";
+
+export function isMatchTier(value: string | null | undefined): value is MatchTier {
+  if (!value) return false;
+  return (MATCH_TIERS as readonly string[]).includes(value);
+}
+
+/**
+ * Neighbourhoods of related categories. A seeker on the Medium tier is matched
+ * against their target categories plus the other members of any cluster their
+ * targets belong to, so adjacent fields surface without opening the full pool.
+ */
+export const JOB_CATEGORY_CLUSTERS: JobCategoryKey[][] = [
+  [
+    "engineering-technical",
+    "skilled-trades",
+    "manufacturing-production",
+    "mining-resources",
+    "construction",
+    "energy-utilities",
+    "science-research",
+  ],
+  ["it-software", "engineering-technical", "media-creative"],
+  [
+    "finance-accounting",
+    "admin-office",
+    "hr-recruitment",
+    "legal",
+    "customer-service",
+    "sales-marketing",
+  ],
+  ["healthcare-medical", "education-training"],
+  [
+    "logistics-supply-chain",
+    "driving-transport",
+    "retail",
+    "hospitality-tourism",
+    "agriculture",
+    "security",
+  ],
+];
+
+/**
+ * Expands target categories with the other members of any cluster they belong
+ * to (the targets themselves are always included). Returns distinct keys.
+ */
+export function expandWithAdjacentCategories(keys: JobCategoryKey[]): JobCategoryKey[] {
+  if (keys.length === 0) return [];
+  const targetSet = new Set<JobCategoryKey>(keys);
+  const adjacent = JOB_CATEGORY_CLUSTERS.filter((cluster) =>
+    cluster.some((key) => targetSet.has(key)),
+  ).flat();
+  return [...new Set<JobCategoryKey>([...keys, ...adjacent])];
+}

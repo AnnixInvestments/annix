@@ -1,4 +1,14 @@
-import { type Commodity, TRADE_LABELS, type TradeKey } from "@annix/product-data/sa-market";
+import {
+  type Commodity,
+  DEFAULT_MATCH_TIER,
+  expandWithAdjacentCategories,
+  isJobCategoryKey,
+  isMatchTier,
+  type JobCategoryKey,
+  type MatchTier,
+  TRADE_LABELS,
+  type TradeKey,
+} from "@annix/product-data/sa-market";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -19,6 +29,21 @@ const COMMODITY_WEIGHT_WITHIN_BOOST = 0.4;
 const OUTSIDE_RADIUS_PENALTY = 0.4;
 
 const TOP_MATCHES_LIMIT = 20;
+
+const CATEGORY_BOOST_CAP_BY_TIER: Record<MatchTier, number> = {
+  soft: 0.06,
+  medium: 0.1,
+  hard: 0.12,
+};
+const ADJACENT_CATEGORY_BOOST_FACTOR = 0.5;
+
+interface CategoryNarrowing {
+  // null = no pool restriction (Soft tier, or seeker has no target categories).
+  pool: string[] | null;
+  targetSet: Set<string>;
+  adjacentSet: Set<string>;
+  boostCap: number;
+}
 
 export const STRETCH_RESERVED_SLOTS = 3;
 export const STRETCH_SCORE_BAND_MIN = 0.6;
@@ -68,7 +93,12 @@ export class CandidateJobMatchingService {
     if (!candidate) {
       return [];
     } else {
-      const similarJobs = await this.findSimilarJobsByEmbedding(candidateId, TOP_MATCHES_LIMIT);
+      const narrowing = this.resolveCategoryNarrowing(candidate);
+      const similarJobs = await this.findSimilarJobsByEmbedding(
+        candidateId,
+        TOP_MATCHES_LIMIT,
+        narrowing.pool,
+      );
 
       const results = await Promise.all(
         similarJobs.map(async (row) => {
@@ -76,7 +106,15 @@ export class CandidateJobMatchingService {
           if (!job) {
             return null;
           } else {
-            return this.scoreAndSaveMatch(candidate, job, row.similarity, candidateId, job.id);
+            const categoryBoost = this.categoryBoostFor(job, narrowing);
+            return this.scoreAndSaveMatch(
+              candidate,
+              job,
+              row.similarity,
+              candidateId,
+              job.id,
+              categoryBoost,
+            );
           }
         }),
       );
@@ -207,10 +245,45 @@ export class CandidateJobMatchingService {
     await this.matchRepo.update(matchId, { dismissed: true });
   }
 
+  resolveCategoryNarrowing(candidate: Candidate): CategoryNarrowing {
+    const tier: MatchTier = isMatchTier(candidate.matchTier)
+      ? candidate.matchTier
+      : DEFAULT_MATCH_TIER;
+    const targets = (candidate.targetCategories ?? []).filter((key): key is JobCategoryKey =>
+      isJobCategoryKey(key),
+    );
+
+    if (targets.length === 0) {
+      return { pool: null, targetSet: new Set(), adjacentSet: new Set(), boostCap: 0 };
+    }
+
+    const adjacent = expandWithAdjacentCategories(targets);
+    const pool = tier === "hard" ? targets : tier === "medium" ? adjacent : null;
+
+    return {
+      pool,
+      targetSet: new Set<string>(targets),
+      adjacentSet: new Set<string>(adjacent),
+      boostCap: CATEGORY_BOOST_CAP_BY_TIER[tier],
+    };
+  }
+
+  private categoryBoostFor(job: ExternalJob, narrowing: CategoryNarrowing): number {
+    const category = job.canonicalCategory;
+    if (!category || narrowing.targetSet.size === 0) return 0;
+    if (narrowing.targetSet.has(category)) return narrowing.boostCap;
+    if (narrowing.adjacentSet.has(category)) {
+      return narrowing.boostCap * ADJACENT_CATEGORY_BOOST_FACTOR;
+    }
+    return 0;
+  }
+
   private async findSimilarJobsByEmbedding(
     candidateId: number,
     limit: number,
+    categoryPool: string[] | null = null,
   ): Promise<Array<{ jobId: number; similarity: number }>> {
+    const hasPool = categoryPool !== null && categoryPool.length > 0;
     const result = await this.externalJobRepo.query(
       `
       SELECT j.id AS "jobId",
@@ -220,10 +293,11 @@ export class CandidateJobMatchingService {
       WHERE c.id = $1
         AND c.embedding IS NOT NULL
         AND j.embedding IS NOT NULL
+        ${hasPool ? "AND j.canonical_category = ANY($3)" : ""}
       ORDER BY c.embedding <=> j.embedding
       LIMIT $2
       `,
-      [candidateId, limit],
+      hasPool ? [candidateId, limit, categoryPool] : [candidateId, limit],
     );
 
     return result.map((r: { jobId: number; similarity: string }) => ({
@@ -327,6 +401,7 @@ export class CandidateJobMatchingService {
     embeddingSimilarity: number,
     candidateId: number,
     externalJobId: number,
+    categoryBoost = 0,
   ): Promise<CandidateJobMatch> {
     const skillsResult = this.calculateSkillsOverlap(candidate, job);
     const experienceMatch = this.calculateExperienceMatch(candidate, job);
@@ -341,10 +416,11 @@ export class CandidateJobMatchingService {
       experienceMatch * WEIGHT_EXPERIENCE +
       locationMatch * WEIGHT_LOCATION;
 
-    const withBoost =
+    const withTradeBoost =
       tradeBoost.score === null
         ? baseScore
         : Math.min(1, baseScore + tradeBoost.score * TRADE_PROFILE_BOOST_CAP);
+    const withBoost = Math.min(1, withTradeBoost + categoryBoost);
     const overallScore = outsideRadius ? withBoost * OUTSIDE_RADIUS_PENALTY : withBoost;
 
     const matchDetails: MatchDetails = {
