@@ -16,6 +16,7 @@ import {
   isAuRubberInboxPath,
   sanitizeAuRubberDocNumber,
 } from "../lib/au-rubber-document-paths";
+import { RubberCocExtractionService } from "../rubber-coc-extraction.service";
 import { PdfPageCacheService } from "./pdf-page-cache.service";
 import { PdfSlicerService } from "./pdf-slicer.service";
 
@@ -40,6 +41,7 @@ export class AuRubberDocumentFilerService {
     private readonly taxInvoiceRepository: Repository<RubberTaxInvoice>,
     @InjectRepository(RubberSupplierCoc)
     private readonly supplierCocRepository: Repository<RubberSupplierCoc>,
+    private readonly cocExtractionService: RubberCocExtractionService,
   ) {}
 
   async fileDeliveryNoteSlices(args: FileDeliveryNoteSlicesArgs): Promise<void> {
@@ -141,7 +143,7 @@ export class AuRubberDocumentFilerService {
     if (totalPages <= 1) return null; // single page — nothing to slice
 
     // Per-page text scan: keep pages whose text mentions this DN number.
-    const matchingPages: number[] = [];
+    let matchingPages: number[] = [];
     for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
       const onePage = await PDFDocument.create();
       const [copied] = await onePage.copyPages(sourcePdf, [pageNum - 1]);
@@ -150,6 +152,23 @@ export class AuRubberDocumentFilerService {
       const text = await extractTextFromPdf(pageBuffer);
       if (this.pageTextMentionsDn(text, dnNumber)) {
         matchingPages.push(pageNum);
+      }
+    }
+
+    // Scanned (image-only) PDFs have no text layer, so the text scan finds
+    // nothing. Fall back to Vision OCR: render the pages and ask which one(s)
+    // carry this DN number. Only override when Vision actually returns a
+    // subset — never let it widen a confident text match.
+    if (matchingPages.length === 0) {
+      const visionPages = await this.cocExtractionService.pagesContainingDnNumber(
+        sourceBuffer,
+        dnNumber,
+      );
+      if (visionPages.length > 0) {
+        this.logger.log(
+          `reslice DN ${dnNumber} (#${deliveryNoteId}): text scan matched 0/${totalPages}; Vision matched [${visionPages.join(",")}]`,
+        );
+        matchingPages = visionPages;
       }
     }
 
@@ -177,9 +196,14 @@ export class AuRubberDocumentFilerService {
       this.bufferAsMulter(slicedBuffer, filename, "application/pdf"),
       targetPath.substring(0, targetPath.lastIndexOf("/")),
     );
+    // documentPath now points at the SLICED PDF, whose pages are renumbered
+    // 1..N — so sourcePageNumbers must describe the slice (1,2,…), not the
+    // original page numbers (e.g. [2]). Recording the originals leaves the
+    // viewer trying to show a page index that no longer exists in the slice.
+    const slicedPageNumbers = matchingPages.map((_, i) => i + 1);
     await this.deliveryNoteRepository.update(note.id, {
       documentPath: uploaded.path,
-      sourcePageNumbers: matchingPages,
+      sourcePageNumbers: slicedPageNumbers,
     });
     this.pdfPageCacheService.invalidate(note.documentPath);
     this.pdfPageCacheService.invalidate(uploaded.path);

@@ -43,6 +43,7 @@ describe("AuRubberDocumentFilerService", () => {
         companyRepository as never,
         {} as never,
         {} as never,
+        {} as never,
       );
       return { service, deliveryNoteRepository, storageService, pdfPageCacheService };
     };

@@ -1996,6 +1996,60 @@ format, return { "batches": [] }.
     return pages.filter((page) => page.content !== undefined).map((page) => page.content as Buffer);
   }
 
+  /**
+   * Vision fallback for page→DN mapping. The pdf-parse text scan can't read
+   * SCANNED (image-only) delivery-note PDFs — they have no text layer — so the
+   * reslicer can't tell which page belongs to which DN. This renders every page
+   * and asks Gemini which 1-based page numbers carry the given DN number as the
+   * page's OWN delivery-note number. Returns [] on any failure (caller then
+   * leaves the document untouched rather than slicing wrongly).
+   */
+  async pagesContainingDnNumber(pdfBuffer: Buffer, dnNumber: string): Promise<number[]> {
+    const target = (dnNumber || "").trim();
+    if (target.length === 0) return [];
+
+    let images: Buffer[];
+    try {
+      images = await this.convertPdfToImages(pdfBuffer);
+    } catch (err) {
+      this.logger.warn(
+        `pagesContainingDnNumber: render failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return [];
+    }
+    if (images.length <= 1) return images.length === 1 ? [1] : [];
+
+    const systemPrompt =
+      "You identify delivery notes by their DN number on scanned document pages. " +
+      "You are given the pages of ONE PDF as images, in order (image 1 = page 1, image 2 = page 2, and so on).";
+    const userPrompt =
+      "Each page is a delivery note. Return the 1-based page number(s) whose page shows " +
+      `delivery note number "${target}" as that page's OWN DN number (the delivery note's ` +
+      "own number, usually near the top — NOT a reference, PO, or roll number). One delivery " +
+      `note may span consecutive pages. Respond with ONLY JSON: {"pageNumbers": [<numbers>]}. ` +
+      `If no page shows "${target}" as its own DN number, return {"pageNumbers": []}.`;
+
+    try {
+      const { data } = await this.callGeminiWithImages(
+        systemPrompt,
+        userPrompt,
+        images,
+        "au-rubber-reslice-page-detect",
+      );
+      const raw = (data as { pageNumbers?: unknown }).pageNumbers;
+      if (!Array.isArray(raw)) return [];
+      const pages = raw
+        .map((n) => Number(n))
+        .filter((n) => Number.isInteger(n) && n >= 1 && n <= images.length);
+      return Array.from(new Set(pages)).sort((a, b) => a - b);
+    } catch (err) {
+      this.logger.warn(
+        `pagesContainingDnNumber: Gemini failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return [];
+    }
+  }
+
   private sniffDocumentKind(buffer: Buffer): "pdf" | "png" | "jpeg" | "unknown" {
     if (buffer.length >= 5 && buffer.toString("ascii", 0, 5) === "%PDF-") return "pdf";
     if (
