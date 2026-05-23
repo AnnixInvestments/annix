@@ -19,6 +19,7 @@ import { User } from "../user/entities/user.entity";
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
+import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { AnnixOrbitAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
@@ -211,6 +212,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     ComplianceController,
     AdminEeTargetsController,
     AdminOrbitJobMarketController,
+    AdminOrbitSeekerController,
     SeekerJobsController,
     TradeProfileController,
     CredentialController,

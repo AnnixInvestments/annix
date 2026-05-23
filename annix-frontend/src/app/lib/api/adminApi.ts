@@ -1074,6 +1074,20 @@ class AdminApiClient {
     });
   }
 
+  async orbitSeekerMatchTier(email: string): Promise<OrbitSeekerMatchTier> {
+    return this.request(`/admin/annix-orbit/seekers/lookup?email=${encodeURIComponent(email)}`);
+  }
+
+  async setOrbitSeekerMatchTier(
+    email: string,
+    tier: string,
+  ): Promise<{ candidatesAffected: number; matchTier: string }> {
+    return this.request("/admin/annix-orbit/seekers/match-tier", {
+      method: "PATCH",
+      body: JSON.stringify({ email, tier }),
+    });
+  }
+
   async appBranding(brand: string): Promise<Branding> {
     return this.request(`/admin/branding/${brand}`);
   }
@@ -1095,6 +1109,13 @@ class AdminApiClient {
       file,
     );
   }
+}
+
+export interface OrbitSeekerMatchTier {
+  hasCandidate: boolean;
+  matchTier: string;
+  targetCategories: string[];
+  candidateIds: number[];
 }
 
 export interface AiUsageQueryParams {

@@ -35,6 +35,8 @@ export {
   useAdminOrbitJobMarketProviders,
   useAdminOrbitJobMarketSources,
   useAdminOrbitJobMarketStats,
+  useAdminOrbitSeekerMatchTier,
+  useAdminSetOrbitSeekerMatchTier,
   useAdminTriggerOrbitIngestion,
   useAdminUpdateOrbitJobMarketSource,
   useAdminVetPendingOrbitJobs,

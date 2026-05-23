@@ -236,6 +236,14 @@ const platformApps: AppCard[] = [
     hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/orbit/seeker-tiers",
+    title: "Orbit Seeker Tiers",
+    description: "Set a seeker's Nix match tier (Soft / Medium / Hard) for testing.",
+    icon: <AnnixOrbitIcon />,
+    color: "bg-violet-100 text-violet-600",
+    hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
+  },
+  {
     href: "/comply-sa/dashboard",
     title: "Comply SA",
     description: "SA SME compliance dashboard with B-BBEE, tax tools, and regulatory tracking.",

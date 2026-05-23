@@ -1,7 +1,9 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { DEFAULT_MATCH_TIER, isMatchTier, type MatchTier } from "@annix/product-data/sa-market";
+import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
+import { isNumber } from "es-toolkit/compat";
 import { MoreThanOrEqual, Repository } from "typeorm";
-import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
+import { DateTime, nowMillis } from "../../lib/datetime";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -186,6 +188,49 @@ export class SeekerJobFeedService {
     return this.candidateRepo.find({ where: { email } });
   }
 
+  async matchTierForSeeker(email: string | null): Promise<{
+    hasCandidate: boolean;
+    matchTier: MatchTier;
+    targetCategories: string[];
+    candidateIds: number[];
+  }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return {
+        hasCandidate: false,
+        matchTier: DEFAULT_MATCH_TIER,
+        targetCategories: [],
+        candidateIds: [],
+      };
+    }
+    const primary = candidates[0];
+    const matchTier = isMatchTier(primary.matchTier) ? primary.matchTier : DEFAULT_MATCH_TIER;
+    return {
+      hasCandidate: true,
+      matchTier,
+      targetCategories: primary.targetCategories ?? [],
+      candidateIds: candidates.map((c) => c.id),
+    };
+  }
+
+  async setMatchTierForSeeker(
+    email: string | null,
+    tier: string,
+  ): Promise<{ candidatesAffected: number; matchTier: MatchTier }> {
+    if (!isMatchTier(tier)) {
+      throw new BadRequestException(`Invalid match tier: ${tier}`);
+    }
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { candidatesAffected: 0, matchTier: tier };
+    }
+    await Promise.all(
+      candidates.map((candidate) => this.candidateRepo.update(candidate.id, { matchTier: tier })),
+    );
+    this.logger.log(`Set match tier "${tier}" for ${candidates.length} candidate(s) of ${email}`);
+    return { candidatesAffected: candidates.length, matchTier: tier };
+  }
+
   async consentStatusForSeeker(
     email: string | null,
   ): Promise<{ hasCandidate: boolean; consented: boolean; consentedAt: string | null }> {
@@ -256,9 +301,7 @@ export class SeekerJobFeedService {
 
     const sourceIds = [
       ...new Set(
-        flat
-          .map((m) => m.externalJob?.sourceId)
-          .filter((id): id is number => typeof id === "number"),
+        flat.map((m) => m.externalJob?.sourceId).filter((id): id is number => isNumber(id)),
       ),
     ];
     const sources = sourceIds.length > 0 ? await this.sourceRepo.findByIds(sourceIds) : [];
@@ -508,7 +551,7 @@ export class SeekerJobFeedService {
     }
 
     if (input.externalJobId !== null && candidateId !== null) {
-      const cutoff = fromJSDate(new Date(nowMillis() - APPLY_CLICK_DEDUP_MS)).toJSDate();
+      const cutoff = DateTime.fromMillis(nowMillis() - APPLY_CLICK_DEDUP_MS).toJSDate();
       const existing = await this.applyClickRepo.findOne({
         where: {
           candidateId,

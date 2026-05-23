@@ -96,4 +96,8 @@ export const adminKeys = {
       limit?: number;
     }) => [...adminKeys.orbitJobMarket.all, "jobs", params ?? {}] as const,
   },
+  orbitSeekers: {
+    all: ["admin", "orbitSeekers"] as const,
+    matchTier: (email: string) => [...adminKeys.orbitSeekers.all, "matchTier", email] as const,
+  },
 } as const;

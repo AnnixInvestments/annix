@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { adminApiClient } from "@/app/lib/api/adminApi";
+import { adminApiClient, type OrbitSeekerMatchTier } from "@/app/lib/api/adminApi";
 import type {
   CreateJobMarketSourceDto,
   ExternalJob,
@@ -110,6 +110,27 @@ export function useAdminVetPendingOrbitJobs() {
     mutationFn: (limit?: number) => adminApiClient.vetPendingOrbitJobs(limit),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+    },
+  });
+}
+
+export function useAdminOrbitSeekerMatchTier(email: string) {
+  const trimmed = email.trim();
+  return useQuery<OrbitSeekerMatchTier>({
+    queryKey: adminKeys.orbitSeekers.matchTier(trimmed),
+    queryFn: () => adminApiClient.orbitSeekerMatchTier(trimmed),
+    enabled: trimmed.length > 0,
+    staleTime: 30 * 1000,
+  });
+}
+
+export function useAdminSetOrbitSeekerMatchTier() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ email, tier }: { email: string; tier: string }) =>
+      adminApiClient.setOrbitSeekerMatchTier(email, tier),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitSeekers.all });
     },
   });
 }
