@@ -272,6 +272,15 @@ if [ -n "$STAGED_FRONTEND_TS" ]; then
         exit 1
     fi
     echo "Frontend type-check passed."
+
+    # Long-Running Operations audit (NON-BLOCKING) — flags any staged extraction/
+    # analyze/re-extract call-site missing a progress popup, per CLAUDE.md →
+    # "Long-Running Operations". This never blocks the commit; it's an active
+    # reminder so the popup-timer directive gets applied to old + new code alike.
+    STAGED_FRONTEND_TSX=$(echo "$STAGED_FRONTEND_TS" | grep -E '\.tsx$' || true)
+    if [ -n "$STAGED_FRONTEND_TSX" ]; then
+        node "$ROOT_DIR/scripts/audit-extraction-progress.mjs" $STAGED_FRONTEND_TSX || true
+    fi
 fi
 
 # 4. SWC landmine check — two passes against staged frontend files. SWC
