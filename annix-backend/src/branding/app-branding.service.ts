@@ -22,6 +22,7 @@ export interface BrandingView {
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
+  loadingAnimation: string;
   assets: Record<BrandingAssetSlot, boolean>;
   assetVersion: number;
 }
@@ -81,6 +82,7 @@ export class AppBrandingService {
       watermarkEnabled: row.watermarkEnabled,
       watermarkOpacity: row.watermarkOpacity,
       watermarkMaxSizePx: row.watermarkMaxSizePx,
+      loadingAnimation: row.loadingAnimation,
       assets: {
         logoIcon: row.logoIconPath != null,
         logoLockup: row.logoLockupPath != null,
@@ -117,6 +119,7 @@ export class AppBrandingService {
     if (dto.watermarkEnabled !== undefined) existing.watermarkEnabled = dto.watermarkEnabled;
     if (dto.watermarkOpacity !== undefined) existing.watermarkOpacity = dto.watermarkOpacity;
     if (dto.watermarkMaxSizePx !== undefined) existing.watermarkMaxSizePx = dto.watermarkMaxSizePx;
+    if (dto.loadingAnimation !== undefined) existing.loadingAnimation = dto.loadingAnimation;
 
     if (dto.logoIconPath !== undefined) existing.logoIconPath = dto.logoIconPath;
     if (dto.logoLockupPath !== undefined) existing.logoLockupPath = dto.logoLockupPath;

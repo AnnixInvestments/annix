@@ -62,6 +62,9 @@ export class AppBranding {
   @Column({ name: "watermark_max_size_px", type: "int", default: 880 })
   watermarkMaxSizePx: number;
 
+  @Column({ name: "loading_animation", type: "varchar", length: 32, default: "pulse" })
+  loadingAnimation: string;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

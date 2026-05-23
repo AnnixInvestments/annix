@@ -5,6 +5,7 @@ import { Suspense, useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
+import { BrandedLoader } from "@/app/lib/branding/components/BrandedLoader";
 import { useOrbitMyProfileStatus } from "@/app/lib/query/hooks";
 import { CV_ASSISTANT_VERSION } from "../config/version";
 
@@ -93,7 +94,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]" />
+        <BrandedLoader brand="annix-orbit" label="Loading…" />
       </div>
     );
   }
@@ -147,7 +148,7 @@ export default function SeekerLayout(props: { children: React.ReactNode }) {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
+          <BrandedLoader brand="annix-orbit" label="Loading…" />
         </div>
       }
     >

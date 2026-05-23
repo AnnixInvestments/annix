@@ -1,6 +1,7 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import {
   IsBoolean,
+  IsIn,
   IsInt,
   IsOptional,
   IsString,
@@ -108,4 +109,9 @@ export class UpdateBrandingDto {
   @Min(120)
   @Max(2000)
   watermarkMaxSizePx?: number;
+
+  @ApiPropertyOptional({ enum: ["pulse", "spin", "bounce", "glow", "float"] })
+  @IsOptional()
+  @IsIn(["pulse", "spin", "bounce", "glow", "float"])
+  loadingAnimation?: string;
 }

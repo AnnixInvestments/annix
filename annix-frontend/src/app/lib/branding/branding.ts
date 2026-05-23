@@ -14,9 +14,20 @@ export interface Branding {
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
+  loadingAnimation: string;
   assets: Record<BrandingAssetSlot, boolean>;
   assetVersion: number;
 }
+
+export const BRAND_LOADING_ANIMATIONS = [
+  { key: "pulse", label: "Pulse" },
+  { key: "spin", label: "Spin" },
+  { key: "bounce", label: "Bounce" },
+  { key: "glow", label: "Glow" },
+  { key: "float", label: "Float" },
+] as const;
+
+export type BrandLoadingAnimation = (typeof BRAND_LOADING_ANIMATIONS)[number]["key"];
 
 export interface BrandingUpdate {
   navbarColor?: string;
@@ -36,6 +47,7 @@ export interface BrandingUpdate {
   watermarkEnabled?: boolean;
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
+  loadingAnimation?: string;
 }
 
 export interface BrandingUploadResult {
@@ -77,6 +89,7 @@ export function brandingFallback(brandCode: string): Branding {
     watermarkEnabled: true,
     watermarkOpacity: 0.1,
     watermarkMaxSizePx: 880,
+    loadingAnimation: "pulse",
     assets: {
       logoIcon: false,
       logoLockup: false,

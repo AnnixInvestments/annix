@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import {
+  BRAND_LOADING_ANIMATIONS,
   type Branding,
   type BrandingAssetSlot,
   type BrandingUpdate,
@@ -24,6 +25,7 @@ interface BrandingForm {
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
+  loadingAnimation: string;
 }
 
 const ASSET_FIELDS: { key: BrandingAssetSlot; label: string; hint: string }[] = [
@@ -63,6 +65,7 @@ function formFromBranding(branding: Branding): BrandingForm {
     watermarkEnabled: branding.watermarkEnabled,
     watermarkOpacity: branding.watermarkOpacity,
     watermarkMaxSizePx: branding.watermarkMaxSizePx,
+    loadingAnimation: branding.loadingAnimation,
   };
 }
 
@@ -236,32 +239,6 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Text</h2>
-            <div className="space-y-3">
-              <label className="block">
-                <span className="text-sm text-gray-700">Tagline</span>
-                <input
-                  type="text"
-                  value={form.tagline}
-                  maxLength={200}
-                  onChange={(e) => setField("tagline", e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                />
-              </label>
-              <label className="block">
-                <span className="text-sm text-gray-700">Description</span>
-                <textarea
-                  value={form.description}
-                  maxLength={2000}
-                  rows={3}
-                  onChange={(e) => setField("description", e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm resize-none"
-                />
-              </label>
-            </div>
-          </section>
-
-          <section className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Images</h2>
             <div className="space-y-4">
               {ASSET_FIELDS.map((field) => {
@@ -296,32 +273,6 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                 );
               })}
             </div>
-          </section>
-
-          <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Watermark</h2>
-            <label className="flex items-center gap-2 mb-4">
-              <input
-                type="checkbox"
-                checked={form.watermarkEnabled}
-                onChange={(e) => setField("watermarkEnabled", e.target.checked)}
-                className="h-4 w-4"
-              />
-              <span className="text-sm text-gray-700">Show the background watermark</span>
-            </label>
-            <div className="flex items-center justify-between text-sm text-gray-700">
-              <span>Opacity</span>
-              <span className="font-mono text-xs">{form.watermarkOpacity.toFixed(2)}</span>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={0.5}
-              step={0.01}
-              value={form.watermarkOpacity}
-              onChange={(e) => setField("watermarkOpacity", Number(e.target.value))}
-              className="w-full"
-            />
           </section>
 
           <button
@@ -390,23 +341,157 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               </div>
             </div>
           </div>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Watermark</h2>
+            <label className="flex items-center gap-2 mb-4">
+              <input
+                type="checkbox"
+                checked={form.watermarkEnabled}
+                onChange={(e) => setField("watermarkEnabled", e.target.checked)}
+                className="h-4 w-4"
+              />
+              <span className="text-sm text-gray-700">Show the background watermark</span>
+            </label>
+            <div className="flex items-center justify-between text-sm text-gray-700">
+              <span>Opacity</span>
+              <span className="font-mono text-xs">{form.watermarkOpacity.toFixed(2)}</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={0.5}
+              step={0.01}
+              value={form.watermarkOpacity}
+              onChange={(e) => setField("watermarkOpacity", Number(e.target.value))}
+              className="w-full"
+            />
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Loading animation</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              How the logo animates on loading screens. Pick a style — it previews live.
+            </p>
+            <div className="grid grid-cols-5 gap-2">
+              {BRAND_LOADING_ANIMATIONS.map((option) => {
+                const isSelected = form.loadingAnimation === option.key;
+                return (
+                  <button
+                    key={option.key}
+                    type="button"
+                    onClick={() => setField("loadingAnimation", option.key)}
+                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-colors ${
+                      isSelected
+                        ? "border-violet-500 bg-violet-50"
+                        : "border-gray-200 hover:border-gray-300"
+                    }`}
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center overflow-hidden">
+                      <span
+                        className={`h-8 w-8 rounded-[18%] bg-contain bg-center bg-no-repeat brand-anim-${option.key}`}
+                        style={{ backgroundImage: `url('${logoPreview}')` }}
+                      />
+                    </span>
+                    <span className="text-[11px] text-gray-600">{option.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-3">Text</h2>
+            <div className="space-y-3">
+              <label className="block">
+                <span className="text-sm text-gray-700">Tagline</span>
+                <input
+                  type="text"
+                  value={form.tagline}
+                  maxLength={200}
+                  onChange={(e) => setField("tagline", e.target.value)}
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block">
+                <span className="text-sm text-gray-700">Description</span>
+                <textarea
+                  value={form.description}
+                  maxLength={2000}
+                  rows={2}
+                  onChange={(e) => setField("description", e.target.value)}
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-1.5 text-sm resize-none"
+                />
+              </label>
+            </div>
+          </section>
         </div>
       </div>
     </div>
   );
 }
 
+function clampNum(n: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, n));
+}
+
+function hslToHex(h: number, s: number, l: number): string {
+  const sf = s / 100;
+  const lf = l / 100;
+  const k = (n: number) => (n + h / 30) % 12;
+  const a = sf * Math.min(lf, 1 - lf);
+  const f = (n: number) => lf - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1));
+  const toHex = (x: number) =>
+    Math.round(255 * x)
+      .toString(16)
+      .padStart(2, "0");
+  return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
+}
+
+function hexToHsl(hex: string): { h: number; s: number; l: number } {
+  const m = hex.replace("#", "");
+  if (m.length < 6) return { h: 0, s: 0, l: 0 };
+  const r = parseInt(m.slice(0, 2), 16) / 255;
+  const g = parseInt(m.slice(2, 4), 16) / 255;
+  const b = parseInt(m.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: Math.round(l * 100) };
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h = 0;
+  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  return { h: Math.round(h * 60), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
 function ColorField(props: { label: string; value: string; onChange: (v: string) => void }) {
   const { label, value, onChange } = props;
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      const node = ref.current;
+      if (node && !node.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
       <span className="text-sm text-gray-700">{label}</span>
-      <span className="flex items-center gap-2">
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="h-8 w-10 rounded border border-gray-300 bg-white p-0.5"
+      <div ref={ref} className="relative flex items-center gap-2">
+        <button
+          type="button"
+          aria-label={`Pick ${label} colour`}
+          onClick={() => setOpen((o) => !o)}
+          className="h-8 w-10 rounded border border-gray-300"
+          style={{ backgroundColor: value }}
         />
         <input
           type="text"
@@ -414,7 +499,66 @@ function ColorField(props: { label: string; value: string; onChange: (v: string)
           onChange={(e) => onChange(e.target.value)}
           className="w-24 rounded border border-gray-300 px-2 py-1 text-xs font-mono"
         />
-      </span>
+        {open ? <ColorPickerPopover value={value} onChange={onChange} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function ColorPickerPopover(props: { value: string; onChange: (v: string) => void }) {
+  const { value, onChange } = props;
+  const [hue, setHue] = useState(() => hexToHsl(value).h);
+
+  useEffect(() => {
+    setHue(hexToHsl(value).h);
+  }, [value]);
+
+  const handleHueClick = (e: React.MouseEvent<HTMLButtonElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = (e.clientX - rect.left) / rect.width;
+    setHue(clampNum(Math.round(ratio * 360), 0, 360));
+  };
+
+  const saturations = [100, 80, 62, 44];
+  const lightnesses = [94, 86, 76, 66, 56, 46, 36, 26];
+  const selected = value.toLowerCase();
+
+  return (
+    <div className="absolute right-0 top-10 z-50 w-64 rounded-lg border border-gray-200 bg-white p-3 shadow-xl">
+      <p className="text-xs font-medium text-gray-500 mb-1.5">Pick a colour</p>
+      <button
+        type="button"
+        onClick={handleHueClick}
+        aria-label="Choose hue"
+        className="relative block h-4 w-full cursor-pointer rounded mb-3"
+        style={{
+          background:
+            "linear-gradient(to right, #ff0000 0%, #ffff00 17%, #00ff00 33%, #00ffff 50%, #0000ff 67%, #ff00ff 83%, #ff0000 100%)",
+        }}
+      >
+        <span
+          className="absolute -top-0.5 h-5 w-1 rounded bg-white ring-1 ring-gray-600"
+          style={{ left: `calc(${(hue / 360) * 100}% - 2px)` }}
+        />
+      </button>
+      <div className="grid grid-cols-8 gap-1">
+        {saturations.flatMap((s) =>
+          lightnesses.map((l) => {
+            const hex = hslToHex(hue, s, l);
+            const isSelected = hex.toLowerCase() === selected;
+            return (
+              <button
+                key={`${s}-${l}`}
+                type="button"
+                title={hex}
+                onClick={() => onChange(hex)}
+                className={`h-5 w-full rounded ${isSelected ? "ring-2 ring-offset-1 ring-gray-800" : "hover:scale-110 transition-transform"}`}
+                style={{ backgroundColor: hex }}
+              />
+            );
+          }),
+        )}
+      </div>
     </div>
   );
 }
