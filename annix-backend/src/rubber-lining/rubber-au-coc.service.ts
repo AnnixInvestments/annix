@@ -398,13 +398,18 @@ export class RubberAuCocService {
         relations: ["rollStock", "rollStock.compoundCoding"],
       });
 
-      let hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
-
-      if (items.length === 0 && !hasExtractedRollData && coc.sourceDeliveryNoteId) {
+      // Regenerate = rebuild from the CURRENT delivery-note data. When this CoC
+      // is built from the DN roll snapshot (i.e. it has no roll-stock items),
+      // always re-pull that snapshot from the source DN first, so a roll number
+      // or dimension corrected on the CDN (e.g. via the line-item editor) shows
+      // up on the regenerated certificate — not only when the snapshot is empty.
+      // populateRollDataFromDeliveryNote no-ops when the DN has no roll data, so
+      // an existing snapshot is preserved rather than wiped.
+      if (items.length === 0 && coc.sourceDeliveryNoteId) {
         await this.populateRollDataFromDeliveryNote(coc);
-        hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
       }
 
+      const hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
       if (items.length === 0 && !hasExtractedRollData) {
         throw new BadRequestException("No rolls found for this CoC");
       }
