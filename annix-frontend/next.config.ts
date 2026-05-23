@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   },
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, ".."),
+  // The swarm runs `next dev` against the default `.next`. Pre-push runs
+  // `next build` (production) — sharing `.next` makes the two clobber each
+  // other's cache, so every pre-push build runs fully cold (~5 min) and the
+  // dev server has to rebuild afterwards. Route the pre-push production build
+  // to its own dist dir so each keeps a warm, isolated incremental cache.
+  // The pre-push hook sets NEXT_PREPUSH_BUILD=1; dev and CI use `.next`.
+  distDir: process.env.NEXT_PREPUSH_BUILD === "1" ? ".next-prepush" : ".next",
   transpilePackages: [
     "@annix/product-data",
     "@annix/feedback-sdk",

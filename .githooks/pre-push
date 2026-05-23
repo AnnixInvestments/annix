@@ -207,7 +207,10 @@ fi
 BUILD_FE_PID=""
 build_fe_start=$(_timer_ms)
 if [ "$FRONTEND_CHANGED" = "1" ] && [ "${PRE_PUSH_SKIP_BUILDS:-0}" != "1" ]; then
-  ( cd "$ROOT_DIR/annix-frontend" && rm -f .next/lock && pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
+  # NEXT_PREPUSH_BUILD=1 routes the production build to .next-prepush (see
+  # next.config.ts) so it doesn't clobber the swarm dev server's .next and keeps
+  # its own warm incremental cache between pushes.
+  ( cd "$ROOT_DIR/annix-frontend" && rm -f .next-prepush/lock && NEXT_PREPUSH_BUILD=1 pnpm run build > "$BUILD_FE_LOG" 2>&1 ) &
   BUILD_FE_PID=$!
 fi
 
