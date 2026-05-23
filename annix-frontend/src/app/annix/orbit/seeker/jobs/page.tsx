@@ -3,17 +3,17 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import {
-  annixOrbitApiClient,
-  type PublicJob,
-  type SeekerRecommendedJob,
-} from "@/app/lib/api/annixOrbitApi";
 import { SeekerBrowseJobCard } from "@/app/lib/annix-orbit/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/annix-orbit/components/SeekerJobCard";
 import {
   type SeekerFilterState,
   SeekerJobFilters,
 } from "@/app/lib/annix-orbit/components/SeekerJobFilters";
+import {
+  annixOrbitApiClient,
+  type PublicJob,
+  type SeekerRecommendedJob,
+} from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitDismissSeekerMatch,

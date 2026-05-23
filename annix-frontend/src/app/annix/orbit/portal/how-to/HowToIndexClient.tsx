@@ -1,11 +1,11 @@
 "use client";
 
-import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import {
   type AnnixOrbitHowToRole,
   CV_ASSISTANT_ADMIN_ROLE,
   CV_ASSISTANT_HOW_TO_ROLES,
 } from "@/app/annix/orbit/how-to/types";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import SharedHowToIndexClient, {
   type HowToIndexClientProps as SharedProps,
 } from "@/app/lib/how-to/components/HowToIndexClient";

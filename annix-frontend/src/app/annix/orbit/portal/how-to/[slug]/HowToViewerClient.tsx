@@ -1,10 +1,10 @@
 "use client";
 
-import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import {
   type AnnixOrbitHowToRole,
   CV_ASSISTANT_HOW_TO_ROLES,
 } from "@/app/annix/orbit/how-to/types";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { HowToHeading, HowToLink } from "@/app/lib/how-to";
 import SharedHowToViewerClient, {
   type ViewerGuide,

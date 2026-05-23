@@ -6,8 +6,8 @@ export default function EePrivacyNoticePage() {
       <h1>Employment Equity disclosure — privacy notice</h1>
       <p>
         This page explains what happens to the demographic information you share via the{" "}
-        <Link href="/annix/orbit/seeker/ee-attributes">Employment Equity disclosure form</Link>,
-        and the rights you have over it.
+        <Link href="/annix/orbit/seeker/ee-attributes">Employment Equity disclosure form</Link>, and
+        the rights you have over it.
       </p>
 
       <h2>What we collect</h2>
