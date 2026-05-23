@@ -124,6 +124,21 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 2 * * *",
   },
+  "annix-orbit:dpsa-weekly": {
+    description: "Weekly ingest of the DPSA Public Service Vacancy Circular",
+    module: "Annix Orbit",
+    defaultCron: "0 7 * * 1",
+  },
+  "annix-orbit:embedding-cost-guard": {
+    description: "Daily guard on CV/job embedding API spend against the budget cap",
+    module: "Annix Orbit",
+    defaultCron: "0 6 * * *",
+  },
+  "annix-orbit:credential-expiry-reminders": {
+    description: "Email seekers whose credentials are approaching expiry",
+    module: "Annix Orbit",
+    defaultCron: "0 7 * * *",
+  },
   "insights:daily-snapshot": {
     description:
       "Annix Insights — morning run: pull OHLCV, news, signals, execute trades, snapshot portfolios (06:00 SAST)",
@@ -189,6 +204,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
       "Re-check readiness for stuck AU CoCs and auto-generate any that have become ready (auto-approve+send if customer opted in)",
     module: "AU Rubber",
     defaultCron: "0 */3 * * *",
+  },
+  "au-rubber:warn-overdue-supplier-cocs": {
+    description: "Warn suppliers about delivery notes with overdue Certificates of Conformance",
+    module: "AU Rubber",
+    defaultCron: "0 8 * * *",
   },
   "secure-docs:cleanup-deleted": {
     description: "Permanently delete soft-deleted secure document folders",
