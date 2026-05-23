@@ -14,6 +14,7 @@ import { JobMarketSource } from "./job-market-source.entity";
 @Index("idx_external_jobs_source_id", ["sourceExternalId", "sourceId"], { unique: true })
 @Index("idx_external_jobs_location", ["country", "locationArea"])
 @Index("idx_external_jobs_category", ["category"])
+@Index("idx_external_jobs_canonical_category", ["canonicalCategory"])
 export class ExternalJob {
   @PrimaryGeneratedColumn()
   id: number;
@@ -56,6 +57,9 @@ export class ExternalJob {
 
   @Column({ type: "varchar", length: 255, nullable: true })
   category: string | null;
+
+  @Column({ name: "canonical_category", type: "varchar", length: 64, nullable: true })
+  canonicalCategory: string | null;
 
   @Column({ name: "source_external_id", type: "varchar", length: 255 })
   sourceExternalId: string;

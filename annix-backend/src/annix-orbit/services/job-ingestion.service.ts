@@ -18,6 +18,7 @@ import { DpsaCircularService } from "./dpsa-circular.service";
 import { EmbeddingService } from "./embedding.service";
 import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
+import { JobCategorizationService } from "./job-categorization.service";
 import { JobVettingService } from "./job-vetting.service";
 import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
@@ -86,6 +87,7 @@ export class JobIngestionService {
     private readonly geocodeService: GeocodeService,
     private readonly jobVettingService: JobVettingService,
     private readonly dpsaCircularService: DpsaCircularService,
+    private readonly jobCategorizationService: JobCategorizationService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
@@ -105,6 +107,56 @@ export class JobIngestionService {
         this.logger.error(`Failed to ingest from source ${source.name} (${source.id}): ${message}`);
       }
     }, Promise.resolve());
+
+    await this.backfillCanonicalCategories().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Canonical category backfill failed: ${message}`);
+    });
+  }
+
+  async backfillCanonicalCategories(limit = 200): Promise<{ updated: number }> {
+    const aiBudget = 25;
+    const pending = await this.externalJobRepo.find({
+      where: { canonicalCategory: IsNull() },
+      select: ["id", "title", "category", "description"],
+      take: limit,
+      order: { id: "DESC" },
+    });
+    if (pending.length === 0) return { updated: 0 };
+
+    const ruled = pending.map((job) => ({
+      job,
+      key: this.jobCategorizationService.ruleBased({
+        title: job.title,
+        providerCategory: job.category,
+      }),
+    }));
+    const matched = ruled.filter((entry) => entry.key !== null);
+    const misses = ruled.filter((entry) => entry.key === null).slice(0, aiBudget);
+
+    await Promise.all(
+      matched.map((entry) =>
+        this.externalJobRepo.update(entry.job.id, { canonicalCategory: entry.key }),
+      ),
+    );
+
+    const aiResults = await Promise.all(
+      misses.map(async (entry) => {
+        const key = await this.jobCategorizationService.categorize({
+          title: entry.job.title,
+          providerCategory: entry.job.category,
+          description: entry.job.description,
+        });
+        return { id: entry.job.id, key };
+      }),
+    );
+    await Promise.all(
+      aiResults.map((result) =>
+        this.externalJobRepo.update(result.id, { canonicalCategory: result.key }),
+      ),
+    );
+
+    return { updated: matched.length + aiResults.length };
   }
 
   async ingestFromSource(
@@ -663,6 +715,7 @@ export class JobIngestionService {
     category: string,
   ): Promise<IngestedJobResult[]> {
     const collected: IngestedJobResult[] = [];
+    // eslint-disable-next-line no-restricted-syntax -- sequential paginated fetch that must stop early on daily rate limit or a short page
     for (let page = 1; page <= ADZUNA_PAGES_PER_CATEGORY; page += 1) {
       if (source.requestsToday >= source.rateLimitPerDay) break;
       source.requestsToday += 1;
@@ -758,6 +811,10 @@ export class JobIngestionService {
           salaryCurrency: country === "za" ? "ZAR" : null,
           description: job.description,
           category: job.category,
+          canonicalCategory: this.jobCategorizationService.ruleBased({
+            title: job.title,
+            providerCategory: job.category,
+          }),
           sourceExternalId: job.id,
           sourceUrl: job.redirectUrl,
           postedAt: job.created ? fromISO(job.created).toJSDate() : null,
@@ -769,6 +826,19 @@ export class JobIngestionService {
     );
 
     savedJobs.forEach((saved) => {
+      if (!saved.canonicalCategory) {
+        this.jobCategorizationService
+          .categorize({
+            title: saved.title,
+            providerCategory: saved.category,
+            description: saved.description,
+          })
+          .then((canonicalCategory) => this.externalJobRepo.update(saved.id, { canonicalCategory }))
+          .catch((err) => {
+            this.logger.warn(`Failed to categorize job ${saved.id}: ${err.message}`);
+          });
+      }
+
       const addressForGeocode = saved.locationRaw ?? saved.locationArea;
       if (addressForGeocode) {
         this.geocodeService

@@ -100,6 +100,7 @@ import { EscoNormalisationService } from "./services/esco-normalisation.service"
 import { GeocodeService } from "./services/geocode.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { InterviewBookingService } from "./services/interview-booking.service";
+import { JobCategorizationService } from "./services/job-categorization.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
@@ -236,6 +237,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     RemotiveService,
     DpsaCircularService,
     JobIngestionService,
+    JobCategorizationService,
     JobMarketSourceService,
     JobVettingService,
     EmbeddingService,
