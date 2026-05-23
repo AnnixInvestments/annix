@@ -5,7 +5,14 @@ import { now } from "../../lib/datetime";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import { PaperPortfolio } from "../entities/paper-portfolio.entity";
 import { PaperPortfolioSnapshot } from "../entities/paper-portfolio-snapshot.entity";
+import { PaperTrade } from "../entities/paper-trade.entity";
 import { PriceHistory } from "../entities/price-history.entity";
+
+// Holdings are derived state; the trade ledger (consistent with cash) is the
+// source of truth. Quantities have desynced before (a portfolio silently read
+// -99% while its trades said otherwise), so each snapshot reconciles holdings
+// back to the ledger and corrects any drift beyond this epsilon.
+const QUANTITY_DRIFT_EPSILON = 1e-6;
 
 export interface SnapshotResult {
   slug: string;
@@ -34,6 +41,8 @@ export class PortfolioSnapshotService {
     private readonly snapshotRepo: Repository<PaperPortfolioSnapshot>,
     @InjectRepository(PriceHistory)
     private readonly historyRepo: Repository<PriceHistory>,
+    @InjectRepository(PaperTrade)
+    private readonly tradeRepo: Repository<PaperTrade>,
   ) {}
 
   async captureForAll(): Promise<SnapshotResult[]> {
@@ -51,6 +60,7 @@ export class PortfolioSnapshotService {
   }
 
   async captureForPortfolio(portfolio: PaperPortfolio): Promise<SnapshotResult> {
+    await this.reconcileHoldingsFromLedger(portfolio);
     const investedValue = await this.markToMarket(portfolio);
     const cashBalance = Number(portfolio.currentCashBalance);
     const totalValue = cashBalance + investedValue;
@@ -108,6 +118,76 @@ export class PortfolioSnapshotService {
       maxDrawdownPercent,
       volatilityScore,
     };
+  }
+
+  private async reconcileHoldingsFromLedger(portfolio: PaperPortfolio): Promise<void> {
+    const ledger = await this.tradeRepo
+      .createQueryBuilder("t")
+      .select("t.asset_id", "assetId")
+      .addSelect("SUM(CASE WHEN t.action = 'buy' THEN t.quantity ELSE 0 END)", "buyQty")
+      .addSelect("SUM(CASE WHEN t.action = 'sell' THEN t.quantity ELSE 0 END)", "sellQty")
+      .addSelect("SUM(CASE WHEN t.action = 'buy' THEN t.quantity * t.price ELSE 0 END)", "buyCost")
+      .where("t.portfolio_id = :pid", { pid: portfolio.id })
+      .andWhere("t.asset_id IS NOT NULL")
+      .groupBy("t.asset_id")
+      .getRawMany<{ assetId: string; buyQty: string; sellQty: string; buyCost: string }>();
+
+    const holdings = await this.holdingRepo.find({ where: { portfolioId: portfolio.id } });
+    const holdingByAsset = new Map(holdings.map((h) => [h.assetId, h]));
+
+    for (const row of ledger) {
+      const buyQty = Number(row.buyQty);
+      const netQty = buyQty - Number(row.sellQty);
+      const existing = holdingByAsset.get(row.assetId);
+      holdingByAsset.delete(row.assetId);
+
+      if (netQty <= QUANTITY_DRIFT_EPSILON) {
+        if (existing) {
+          await this.holdingRepo.delete({ id: existing.id });
+          this.logger.error(
+            `${portfolio.slug}: holdings desync corrected — ${row.assetId} ledger net 0 but holding had ${existing.quantity}; removed.`,
+          );
+        }
+        continue;
+      }
+
+      const avgBuyPrice = buyQty > 0 ? Number(row.buyCost) / buyQty : 0;
+      if (!existing) {
+        await this.holdingRepo.save(
+          this.holdingRepo.create({
+            portfolioId: portfolio.id,
+            assetId: row.assetId,
+            quantity: netQty.toString(),
+            averageBuyPrice: avgBuyPrice.toFixed(6),
+            currentPrice: avgBuyPrice.toFixed(6),
+            marketValue: (netQty * avgBuyPrice).toFixed(2),
+            unrealisedGainLoss: "0",
+            unrealisedGainLossPercent: "0",
+          }),
+        );
+        this.logger.error(
+          `${portfolio.slug}: holdings desync corrected — ${row.assetId} ledger net ${netQty} but no holding existed; recreated.`,
+        );
+        continue;
+      }
+
+      if (Math.abs(Number(existing.quantity) - netQty) > QUANTITY_DRIFT_EPSILON) {
+        this.logger.error(
+          `${portfolio.slug}: holdings desync corrected — ${row.assetId} holding qty ${existing.quantity} != ledger net ${netQty}; rebuilt from ledger.`,
+        );
+        await this.holdingRepo.update(
+          { id: existing.id },
+          { quantity: netQty.toString(), averageBuyPrice: avgBuyPrice.toFixed(6) },
+        );
+      }
+    }
+
+    for (const orphan of holdingByAsset.values()) {
+      await this.holdingRepo.delete({ id: orphan.id });
+      this.logger.error(
+        `${portfolio.slug}: holdings desync corrected — ${orphan.assetId} held ${orphan.quantity} with no trade ledger entries; removed.`,
+      );
+    }
   }
 
   private async markToMarket(portfolio: PaperPortfolio): Promise<number> {
