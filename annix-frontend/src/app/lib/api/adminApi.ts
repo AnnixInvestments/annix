@@ -6,6 +6,12 @@ import type {
 } from "@/app/lib/annix-orbit/branding";
 import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
+import type {
+  Branding,
+  BrandingAssetSlot,
+  BrandingUpdate,
+  BrandingUploadResult,
+} from "@/app/lib/branding/branding";
 import { API_BASE_URL } from "@/lib/api-config";
 
 // Types for admin portal - must match backend DTOs
@@ -1091,6 +1097,28 @@ class AdminApiClient {
   ): Promise<OrbitBrandingUploadResult> {
     return apiClient.uploadFile<OrbitBrandingUploadResult>(
       `/admin/annix-orbit/branding/${slot}/upload`,
+      file,
+    );
+  }
+
+  async appBranding(brand: string): Promise<Branding> {
+    return this.request(`/admin/branding/${brand}`);
+  }
+
+  async updateAppBranding(brand: string, data: BrandingUpdate): Promise<Branding> {
+    return this.request(`/admin/branding/${brand}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async uploadAppBrandingAsset(
+    brand: string,
+    slot: BrandingAssetSlot,
+    file: File,
+  ): Promise<BrandingUploadResult> {
+    return apiClient.uploadFile<BrandingUploadResult>(
+      `/admin/branding/${brand}/${slot}/upload`,
       file,
     );
   }

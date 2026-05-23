@@ -10,6 +10,7 @@ import { AuthModule } from "./auth/auth.module";
 import { BendDimensionController } from "./bend-dimension/bend-dimension.controller";
 import { BendDimensionService } from "./bend-dimension/bend-dimension.service";
 import { BoqModule } from "./boq/boq.module";
+import { BrandingModule } from "./branding/branding.module";
 import { ComplySaModule } from "./comply-sa/comply-sa.module";
 import typeormConfig from "./config/typeorm";
 import { CustomerModule } from "./customer/customer.module";
@@ -121,6 +122,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     HeavyFeaturesModule,
 
     InsightsModule,
+    BrandingModule,
 
     ...(process.env.DISABLE_COMPLY_SA === "true" ? [] : [ComplySaModule]),
   ],
