@@ -78,12 +78,6 @@ export default function AuCocsPage() {
   const [pageSize, setPageSize] = usePersistedState<number | "all">("auRubber.auCocs.pageSize", 25);
   const [sortColumn, setSortColumn] = useState<SortColumn>("createdAt");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [sendingId, setSendingId] = useState<number | null>(null);
-  const [sendEmail, setSendEmail] = useState("");
-  const [sendCc, setSendCc] = useState("");
-  const [sendBcc, setSendBcc] = useState("");
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [isSending, setIsSending] = useState(false);
   const [previewingId, setPreviewingId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -403,36 +397,6 @@ export default function AuCocsPage() {
       toastError(showToast, err, "Failed to download PDF");
     } finally {
       setDownloadingId(null);
-    }
-  };
-
-  const handleSend = async () => {
-    if (!sendingId || !sendEmail) {
-      showToast("Please enter an email address", "error");
-      return;
-    }
-    const ccValue = sendCc.trim() || undefined;
-    const bccValue = sendBcc.trim() || undefined;
-    try {
-      setIsSending(true);
-      showExtraction({
-        brand: "au-rubber",
-        label: "Sending certificate…",
-        estimatedDurationMs: 15000,
-      });
-      await auRubberApiClient.sendAuCoc(sendingId, sendEmail, { cc: ccValue, bcc: bccValue });
-      showToast("CoC sent successfully", "success");
-      setShowSendModal(false);
-      setSendingId(null);
-      setSendEmail("");
-      setSendCc("");
-      setSendBcc("");
-      refresh();
-    } catch (err) {
-      toastError(showToast, err, "Failed to send CoC");
-    } finally {
-      hideExtraction();
-      setIsSending(false);
     }
   };
 
@@ -927,8 +891,8 @@ export default function AuCocsPage() {
                       {coc.status === "APPROVED" && (
                         <button
                           onClick={() => {
-                            setSendingId(coc.id);
-                            setShowSendModal(true);
+                            setRestrictSendToIds([coc.id]);
+                            setEmailModalMode("send");
                           }}
                           className="text-purple-600 hover:text-purple-800"
                         >
@@ -963,70 +927,6 @@ export default function AuCocsPage() {
           />
         )}
       </div>
-
-      {showSendModal && (
-        <div
-          className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
-          role="dialog"
-          aria-modal="true"
-        >
-          <div
-            className="fixed inset-0 bg-black/10 backdrop-blur-md"
-            onClick={() => setShowSendModal(false)}
-            aria-hidden="true"
-          />
-          <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Send Certificate</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">To</label>
-                <input
-                  type="email"
-                  value={sendEmail}
-                  onChange={(e) => setSendEmail(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  placeholder="customer@example.com"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">CC</label>
-                <input
-                  type="text"
-                  value={sendCc}
-                  onChange={(e) => setSendCc(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  placeholder="cc@example.com (comma-separated)"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">BCC</label>
-                <input
-                  type="text"
-                  value={sendBcc}
-                  onChange={(e) => setSendBcc(e.target.value)}
-                  className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
-                  placeholder="bcc@example.com (comma-separated)"
-                />
-              </div>
-            </div>
-            <div className="mt-6 flex justify-end space-x-3">
-              <button
-                onClick={() => setShowSendModal(false)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleSend}
-                disabled={isSending || !sendEmail}
-                className="px-4 py-2 text-sm font-medium text-white bg-purple-600 rounded-md hover:bg-purple-700 disabled:opacity-50"
-              >
-                {isSending ? "Sending..." : "Send"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {emailModalMode !== null && (
         <CocEmailModal
