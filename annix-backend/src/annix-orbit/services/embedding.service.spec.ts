@@ -7,6 +7,7 @@ import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { EmbeddingService } from "./embedding.service";
 import { EscoNormalisationService } from "./esco-normalisation.service";
+import { JobCategorizationService } from "./job-categorization.service";
 
 describe("EmbeddingService.embedding cost guard", () => {
   let service: EmbeddingService;
@@ -38,6 +39,14 @@ describe("EmbeddingService.embedding cost guard", () => {
             canonicalise: jest.fn(),
             canonicaliseAll: jest.fn().mockResolvedValue([]),
             expandedSkillTokens: jest.fn().mockReturnValue([]),
+          },
+        },
+        {
+          provide: JobCategorizationService,
+          useValue: {
+            ruleBased: jest.fn().mockReturnValue(null),
+            categorize: jest.fn().mockResolvedValue("other"),
+            categorizeCandidate: jest.fn().mockResolvedValue([]),
           },
         },
       ],
