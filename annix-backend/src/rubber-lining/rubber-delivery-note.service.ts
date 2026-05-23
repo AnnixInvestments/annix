@@ -10,6 +10,7 @@ import {
   RubberDeliveryNoteDto,
   SourceSupplierCocDto,
   UpdateDeliveryNoteDto,
+  UpdateDeliveryNoteItemEntryDto,
 } from "./dto/rubber-coc.dto";
 import {
   DOCUMENT_VERSION_STATUS_LABELS,
@@ -1264,6 +1265,93 @@ export class RubberDeliveryNoteService {
 
     const saved = await this.deliveryNoteItemRepository.save(item);
     return this.mapDeliveryNoteItemToDto(saved);
+  }
+
+  /**
+   * Apply user corrections to a delivery note's line items. Entries with an
+   * `id` update that existing item in place — preserving its batch links and
+   * firebase UID — while entries without an `id` are inserted as new rows.
+   * Existing items omitted from the submitted list are deleted. Theoretical
+   * weight and deviation are always recomputed from the corrected dimensions.
+   *
+   * This is the manual fallback the operator uses when extraction (or
+   * re-extraction) gets a value wrong — e.g. a transposed roll number that
+   * stops a customer DN from auto-linking to its supplier CoC.
+   */
+  async updateDeliveryNoteItems(
+    id: number,
+    entries: UpdateDeliveryNoteItemEntryDto[],
+  ): Promise<DeliveryNoteItemDto[] | null> {
+    const note = await this.deliveryNoteRepository.findOne({
+      where: { id },
+      relations: ["supplierCompany"],
+    });
+    if (!note) return null;
+
+    const existing = await this.deliveryNoteItemRepository.find({
+      where: { deliveryNoteId: id },
+    });
+    const existingById = new Map(existing.map((it) => [it.id, it]));
+    const sg = await this.specificGravityForDeliveryNote(note);
+
+    const normStr = (value?: string | null): string | null => {
+      if (value == null) return null;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+
+    const keptIds = new Set<number>();
+    const toSave: RubberDeliveryNoteItem[] = [];
+
+    for (const entry of entries) {
+      const existingItem = entry.id != null ? existingById.get(entry.id) : undefined;
+      const item =
+        existingItem ??
+        this.deliveryNoteItemRepository.create({
+          firebaseUid: `pg_${generateUniqueId()}`,
+          deliveryNoteId: id,
+          linkedBatchIds: [],
+          itemCategory: entry.itemCategory ?? "ROLL",
+          quantity: 1,
+        });
+      if (existingItem) keptIds.add(existingItem.id);
+
+      item.rollNumber = normStr(entry.rollNumber);
+      item.batchNumberStart = normStr(entry.batchNumberStart);
+      item.batchNumberEnd = normStr(entry.batchNumberEnd);
+      item.weightKg = entry.weightKg ?? null;
+      item.rollWeightKg = entry.rollWeightKg ?? null;
+      item.widthMm = entry.widthMm ?? null;
+      item.thicknessMm = entry.thicknessMm ?? null;
+      item.lengthM = entry.lengthM ?? null;
+      if (entry.compoundType !== undefined) item.compoundType = normStr(entry.compoundType);
+      if (entry.itemCategory !== undefined) item.itemCategory = entry.itemCategory || "ROLL";
+      if (entry.description !== undefined) item.description = normStr(entry.description);
+      if (entry.quantity !== undefined) {
+        item.quantity = entry.quantity != null ? Math.round(entry.quantity) : null;
+      }
+
+      // Always recompute — clear first so a now-incomplete row drops its stale
+      // theoretical weight / deviation rather than keeping the old values.
+      item.theoreticalWeightKg = null;
+      item.weightDeviationPct = null;
+      this.calculateWeightDeviation(item, sg);
+
+      toSave.push(item);
+    }
+
+    const toDelete = existing.filter((it) => !keptIds.has(it.id));
+    if (toDelete.length > 0) {
+      await this.deliveryNoteItemRepository.remove(toDelete);
+    }
+    if (toSave.length > 0) {
+      await this.deliveryNoteItemRepository.save(toSave);
+    }
+
+    this.logger.log(
+      `Updated line items for delivery note #${id}: ${toSave.length} saved, ${toDelete.length} removed`,
+    );
+    return this.itemsByDeliveryNoteId(id);
   }
 
   async updateDocumentPath(

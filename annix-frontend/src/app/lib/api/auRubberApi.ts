@@ -98,6 +98,7 @@ import type {
   SupplierCocType,
   TaxInvoiceStatus,
   TaxInvoiceType,
+  UpdateDeliveryNoteItemEntry,
   UpdateOtherStockDto,
   UpdateRubberOrderInput,
 } from "./auRubberApi.types";
@@ -1294,6 +1295,14 @@ class AuRubberApiClient {
       path: (deliveryNoteId) => `/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`,
     },
   );
+
+  updateDeliveryNoteItems = createEndpoint<
+    [deliveryNoteId: number, items: UpdateDeliveryNoteItemEntry[]],
+    RubberDeliveryNoteItemDto[]
+  >(apiClient, "PUT", {
+    path: (deliveryNoteId) => `/rubber-lining/portal/delivery-notes/${deliveryNoteId}/items`,
+    body: (_deliveryNoteId, items) => ({ items }),
+  });
 
   acceptDeliveryNoteExtract = createEndpoint<[id: number], { deliveryNoteIds: number[] }>(
     apiClient,

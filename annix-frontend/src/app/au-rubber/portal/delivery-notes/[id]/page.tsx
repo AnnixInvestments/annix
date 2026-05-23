@@ -20,6 +20,7 @@ import type {
   ExtractedDeliveryNoteData,
   ExtractedDeliveryNoteRoll,
   RubberDeliveryNoteItemDto,
+  UpdateDeliveryNoteItemEntry,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
 import {
@@ -36,6 +37,7 @@ import {
   useAuRubberRefileDeliveryNoteStock,
   useAuRubberSaveDeliveryNoteCorrections,
   useAuRubberSupplierCocs,
+  useAuRubberUpdateDeliveryNoteItems,
 } from "@/app/lib/query/hooks";
 
 interface EditableRoll extends ExtractedDeliveryNoteRoll {
@@ -50,6 +52,51 @@ interface EditableExtractedData extends Omit<ExtractedDeliveryNoteData, "rolls">
   isEdited?: boolean;
   customerName?: string;
   customerReference?: string;
+}
+
+// One editable row of the Roll/Batch Items table. Numeric fields are held as
+// strings so the inputs stay controlled (and empty) while the user types; they
+// are parsed back to numbers on save. `_key` is a stable React key, and `id`
+// (when present) tells the backend to update that existing item in place.
+interface EditableItem {
+  _key: string;
+  id?: number;
+  itemCategory: string;
+  rollNumber: string;
+  thicknessMm: string;
+  widthMm: string;
+  lengthM: string;
+  rollWeightKg: string;
+  batchNumberStart: string;
+  batchNumberEnd: string;
+  weightKg: string;
+}
+
+function ItemField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  step,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: "text" | "number";
+  step?: string;
+}) {
+  return (
+    <div>
+      <dt className="text-xs font-medium text-gray-500">{label}</dt>
+      <input
+        type={type}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
+      />
+    </div>
+  );
 }
 
 function calculateAreaSqM(widthMm?: number, lengthM?: number): number | null {
@@ -77,6 +124,7 @@ export default function DeliveryNoteDetailPage() {
   const cocsQuery = useAuRubberSupplierCocs({ processingStatus: "APPROVED" });
   const companiesQuery = useAuRubberCompanies();
   const saveDeliveryNoteCorrectionsMutation = useAuRubberSaveDeliveryNoteCorrections();
+  const updateItemsMutation = useAuRubberUpdateDeliveryNoteItems();
   const extractDeliveryNoteMutation = useAuRubberExtractDeliveryNote();
   const deliveryNotePageUrlMutation = useAuRubberDeliveryNotePageUrl();
   const deleteDeliveryNoteMutation = useAuRubberDeleteDeliveryNote();
@@ -133,6 +181,10 @@ export default function DeliveryNoteDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [editedData, setEditedData] = useState<EditableExtractedData[] | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [editedItems, setEditedItems] = useState<EditableItem[] | null>(null);
+  const [isSavingItems, setIsSavingItems] = useState(false);
+  // Monotonic counter for stable React keys on newly-added (unsaved) item rows.
+  const newItemKeyRef = useRef(0);
 
   const [showPodModal, setShowPodModal] = useState(false);
   const [podPageNumber, setPodPageNumber] = useState<number | null>(null);
@@ -167,6 +219,7 @@ export default function DeliveryNoteDetailPage() {
     if (noteFetching || itemsFetching) return;
     setEditedData(null);
     setHasUnsavedChanges(false);
+    setEditedItems(null);
   }, [noteFetching, itemsFetching]);
 
   // Show the scanned document beside the extracted data by default, so the
@@ -355,6 +408,120 @@ export default function DeliveryNoteDetailPage() {
       toastError(showToast, err, "Failed to save corrections");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const isEditingItems = editedItems !== null;
+  const isCompoundNote = note?.deliveryNoteType === "COMPOUND";
+
+  const buildEditableItems = (): EditableItem[] =>
+    items.map((item) => {
+      // Hoist member access out of ?? expressions (lint: no member access on the
+      // left of ?? — guards against an SWC miscompilation).
+      const rollNumber = item.rollNumber;
+      const thicknessMm = item.thicknessMm;
+      const widthMm = item.widthMm;
+      const lengthM = item.lengthM;
+      const rollWeightKg = item.rollWeightKg;
+      const batchNumberStart = item.batchNumberStart;
+      const batchNumberEnd = item.batchNumberEnd;
+      const weightKg = item.weightKg;
+      return {
+        _key: `item-${item.id}`,
+        id: item.id,
+        itemCategory: isCompoundNote ? "COMPOUND" : "ROLL",
+        rollNumber: rollNumber ?? "",
+        thicknessMm: thicknessMm != null ? String(thicknessMm) : "",
+        widthMm: widthMm != null ? String(widthMm) : "",
+        lengthM: lengthM != null ? String(lengthM) : "",
+        rollWeightKg: rollWeightKg != null ? String(rollWeightKg) : "",
+        batchNumberStart: batchNumberStart ?? "",
+        batchNumberEnd: batchNumberEnd ?? "",
+        weightKg: weightKg != null ? String(weightKg) : "",
+      };
+    });
+
+  const handleStartEditItems = () => setEditedItems(buildEditableItems());
+  const handleCancelEditItems = () => setEditedItems(null);
+
+  const handleItemFieldChange = (idx: number, field: keyof EditableItem, value: string) => {
+    setEditedItems((prev) => {
+      if (!prev) return prev;
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
+
+  const handleAddItemRow = () => {
+    setEditedItems((prev) => {
+      const rows = prev ?? [];
+      const last = rows.length > 0 ? rows[rows.length - 1] : null;
+      const lastThickness = last?.thicknessMm;
+      const lastWidth = last?.widthMm;
+      newItemKeyRef.current += 1;
+      const blank: EditableItem = {
+        _key: `new-item-${newItemKeyRef.current}`,
+        itemCategory: isCompoundNote ? "COMPOUND" : "ROLL",
+        rollNumber: "",
+        // Carry common dimensions forward — rolls on one DN are usually the same spec.
+        thicknessMm: lastThickness ?? "",
+        widthMm: lastWidth ?? "",
+        lengthM: "",
+        rollWeightKg: "",
+        batchNumberStart: "",
+        batchNumberEnd: "",
+        weightKg: "",
+      };
+      return [...rows, blank];
+    });
+  };
+
+  const handleRemoveItemRow = (idx: number) => {
+    setEditedItems((prev) => (prev ? prev.filter((_, i) => i !== idx) : prev));
+  };
+
+  const handleSaveItems = async () => {
+    if (!editedItems) return;
+    const toNum = (value: string): number | null => {
+      const trimmed = value.trim();
+      if (trimmed === "") return null;
+      const parsed = Number(trimmed);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    // Send only the fields the API whitelists for each item kind — the backend
+    // runs forbidNonWhitelisted, so stray properties would be rejected.
+    const payload: UpdateDeliveryNoteItemEntry[] = editedItems.map((it) => {
+      const entry: UpdateDeliveryNoteItemEntry = { itemCategory: it.itemCategory };
+      if (it.id != null) entry.id = it.id;
+      if (it.itemCategory === "COMPOUND") {
+        entry.batchNumberStart = it.batchNumberStart.trim() || null;
+        entry.batchNumberEnd = it.batchNumberEnd.trim() || null;
+        entry.weightKg = toNum(it.weightKg);
+      } else {
+        entry.rollNumber = it.rollNumber.trim() || null;
+        entry.thicknessMm = toNum(it.thicknessMm);
+        entry.widthMm = toNum(it.widthMm);
+        entry.lengthM = toNum(it.lengthM);
+        entry.rollWeightKg = toNum(it.rollWeightKg);
+      }
+      return entry;
+    });
+
+    try {
+      setIsSavingItems(true);
+      await updateItemsMutation.mutateAsync({ id: noteId, items: payload });
+      showToast(
+        "Items updated — use Auto-Link / Re-approve to flow the correction downstream",
+        "success",
+      );
+      setEditedItems(null);
+      fetchData();
+    } catch (err) {
+      toastError(showToast, err, "Failed to update items");
+    } finally {
+      setIsSavingItems(false);
     }
   };
 
@@ -1019,7 +1186,7 @@ export default function DeliveryNoteDetailPage() {
                         href={`/au-rubber/portal/supplier-cocs/${coc.id}`}
                         className="text-yellow-600 hover:text-yellow-800 font-medium"
                       >
-                        {coc.cocNumber || `CoC #${coc.id}`}
+                        {coc.cocNumber ? coc.cocNumber : `CoC #${coc.id}`}
                       </Link>
                       <span className="text-xs text-gray-500 ml-2">
                         {coc.supplierCompanyName ? (
@@ -1513,180 +1680,342 @@ export default function DeliveryNoteDetailPage() {
 
           {items.length > 0 && (
             <div className="bg-white shadow rounded-lg overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">
-                  {note.deliveryNoteType === "COMPOUND" ? "Batch Items" : "Roll Items"}
-                </h2>
-              </div>
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    {note.deliveryNoteType === "COMPOUND" ? (
-                      <>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Batch Range
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Weight (kg)
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Linked Batches
-                        </th>
-                      </>
-                    ) : (
-                      <>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Roll Number
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Thickness (mm)
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Width (mm)
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Length (m)
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Area (m²)
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Weight (kg)
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Theo. Weight
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Deviation
-                        </th>
-                        <th
-                          scope="col"
-                          className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Linked Batches
-                        </th>
-                      </>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {items.map((item) => {
-                    const rawItemRollNumber = item.rollNumber;
-                    const itemAreaSqM =
-                      item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null;
-                    const linkedBatchIds = item.linkedBatchIds;
-                    const linkedBatchCount = linkedBatchIds ? linkedBatchIds.length : 0;
-                    return (
-                      <tr
-                        key={item.id}
-                        className={`hover:bg-gray-50 ${item.weightFlagged ? "bg-amber-50" : ""}`}
+              <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+                <div>
+                  <h2 className="text-lg font-medium text-gray-900">
+                    {note.deliveryNoteType === "COMPOUND" ? "Batch Items" : "Roll Items"}
+                  </h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {isEditingItems
+                      ? "Correct any wrong values and save"
+                      : "Click Edit to fix an extraction error (e.g. a transposed roll number)"}
+                  </p>
+                </div>
+                <div className="flex space-x-2">
+                  {isEditingItems ? (
+                    <>
+                      <button
+                        onClick={handleCancelEditItems}
+                        className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                       >
-                        {note.deliveryNoteType === "COMPOUND" ? (
-                          <>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {item.batchNumberStart}
-                              {item.batchNumberEnd && item.batchNumberEnd !== item.batchNumberStart
-                                ? ` - ${item.batchNumberEnd}`
-                                : ""}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {safeFixed(item.weightKg, 2) || "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {linkedBatchCount}
-                            </td>
-                          </>
-                        ) : (
-                          <>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {rawItemRollNumber || "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {item.thicknessMm != null ? item.thicknessMm : "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {item.widthMm != null ? item.widthMm : "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {item.lengthM != null ? item.lengthM : "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {itemAreaSqM ? itemAreaSqM.toFixed(2) : "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {safeFixed(item.rollWeightKg, 2) || "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {safeFixed(item.theoreticalWeightKg, 2) || "-"}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm">
-                              {item.weightDeviationPct != null ? (
-                                <span
-                                  className={`inline-flex items-center ${item.weightFlagged ? "text-amber-700 font-semibold" : "text-gray-500"}`}
-                                >
-                                  {item.weightFlagged && (
-                                    <svg
-                                      className="w-4 h-4 mr-1 text-amber-500"
-                                      fill="currentColor"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path
-                                        fillRule="evenodd"
-                                        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                                        clipRule="evenodd"
-                                      />
-                                    </svg>
-                                  )}
-                                  {item.weightDeviationPct > 0 ? "+" : ""}
-                                  {safeFixed(item.weightDeviationPct, 1)}%
-                                </span>
-                              ) : (
-                                "-"
-                              )}
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {linkedBatchCount}
-                            </td>
-                          </>
-                        )}
-                      </tr>
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveItems}
+                        disabled={isSavingItems}
+                        className="px-3 py-1.5 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50"
+                      >
+                        {isSavingItems ? "Saving..." : "Save Items"}
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      onClick={handleStartEditItems}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                    >
+                      Edit
+                    </button>
+                  )}
+                </div>
+              </div>
+              {isEditingItems && editedItems ? (
+                <div className="px-4 py-4 space-y-3">
+                  {editedItems.map((it, idx) => {
+                    const isCompoundRow = it.itemCategory === "COMPOUND";
+                    const rowRollNumber = it.rollNumber;
+                    const rowBatchStart = it.batchNumberStart;
+                    const areaPreview = calculateAreaSqM(
+                      Number(it.widthMm) || undefined,
+                      Number(it.lengthM) || undefined,
+                    );
+                    return (
+                      <div key={it._key} className="rounded-lg border border-gray-200 p-3">
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-sm font-semibold text-gray-900">
+                            {isCompoundRow
+                              ? `Batch ${rowBatchStart || "—"}`
+                              : `Roll ${rowRollNumber || "—"}`}
+                          </h3>
+                          <button
+                            onClick={() => handleRemoveItemRow(idx)}
+                            className="text-red-400 hover:text-red-600"
+                            title="Remove row"
+                          >
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
+                            </svg>
+                          </button>
+                        </div>
+                        <dl className="grid grid-cols-2 sm:grid-cols-3 gap-x-3 gap-y-2">
+                          {isCompoundRow ? (
+                            <>
+                              <ItemField
+                                label="Batch Start"
+                                value={it.batchNumberStart}
+                                onChange={(v) => handleItemFieldChange(idx, "batchNumberStart", v)}
+                              />
+                              <ItemField
+                                label="Batch End"
+                                value={it.batchNumberEnd}
+                                onChange={(v) => handleItemFieldChange(idx, "batchNumberEnd", v)}
+                              />
+                              <ItemField
+                                label="Weight (kg)"
+                                type="number"
+                                step="0.001"
+                                value={it.weightKg}
+                                onChange={(v) => handleItemFieldChange(idx, "weightKg", v)}
+                              />
+                            </>
+                          ) : (
+                            <>
+                              <ItemField
+                                label="Roll Number"
+                                value={it.rollNumber}
+                                onChange={(v) => handleItemFieldChange(idx, "rollNumber", v)}
+                              />
+                              <ItemField
+                                label="Thickness (mm)"
+                                type="number"
+                                step="0.01"
+                                value={it.thicknessMm}
+                                onChange={(v) => handleItemFieldChange(idx, "thicknessMm", v)}
+                              />
+                              <ItemField
+                                label="Width (mm)"
+                                type="number"
+                                step="0.01"
+                                value={it.widthMm}
+                                onChange={(v) => handleItemFieldChange(idx, "widthMm", v)}
+                              />
+                              <ItemField
+                                label="Length (m)"
+                                type="number"
+                                step="0.01"
+                                value={it.lengthM}
+                                onChange={(v) => handleItemFieldChange(idx, "lengthM", v)}
+                              />
+                              <ItemField
+                                label="Weight (kg)"
+                                type="number"
+                                step="0.001"
+                                value={it.rollWeightKg}
+                                onChange={(v) => handleItemFieldChange(idx, "rollWeightKg", v)}
+                              />
+                              <div>
+                                <dt className="text-xs font-medium text-gray-500">Area (m²)</dt>
+                                <dd className="mt-0.5 px-2 py-1 text-sm text-gray-500">
+                                  {areaPreview != null ? areaPreview.toFixed(2) : "—"}
+                                </dd>
+                              </div>
+                            </>
+                          )}
+                        </dl>
+                      </div>
                     );
                   })}
-                </tbody>
-              </table>
+                  <button
+                    onClick={handleAddItemRow}
+                    className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-yellow-700 bg-yellow-50 border border-yellow-200 rounded-md hover:bg-yellow-100"
+                  >
+                    <svg
+                      className="w-4 h-4 mr-1"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                      />
+                    </svg>
+                    Add Row
+                  </button>
+                </div>
+              ) : (
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      {note.deliveryNoteType === "COMPOUND" ? (
+                        <>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Batch Range
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Weight (kg)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Linked Batches
+                          </th>
+                        </>
+                      ) : (
+                        <>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Roll Number
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Thickness (mm)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Width (mm)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Length (m)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Area (m²)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Weight (kg)
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Theo. Weight
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Deviation
+                          </th>
+                          <th
+                            scope="col"
+                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            Linked Batches
+                          </th>
+                        </>
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {items.map((item) => {
+                      const rawItemRollNumber = item.rollNumber;
+                      const itemAreaSqM =
+                        item.widthMm && item.lengthM ? (item.widthMm * item.lengthM) / 1000 : null;
+                      const linkedBatchIds = item.linkedBatchIds;
+                      const linkedBatchCount = linkedBatchIds ? linkedBatchIds.length : 0;
+                      return (
+                        <tr
+                          key={item.id}
+                          className={`hover:bg-gray-50 ${item.weightFlagged ? "bg-amber-50" : ""}`}
+                        >
+                          {note.deliveryNoteType === "COMPOUND" ? (
+                            <>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {item.batchNumberStart}
+                                {item.batchNumberEnd &&
+                                item.batchNumberEnd !== item.batchNumberStart
+                                  ? ` - ${item.batchNumberEnd}`
+                                  : ""}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {safeFixed(item.weightKg, 2) || "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {linkedBatchCount}
+                              </td>
+                            </>
+                          ) : (
+                            <>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                {rawItemRollNumber || "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {item.thicknessMm != null ? item.thicknessMm : "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {item.widthMm != null ? item.widthMm : "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {item.lengthM != null ? item.lengthM : "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {itemAreaSqM ? itemAreaSqM.toFixed(2) : "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {safeFixed(item.rollWeightKg, 2) || "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {safeFixed(item.theoreticalWeightKg, 2) || "-"}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                {item.weightDeviationPct != null ? (
+                                  <span
+                                    className={`inline-flex items-center ${item.weightFlagged ? "text-amber-700 font-semibold" : "text-gray-500"}`}
+                                  >
+                                    {item.weightFlagged && (
+                                      <svg
+                                        className="w-4 h-4 mr-1 text-amber-500"
+                                        fill="currentColor"
+                                        viewBox="0 0 20 20"
+                                      >
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                    )}
+                                    {item.weightDeviationPct > 0 ? "+" : ""}
+                                    {safeFixed(item.weightDeviationPct, 1)}%
+                                  </span>
+                                ) : (
+                                  "-"
+                                )}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                {linkedBatchCount}
+                              </td>
+                            </>
+                          )}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
           )}
         </div>

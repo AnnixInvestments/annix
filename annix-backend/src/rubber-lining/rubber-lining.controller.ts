@@ -61,6 +61,7 @@ import {
   SellRollDto,
   SendAuCocDto,
   UpdateDeliveryNoteDto,
+  UpdateDeliveryNoteItemsDto,
   UpdateRollStockDto,
   UpdateSupplierCocDto,
 } from "./dto/rubber-coc.dto";
@@ -2155,6 +2156,20 @@ Formula: totalPrice = totalKg × salePricePerKg
   @ApiParam({ name: "id", description: "Delivery note ID" })
   async deliveryNoteItems(@Param("id") id: string) {
     return this.rubberDeliveryNoteService.itemsByDeliveryNoteId(Number(id));
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @ApiBearerAuth()
+  @Put("portal/delivery-notes/:id/items")
+  @ApiOperation({ summary: "Update (correct) the line items of a delivery note" })
+  @ApiParam({ name: "id", description: "Delivery note ID" })
+  async updateDeliveryNoteItems(@Param("id") id: string, @Body() body: UpdateDeliveryNoteItemsDto) {
+    const items = await this.rubberDeliveryNoteService.updateDeliveryNoteItems(
+      Number(id),
+      body.items,
+    );
+    if (!items) throw new NotFoundException("Delivery note not found");
+    return items;
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard)

@@ -570,6 +570,7 @@ export {
   useAuRubberTestimonial,
   useAuRubberTestimonials,
   useAuRubberUpdateChemicalDocument,
+  useAuRubberUpdateDeliveryNoteItems,
   useAuRubberUpdateFeatureFlag,
   useAuRubberUpdateSupplierCoc,
   useAuRubberUpdateUserAccess,

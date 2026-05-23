@@ -868,6 +868,27 @@ export interface RubberDeliveryNoteItemDto {
   createdAt: string;
 }
 
+/**
+ * A single line-item correction sent to PUT .../delivery-notes/:id/items.
+ * Include `id` to update an existing item in place (its batch links are kept);
+ * omit `id` to add a new row. Items left out of the submitted list are deleted.
+ */
+export interface UpdateDeliveryNoteItemEntry {
+  id?: number;
+  batchNumberStart?: string | null;
+  batchNumberEnd?: string | null;
+  weightKg?: number | null;
+  rollNumber?: string | null;
+  rollWeightKg?: number | null;
+  widthMm?: number | null;
+  thicknessMm?: number | null;
+  lengthM?: number | null;
+  compoundType?: string | null;
+  itemCategory?: string;
+  description?: string | null;
+  quantity?: number | null;
+}
+
 export interface AnalyzedCustomerDnFile {
   filename: string;
   originalFileIndex: number;

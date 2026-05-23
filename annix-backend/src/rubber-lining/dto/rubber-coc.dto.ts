@@ -1,5 +1,14 @@
 import { ApiSchema } from "@nestjs/swagger";
-import { IsArray, IsDateString, IsEnum, IsNumber, IsOptional, IsString } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsDateString,
+  IsEnum,
+  IsNumber,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from "class-validator";
 import { DocumentVersionStatus } from "../entities/document-version.types";
 import { AuCocStatus } from "../entities/rubber-au-coc.entity";
 import type { TestDataSummary } from "../entities/rubber-au-coc-item.entity";
@@ -484,6 +493,73 @@ export class CreateDeliveryNoteItemDto {
   @IsArray()
   @IsString({ each: true })
   cocBatchNumbers?: string[] | null;
+}
+
+/**
+ * A single line-item correction. `id` identifies an existing item to update
+ * in place (preserving its batch links); entries without an `id` are created
+ * as new rows. Items previously on the DN that are absent from the submitted
+ * list are deleted.
+ */
+export class UpdateDeliveryNoteItemEntryDto {
+  @IsOptional()
+  @IsNumber()
+  id?: number;
+
+  @IsOptional()
+  @IsString()
+  batchNumberStart?: string | null;
+
+  @IsOptional()
+  @IsString()
+  batchNumberEnd?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  weightKg?: number | null;
+
+  @IsOptional()
+  @IsString()
+  rollNumber?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  rollWeightKg?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  widthMm?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  thicknessMm?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  lengthM?: number | null;
+
+  @IsOptional()
+  @IsString()
+  compoundType?: string | null;
+
+  @IsOptional()
+  @IsString()
+  itemCategory?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  quantity?: number | null;
+}
+
+export class UpdateDeliveryNoteItemsDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateDeliveryNoteItemEntryDto)
+  items: UpdateDeliveryNoteItemEntryDto[];
 }
 
 export class RubberRollStockDto {

@@ -350,6 +350,23 @@ export function useAuRubberSaveDeliveryNoteCorrections() {
   });
 }
 
+export function useAuRubberUpdateDeliveryNoteItems() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      items,
+    }: {
+      id: number;
+      items: Parameters<typeof auRubberApiClient.updateDeliveryNoteItems>[1];
+    }) => auRubberApiClient.updateDeliveryNoteItems(id, items),
+    onSuccess: (_result, variables) => {
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.detail(variables.id) });
+      queryClient.invalidateQueries({ queryKey: rubberKeys.deliveryNotes.all });
+    },
+  });
+}
+
 export function useAuRubberExtractDeliveryNote() {
   const queryClient = useQueryClient();
   return useMutation({
