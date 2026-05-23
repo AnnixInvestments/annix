@@ -136,6 +136,9 @@ export class Candidate {
   @Column({ type: "varchar", nullable: true })
   embedding: string | null;
 
+  @Column({ name: "target_categories", type: "jsonb", nullable: true })
+  targetCategories: string[] | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

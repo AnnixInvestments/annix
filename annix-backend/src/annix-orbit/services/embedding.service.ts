@@ -11,6 +11,7 @@ import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { EscoNormalisationService } from "./esco-normalisation.service";
+import { JobCategorizationService } from "./job-categorization.service";
 
 const GEMINI_EMBEDDING_MODEL = "text-embedding-004";
 const GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -40,6 +41,7 @@ export class EmbeddingService {
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly escoService: EscoNormalisationService,
+    private readonly jobCategorizationService: JobCategorizationService,
   ) {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
   }
@@ -148,6 +150,8 @@ export class EmbeddingService {
       return false;
     }
 
+    await this.updateTargetCategories(candidate);
+
     const embedding = await this.generateEmbedding(text);
     if (!embedding) {
       return false;
@@ -161,6 +165,25 @@ export class EmbeddingService {
       .execute();
 
     return true;
+  }
+
+  private async updateTargetCategories(candidate: Candidate): Promise<void> {
+    const extracted = candidate.extractedData;
+    if (!extracted) return;
+    try {
+      const targetCategories = await this.jobCategorizationService.categorizeCandidate({
+        summary: extracted.summary,
+        skills: extracted.skills,
+        certifications: extracted.certifications,
+        qualifications: extracted.saQualifications,
+      });
+      await this.candidateRepo.update(candidate.id, { targetCategories });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `Failed to derive target categories for candidate ${candidate.id}: ${message}`,
+      );
+    }
   }
 
   async embedExternalJob(jobId: number): Promise<boolean> {

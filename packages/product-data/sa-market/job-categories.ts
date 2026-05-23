@@ -488,6 +488,34 @@ function normalize(value: string | null | undefined): string {
   return value.toLowerCase().trim();
 }
 
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Word-start-anchored pattern for a set of terms: matches "metallurg" inside
+ * "metallurgist" (open-ended) but never "oil" inside "boilermaker" (the `\b`
+ * requires the term to begin at a word boundary). Empty term lists never match.
+ */
+function buildTermPattern(terms: string[]): RegExp | null {
+  const normalized = terms.map((term) => normalize(term)).filter((term) => term.length > 0);
+  if (normalized.length === 0) return null;
+  const alternation = normalized.map((term) => escapeRegExp(term)).join("|");
+  return new RegExp(`\\b(?:${alternation})`);
+}
+
+const CATEGORY_PROVIDER_PATTERNS: Array<{ key: JobCategoryKey; pattern: RegExp }> =
+  JOB_CATEGORIES.flatMap((category) => {
+    const pattern = buildTermPattern(category.providerAliases);
+    return pattern ? [{ key: category.key, pattern }] : [];
+  });
+
+const CATEGORY_KEYWORD_PATTERNS: Array<{ key: JobCategoryKey; pattern: RegExp }> =
+  JOB_CATEGORIES.flatMap((category) => {
+    const pattern = buildTermPattern(category.keywords);
+    return pattern ? [{ key: category.key, pattern }] : [];
+  });
+
 export interface RuleBasedCategoryInput {
   title?: string | null;
   providerCategory?: string | null;
@@ -501,25 +529,34 @@ export interface RuleBasedCategoryInput {
 export function matchJobCategoryRuleBased(input: RuleBasedCategoryInput): JobCategoryKey | null {
   const providerCategory = normalize(input.providerCategory);
   if (providerCategory.length > 0) {
-    const providerMatch = JOB_CATEGORIES.find((category) =>
-      category.providerAliases.some((alias) => {
-        const normalizedAlias = normalize(alias);
-        return normalizedAlias.length > 0 && providerCategory.includes(normalizedAlias);
-      }),
+    const providerMatch = CATEGORY_PROVIDER_PATTERNS.find(
+      (entry) => entry.key !== "other" && entry.pattern.test(providerCategory),
     );
-    if (providerMatch && providerMatch.key !== "other") return providerMatch.key;
+    if (providerMatch) return providerMatch.key;
   }
 
   const title = normalize(input.title);
   if (title.length > 0) {
-    const titleMatch = JOB_CATEGORIES.find((category) =>
-      category.keywords.some((keyword) => {
-        const normalizedKeyword = normalize(keyword);
-        return normalizedKeyword.length > 0 && title.includes(normalizedKeyword);
-      }),
-    );
+    const titleMatch = CATEGORY_KEYWORD_PATTERNS.find((entry) => entry.pattern.test(title));
     if (titleMatch) return titleMatch.key;
   }
 
   return null;
+}
+
+/**
+ * Returns every canonical category whose keywords appear in the given free text
+ * (e.g. a CV summary + skills), capped at `limit` in taxonomy order. Provider
+ * aliases are intentionally excluded here — they are source-tag vocabulary, not
+ * CV prose. Used to derive a seeker's target categories without AI.
+ */
+export function matchAllJobCategoriesRuleBased(
+  text: string | null | undefined,
+  limit = 3,
+): JobCategoryKey[] {
+  const haystack = normalize(text);
+  if (haystack.length === 0) return [];
+  return CATEGORY_KEYWORD_PATTERNS.filter((entry) => entry.pattern.test(haystack))
+    .slice(0, limit)
+    .map((entry) => entry.key);
 }
