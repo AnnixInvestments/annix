@@ -64,13 +64,14 @@ export function useImageViewer(initialScale = 1.0) {
       };
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
-        if (!dragRef.current) return;
-        const dx = moveEvent.clientX - dragRef.current.startX;
-        const dy = moveEvent.clientY - dragRef.current.startY;
+        const drag = dragRef.current;
+        if (!drag) return;
+        const dx = moveEvent.clientX - drag.startX;
+        const dy = moveEvent.clientY - drag.startY;
         setState((prev) => ({
           ...prev,
-          panX: dragRef.current!.startPanX + dx,
-          panY: dragRef.current!.startPanY + dy,
+          panX: drag.startPanX + dx,
+          panY: drag.startPanY + dy,
         }));
       };
 
