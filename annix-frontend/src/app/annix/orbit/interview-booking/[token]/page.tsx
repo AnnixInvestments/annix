@@ -180,7 +180,7 @@ export default function InterviewBookingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -188,7 +188,7 @@ export default function InterviewBookingPage() {
 
   if (error || !data) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
           <h1 className="text-xl font-bold text-[#1a1a40] mb-2">Invitation unavailable</h1>
           <p className="text-sm text-gray-600">{error ?? "Couldn't load this invitation."}</p>
@@ -205,7 +205,7 @@ export default function InterviewBookingPage() {
     : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] py-12 px-4">
+    <div className="min-h-screen py-12 px-4">
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="bg-white rounded-2xl shadow-xl p-6">
           <p className="text-xs uppercase tracking-widest text-[#FF8A00] font-semibold">

@@ -85,6 +85,19 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const colors = corpId.colors.portal[portalType];
   const { maxWidth } = useLayout();
 
+  // Annix Orbit pulls its palette from the DB-backed branding (set as
+  // --orbit-* CSS variables by OrbitBrandingProvider); every other portal
+  // keeps its static corpId palette. Fallbacks match the current defaults so
+  // nothing shifts before branding loads.
+  const isOrbitPortal = portalType === "annixOrbit";
+  const navBg = isOrbitPortal ? "var(--orbit-navbar, #323288)" : colors.background;
+  const navActive = isOrbitPortal ? "var(--orbit-navbar-active, #252560)" : colors.active;
+  const navHover = isOrbitPortal ? "var(--orbit-navbar-hover, #4a4da3)" : colors.hover;
+  const accentColor = isOrbitPortal ? "var(--orbit-accent, #FF8A00)" : corpId.colors.accent.orange;
+  const accentColorLight = isOrbitPortal
+    ? "var(--orbit-accent-light, #FF9C33)"
+    : corpId.colors.accent.orangeLight;
+
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -115,7 +128,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const showTitleOrVersion = Boolean(titleText) || Boolean(version);
 
   return (
-    <nav className="shadow-lg sticky top-0 z-50" style={{ backgroundColor: colors.background }}>
+    <nav className="shadow-lg sticky top-0 z-50" style={{ backgroundColor: navBg }}>
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
@@ -125,7 +138,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                 {showTitleOrVersion && (
                   <span
                     className="text-lg font-semibold hidden md:block"
-                    style={{ color: corpId.colors.accent.orange }}
+                    style={{ color: accentColor }}
                   >
                     {titleText}
                     {version && (
@@ -144,12 +157,12 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                       href={item.href}
                       className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md transition-colors"
                       style={{
-                        color: corpId.colors.accent.orange,
-                        backgroundColor: isActive ? colors.active : "transparent",
+                        color: accentColor,
+                        backgroundColor: isActive ? navActive : "transparent",
                       }}
                       onMouseEnter={(e) => {
                         if (!isActive) {
-                          e.currentTarget.style.backgroundColor = colors.hover;
+                          e.currentTarget.style.backgroundColor = navHover;
                         }
                       }}
                       onMouseLeave={(e) => {
@@ -201,21 +214,21 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                   <div className="flex items-center space-x-2">
                     <span
                       className="hidden md:block text-base font-medium"
-                      style={{ color: corpId.colors.accent.orange }}
+                      style={{ color: accentColor }}
                     >
                       {user?.firstName} {user?.lastName}
                     </span>
                     <div
                       className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-colors"
                       style={{
-                        backgroundColor: corpId.colors.accent.orange,
+                        backgroundColor: accentColor,
                         color: corpId.colors.text.onOrange,
                       }}
                       onMouseEnter={(e) => {
-                        e.currentTarget.style.backgroundColor = corpId.colors.accent.orangeLight;
+                        e.currentTarget.style.backgroundColor = accentColorLight;
                       }}
                       onMouseLeave={(e) => {
-                        e.currentTarget.style.backgroundColor = corpId.colors.accent.orange;
+                        e.currentTarget.style.backgroundColor = accentColor;
                       }}
                     >
                       {userInitials}
@@ -449,12 +462,12 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                     href={item.href}
                     className="inline-flex items-center justify-center p-3 rounded-md transition-colors"
                     style={{
-                      color: corpId.colors.accent.orange,
-                      backgroundColor: isActive ? colors.active : "transparent",
+                      color: accentColor,
+                      backgroundColor: isActive ? navActive : "transparent",
                     }}
                     onMouseEnter={(e) => {
                       if (!isActive) {
-                        e.currentTarget.style.backgroundColor = colors.hover;
+                        e.currentTarget.style.backgroundColor = navHover;
                       }
                     }}
                     onMouseLeave={(e) => {

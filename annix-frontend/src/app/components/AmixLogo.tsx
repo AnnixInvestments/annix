@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { resolveOrbitAssetUrl } from "@/app/lib/annix-orbit/branding";
+import { useOrbitBrandingContext } from "@/app/lib/annix-orbit/branding-context";
 import { log } from "@/app/lib/logger";
 
 interface AmixLogoProps {
@@ -59,15 +61,22 @@ export default function AmixLogo(props: AmixLogoProps) {
   const wordmark = wordmarkProp || "investments";
   const { logo: logoSize } = sizeMap[size];
 
+  const orbitBranding = useOrbitBrandingContext();
+  const isOrbit = wordmark === "orbit";
+  const iconSrc = isOrbit
+    ? resolveOrbitAssetUrl("logoIcon", orbitBranding)
+    : "/branding/annix-orbit-icon.png";
+
   // Match the icon size to the existing flower-icon dimensions so layouts
   // that previously sized around the old icon still look balanced.
   if (showText) {
     const iconSize = logoSize * 1.5;
     const textHeight = 48.4;
     const textWidth = Math.round(textHeight * 2.5);
-    const wordmarkSrc =
-      wordmark === "orbit" ? "/branding/annix-orbit-wordmark.png" : "/images/annix-text.png";
-    const wordmarkAlt = wordmark === "orbit" ? "Annix Orbit" : "Annix Investments";
+    const wordmarkSrc = isOrbit
+      ? resolveOrbitAssetUrl("wordmark", orbitBranding)
+      : "/images/annix-text.png";
+    const wordmarkAlt = isOrbit ? "Annix Orbit" : "Annix Investments";
 
     log.debug("AmixLogo rendering inline parts", {
       size,
@@ -81,11 +90,12 @@ export default function AmixLogo(props: AmixLogoProps) {
     return (
       <div className={`flex items-center gap-2 ${className}`}>
         <Image
-          src="/branding/annix-orbit-icon.png"
+          src={iconSrc}
           alt="Annix"
           width={iconSize}
           height={iconSize}
           priority
+          unoptimized={isOrbit}
           style={{ width: iconSize, height: iconSize, borderRadius: "18%" }}
         />
         <Image
@@ -94,6 +104,7 @@ export default function AmixLogo(props: AmixLogoProps) {
           width={textWidth}
           height={textHeight}
           priority
+          unoptimized={isOrbit}
           style={{ width: "auto", height: textHeight }}
         />
       </div>
@@ -105,11 +116,12 @@ export default function AmixLogo(props: AmixLogoProps) {
   return (
     <div className={`inline-block ${className}`}>
       <Image
-        src="/branding/annix-orbit-icon.png"
+        src={iconSrc}
         alt="Annix"
         width={logoSize}
         height={logoSize}
         priority
+        unoptimized={isOrbit}
         style={{ width: logoSize, height: logoSize, borderRadius: "18%" }}
       />
     </div>

@@ -105,7 +105,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
       </div>
     );
@@ -127,7 +127,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
   const navItems = isIndividual ? seekerNavItems : companyNavItems;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+    <div className="min-h-screen">
       <PortalToolbar
         portalType="annixOrbit"
         navItems={navItems}
@@ -160,7 +160,7 @@ export default function PortalLayout(props: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
         </div>
       }

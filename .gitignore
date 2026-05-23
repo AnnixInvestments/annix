@@ -66,8 +66,9 @@ FLY_DEPLOYMENT_TECHNICAL_DOCS.md
 # Dev utility scripts
 annix-backend/query-docs.ts
 
-# Local sync clone
-annix/
+# Local sync clone (root-level only — must stay anchored so it doesn't also
+# ignore the app source dir annix-frontend/src/app/annix/)
+/annix/
 
 # Voice filter artifacts
 voice-filter/crash.log

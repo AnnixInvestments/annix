@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { adminApiClient } from "@/app/lib/api/adminApi";
@@ -183,6 +184,12 @@ export default function AdminOrbitJobMarketPage() {
             Manage platform-global job-board feeds that populate Browse Jobs for every seeker.
           </p>
         </div>
+        <Link
+          href="/admin/portal/orbit/branding"
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 whitespace-nowrap"
+        >
+          Branding
+        </Link>
       </div>
 
       {stats && (

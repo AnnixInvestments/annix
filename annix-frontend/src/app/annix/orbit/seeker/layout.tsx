@@ -92,7 +92,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]" />
       </div>
     );
@@ -117,7 +117,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+    <div className="min-h-screen">
       <PortalToolbar
         portalType="annixOrbit"
         navItems={navItems}
@@ -135,7 +135,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
         version={CV_ASSISTANT_VERSION}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
+      <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
       <FeedbackWidget authContext="annix-orbit" />
     </div>
   );
@@ -146,7 +146,7 @@ export default function SeekerLayout(props: { children: React.ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
         </div>
       }

@@ -144,7 +144,7 @@ export default function EeDisclosurePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -153,7 +153,7 @@ export default function EeDisclosurePage() {
   if (error || !data) {
     const errorMessage = error ?? "Couldn't load this disclosure form.";
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Link unavailable</h1>
           <p className="text-gray-600">{errorMessage}</p>
@@ -164,7 +164,7 @@ export default function EeDisclosurePage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Disclosure recorded</h1>
           <p className="text-gray-600">
@@ -183,7 +183,7 @@ export default function EeDisclosurePage() {
   const jobRef = data.job.referenceNumber;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] py-10 px-4">
+    <div className="min-h-screen py-10 px-4">
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Employment Equity disclosure</h1>
         <p className="text-gray-600 mb-1">

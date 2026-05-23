@@ -122,4 +122,9 @@ export const annixOrbitKeys = {
     all: ["annix-orbit", "admin", "workforce-needs"] as const,
     forRfq: (rfqId: number) => ["annix-orbit", "admin", "workforce-needs", "rfq", rfqId] as const,
   },
+  branding: {
+    all: ["annix-orbit", "branding"] as const,
+    public: () => ["annix-orbit", "branding", "public"] as const,
+    admin: () => ["annix-orbit", "branding", "admin"] as const,
+  },
 } as const;

@@ -1,3 +1,4 @@
+import type { OrbitBranding } from "@/app/lib/annix-orbit/branding";
 import { type ApiClient, createApiClient } from "@/app/lib/api/createApiClient";
 import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL } from "@/lib/api-config";
@@ -1810,6 +1811,10 @@ class AnnixOrbitApiClient {
   async publicJobPosting(referenceNumber: string): Promise<PublicJobPosting> {
     const safeRef = encodeURIComponent(referenceNumber);
     return this.request(`/annix-orbit/public/job-postings/${safeRef}`);
+  }
+
+  async branding(): Promise<OrbitBranding> {
+    return this.request("/public/annix-orbit/branding");
   }
 
   async portalAdapters(): Promise<PortalAdapterSummary[]> {

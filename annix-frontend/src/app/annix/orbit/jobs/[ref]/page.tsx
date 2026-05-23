@@ -161,7 +161,7 @@ export default function PublicJobPostingPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );
@@ -169,7 +169,7 @@ export default function PublicJobPostingPage() {
 
   if (error || !job) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] flex items-center justify-center px-4">
+      <div className="min-h-screen flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-2xl p-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Job not available</h1>
           <p className="text-gray-600 mb-6">
@@ -207,7 +207,7 @@ export default function PublicJobPostingPage() {
   const jobPostingSchema = buildJobPostingSchema(job);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+    <div className="min-h-screen">
       <script
         type="application/ld+json"
         // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD structured data for Google for Jobs indexing

@@ -57,7 +57,7 @@ export default function AnnixOrbitPublicJobsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
+      <header className="text-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center justify-between mb-6">
             <Link href="/annix/orbit" className="text-sm text-[#c0c0eb] hover:text-white">

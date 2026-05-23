@@ -52,10 +52,7 @@ export const metadata: Metadata = {
   // Global Annix favicon (the orbital-AN brand mark) so every tab shows it
   // consistently. Per-app layouts (e.g. Annix Orbit) may still override.
   icons: {
-    icon: [
-      { url: "/branding/annix-orbit-icon.png", type: "image/png", sizes: "any" },
-      { url: "/branding/annix-orbit-favicon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/branding/annix-orbit-icon.png", type: "image/png", sizes: "any" }],
     apple: "/branding/annix-orbit-icon.png",
   },
   appleWebApp: {
