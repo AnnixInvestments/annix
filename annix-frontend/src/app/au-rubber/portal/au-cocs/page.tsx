@@ -4,7 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import {
@@ -25,7 +25,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
-import { useAuRubberAuCocs } from "@/app/lib/query/hooks";
+import { useAuRubberAuCocs, useAuRubberCompanies } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { CocEmailModal, type CocEmailMode } from "../../components/CocEmailModal";
@@ -54,6 +54,23 @@ export default function AuCocsPage() {
   const refresh = () => queryClient.invalidateQueries({ queryKey: rubberKeys.auCocs.all });
   const rawCocsQueryData = cocsQuery.data;
   const cocs = rawCocsQueryData || [];
+
+  // Pre-fill the send modal's "To" from each customer's configured CoC email
+  // (AU CoC Recipient Email, falling back to the Outgoing CoC Email). Keyed by
+  // company name because the modal groups CoCs by customerCompanyName.
+  const companiesQuery = useAuRubberCompanies();
+  const companiesData = companiesQuery.data;
+  const recipientByCustomer = useMemo(() => {
+    const map: Record<string, string> = {};
+    const list = companiesData || [];
+    for (const c of list) {
+      const primaryEmail = c.auCocRecipientEmail;
+      const fallbackEmail = c.emailConfig?.outgoingCocEmail;
+      const email = primaryEmail || fallbackEmail;
+      if (c.name && email) map[c.name] = email;
+    }
+    return map;
+  }, [companiesData]);
   const isLoading = cocsQuery.isLoading;
   const error = cocsQuery.error;
   const [currentPage, setCurrentPage] = useState(0);
@@ -1015,6 +1032,8 @@ export default function AuCocsPage() {
           mode={emailModalMode}
           cocs={cocs}
           restrictToCocIds={restrictSendToIds}
+          recipientByCustomer={recipientByCustomer}
+          archiveBcc="info@auind.co.za"
           onClose={() => {
             setEmailModalMode(null);
             setRestrictSendToIds(undefined);

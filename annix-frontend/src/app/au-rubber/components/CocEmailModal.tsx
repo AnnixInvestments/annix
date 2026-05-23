@@ -1,7 +1,7 @@
 "use client";
 
 import { X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import type { RubberAuCocDto } from "@/app/lib/api/auRubberApi";
 
@@ -126,6 +126,17 @@ interface CocEmailModalProps {
    * pre-ticked subset without the status filter narrowing it down.
    */
   restrictToCocIds?: number[];
+  /**
+   * Per-customer default recipient email (keyed by customer company name),
+   * resolved from the company's AU CoC Recipient Email / Outgoing CoC Email.
+   * Used to pre-fill the "To" field so the operator doesn't retype it.
+   */
+  recipientByCustomer?: Record<string, string | null | undefined>;
+  /**
+   * Address every certificate is automatically BCC'd to (the AU archive copy).
+   * Shown as a note so the operator can see the copy is going out.
+   */
+  archiveBcc?: string;
 }
 
 export function CocEmailModal(props: CocEmailModalProps) {
@@ -167,6 +178,19 @@ export function CocEmailModal(props: CocEmailModalProps) {
   const [bccTags, setBccTags] = useState<EmailTag[]>([]);
   const [showCc, setShowCc] = useState(false);
   const [showBcc, setShowBcc] = useState(false);
+
+  // Pre-fill "To" with the selected customer's configured CoC recipient email
+  // so the operator doesn't retype it. Re-runs when the customer changes (and
+  // once companies finish loading); only sets when an email is configured, so
+  // it never wipes a manually-typed address.
+  const recipientByCustomer = props.recipientByCustomer;
+  useEffect(() => {
+    if (!selectedCustomer) return;
+    const email = recipientByCustomer?.[selectedCustomer];
+    if (email) {
+      setToTags([{ value: email, valid: isValidEmail(email) }]);
+    }
+  }, [selectedCustomer, recipientByCustomer]);
 
   const selectedCocIds = useMemo(() => {
     if (!selectedCustomer) {
@@ -301,6 +325,14 @@ export function CocEmailModal(props: CocEmailModalProps) {
               onTagsChange={setBccTags}
               placeholder="BCC email addresses"
             />
+          )}
+
+          {props.archiveBcc && (
+            <p className="text-xs text-gray-500">
+              A copy is automatically BCC'd to{" "}
+              <span className="font-medium text-gray-700">{props.archiveBcc}</span> for your
+              records.
+            </p>
           )}
         </div>
 
