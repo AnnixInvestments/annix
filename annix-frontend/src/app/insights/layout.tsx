@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 import { InsightsAuthProvider } from "./context/InsightsAuthContext";
 
 export const metadata: Metadata = {
@@ -10,5 +11,9 @@ export const metadata: Metadata = {
 };
 
 export default function InsightsLayout(props: { children: React.ReactNode }) {
-  return <InsightsAuthProvider>{props.children}</InsightsAuthProvider>;
+  return (
+    <InsightsAuthProvider>
+      <BrandingProvider brand="annix-insights">{props.children}</BrandingProvider>
+    </InsightsAuthProvider>
+  );
 }

@@ -34,7 +34,7 @@ export default function InsightsNewsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
@@ -50,7 +50,7 @@ export default function InsightsNewsPage() {
   const errorMessage = query.error instanceof Error ? query.error.message : null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
+    <div className="min-h-screen text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}

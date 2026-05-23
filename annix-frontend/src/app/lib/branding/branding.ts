@@ -88,6 +88,16 @@ export function brandingFallback(brandCode: string): Branding {
   };
 }
 
+/** True when the brand has a real asset for the slot (uploaded or a registered
+ *  per-brand default) — i.e. NOT just the generic placeholder. */
+export function brandHasAsset(slot: BrandingAssetSlot, branding: Branding): boolean {
+  const hasCustom = branding.assets[slot];
+  if (hasCustom) return true;
+  const perBrand = BRAND_ASSET_DEFAULTS[branding.brandCode];
+  const fallback = perBrand ? perBrand[slot] : undefined;
+  return fallback != null;
+}
+
 export function resolveBrandAssetUrl(slot: BrandingAssetSlot, branding: Branding): string {
   const hasCustom = branding.assets[slot];
   if (hasCustom) {
@@ -99,8 +109,12 @@ export function resolveBrandAssetUrl(slot: BrandingAssetSlot, branding: Branding
 }
 
 export function brandingCssVars(branding: Branding): Record<string, string> {
-  const watermarkUrl = resolveBrandAssetUrl("watermark", branding);
-  const effectiveOpacity = branding.watermarkEnabled ? branding.watermarkOpacity : 0;
+  const hasWatermark = brandHasAsset("watermark", branding);
+  const watermarkImage = hasWatermark
+    ? `url('${resolveBrandAssetUrl("watermark", branding)}')`
+    : "none";
+  const effectiveOpacity =
+    branding.watermarkEnabled && hasWatermark ? branding.watermarkOpacity : 0;
   return {
     "--brand-navbar": branding.navbarColor,
     "--brand-navbar-hover": `color-mix(in srgb, ${branding.navbarColor} 80%, #ffffff)`,
@@ -111,7 +125,7 @@ export function brandingCssVars(branding: Branding): Record<string, string> {
     "--brand-grad-from": branding.gradientFrom,
     "--brand-grad-via": branding.gradientVia,
     "--brand-grad-to": branding.gradientTo,
-    "--brand-watermark-image": `url('${watermarkUrl}')`,
+    "--brand-watermark-image": watermarkImage,
     "--brand-watermark-opacity": String(effectiveOpacity),
     "--brand-watermark-size": `min(85vmin, ${branding.watermarkMaxSizePx}px)`,
   };

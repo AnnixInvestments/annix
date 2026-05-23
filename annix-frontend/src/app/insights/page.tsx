@@ -31,7 +31,7 @@ export default function InsightsHomePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40]">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#FF8A00]" />
       </div>
     );
@@ -69,7 +69,7 @@ function InsightsLoginCard() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] px-4">
+    <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-[#FF8A00] mb-4">
@@ -159,7 +159,7 @@ function InsightsDashboard(props: { userEmail: string }) {
   const { logout } = useInsightsAuth();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1a1a40] via-[#0d0d20] to-[#1a1a40] text-white">
+    <div className="min-h-screen text-white">
       <PortalToolbar
         portalType="insights"
         navItems={NAV_ITEMS}
