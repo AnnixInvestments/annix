@@ -23,7 +23,7 @@ export class PublicBrandingController {
   constructor(private readonly brandingService: AppBrandingService) {}
 
   @Get(":brand")
-  @Header("Cache-Control", "public, max-age=300, stale-while-revalidate=86400")
+  @Header("Cache-Control", "public, max-age=30, stale-while-revalidate=300")
   @ApiOperation({ summary: "Retrieve a brand's public branding (unauthenticated)" })
   async branding(@Param("brand") brand: string): Promise<BrandingView> {
     return this.brandingService.branding(brand);
@@ -44,7 +44,7 @@ export class PublicBrandingController {
   }
 
   @Get(":brand/images")
-  @Header("Cache-Control", "public, max-age=300, stale-while-revalidate=86400")
+  @Header("Cache-Control", "public, max-age=30, stale-while-revalidate=300")
   @ApiOperation({ summary: "List a brand's additional gallery images" })
   async images(@Param("brand") brand: string): Promise<BrandingImageView[]> {
     return this.brandingService.listImages(brand);
