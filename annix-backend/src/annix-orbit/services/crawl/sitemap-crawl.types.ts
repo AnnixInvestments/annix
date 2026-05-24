@@ -21,6 +21,10 @@ export interface SitemapCrawlProfile {
   externalIdFromUrl: (url: string) => string | null;
   // Optional board-specific hints appended to the generic extraction prompt.
   extractionHints?: string;
+  // Crawl politeness overrides. Some boards (e.g. JobMail) 503 under the default
+  // 3-concurrent/1.5s pace, so they fetch slower. Defaults: batchSize 3, delay 1500ms.
+  batchSize?: number;
+  crawlDelayMs?: number;
 }
 
 // The structured shape we ask Gemini to return per job page. Merged with the

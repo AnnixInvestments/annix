@@ -22,6 +22,8 @@ const CRAWL_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;
 const FETCH_TIMEOUT_MS = 20_000;
 const PAGE_BATCH_SIZE = 3;
 const POLITE_DELAY_MS = 1_500;
+const MAX_FETCH_ATTEMPTS = 2;
+const RETRY_BACKOFF_MS = 2_500;
 const MAX_NESTED_SITEMAPS = 3;
 const MAX_DISCOVERY_URLS = 3_000;
 const HTML_TEXT_LIMIT = 14_000;
@@ -98,14 +100,16 @@ export class SitemapCrawlIngestionService {
       `[${profile.displayName}] ${candidateUrls.length} sitemap jobs, ${freshUrls.length} new, fetching ${toFetch.length}`,
     );
 
-    const batches = chunk(toFetch, PAGE_BATCH_SIZE);
+    const batchSize = profile.batchSize ?? PAGE_BATCH_SIZE;
+    const crawlDelay = profile.crawlDelayMs ?? POLITE_DELAY_MS;
+    const batches = chunk(toFetch, batchSize);
     const collected: IngestedJobResult[] = [];
     let pagesFetched = 0;
 
     await batches.reduce(async (prev, batch, index) => {
       await prev;
       if (index > 0) {
-        await delay(POLITE_DELAY_MS);
+        await delay(crawlDelay);
       }
       const results = await Promise.all(
         batch.map(async ({ id, url }) => {
@@ -282,7 +286,7 @@ export class SitemapCrawlIngestionService {
     return buffer ? buffer.toString("utf8") : null;
   }
 
-  private async fetchBuffer(url: string): Promise<Buffer | null> {
+  private async fetchBuffer(url: string, attempt = 1): Promise<Buffer | null> {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
     try {
@@ -294,6 +298,11 @@ export class SitemapCrawlIngestionService {
         },
       });
       if (!response.ok) {
+        const throttled = response.status === 503 || response.status === 429;
+        if (throttled && attempt < MAX_FETCH_ATTEMPTS) {
+          await delay(RETRY_BACKOFF_MS);
+          return this.fetchBuffer(url, attempt + 1);
+        }
         this.logger.warn(`Fetch ${url} returned ${response.status}`);
         return null;
       }

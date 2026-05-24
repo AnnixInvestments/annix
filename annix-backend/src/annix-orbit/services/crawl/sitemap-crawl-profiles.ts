@@ -43,6 +43,10 @@ const JOBMAIL: SitemapCrawlProfile = {
     const match = url.match(/-id-(\d+)\/?$/i);
     return match ? match[1] : null;
   },
+  // JobMail returns 503 under the default concurrent pace — crawl one page at a
+  // time with a longer gap.
+  batchSize: 1,
+  crawlDelayMs: 2500,
 };
 
 const PROFILES: SitemapCrawlProfile[] = [EXECUTIVE_PLACEMENTS, JOB_PLACEMENTS, JOBMAIL];
