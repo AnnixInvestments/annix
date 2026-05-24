@@ -187,7 +187,7 @@ const adminApps: AppCard[] = [
 
 const platformApps: AppCard[] = [
   {
-    href: "/admin/portal/dashboard",
+    href: "/admin/portal/rfqs",
     title: "RFQ Platform",
     description: "Pipeline quotation management for customers and suppliers.",
     icon: <RfqIcon />,
