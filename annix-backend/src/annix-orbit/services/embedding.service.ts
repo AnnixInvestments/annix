@@ -13,7 +13,7 @@ import { ExternalJob } from "../entities/external-job.entity";
 import { EscoNormalisationService } from "./esco-normalisation.service";
 import { JobCategorizationService } from "./job-categorization.service";
 
-const GEMINI_EMBEDDING_MODEL = "text-embedding-004";
+const GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
 const GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const EMBEDDING_DIMENSIONS = 768;
 
@@ -66,6 +66,7 @@ export class EmbeddingService {
         content: {
           parts: [{ text: truncatedText }],
         },
+        outputDimensionality: EMBEDDING_DIMENSIONS,
       }),
     });
 
@@ -261,6 +262,19 @@ export class EmbeddingService {
 
   dimensions(): number {
     return EMBEDDING_DIMENSIONS;
+  }
+
+  @Cron("0 */6 * * *", { name: "annix-orbit:embedding-backfill" })
+  async embeddingBackfillCron(): Promise<{
+    candidates: { processed: number; failed: number };
+    jobs: { processed: number; failed: number };
+  } | null> {
+    if (!isAnnixOrbitCronEnabled()) {
+      return null;
+    }
+    const candidates = await this.backfillCandidateEmbeddings();
+    const jobs = await this.backfillExternalJobEmbeddings();
+    return { candidates, jobs };
   }
 
   @Cron("0 6 * * *", { name: "annix-orbit:embedding-cost-guard" })

@@ -134,6 +134,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 6 * * *",
   },
+  "annix-orbit:embedding-backfill": {
+    description: "Backfill missing CV/job embeddings so matching coverage self-heals",
+    module: "Annix Orbit",
+    defaultCron: "0 */6 * * *",
+  },
   "annix-orbit:credential-expiry-reminders": {
     description: "Email seekers whose credentials are approaching expiry",
     module: "Annix Orbit",
