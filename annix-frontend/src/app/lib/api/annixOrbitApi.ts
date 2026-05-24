@@ -397,6 +397,7 @@ export interface ExternalJob {
   postedAt: string | null;
   expiresAt: string | null;
   sourceId: number;
+  source?: { id: number; name: string; provider: string } | null;
   acceptsZa: boolean | null;
   vettingNotes: string | null;
   vettedAt: string | null;

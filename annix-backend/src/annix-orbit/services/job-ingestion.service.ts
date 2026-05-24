@@ -392,7 +392,24 @@ export class JobIngestionService {
       .take(limit);
 
     const [jobs, total] = await qb.getManyAndCount();
+    await this.attachSourceInfo(jobs);
     return { jobs, total };
+  }
+
+  // Populates each job's `source` with id/name/provider only (never the
+  // encrypted API key) so the admin feed can show where each listing came from.
+  private async attachSourceInfo(jobs: ExternalJob[]): Promise<void> {
+    const sourceIds = [...new Set(jobs.map((job) => job.sourceId))];
+    if (sourceIds.length === 0) return;
+    const sources = await this.sourceRepo.find({
+      where: { id: In(sourceIds) },
+      select: ["id", "name", "provider"],
+    });
+    const byId = new Map(sources.map((source) => [source.id, source]));
+    jobs.forEach((job) => {
+      const source = byId.get(job.sourceId);
+      if (source) job.source = source;
+    });
   }
 
   private async ingestDpsaSource(

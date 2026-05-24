@@ -14,6 +14,7 @@ export function JobCard({ job }: { job: ExternalJob }) {
 
   const salary = formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
   const postedDate = job.postedAt ? fromISO(job.postedAt).toFormat("d MMM yyyy") : null;
+  const source = job.source;
   const vettingBadge = vettingBadgeFor(job);
   const vettingNotes = job.vettingNotes;
   const titleAttr = vettingNotes ?? undefined;
@@ -35,6 +36,12 @@ export function JobCard({ job }: { job: ExternalJob }) {
               <>
                 <span className="text-gray-300">|</span>
                 <span>{postedDate}</span>
+              </>
+            )}
+            {source && (
+              <>
+                <span className="text-gray-300">|</span>
+                <span className="font-medium text-gray-700">via {source.name}</span>
               </>
             )}
           </div>
