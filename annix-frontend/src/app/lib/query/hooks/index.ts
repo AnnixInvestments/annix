@@ -177,6 +177,7 @@ export {
   useOrbitInviteSeekerEducationGuardian,
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
+  useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
   useOrbitUpsertSeekerEducation,
 } from "./annix-orbit/useOrbitEducation";

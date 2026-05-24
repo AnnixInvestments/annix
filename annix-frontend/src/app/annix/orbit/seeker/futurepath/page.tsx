@@ -10,6 +10,7 @@ import {
   useOrbitInviteSeekerEducationGuardian,
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
+  useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
   useOrbitUpsertSeekerEducation,
 } from "@/app/lib/query/hooks";
@@ -64,6 +65,13 @@ export default function FuturePathPage() {
   );
   const recommendationsData = recommendationsQuery.data;
   const recommendations = recommendationsData ? recommendationsData.recommendations : [];
+
+  const compareQuery = useOrbitSeekerEducationCompareOptions(
+    undefined,
+    profile != null && !consentRequired,
+  );
+  const compareData = compareQuery.data;
+  const compareOptions = compareData ? compareData.options : [];
 
   const [curriculum, setCurriculum] = useState<OrbitEducationCurriculum>("NSC");
   const [country, setCountry] = useState("");
@@ -427,6 +435,41 @@ export default function FuturePathPage() {
           </ul>
         )}
       </section>
+
+      {compareOptions.length > 0 ? (
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900 mb-1">Compare your options</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            Among the programmes you qualify for, ranked by fit to your interests and curated
+            graduate-outcome signals. This never affects whether you qualify — only how we suggest
+            ordering your choices. Signals show their source and date; confirm with the institution.
+          </p>
+          <ul className="space-y-3">
+            {compareOptions.map((opt) => {
+              const reasons = opt.reasons;
+              return (
+                <li key={opt.programmeId} className="rounded border border-gray-200 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{opt.programmeName}</span>
+                    {opt.clusterMatch ? (
+                      <span className="rounded-full px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800">
+                        Interest match
+                      </span>
+                    ) : null}
+                  </div>
+                  {reasons.length > 0 ? (
+                    <ul className="mt-2 list-disc list-inside text-xs text-gray-600 space-y-0.5">
+                      {reasons.map((reason, i) => (
+                        <li key={`${opt.programmeId}-cmp-${i}`}>{reason}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <p className="text-right text-xs text-gray-400">FuturePath v{ORBIT_EDUCATION_VERSION}</p>
     </div>

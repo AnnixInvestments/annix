@@ -2095,6 +2095,13 @@ class AnnixOrbitApiClient {
     return this.request(`/annix-orbit/education/me/recommendations${query}`);
   }
 
+  async seekerEducationCompareOptions(
+    intakeYear?: number,
+  ): Promise<SeekerEducationCompareOptionsResponse> {
+    const query = intakeYear ? `?intakeYear=${intakeYear}` : "";
+    return this.request(`/annix-orbit/education/me/compare-options${query}`);
+  }
+
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
     return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
@@ -2264,6 +2271,33 @@ export interface SeekerEducationRecommendation {
 export interface SeekerEducationRecommendationsResponse {
   intakeYear: number;
   recommendations: SeekerEducationRecommendation[];
+}
+
+export interface SeekerEducationChoiceSignal {
+  source: string;
+  metric: string;
+  value: number;
+  unit: string;
+  asOf: string | null;
+  confidence: string;
+  sourceUrl: string | null;
+}
+
+export interface SeekerEducationChoiceOption {
+  programmeId: string;
+  programmeName: string;
+  institutionId: string;
+  band: SeekerEducationBand;
+  careerCluster: string | null;
+  clusterMatch: boolean;
+  signals: SeekerEducationChoiceSignal[];
+  reasons: string[];
+  fitScore: number;
+}
+
+export interface SeekerEducationCompareOptionsResponse {
+  intakeYear: number;
+  options: SeekerEducationChoiceOption[];
 }
 
 export interface SeekerJobStats {

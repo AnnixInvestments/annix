@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
+  type SeekerEducationCompareOptionsResponse,
   type SeekerEducationConsent,
   type SeekerEducationGuardianLink,
   type SeekerEducationInput,
@@ -85,6 +86,18 @@ export function useOrbitSeekerEducationRecommendations(
   return useQuery<SeekerEducationRecommendationsResponse>({
     queryKey: annixOrbitKeys.seekerEducation.recommendations(intakeYear),
     queryFn: () => annixOrbitApiClient.seekerEducationRecommendations(intakeYear),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitSeekerEducationCompareOptions(
+  intakeYear?: number,
+  enabled: boolean = true,
+) {
+  return useQuery<SeekerEducationCompareOptionsResponse>({
+    queryKey: annixOrbitKeys.seekerEducation.compareOptions(intakeYear),
+    queryFn: () => annixOrbitApiClient.seekerEducationCompareOptions(intakeYear),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
