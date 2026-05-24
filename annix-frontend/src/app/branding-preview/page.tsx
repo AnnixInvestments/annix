@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { AnnixOrbitIcon } from "@/app/components/branding/AnnixOrbitIcon";
 import { AnnixOrbitLogo } from "@/app/components/branding/AnnixOrbitLogo";
 import { AnnixOrbitNavbar } from "@/app/components/branding/AnnixOrbitNavbar";
@@ -175,8 +176,12 @@ export default function BrandingPreviewPage() {
         <section>
           <SectionTitle>Card lockup (Annix Hub launcher)</SectionTitle>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-            <AnnixOrbitCard variant="dark" ctaHref="/annix/orbit" className="h-full" />
-            <AnnixOrbitCard variant="light" ctaHref="/annix/orbit" className="h-full" />
+            <Link href="/annix/orbit" className="group h-full">
+              <AnnixOrbitCard variant="dark" ctaHref="/annix/orbit" className="h-full" />
+            </Link>
+            <Link href="/annix/orbit" className="group h-full">
+              <AnnixOrbitCard variant="light" ctaHref="/annix/orbit" className="h-full" />
+            </Link>
           </div>
         </section>
 

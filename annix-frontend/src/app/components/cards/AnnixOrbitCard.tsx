@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { useBranding } from "@/app/lib/query/hooks";
 import { ANNIX_BG_GRADIENT, ANNIX_FONT_BODY, ANNIX_PALETTE } from "../branding/tokens";
@@ -38,7 +37,7 @@ export function AnnixOrbitCard({
 }: {
   className?: string;
   variant?: CardVariant;
-  /** Optional CTA destination. If omitted, no CTA is rendered. */
+  /** If provided, a CTA pill is shown. Navigation is owned by the wrapping Link, not the card. */
   ctaHref?: string;
   ctaLabel?: string;
   /** Optional one-line description rendered below the logo. */
@@ -83,9 +82,8 @@ export function AnnixOrbitCard({
       ) : null}
 
       {ctaHref ? (
-        <Link
-          href={ctaHref}
-          className="mt-4 mb-8 inline-flex items-center gap-1 text-sm font-semibold hover:translate-x-1 transition-transform"
+        <span
+          className="mt-4 mb-8 inline-flex items-center gap-1 text-sm font-semibold group-hover:translate-x-1 transition-transform"
           style={{
             color: variant === "light" ? ANNIX_PALETTE.orange : ANNIX_PALETTE.orangeLight,
             fontFamily: ANNIX_FONT_BODY,
@@ -102,7 +100,7 @@ export function AnnixOrbitCard({
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
           </svg>
-        </Link>
+        </span>
       ) : null}
     </div>
   );
