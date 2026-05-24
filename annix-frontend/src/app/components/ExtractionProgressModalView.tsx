@@ -114,6 +114,9 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
   if (!docRef) return null;
 
   const styles = BRAND_STYLES[state.brand];
+  const isOrbit = state.brand === "annix-orbit";
+  const orbitNavbar = orbitBranding ? orbitBranding.navbarColor : "#323288";
+  const orbitAccent = orbitBranding ? orbitBranding.accentOrange : "#FF8A00";
   const totalMs = state.estimatedDurationMs;
   const elapsedMs = tickMs;
   const rawProgress = totalMs > 0 ? elapsedMs / totalMs : 0;
@@ -151,15 +154,29 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
       aria-live="polite"
     >
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
-      <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
-        <div className={`px-4 py-2 ${styles.bg} ${styles.text} flex items-center justify-between`}>
-          {state.brand === "annix-orbit" && orbitBranding ? (
-            <img
-              src={resolveBrandAssetUrl("logoLockup", orbitBranding)}
-              alt={`${styles.label} logo`}
-              className="h-6 object-contain"
-            />
-          ) : (
+      <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full overflow-hidden">
+        {isOrbit && orbitBranding ? (
+          <div
+            className="flex items-center justify-between px-6 py-3.5 text-white"
+            style={{ backgroundColor: orbitNavbar }}
+          >
+            <span className="flex items-center gap-3">
+              <img
+                src={resolveBrandAssetUrl("logoIcon", orbitBranding)}
+                alt="Annix Orbit logo"
+                className="h-8 w-8 object-contain"
+              />
+              <span className="text-base font-semibold tracking-wide">{styles.label}</span>
+            </span>
+            <span className="text-xs text-white/80">
+              {elapsedSeconds}s elapsed
+              {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
+            </span>
+          </div>
+        ) : (
+          <div
+            className={`px-4 py-2 ${styles.bg} ${styles.text} flex items-center justify-between`}
+          >
             <span className="flex items-center gap-2">
               {styles.logo ? (
                 <img
@@ -170,26 +187,33 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
               ) : null}
               <span className="text-xs font-semibold uppercase tracking-wide">{styles.label}</span>
             </span>
-          )}
-          <span className="text-[10px]">
-            {elapsedSeconds}s elapsed
-            {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
-          </span>
-        </div>
-        <div className="p-4">
-          <p className="text-sm font-medium text-gray-900">{state.label}</p>
+            <span className="text-[10px]">
+              {elapsedSeconds}s elapsed
+              {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
+            </span>
+          </div>
+        )}
+        <div className="p-6">
+          <p className="text-base font-medium text-gray-900">{state.label}</p>
           {itemCount != null && (
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-1">
               {itemCount} {itemCount === 1 ? "item" : "items"}
             </p>
           )}
-          <div className="mt-3 h-2 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className={`h-full ${styles.bar} transition-all`}
-              style={{ width: `${percent}%` }}
-            />
+          <div className="mt-4 h-2.5 bg-gray-100 rounded-full overflow-hidden">
+            {isOrbit ? (
+              <div
+                className="h-full transition-all"
+                style={{ width: `${percent}%`, backgroundColor: orbitAccent }}
+              />
+            ) : (
+              <div
+                className={`h-full ${styles.bar} transition-all`}
+                style={{ width: `${percent}%` }}
+              />
+            )}
           </div>
-          <p className="mt-2 text-[10px] text-gray-500">
+          <p className="mt-2 text-sm text-gray-500">
             {overran
               ? "Taking longer than estimated — still working…"
               : `${percent}% — please leave this window open`}
