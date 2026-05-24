@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { EmailService } from "../../email/email.service";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { EmbeddingService } from "./embedding.service";
@@ -48,6 +49,10 @@ describe("EmbeddingService.embedding cost guard", () => {
             categorize: jest.fn().mockResolvedValue("other"),
             categorizeCandidate: jest.fn().mockResolvedValue([]),
           },
+        },
+        {
+          provide: ExtractionMetricService,
+          useValue: { time: jest.fn((_category, _operation, fn) => fn()) },
         },
       ],
     }).compile();

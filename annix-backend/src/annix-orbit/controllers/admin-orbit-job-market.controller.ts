@@ -16,6 +16,7 @@ import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
 import { JobSourceProvider } from "../entities/job-market-source.entity";
 import { isSitemapCrawlProvider } from "../services/crawl/sitemap-crawl-profiles";
+import { EmbeddingService } from "../services/embedding.service";
 import { JobIngestionService } from "../services/job-ingestion.service";
 import { JobMarketSourceService } from "../services/job-market-source.service";
 
@@ -27,6 +28,7 @@ export class AdminOrbitJobMarketController {
   constructor(
     private readonly sourceService: JobMarketSourceService,
     private readonly ingestionService: JobIngestionService,
+    private readonly embeddingService: EmbeddingService,
   ) {}
 
   @Get("providers")
@@ -144,5 +146,18 @@ export class AdminOrbitJobMarketController {
   @Post("vet-pending")
   async vetPending(@Query("limit") limit?: string) {
     return this.ingestionService.vetPendingJobs(limit ? Number.parseInt(limit, 10) : undefined);
+  }
+
+  // Embedding the candidate CV + all external jobs runs far longer than the HTTP
+  // proxy timeout (sequential Gemini calls over ~1,300+ jobs), so kick it off in
+  // the background and let the client poll coverage for progress.
+  @Post("embeddings/backfill")
+  backfillEmbeddings() {
+    return this.embeddingService.startBackfillInBackground();
+  }
+
+  @Get("embeddings/coverage")
+  async embeddingCoverage() {
+    return this.embeddingService.embeddingCoverage();
   }
 }

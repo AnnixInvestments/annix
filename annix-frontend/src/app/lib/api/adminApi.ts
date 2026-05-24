@@ -1092,6 +1092,22 @@ class AdminApiClient {
     });
   }
 
+  async backfillOrbitEmbeddings(): Promise<{ started: boolean; alreadyRunning: boolean }> {
+    return this.request("/admin/annix-orbit/job-market/embeddings/backfill", {
+      method: "POST",
+    });
+  }
+
+  async orbitEmbeddingCoverage(): Promise<{
+    jobsTotal: number;
+    jobsEmbedded: number;
+    candidatesTotal: number;
+    candidatesEmbedded: number;
+    running: boolean;
+  }> {
+    return this.request("/admin/annix-orbit/job-market/embeddings/coverage");
+  }
+
   async orbitSeekerMatchTier(email: string): Promise<OrbitSeekerMatchTier> {
     return this.request(`/admin/annix-orbit/seekers/lookup?email=${encodeURIComponent(email)}`);
   }

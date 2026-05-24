@@ -86,6 +86,63 @@ export default function AdminOrbitJobMarketPage() {
   const { runBulk } = useAdaptiveExtractionProgress();
   const [vetSummary, setVetSummary] = useState<string | null>(null);
   const [isVettingPending, setIsVettingPending] = useState(false);
+  const [isBackfilling, setIsBackfilling] = useState(false);
+  const [backfillSummary, setBackfillSummary] = useState<string | null>(null);
+
+  const handleBackfillEmbeddings = async () => {
+    setIsBackfilling(true);
+    setBackfillSummary(null);
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Starting embedding backfill…",
+      estimatedDurationMs: 8000,
+    });
+    try {
+      const triggered = await adminApiClient.backfillOrbitEmbeddings();
+      const stats = await metricsApi
+        .extractionStats("orbit-embedding-backfill", "all")
+        .catch(() => null);
+      const learnedMs = stats ? stats.averageMs : null;
+      updateExtraction({
+        label: triggered.alreadyRunning
+          ? "Embedding backfill already running — tracking progress…"
+          : "Embedding CVs & jobs so Nix can match…",
+        estimatedDurationMs: learnedMs || 240_000,
+      });
+
+      const poll = async (attempt: number): Promise<void> => {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 4000));
+        const coverage = await adminApiClient.orbitEmbeddingCoverage().catch(() => null);
+        if (coverage) {
+          const embedded = coverage.jobsEmbedded + coverage.candidatesEmbedded;
+          const total = coverage.jobsTotal + coverage.candidatesTotal;
+          updateExtraction({
+            label: `Embedding CVs & jobs so Nix can match — ${embedded} / ${total} done…`,
+          });
+          if (!coverage.running) return;
+        }
+        if (attempt >= 225) return;
+        return poll(attempt + 1);
+      };
+      await poll(0);
+
+      hideExtraction();
+      const finalCoverage = await adminApiClient.orbitEmbeddingCoverage().catch(() => null);
+      if (finalCoverage) {
+        setBackfillSummary(
+          `Embedded ${finalCoverage.jobsEmbedded}/${finalCoverage.jobsTotal} jobs and ${finalCoverage.candidatesEmbedded}/${finalCoverage.candidatesTotal} CVs.`,
+        );
+      } else {
+        setBackfillSummary("Embedding backfill finished.");
+      }
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+    } catch (error) {
+      hideExtraction();
+      setBackfillSummary(`Failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsBackfilling(false);
+    }
+  };
 
   const handleVetPending = async () => {
     setIsVettingPending(true);
@@ -293,7 +350,19 @@ export default function AdminOrbitJobMarketPage() {
 
       {activeTab === "sources" && (
         <div className="space-y-4">
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {backfillSummary && (
+              <span className="mr-auto text-sm text-gray-600">{backfillSummary}</span>
+            )}
+            <button
+              type="button"
+              onClick={handleBackfillEmbeddings}
+              disabled={isBackfilling}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+              title="Embed any CVs and jobs that are missing an embedding so Nix can match them"
+            >
+              {isBackfilling ? "Backfilling…" : "Backfill Embeddings"}
+            </button>
             <button
               type="button"
               onClick={() => setShowDuplicates(true)}

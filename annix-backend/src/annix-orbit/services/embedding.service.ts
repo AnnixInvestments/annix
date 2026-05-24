@@ -7,6 +7,7 @@ import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { EmailService } from "../../email/email.service";
 import { DateTime, nowMillis } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -31,6 +32,7 @@ interface GeminiEmbeddingResponse {
 export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name);
   private readonly apiKey: string;
+  private backfillRunning = false;
 
   constructor(
     @InjectRepository(Candidate)
@@ -42,6 +44,7 @@ export class EmbeddingService {
     private readonly configService: ConfigService,
     private readonly escoService: EscoNormalisationService,
     private readonly jobCategorizationService: JobCategorizationService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {
     this.apiKey = process.env.GEMINI_API_KEY ?? "";
   }
@@ -262,6 +265,53 @@ export class EmbeddingService {
 
   dimensions(): number {
     return EMBEDDING_DIMENSIONS;
+  }
+
+  async embeddingCoverage(): Promise<{
+    jobsTotal: number;
+    jobsEmbedded: number;
+    candidatesTotal: number;
+    candidatesEmbedded: number;
+    running: boolean;
+  }> {
+    const [jobs] = await this.externalJobRepo.query(
+      "SELECT COUNT(*)::int AS total, COUNT(embedding)::int AS embedded FROM cv_assistant_external_jobs",
+    );
+    const [candidates] = await this.candidateRepo.query(
+      "SELECT COUNT(*)::int AS total, COUNT(embedding)::int AS embedded FROM cv_assistant_candidates",
+    );
+    return {
+      jobsTotal: Number(jobs.total),
+      jobsEmbedded: Number(jobs.embedded),
+      candidatesTotal: Number(candidates.total),
+      candidatesEmbedded: Number(candidates.embedded),
+      running: this.backfillRunning,
+    };
+  }
+
+  startBackfillInBackground(): { started: boolean; alreadyRunning: boolean } {
+    if (this.backfillRunning) {
+      return { started: false, alreadyRunning: true };
+    }
+    this.backfillRunning = true;
+    void this.extractionMetricService
+      .time("orbit-embedding-backfill", "all", async () => {
+        const candidates = await this.backfillCandidateEmbeddings();
+        const jobs = await this.backfillExternalJobEmbeddings();
+        this.logger.log(
+          `On-demand backfill complete: candidates ${candidates.processed} embedded / ${candidates.failed} failed, jobs ${jobs.processed} embedded / ${jobs.failed} failed`,
+        );
+        return jobs.processed + candidates.processed;
+      })
+      .catch((err) =>
+        this.logger.error(
+          `On-demand embedding backfill failed: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      )
+      .finally(() => {
+        this.backfillRunning = false;
+      });
+    return { started: true, alreadyRunning: false };
   }
 
   @Cron("0 */6 * * *", { name: "annix-orbit:embedding-backfill" })
