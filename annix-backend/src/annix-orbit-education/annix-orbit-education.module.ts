@@ -11,6 +11,7 @@ import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { User } from "../user/entities/user.entity";
 import { AnnixOrbitEducationCapabilities } from "./capabilities/annix-orbit-education.capabilities";
 import { EducationController } from "./controllers/education.controller";
+import { EducationGuardianController } from "./controllers/education-guardian.controller";
 import { AcademicResult } from "./entities/academic-result.entity";
 import { EducationAdmissionDistribution } from "./entities/education-admission-distribution.entity";
 import { EducationAiAdviceLog } from "./entities/education-ai-advice-log.entity";
@@ -29,6 +30,7 @@ import { EducationApplicationService } from "./services/education-application.se
 import { EducationCareerFitService } from "./services/education-career-fit.service";
 import { EducationChoiceAidService } from "./services/education-choice-aid.service";
 import { EducationConsentService } from "./services/education-consent.service";
+import { EducationGuardianService } from "./services/education-guardian.service";
 import { EducationMentorService } from "./services/education-mentor.service";
 import { EducationProfileService } from "./services/education-profile.service";
 import { EducationRecommendationService } from "./services/education-recommendation.service";
@@ -69,7 +71,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     NixModule,
     MetricsModule,
   ],
-  controllers: [EducationController],
+  controllers: [EducationController, EducationGuardianController],
   providers: [
     AnnixOrbitAuthGuard,
     EducationConsentService,
@@ -81,6 +83,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     EducationApplicationService,
     EducationScholarshipService,
     EducationCareerFitService,
+    EducationGuardianService,
     AnnixOrbitEducationCapabilities,
   ],
   exports: [
