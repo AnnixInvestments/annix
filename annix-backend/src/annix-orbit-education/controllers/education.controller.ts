@@ -26,6 +26,7 @@ import { EducationConsentService } from "../services/education-consent.service";
 import { EducationMentorService } from "../services/education-mentor.service";
 import { EducationProfileService } from "../services/education-profile.service";
 import { EducationRecommendationService } from "../services/education-recommendation.service";
+import { EducationScholarshipService } from "../services/education-scholarship.service";
 import { GuardianLinkService } from "../services/guardian-link.service";
 
 interface SeekerAuthRequest {
@@ -143,6 +144,7 @@ export class EducationController {
     private readonly recommendationService: EducationRecommendationService,
     private readonly choiceAidService: EducationChoiceAidService,
     private readonly applicationService: EducationApplicationService,
+    private readonly scholarshipService: EducationScholarshipService,
   ) {}
 
   @Get()
@@ -282,5 +284,12 @@ export class EducationController {
   async deleteApplication(@Request() req: SeekerAuthRequest, @Param("id") id: string) {
     const deleted = await this.applicationService.delete(req.user.id, id);
     return { deleted };
+  }
+
+  @Get("scholarships")
+  async scholarships(@Request() req: SeekerAuthRequest) {
+    const profile = await this.profileService.profileForUser(req.user.id);
+    const scholarships = await this.scholarshipService.listActive(profile?.country ?? null);
+    return { scholarships };
   }
 }

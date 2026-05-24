@@ -7,6 +7,7 @@ import { EducationInstitution } from "../entities/education-institution.entity";
 import { EducationProgramme } from "../entities/education-programme.entity";
 import { EducationProgrammeOutcomeSignal } from "../entities/education-programme-outcome-signal.entity";
 import { EducationRequirementVersion } from "../entities/education-requirement-version.entity";
+import { EducationScholarship } from "../entities/education-scholarship.entity";
 
 export interface InstitutionInput {
   code: string;
@@ -66,6 +67,18 @@ export interface OutcomeSignalInput {
   sourceUrl?: string | null;
 }
 
+export interface ScholarshipInput {
+  name: string;
+  provider: string;
+  country?: string | null;
+  amountDisplay?: string | null;
+  criteria?: string | null;
+  url?: string | null;
+  careerCluster?: string | null;
+  lastVerifiedAt?: string | null;
+  active?: boolean;
+}
+
 /**
  * Admin curation of the FuturePath admissions catalog (#308). The owner enters
  * OWNER-VERIFIED data here; this service intentionally seeds nothing itself
@@ -88,6 +101,8 @@ export class EducationCatalogAdminService {
     private readonly distributionRepo: Repository<EducationAdmissionDistribution>,
     @InjectRepository(EducationProgrammeOutcomeSignal)
     private readonly outcomeSignalRepo: Repository<EducationProgrammeOutcomeSignal>,
+    @InjectRepository(EducationScholarship)
+    private readonly scholarshipRepo: Repository<EducationScholarship>,
   ) {}
 
   institutions(): Promise<EducationInstitution[]> {
@@ -247,6 +262,44 @@ export class EducationCatalogAdminService {
         sourceUrl: input.sourceUrl ?? null,
       }),
     );
+  }
+
+  scholarships(): Promise<EducationScholarship[]> {
+    return this.scholarshipRepo.find({ order: { name: "ASC" } });
+  }
+
+  async createScholarship(input: ScholarshipInput): Promise<EducationScholarship> {
+    return this.scholarshipRepo.save(
+      this.scholarshipRepo.create({
+        name: input.name,
+        provider: input.provider,
+        country: input.country ?? null,
+        amountDisplay: input.amountDisplay ?? null,
+        criteria: input.criteria ?? null,
+        url: input.url ?? null,
+        careerCluster: input.careerCluster ?? null,
+        lastVerifiedAt: input.lastVerifiedAt ?? null,
+        active: input.active ?? true,
+      }),
+    );
+  }
+
+  async updateScholarship(
+    id: string,
+    input: Partial<ScholarshipInput>,
+  ): Promise<EducationScholarship> {
+    const scholarship = await this.scholarshipRepo.findOne({ where: { id } });
+    if (!scholarship) throw new NotFoundException(`Scholarship ${id} not found`);
+    if (input.name != null) scholarship.name = input.name;
+    if (input.provider != null) scholarship.provider = input.provider;
+    if (input.country !== undefined) scholarship.country = input.country;
+    if (input.amountDisplay !== undefined) scholarship.amountDisplay = input.amountDisplay;
+    if (input.criteria !== undefined) scholarship.criteria = input.criteria;
+    if (input.url !== undefined) scholarship.url = input.url;
+    if (input.careerCluster !== undefined) scholarship.careerCluster = input.careerCluster;
+    if (input.lastVerifiedAt !== undefined) scholarship.lastVerifiedAt = input.lastVerifiedAt;
+    if (input.active !== undefined) scholarship.active = input.active;
+    return this.scholarshipRepo.save(scholarship);
   }
 
   private async institutionOrThrow(id: string): Promise<EducationInstitution> {

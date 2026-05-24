@@ -8,6 +8,7 @@ import { EducationInstitution } from "./entities/education-institution.entity";
 import { EducationProgramme } from "./entities/education-programme.entity";
 import { EducationProgrammeOutcomeSignal } from "./entities/education-programme-outcome-signal.entity";
 import { EducationRequirementVersion } from "./entities/education-requirement-version.entity";
+import { EducationScholarship } from "./entities/education-scholarship.entity";
 import { EducationCatalogAdminService } from "./services/education-catalog-admin.service";
 
 /**
@@ -25,6 +26,7 @@ import { EducationCatalogAdminService } from "./services/education-catalog-admin
       EducationRequirementVersion,
       EducationAdmissionDistribution,
       EducationProgrammeOutcomeSignal,
+      EducationScholarship,
     ]),
     AdminModule,
   ],

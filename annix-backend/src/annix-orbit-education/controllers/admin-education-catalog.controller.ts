@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import {
+  IsBoolean,
   IsInt,
   IsNumber,
   IsObject,
@@ -132,6 +133,94 @@ class RequirementVersionDto {
   @IsString()
   @MaxLength(24)
   verificationStatus?: string;
+}
+
+class ScholarshipDto {
+  @IsString()
+  @MaxLength(255)
+  name: string;
+
+  @IsString()
+  @MaxLength(255)
+  provider: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2)
+  country?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  amountDisplay?: string | null;
+
+  @IsOptional()
+  @IsString()
+  criteria?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  url?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  careerCluster?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  lastVerifiedAt?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
+}
+
+class UpdateScholarshipDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  provider?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2)
+  country?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  amountDisplay?: string | null;
+
+  @IsOptional()
+  @IsString()
+  criteria?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  url?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(48)
+  careerCluster?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  lastVerifiedAt?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }
 
 class OutcomeSignalDto {
@@ -292,5 +381,20 @@ export class AdminEducationCatalogController {
   @Post("outcome-signals")
   async createOutcomeSignal(@Body() body: OutcomeSignalDto) {
     return { outcomeSignal: await this.catalog.createOutcomeSignal(body) };
+  }
+
+  @Get("scholarships")
+  async scholarships() {
+    return { scholarships: await this.catalog.scholarships() };
+  }
+
+  @Post("scholarships")
+  async createScholarship(@Body() body: ScholarshipDto) {
+    return { scholarship: await this.catalog.createScholarship(body) };
+  }
+
+  @Patch("scholarships/:id")
+  async updateScholarship(@Param("id") id: string, @Body() body: UpdateScholarshipDto) {
+    return { scholarship: await this.catalog.updateScholarship(id, body) };
   }
 }
