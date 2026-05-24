@@ -2139,6 +2139,22 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/education/me/career-fit");
   }
 
+  async guardianStudents(): Promise<{ students: GuardianLinkedStudent[] }> {
+    return this.request("/annix-orbit/education/guardian/students");
+  }
+
+  async acceptGuardianLink(linkId: string): Promise<{ guardianLink: SeekerEducationGuardianLink }> {
+    return this.request(`/annix-orbit/education/guardian/links/${linkId}/accept`, {
+      method: "POST",
+    });
+  }
+
+  async recordGuardianConsent(linkId: string): Promise<{ recorded: boolean }> {
+    return this.request(`/annix-orbit/education/guardian/links/${linkId}/consent`, {
+      method: "POST",
+    });
+  }
+
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
     return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
@@ -2385,6 +2401,19 @@ export interface SeekerEducationCareerFit {
   fit: number | null;
   interested: boolean;
   reasons: string[];
+}
+
+export interface GuardianLinkedStudent {
+  linkId: string;
+  status: string;
+  educationProfileId: string;
+  studentName: string | null;
+  curriculum: string;
+  school: string | null;
+  isMinor: boolean;
+  consentRequired: boolean;
+  resultsCount: number;
+  applicationsCount: number;
 }
 
 export interface SeekerJobStats {

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
+  type GuardianLinkedStudent,
   type SeekerEducationApplication,
   type SeekerEducationApplicationInput,
   type SeekerEducationApplicationStatus,
@@ -171,5 +172,34 @@ export function useOrbitSeekerEducationCareerFit(enabled: boolean = true) {
     queryFn: () => annixOrbitApiClient.seekerEducationCareerFit(),
     enabled,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitGuardianStudents(enabled: boolean = true) {
+  return useQuery<{ students: GuardianLinkedStudent[] }>({
+    queryKey: annixOrbitKeys.guardian.students(),
+    queryFn: () => annixOrbitApiClient.guardianStudents(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitAcceptGuardianLink() {
+  const queryClient = useQueryClient();
+  return useMutation<{ guardianLink: SeekerEducationGuardianLink }, Error, string>({
+    mutationFn: (linkId) => annixOrbitApiClient.acceptGuardianLink(linkId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.guardian.all });
+    },
+  });
+}
+
+export function useOrbitRecordGuardianConsent() {
+  const queryClient = useQueryClient();
+  return useMutation<{ recorded: boolean }, Error, string>({
+    mutationFn: (linkId) => annixOrbitApiClient.recordGuardianConsent(linkId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.guardian.all });
+    },
   });
 }

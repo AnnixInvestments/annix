@@ -129,6 +129,10 @@ export const annixOrbitKeys = {
     scholarships: () => ["annix-orbit", "seeker", "education", "scholarships"] as const,
     careerFit: () => ["annix-orbit", "seeker", "education", "career-fit"] as const,
   },
+  guardian: {
+    all: ["annix-orbit", "guardian"] as const,
+    students: () => ["annix-orbit", "guardian", "students"] as const,
+  },
   workforceNeed: {
     all: ["annix-orbit", "admin", "workforce-needs"] as const,
     forRfq: (rfqId: number) => ["annix-orbit", "admin", "workforce-needs", "rfq", rfqId] as const,

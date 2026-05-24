@@ -189,12 +189,15 @@ export {
   useOrbitTopCandidates,
 } from "./annix-orbit/useOrbitDashboard";
 export {
+  useOrbitAcceptGuardianLink,
   useOrbitAddSeekerEducationResult,
   useOrbitAskSeekerEducationMentor,
   useOrbitCreateSeekerEducationApplication,
   useOrbitDeleteSeekerEducationApplication,
   useOrbitDeleteSeekerEducationResult,
+  useOrbitGuardianStudents,
   useOrbitInviteSeekerEducationGuardian,
+  useOrbitRecordGuardianConsent,
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
   useOrbitSeekerEducationApplications,
