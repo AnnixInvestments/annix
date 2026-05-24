@@ -184,12 +184,20 @@ export default function AdminOrbitJobMarketPage() {
             Manage platform-global job-board feeds that populate Browse Jobs for every seeker.
           </p>
         </div>
-        <Link
-          href="/admin/portal/branding/annix-orbit"
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 whitespace-nowrap"
-        >
-          Branding
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/portal/orbit/seeker-tiers"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 whitespace-nowrap"
+          >
+            Seeker tiers
+          </Link>
+          <Link
+            href="/admin/portal/branding/annix-orbit"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200 whitespace-nowrap"
+          >
+            Branding
+          </Link>
+        </div>
       </div>
 
       {stats && (
