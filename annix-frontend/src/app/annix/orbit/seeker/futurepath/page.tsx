@@ -16,6 +16,7 @@ import {
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
   useOrbitSeekerEducationApplications,
+  useOrbitSeekerEducationCareerFit,
   useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
   useOrbitSeekerEducationScholarships,
@@ -99,6 +100,10 @@ export default function FuturePathPage() {
   const scholarshipsQuery = useOrbitSeekerEducationScholarships();
   const scholarshipsData = scholarshipsQuery.data;
   const scholarships = scholarshipsData ? scholarshipsData.scholarships : [];
+
+  const careerFitQuery = useOrbitSeekerEducationCareerFit(profile != null && !consentRequired);
+  const careerFitData = careerFitQuery.data;
+  const careerFit = careerFitData ? careerFitData.careerFit : [];
   const createApplication = useOrbitCreateSeekerEducationApplication();
   const updateApplicationStatus = useOrbitUpdateSeekerEducationApplicationStatus();
   const deleteApplication = useOrbitDeleteSeekerEducationApplication();
@@ -501,6 +506,45 @@ export default function FuturePathPage() {
           </div>
         ) : null}
       </section>
+
+      {careerFit.length > 0 ? (
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900 mb-1">Career fit</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            How well your subjects line up with each field. This is a guide based on your marks and
+            interests — not a prediction of admission or employment.
+          </p>
+          <ul className="space-y-2">
+            {careerFit.map((c) => {
+              const fitValue = c.fit;
+              const fitWidth = fitValue == null ? 0 : fitValue;
+              return (
+                <li key={c.cluster} className="text-sm">
+                  <div className="flex items-center justify-between">
+                    <span>
+                      {c.label}
+                      {c.interested ? (
+                        <span className="ml-2 rounded-full px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800">
+                          Interest
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {fitValue == null ? "Add subjects" : `${fitValue}% fit`}
+                    </span>
+                  </div>
+                  <div className="mt-1 h-1.5 w-full rounded bg-gray-100">
+                    <div
+                      className="h-1.5 rounded"
+                      style={{ width: `${fitWidth}%`, backgroundColor: "var(--brand-accent)" }}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <section className="rounded-lg border border-gray-200 bg-white p-5">
         <h2 className="font-medium text-gray-900 mb-1">Your programme matches</h2>

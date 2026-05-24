@@ -4,6 +4,7 @@ import {
   type SeekerEducationApplication,
   type SeekerEducationApplicationInput,
   type SeekerEducationApplicationStatus,
+  type SeekerEducationCareerFit,
   type SeekerEducationCompareOptionsResponse,
   type SeekerEducationConsent,
   type SeekerEducationGuardianLink,
@@ -161,5 +162,14 @@ export function useOrbitSeekerEducationScholarships(enabled: boolean = true) {
     queryFn: () => annixOrbitApiClient.seekerEducationScholarships(),
     enabled,
     staleTime: 30 * 60 * 1000,
+  });
+}
+
+export function useOrbitSeekerEducationCareerFit(enabled: boolean = true) {
+  return useQuery<{ careerFit: SeekerEducationCareerFit[] }>({
+    queryKey: annixOrbitKeys.seekerEducation.careerFit(),
+    queryFn: () => annixOrbitApiClient.seekerEducationCareerFit(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }

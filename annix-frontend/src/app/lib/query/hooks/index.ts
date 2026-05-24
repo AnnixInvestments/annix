@@ -180,6 +180,7 @@ export {
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
   useOrbitSeekerEducationApplications,
+  useOrbitSeekerEducationCareerFit,
   useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
   useOrbitSeekerEducationScholarships,

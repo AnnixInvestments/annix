@@ -2135,6 +2135,10 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/education/me/scholarships");
   }
 
+  async seekerEducationCareerFit(): Promise<{ careerFit: SeekerEducationCareerFit[] }> {
+    return this.request("/annix-orbit/education/me/career-fit");
+  }
+
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
     return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
@@ -2372,6 +2376,15 @@ export interface SeekerEducationScholarship {
   careerCluster: string | null;
   lastVerifiedAt: string | null;
   active: boolean;
+}
+
+export interface SeekerEducationCareerFit {
+  cluster: string;
+  label: string;
+  /** Subject-alignment score 0–100 — not an admission/employment probability. */
+  fit: number | null;
+  interested: boolean;
+  reasons: string[];
 }
 
 export interface SeekerJobStats {
