@@ -523,8 +523,14 @@ function BrandNavLogo(props: { brand: string; isOrbit: boolean }) {
   const hasTextCrop = branding ? brandHasAsset("textCrop", branding) : false;
 
   if (branding && hasTextCrop) {
-    const url = resolveBrandAssetUrl("textCrop", branding);
-    return <img src={url} alt="" className="h-8 w-auto max-w-[200px] object-contain object-left" />;
+    const iconUrl = resolveBrandAssetUrl("logoIcon", branding);
+    const textUrl = resolveBrandAssetUrl("textCrop", branding);
+    return (
+      <span className="flex items-center gap-2">
+        <img src={iconUrl} alt="" className="h-9 w-9 rounded-[18%] object-contain" />
+        <img src={textUrl} alt="" className="h-8 w-auto max-w-[180px] object-contain" />
+      </span>
+    );
   }
 
   return <AmixLogo size="sm" showText={true} wordmark={isOrbit ? "orbit" : "investments"} />;
