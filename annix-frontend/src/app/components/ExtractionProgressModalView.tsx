@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { nowMillis } from "@/app/lib/datetime";
+import { useBranding } from "@/app/lib/query/hooks";
 import type { ExtractionBrand, ExtractionState } from "./ExtractionProgressModal";
 
 interface BrandStyle {
@@ -83,6 +85,9 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
   const { state } = props;
   const [tickMs, setTickMs] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Annix Orbit pulls its logo + wordmark live from the branding page so an
+  // admin's uploaded artwork flows straight through to this popup.
+  const { data: orbitBranding } = useBranding("annix-orbit");
 
   useEffect(() => {
     if (!state) {
@@ -148,16 +153,24 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
       <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full overflow-hidden">
         <div className={`px-4 py-2 ${styles.bg} ${styles.text} flex items-center justify-between`}>
-          <span className="flex items-center gap-2">
-            {styles.logo ? (
-              <img
-                src={styles.logo}
-                alt={`${styles.label} logo`}
-                className="h-5 w-5 rounded-sm object-contain"
-              />
-            ) : null}
-            <span className="text-xs font-semibold uppercase tracking-wide">{styles.label}</span>
-          </span>
+          {state.brand === "annix-orbit" && orbitBranding ? (
+            <img
+              src={resolveBrandAssetUrl("logoLockup", orbitBranding)}
+              alt={`${styles.label} logo`}
+              className="h-6 object-contain"
+            />
+          ) : (
+            <span className="flex items-center gap-2">
+              {styles.logo ? (
+                <img
+                  src={styles.logo}
+                  alt={`${styles.label} logo`}
+                  className="h-5 w-5 rounded-sm object-contain"
+                />
+              ) : null}
+              <span className="text-xs font-semibold uppercase tracking-wide">{styles.label}</span>
+            </span>
+          )}
           <span className="text-[10px]">
             {elapsedSeconds}s elapsed
             {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
