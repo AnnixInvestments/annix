@@ -26,6 +26,7 @@ import {
 import { ORBIT_EDUCATION_VERSION } from "../../config/futurepath-version";
 import FuturePathAlternativePathways from "./FuturePathAlternativePathways";
 import FuturePathCostCalculator from "./FuturePathCostCalculator";
+import FuturePathMarksPlanner from "./FuturePathMarksPlanner";
 
 const APPLICATION_STATUSES: SeekerEducationApplicationStatus[] = [
   "interested",
@@ -741,6 +742,8 @@ export default function FuturePathPage() {
           </ul>
         </section>
       ) : null}
+
+      <FuturePathMarksPlanner results={results} />
 
       <FuturePathAlternativePathways clusters={targetClusters} />
 
