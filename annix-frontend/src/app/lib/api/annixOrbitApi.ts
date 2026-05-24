@@ -416,6 +416,7 @@ export interface JobMarketStats {
     lastIngestedAt: string | null;
     requestsToday: number;
     rateLimitPerDay: number;
+    jobCount: number;
   }>;
 }
 

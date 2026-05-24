@@ -521,10 +521,28 @@ export class JobIngestionService {
       lastIngestedAt: Date | null;
       requestsToday: number;
       rateLimitPerDay: number;
+      jobCount: number;
     }>;
   }> {
     const sources = await this.sourceRepo.find({ where: { companyId: IsNull() } });
     const sourceIds = sources.map((s) => s.id);
+
+    const perSourceCounts =
+      sourceIds.length > 0
+        ? await this.externalJobRepo
+            .createQueryBuilder("job")
+            .select("job.source_id", "sourceId")
+            .addSelect("COUNT(*)", "count")
+            .where("job.source_id IN (:...sourceIds)", { sourceIds })
+            .groupBy("job.source_id")
+            .getRawMany()
+        : [];
+    const countBySource = new Map<number, number>(
+      perSourceCounts.map((row: { sourceId: number; count: string }) => [
+        Number(row.sourceId),
+        Number(row.count),
+      ]),
+    );
 
     const totalJobs =
       sourceIds.length > 0
@@ -555,6 +573,7 @@ export class JobIngestionService {
         lastIngestedAt: s.lastIngestedAt,
         requestsToday: s.requestsToday,
         rateLimitPerDay: s.rateLimitPerDay,
+        jobCount: countBySource.get(s.id) ?? 0,
       })),
     };
   }

@@ -26,20 +26,24 @@ import { SourceCard } from "./components/SourceCard";
 // Background crawl/DPSA ingestion returns immediately; we keep the branded
 // progress popup up and poll the source's lastIngestedAt until the run finishes
 // (it advances only on completion), so the admin sees it working.
-async function waitForBackgroundIngestion(
-  sourceId: number,
-  baseline: string | null,
-): Promise<void> {
+async function lastIngestedFor(sourceId: number): Promise<string | null> {
+  try {
+    const sources = await adminApiClient.orbitJobMarketSources();
+    const match = sources.find((source) => source.id === sourceId);
+    return match ? match.lastIngestedAt : null;
+  } catch {
+    return null;
+  }
+}
+
+async function waitForBackgroundIngestion(sourceId: number): Promise<void> {
+  // Capture the baseline from a fresh fetch (the React Query cache can be stale,
+  // which would make the poll think the run already finished and flash closed).
+  const baseline = await lastIngestedFor(sourceId);
   const poll = async (attempt: number): Promise<void> => {
     await new Promise((resolve) => globalThis.setTimeout(resolve, 5000));
-    try {
-      const sources = await adminApiClient.orbitJobMarketSources();
-      const match = sources.find((source) => source.id === sourceId);
-      const lastIngestedAt = match ? match.lastIngestedAt : null;
-      if (lastIngestedAt && lastIngestedAt !== baseline) return;
-    } catch {
-      // backend may be mid-rebuild — keep polling
-    }
+    const current = await lastIngestedFor(sourceId);
+    if (current && current !== baseline) return;
     if (attempt >= 60) return;
     return poll(attempt + 1);
   };
@@ -65,6 +69,8 @@ export default function AdminOrbitJobMarketPage() {
   });
 
   const stats = statsQuery.data;
+  const statsSources = stats ? stats.sources : [];
+  const jobCountBySource = new Map(statsSources.map((s) => [s.id, s.jobCount]));
   const sourcesData = sourcesQuery.data;
   const sources = sourcesData ?? [];
   const jobsData = jobsQuery.data;
@@ -143,8 +149,7 @@ export default function AdminOrbitJobMarketPage() {
           label: `Crawling ${sourceName} in the background…`,
           estimatedDurationMs: learnedMs || 120_000,
         });
-        const baseline = sourceMatch ? sourceMatch.lastIngestedAt : null;
-        await waitForBackgroundIngestion(sourceId, baseline);
+        await waitForBackgroundIngestion(sourceId);
         hideExtraction();
         setIngestionStatus((prev) => ({
           ...prev,
@@ -329,6 +334,7 @@ export default function AdminOrbitJobMarketPage() {
                   key={source.id}
                   source={source}
                   ingestionStatus={ingestionStatus[source.id]}
+                  jobCount={jobCountBySource.get(source.id)}
                   onTrigger={() => handleTriggerIngestion(source.id)}
                   onToggle={() => handleToggleSource(source)}
                   onDelete={() => handleDeleteSource(source.id)}

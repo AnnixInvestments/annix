@@ -6,12 +6,14 @@ import { fromISO } from "@/app/lib/datetime";
 export function SourceCard({
   source,
   ingestionStatus,
+  jobCount,
   onTrigger,
   onToggle,
   onDelete,
 }: {
   source: JobMarketSource;
   ingestionStatus?: string;
+  jobCount?: number;
   onTrigger: () => void;
   onToggle: () => void;
   onDelete: () => void;
@@ -38,6 +40,9 @@ export function SourceCard({
             </span>
           </div>
           <div className="mt-2 text-sm text-gray-500 space-y-1">
+            {jobCount != null && (
+              <p className="font-semibold text-gray-900">Jobs ingested: {jobCount}</p>
+            )}
             <p>Countries: {source.countryCodes.join(", ").toUpperCase()}</p>
             <p>
               API requests: {source.requestsToday} / {source.rateLimitPerDay} today
