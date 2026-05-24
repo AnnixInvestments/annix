@@ -54,6 +54,12 @@ export {
 } from "./admin/useCompanyProfile";
 export { useExtractionMetricsUsage } from "./admin/useExtractionMetricsUsage";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
+export {
+  useAdminLicensingCatalog,
+  useSetAddOn,
+  useSetTierFeatures,
+  useSetTierPricing,
+} from "./admin/useLicensingAdmin";
 export { useNeonConsumption } from "./admin/useNeonConsumption";
 export {
   usePausePollingJob,
