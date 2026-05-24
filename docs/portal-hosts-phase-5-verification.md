@@ -26,7 +26,7 @@ Run these after the migration to confirm Cross-portal passkey use is blocked.
 
 - On `https://admin.annix.co.za/login`, click "Sign in with passkey", complete Windows Hello → ✅ should sign in.
 - On `https://stockcontrol.annix.co.za/login`, type `admin@annix.co.za`, click "Sign in with passkey" → ❌ should fail with "No passkey is registered for this account on this device."
-- Same expectation on `https://aurubber.co.za`, `https://complysa.annix.co.za`, etc.
+- Same expectation on `https://aurubber.co.za`, `https://sentinel.annix.co.za`, etc.
 
 ### Test 2 — A new portal-specific passkey isolates correctly
 

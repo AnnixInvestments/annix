@@ -11,7 +11,7 @@ const APP_OPTIONS = [
   { value: "nix", label: "Nix" },
   { value: "annix-orbit", label: "Annix Orbit" },
   { value: "stock-control", label: "Stock Control" },
-  { value: "comply-sa", label: "Comply SA" },
+  { value: "annix-sentinel", label: "Annix Sentinel" },
 ];
 
 const PROVIDER_OPTIONS = [
@@ -39,7 +39,7 @@ function appBadgeColor(app: string): string {
     nix: "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
     "annix-orbit": "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
     "stock-control": "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300",
-    "comply-sa": "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
+    "annix-sentinel": "bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-300",
   };
   const rawColors = colors[app];
   return rawColors ?? "bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300";

@@ -154,7 +154,7 @@ export default tseslint.config(
           selector:
             "Literal[value=/(sageone\\.com|sageone\\.co\\.za|accounting\\.sage\\.com|api\\.sage|sagecloud)/i]",
           message:
-            "Direct calls to Sage API endpoints are forbidden — use SageApiService or SageService via sageRateLimiter (CLAUDE.md Sage DLA compliance). Only files inside src/sage-export/ and src/comply-sa/comply-integrations/sage/ may reference Sage URLs.",
+            "Direct calls to Sage API endpoints are forbidden — use SageApiService or SageService via sageRateLimiter (CLAUDE.md Sage DLA compliance). Only files inside src/sage-export/ and src/annix-sentinel/sentinel-integrations/sage/ may reference Sage URLs.",
         },
       ],
       "no-restricted-imports": [

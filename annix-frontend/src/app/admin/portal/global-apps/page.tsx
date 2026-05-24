@@ -116,7 +116,7 @@ function TeacherAssistantIcon() {
   );
 }
 
-function ComplySaIcon() {
+function AnnixSentinelIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
@@ -236,10 +236,10 @@ const platformApps: AppCard[] = [
     hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
   },
   {
-    href: "/comply-sa/dashboard",
-    title: "Comply SA",
+    href: "/annix-sentinel/dashboard",
+    title: "Annix Sentinel",
     description: "SA SME compliance dashboard with B-BBEE, tax tools, and regulatory tracking.",
-    icon: <ComplySaIcon />,
+    icon: <AnnixSentinelIcon />,
     color: "bg-rose-100 text-rose-600",
     hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
   },
@@ -308,9 +308,9 @@ const brandingApps: AppCard[] = [
     hoverColor: "hover:border-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
   },
   {
-    href: "/admin/portal/branding/comply-sa",
-    title: "Comply SA",
-    description: "Comply SA brand — logo, colours and identity.",
+    href: "/admin/portal/branding/annix-sentinel",
+    title: "Annix Sentinel",
+    description: "Annix Sentinel brand — logo, colours and identity.",
     icon: <BrandingIcon />,
     color: "bg-rose-100 text-rose-600",
     hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",

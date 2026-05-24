@@ -14,7 +14,7 @@ export type FeedbackAuthContext = FeedbackAuthContextContract;
 export type SubmitFeedbackDto = FeedbackSubmissionPayload;
 export type SubmitFeedbackResponse = FeedbackSubmitResponse;
 
-const COOKIE_AUTH_CONTEXTS: FeedbackAuthContext[] = ["comply-sa"];
+const COOKIE_AUTH_CONTEXTS: FeedbackAuthContext[] = ["annix-sentinel"];
 
 const AUTH_TOKEN_KEYS: Record<string, string> = {
   customer: "customerAccessToken",

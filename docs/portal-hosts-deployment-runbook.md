@@ -23,7 +23,7 @@ Add the following records under the `annix.co.za` zone. All should be **proxied*
 |---|---|---|---|---|
 | CNAME | admin | annix-app.fly.dev | Auto | Proxied |
 | CNAME | stockcontrol | annix-app.fly.dev | Auto | Proxied |
-| CNAME | complysa | annix-app.fly.dev | Auto | Proxied |
+| CNAME | sentinel | annix-app.fly.dev | Auto | Proxied |
 | CNAME | fieldflow | annix-app.fly.dev | Auto | Proxied |
 | CNAME | annixrep | annix-app.fly.dev | Auto | Proxied |
 | CNAME | cv | annix-app.fly.dev | Auto | Proxied |
@@ -45,7 +45,7 @@ Fly issues Let's Encrypt certs per hostname automatically when you add the hostn
 ```bash
 flyctl certs add admin.annix.co.za --app annix-app
 flyctl certs add stockcontrol.annix.co.za --app annix-app
-flyctl certs add complysa.annix.co.za --app annix-app
+flyctl certs add sentinel.annix.co.za --app annix-app
 flyctl certs add fieldflow.annix.co.za --app annix-app
 flyctl certs add annixrep.annix.co.za --app annix-app
 flyctl certs add cv.annix.co.za --app annix-app
@@ -67,7 +67,7 @@ Wait for `Configured: yes` and `Verified: yes` before proceeding. Cloudflare pro
 The CORS allowlist now includes all canonical hosts via `corsOriginsFor("prod")` (see `annix-backend/src/main.ts`). For belt-and-braces, also set `CORS_ORIGINS` explicitly:
 
 ```bash
-flyctl secrets set CORS_ORIGINS="https://annix.co.za,https://www.annix.co.za,https://admin.annix.co.za,https://stockcontrol.annix.co.za,https://complysa.annix.co.za,https://fieldflow.annix.co.za,https://annixrep.annix.co.za,https://cv.annix.co.za,https://rfq.annix.co.za,https://aurubber.co.za,https://www.aurubber.co.za,https://auind.co.za,https://www.auind.co.za" --app annix-app
+flyctl secrets set CORS_ORIGINS="https://annix.co.za,https://www.annix.co.za,https://admin.annix.co.za,https://stockcontrol.annix.co.za,https://sentinel.annix.co.za,https://fieldflow.annix.co.za,https://annixrep.annix.co.za,https://cv.annix.co.za,https://rfq.annix.co.za,https://aurubber.co.za,https://www.aurubber.co.za,https://auind.co.za,https://www.auind.co.za" --app annix-app
 ```
 
 ### 4. WebAuthn env vars (legacy fallback)

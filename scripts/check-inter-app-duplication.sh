@@ -47,7 +47,7 @@ if [ -z "$FILTERED_FILES" ]; then
   exit 0
 fi
 
-APP_PATTERN='annix-frontend/src/app/(stock-control|au-rubber|annix-orbit|annix-rep|comply-sa|fieldflow)'
+APP_PATTERN='annix-frontend/src/app/(stock-control|au-rubber|annix-orbit|annix-rep|annix-sentinel|fieldflow)'
 
 echo -e "${CYAN}Running inter-app duplication checks...${NC}"
 
@@ -58,7 +58,7 @@ for f in $FILTERED_FILES; do
   # trees, where apps must never reach into each other. Backend modules under
   # annix-backend/src/ legitimately share services via relative imports.
   if echo "$f" | grep -qE "$APP_PATTERN/"; then
-    if grep -qE "from ['\"]\\.\\./(\\.\\./)+(stock-control|au-rubber|annix-orbit|annix-rep|comply-sa|fieldflow)/" "$f" 2>/dev/null; then
+    if grep -qE "from ['\"]\\.\\./(\\.\\./)+(stock-control|au-rubber|annix-orbit|annix-rep|annix-sentinel|fieldflow)/" "$f" 2>/dev/null; then
       echo -e "${RED}ERROR${NC} $f"
       echo "  Cross-app relative import detected. Apps must never reach into each other."
       echo "  Move the shared code to one of the canonical locations in docs/shared-registry.md:"
@@ -106,7 +106,7 @@ for f in $FILTERED_FILES; do
 
   # Rule 5: Nix UI placed in an app folder (hard error). Every Nix UI primitive
   # must live in annix-frontend/src/app/lib/nix/components/ so all apps share
-  # one implementation — Stock Control, RFQ, Comply-SA, etc.
+  # one implementation — Stock Control, RFQ, Annix Sentinel, etc.
   #
   # Names listed here are unambiguously Nix concepts (SpecificationCard,
   # ExtractionCard, NixDraftReview, etc.). Generic names like StatCard /

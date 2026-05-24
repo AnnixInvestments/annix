@@ -6,7 +6,7 @@ export enum StorageArea {
   SECURE_DOCUMENTS = "secure-documents",
   STOCK_CONTROL = "stock-control",
   STOCK_MANAGEMENT = "stock-management",
-  COMPLY_SA = "comply-sa",
+  ANNIX_SENTINEL = "annix-sentinel",
   AU_INDUSTRIES = "au-industries",
   PLATFORM = "platform",
   TEACHER_ASSISTANT = "teacher-assistant",

@@ -7,7 +7,7 @@ export type ExtractionBrand =
   | "au-rubber"
   | "stock-control"
   | "rfq"
-  | "comply-sa"
+  | "annix-sentinel"
   | "fieldflow"
   | "annix-rep"
   | "annix-orbit"

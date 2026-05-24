@@ -4,6 +4,7 @@ import { ScheduleModule } from "@nestjs/schedule";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AiUsageModule } from "./ai-usage/ai-usage.module";
+import { AnnixSentinelModule } from "./annix-sentinel/annix-sentinel.module";
 import { AppController } from "./app.controller";
 import { AuditModule } from "./audit/audit.module";
 import { AuthModule } from "./auth/auth.module";
@@ -11,7 +12,6 @@ import { BendDimensionController } from "./bend-dimension/bend-dimension.control
 import { BendDimensionService } from "./bend-dimension/bend-dimension.service";
 import { BoqModule } from "./boq/boq.module";
 import { BrandingModule } from "./branding/branding.module";
-import { ComplySaModule } from "./comply-sa/comply-sa.module";
 import typeormConfig from "./config/typeorm";
 import { CustomerModule } from "./customer/customer.module";
 import { DataValidationModule } from "./data-validation/data-validation.module";
@@ -124,7 +124,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     InsightsModule,
     BrandingModule,
 
-    ...(process.env.DISABLE_COMPLY_SA === "true" ? [] : [ComplySaModule]),
+    ...(process.env.DISABLE_ANNIX_SENTINEL === "true" ? [] : [AnnixSentinelModule]),
   ],
   controllers: [AppController, BendDimensionController],
   providers: [BendDimensionService],

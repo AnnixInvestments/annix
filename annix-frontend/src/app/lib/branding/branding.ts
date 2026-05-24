@@ -76,7 +76,7 @@ export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSl
     favicon: "/branding/annix-orbit-icon.png",
     watermark: "/branding/annix-orbit-icon.png",
   },
-  "comply-sa": {
+  "annix-sentinel": {
     logoIcon: "/branding/annix-sentinel-icon.svg",
     logoLockup: "/branding/annix-sentinel-logo-dark.svg",
     wordmark: "/branding/annix-sentinel-wordmark.svg",

@@ -35,8 +35,8 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
     text: "text-blue-700",
     logo: null,
   },
-  "comply-sa": {
-    label: "Comply SA",
+  "annix-sentinel": {
+    label: "Annix Sentinel",
     bar: "bg-emerald-600",
     bg: "bg-emerald-50",
     text: "text-emerald-700",

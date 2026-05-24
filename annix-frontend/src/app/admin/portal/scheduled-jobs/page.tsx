@@ -132,7 +132,7 @@ function formatDate(iso: string | null): string {
 const MODULE_COLORS: Record<string, string> = {
   FieldFlow: "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
   "Annix Orbit": "bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300",
-  "Comply SA": "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
+  "Annix Sentinel": "bg-teal-100 text-teal-700 dark:bg-teal-900/50 dark:text-teal-300",
   "AU Rubber": "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300",
   "Stock Control": "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
   Customers: "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300",

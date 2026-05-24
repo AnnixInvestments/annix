@@ -1,0 +1,425 @@
+import { Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
+import { InjectRepository } from "@nestjs/typeorm";
+import { In, IsNull, Not, Repository } from "typeorm";
+import {
+  ChannelKey,
+  NotificationDispatcherService,
+} from "../../notifications/notification-dispatcher.service";
+import { AnnixSentinelProfile } from "../companies/entities/annix-sentinel-profile.entity";
+import { AnnixSentinelComplianceStatus } from "../compliance/entities/compliance-status.entity";
+import { daysBetween, formatDateZA, fromJSDate, now } from "../lib/datetime";
+import { AnnixSentinelDocument } from "../sentinel-documents/entities/document.entity";
+import { AnnixSentinelNotification } from "./entities/notification.entity";
+import { AnnixSentinelNotificationPreferences } from "./entities/notification-preferences.entity";
+
+const REMINDER_THRESHOLD_DAYS = 30;
+
+interface DeliveryChannels {
+  inApp: boolean;
+  email: boolean;
+  sms: boolean;
+  whatsapp: boolean;
+}
+
+@Injectable()
+export class AnnixSentinelNotificationsService {
+  private readonly logger = new Logger(AnnixSentinelNotificationsService.name);
+
+  constructor(
+    @InjectRepository(AnnixSentinelComplianceStatus)
+    private readonly statusRepository: Repository<AnnixSentinelComplianceStatus>,
+    @InjectRepository(AnnixSentinelNotification)
+    private readonly notificationRepository: Repository<AnnixSentinelNotification>,
+    @InjectRepository(AnnixSentinelNotificationPreferences)
+    private readonly preferencesRepository: Repository<AnnixSentinelNotificationPreferences>,
+    @InjectRepository(AnnixSentinelProfile)
+    private readonly profileRepository: Repository<AnnixSentinelProfile>,
+    @InjectRepository(AnnixSentinelDocument)
+    private readonly documentRepository: Repository<AnnixSentinelDocument>,
+    private readonly dispatcher: NotificationDispatcherService,
+  ) {}
+
+  @Cron("0 6 * * *", {
+    name: "annix-sentinel:deadline-notifications",
+    timeZone: "Africa/Johannesburg",
+  })
+  async processDeadlineNotifications(): Promise<void> {
+    try {
+      const statusesWithDueDates = await this.statusRepository.find({
+        where: { nextDueDate: Not(IsNull()) },
+        relations: ["requirement"],
+      });
+
+      const today = now();
+
+      const pendingNotifications = statusesWithDueDates
+        .map((status) => {
+          const dueDate = fromJSDate(status.nextDueDate!);
+          const daysUntilDue = daysBetween(today, dueDate);
+
+          if (daysUntilDue < 0) {
+            return { status, type: "overdue" as const, daysUntilDue };
+          } else if (daysUntilDue <= 3) {
+            return { status, type: "reminder_3d" as const, daysUntilDue };
+          } else if (daysUntilDue <= 14) {
+            return { status, type: "reminder_14d" as const, daysUntilDue };
+          } else if (daysUntilDue <= REMINDER_THRESHOLD_DAYS) {
+            return { status, type: "reminder_30d" as const, daysUntilDue };
+          } else {
+            return null;
+          }
+        })
+        .filter(
+          (
+            n,
+          ): n is {
+            status: AnnixSentinelComplianceStatus;
+            type: "overdue" | "reminder_3d" | "reminder_14d" | "reminder_30d";
+            daysUntilDue: number;
+          } => n !== null,
+        );
+
+      const affectedCompanyIds = [
+        ...new Set(pendingNotifications.map(({ status }) => status.companyId)),
+      ];
+
+      const allProfiles =
+        affectedCompanyIds.length > 0
+          ? await this.profileRepository.find({
+              where: { companyId: In(affectedCompanyIds) },
+              relations: ["user"],
+            })
+          : [];
+
+      const allUserIds = allProfiles.map((p) => p.userId);
+
+      const allPreferences =
+        allUserIds.length > 0
+          ? await this.preferencesRepository.find({
+              where: { userId: In(allUserIds) },
+            })
+          : [];
+
+      const profilesByCompany = allProfiles.reduce<Record<number, AnnixSentinelProfile[]>>(
+        (acc, profile) => ({
+          ...acc,
+          [profile.companyId]: [...(acc[profile.companyId] ?? []), profile],
+        }),
+        {},
+      );
+
+      const preferencesByUserId = allPreferences.reduce<
+        Record<number, AnnixSentinelNotificationPreferences>
+      >(
+        (acc, prefs) => ({
+          ...acc,
+          [prefs.userId]: prefs,
+        }),
+        {},
+      );
+
+      const channelsFromPreferences = (userId: number): DeliveryChannels => {
+        const prefs = preferencesByUserId[userId] ?? null;
+
+        if (prefs === null) {
+          return { inApp: true, email: true, sms: false, whatsapp: false };
+        }
+
+        return {
+          inApp: prefs.inAppEnabled,
+          email: prefs.emailEnabled,
+          sms: prefs.smsEnabled,
+          whatsapp: prefs.whatsappEnabled,
+        };
+      };
+
+      await Promise.all(
+        pendingNotifications.map(async ({ status, type, daysUntilDue }) => {
+          const message = this.buildMessage(status, type, daysUntilDue);
+          const isCritical = type === "overdue" || type === "reminder_3d";
+          const profiles = profilesByCompany[status.companyId] ?? [];
+
+          await Promise.all(
+            profiles.map(async (profile) => {
+              const channels = channelsFromPreferences(profile.userId);
+              const prefs = preferencesByUserId[profile.userId] ?? null;
+
+              if (channels.inApp) {
+                const notification = this.notificationRepository.create({
+                  companyId: status.companyId,
+                  userId: profile.userId,
+                  requirementId: status.requirementId,
+                  channel: "in_app",
+                  type,
+                  message,
+                });
+                await this.notificationRepository.save(notification);
+              }
+
+              const channelKeys: ChannelKey[] = [];
+              if (channels.email) {
+                channelKeys.push("email");
+              }
+              if (isCritical && channels.sms && prefs?.phone) {
+                channelKeys.push("sms");
+              }
+              if (isCritical && channels.whatsapp && prefs?.phone) {
+                channelKeys.push("whatsapp");
+              }
+
+              if (channelKeys.length > 0) {
+                const subject = this.emailSubject(type, status.requirement?.name ?? "Requirement");
+                const userEmail = profile.user?.email || "";
+                await this.dispatcher.dispatch({
+                  recipient: {
+                    userId: profile.userId,
+                    email: userEmail,
+                    phone: prefs?.phone ?? null,
+                  },
+                  content: {
+                    subject,
+                    body: message,
+                    html: this.emailHtml(subject, message),
+                  },
+                  channels: channelKeys,
+                });
+              }
+            }),
+          );
+        }),
+      );
+
+      this.logger.log(`Processed ${pendingNotifications.length} deadline notifications`);
+
+      const overdueStatuses = statusesWithDueDates.filter((status) => {
+        const dueDate = fromJSDate(status.nextDueDate!);
+        return daysBetween(today, dueDate) < 0 && status.status !== "overdue";
+      });
+
+      if (overdueStatuses.length > 0) {
+        await Promise.all(
+          overdueStatuses.map((status) => {
+            status.status = "overdue";
+            return this.statusRepository.save(status);
+          }),
+        );
+      }
+
+      const warningStatuses = statusesWithDueDates.filter((status) => {
+        const dueDate = fromJSDate(status.nextDueDate!);
+        const daysUntil = daysBetween(today, dueDate);
+        return (
+          daysUntil <= REMINDER_THRESHOLD_DAYS && daysUntil >= 0 && status.status === "in_progress"
+        );
+      });
+
+      if (warningStatuses.length > 0) {
+        await Promise.all(
+          warningStatuses.map((status) => {
+            status.status = "warning";
+            return this.statusRepository.save(status);
+          }),
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to process deadline notifications: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  @Cron("0 7 * * *", { name: "annix-sentinel:document-expiry", timeZone: "Africa/Johannesburg" })
+  async processDocumentExpiryWarnings(): Promise<void> {
+    try {
+      const today = now();
+
+      const allDocumentsWithExpiry = await this.documentRepository.find({
+        where: { expiryDate: Not(IsNull()) },
+      });
+
+      const documentsInRange = allDocumentsWithExpiry.filter((doc) => {
+        const expiryDt = fromJSDate(doc.expiryDate!);
+        const daysUntil = daysBetween(today, expiryDt);
+        return daysUntil >= -1 && daysUntil <= REMINDER_THRESHOLD_DAYS;
+      });
+
+      const docCompanyIds = [...new Set(documentsInRange.map((doc) => doc.companyId))];
+
+      const docProfiles =
+        docCompanyIds.length > 0
+          ? await this.profileRepository.find({
+              where: { companyId: In(docCompanyIds) },
+              relations: ["user"],
+            })
+          : [];
+
+      const docUserIds = docProfiles.map((p) => p.userId);
+
+      const docPreferences =
+        docUserIds.length > 0
+          ? await this.preferencesRepository.find({
+              where: { userId: In(docUserIds) },
+            })
+          : [];
+
+      const docProfilesByCompany = docProfiles.reduce<Record<number, AnnixSentinelProfile[]>>(
+        (acc, profile) => ({
+          ...acc,
+          [profile.companyId]: [...(acc[profile.companyId] ?? []), profile],
+        }),
+        {},
+      );
+
+      const docPrefsByUserId = docPreferences.reduce<
+        Record<number, AnnixSentinelNotificationPreferences>
+      >(
+        (acc, prefs) => ({
+          ...acc,
+          [prefs.userId]: prefs,
+        }),
+        {},
+      );
+
+      const docChannelsFromPreferences = (userId: number): DeliveryChannels => {
+        const prefs = docPrefsByUserId[userId] ?? null;
+
+        if (prefs === null) {
+          return { inApp: true, email: true, sms: false, whatsapp: false };
+        }
+
+        return {
+          inApp: prefs.inAppEnabled,
+          email: prefs.emailEnabled,
+          sms: prefs.smsEnabled,
+          whatsapp: prefs.whatsappEnabled,
+        };
+      };
+
+      await Promise.all(
+        documentsInRange.map(async (doc) => {
+          const expiryDt = fromJSDate(doc.expiryDate!);
+          const daysUntil = daysBetween(today, expiryDt);
+          const formattedDate = formatDateZA(expiryDt);
+
+          const message =
+            daysUntil < 0
+              ? `EXPIRED: Document "${doc.name}" expired on ${formattedDate}. Please upload a renewed version.`
+              : `EXPIRING: Document "${doc.name}" expires on ${formattedDate} (${daysUntil} days). Please renew before expiry.`;
+
+          const type = daysUntil < 0 ? "document_expired" : "document_expiring";
+          const profiles = docProfilesByCompany[doc.companyId] ?? [];
+
+          await Promise.all(
+            profiles.map(async (profile) => {
+              const channels = docChannelsFromPreferences(profile.userId);
+
+              if (channels.inApp) {
+                const notification = this.notificationRepository.create({
+                  companyId: doc.companyId,
+                  userId: profile.userId,
+                  channel: "in_app",
+                  type,
+                  message,
+                });
+                await this.notificationRepository.save(notification);
+              }
+
+              if (channels.email) {
+                const subject =
+                  daysUntil < 0
+                    ? `[EXPIRED] ${doc.name} - Annix Sentinel`
+                    : `[Expiring] ${doc.name} expires in ${daysUntil} days - Annix Sentinel`;
+                const userEmail = profile.user?.email || "";
+                await this.dispatcher.dispatch({
+                  recipient: { userId: profile.userId, email: userEmail },
+                  content: {
+                    subject,
+                    body: message,
+                    html: this.emailHtml(subject, message),
+                  },
+                  channels: ["email"],
+                });
+              }
+            }),
+          );
+        }),
+      );
+
+      this.logger.log(`Processed ${documentsInRange.length} document expiry warnings`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to process document expiry warnings: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  async unreadForUser(userId: number): Promise<AnnixSentinelNotification[]> {
+    return this.notificationRepository.find({
+      where: { userId, readAt: IsNull() },
+      order: { sentAt: "DESC" },
+    });
+  }
+
+  async markRead(notificationId: number): Promise<AnnixSentinelNotification> {
+    const notification = await this.notificationRepository.findOne({
+      where: { id: notificationId },
+    });
+
+    if (notification === null) {
+      this.logger.warn(`Notification ${notificationId} not found for markRead`);
+      throw new Error(`Notification ${notificationId} not found`);
+    }
+
+    notification.readAt = now().toJSDate();
+    return this.notificationRepository.save(notification);
+  }
+
+  private buildMessage(
+    status: AnnixSentinelComplianceStatus,
+    type: string,
+    daysUntilDue: number,
+  ): string {
+    const requirementName = status.requirement?.name ?? "Requirement";
+
+    const formattedDate =
+      status.nextDueDate !== null ? formatDateZA(fromJSDate(status.nextDueDate)) : "unknown";
+
+    if (type === "overdue") {
+      return `OVERDUE: ${requirementName} was due on ${formattedDate}. Please address this immediately to avoid penalties.`;
+    }
+
+    return `REMINDER: ${requirementName} is due in ${daysUntilDue} days (${formattedDate}). Complete it before the deadline.`;
+  }
+
+  private emailSubject(type: string, requirementName: string): string {
+    if (type === "overdue") {
+      return `[OVERDUE] ${requirementName} - Annix Sentinel`;
+    } else if (type === "reminder_3d") {
+      return `[URGENT] ${requirementName} due in 3 days - Annix Sentinel`;
+    } else if (type === "reminder_14d") {
+      return `[Reminder] ${requirementName} due in 14 days - Annix Sentinel`;
+    } else {
+      return `[Reminder] ${requirementName} due in 30 days - Annix Sentinel`;
+    }
+  }
+
+  private emailHtml(subject: string, message: string): string {
+    return [
+      "<!DOCTYPE html><html><head><meta charset='UTF-8'></head>",
+      "<body style='font-family:Arial,sans-serif;background:#f8fafc;padding:20px'>",
+      "<div style='max-width:600px;margin:0 auto;background:#fff;border-radius:8px;padding:32px;border:1px solid #e2e8f0'>",
+      "<div style='text-align:center;margin-bottom:24px'>",
+      "<span style='font-size:24px;font-weight:bold;color:#0d9488'>Annix Sentinel</span>",
+      "</div>",
+      `<h2 style='color:#1a365d;margin:0 0 16px'>${subject}</h2>`,
+      `<p style='color:#4a5568;line-height:1.6'>${message}</p>`,
+      "<div style='margin-top:24px;text-align:center'>",
+      "<a href='https://sentinel.annix.co.za/dashboard' style='display:inline-block;background:#0d9488;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold'>View Dashboard</a>",
+      "</div>",
+      "<hr style='border:none;border-top:1px solid #e2e8f0;margin:24px 0'>",
+      "<p style='color:#a0aec0;font-size:12px;text-align:center'>Annix Sentinel - SA SME Compliance Dashboard</p>",
+      "</div></body></html>",
+    ].join("");
+  }
+}

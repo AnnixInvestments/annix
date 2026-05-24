@@ -47,7 +47,7 @@ const sizeMap = {
  * - <AmixLogo showText={false} /> Icon only
  *
  * All 17 consumers (Navigation, PortalToolbar, RegistrationToolbar,
- * SessionExpiredModal, Comply-SA pages, Nix popups, customer/register)
+ * SessionExpiredModal, Annix Sentinel pages, Nix popups, customer/register)
  * pick up the new icon automatically — no per-call-site changes needed.
  */
 export default function AmixLogo(props: AmixLogoProps) {

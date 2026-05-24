@@ -2,7 +2,7 @@ import { Column, CreateDateColumn, Entity, PrimaryColumn, UpdateDateColumn } fro
 
 /**
  * One row per Annix brand (annix-investments, annix-orbit, annix-insights,
- * annix-rep, comply-sa). Holds the full theming set so each brand's pages can
+ * annix-rep, annix-sentinel). Holds the full theming set so each brand's pages can
  * be re-skinned at runtime. Brands that don't use a given field simply ignore
  * it.
  */

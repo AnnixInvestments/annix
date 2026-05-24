@@ -21,7 +21,7 @@ export interface MineDocumentRevisionsProps {
  * rev 02's data, what's the path back to the source PDF).
  *
  * Driven by `GET /nix/mine-library/documents/:docNumber/revisions`. Shared
- * across apps via lib/nix/components/library so RFQ + Comply-SA can mount
+ * across apps via lib/nix/components/library so RFQ + Annix Sentinel can mount
  * it inside their own portal layouts without duplicating the table logic.
  */
 export function MineDocumentRevisions(props: MineDocumentRevisionsProps) {

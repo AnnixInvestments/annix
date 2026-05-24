@@ -1,7 +1,7 @@
 // Shared Nix draft-review UI primitives.
 //
 // Mount <NixDraftReview /> from any app's draft page (Stock Control,
-// RFQ, Comply-SA, etc.) to get the drawings + specs + other group
+// RFQ, Annix Sentinel, etc.) to get the drawings + specs + other group
 // layout, per-row Retry, click-to-edit cells, the spec-clause card
 // with stat-cards / pill chips / page-jump button, and the in-app
 // PdfPreviewModal — all wired through a single nixApi.

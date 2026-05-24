@@ -26,7 +26,7 @@ export class AdminAuditLogDto {
 }
 
 /**
- * DTO for per-app audit logging (e.g. Comply SA)
+ * DTO for per-app audit logging (e.g. Annix Sentinel)
  */
 export class AppAuditLogDto {
   appName: string;

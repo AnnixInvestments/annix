@@ -1,0 +1,137 @@
+import { Injectable } from "@nestjs/common";
+import { Company } from "../../../platform/entities/company.entity";
+import { AnnixSentinelCompanyDetails } from "../../companies/entities/annix-sentinel-company-details.entity";
+import { DateTime, fromISO, now } from "../../lib/datetime";
+import { AnnixSentinelComplianceRequirement } from "../entities/compliance-requirement.entity";
+
+interface AnniversaryOffsetRule {
+  type: "anniversary_offset";
+  field: string;
+  offset_days: number;
+}
+
+interface FixedMonthlyRule {
+  type: "fixed_monthly";
+  day: number;
+}
+
+interface FixedDatesRule {
+  type: "fixed_dates";
+  dates: Array<{ month: number; day: number }>;
+}
+
+interface BiMonthlyRule {
+  type: "bi_monthly";
+  day: number;
+}
+
+interface OngoingRule {
+  type: "ongoing";
+}
+
+type DeadlineRule =
+  | AnniversaryOffsetRule
+  | FixedMonthlyRule
+  | FixedDatesRule
+  | BiMonthlyRule
+  | OngoingRule;
+
+@Injectable()
+export class AnnixSentinelDeadlineService {
+  calculateNextDueDate(
+    requirement: AnnixSentinelComplianceRequirement,
+    company: Company,
+    details?: AnnixSentinelCompanyDetails | null,
+  ): Date | null {
+    if (requirement.deadlineRule === null) {
+      return null;
+    }
+
+    const rule = requirement.deadlineRule as unknown as DeadlineRule;
+    const today = now();
+
+    if (rule.type === "ongoing") {
+      return null;
+    } else if (rule.type === "anniversary_offset") {
+      return this.anniversaryOffset(rule, company, today);
+    } else if (rule.type === "fixed_monthly") {
+      return this.fixedMonthly(rule, today);
+    } else if (rule.type === "fixed_dates") {
+      return this.fixedDates(rule, today);
+    } else if (rule.type === "bi_monthly") {
+      return this.biMonthly(rule, today, details);
+    } else {
+      return null;
+    }
+  }
+
+  private anniversaryOffset(
+    rule: AnniversaryOffsetRule,
+    company: Company,
+    today: DateTime,
+  ): Date | null {
+    const fieldValue = (company as unknown as Record<string, unknown>)[rule.field] as string | null;
+
+    if (fieldValue == null) {
+      return null;
+    }
+
+    const baseDate = fromISO(fieldValue);
+
+    if (!baseDate.isValid) {
+      return null;
+    }
+
+    const thisYearAnniversary = baseDate.set({ year: today.year }).plus({ days: rule.offset_days });
+
+    if (thisYearAnniversary > today) {
+      return thisYearAnniversary.toJSDate();
+    } else {
+      return baseDate
+        .set({ year: today.year + 1 })
+        .plus({ days: rule.offset_days })
+        .toJSDate();
+    }
+  }
+
+  private fixedMonthly(rule: FixedMonthlyRule, today: DateTime): Date {
+    const thisMonth = today.set({ day: rule.day });
+
+    if (thisMonth > today) {
+      return thisMonth.toJSDate();
+    } else {
+      return thisMonth.plus({ months: 1 }).toJSDate();
+    }
+  }
+
+  private fixedDates(rule: FixedDatesRule, today: DateTime): Date {
+    const futureDates = rule.dates
+      .map((d) => {
+        const thisYear = today.set({ month: d.month, day: d.day });
+        const nextYear = thisYear.plus({ years: 1 });
+        return thisYear > today ? thisYear : nextYear;
+      })
+      .sort((a, b) => a.toMillis() - b.toMillis());
+
+    return futureDates[0].toJSDate();
+  }
+
+  private biMonthly(
+    rule: BiMonthlyRule,
+    today: DateTime,
+    details?: AnnixSentinelCompanyDetails | null,
+  ): Date {
+    const cycle = details?.vatSubmissionCycle || "even";
+    const isSubmissionMonth = cycle === "odd" ? today.month % 2 !== 0 : today.month % 2 === 0;
+
+    const currentDay = today.set({ day: rule.day });
+
+    if (isSubmissionMonth && currentDay > today) {
+      return currentDay.toJSDate();
+    } else if (isSubmissionMonth) {
+      return currentDay.plus({ months: 2 }).toJSDate();
+    } else {
+      return currentDay.plus({ months: 1 }).toJSDate();
+    }
+  }
+}

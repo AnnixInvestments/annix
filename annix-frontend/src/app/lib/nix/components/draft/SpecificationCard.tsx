@@ -11,7 +11,7 @@ import { CODE_KIND_TONE, type CodeKind, extractProductDescriptors } from "./useS
  * Pure presentation component — accepts the raw clause value and an
  * onJumpToPage callback that the host wires to its PDF preview modal.
  * Used by every app that consumes Nix specifications (ASCA quote draft,
- * RFQ BOQ review, future Comply-SA spec audits).
+ * RFQ BOQ review, future Annix Sentinel spec audits).
  *
  * The optional `kind` prop colours the heading pill to match the chip
  * styling drawing rows use for the same code — amber for coating, blue

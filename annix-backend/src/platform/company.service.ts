@@ -22,7 +22,7 @@ export interface CompanySearchFilters {
 export const MODULE_CODES = {
   STOCK_CONTROL: "stock-control",
   AU_RUBBER: "au-rubber",
-  COMPLY_SA: "comply-sa",
+  ANNIX_SENTINEL: "annix-sentinel",
   ANNIX_ORBIT: "annix-orbit",
   FIELDFLOW: "fieldflow",
   ANNIX_REP: "annix-rep",

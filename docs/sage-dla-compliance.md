@@ -2,7 +2,7 @@
 
 **Status as of 2026-04-25:** enrolment form + DLA received from Sage on 2026-03-16, NOT yet signed/returned. No sandbox or live API key issued — all Sage integration code is currently dormant in production. The rules below apply pre-emptively to anything that touches Sage. Violations once we hold a key can result in revocation and permanent loss of API access.
 
-Applies to ALL Annix apps (Stock Control, AU Rubber, Comply SA, and any future apps).
+Applies to ALL Annix apps (Stock Control, AU Rubber, Annix Sentinel, and any future apps).
 
 ## Rate Limits (STRICTLY ENFORCED)
 - **100 requests per minute per company** — exceeding this blocks the IP for 1 hour (HTTP 429)
@@ -36,7 +36,7 @@ Applies to ALL Annix apps (Stock Control, AU Rubber, Comply SA, and any future a
 
 ## Architecture — All Sage Calls Funnel Through Two Services
 - `annix-backend/src/sage-export/sage-api.service.ts` — Sage One SA REST client (rate-limited via `sageRateLimiter`)
-- `annix-backend/src/comply-sa/comply-integrations/sage/sage.service.ts` — Sage Cloud OAuth client (rate-limited via `sageRateLimiter`)
+- `annix-backend/src/annix-sentinel/sentinel-integrations/sage/sage.service.ts` — Sage Cloud OAuth client (rate-limited via `sageRateLimiter`)
 - `annix-backend/src/lib/sage-rate-limiter.ts` — Shared rate limiter (100/min, 2500/day, 1s spacing per company)
 - Adapter services (`rubber-sage-invoice-post`, `rubber-sage-coc-adapter`, `sage-invoice-adapter`, `rubber-sage-contact-sync`) transform data and call the above two services — they do not make direct HTTP calls to Sage
 - **Never bypass this architecture** — any new Sage integration must go through the existing services, never direct `fetch` to Sage URLs

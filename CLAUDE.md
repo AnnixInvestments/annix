@@ -2,7 +2,7 @@
 
 ## Discovery-first protocol (MANDATORY before writing new shared code)
 
-Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Rep, Annix Orbit) sharing one backend and a `packages/product-data/` workspace. AI-generated code tends to duplicate patterns per-app rather than reuse shared modules. **This has cost the project an estimated 100–200k lines of unnecessary code** (see issue #175). Every Claude session must follow this protocol to stop the drift.
+Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Annix Sentinel, FieldFlow, Annix Rep, Annix Orbit) sharing one backend and a `packages/product-data/` workspace. AI-generated code tends to duplicate patterns per-app rather than reuse shared modules. **This has cost the project an estimated 100–200k lines of unnecessary code** (see issue #175). Every Claude session must follow this protocol to stop the drift.
 
 **Before writing any of the following, complete the discovery protocol below — no exceptions, no "I'll check later":**
 
@@ -47,7 +47,7 @@ When you add new shared code, update `docs/shared-registry.md` in the same commi
 
 ### Nix UI is shared — never define Nix primitives in app folders
 
-The Nix module (AI document extraction + draft review) is heavily shared across apps. Stock Control, RFQ, Comply-SA and any future app that consumes Nix all use the same UI primitives. Concretely:
+The Nix module (AI document extraction + draft review) is heavily shared across apps. Stock Control, RFQ, Annix Sentinel and any future app that consumes Nix all use the same UI primitives. Concretely:
 
 | Nix surface | Canonical home | App pages do |
 |---|---|---|
@@ -59,7 +59,7 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 | Frontend draft review UI | `annix-frontend/src/app/lib/nix/components/draft/` | mount `<NixDraftReview session={...} brand={...} onSessionChanged={...} />` |
 
 **Forbidden** — the pre-push hook rejects these:
-- A file with an unambiguously-Nix filename — `SpecificationCard.tsx`, `CodesEditor.tsx`, `CodesCell.tsx`, `CodeChip.tsx`, `ExtractionCard.tsx`, `ExtractionGroup.tsx`, `NixDraftReview.tsx`, `useSpecLookup.ts`, `Nix*.tsx` — **anywhere inside an app folder** (`stock-control/`, `au-rubber/`, `annix-orbit/`, `annix-rep/`, `comply-sa/`, `fieldflow/`).
+- A file with an unambiguously-Nix filename — `SpecificationCard.tsx`, `CodesEditor.tsx`, `CodesCell.tsx`, `CodeChip.tsx`, `ExtractionCard.tsx`, `ExtractionGroup.tsx`, `NixDraftReview.tsx`, `useSpecLookup.ts`, `Nix*.tsx` — **anywhere inside an app folder** (`stock-control/`, `au-rubber/`, `annix-orbit/`, `annix-rep/`, `annix-sentinel/`, `fieldflow/`).
 - An app file that defines a `function SpecificationCard(...)` / `function ExtractionCard(...)` / `function ExtractionGroup(...)` / `function NixDraftReview(...)` / `function CodesEditor(...)` etc. inline — even if the filename is different.
 
 (Generic names like `StatCard`, `DetailsBlock`, `ItemRow`, `EditableCell` are intentionally NOT flagged — apps legitimately have their own non-Nix versions of these. But if you're adding one for **Nix data**, it belongs in `lib/nix/components/draft/`.)
@@ -69,7 +69,7 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 **To add a new feature to the Nix draft view (e.g. a new column, a new spec field renderer):**
 1. Edit the file in `lib/nix/components/draft/` (e.g. `SpecificationCard.tsx`).
 2. Update `docs/shared-registry.md` if a new top-level export was added.
-3. Every app picks up the change automatically — Stock Control, RFQ, Comply-SA — without any app-page edits.
+3. Every app picks up the change automatically — Stock Control, RFQ, Annix Sentinel — without any app-page edits.
 
 ## Code Style
 - **No comments in code**: use self-documenting method names instead of inline comments

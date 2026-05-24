@@ -51,7 +51,7 @@ The cron is registered in `JOB_METADATA`, so you can pause it, resume it, or cha
 
 ## Why 06:00 SAST and not another time
 
-- 06:00 already has the `comply-sa:deadline-notifications` cron firing, so Neon is already awake. Adding Insights to the same wake-up window is essentially free compute.
+- 06:00 already has the `annix-sentinel:deadline-notifications` cron firing, so Neon is already awake. Adding Insights to the same wake-up window is essentially free compute.
 - 22:30 SAST (which would catch US close same-day) falls inside the 12-hour night-suspension window (18:00–06:00 SAST) and is intentionally avoided.
 - One cron per day is enough for daily-bar resolution. Intraday data is not collected by Insights — by design.
 

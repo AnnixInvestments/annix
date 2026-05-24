@@ -3,7 +3,7 @@
  * that extracts line items from a workshop / fabrication / spool drawing.
  *
  * Today's consumers: ASCA quote drafts (Stock Control), and (planned) RFQ
- * BOQ ingestion, Comply-SA spec audits. Each app's profile handler composes
+ * BOQ ingestion, Annix Sentinel spec audits. Each app's profile handler composes
  * its app-specific intro / cross-linking block AROUND this shared schema —
  * so the field names, type rules, blank-cell rules and worked example stay
  * consistent across the platform.

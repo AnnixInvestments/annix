@@ -6,7 +6,7 @@ export type FeedbackAuthContext =
   | "supplier"
   | "annix-orbit"
   | "annix-rep"
-  | "comply-sa";
+  | "annix-sentinel";
 
 export type FeedbackSource = "text" | "voice";
 

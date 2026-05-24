@@ -168,24 +168,24 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Customers",
     defaultCron: "0 8 * * *",
   },
-  "comply-sa:regulatory-sync": {
+  "annix-sentinel:regulatory-sync": {
     description: "Sync regulatory updates from government sources",
-    module: "Comply SA",
+    module: "Annix Sentinel",
     defaultCron: "0 5 * * *",
   },
-  "comply-sa:deadline-notifications": {
+  "annix-sentinel:deadline-notifications": {
     description: "Process compliance deadline notifications",
-    module: "Comply SA",
+    module: "Annix Sentinel",
     defaultCron: "0 6 * * *",
   },
-  "comply-sa:document-expiry": {
+  "annix-sentinel:document-expiry": {
     description: "Check document expiry and send warnings",
-    module: "Comply SA",
+    module: "Annix Sentinel",
     defaultCron: "0 7 * * *",
   },
-  "comply-sa:data-retention-cleanup": {
-    description: "Monthly POPIA data retention cleanup for Comply SA",
-    module: "Comply SA",
+  "annix-sentinel:data-retention-cleanup": {
+    description: "Monthly POPIA data retention cleanup for Annix Sentinel",
+    module: "Annix Sentinel",
     defaultCron: "0 3 1 * *",
   },
   "inbound-email:poll-all": {

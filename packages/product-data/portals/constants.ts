@@ -2,7 +2,7 @@ export type PortalCode =
   | "marketing"
   | "admin"
   | "stock-control"
-  | "comply-sa"
+  | "annix-sentinel"
   | "fieldflow"
   | "annix-rep"
   | "annix-orbit"
@@ -47,12 +47,12 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
     devHost: "stockcontrol.localhost",
   },
   {
-    code: "comply-sa",
+    code: "annix-sentinel",
     displayName: "Annix Sentinel",
-    internalPathPrefix: "/comply-sa",
-    prodHost: "complysa.annix.co.za",
+    internalPathPrefix: "/annix-sentinel",
+    prodHost: "sentinel.annix.co.za",
     prodHostAliases: [],
-    devHost: "complysa.localhost",
+    devHost: "sentinel.localhost",
   },
   {
     code: "fieldflow",

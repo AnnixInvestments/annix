@@ -82,7 +82,7 @@ const APP_ISSUE_MAP: Record<string, number> = {
   supplier: 156,
   "annix-orbit": 160,
   "annix-rep": 161,
-  "comply-sa": 159,
+  "annix-sentinel": 159,
 };
 
 @Injectable()

@@ -17,7 +17,7 @@ const SAGE_API_HOSTS = [
 
 const ALLOWED_SAGE_CALLERS = [
   "sage-export/sage-api.service.ts",
-  "comply-sa/comply-integrations/sage/sage.service.ts",
+  "annix-sentinel/sentinel-integrations/sage/sage.service.ts",
   "lib/sage-rate-limiter.ts",
   "scripts/test-sage-api.ts",
 ];

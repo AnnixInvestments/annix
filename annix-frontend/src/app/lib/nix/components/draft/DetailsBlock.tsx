@@ -21,7 +21,7 @@ import { StatCard } from "./StatCard";
  *  - {min, max} objects → automatically collapsed to a range stat
  *
  * Generic to any Nix extraction profile — RFQ paint systems, ASCA rubber
- * lining specs, future Comply-SA standards, etc. — because it lets the
+ * lining specs, future Annix Sentinel standards, etc. — because it lets the
  * shape of the data drive the visual treatment.
  */
 export function DetailsBlock(props: { details: Record<string, unknown> }) {

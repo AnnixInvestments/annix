@@ -25,7 +25,7 @@ sudo tee -a /etc/hosts <<'EOF'
 127.0.0.1  stockcontrol.localhost
 127.0.0.1  aurubber.localhost
 127.0.0.1  rfq.localhost
-127.0.0.1  complysa.localhost
+127.0.0.1  sentinel.localhost
 127.0.0.1  fieldflow.localhost
 127.0.0.1  annixrep.localhost
 127.0.0.1  cv.localhost
@@ -41,7 +41,7 @@ EOF
 127.0.0.1  stockcontrol.localhost
 127.0.0.1  aurubber.localhost
 127.0.0.1  rfq.localhost
-127.0.0.1  complysa.localhost
+127.0.0.1  sentinel.localhost
 127.0.0.1  fieldflow.localhost
 127.0.0.1  annixrep.localhost
 127.0.0.1  cv.localhost
@@ -61,7 +61,7 @@ With the dev server running (`./run-dev.sh` or via the Claude Swarm orchestrator
 | Stock Control | http://stockcontrol.localhost:3000 |
 | AU Rubber | http://aurubber.localhost:3000 |
 | RFQ | http://rfq.localhost:3000 |
-| Comply SA | http://complysa.localhost:3000 |
+| Annix Sentinel | http://sentinel.localhost:3000 |
 | FieldFlow | http://fieldflow.localhost:3000 |
 | Annix Rep | http://annixrep.localhost:3000 |
 | Annix Orbit | http://cv.localhost:3000 |
@@ -78,7 +78,7 @@ The same portal codes resolve to the production hostnames below. The canonical s
 | Marketing | annix.co.za |
 | Platform admin | admin.annix.co.za |
 | Stock Control | stockcontrol.annix.co.za |
-| Comply SA | complysa.annix.co.za |
+| Annix Sentinel | sentinel.annix.co.za |
 | FieldFlow | fieldflow.annix.co.za |
 | Annix Rep | annixrep.annix.co.za |
 | Annix Orbit | cv.annix.co.za |
