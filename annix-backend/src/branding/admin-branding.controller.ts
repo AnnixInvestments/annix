@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -16,6 +17,7 @@ import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import {
   AppBrandingService,
   type BrandingAssetSlot,
+  type BrandingImageView,
   type BrandingView,
 } from "./app-branding.service";
 import { UpdateBrandingDto } from "./dto/update-branding.dto";
@@ -36,6 +38,7 @@ const VALID_SLOTS: BrandingAssetSlot[] = [
   "wordmark",
   "favicon",
   "watermark",
+  "textCrop",
 ];
 
 @ApiTags("Admin Branding")
@@ -86,6 +89,48 @@ export class AdminBrandingController {
     }
     const result = await this.brandingService.uploadAsset(brand, file);
     return { slot: validSlot, path: result.path, previewUrl: result.previewUrl };
+  }
+
+  @Get(":brand/images")
+  @ApiOperation({ summary: "List a brand's additional gallery images" })
+  async images(@Param("brand") brand: string): Promise<BrandingImageView[]> {
+    return this.brandingService.listImages(brand);
+  }
+
+  @Post(":brand/images")
+  @ApiOperation({ summary: "Add a brand gallery image" })
+  @ApiConsumes("multipart/form-data")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      fileFilter: (_req, file, cb) => {
+        if (ALLOWED_ASSET_MIME.has(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException("Only image files are allowed"), false);
+        }
+      },
+      limits: { fileSize: 2 * 1024 * 1024 },
+    }),
+  )
+  async addImage(
+    @Param("brand") brand: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body("label") label?: string,
+  ): Promise<BrandingImageView> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+    return this.brandingService.addImage(brand, label ?? "", file);
+  }
+
+  @Delete(":brand/images/:id")
+  @ApiOperation({ summary: "Delete a brand gallery image" })
+  async deleteImage(
+    @Param("brand") brand: string,
+    @Param("id") id: string,
+  ): Promise<{ success: boolean }> {
+    await this.brandingService.deleteImage(brand, id);
+    return { success: true };
   }
 }
 

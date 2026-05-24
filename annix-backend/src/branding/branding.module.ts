@@ -6,11 +6,12 @@ import { StorageModule } from "../storage/storage.module";
 import { AdminBrandingController } from "./admin-branding.controller";
 import { AppBrandingService } from "./app-branding.service";
 import { AppBranding } from "./entities/app-branding.entity";
+import { AppBrandingImage } from "./entities/app-branding-image.entity";
 import { PublicBrandingController } from "./public-branding.controller";
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([AppBranding]),
+    TypeOrmModule.forFeature([AppBranding, AppBrandingImage]),
     MulterModule.register({ limits: { fileSize: 2 * 1024 * 1024 } }),
     StorageModule,
     AdminModule,

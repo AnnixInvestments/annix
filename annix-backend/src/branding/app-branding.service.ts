@@ -5,8 +5,15 @@ import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { type BrandCode, isBrandCode } from "./branding.constants";
 import { UpdateBrandingDto } from "./dto/update-branding.dto";
 import { AppBranding } from "./entities/app-branding.entity";
+import { AppBrandingImage } from "./entities/app-branding-image.entity";
 
-export type BrandingAssetSlot = "logoIcon" | "logoLockup" | "wordmark" | "favicon" | "watermark";
+export type BrandingAssetSlot =
+  | "logoIcon"
+  | "logoLockup"
+  | "wordmark"
+  | "favicon"
+  | "watermark"
+  | "textCrop";
 
 export interface BrandingView {
   brandCode: string;
@@ -27,12 +34,18 @@ export interface BrandingView {
   assetVersion: number;
 }
 
+export interface BrandingImageView {
+  id: string;
+  label: string;
+}
+
 const SLOT_COLUMN: Record<BrandingAssetSlot, keyof AppBranding> = {
   logoIcon: "logoIconPath",
   logoLockup: "logoLockupPath",
   wordmark: "wordmarkPath",
   favicon: "faviconPath",
   watermark: "watermarkPath",
+  textCrop: "textCropPath",
 };
 
 @Injectable()
@@ -42,6 +55,8 @@ export class AppBrandingService {
   constructor(
     @InjectRepository(AppBranding)
     private readonly brandingRepo: Repository<AppBranding>,
+    @InjectRepository(AppBrandingImage)
+    private readonly imageRepo: Repository<AppBrandingImage>,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -89,6 +104,7 @@ export class AppBrandingService {
         wordmark: row.wordmarkPath != null,
         favicon: row.faviconPath != null,
         watermark: row.watermarkPath != null,
+        textCrop: row.textCropPath != null,
       },
       assetVersion: row.updatedAt ? row.updatedAt.getTime() : 0,
     };
@@ -126,6 +142,7 @@ export class AppBrandingService {
     if (dto.wordmarkPath !== undefined) existing.wordmarkPath = dto.wordmarkPath;
     if (dto.faviconPath !== undefined) existing.faviconPath = dto.faviconPath;
     if (dto.watermarkPath !== undefined) existing.watermarkPath = dto.watermarkPath;
+    if (dto.textCropPath !== undefined) existing.textCropPath = dto.textCropPath;
 
     const saved = await this.brandingRepo.save(existing);
     this.logger.log(`Branding updated for ${saved.brandCode}`);
@@ -154,6 +171,65 @@ export class AppBrandingService {
     }
     const buffer = await this.storageService.download(path);
     return { buffer, mimeType: mimeTypeForPath(path) };
+  }
+
+  async listImages(brand: string): Promise<BrandingImageView[]> {
+    const code = this.assertBrand(brand);
+    const rows = await this.imageRepo.find({
+      where: { brandCode: code },
+      order: { sortOrder: "ASC", createdAt: "ASC" },
+    });
+    return rows.map((row) => ({ id: row.id, label: row.label }));
+  }
+
+  async addImage(
+    brand: string,
+    label: string,
+    file: Express.Multer.File,
+  ): Promise<BrandingImageView> {
+    const code = this.assertBrand(brand);
+    const uploaded = await this.storageService.upload(file, `branding/${code}/gallery`);
+    const maxRow = await this.imageRepo.findOne({
+      where: { brandCode: code },
+      order: { sortOrder: "DESC" },
+    });
+    const nextOrder = maxRow ? maxRow.sortOrder + 1 : 0;
+    const saved = await this.imageRepo.save(
+      this.imageRepo.create({
+        brandCode: code,
+        label: label.trim().slice(0, 200),
+        path: uploaded.path,
+        sortOrder: nextOrder,
+      }),
+    );
+    this.logger.log(`Branding gallery image added for ${code}: ${saved.id}`);
+    return { id: saved.id, label: saved.label };
+  }
+
+  async deleteImage(brand: string, id: string): Promise<void> {
+    const code = this.assertBrand(brand);
+    const row = await this.imageRepo.findOne({ where: { id, brandCode: code } });
+    if (!row) {
+      throw new NotFoundException(`Gallery image ${id} not found for ${code}`);
+    }
+    await this.storageService.delete(row.path).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Failed to delete gallery file for ${id}: ${message}`);
+    });
+    await this.imageRepo.delete({ id: row.id });
+  }
+
+  async galleryImageBytes(
+    brand: string,
+    id: string,
+  ): Promise<{ buffer: Buffer; mimeType: string }> {
+    const code = this.assertBrand(brand);
+    const row = await this.imageRepo.findOne({ where: { id, brandCode: code } });
+    if (!row) {
+      throw new NotFoundException(`Gallery image ${id} not found for ${code}`);
+    }
+    const buffer = await this.storageService.download(row.path);
+    return { buffer, mimeType: mimeTypeForPath(row.path) };
   }
 }
 

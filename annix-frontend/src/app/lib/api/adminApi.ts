@@ -1109,6 +1109,18 @@ class AdminApiClient {
       file,
     );
   }
+
+  async brandingImages(brand: string): Promise<BrandingImage[]> {
+    return this.request(`/admin/branding/${brand}/images`);
+  }
+
+  async addBrandingImage(brand: string, file: File, label: string): Promise<BrandingImage> {
+    return apiClient.uploadFile<BrandingImage>(`/admin/branding/${brand}/images`, file, { label });
+  }
+
+  async deleteBrandingImage(brand: string, id: string): Promise<{ success: boolean }> {
+    return this.request(`/admin/branding/${brand}/images/${id}`, { method: "DELETE" });
+  }
 }
 
 export interface OrbitSeekerMatchTier {
@@ -1116,6 +1128,11 @@ export interface OrbitSeekerMatchTier {
   matchTier: string;
   targetCategories: string[];
   candidateIds: number[];
+}
+
+export interface BrandingImage {
+  id: string;
+  label: string;
 }
 
 export interface AiUsageQueryParams {

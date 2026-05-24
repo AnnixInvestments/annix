@@ -10,7 +10,14 @@ import {
   type BrandingUpdate,
   resolveBrandAssetUrl,
 } from "@/app/lib/branding/branding";
-import { useAdminBranding, useUpdateBranding, useUploadBrandingAsset } from "@/app/lib/query/hooks";
+import {
+  useAddBrandingImage,
+  useAdminBranding,
+  useAdminBrandingImages,
+  useDeleteBrandingImage,
+  useUpdateBranding,
+  useUploadBrandingAsset,
+} from "@/app/lib/query/hooks";
 
 interface BrandingForm {
   navbarColor: string;
@@ -28,7 +35,13 @@ interface BrandingForm {
   loadingAnimation: string;
 }
 
-const ASSET_FIELDS: { key: BrandingAssetSlot; label: string; hint: string }[] = [
+interface AssetFieldDef {
+  key: BrandingAssetSlot;
+  label: string;
+  hint: string;
+}
+
+const ASSET_FIELDS: AssetFieldDef[] = [
   { key: "logoIcon", label: "Logo icon", hint: "Square mark shown in the toolbar." },
   { key: "logoLockup", label: "Full lockup", hint: "The complete brand artwork." },
   { key: "wordmark", label: "Wordmark", hint: "The text logo." },
@@ -36,12 +49,21 @@ const ASSET_FIELDS: { key: BrandingAssetSlot; label: string; hint: string }[] = 
   { key: "watermark", label: "Background watermark", hint: "Faded hero behind pages." },
 ];
 
+const TEXT_IMAGE_FIELD: AssetFieldDef = {
+  key: "textCrop",
+  label: "Text image",
+  hint: "Horizontal text logo — shown in the navbar and on the login screen.",
+};
+
+const ALL_FIELDS: AssetFieldDef[] = [...ASSET_FIELDS, TEXT_IMAGE_FIELD];
+
 type BrandingAssetField =
   | "logoIconPath"
   | "logoLockupPath"
   | "wordmarkPath"
   | "faviconPath"
-  | "watermarkPath";
+  | "watermarkPath"
+  | "textCropPath";
 
 const SLOT_TO_FIELD: Record<BrandingAssetSlot, BrandingAssetField> = {
   logoIcon: "logoIconPath",
@@ -49,6 +71,7 @@ const SLOT_TO_FIELD: Record<BrandingAssetSlot, BrandingAssetField> = {
   wordmark: "wordmarkPath",
   favicon: "faviconPath",
   watermark: "watermarkPath",
+  textCrop: "textCropPath",
 };
 
 function formFromBranding(branding: Branding): BrandingForm {
@@ -76,6 +99,10 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const brandingQuery = useAdminBranding(brand);
   const updateMutation = useUpdateBranding(brand);
   const uploadMutation = useUploadBrandingAsset(brand);
+  const imagesQuery = useAdminBrandingImages(brand);
+  const addImageMutation = useAddBrandingImage(brand);
+  const deleteImageMutation = useDeleteBrandingImage(brand);
+  const [newImageLabel, setNewImageLabel] = useState("");
 
   const [form, setForm] = useState<BrandingForm | null>(null);
   const [assetPreview, setAssetPreview] = useState<Record<BrandingAssetSlot, string>>({
@@ -84,6 +111,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
     wordmark: "",
     favicon: "",
     watermark: "",
+    textCrop: "",
   });
   const [assetChange, setAssetChange] = useState<Partial<Record<BrandingAssetSlot, string | null>>>(
     {},
@@ -101,6 +129,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       wordmark: resolveBrandAssetUrl("wordmark", brandingData),
       favicon: resolveBrandAssetUrl("favicon", brandingData),
       watermark: resolveBrandAssetUrl("watermark", brandingData),
+      textCrop: resolveBrandAssetUrl("textCrop", brandingData),
     });
     setAssetChange({});
   }, [brandingData]);
@@ -123,10 +152,29 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
     }
   };
 
+  const handleAddImage = async (file: File) => {
+    try {
+      await addImageMutation.mutateAsync({ file, label: newImageLabel.trim() });
+      setNewImageLabel("");
+      showToast("Image added to the gallery.", "success");
+    } catch {
+      showToast("Couldn't add the image — use a PNG/JPG/SVG under 2MB.", "error");
+    }
+  };
+
+  const handleDeleteImage = async (id: string) => {
+    try {
+      await deleteImageMutation.mutateAsync(id);
+      showToast("Image removed from the gallery.", "success");
+    } catch {
+      showToast("Couldn't remove the image — please try again.", "error");
+    }
+  };
+
   const handlePublish = async () => {
     if (!form) return;
     const payload: BrandingUpdate = { ...form };
-    ASSET_FIELDS.forEach((assetField) => {
+    ALL_FIELDS.forEach((assetField) => {
       const slot = assetField.key;
       const value = assetChange[slot];
       if (value !== undefined) {
@@ -173,7 +221,14 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const wordmarkPreview = assetPreview.wordmark;
   const watermarkPreview = assetPreview.watermark;
   const faviconPreview = assetPreview.favicon;
+  const textCropPreview = assetPreview.textCrop;
+  const textCropBusy = uploadingSlot === "textCrop";
+  const hasTextCrop = brandingData ? brandingData.assets.textCrop : false;
+  const navbarTextUrl = hasTextCrop ? textCropPreview : wordmarkPreview;
   const isPublishing = updateMutation.isPending;
+  const galleryData = imagesQuery.data;
+  const galleryImages = galleryData ?? [];
+  const addingImage = addImageMutation.isPending;
 
   return (
     <div className="space-y-6">
@@ -239,40 +294,83 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Images</h2>
-            <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Images</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Drag an image onto a row, or click Upload. PNG/JPG/SVG/WebP under 2MB.
+            </p>
+            <div className="space-y-2">
               {ASSET_FIELDS.map((field) => {
                 const previewUrl = assetPreview[field.key];
                 const isBusy = uploadingSlot === field.key;
                 return (
-                  <div key={field.key} className="flex items-center gap-3">
-                    <div
-                      className="h-12 w-12 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-900 bg-contain bg-center bg-no-repeat"
-                      style={{ backgroundImage: `url('${previewUrl}')` }}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium text-gray-900">{field.label}</p>
-                      <p className="text-xs text-gray-500">{field.hint}</p>
-                    </div>
-                    <label className="cursor-pointer px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200">
-                      {isBusy ? "Uploading…" : "Upload"}
-                      <input
-                        type="file"
-                        accept="image/png,image/jpeg,image/svg+xml,image/webp,image/x-icon"
-                        className="hidden"
-                        disabled={isBusy}
-                        onChange={(e) => {
-                          const fileList = e.target.files;
-                          const file = fileList && fileList.length > 0 ? fileList[0] : null;
-                          if (file) handleUpload(field.key, file);
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                  </div>
+                  <AssetUploadRow
+                    key={field.key}
+                    field={field}
+                    previewUrl={previewUrl}
+                    busy={isBusy}
+                    onFile={(file) => handleUpload(field.key, file)}
+                  />
                 );
               })}
             </div>
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Text image</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Horizontal text logo (text crop) — shown in the navbar and on the login screen. Drag &
+              drop or click Upload.
+            </p>
+            <AssetUploadRow
+              field={TEXT_IMAGE_FIELD}
+              previewUrl={textCropPreview}
+              busy={textCropBusy}
+              onFile={(file) => handleUpload("textCrop", file)}
+            />
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Gallery</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Extra brand images stored for later use — add as many as you like, each with a label.
+              These save immediately and don't appear anywhere automatically.
+            </p>
+
+            {galleryImages.length > 0 ? (
+              <div className="space-y-2 mb-4">
+                {galleryImages.map((img) => {
+                  const url = `/api/public/branding/${brand}/image/${img.id}`;
+                  const labelText = img.label;
+                  return (
+                    <div key={img.id} className="flex items-center gap-3">
+                      <div
+                        className="h-12 w-12 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-900 bg-contain bg-center bg-no-repeat"
+                        style={{ backgroundImage: `url('${url}')` }}
+                      />
+                      <p className="min-w-0 flex-1 truncate text-sm text-gray-900">
+                        {labelText || "Untitled"}
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteImage(img.id)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-lg bg-red-50 text-red-600 hover:bg-red-100"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 mb-4">No extra images yet.</p>
+            )}
+
+            <GalleryAddRow
+              label={newImageLabel}
+              onLabelChange={setNewImageLabel}
+              busy={addingImage}
+              onFile={handleAddImage}
+            />
           </section>
 
           <button
@@ -313,7 +411,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                 />
                 <span
                   className="h-6 w-28 bg-contain bg-left bg-no-repeat"
-                  style={{ backgroundImage: `url('${wordmarkPreview}')` }}
+                  style={{ backgroundImage: `url('${navbarTextUrl}')` }}
                 />
               </div>
               <div
@@ -427,6 +525,120 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
           </section>
         </div>
       </div>
+    </div>
+  );
+}
+
+function AssetUploadRow(props: {
+  field: AssetFieldDef;
+  previewUrl: string;
+  busy: boolean;
+  onFile: (file: File) => void;
+}) {
+  const { field, previewUrl, busy, onFile } = props;
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const dropped = e.dataTransfer.files;
+    const file = dropped && dropped.length > 0 ? dropped[0] : null;
+    if (file) onFile(file);
+  };
+
+  return (
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      className={`flex items-center gap-3 rounded-lg border p-2 transition-colors ${
+        dragOver ? "border-dashed border-violet-400 bg-violet-50" : "border-transparent"
+      }`}
+    >
+      <div
+        className="h-12 w-12 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-900 bg-contain bg-center bg-no-repeat"
+        style={{ backgroundImage: `url('${previewUrl}')` }}
+      />
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium text-gray-900">{field.label}</p>
+        <p className="text-xs text-gray-500">{dragOver ? "Drop to upload…" : field.hint}</p>
+      </div>
+      <label className="cursor-pointer px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200">
+        {busy ? "Uploading…" : "Upload"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml,image/webp,image/x-icon"
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => {
+            const fileList = e.target.files;
+            const file = fileList && fileList.length > 0 ? fileList[0] : null;
+            if (file) onFile(file);
+            e.target.value = "";
+          }}
+        />
+      </label>
+    </div>
+  );
+}
+
+function GalleryAddRow(props: {
+  label: string;
+  onLabelChange: (v: string) => void;
+  busy: boolean;
+  onFile: (file: File) => void;
+}) {
+  const { label, onLabelChange, busy, onFile } = props;
+  const [dragOver, setDragOver] = useState(false);
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setDragOver(false);
+    const dropped = e.dataTransfer.files;
+    const file = dropped && dropped.length > 0 ? dropped[0] : null;
+    if (file) onFile(file);
+  };
+
+  const buttonLabel = busy ? "Adding…" : dragOver ? "Drop to add" : "Add image";
+
+  return (
+    <div
+      onDragOver={(e) => {
+        e.preventDefault();
+        setDragOver(true);
+      }}
+      onDragLeave={() => setDragOver(false)}
+      onDrop={handleDrop}
+      className={`flex items-center gap-2 rounded-lg border border-dashed p-2 transition-colors ${
+        dragOver ? "border-violet-400 bg-violet-50" : "border-gray-300"
+      }`}
+    >
+      <input
+        type="text"
+        value={label}
+        maxLength={200}
+        onChange={(e) => onLabelChange(e.target.value)}
+        placeholder="Label (optional)"
+        className="min-w-0 flex-1 rounded border border-gray-300 px-2 py-1.5 text-xs"
+      />
+      <label className="cursor-pointer whitespace-nowrap rounded-lg bg-violet-100 px-3 py-1.5 text-xs font-medium text-violet-700 hover:bg-violet-200">
+        {buttonLabel}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml,image/webp,image/x-icon"
+          className="hidden"
+          disabled={busy}
+          onChange={(e) => {
+            const fileList = e.target.files;
+            const file = fileList && fileList.length > 0 ? fileList[0] : null;
+            if (file) onFile(file);
+            e.target.value = "";
+          }}
+        />
+      </label>
     </div>
   );
 }

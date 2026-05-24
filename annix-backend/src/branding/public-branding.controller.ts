@@ -4,6 +4,7 @@ import type { Response } from "express";
 import {
   AppBrandingService,
   type BrandingAssetSlot,
+  type BrandingImageView,
   type BrandingView,
 } from "./app-branding.service";
 
@@ -13,6 +14,7 @@ const VALID_SLOTS: BrandingAssetSlot[] = [
   "wordmark",
   "favicon",
   "watermark",
+  "textCrop",
 ];
 
 @ApiTags("Public Branding")
@@ -36,6 +38,26 @@ export class PublicBrandingController {
   ): Promise<void> {
     const validSlot = parseSlot(slot);
     const { buffer, mimeType } = await this.brandingService.assetForSlot(brand, validSlot);
+    res.setHeader("Content-Type", mimeType);
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    res.send(buffer);
+  }
+
+  @Get(":brand/images")
+  @Header("Cache-Control", "public, max-age=300, stale-while-revalidate=86400")
+  @ApiOperation({ summary: "List a brand's additional gallery images" })
+  async images(@Param("brand") brand: string): Promise<BrandingImageView[]> {
+    return this.brandingService.listImages(brand);
+  }
+
+  @Get(":brand/image/:id")
+  @ApiOperation({ summary: "Stream a brand gallery image" })
+  async image(
+    @Param("brand") brand: string,
+    @Param("id") id: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const { buffer, mimeType } = await this.brandingService.galleryImageBytes(brand, id);
     res.setHeader("Content-Type", mimeType);
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
     res.send(buffer);

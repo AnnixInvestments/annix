@@ -92,6 +92,12 @@ export class UpdateBrandingDto {
   @IsString()
   watermarkPath?: string | null;
 
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  textCropPath?: string | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

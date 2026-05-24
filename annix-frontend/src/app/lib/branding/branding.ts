@@ -1,4 +1,10 @@
-export type BrandingAssetSlot = "logoIcon" | "logoLockup" | "wordmark" | "favicon" | "watermark";
+export type BrandingAssetSlot =
+  | "logoIcon"
+  | "logoLockup"
+  | "wordmark"
+  | "favicon"
+  | "watermark"
+  | "textCrop";
 
 export interface Branding {
   brandCode: string;
@@ -44,6 +50,7 @@ export interface BrandingUpdate {
   wordmarkPath?: string | null;
   faviconPath?: string | null;
   watermarkPath?: string | null;
+  textCropPath?: string | null;
   watermarkEnabled?: boolean;
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
@@ -96,6 +103,7 @@ export function brandingFallback(brandCode: string): Branding {
       wordmark: false,
       favicon: false,
       watermark: false,
+      textCrop: false,
     },
     assetVersion: 0,
   };

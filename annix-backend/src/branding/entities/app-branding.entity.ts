@@ -53,6 +53,9 @@ export class AppBranding {
   @Column({ name: "watermark_path", type: "varchar", length: 500, nullable: true })
   watermarkPath: string | null;
 
+  @Column({ name: "text_crop_path", type: "varchar", length: 500, nullable: true })
+  textCropPath: string | null;
+
   @Column({ name: "watermark_enabled", type: "boolean", default: true })
   watermarkEnabled: boolean;
 
