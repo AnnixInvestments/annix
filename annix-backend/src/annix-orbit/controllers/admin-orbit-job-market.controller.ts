@@ -109,6 +109,19 @@ export class AdminOrbitJobMarketController {
     });
   }
 
+  @Get("duplicates")
+  async duplicates(@Query("limit") limit?: string) {
+    return this.ingestionService.findDuplicateJobPairs(
+      limit ? Number.parseInt(limit, 10) : undefined,
+    );
+  }
+
+  @Delete("jobs/:id")
+  async deleteJob(@Param("id", ParseIntPipe) id: number) {
+    await this.ingestionService.deleteExternalJob(id);
+    return { message: "Job deleted" };
+  }
+
   @Get("stats")
   async stats() {
     return this.ingestionService.platformGlobalIngestionStats();

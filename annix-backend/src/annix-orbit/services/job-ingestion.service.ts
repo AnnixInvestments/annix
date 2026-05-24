@@ -531,6 +531,64 @@ export class JobIngestionService {
     return this.externalJobRepo.findOne({ where: { id: jobId }, relations: ["source"] });
   }
 
+  // Admin audit: near-duplicate listings the ingest-time dedup may have missed
+  // (e.g. the same role on two boards under slightly different titles, or
+  // within-source title variants). Pairs share a country + non-empty location
+  // and a fuzzy title match (pg_trgm similarity > 0.6), heaviest matches first.
+  async findDuplicateJobPairs(limit = 100): Promise<DuplicateJobPair[]> {
+    const capped = Math.min(Math.max(limit, 1), 500);
+    const rows = await this.externalJobRepo.query(
+      `
+      SELECT
+        a.id AS a_id, a.title AS a_title, a.company AS a_company,
+        a.location_raw AS a_location, sa.name AS a_source, a.created_at AS a_created,
+        b.id AS b_id, b.title AS b_title, b.company AS b_company,
+        b.location_raw AS b_location, sb.name AS b_source, b.created_at AS b_created,
+        ROUND(similarity(LOWER(a.title), LOWER(b.title))::numeric, 2) AS score
+      FROM cv_assistant_external_jobs a
+      JOIN cv_assistant_external_jobs b
+        ON a.id < b.id
+        AND a.country = b.country
+        AND a.location_area IS NOT NULL AND b.location_area IS NOT NULL
+        AND LOWER(a.location_area) = LOWER(b.location_area)
+        AND similarity(LOWER(a.title), LOWER(b.title)) > 0.6
+      JOIN cv_assistant_job_market_sources sa ON sa.id = a.source_id
+      JOIN cv_assistant_job_market_sources sb ON sb.id = b.source_id
+      ORDER BY score DESC, a.id
+      LIMIT $1
+      `,
+      [capped],
+    );
+
+    return rows.map(
+      (row: Record<string, unknown>): DuplicateJobPair => ({
+        score: Number(row.score ?? 0),
+        crossSource: row.a_source !== row.b_source,
+        a: {
+          id: Number(row.a_id),
+          title: String(row.a_title ?? ""),
+          company: (row.a_company as string | null) ?? null,
+          location: (row.a_location as string | null) ?? null,
+          source: String(row.a_source ?? ""),
+          createdAt: row.a_created ? DateTime.fromJSDate(row.a_created as Date).toISO() : null,
+        },
+        b: {
+          id: Number(row.b_id),
+          title: String(row.b_title ?? ""),
+          company: (row.b_company as string | null) ?? null,
+          location: (row.b_location as string | null) ?? null,
+          source: String(row.b_source ?? ""),
+          createdAt: row.b_created ? DateTime.fromJSDate(row.b_created as Date).toISO() : null,
+        },
+      }),
+    );
+  }
+
+  async deleteExternalJob(jobId: number): Promise<void> {
+    await this.alternateRepo.delete({ canonicalExternalJobId: jobId });
+    await this.externalJobRepo.delete(jobId);
+  }
+
   async publicJobs(
     options: {
       country?: string;
@@ -953,6 +1011,22 @@ export class JobIngestionService {
       source.requestsResetAt = DateTime.now().endOf("day").toJSDate();
     }
   }
+}
+
+export interface DuplicateJobSide {
+  id: number;
+  title: string;
+  company: string | null;
+  location: string | null;
+  source: string;
+  createdAt: string | null;
+}
+
+export interface DuplicateJobPair {
+  score: number;
+  crossSource: boolean;
+  a: DuplicateJobSide;
+  b: DuplicateJobSide;
 }
 
 export interface PublicJob {
