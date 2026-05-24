@@ -6,6 +6,7 @@ import { chunk } from "es-toolkit/compat";
 import { In, IsNull, MoreThan, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { sourceRespectRank } from "../config/job-source-providers";
 import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
@@ -94,6 +95,7 @@ export class JobIngestionService {
     private readonly dpsaCircularService: DpsaCircularService,
     private readonly jobCategorizationService: JobCategorizationService,
     private readonly sitemapCrawlIngestionService: SitemapCrawlIngestionService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
@@ -296,7 +298,11 @@ export class JobIngestionService {
     if (!source) {
       throw new Error(`Source ${sourceId} not found`);
     }
-    return this.ingestFromSource(source, options);
+    // Record the run duration per provider so the admin progress popup can
+    // estimate the next run from the rolling average (it gets sharper each run).
+    return this.extractionMetricService.time("orbit-source-ingest", source.provider, () =>
+      this.ingestFromSource(source, options),
+    );
   }
 
   async vetSingleJob(jobId: number): Promise<{ acceptsZa: boolean | null; notes: string }> {

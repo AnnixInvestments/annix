@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import type { CreateJobMarketSourceDto } from "@/app/lib/api/annixOrbitApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import {
   useAdminCreateOrbitJobMarketSource,
@@ -133,9 +134,14 @@ export default function AdminOrbitJobMarketPage() {
       const fetched = await adminApiClient.fetchOrbitSource(sourceId);
 
       if (fetched.started) {
+        const provider = sourceMatch ? sourceMatch.provider : "";
+        const stats = await metricsApi
+          .extractionStats("orbit-source-ingest", provider)
+          .catch(() => null);
+        const learnedMs = stats ? stats.averageMs : null;
         updateExtraction({
           label: `Crawling ${sourceName} in the background…`,
-          estimatedDurationMs: 120_000,
+          estimatedDurationMs: learnedMs || 120_000,
         });
         const baseline = sourceMatch ? sourceMatch.lastIngestedAt : null;
         await waitForBackgroundIngestion(sourceId, baseline);
