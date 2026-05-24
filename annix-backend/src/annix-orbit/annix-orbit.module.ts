@@ -86,6 +86,7 @@ import { AnalyticsService } from "./services/analytics.service";
 import { AnnixOrbitAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
+import { SitemapCrawlIngestionService } from "./services/crawl/sitemap-crawl-ingestion.service";
 import { CredentialService } from "./services/credential.service";
 import { CvAuditService } from "./services/cv-audit.service";
 import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
@@ -238,6 +239,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     JoobleService,
     RemotiveService,
     DpsaCircularService,
+    SitemapCrawlIngestionService,
     JobIngestionService,
     JobCategorizationService,
     JobMarketSourceService,

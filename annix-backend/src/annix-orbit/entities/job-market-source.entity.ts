@@ -14,6 +14,10 @@ export enum JobSourceProvider {
   JOOBLE = "jooble",
   REMOTIVE = "remotive",
   DPSA = "dpsa",
+  EXECUTIVE_PLACEMENTS = "executiveplacements",
+  JOB_PLACEMENTS = "jobplacements",
+  JOBMAIL = "jobmail",
+  CAREERJUNCTION = "careerjunction",
 }
 
 @Entity("cv_assistant_job_market_sources")

@@ -14,6 +14,8 @@ import { JobMarketSource, JobSourceProvider } from "../entities/job-market-sourc
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
 import { AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
+import { SitemapCrawlIngestionService } from "./crawl/sitemap-crawl-ingestion.service";
+import { isSitemapCrawlProvider } from "./crawl/sitemap-crawl-profiles";
 import { DpsaCircularService } from "./dpsa-circular.service";
 import { EmbeddingService } from "./embedding.service";
 import { GeocodeService } from "./geocode.service";
@@ -28,6 +30,7 @@ const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
 const ADZUNA_CATEGORIES_PER_DAY = 5;
 const ADZUNA_MAX_DAYS_OLD = 21;
+const CRAWL_MAX_PAGES_PER_RUN = 40;
 const ADZUNA_ZA_CATEGORIES = [
   "accounting-finance-jobs",
   "it-jobs",
@@ -88,6 +91,7 @@ export class JobIngestionService {
     private readonly jobVettingService: JobVettingService,
     private readonly dpsaCircularService: DpsaCircularService,
     private readonly jobCategorizationService: JobCategorizationService,
+    private readonly sitemapCrawlIngestionService: SitemapCrawlIngestionService,
   ) {}
 
   @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
@@ -660,6 +664,9 @@ export class JobIngestionService {
     if (source.provider === JobSourceProvider.REMOTIVE) {
       return true;
     }
+    if (isSitemapCrawlProvider(source.provider)) {
+      return true;
+    }
     if (source.provider === JobSourceProvider.JOOBLE) {
       return Boolean(source.apiKeyEncrypted);
     }
@@ -688,7 +695,23 @@ export class JobIngestionService {
       });
       return jobs;
     }
+    if (isSitemapCrawlProvider(source.provider)) {
+      return this.fetchCrawledJobs(source);
+    }
     return this.fetchAdzunaPaginated(source, country, category);
+  }
+
+  private async fetchCrawledJobs(source: JobMarketSource): Promise<IngestedJobResult[]> {
+    const remainingBudget = source.rateLimitPerDay - source.requestsToday;
+    const maxPages = Math.min(Math.max(remainingBudget, 0), CRAWL_MAX_PAGES_PER_RUN);
+    if (maxPages <= 0) {
+      return [];
+    }
+    const { jobs, pagesFetched } = await this.sitemapCrawlIngestionService.crawl(source, {
+      maxPages,
+    });
+    source.requestsToday += pagesFetched;
+    return jobs;
   }
 
   private async fetchAdzunaPaginated(
