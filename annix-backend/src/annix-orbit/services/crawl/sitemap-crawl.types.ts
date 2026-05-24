@@ -9,8 +9,12 @@ export interface SitemapCrawlProfile {
   // Scheme + host with no trailing slash, e.g. "https://www.executiveplacements.com".
   origin: string;
   // One or more sitemap roots. Each may be a <sitemapindex> (recursed one level)
-  // or a <urlset>.
+  // or a <urlset>. May be empty for boards with no sitemap (use discoveryUrls).
   sitemapUrls: string[];
+  // Boards with NO sitemap (e.g. CareerJunction) instead list jobs on HTML
+  // listing/search pages. The engine fetches each discoveryUrl, scrapes anchor
+  // hrefs, resolves them against `origin`, and keeps those matching jobUrlPattern.
+  discoveryUrls?: string[];
   // When a root is a sitemap index, only descend into nested sitemaps whose URL
   // matches this pattern (keeps us on the freshest "latest adverts" feeds rather
   // than the whole catalogue). Omit to descend into all nested sitemaps.

@@ -260,9 +260,19 @@ export class SitemapCrawlIngestionService {
       }),
     );
 
-    const allLocs = urlSetDocs.flat(2);
+    const sitemapLocs = urlSetDocs.flat(2);
+    const discoveryLocs = await this.collectDiscoveryJobUrls(profile);
+    const allLocs = [...sitemapLocs, ...discoveryLocs];
     const jobUrls = allLocs.filter((url) => profile.jobUrlPattern.test(url));
     return [...new Set(jobUrls)].slice(0, MAX_DISCOVERY_URLS);
+  }
+
+  // Boards with no sitemap: scrape job-detail links off HTML listing pages.
+  private async collectDiscoveryJobUrls(profile: SitemapCrawlProfile): Promise<string[]> {
+    const discoveryUrls = profile.discoveryUrls ?? [];
+    if (discoveryUrls.length === 0) return [];
+    const pages = await Promise.all(discoveryUrls.map((url) => this.fetchText(url)));
+    return pages.flatMap((html) => (html ? extractJobLinks(html, profile.origin) : []));
   }
 
   private async fetchSitemapDocument(url: string): Promise<string | null> {
@@ -353,6 +363,20 @@ export function isSitemapIndex(xml: string): boolean {
 export function parseSitemapLocs(xml: string): string[] {
   const matches = [...xml.matchAll(/<loc>\s*([^<]+?)\s*<\/loc>/gi)];
   return matches.map((match) => decodeXmlEntities(match[1].trim()));
+}
+
+// Scrape anchor hrefs from an HTML listing page and resolve them to absolute
+// URLs against `origin` (for boards with no sitemap, e.g. CareerJunction).
+// Returns unique absolute URLs; the caller filters by the profile jobUrlPattern.
+export function extractJobLinks(html: string, origin: string): string[] {
+  const matches = [...html.matchAll(/href\s*=\s*["']([^"'#]+)["']/gi)];
+  const urls = matches.map((match) => {
+    const href = decodeXmlEntities(match[1].trim());
+    if (/^https?:\/\//i.test(href)) return href;
+    if (href.startsWith("/")) return `${origin}${href}`;
+    return null;
+  });
+  return [...new Set(urls.filter((url): url is string => url != null))];
 }
 
 // Sitemaps from these boards are served UTF-16LE/BE (with BOM). Decode by BOM,

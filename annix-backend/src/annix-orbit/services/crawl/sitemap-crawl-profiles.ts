@@ -51,7 +51,35 @@ const JOBMAIL: SitemapCrawlProfile = {
   maxPagesPerRun: 25,
 };
 
-const PROFILES: SitemapCrawlProfile[] = [EXECUTIVE_PLACEMENTS, JOB_PLACEMENTS, JOBMAIL];
+// CareerJunction publishes NO sitemap, so we discover job links off its HTML
+// listing pages (/jobs?page=N). Job-detail URLs look like
+// /{slug}-job-{id}.aspx with a stable numeric id before ".aspx".
+const CAREERJUNCTION: SitemapCrawlProfile = {
+  provider: JobSourceProvider.CAREERJUNCTION,
+  displayName: "CareerJunction",
+  origin: "https://www.careerjunction.co.za",
+  sitemapUrls: [],
+  discoveryUrls: [
+    "https://www.careerjunction.co.za/jobs?page=1",
+    "https://www.careerjunction.co.za/jobs?page=2",
+    "https://www.careerjunction.co.za/jobs?page=3",
+    "https://www.careerjunction.co.za/jobs?page=4",
+    "https://www.careerjunction.co.za/jobs?page=5",
+  ],
+  jobUrlPattern: /-job-\d+\.aspx/i,
+  externalIdFromUrl: (url: string): string | null => {
+    const match = url.match(/-job-(\d+)\.aspx/i);
+    return match ? match[1] : null;
+  },
+  maxPagesPerRun: 25,
+};
+
+const PROFILES: SitemapCrawlProfile[] = [
+  EXECUTIVE_PLACEMENTS,
+  JOB_PLACEMENTS,
+  JOBMAIL,
+  CAREERJUNCTION,
+];
 
 const PROFILE_BY_PROVIDER = new Map<JobSourceProvider, SitemapCrawlProfile>(
   PROFILES.map((profile) => [profile.provider, profile]),
