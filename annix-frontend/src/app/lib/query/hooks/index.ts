@@ -792,6 +792,14 @@ export {
   useRemoveFromWatchlist,
   useWatchlist,
 } from "./insights/useWatchlist";
+export type {
+  CatalogAddOn,
+  CatalogFeature,
+  CatalogTier,
+  ModuleCatalog,
+  TierVisibility,
+} from "./licensing/useLicensingCatalog";
+export { useLicensingCatalog } from "./licensing/useLicensingCatalog";
 export {
   type ConvertToJobCardInput,
   type ConvertToJobCardResultDto,
