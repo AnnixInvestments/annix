@@ -94,7 +94,8 @@ export class SitemapCrawlIngestionService {
     });
 
     const freshUrls = await this.dropAlreadyIngested(urlById, source.id);
-    const toFetch = freshUrls.slice(0, options.maxPages);
+    const effectiveMax = Math.min(options.maxPages, profile.maxPagesPerRun ?? options.maxPages);
+    const toFetch = freshUrls.slice(0, effectiveMax);
 
     this.logger.log(
       `[${profile.displayName}] ${candidateUrls.length} sitemap jobs, ${freshUrls.length} new, fetching ${toFetch.length}`,

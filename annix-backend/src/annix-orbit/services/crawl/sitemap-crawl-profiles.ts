@@ -44,9 +44,11 @@ const JOBMAIL: SitemapCrawlProfile = {
     return match ? match[1] : null;
   },
   // JobMail returns 503 under the default concurrent pace — crawl one page at a
-  // time with a longer gap.
+  // time with a longer gap, and keep each run small so it completes (and persists)
+  // before a dev rebuild interrupts the ~slow crawl. Backfills over multiple runs.
   batchSize: 1,
   crawlDelayMs: 2500,
+  maxPagesPerRun: 25,
 };
 
 const PROFILES: SitemapCrawlProfile[] = [EXECUTIVE_PLACEMENTS, JOB_PLACEMENTS, JOBMAIL];

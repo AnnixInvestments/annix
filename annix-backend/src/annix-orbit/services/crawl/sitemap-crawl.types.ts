@@ -25,6 +25,10 @@ export interface SitemapCrawlProfile {
   // 3-concurrent/1.5s pace, so they fetch slower. Defaults: batchSize 3, delay 1500ms.
   batchSize?: number;
   crawlDelayMs?: number;
+  // Cap pages fetched per run BELOW the global cap. Slow boards (JobMail crawls
+  // 1/2.5s) use a small cap so a run finishes before a dev rebuild interrupts it
+  // (jobs are only persisted once the run completes). Backfills over more runs.
+  maxPagesPerRun?: number;
 }
 
 // The structured shape we ask Gemini to return per job page. Merged with the
