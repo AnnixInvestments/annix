@@ -26,6 +26,7 @@ import { EducationRequirementVersion } from "./entities/education-requirement-ve
 import { EducationScholarship } from "./entities/education-scholarship.entity";
 import { GuardianLink } from "./entities/guardian-link.entity";
 import { EducationApplicationService } from "./services/education-application.service";
+import { EducationCareerFitService } from "./services/education-career-fit.service";
 import { EducationChoiceAidService } from "./services/education-choice-aid.service";
 import { EducationConsentService } from "./services/education-consent.service";
 import { EducationMentorService } from "./services/education-mentor.service";
@@ -79,6 +80,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     EducationChoiceAidService,
     EducationApplicationService,
     EducationScholarshipService,
+    EducationCareerFitService,
     AnnixOrbitEducationCapabilities,
   ],
   exports: [

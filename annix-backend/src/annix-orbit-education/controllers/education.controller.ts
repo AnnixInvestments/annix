@@ -21,6 +21,7 @@ import { AnnixOrbitAuthGuard } from "../../annix-orbit/guards/annix-orbit-auth.g
 import { now } from "../../lib/datetime";
 import { ORBIT_EDUCATION_CURRICULA } from "../annix-orbit-education.constants";
 import { EducationApplicationService } from "../services/education-application.service";
+import { EducationCareerFitService } from "../services/education-career-fit.service";
 import { EducationChoiceAidService } from "../services/education-choice-aid.service";
 import { EducationConsentService } from "../services/education-consent.service";
 import { EducationMentorService } from "../services/education-mentor.service";
@@ -145,6 +146,7 @@ export class EducationController {
     private readonly choiceAidService: EducationChoiceAidService,
     private readonly applicationService: EducationApplicationService,
     private readonly scholarshipService: EducationScholarshipService,
+    private readonly careerFitService: EducationCareerFitService,
   ) {}
 
   @Get()
@@ -291,5 +293,11 @@ export class EducationController {
     const profile = await this.profileService.profileForUser(req.user.id);
     const scholarships = await this.scholarshipService.listActive(profile?.country ?? null);
     return { scholarships };
+  }
+
+  @Get("career-fit")
+  async careerFit(@Request() req: SeekerAuthRequest) {
+    const careerFit = await this.careerFitService.computeForUser(req.user.id);
+    return { careerFit };
   }
 }

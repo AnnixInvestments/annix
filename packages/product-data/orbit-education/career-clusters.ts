@@ -5,6 +5,8 @@
  * with curated programme data, not by inventing sub-clusters here.
  */
 
+import type { OrbitEducationCapability } from "./capabilities";
+
 export const ORBIT_EDUCATION_CAREER_CLUSTERS = [
   "engineering_built_environment",
   "health_sciences",
@@ -45,4 +47,35 @@ export const ORBIT_EDUCATION_CAREER_CLUSTER_META: Record<
   education: { code: "education", label: "Education" },
   arts_design: { code: "arts_design", label: "Arts & Design" },
   agriculture: { code: "agriculture", label: "Agriculture & Environmental Sciences" },
+};
+
+/**
+ * Which capabilities a cluster draws on, for the careerFit signal (#304). This
+ * powers a TRANSPARENT subject-alignment score ("how well your subjects line up
+ * with this field"), NOT an admission or employment probability — careerFit is
+ * self-assessment guidance, deliberately distinct from the eligibility-% the
+ * honesty guardrail forbids.
+ */
+export const CLUSTER_CAPABILITY_AFFINITY: Record<
+  OrbitEducationCareerCluster,
+  OrbitEducationCapability[]
+> = {
+  engineering_built_environment: ["quantitative_reasoning", "physical_science_foundation"],
+  health_sciences: ["life_science_foundation", "quantitative_reasoning"],
+  commerce_business: ["commerce_economics", "quantitative_reasoning"],
+  law: ["academic_writing", "humanities_social_science", "language_proficiency"],
+  information_technology: ["computational_thinking", "quantitative_reasoning"],
+  natural_sciences: [
+    "physical_science_foundation",
+    "life_science_foundation",
+    "quantitative_reasoning",
+  ],
+  humanities_social_sciences: [
+    "humanities_social_science",
+    "language_proficiency",
+    "academic_writing",
+  ],
+  education: ["language_proficiency", "humanities_social_science"],
+  arts_design: ["creative_arts"],
+  agriculture: ["life_science_foundation", "physical_science_foundation"],
 };
