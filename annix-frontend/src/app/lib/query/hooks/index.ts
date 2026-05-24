@@ -73,6 +73,12 @@ export {
   useUpdatePollingJobsGlobalSettings,
 } from "./admin/usePollingJobs";
 export {
+  useCreatePromoCode,
+  useDeletePromoCode,
+  usePromoCodes,
+  useUpdatePromoCode,
+} from "./admin/usePromoCodes";
+export {
   useRbacAllUsers,
   useRbacAppDetails,
   useRbacApps,
