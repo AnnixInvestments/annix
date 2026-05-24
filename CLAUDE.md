@@ -232,7 +232,14 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 - **Backend**: inject `AdminCompanyProfileService` and call `profile()`.
 - **Frontend**: use `useAnnixCompanyProfile()` from `@/app/lib/query/hooks`.
 - **Public/unauthenticated**: `GET /public/company-profile`.
-- `corpId.ts` is for static branding only (colors, fonts, logos) — not legal/contact details.
+- `corpId.ts` legal/contact details must not be string literals — see Branding below for brand assets.
+
+### Branding (Dynamic — per-app, MANDATORY)
+**All branding must come from the per-app branding system — NEVER hardcode brand assets.** Logos, wordmarks, icons, favicons, watermarks, brand/navbar colours, gradients and accents are configured per app on the branding page (`/admin/portal/branding/:app`) and are the single source of truth. Do NOT hardcode app logos, names, hex colours, or Tailwind brand-colour classes in components, constants, or config.
+- **Frontend**: `useBranding(appKey)` from `@/app/lib/query/hooks` returns the live `Branding`. Resolve images with `resolveBrandAssetUrl(slot, branding)` (slots: `logoIcon`, `logoLockup`, `wordmark`, `favicon`, `watermark`, `textCrop`) — it serves the admin-uploaded asset, falling back to the registered per-brand default in `BRAND_ASSET_DEFAULTS`. Apply colours via `brandingCssVars(branding)` / the `BrandingProvider` CSS vars (`--brand-navbar`, `--brand-accent`, …), never literal hex or Tailwind brand classes. Helpers: `brandHasAsset()`, `brandingFallback()`.
+- **Backend**: the `AppBranding` system; public read at `GET /api/public/branding/:brand` (`fetchPublicBranding`), admin CRUD via `adminApiClient.appBranding` / `updateAppBranding`.
+- **`corpId.ts` is legacy** for brand assets — do not add new hardcoded brand assets/colours there.
+- **Migrate-on-touch**: existing hardcoded brand styling (e.g. per-brand colour/logo maps like `ExtractionProgressModalView`'s `BRAND_STYLES`) must be moved onto `useBranding` / `resolveBrandAssetUrl` whenever you edit that surface. New surfaces must be dynamic from day one.
 
 ### File Storage & Workflow SVG
 - File storage uses S3 (`STORAGE_TYPE=s3`) via `IStorageService`. Bucket structure, service usage, and the niche `WorkflowStatus.tsx` SVG-rendering notes are in [`docs/storage-architecture.md`](docs/storage-architecture.md).
