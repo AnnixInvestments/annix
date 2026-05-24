@@ -12,13 +12,20 @@ import { User } from "../user/entities/user.entity";
 import { AnnixOrbitEducationCapabilities } from "./capabilities/annix-orbit-education.capabilities";
 import { EducationController } from "./controllers/education.controller";
 import { AcademicResult } from "./entities/academic-result.entity";
+import { EducationAdmissionDistribution } from "./entities/education-admission-distribution.entity";
 import { EducationAiAdviceLog } from "./entities/education-ai-advice-log.entity";
 import { EducationConsent } from "./entities/education-consent.entity";
+import { EducationFaculty } from "./entities/education-faculty.entity";
+import { EducationInstitution } from "./entities/education-institution.entity";
 import { EducationProfile } from "./entities/education-profile.entity";
+import { EducationProgramme } from "./entities/education-programme.entity";
+import { EducationRecommendationSnapshot } from "./entities/education-recommendation-snapshot.entity";
+import { EducationRequirementVersion } from "./entities/education-requirement-version.entity";
 import { GuardianLink } from "./entities/guardian-link.entity";
 import { EducationConsentService } from "./services/education-consent.service";
 import { EducationMentorService } from "./services/education-mentor.service";
 import { EducationProfileService } from "./services/education-profile.service";
+import { EducationRecommendationService } from "./services/education-recommendation.service";
 import { GuardianLinkService } from "./services/guardian-link.service";
 
 @Module({
@@ -29,6 +36,12 @@ import { GuardianLinkService } from "./services/guardian-link.service";
       GuardianLink,
       EducationConsent,
       EducationAiAdviceLog,
+      EducationInstitution,
+      EducationFaculty,
+      EducationProgramme,
+      EducationRequirementVersion,
+      EducationAdmissionDistribution,
+      EducationRecommendationSnapshot,
       AnnixOrbitEeConsentTextVersion,
       User,
       UserAppAccess,
@@ -53,8 +66,14 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     EducationProfileService,
     GuardianLinkService,
     EducationMentorService,
+    EducationRecommendationService,
     AnnixOrbitEducationCapabilities,
   ],
-  exports: [EducationConsentService, EducationProfileService, EducationMentorService],
+  exports: [
+    EducationConsentService,
+    EducationProfileService,
+    EducationMentorService,
+    EducationRecommendationService,
+  ],
 })
 export class AnnixOrbitEducationModule {}

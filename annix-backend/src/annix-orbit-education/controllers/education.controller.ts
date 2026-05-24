@@ -6,15 +6,18 @@ import {
   Param,
   Post,
   Put,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
 import { IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../../annix-orbit/guards/annix-orbit-auth.guard";
+import { now } from "../../lib/datetime";
 import { ORBIT_EDUCATION_CURRICULA } from "../annix-orbit-education.constants";
 import { EducationConsentService } from "../services/education-consent.service";
 import { EducationMentorService } from "../services/education-mentor.service";
 import { EducationProfileService } from "../services/education-profile.service";
+import { EducationRecommendationService } from "../services/education-recommendation.service";
 import { GuardianLinkService } from "../services/guardian-link.service";
 
 interface SeekerAuthRequest {
@@ -101,6 +104,7 @@ export class EducationController {
     private readonly consentService: EducationConsentService,
     private readonly guardianLinkService: GuardianLinkService,
     private readonly mentorService: EducationMentorService,
+    private readonly recommendationService: EducationRecommendationService,
   ) {}
 
   @Get()
@@ -189,5 +193,16 @@ export class EducationController {
     const profile = await this.profileService.upsertProfile(req.user.id, {});
     const answer = await this.mentorService.ask(profile.id, body.question);
     return answer;
+  }
+
+  @Get("recommendations")
+  async recommendations(
+    @Request() req: SeekerAuthRequest,
+    @Query("intakeYear") intakeYear?: string,
+  ) {
+    const parsedYear = intakeYear ? Number.parseInt(intakeYear, 10) : Number.NaN;
+    const year = Number.isFinite(parsedYear) ? parsedYear : now().year + 1;
+    const recommendations = await this.recommendationService.recommendForUser(req.user.id, year);
+    return { intakeYear: year, recommendations };
   }
 }
