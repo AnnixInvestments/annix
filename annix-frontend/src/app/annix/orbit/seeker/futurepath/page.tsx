@@ -24,6 +24,7 @@ import {
   useOrbitUpsertSeekerEducation,
 } from "@/app/lib/query/hooks";
 import { ORBIT_EDUCATION_VERSION } from "../../config/futurepath-version";
+import FuturePathCostCalculator from "./FuturePathCostCalculator";
 
 const APPLICATION_STATUSES: SeekerEducationApplicationStatus[] = [
   "interested",
@@ -737,6 +738,8 @@ export default function FuturePathPage() {
           </ul>
         </section>
       ) : null}
+
+      <FuturePathCostCalculator />
 
       <p className="text-right text-xs text-gray-400">FuturePath v{ORBIT_EDUCATION_VERSION}</p>
     </div>
