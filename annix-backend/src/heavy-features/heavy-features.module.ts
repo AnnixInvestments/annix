@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { AdminModule } from "../admin/admin.module";
 import { AnnixOrbitModule } from "../annix-orbit/annix-orbit.module";
+import { AnnixOrbitEducationModule } from "../annix-orbit-education/annix-orbit-education.module";
 import { AnnixRepModule } from "../annix-rep/annix-rep.module";
 import { MinesModule } from "../mines/mines.module";
 import { NixModule } from "../nix/nix.module";
@@ -21,7 +22,7 @@ import { ThermalModule } from "../thermal/thermal.module";
     ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
     ...((process.env.DISABLE_ANNIX_ORBIT ?? process.env.DISABLE_CV_ASSISTANT) === "true"
       ? []
-      : [AnnixOrbitModule]),
+      : [AnnixOrbitModule, AnnixOrbitEducationModule]),
     AdminModule,
     PumpProductModule,
     PumpOrderModule,
@@ -38,7 +39,7 @@ import { ThermalModule } from "../thermal/thermal.module";
     ...(process.env.DISABLE_ANNIX_REP === "true" ? [] : [AnnixRepModule]),
     ...((process.env.DISABLE_ANNIX_ORBIT ?? process.env.DISABLE_CV_ASSISTANT) === "true"
       ? []
-      : [AnnixOrbitModule]),
+      : [AnnixOrbitModule, AnnixOrbitEducationModule]),
     AdminModule,
     PumpProductModule,
     PumpOrderModule,
