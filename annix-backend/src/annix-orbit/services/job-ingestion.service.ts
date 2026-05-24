@@ -29,7 +29,7 @@ const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
 const ADZUNA_CATEGORIES_PER_DAY = 5;
 const ADZUNA_MAX_DAYS_OLD = 21;
-const CRAWL_MAX_PAGES_PER_RUN = 40;
+const CRAWL_MAX_PAGES_PER_RUN = 150;
 const ADZUNA_ZA_CATEGORIES = [
   "accounting-finance-jobs",
   "it-jobs",
