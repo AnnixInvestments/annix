@@ -13,6 +13,7 @@ import { ExternalJob } from "../entities/external-job.entity";
 import { ExternalJobAlternate } from "../entities/external-job-alternate.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { SourceRespectRank } from "../entities/source-respect-rank.entity";
 import { AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { SitemapCrawlIngestionService } from "./crawl/sitemap-crawl-ingestion.service";
@@ -76,6 +77,8 @@ export class JobIngestionService {
     private readonly externalJobRepo: Repository<ExternalJob>,
     @InjectRepository(ExternalJobAlternate)
     private readonly alternateRepo: Repository<ExternalJobAlternate>,
+    @InjectRepository(SourceRespectRank)
+    private readonly sourceRespectRankRepo: Repository<SourceRespectRank>,
     @InjectRepository(JobPosting)
     private readonly jobPostingRepo: Repository<JobPosting>,
     @InjectRepository(AnnixOrbitCompany)
@@ -618,6 +621,11 @@ export class JobIngestionService {
       WHERE j.location_area IS NOT NULL AND j.location_area <> ''
     `);
 
+    const rankRows = await this.sourceRespectRankRepo.find();
+    const rankByProvider = new Map(rankRows.map((row) => [row.provider, row.rank]));
+    const rankFor = (provider: string): number =>
+      rankByProvider.get(provider) ?? sourceRespectRank(provider);
+
     const grouped = rows.reduce((map, row) => {
       const key = `${row.t}||${row.loc}||${row.comp}`;
       const bucket = map.get(key);
@@ -630,7 +638,7 @@ export class JobIngestionService {
       .filter((bucket) => bucket.length > 1)
       .flatMap((bucket) => {
         const sorted = [...bucket].sort((a, b) => {
-          const rankDiff = sourceRespectRank(b.provider) - sourceRespectRank(a.provider);
+          const rankDiff = rankFor(b.provider) - rankFor(a.provider);
           if (rankDiff !== 0) return rankDiff;
           const lenDiff = Number(b.desc_len) - Number(a.desc_len);
           if (lenDiff !== 0) return lenDiff;

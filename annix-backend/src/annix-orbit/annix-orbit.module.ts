@@ -74,6 +74,7 @@ import { JobSuccessMetric } from "./entities/job-success-metric.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { SeekerMute } from "./entities/seeker-mute.entity";
+import { SourceRespectRank } from "./entities/source-respect-rank.entity";
 import { AnnixOrbitAuthGuard } from "./guards/annix-orbit-auth.guard";
 import { AnnixOrbitRoleGuard } from "./guards/annix-orbit-role.guard";
 import { AssistedPortalAdapters } from "./services/adapters/assisted-portal-adapters.service";
@@ -159,6 +160,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
       JobSuccessMetric,
       JobScreeningQuestion,
       SalaryBenchmark,
+      SourceRespectRank,
       SeekerApplyClick,
       SeekerMute,
       CvCredential,

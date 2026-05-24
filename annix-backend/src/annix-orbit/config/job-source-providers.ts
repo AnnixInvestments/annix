@@ -49,13 +49,14 @@ export const JOB_SOURCE_PROVIDERS: JobSourceProviderInfo[] = [
   },
 ];
 
-// How "respected" each source is, used to decide which copy of a duplicate job
-// to keep (higher = kept). Tunable — adjust the order to taste.
+// Fallback source-respect ranking (higher = kept when de-duplicating). The
+// live values live in the cv_assistant_source_respect_ranks table; this mirrors
+// the researched seed and is used only when the table has no row for a provider.
 export const SOURCE_RESPECT_RANK: Record<string, number> = {
-  [JobSourceProvider.DPSA]: 90,
-  [JobSourceProvider.EXECUTIVE_PLACEMENTS]: 80,
-  [JobSourceProvider.JOB_PLACEMENTS]: 75,
-  [JobSourceProvider.JOBMAIL]: 60,
+  [JobSourceProvider.DPSA]: 100,
+  [JobSourceProvider.EXECUTIVE_PLACEMENTS]: 85,
+  [JobSourceProvider.JOBMAIL]: 75,
+  [JobSourceProvider.JOB_PLACEMENTS]: 70,
   [JobSourceProvider.ADZUNA]: 50,
   [JobSourceProvider.REMOTIVE]: 40,
 };
