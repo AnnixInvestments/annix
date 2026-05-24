@@ -94,7 +94,8 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
             <h3 className="text-lg font-semibold text-gray-900">Find Duplicate Listings</h3>
             <p className="mt-0.5 text-sm text-gray-500">
               Exact duplicates are removed automatically (keeping the most-respected source).
-              Near-duplicates below need your review.
+              Listings below share a title but have a different or missing employer, so they may be
+              genuinely separate jobs — your review decides.
             </p>
           </div>
           <button
@@ -140,6 +141,23 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
           )}
           {pairs.map((pair) => {
             const scorePercent = Math.round(pair.score * 100);
+            const rawCompanyA = pair.a.company;
+            const rawCompanyB = pair.b.company;
+            const companyA = (rawCompanyA || "").trim().toLowerCase();
+            const companyB = (rawCompanyB || "").trim().toLowerCase();
+            const bothBlank = companyA === "" && companyB === "";
+            const oneBlank = !bothBlank && (companyA === "" || companyB === "");
+            const sameEmployer = !bothBlank && !oneBlank && companyA === companyB;
+            const employerLabel = bothBlank
+              ? null
+              : oneBlank
+                ? "employer missing on one"
+                : sameEmployer
+                  ? "same employer"
+                  : "different employer";
+            const employerTone = sameEmployer
+              ? "bg-gray-100 text-gray-600"
+              : "bg-amber-100 text-amber-700";
             return (
               <div
                 key={`${pair.a.id}-${pair.b.id}`}
@@ -149,6 +167,13 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
                   <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
                     {scorePercent}% title match
                   </span>
+                  {employerLabel && (
+                    <span
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${employerTone}`}
+                    >
+                      {employerLabel}
+                    </span>
+                  )}
                   {pair.crossSource && (
                     <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-700">
                       cross-source

@@ -640,13 +640,18 @@ export class JobIngestionService {
     await this.externalJobRepo.delete(jobId);
   }
 
-  // Auto-removes EXACT duplicate listings — same title + location + company
-  // (or both company-null) — keeping a single copy: the one from the most
-  // respected source, then the richest (longest description), then the oldest.
-  // Runs on demand (admin button) and after each ingestion poll so the feed
-  // self-cleans and duplicates shrink over time.
+  // Auto-removes duplicate listings sharing the same title + location. Within
+  // such a group: if there is at most one distinct named employer, every copy
+  // is treated as the same job (including employer-blank copies, which are just
+  // incomplete versions) and a single best record is kept. If two or more
+  // distinct named employers appear, only same-employer copies are collapsed —
+  // the different-employer listings are left for human review (they may be
+  // genuinely separate jobs). The kept record is the most respected source,
+  // then the one with a named employer, then the richest (longest description),
+  // then the oldest. Runs on demand (admin button) and after each ingestion
+  // poll so the feed self-cleans and duplicates shrink over time.
   async autoResolveDuplicates(): Promise<{ deleted: number; groups: number }> {
-    const rows: Array<{
+    type DedupRow = {
       id: number;
       t: string;
       loc: string;
@@ -654,7 +659,8 @@ export class JobIngestionService {
       provider: string;
       desc_len: number;
       created: Date | null;
-    }> = await this.externalJobRepo.query(`
+    };
+    const rows: DedupRow[] = await this.externalJobRepo.query(`
       SELECT j.id AS id, LOWER(j.title) AS t, LOWER(j.location_area) AS loc,
              LOWER(COALESCE(j.company, '')) AS comp, s.provider AS provider,
              LENGTH(COALESCE(j.description, '')) AS desc_len, j.created_at AS created
@@ -668,31 +674,58 @@ export class JobIngestionService {
     const rankFor = (provider: string): number =>
       rankByProvider.get(provider) ?? sourceRespectRank(provider);
 
+    const preferenceSort = (bucket: DedupRow[]): DedupRow[] =>
+      [...bucket].sort((a, b) => {
+        const rankDiff = rankFor(b.provider) - rankFor(a.provider);
+        if (rankDiff !== 0) return rankDiff;
+        const compDiff = (b.comp === "" ? 0 : 1) - (a.comp === "" ? 0 : 1);
+        if (compDiff !== 0) return compDiff;
+        const lenDiff = Number(b.desc_len) - Number(a.desc_len);
+        if (lenDiff !== 0) return lenDiff;
+        const aTime = a.created ? DateTime.fromJSDate(a.created).toMillis() : 0;
+        const bTime = b.created ? DateTime.fromJSDate(b.created).toMillis() : 0;
+        if (aTime !== bTime) return aTime - bTime;
+        return a.id - b.id;
+      });
+
+    const deletionsFor = (bucket: DedupRow[]): number[] => {
+      const distinctEmployers = new Set(bucket.filter((r) => r.comp !== "").map((r) => r.comp));
+      if (distinctEmployers.size <= 1) {
+        return preferenceSort(bucket)
+          .slice(1)
+          .map((r) => r.id);
+      }
+      const byEmployer = bucket
+        .filter((r) => r.comp !== "")
+        .reduce((map, row) => {
+          const sub = map.get(row.comp);
+          if (sub) sub.push(row);
+          else map.set(row.comp, [row]);
+          return map;
+        }, new Map<string, DedupRow[]>());
+      return [...byEmployer.values()]
+        .filter((sub) => sub.length > 1)
+        .flatMap((sub) =>
+          preferenceSort(sub)
+            .slice(1)
+            .map((r) => r.id),
+        );
+    };
+
     const grouped = rows.reduce((map, row) => {
-      const key = `${row.t}||${row.loc}||${row.comp}`;
+      const key = `${row.t}||${row.loc}`;
       const bucket = map.get(key);
       if (bucket) bucket.push(row);
       else map.set(key, [row]);
       return map;
-    }, new Map<string, typeof rows>());
+    }, new Map<string, DedupRow[]>());
 
-    const idsToDelete = [...grouped.values()]
+    const bucketDeletions = [...grouped.values()]
       .filter((bucket) => bucket.length > 1)
-      .flatMap((bucket) => {
-        const sorted = [...bucket].sort((a, b) => {
-          const rankDiff = rankFor(b.provider) - rankFor(a.provider);
-          if (rankDiff !== 0) return rankDiff;
-          const lenDiff = Number(b.desc_len) - Number(a.desc_len);
-          if (lenDiff !== 0) return lenDiff;
-          const aTime = a.created ? DateTime.fromJSDate(a.created).toMillis() : 0;
-          const bTime = b.created ? DateTime.fromJSDate(b.created).toMillis() : 0;
-          if (aTime !== bTime) return aTime - bTime;
-          return a.id - b.id;
-        });
-        return sorted.slice(1).map((row) => row.id);
-      });
+      .map((bucket) => deletionsFor(bucket));
 
-    const resolvedGroups = [...grouped.values()].filter((bucket) => bucket.length > 1).length;
+    const idsToDelete = bucketDeletions.flat();
+    const resolvedGroups = bucketDeletions.filter((ids) => ids.length > 0).length;
 
     if (idsToDelete.length === 0) {
       return { deleted: 0, groups: 0 };
