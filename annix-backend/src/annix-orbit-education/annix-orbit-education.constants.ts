@@ -1,25 +1,15 @@
 /**
- * Annix Orbit FuturePath (education→funding) shared constants. Curricula and
- * per-institution score schemes will move to `packages/product-data/orbit-education/`
- * in Phase 1 (D6); kept module-local for the Phase 0 foundation.
+ * Annix Orbit FuturePath (education→funding) shared constants. Curricula now
+ * live in `@annix/product-data/orbit-education` (re-exported below); the
+ * jurisdiction / minor-age / role constants below stay module-local because
+ * they encode this module's compliance behaviour, not reference data.
  */
 
-export const ORBIT_EDUCATION_CURRICULA = [
-  "NSC",
-  "IEB",
-  "Cambridge",
-  "IB",
-  "GCSE",
-  "A-Level",
-  "US-GPA",
-  "Other",
-] as const;
-
-export type OrbitEducationCurriculum = (typeof ORBIT_EDUCATION_CURRICULA)[number];
-
-export function isOrbitEducationCurriculum(value: string): value is OrbitEducationCurriculum {
-  return (ORBIT_EDUCATION_CURRICULA as readonly string[]).includes(value);
-}
+export {
+  isOrbitEducationCurriculum,
+  ORBIT_EDUCATION_CURRICULA,
+  type OrbitEducationCurriculum,
+} from "@annix/product-data/orbit-education";
 
 /**
  * Consent jurisdictions. POPIA + GDPR are live (D4). FERPA/COPPA are slot-ready

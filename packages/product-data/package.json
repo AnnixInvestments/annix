@@ -138,6 +138,16 @@
       "types": "./sa-market/*.ts",
       "browser": "./sa-market/*.ts",
       "default": "./dist/sa-market/*.js"
+    },
+    "./orbit-education": {
+      "types": "./orbit-education/index.ts",
+      "browser": "./orbit-education/index.ts",
+      "default": "./dist/orbit-education/index.js"
+    },
+    "./orbit-education/*": {
+      "types": "./orbit-education/*.ts",
+      "browser": "./orbit-education/*.ts",
+      "default": "./dist/orbit-education/*.js"
     }
   }
 }
