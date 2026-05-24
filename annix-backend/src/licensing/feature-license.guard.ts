@@ -33,20 +33,27 @@ export class FeatureLicenseGuard implements CanActivate {
 
     const { moduleKey, featureKey } = requirement;
     const request = context.switchToHttp().getRequest();
-    const companyId = request.user ? Number(request.user.companyId) : null;
-    if (!companyId || Number.isNaN(companyId)) {
-      throw new ForbiddenException("This feature requires an authenticated company");
-    }
+    const user = request.user;
 
     const feature = this.registry.feature(moduleKey, featureKey);
     if (feature?.globalFlag) {
       const globalEnabled = await this.featureFlagsService.isEnabled(feature.globalFlag);
       if (!globalEnabled) {
         this.logger.warn(
-          `Global flag ${feature.globalFlag} disabled — ${moduleKey}/${featureKey} rejected for company ${companyId}`,
+          `Global flag ${feature.globalFlag} disabled — ${moduleKey}/${featureKey} rejected`,
         );
         throw new ForbiddenException(`Feature ${featureKey} is globally disabled`);
       }
+    }
+
+    const roles: string[] = user?.roles ?? [];
+    if (roles.includes("admin") || roles.includes("employee")) {
+      return true;
+    }
+
+    const companyId = user ? Number(user.companyId) : null;
+    if (!companyId || Number.isNaN(companyId)) {
+      return true;
     }
 
     const licensed = await this.licensingService.isFeatureEnabled(companyId, moduleKey, featureKey);
