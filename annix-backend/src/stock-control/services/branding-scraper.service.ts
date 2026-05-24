@@ -106,7 +106,7 @@ export class BrandingScraperService {
       const widthPattern = /width=["']?(\d+)/i;
       const heightPattern = /height=["']?(\d+)/i;
 
-      const imgTags = html.match(imgTagPattern) ?? [];
+      const imgTags: string[] = html.match(imgTagPattern) ?? [];
       imgTags.forEach((tag) => {
         const srcMatch = tag.match(srcPattern);
         const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
@@ -144,9 +144,9 @@ export class BrandingScraperService {
       });
 
       const headerPattern = /<(?:header|nav)[^>]*>[\s\S]*?<\/(?:header|nav)>/gi;
-      const headerBlocks = html.match(headerPattern) ?? [];
+      const headerBlocks: string[] = html.match(headerPattern) ?? [];
       headerBlocks.forEach((block) => {
-        const headerImgs = block.match(imgTagPattern) ?? [];
+        const headerImgs: string[] = block.match(imgTagPattern) ?? [];
         headerImgs.forEach((tag) => {
           const srcMatch = tag.match(srcPattern);
           const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
@@ -169,6 +169,7 @@ export class BrandingScraperService {
         /<link[^>]*href=["']([^"']+)["'][^>]*rel=["'](?:icon|shortcut icon|apple-touch-icon)["']/gi;
       [faviconPattern, faviconAltPattern].forEach((pattern) => {
         let match: RegExpExecArray | null = null;
+        // eslint-disable-next-line no-restricted-syntax -- stateful regex .exec() loop over all matches in the HTML
         while ((match = pattern.exec(html)) !== null) {
           const url = resolveUrl(match[1]);
           if (url) addLogo(url, "favicon");
@@ -179,15 +180,16 @@ export class BrandingScraperService {
 
       const bgUrlPattern = /background(?:-image)?\s*:[^;]*url\(["']?([^"')]+)["']?\)/gi;
       let bgMatch: RegExpExecArray | null = null;
+      // eslint-disable-next-line no-restricted-syntax -- stateful regex .exec() loop over all matches in the HTML
       while ((bgMatch = bgUrlPattern.exec(html)) !== null) {
         const url = resolveUrl(bgMatch[1]);
         if (url) addHero(url, "bg-image");
       }
 
       const sectionPattern = /<section[^>]*>[\s\S]*?<\/section>/gi;
-      const sectionBlocks = html.match(sectionPattern) ?? [];
+      const sectionBlocks: string[] = html.match(sectionPattern) ?? [];
       sectionBlocks.slice(0, 3).forEach((block) => {
-        const sectionImgs = block.match(imgTagPattern) ?? [];
+        const sectionImgs: string[] = block.match(imgTagPattern) ?? [];
         sectionImgs.forEach((tag) => {
           const srcMatch = tag.match(srcPattern);
           const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
@@ -199,6 +201,7 @@ export class BrandingScraperService {
 
       const srcsetPattern = /srcset=["']([^"']+)["']/gi;
       let srcsetMatch: RegExpExecArray | null = null;
+      // eslint-disable-next-line no-restricted-syntax -- stateful regex .exec() loop over all matches in the HTML
       while ((srcsetMatch = srcsetPattern.exec(html)) !== null) {
         const srcset = srcsetMatch[1];
         const urls = srcset.split(",").map((s) => s.trim().split(/\s+/)[0]);
