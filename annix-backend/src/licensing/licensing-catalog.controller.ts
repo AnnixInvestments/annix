@@ -8,7 +8,7 @@ export class LicensingCatalogController {
 
   @Get(":moduleKey/catalog")
   @Header("Cache-Control", "public, max-age=300")
-  catalog(@Param("moduleKey") moduleKey: string): ModuleCatalog {
-    return this.catalogService.catalog(moduleKey);
+  catalog(@Param("moduleKey") moduleKey: string): Promise<ModuleCatalog> {
+    return this.catalogService.effectiveCatalog(moduleKey);
   }
 }
