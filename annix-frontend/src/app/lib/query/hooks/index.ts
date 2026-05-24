@@ -151,6 +151,12 @@ export {
   useUploadNixDocument,
 } from "./admin/useSecureDocuments";
 export {
+  useCreateTenant,
+  useInviteTenantUser,
+  useTenants,
+  useTransferTenantOwner,
+} from "./admin/useTenancy";
+export {
   useOrbitConversionFunnel,
   useOrbitMarketTrends,
   useOrbitMatchAccuracy,
