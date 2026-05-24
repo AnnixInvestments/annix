@@ -226,6 +226,51 @@ describe("evaluateRequirement — eligibility gates + redress", () => {
     expect(result.competitiveness.band).toBe("below"); // ineligible forces below
   });
 
+  it("fails when a mandatory supplementary assessment is missing or below min", () => {
+    const spec: RequirementSpec = {
+      strategy: "PERCENT_AGGREGATE_MEAN",
+      subjectSelection: { bestN: 2 },
+      assessments: [
+        { code: "NBT_AL", label: "NBT Academic Literacy", mandatory: true, minScore: 60 },
+      ],
+      provenance: PROV,
+    };
+    const missing = {
+      subjects: [
+        subject("English", 70, ["language_of_instruction"], "language_proficiency"),
+        subject("Mathematics", 70, ["mathematics"], "quantitative_reasoning"),
+      ],
+    };
+    const below = { ...missing, assessments: { NBT_AL: 55 } };
+    const ok = { ...missing, assessments: { NBT_AL: 70 } };
+    expect(evaluateRequirement(missing, spec).eligibility.passed).toBe(false);
+    expect(evaluateRequirement(below, spec).eligibility.passed).toBe(false);
+    expect(evaluateRequirement(ok, spec).eligibility.passed).toBe(true);
+  });
+
+  it("folds a weighted assessment into a composite score (Wits Health 60/40 shape)", () => {
+    const spec: RequirementSpec = {
+      strategy: "PERCENT_AGGREGATE_MEAN",
+      subjectSelection: { bestN: 2 },
+      assessments: [
+        { code: "NBT", label: "NBT composite", mandatory: false, weightInComposite: 0.4 },
+      ],
+      cutOff: { value: 70, unit: "percent", reachMargin: 5, safeMargin: 5 },
+      provenance: PROV,
+    };
+    const profile = {
+      subjects: [
+        subject("English", 80, ["language_of_instruction"], "language_proficiency"),
+        subject("Mathematics", 80, ["mathematics"], "quantitative_reasoning"),
+      ],
+      assessments: { NBT: 50 },
+    };
+    // academic mean = 80; composite = 80*0.6 + 50*0.4 = 48 + 20 = 68
+    const result = evaluateRequirement(profile, spec);
+    expect(result.scoring.adjustedScore).toBeCloseTo(68, 5);
+    expect(result.competitiveness.band).toBe("reach"); // 68 in [65,70)
+  });
+
   it("applies a redress uplift scaled by context", () => {
     const spec: RequirementSpec = {
       strategy: "SUM_RAW_PERCENT",

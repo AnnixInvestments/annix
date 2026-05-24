@@ -12,6 +12,7 @@
 import type { OrbitEducationCapability, SubjectRole } from "./capabilities";
 import { nscLevelForPercent } from "./nsc";
 import type {
+  AssessmentRequirement,
   EligibilityGate,
   Provenance,
   RequirementSpec,
@@ -205,6 +206,49 @@ function matchNamedGrades(profile: ApplicantProfile, spec: RequirementSpec): boo
   });
 }
 
+function evaluateAssessmentGate(
+  assessment: AssessmentRequirement,
+  profile: ApplicantProfile,
+): GateResult {
+  const score = profile.assessments?.[assessment.code];
+  if (score == null) {
+    return {
+      description: `${assessment.label} required`,
+      passed: false,
+      reason: `${assessment.code} score not provided`,
+    };
+  }
+  if (assessment.minScore != null && score < assessment.minScore) {
+    return {
+      description: `${assessment.label} ≥ ${assessment.minScore}`,
+      passed: false,
+      reason: `${assessment.code} ${score} below ${assessment.minScore}`,
+    };
+  }
+  return { description: assessment.label, passed: true, reason: `${assessment.code} ${score}` };
+}
+
+/** Fold supplementary-assessment scores into a composite (Wits Health ~60/40). */
+function foldAssessments(
+  academicScore: number,
+  spec: RequirementSpec,
+  profile: ApplicantProfile,
+): { score: number; folded: boolean; academicWeight: number } {
+  const assessments = spec.assessments ?? [];
+  const totalWeight = assessments.reduce((sum, a) => sum + (a.weightInComposite ?? 0), 0);
+  if (totalWeight <= 0) return { score: academicScore, folded: false, academicWeight: 1 };
+  const academicWeight = Math.max(0, 1 - totalWeight);
+  const assessmentContribution = assessments.reduce((sum, a) => {
+    const score = profile.assessments?.[a.code] ?? 0;
+    return sum + score * (a.weightInComposite ?? 0);
+  }, 0);
+  return {
+    score: academicScore * academicWeight + assessmentContribution,
+    folded: true,
+    academicWeight,
+  };
+}
+
 function bandFor(
   score: number,
   spec: RequirementSpec,
@@ -224,8 +268,12 @@ export function evaluateRequirement(
 ): EvaluationResult {
   const explanation: string[] = [];
 
-  // Layer 1 — eligibility gates.
-  const gates = (spec.eligibilityGates ?? []).map((gate) => evaluateGate(gate, profile));
+  // Layer 1 — eligibility gates (rule gates + mandatory supplementary assessments).
+  const ruleGates = (spec.eligibilityGates ?? []).map((gate) => evaluateGate(gate, profile));
+  const assessmentGates = (spec.assessments ?? [])
+    .filter((a) => a.mandatory)
+    .map((a) => evaluateAssessmentGate(a, profile));
+  const gates = [...ruleGates, ...assessmentGates];
   const eligible = gates.every((g) => g.passed);
   for (const gate of gates) {
     if (!gate.passed) explanation.push(`Eligibility: ${gate.description} — ${gate.reason}`);
@@ -287,6 +335,15 @@ export function evaluateRequirement(
     if (uplift > 0) {
       explanation.push(`Redress: ${spec.redress.description} applied +${uplift.toFixed(1)}`);
     }
+  }
+
+  // Fold supplementary assessments (NBT, etc.) into a composite, if weighted.
+  const composite = foldAssessments(adjustedScore, spec, profile);
+  if (composite.folded) {
+    explanation.push(
+      `Composite: ${Math.round(composite.academicWeight * 100)}% academic + assessments → ${composite.score.toFixed(1)}`,
+    );
+    adjustedScore = composite.score;
   }
 
   explanation.push(
