@@ -158,6 +158,7 @@ import { ReconciliationStatus } from "./entities/rubber-statement-reconciliation
 import { CocProcessingStatus, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceStatus, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { AuRubberFeatureGuard } from "./guards/au-rubber-feature.guard";
 import {
   AuRubberDocumentType,
   AuRubberPartyType,
@@ -282,7 +283,7 @@ export class RubberLiningController {
     private readonly appProfileRepository: Repository<RubberAppProfile>,
   ) {}
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/product-codings")
   @ApiOperation({
@@ -301,7 +302,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allProductCodings(codingType);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/product-codings/needs-review-count")
   @ApiOperation({
@@ -312,7 +313,7 @@ export class RubberLiningController {
     return this.rubberLiningService.countProductCodingsNeedingReview();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/product-codings/:id")
   @ApiOperation({ summary: "Get product coding by ID" })
@@ -324,7 +325,7 @@ export class RubberLiningController {
     return coding;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/product-codings")
   @ApiOperation({
@@ -337,7 +338,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createProductCoding(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/product-codings/:id")
   @ApiOperation({ summary: "Update product coding" })
@@ -352,7 +353,7 @@ export class RubberLiningController {
     return coding;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/product-codings/:id")
   @ApiOperation({ summary: "Delete product coding" })
@@ -363,7 +364,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Product coding not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/pricing-tiers")
   @ApiOperation({
@@ -375,7 +376,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allPricingTiers();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/pricing-tiers/:id")
   @ApiOperation({ summary: "Get pricing tier by ID" })
@@ -387,7 +388,7 @@ export class RubberLiningController {
     return tier;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/pricing-tiers")
   @ApiOperation({
@@ -398,7 +399,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createPricingTier(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/pricing-tiers/:id")
   @ApiOperation({ summary: "Update pricing tier" })
@@ -413,7 +414,7 @@ export class RubberLiningController {
     return tier;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/pricing-tiers/:id")
   @ApiOperation({ summary: "Delete pricing tier" })
@@ -424,7 +425,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Pricing tier not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/companies")
   @Header("Cache-Control", "private, max-age=600")
@@ -436,7 +437,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allCompanies();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/companies/:id")
   @ApiOperation({ summary: "Get company by ID" })
@@ -448,7 +449,7 @@ export class RubberLiningController {
     return company;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/companies")
   @ApiOperation({
@@ -460,7 +461,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createCompany(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/companies/:id")
   @ApiOperation({ summary: "Update company" })
@@ -475,7 +476,7 @@ export class RubberLiningController {
     return company;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/companies/:id")
   @ApiOperation({ summary: "Delete company" })
@@ -486,7 +487,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Company not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/products")
   @Header("Cache-Control", "private, max-age=600")
@@ -498,7 +499,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allProducts();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/products/:id")
   @ApiOperation({ summary: "Get product by ID" })
@@ -510,7 +511,7 @@ export class RubberLiningController {
     return product;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/products")
   @ApiOperation({
@@ -526,7 +527,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createProduct(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/products/:id")
   @ApiOperation({ summary: "Update product" })
@@ -545,7 +546,7 @@ export class RubberLiningController {
     return product;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/products/:id")
   @ApiOperation({ summary: "Delete product" })
@@ -556,7 +557,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Product not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/products/import")
   @ApiOperation({
@@ -572,7 +573,7 @@ export class RubberLiningController {
     return this.rubberLiningService.importProducts(dto.rows, dto.updateExisting ?? false);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/orders")
   @ApiOperation({
@@ -591,7 +592,7 @@ export class RubberLiningController {
     return this.rubberLiningService.allOrders(orderStatus);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/orders/:id")
   @ApiOperation({
@@ -606,7 +607,7 @@ export class RubberLiningController {
     return order;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/orders")
   @ApiOperation({
@@ -617,7 +618,7 @@ export class RubberLiningController {
     return this.rubberLiningService.createOrder(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/orders/:id")
   @ApiOperation({
@@ -636,7 +637,7 @@ export class RubberLiningController {
     return order;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/orders/:id")
   @ApiOperation({ summary: "Delete order" })
@@ -647,7 +648,7 @@ export class RubberLiningController {
     if (!deleted) throw new NotFoundException("Order not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/orders/:id/confirmation-pdf")
   @ApiOperation({ summary: "Generate order confirmation PDF" })
@@ -662,7 +663,7 @@ export class RubberLiningController {
     res.end(buffer);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/orders/:id/send-confirmation")
   @ApiOperation({ summary: "Send order confirmation email to customer" })
@@ -680,7 +681,7 @@ export class RubberLiningController {
     return { success: true };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/app-profile")
   @ApiOperation({ summary: "Get app owner company profile" })
@@ -693,7 +694,7 @@ export class RubberLiningController {
     return profile;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/app-profile")
   @ApiOperation({ summary: "Update app owner company profile" })
@@ -707,7 +708,7 @@ export class RubberLiningController {
     return this.appProfileRepository.save(merged);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/order-statuses")
   @ApiOperation({
@@ -727,7 +728,7 @@ export class RubberLiningController {
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/coding-types")
   @ApiOperation({
@@ -745,7 +746,7 @@ export class RubberLiningController {
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/calculate-price")
   @ApiOperation({
@@ -767,7 +768,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return result;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/compound-stocks")
   @ApiOperation({ summary: "List compound stocks" })
@@ -775,7 +776,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.allCompoundStocks();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/compound-stocks/low-stock")
   @ApiOperation({ summary: "List compounds below reorder point" })
@@ -783,7 +784,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.lowStockCompounds();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/compound-stocks/:id")
   @ApiOperation({ summary: "Get compound stock by ID" })
@@ -794,7 +795,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return stock;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/compound-stocks")
   @ApiOperation({ summary: "Create compound stock" })
@@ -804,7 +805,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.createCompoundStock(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/compound-stocks/opening")
   @ApiOperation({ summary: "Create compound opening stock entry" })
@@ -814,7 +815,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.createCompoundOpeningStock(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/compound-stocks/import-opening")
   @ApiOperation({ summary: "Bulk import compound opening stock" })
@@ -824,7 +825,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.importCompoundOpeningStock(rows);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/compound-stocks/:id")
   @ApiOperation({ summary: "Update compound stock" })
@@ -838,7 +839,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return stock;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/compound-stocks/:id")
   @ApiOperation({ summary: "Delete compound stock" })
@@ -848,7 +849,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("Compound stock not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/compound-movements")
   @ApiOperation({ summary: "List compound movements" })
@@ -867,7 +868,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/compound-movements/receive")
   @ApiOperation({ summary: "Receive compound into stock" })
@@ -875,7 +876,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.receiveCompound(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/compound-movements/adjust")
   @ApiOperation({ summary: "Manually adjust compound stock" })
@@ -883,7 +884,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.manualAdjustment(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/productions")
   @ApiOperation({ summary: "List productions" })
@@ -894,7 +895,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.allProductions(status);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/productions/:id")
   @ApiOperation({ summary: "Get production by ID" })
@@ -905,7 +906,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return production;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/productions")
   @ApiOperation({ summary: "Create production" })
@@ -913,7 +914,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.createProduction(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/productions/:id/start")
   @ApiOperation({ summary: "Start production" })
@@ -922,7 +923,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.startProduction(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/productions/:id/complete")
   @ApiOperation({ summary: "Complete production (deducts compound)" })
@@ -931,7 +932,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.completeProduction(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/productions/:id/cancel")
   @ApiOperation({ summary: "Cancel production" })
@@ -940,7 +941,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.cancelProduction(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/productions/calculate-compound")
   @ApiOperation({ summary: "Calculate compound required for production" })
@@ -950,7 +951,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.calculateCompoundRequired(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/compound-orders")
   @ApiOperation({ summary: "List compound orders" })
@@ -961,7 +962,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.allCompoundOrders(status);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/compound-orders/:id")
   @ApiOperation({ summary: "Get compound order by ID" })
@@ -972,7 +973,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return order;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/compound-orders")
   @ApiOperation({ summary: "Create compound order" })
@@ -982,7 +983,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.createCompoundOrder(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/compound-orders/:id/status")
   @ApiOperation({ summary: "Update compound order status" })
@@ -994,7 +995,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.updateCompoundOrderStatus(Number(id), dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/compound-orders/:id/receive")
   @ApiOperation({ summary: "Receive compound order" })
@@ -1006,7 +1007,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockService.receiveCompoundOrder(Number(id), dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/production-statuses")
   @ApiOperation({ summary: "List production statuses" })
@@ -1019,7 +1020,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/compound-order-statuses")
   @ApiOperation({ summary: "List compound order statuses" })
@@ -1033,7 +1034,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/scrape-branding")
   @ApiOperation({ summary: "Scrape branding candidates from a website" })
@@ -1042,7 +1043,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberBrandingService.scrapeCandidates(body.websiteUrl);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/proxy-image")
   @ApiOperation({ summary: "Proxy an external image to avoid CORS issues" })
@@ -1066,7 +1067,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     res.send(result.buffer);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/documents/url")
   @Header("Cache-Control", "no-store")
@@ -1085,7 +1086,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { url };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/pending-authorization-count")
   @ApiOperation({
@@ -1096,7 +1097,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.countPendingAuthorization();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/pending-authorization")
   @ApiOperation({
@@ -1109,7 +1110,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.pendingAuthorizationSupplierCocs();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs")
   @ApiOperation({ summary: "List supplier CoCs" })
@@ -1131,7 +1132,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/export/sage-preview")
   @ApiOperation({ summary: "Preview CoC Sage CSV export" })
@@ -1150,7 +1151,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/export/sage-csv")
   @ApiOperation({ summary: "Download CoC Sage CSV export" })
@@ -1182,7 +1183,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     res!.send(csvBuffer);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/non-canonical-compounder-ids")
   @ApiOperation({
@@ -1194,7 +1195,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { ids };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/missing-coc-number-ids")
   @ApiOperation({
@@ -1205,7 +1206,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { ids };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id")
   @ApiOperation({ summary: "Get supplier CoC by ID" })
@@ -1216,7 +1217,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return coc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/supplier-cocs")
   @ApiOperation({ summary: "Create supplier CoC" })
@@ -1224,7 +1225,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.createSupplierCoc(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/supplier-cocs/:id")
   @ApiOperation({ summary: "Update supplier CoC" })
@@ -1238,7 +1239,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return coc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/supplier-cocs/:id/review")
   @ApiOperation({ summary: "Review extracted data and update CoC" })
@@ -1252,7 +1253,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return coc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/supplier-cocs/:id/approve")
   @ApiOperation({ summary: "Approve supplier CoC (creates batches from extracted data)" })
@@ -1268,7 +1269,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return coc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/supplier-cocs/:id/extract")
   @ApiOperation({ summary: "Re-extract data from supplier CoC PDF using AI" })
@@ -1278,7 +1279,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return updatedCoc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/supplier-cocs/dedupe-active-versions")
   @ApiOperation({
@@ -1298,7 +1299,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.dedupeActiveSupplierCocs();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/supplier-cocs/reextract-non-canonical")
   @ApiOperation({
@@ -1389,7 +1390,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return updatedCoc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/supplier-cocs/:id")
   @ApiOperation({ summary: "Delete supplier CoC" })
@@ -1399,7 +1400,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("Supplier CoC not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/supplier-cocs")
   @ApiOperation({ summary: "Clear all supplier CoCs and reset numbering" })
@@ -1407,7 +1408,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.clearAllSupplierCocs();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id/batches")
   @ApiOperation({ summary: "Get batches for a supplier CoC" })
@@ -1416,7 +1417,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.batchesByCocId(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id/siblings")
   @ApiOperation({
@@ -1428,7 +1429,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.siblingSupplierCocs(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/compound-batches/:id")
   @ApiOperation({ summary: "Update a compound batch" })
@@ -1440,7 +1441,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.updateCompoundBatch(Number(id), dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/compound-batches/:id")
   @ApiOperation({ summary: "Delete a compound batch" })
@@ -1450,7 +1451,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { success: true };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/supplier-cocs/:id/link-compounder")
   @ApiOperation({ summary: "Link calendarer CoC to compounder CoCs based on batch numbers" })
@@ -1461,7 +1462,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.linkCalendererToCompounderCocs(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/traceability/roll/:rollNumber")
   @ApiOperation({ summary: "Get full traceability chain for a roll number" })
@@ -1470,7 +1471,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCocService.traceabilityForRoll(rollNumber);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/bulk-auto-link")
   @ApiOperation({ summary: "Bulk auto-link all unlinked delivery notes to matching supplier CoCs" })
@@ -1478,7 +1479,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDeliveryNoteService.bulkAutoLinkAllUnlinkedDns();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/bulk-link-customer-dns")
   @ApiOperation({ summary: "Bulk link customer DNs to CoCs from already-linked supplier DNs" })
@@ -1486,7 +1487,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDeliveryNoteService.bulkLinkCustomerDnsFromLinkedSupplierDns();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/:id/reslice")
   @ApiOperation({
@@ -1499,7 +1500,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { pagesKept };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/customer-delivery-notes/reslice-bundles")
   @ApiOperation({
@@ -1510,7 +1511,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.documentFilerService.resliceAllCustomerDnBundles();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/reslice-bundles")
   @ApiOperation({
@@ -1521,7 +1522,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.documentFilerService.resliceAllDeliveryNoteBundles();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/backfill-missing-items")
   @ApiOperation({
@@ -1553,7 +1554,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/delivery-notes")
   @ApiOperation({ summary: "List delivery notes (paginated)" })
@@ -1593,7 +1594,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/delivery-notes/:id")
   @ApiOperation({ summary: "Get delivery note by ID" })
@@ -1604,7 +1605,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return note;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes")
   @ApiOperation({ summary: "Create delivery note" })
@@ -1612,7 +1613,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDeliveryNoteService.createDeliveryNote(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id")
   @ApiOperation({ summary: "Update delivery note" })
@@ -1626,7 +1627,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return note;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/link-coc")
   @ApiOperation({ summary: "Link delivery note to CoC" })
@@ -1640,7 +1641,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return note;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/finalize")
   @ApiOperation({ summary: "Finalize delivery note (marks as stock created)" })
@@ -1651,7 +1652,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return note;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/approve")
   @ApiOperation({ summary: "Approve extracted delivery note data (status EXTRACTED → APPROVED)" })
@@ -1662,7 +1663,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return note;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/:id/backfill-siblings")
   @ApiOperation({
@@ -1732,7 +1733,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return result;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/refile-stock")
   @ApiOperation({
@@ -1745,7 +1746,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return note;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/:id/extract")
   @ApiOperation({ summary: "Extract data from delivery note PDF using AI" })
@@ -1873,7 +1874,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return finalNote;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/extracted-data")
   @ApiOperation({ summary: "Save user corrections to extracted delivery note data" })
@@ -1891,7 +1892,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return updatedNote;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/accept-extract")
   @ApiOperation({
@@ -1902,7 +1903,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDeliveryNoteService.acceptExtractAndSplit(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/delivery-notes/:id/page/:pageNumber")
   @ApiOperation({ summary: "Get a specific page from delivery note PDF as image" })
@@ -1941,7 +1942,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { url, totalPages: images.length };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/delivery-notes/:id")
   @ApiOperation({ summary: "Delete delivery note" })
@@ -1951,7 +1952,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("Delivery note not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/document")
   @ApiOperation({ summary: "Replace delivery note document" })
@@ -1995,7 +1996,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return updated;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/analyze")
   @ApiOperation({ summary: "Analyze delivery note photo or PDF using AI" })
@@ -2045,7 +2046,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/accept-analyzed")
   @ApiOperation({ summary: "Accept analyzed delivery note and create record" })
@@ -2160,7 +2161,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return updatedNote!;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/delivery-notes/:id/items")
   @ApiOperation({ summary: "Get items for a delivery note" })
@@ -2169,7 +2170,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDeliveryNoteService.itemsByDeliveryNoteId(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/items")
   @ApiOperation({ summary: "Update (correct) the line items of a delivery note" })
@@ -2183,7 +2184,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return items;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-stock")
   @ApiOperation({ summary: "List roll stock" })
@@ -2202,7 +2203,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-stock/by-numbers")
   @ApiOperation({ summary: "Lookup rolls by their roll numbers (cost-breakdown display)" })
@@ -2215,7 +2216,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollStockService.rollsByNumbers(numbers);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-stock/available")
   @ApiOperation({ summary: "List in-stock rolls for a given product code (CTI roll picker)" })
@@ -2224,7 +2225,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollStockService.availableRollsForProductCode(productCode);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-stock/:id")
   @ApiOperation({ summary: "Get roll stock by ID" })
@@ -2237,7 +2238,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return roll;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-stock/:id/traceability")
   @ApiOperation({ summary: "Get full traceability for a roll" })
@@ -2248,7 +2249,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return traceability;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/roll-stock")
   @ApiOperation({ summary: "Create roll stock" })
@@ -2256,7 +2257,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollStockService.createRollStock(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/roll-stock/opening-stock")
   @ApiOperation({
@@ -2267,7 +2268,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollStockService.createOpeningStock(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/roll-stock/import-opening")
   @ApiOperation({
@@ -2281,7 +2282,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollStockService.importOpeningStock(body.rows);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/roll-stock/:id")
   @ApiOperation({ summary: "Update roll stock" })
@@ -2295,7 +2296,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return roll;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/roll-stock/:id/reserve")
   @ApiOperation({ summary: "Reserve roll for customer" })
@@ -2309,7 +2310,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return roll;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/roll-stock/:id/unreserve")
   @ApiOperation({ summary: "Unreserve roll" })
@@ -2320,7 +2321,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return roll;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/roll-stock/:id/sell")
   @ApiOperation({ summary: "Sell roll to customer" })
@@ -2331,7 +2332,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return roll;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/roll-stock/:id")
   @ApiOperation({ summary: "Delete roll stock" })
@@ -2341,7 +2342,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("Roll stock not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/au-cocs")
   @ApiOperation({ summary: "List AU CoCs" })
@@ -2357,7 +2358,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/au-cocs/:id")
   @ApiOperation({ summary: "Get AU CoC by ID" })
@@ -2370,7 +2371,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return coc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs")
   @ApiOperation({ summary: "Create AU CoC for rolls" })
@@ -2378,7 +2379,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.createAuCoc(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/:id/generate-pdf")
   @ApiOperation({ summary: "Generate PDF for AU CoC" })
@@ -2390,7 +2391,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return coc;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/au-cocs/:id/pdf")
   @ApiOperation({ summary: "Preview/download AU CoC PDF" })
@@ -2405,7 +2406,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     res.send(buffer);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/:id/send")
   @ApiOperation({ summary: "Mark AU CoC as sent to customer" })
@@ -2414,7 +2415,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.sendToCustomer(Number(id), dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/bulk-send")
   @ApiOperation({ summary: "Send all generated AU CoCs to customer in one email" })
@@ -2424,7 +2425,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.bulkSendToCustomer(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/:id/approve")
   @ApiOperation({ summary: "Approve a GENERATED AU CoC for customer dispatch" })
@@ -2434,7 +2435,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.approveAuCoc(Number(id), approverEmail);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/:id/auto-send")
   @ApiOperation({
@@ -2448,7 +2449,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.sendApprovedAuCocToCustomer(Number(id), body.overrideEmail);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/:id/recheck-readiness")
   @ApiOperation({ summary: "Re-run the upstream-doc readiness check for a single AU CoC" })
@@ -2457,7 +2458,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocReadinessService.checkReadiness(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/auto-process-now")
   @ApiOperation({
@@ -2472,7 +2473,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocReadinessService.runScheduledAutoProcessing();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/au-cocs/:id")
   @ApiOperation({ summary: "Delete AU CoC" })
@@ -2482,7 +2483,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("AU CoC not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/auto-create-from-dn")
   @ApiOperation({
@@ -2507,7 +2508,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/create-from-delivery-note/:deliveryNoteId")
   @ApiOperation({
@@ -2524,7 +2525,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/au-cocs/:id/pdf-with-graph/:supplierCocId")
   @ApiOperation({ summary: "Get AU CoC PDF with supplier graph attached" })
@@ -2547,7 +2548,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     res.send(buffer);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/au-cocs/pending")
   @ApiOperation({ summary: "List AU CoCs pending generation with readiness details" })
@@ -2562,7 +2563,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return pendingCocs;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/au-cocs/:id/readiness")
   @ApiOperation({ summary: "Check AU CoC readiness for auto-generation" })
@@ -2579,7 +2580,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/:id/auto-generate")
   @ApiOperation({ summary: "Manually trigger auto-generation for an AU CoC" })
@@ -2588,7 +2589,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocReadinessService.autoGenerateAuCoc(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/bulk-auto-generate")
   @ApiOperation({ summary: "Bulk auto-generate all draft AU CoCs that are ready" })
@@ -2596,7 +2597,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocReadinessService.bulkAutoGenerateAllDraftAuCocs();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/bulk-regenerate")
   @ApiOperation({
@@ -2610,7 +2611,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/bulk-regenerate-by-ids")
   @ApiOperation({
@@ -2626,7 +2627,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.regenerateCocsByIds(cocIds);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/au-cocs/bulk-resend-by-ids")
   @ApiOperation({
@@ -2642,7 +2643,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberAuCocService.resendCocsByIds(cocIds);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/coc-statuses")
   @ApiOperation({ summary: "List CoC processing statuses" })
@@ -2655,7 +2656,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-stock-statuses")
   @ApiOperation({ summary: "List roll stock statuses" })
@@ -2669,7 +2670,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/au-coc-statuses")
   @ApiOperation({ summary: "List AU CoC statuses" })
@@ -2681,7 +2682,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/stock-locations")
   @ApiOperation({ summary: "List stock locations" })
@@ -2692,7 +2693,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockLocationService.allLocations(includeInactive === "true");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/stock-locations/:id")
   @ApiOperation({ summary: "Get stock location by ID" })
@@ -2701,7 +2702,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockLocationService.locationById(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/stock-locations")
   @ApiOperation({ summary: "Create stock location" })
@@ -2711,7 +2712,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockLocationService.createLocation(body);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/stock-locations/:id")
   @ApiOperation({ summary: "Update stock location" })
@@ -2723,7 +2724,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberStockLocationService.updateLocation(Number(id), body);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/stock-locations/:id")
   @ApiOperation({ summary: "Delete stock location" })
@@ -2732,7 +2733,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     await this.rubberStockLocationService.deleteLocation(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/purchase-requisitions")
   @ApiOperation({ summary: "List purchase requisitions" })
@@ -2745,7 +2746,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.allRequisitions({ status, sourceType });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/purchase-requisitions/pending")
   @ApiOperation({ summary: "List requisitions pending approval" })
@@ -2753,7 +2754,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.pendingApprovals();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/purchase-requisitions/:id")
   @ApiOperation({ summary: "Get purchase requisition by ID" })
@@ -2762,7 +2763,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.requisitionById(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/purchase-requisitions")
   @ApiOperation({ summary: "Create manual purchase requisition" })
@@ -2788,7 +2789,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.createManualRequisition(body);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/purchase-requisitions/external-po")
   @ApiOperation({ summary: "Create requisition from external PO" })
@@ -2815,7 +2816,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.createExternalPoRequisition(body);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/purchase-requisitions/check-low-stock")
   @ApiOperation({ summary: "Check and create requisitions for low stock items" })
@@ -2823,7 +2824,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.checkAndCreateLowStockRequisitions();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/purchase-requisitions/:id/approve")
   @ApiOperation({ summary: "Approve purchase requisition" })
@@ -2835,7 +2836,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.approveRequisition(Number(id), body.approvedBy);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/purchase-requisitions/:id/reject")
   @ApiOperation({ summary: "Reject purchase requisition" })
@@ -2851,7 +2852,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/purchase-requisitions/:id/mark-ordered")
   @ApiOperation({ summary: "Mark requisition as ordered" })
@@ -2863,7 +2864,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.markAsOrdered(Number(id), body);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/purchase-requisitions/:id/receive")
   @ApiOperation({ summary: "Receive items for requisition" })
@@ -2875,7 +2876,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.receiveItems(Number(id), body.itemReceipts);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/purchase-requisitions/:id/cancel")
   @ApiOperation({ summary: "Cancel purchase requisition" })
@@ -2884,7 +2885,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRequisitionService.cancelRequisition(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/requisition-statuses")
   @ApiOperation({ summary: "List requisition statuses" })
@@ -2899,7 +2900,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/requisition-source-types")
   @ApiOperation({ summary: "List requisition source types" })
@@ -2911,7 +2912,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     ];
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/quality-tracking")
   @ApiOperation({ summary: "Get quality summary for all compounds" })
@@ -2919,7 +2920,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberQualityTrackingService.qualitySummaryByCompound();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/quality-tracking/:compoundCode")
   @ApiOperation({ summary: "Get detailed quality metrics for a compound" })
@@ -2932,7 +2933,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return detail;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/quality-alerts")
   @ApiOperation({ summary: "Get all active quality alerts" })
@@ -2940,7 +2941,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberQualityTrackingService.activeAlerts();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/quality-alerts/:id/acknowledge")
   @ApiOperation({ summary: "Acknowledge a quality alert" })
@@ -2957,7 +2958,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return alert;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/quality-configs")
   @ApiOperation({ summary: "Get quality threshold configurations for all compounds" })
@@ -2965,7 +2966,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberQualityTrackingService.allConfigs();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/quality-configs/:compoundCode")
   @ApiOperation({ summary: "Update quality threshold configuration for a compound" })
@@ -2980,7 +2981,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberQualityTrackingService.updateConfig(compoundCode, dto, updatedBy);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/other-stocks")
   @ApiOperation({ summary: "List other stock items" })
@@ -2991,7 +2992,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberOtherStockService.allOtherStocks(includeInactive === "true");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/other-stocks/low")
   @ApiOperation({ summary: "List low stock items" })
@@ -2999,7 +3000,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberOtherStockService.lowStockItems();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/other-stocks/:id")
   @ApiOperation({ summary: "Get other stock item by ID" })
@@ -3010,7 +3011,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return stock;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/other-stocks")
   @ApiOperation({ summary: "Create other stock item" })
@@ -3018,7 +3019,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberOtherStockService.createOtherStock(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/other-stocks/:id")
   @ApiOperation({ summary: "Update other stock item" })
@@ -3032,7 +3033,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return stock;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/other-stocks/:id")
   @ApiOperation({ summary: "Delete other stock item" })
@@ -3042,7 +3043,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("Other stock item not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/other-stocks/receive")
   @ApiOperation({ summary: "Receive stock for an item" })
@@ -3050,7 +3051,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberOtherStockService.receiveOtherStock(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/other-stocks/adjust")
   @ApiOperation({ summary: "Adjust stock quantity for an item" })
@@ -3058,7 +3059,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberOtherStockService.adjustOtherStock(dto);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/other-stocks/import")
   @ApiOperation({ summary: "Bulk import other stock items" })
@@ -3068,7 +3069,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberOtherStockService.importOtherStock(rows);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices")
   @ApiOperation({ summary: "List tax invoices (paginated)" })
@@ -3108,7 +3109,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices/statements")
   @ApiOperation({
@@ -3121,7 +3122,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberTaxInvoiceService.companyStatements({ invoiceType });
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices/export/sage-preview")
   @ApiOperation({ summary: "Preview Sage CSV export" })
@@ -3152,7 +3153,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices/export/sage-csv")
   @ApiOperation({ summary: "Download Sage CSV export" })
@@ -3191,7 +3192,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     res!.send(csvBuffer);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/:id/extract")
   @ApiOperation({ summary: "Extract data from tax invoice document using AI" })
@@ -3285,7 +3286,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return updated;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/re-extract-all")
   @ApiOperation({ summary: "Re-extract all tax invoices with documents using Vision AI" })
@@ -3376,7 +3377,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/dedupe")
   @ApiOperation({
@@ -3418,7 +3419,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { ...dedupeResult, groups: groups.size };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/admin/re-extract-ctis-missing-rolls")
   @ApiOperation({
@@ -3465,7 +3466,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { triggered: candidates.length, invoiceIds: candidates.map((inv) => inv.id) };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/admin/rematch-rolls")
   @ApiOperation({
@@ -3536,7 +3537,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/dedupe")
   @ApiOperation({
@@ -3580,7 +3581,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { ...dedupeResult, groups: groups.size };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/delivery-notes/re-extract-all")
   @ApiOperation({ summary: "Re-extract all delivery notes with documents using Vision AI" })
@@ -3698,7 +3699,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices/:id")
   @ApiOperation({ summary: "Get tax invoice by ID" })
@@ -3709,7 +3710,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return invoice;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices")
   @ApiOperation({ summary: "Create tax invoice" })
@@ -3721,7 +3722,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberTaxInvoiceService.createTaxInvoice(dto, user?.email);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id")
   @ApiOperation({ summary: "Update tax invoice" })
@@ -3735,7 +3736,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return invoice;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/approve")
   @ApiOperation({ summary: "Approve tax invoice and update compound stock" })
@@ -3746,7 +3747,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return invoice;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/line-items/:idx/rolls")
   @ApiOperation({ summary: "Replace the rolls array on a tax invoice line item" })
@@ -3766,7 +3767,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return invoice;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/:id/recompute-compound-costs")
   @ApiOperation({
@@ -3780,7 +3781,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollStockService.propagateCompoundCostsForImpiloInvoice(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/reprocess-stock")
   @ApiOperation({ summary: "Reprocess compound stock for an approved tax invoice" })
@@ -3791,7 +3792,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return invoice;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/refile-stock")
   @ApiOperation({
@@ -3804,7 +3805,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return invoice;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/link-calender-roll-coc")
   @ApiOperation({ summary: "Link a supplier credit note to a Calender Roll CoC" })
@@ -3821,7 +3822,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return invoice;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/tax-invoices/:id")
   @ApiOperation({ summary: "Delete tax invoice" })
@@ -3831,7 +3832,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("Tax invoice not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/document")
   @ApiOperation({ summary: "Upload tax invoice document" })
@@ -3874,7 +3875,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return updated;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/sage/status")
   @ApiOperation({ summary: "Sage connection status" })
@@ -3882,7 +3883,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.connectionStatus("au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Patch("portal/sage/config")
   @ApiOperation({ summary: "Update Sage connection credentials" })
@@ -3890,7 +3891,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.saveCredentials("au-rubber", body);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/sage/config")
   @ApiOperation({ summary: "Disconnect from Sage" })
@@ -3898,7 +3899,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.disconnect("au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/sage/test")
   @ApiOperation({ summary: "Test Sage connection" })
@@ -3906,7 +3907,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.testConnection("au-rubber", body.username, body.password);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/sage/companies")
   @ApiOperation({ summary: "List Sage companies" })
@@ -3914,7 +3915,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.sageCompanies("au-rubber", username, password);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/sage/suppliers")
   @ApiOperation({ summary: "List Sage suppliers" })
@@ -3922,7 +3923,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.sageSuppliers("au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/sage/customers")
   @ApiOperation({ summary: "List Sage customers" })
@@ -3930,7 +3931,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.sageCustomers("au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/sage/tax-types")
   @ApiOperation({ summary: "List Sage tax types" })
@@ -3938,7 +3939,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.sageConnectionService.sageTaxTypes("au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/sage/contact-sync")
   @ApiOperation({ summary: "Sync contacts from Sage (auto-match by name)" })
@@ -3946,7 +3947,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberSageContactSyncService.syncContacts("au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/sage/contact-mappings")
   @ApiOperation({ summary: "View Sage contact mapping status" })
@@ -3954,7 +3955,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberSageContactSyncService.mappingStatus("au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Patch("portal/sage/contact-mappings/:companyId")
   @ApiOperation({ summary: "Manually map a company to a Sage contact" })
@@ -3969,7 +3970,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/sage/contact-mappings/:companyId")
   @ApiOperation({ summary: "Remove Sage contact mapping" })
@@ -3977,7 +3978,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberSageContactSyncService.unmap(Number(companyId));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/:id/post-to-sage")
   @ApiOperation({ summary: "Post a single invoice directly to Sage" })
@@ -3986,7 +3987,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberSageInvoicePostService.postInvoice(Number(id), "au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/post-to-sage/bulk")
   @ApiOperation({ summary: "Post multiple invoices to Sage" })
@@ -3994,7 +3995,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberSageInvoicePostService.postBulk(body.invoiceIds, "au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/tax-invoices/post-to-sage/bulk-by-filter")
   @ApiOperation({
@@ -4010,7 +4011,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberSageInvoicePostService.postBulk(ids, "au-rubber");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices/export/customer-sage-preview")
   @ApiOperation({ summary: "Preview customer invoice Sage CSV export" })
@@ -4039,7 +4040,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices/export/customer-sage-csv")
   @ApiOperation({ summary: "Download customer invoice Sage CSV export" })
@@ -4076,7 +4077,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     res!.send(csvBuffer);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/authorize-version")
   @ApiOperation({ summary: "Authorize a pending tax invoice version" })
@@ -4087,7 +4088,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDocumentVersioningService.authorizeVersion("tax-invoice", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/tax-invoices/:id/reject-version")
   @ApiOperation({ summary: "Reject a pending tax invoice version" })
@@ -4096,7 +4097,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     await this.rubberDocumentVersioningService.rejectVersion("tax-invoice", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/tax-invoices/:id/version-history")
   @ApiOperation({ summary: "Get tax invoice version history" })
@@ -4105,7 +4106,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDocumentVersioningService.versionHistory("tax-invoice", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/authorize-version")
   @ApiOperation({ summary: "Authorize a pending delivery note version" })
@@ -4116,7 +4117,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDocumentVersioningService.authorizeVersion("delivery-note", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/delivery-notes/:id/reject-version")
   @ApiOperation({ summary: "Reject a pending delivery note version" })
@@ -4125,7 +4126,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     await this.rubberDocumentVersioningService.rejectVersion("delivery-note", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/delivery-notes/:id/version-history")
   @ApiOperation({ summary: "Get delivery note version history" })
@@ -4134,7 +4135,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDocumentVersioningService.versionHistory("delivery-note", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/supplier-cocs/:id/authorize-version")
   @ApiOperation({ summary: "Authorize a pending supplier CoC version" })
@@ -4145,7 +4146,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberDocumentVersioningService.authorizeVersion("supplier-coc", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/supplier-cocs/:id/reject-version")
   @ApiOperation({ summary: "Reject a pending supplier CoC version" })
@@ -4154,7 +4155,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     await this.rubberDocumentVersioningService.rejectVersion("supplier-coc", Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id/version-history")
   @ApiOperation({ summary: "Get supplier CoC version history" })
@@ -4165,7 +4166,7 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   // ── Roll Rejections ──────────────────────────────────────────────
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-rejections")
   @ApiOperation({ summary: "List all roll rejections" })
@@ -4176,7 +4177,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollRejectionService.allRejections(status || undefined);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/supplier-cocs/:id/roll-rejections")
   @ApiOperation({ summary: "List roll rejections for a supplier CoC" })
@@ -4185,7 +4186,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollRejectionService.rejectionsBySupplierCoc(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/roll-rejections")
   @ApiOperation({ summary: "Create a roll rejection" })
@@ -4193,7 +4194,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollRejectionService.rejectRoll(body);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/roll-rejections/:id/return-document")
   @ApiOperation({ summary: "Upload return document for a roll rejection" })
@@ -4210,7 +4211,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollRejectionService.uploadReturnDocument(Number(id), file);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/roll-rejections/:id/link-replacement")
   @ApiOperation({ summary: "Link a replacement supplier CoC to a roll rejection" })
@@ -4226,7 +4227,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     );
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/roll-rejections/:id/close")
   @ApiOperation({ summary: "Close a roll rejection" })
@@ -4235,7 +4236,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberRollRejectionService.closeRejection(Number(id));
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-rejections/:id/return-document-url")
   @ApiOperation({ summary: "Get presigned URL for a return document" })
@@ -4245,7 +4246,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return { url };
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/cost-rates")
   @ApiOperation({
@@ -4258,7 +4259,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCostService.allCostRates(rateType);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/cost-rates/calenderer-rates")
   @ApiOperation({
@@ -4272,7 +4273,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCostService.calendererConversionRates();
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/cost-rates/:id")
   @ApiOperation({ summary: "Get cost rate by ID" })
@@ -4283,7 +4284,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return rate;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Post("portal/cost-rates")
   @ApiOperation({
@@ -4297,7 +4298,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCostService.createCostRate(dto, req.user?.email);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Put("portal/cost-rates/:id")
   @ApiOperation({ summary: "Update cost rate" })
@@ -4312,7 +4313,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return rate;
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Delete("portal/cost-rates/:id")
   @ApiOperation({ summary: "Delete cost rate" })
@@ -4322,7 +4323,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     if (!deleted) throw new NotFoundException("Cost rate not found");
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-cos")
   @ApiOperation({
@@ -4334,7 +4335,7 @@ Formula: totalPrice = totalKg × salePricePerKg
     return this.rubberCostService.allRollCos(status);
   }
 
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @Get("portal/roll-cos/:rollId")
   @ApiOperation({ summary: "Get COS for a specific roll" })
@@ -4388,21 +4389,21 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/directors")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "List all company directors" })
   async accountingDirectors(): Promise<DirectorDto[]> {
     return this.rubberCompanyDirectorService.allDirectors();
   }
 
   @Post("portal/accounting/directors")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Create a company director" })
   async createAccountingDirector(@Body() dto: CreateDirectorDto): Promise<DirectorDto> {
     return this.rubberCompanyDirectorService.createDirector(dto);
   }
 
   @Put("portal/accounting/directors/:id")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Update a company director" })
   async updateAccountingDirector(
     @Param("id") id: string,
@@ -4414,7 +4415,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Delete("portal/accounting/directors/:id")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Delete a company director" })
   async deleteAccountingDirector(@Param("id") id: string): Promise<void> {
     const deleted = await this.rubberCompanyDirectorService.deleteDirector(Number(id));
@@ -4422,7 +4423,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/payable")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Monthly accounts payable data" })
   async accountingPayable(
     @Query("year") year: string,
@@ -4437,7 +4438,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/receivable")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Monthly accounts receivable data" })
   async accountingReceivable(
     @Query("year") year: string,
@@ -4452,7 +4453,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "List generated monthly accounts" })
   async accountingList(
     @Query("accountType") accountType?: string,
@@ -4473,7 +4474,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   // crashed the monthly-account query and broke every accounting-section
   // endpoint declared further down in this file.
   @Get("portal/accounting/by-id/:id")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Single monthly account with sign-off status" })
   async accountingById(@Param("id") id: string): Promise<MonthlyAccountDto> {
     const result = await this.rubberAccountingService.monthlyAccountById(Number(id));
@@ -4482,7 +4483,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/generate")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Generate monthly account PDF" })
   async accountingGenerate(
     @Body()
@@ -4503,7 +4504,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/:id/pdf")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Download monthly account PDF" })
   async accountingDownloadPdf(@Param("id") id: string, @Res() res: Response): Promise<void> {
     const buffer = await this.rubberAccountingService.downloadAccountPdf(Number(id));
@@ -4513,7 +4514,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/:id/request-signoff")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Send sign-off request emails to directors" })
   async accountingRequestSignOff(@Param("id") id: string): Promise<MonthlyAccountDto> {
     return this.rubberAccountingService.requestDirectorSignOff(Number(id));
@@ -4543,7 +4544,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/reconciliation/upload")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @UseInterceptors(FileInterceptor("file"))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({ summary: "Upload a supplier statement for reconciliation" })
@@ -4560,7 +4561,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/supplier-statements/upload")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @UseInterceptors(FileInterceptor("file"))
   @ApiConsumes("multipart/form-data")
   @ApiOperation({
@@ -4574,21 +4575,21 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/accounting/reconciliation/:id/extract")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Trigger AI extraction on uploaded statement" })
   async reconciliationExtract(@Param("id") id: string): Promise<ReconciliationDetailDto> {
     return this.rubberStatementReconciliationService.extractStatement(Number(id));
   }
 
   @Post("portal/accounting/reconciliation/:id/reconcile")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Run statement reconciliation matching" })
   async reconciliationReconcile(@Param("id") id: string): Promise<ReconciliationDetailDto> {
     return this.rubberStatementReconciliationService.reconcileStatement(Number(id));
   }
 
   @Put("portal/accounting/reconciliation/:id/resolve")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Mark reconciliation as resolved" })
   async reconciliationResolve(
     @Param("id") id: string,
@@ -4602,7 +4603,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Delete("portal/accounting/reconciliation/:id")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({
     summary: "Delete a statement reconciliation (so the user can re-upload)",
   })
@@ -4614,7 +4615,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/reconciliation")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "List all reconciliations" })
   async reconciliationList(
     @Query("companyId") companyId?: string,
@@ -4631,7 +4632,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/accounting/reconciliation/:id")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiOperation({ summary: "Reconciliation detail" })
   async reconciliationById(@Param("id") id: string): Promise<ReconciliationDetailDto> {
     const result = await this.rubberStatementReconciliationService.reconciliationById(Number(id));
@@ -4640,7 +4641,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/roll-issuances/identify-photo")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Identify rubber roll from photo using AI" })
   async identifyRollPhoto(@Body() dto: IdentifyRollPhotoDto): Promise<RollPhotoIdentifyResponse> {
@@ -4648,7 +4649,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/roll-issuances/create-from-photo")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Create roll stock entry from photo extraction" })
   async createRollFromPhoto(
@@ -4658,7 +4659,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/roll-issuances/jc-search")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Search job cards for roll issuing" })
   async searchJobCardsForIssuing(@Query("q") query: string): Promise<JcSearchResultDto[]> {
@@ -4666,7 +4667,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/roll-issuances/jc/:id/line-items")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get job card line items for roll issuing" })
   async jobCardLineItemsForIssuing(@Param("id") id: string): Promise<JcLineItemDto[]> {
@@ -4674,7 +4675,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/roll-issuances")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Create a roll issuance to one or more job cards" })
   async createRollIssuance(@Body() dto: CreateRollIssuanceDto): Promise<RubberRollIssuanceDto> {
@@ -4682,7 +4683,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/roll-issuances")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "List all roll issuances" })
   async listRollIssuances(): Promise<RubberRollIssuanceDto[]> {
@@ -4690,7 +4691,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Get("portal/roll-issuances/:id")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Get roll issuance detail" })
   async rollIssuanceById(@Param("id") id: string): Promise<RubberRollIssuanceDto> {
@@ -4698,7 +4699,7 @@ Formula: totalPrice = totalKg × salePricePerKg
   }
 
   @Post("portal/roll-issuances/:id/cancel")
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: "Cancel a roll issuance" })
   async cancelRollIssuance(@Param("id") id: string): Promise<RubberRollIssuanceDto> {

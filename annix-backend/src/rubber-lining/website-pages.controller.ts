@@ -23,7 +23,9 @@ import {
   ApiTags,
 } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { FeatureLicenseGuard, RequireFeature } from "../licensing";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { AU_RUBBER_FEATURES, AU_RUBBER_MODULE_KEY } from "./config/au-rubber-licensing";
 import { WebsitePage } from "./entities/website-page.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import {
@@ -34,7 +36,8 @@ import {
 
 @ApiTags("AU Rubber Website Pages")
 @Controller("rubber-lining/website-pages")
-@UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+@UseGuards(AdminAuthGuard, AuRubberAccessGuard, FeatureLicenseGuard)
+@RequireFeature(AU_RUBBER_MODULE_KEY, AU_RUBBER_FEATURES.WEBSITE_CMS)
 @ApiBearerAuth()
 export class WebsitePagesController {
   constructor(

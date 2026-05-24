@@ -11,6 +11,8 @@ import {
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
+import { FeatureLicenseGuard, RequireFeature } from "../licensing";
+import { AU_RUBBER_FEATURES, AU_RUBBER_MODULE_KEY } from "./config/au-rubber-licensing";
 import { Testimonial } from "./entities/testimonial.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
 import {
@@ -21,7 +23,8 @@ import {
 
 @ApiTags("AU Rubber Testimonials")
 @Controller("rubber-lining/testimonials")
-@UseGuards(AdminAuthGuard, AuRubberAccessGuard)
+@UseGuards(AdminAuthGuard, AuRubberAccessGuard, FeatureLicenseGuard)
+@RequireFeature(AU_RUBBER_MODULE_KEY, AU_RUBBER_FEATURES.WEBSITE_CMS)
 @ApiBearerAuth()
 export class TestimonialsController {
   constructor(private readonly testimonialsService: TestimonialsService) {}

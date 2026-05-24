@@ -76,6 +76,7 @@ import { RubberType } from "./entities/rubber-type.entity";
 import { Testimonial } from "./entities/testimonial.entity";
 import { WebsitePage } from "./entities/website-page.entity";
 import { AuRubberAccessGuard } from "./guards/au-rubber-access.guard";
+import { AuRubberFeatureGuard } from "./guards/au-rubber-feature.guard";
 import { PublicAuIndustriesController } from "./public-au-industries.controller";
 import { RubberAccountingService } from "./rubber-accounting.service";
 import { RubberAccountingPdfService } from "./rubber-accounting-pdf.service";
@@ -234,6 +235,7 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberSageInvoicePostService,
     RubberCostService,
     AuRubberAccessGuard,
+    AuRubberFeatureGuard,
     WebsitePagesService,
     TestimonialsService,
     BlogPostsService,
