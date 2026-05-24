@@ -29,6 +29,7 @@ export {
   useUpdateSlaConfig,
 } from "./admin/useAdminMessaging";
 export {
+  useAdminAutoResolveOrbitDuplicates,
   useAdminCreateOrbitJobMarketSource,
   useAdminDeleteOrbitExternalJob,
   useAdminDeleteOrbitJobMarketSource,

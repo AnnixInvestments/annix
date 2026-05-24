@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import type { DuplicateJobSide } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
+  useAdminAutoResolveOrbitDuplicates,
   useAdminDeleteOrbitExternalJob,
   useAdminOrbitJobMarketDuplicates,
 } from "@/app/lib/query/hooks";
@@ -40,8 +42,22 @@ function SideRow(props: { side: DuplicateJobSide; onDelete: () => void; deleting
 export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => void }) {
   const { isOpen, onClose } = props;
   const { confirm, ConfirmDialog } = useConfirm();
-  const duplicatesQuery = useAdminOrbitJobMarketDuplicates(isOpen);
+  const autoResolve = useAdminAutoResolveOrbitDuplicates();
+  const autoResolvedRef = useRef(false);
+  const duplicatesQuery = useAdminOrbitJobMarketDuplicates(isOpen && autoResolve.isSuccess);
   const deleteJob = useAdminDeleteOrbitExternalJob();
+
+  // On open, auto-remove EXACT duplicates first (keeping the most-respected
+  // source), then list the remaining near-duplicates for manual review.
+  useEffect(() => {
+    if (!isOpen) {
+      autoResolvedRef.current = false;
+      return;
+    }
+    if (autoResolvedRef.current) return;
+    autoResolvedRef.current = true;
+    autoResolve.mutate();
+  }, [isOpen, autoResolve]);
 
   if (!isOpen) return null;
 
@@ -49,6 +65,7 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
   const pairs = data ?? [];
   const isLoading = duplicatesQuery.isLoading;
   const isError = duplicatesQuery.isError;
+  const removed = autoResolve.data;
   const deletingId = deleteJob.isPending ? deleteJob.variables : null;
 
   const handleDelete = async (side: DuplicateJobSide) => {
@@ -76,8 +93,8 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
           <div>
             <h3 className="text-lg font-semibold text-gray-900">Find Duplicate Listings</h3>
             <p className="mt-0.5 text-sm text-gray-500">
-              Near-identical jobs (matching title + location) the auto-dedup may have missed. Delete
-              the redundant one.
+              Exact duplicates are removed automatically (keeping the most-respected source).
+              Near-duplicates below need your review.
             </p>
           </div>
           <button
@@ -91,16 +108,35 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
         </div>
 
         <div className="flex-1 space-y-3 overflow-y-auto p-5">
-          {isLoading && (
-            <p className="py-8 text-center text-sm text-gray-500">Scanning for duplicates…</p>
-          )}
-          {isError && (
-            <p className="py-8 text-center text-sm text-red-600">
-              Could not scan for duplicates — please try again.
+          {autoResolve.isPending && (
+            <p className="py-8 text-center text-sm text-gray-500">
+              Removing exact duplicates (keeping the most-respected source)…
             </p>
           )}
-          {!isLoading && !isError && pairs.length === 0 && (
-            <p className="py-8 text-center text-sm text-gray-500">No likely duplicates found.</p>
+          {removed && (
+            <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              {removed.deleted > 0
+                ? `Auto-removed ${removed.deleted} exact duplicate listing(s) across ${removed.groups} group(s) — kept the copy from the most-respected source.`
+                : "No exact duplicates to auto-remove."}
+            </div>
+          )}
+          {autoResolve.isError && (
+            <p className="py-8 text-center text-sm text-red-600">
+              Auto-resolve failed — please try again.
+            </p>
+          )}
+          {autoResolve.isSuccess && isLoading && (
+            <p className="py-8 text-center text-sm text-gray-500">Scanning for near-duplicates…</p>
+          )}
+          {autoResolve.isSuccess && isError && (
+            <p className="py-8 text-center text-sm text-red-600">
+              Could not scan for near-duplicates — please try again.
+            </p>
+          )}
+          {autoResolve.isSuccess && !isLoading && !isError && pairs.length === 0 && (
+            <p className="py-8 text-center text-sm text-gray-500">
+              No near-duplicates need manual review.
+            </p>
           )}
           {pairs.map((pair) => {
             const scorePercent = Math.round(pair.score * 100);
@@ -138,7 +174,7 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
 
         <div className="flex items-center justify-between border-t border-gray-200 px-5 py-3">
           <span className="text-xs text-gray-500">
-            {pairs.length > 0 ? `${pairs.length} duplicate pair(s)` : ""}
+            {pairs.length > 0 ? `${pairs.length} near-duplicate pair(s) to review` : ""}
           </span>
           <button
             type="button"

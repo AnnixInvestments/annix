@@ -1077,6 +1077,12 @@ class AdminApiClient {
     });
   }
 
+  async autoResolveOrbitDuplicates(): Promise<{ deleted: number; groups: number }> {
+    return this.request("/admin/annix-orbit/job-market/duplicates/auto-resolve", {
+      method: "POST",
+    });
+  }
+
   async vetPendingOrbitJobs(
     limit?: number,
   ): Promise<{ vetted: number; accepted: number; rejected: number; ambiguous: number }> {

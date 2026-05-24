@@ -83,6 +83,16 @@ export function useAdminDeleteOrbitExternalJob() {
   });
 }
 
+export function useAdminAutoResolveOrbitDuplicates() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApiClient.autoResolveOrbitDuplicates(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+    },
+  });
+}
+
 export function useAdminCreateOrbitJobMarketSource() {
   const queryClient = useQueryClient();
   return useMutation({
