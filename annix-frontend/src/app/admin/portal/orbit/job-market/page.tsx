@@ -22,6 +22,29 @@ import { FindDuplicatesModal } from "./components/FindDuplicatesModal";
 import { JobCard } from "./components/JobCard";
 import { SourceCard } from "./components/SourceCard";
 
+// Background crawl/DPSA ingestion returns immediately; we keep the branded
+// progress popup up and poll the source's lastIngestedAt until the run finishes
+// (it advances only on completion), so the admin sees it working.
+async function waitForBackgroundIngestion(
+  sourceId: number,
+  baseline: string | null,
+): Promise<void> {
+  const poll = async (attempt: number): Promise<void> => {
+    await new Promise((resolve) => globalThis.setTimeout(resolve, 5000));
+    try {
+      const sources = await adminApiClient.orbitJobMarketSources();
+      const match = sources.find((source) => source.id === sourceId);
+      const lastIngestedAt = match ? match.lastIngestedAt : null;
+      if (lastIngestedAt && lastIngestedAt !== baseline) return;
+    } catch {
+      // backend may be mid-rebuild — keep polling
+    }
+    if (attempt >= 60) return;
+    return poll(attempt + 1);
+  };
+  return poll(0);
+}
+
 export default function AdminOrbitJobMarketPage() {
   const [activeTab, setActiveTab] = useState<"jobs" | "sources">("sources");
   const [searchInput, setSearchInput] = useState("");
@@ -52,7 +75,7 @@ export default function AdminOrbitJobMarketPage() {
   const updateSource = useAdminUpdateOrbitJobMarketSource();
   const deleteSource = useAdminDeleteOrbitJobMarketSource();
   const queryClient = useQueryClient();
-  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { runBulk } = useAdaptiveExtractionProgress();
   const [vetSummary, setVetSummary] = useState<string | null>(null);
   const [isVettingPending, setIsVettingPending] = useState(false);
@@ -108,15 +131,24 @@ export default function AdminOrbitJobMarketPage() {
 
     try {
       const fetched = await adminApiClient.fetchOrbitSource(sourceId);
-      hideExtraction();
 
       if (fetched.started) {
+        updateExtraction({
+          label: `Crawling ${sourceName} in the background…`,
+          estimatedDurationMs: 120_000,
+        });
+        const baseline = sourceMatch ? sourceMatch.lastIngestedAt : null;
+        await waitForBackgroundIngestion(sourceId, baseline);
+        hideExtraction();
         setIngestionStatus((prev) => ({
           ...prev,
-          [sourceId]: "Ingestion started in the background — refresh in ~90s to see results",
+          [sourceId]: "Done — new jobs ingested. Re-run to fetch more.",
         }));
+        queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
         return;
       }
+
+      hideExtraction();
 
       if (fetched.savedIds.length === 0 || !requiresVetting) {
         const suffix = requiresVetting ? "" : " (no vetting needed)";
