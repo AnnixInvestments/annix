@@ -134,6 +134,46 @@ class RequirementVersionDto {
   verificationStatus?: string;
 }
 
+class OutcomeSignalDto {
+  @IsString()
+  programmeId: string;
+
+  @IsString()
+  @MaxLength(120)
+  source: string;
+
+  @IsString()
+  @MaxLength(64)
+  metric: string;
+
+  @IsNumber()
+  value: number;
+
+  @IsString()
+  @MaxLength(16)
+  unit: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(10)
+  asOf?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(16)
+  confidence?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(24)
+  verificationStatus?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  sourceUrl?: string | null;
+}
+
 class DistributionDto {
   @IsString()
   programmeId: string;
@@ -242,5 +282,15 @@ export class AdminEducationCatalogController {
   @Post("distributions")
   async createDistribution(@Body() body: DistributionDto) {
     return { distribution: await this.catalog.createDistribution(body) };
+  }
+
+  @Get("programmes/:id/outcome-signals")
+  async outcomeSignals(@Param("id") id: string) {
+    return { outcomeSignals: await this.catalog.outcomeSignals(id) };
+  }
+
+  @Post("outcome-signals")
+  async createOutcomeSignal(@Body() body: OutcomeSignalDto) {
+    return { outcomeSignal: await this.catalog.createOutcomeSignal(body) };
   }
 }

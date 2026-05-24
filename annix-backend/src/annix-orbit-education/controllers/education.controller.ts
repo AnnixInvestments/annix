@@ -14,6 +14,7 @@ import { IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 
 import { AnnixOrbitAuthGuard } from "../../annix-orbit/guards/annix-orbit-auth.guard";
 import { now } from "../../lib/datetime";
 import { ORBIT_EDUCATION_CURRICULA } from "../annix-orbit-education.constants";
+import { EducationChoiceAidService } from "../services/education-choice-aid.service";
 import { EducationConsentService } from "../services/education-consent.service";
 import { EducationMentorService } from "../services/education-mentor.service";
 import { EducationProfileService } from "../services/education-profile.service";
@@ -105,6 +106,7 @@ export class EducationController {
     private readonly guardianLinkService: GuardianLinkService,
     private readonly mentorService: EducationMentorService,
     private readonly recommendationService: EducationRecommendationService,
+    private readonly choiceAidService: EducationChoiceAidService,
   ) {}
 
   @Get()
@@ -204,5 +206,16 @@ export class EducationController {
     const year = Number.isFinite(parsedYear) ? parsedYear : now().year + 1;
     const recommendations = await this.recommendationService.recommendForUser(req.user.id, year);
     return { intakeYear: year, recommendations };
+  }
+
+  @Get("compare-options")
+  async compareOptions(
+    @Request() req: SeekerAuthRequest,
+    @Query("intakeYear") intakeYear?: string,
+  ) {
+    const parsedYear = intakeYear ? Number.parseInt(intakeYear, 10) : Number.NaN;
+    const year = Number.isFinite(parsedYear) ? parsedYear : now().year + 1;
+    const options = await this.choiceAidService.compareOptions(req.user.id, year);
+    return { intakeYear: year, options };
   }
 }

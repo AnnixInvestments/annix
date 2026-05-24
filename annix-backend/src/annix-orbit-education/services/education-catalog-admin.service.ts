@@ -1,10 +1,11 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { EducationAdmissionDistribution } from "../entities/education-admission-distribution.entity";
 import { EducationFaculty } from "../entities/education-faculty.entity";
 import { EducationInstitution } from "../entities/education-institution.entity";
 import { EducationProgramme } from "../entities/education-programme.entity";
+import { EducationProgrammeOutcomeSignal } from "../entities/education-programme-outcome-signal.entity";
 import { EducationRequirementVersion } from "../entities/education-requirement-version.entity";
 
 export interface InstitutionInput {
@@ -51,6 +52,20 @@ export interface AdmissionDistributionInput {
   asOf?: string | null;
 }
 
+const FORBIDDEN_OUTCOME_SOURCES = ["qs", "times higher", "the world university", "quacquarelli"];
+
+export interface OutcomeSignalInput {
+  programmeId: string;
+  source: string;
+  metric: string;
+  value: number;
+  unit: string;
+  asOf?: string | null;
+  confidence?: string;
+  verificationStatus?: string;
+  sourceUrl?: string | null;
+}
+
 /**
  * Admin curation of the FuturePath admissions catalog (#308). The owner enters
  * OWNER-VERIFIED data here; this service intentionally seeds nothing itself
@@ -71,6 +86,8 @@ export class EducationCatalogAdminService {
     private readonly requirementVersionRepo: Repository<EducationRequirementVersion>,
     @InjectRepository(EducationAdmissionDistribution)
     private readonly distributionRepo: Repository<EducationAdmissionDistribution>,
+    @InjectRepository(EducationProgrammeOutcomeSignal)
+    private readonly outcomeSignalRepo: Repository<EducationProgrammeOutcomeSignal>,
   ) {}
 
   institutions(): Promise<EducationInstitution[]> {
@@ -196,6 +213,38 @@ export class EducationCatalogAdminService {
         seats: input.seats ?? null,
         source: input.source ?? null,
         asOf: input.asOf ?? null,
+      }),
+    );
+  }
+
+  outcomeSignals(programmeId: string): Promise<EducationProgrammeOutcomeSignal[]> {
+    return this.outcomeSignalRepo.find({
+      where: { programmeId },
+      order: { asOf: "DESC", createdAt: "DESC" },
+    });
+  }
+
+  async createOutcomeSignal(input: OutcomeSignalInput): Promise<EducationProgrammeOutcomeSignal> {
+    const programme = await this.programmeRepo.findOne({ where: { id: input.programmeId } });
+    if (!programme) throw new NotFoundException(`Programme ${input.programmeId} not found`);
+    // Firewall: never store license-restricted ranking data (QS/THE) — #309.
+    const sourceLower = input.source.toLowerCase();
+    if (FORBIDDEN_OUTCOME_SOURCES.some((banned) => sourceLower.includes(banned))) {
+      throw new BadRequestException(
+        "QS / Times Higher Education rankings are license-restricted and must not be stored.",
+      );
+    }
+    return this.outcomeSignalRepo.save(
+      this.outcomeSignalRepo.create({
+        programmeId: input.programmeId,
+        source: input.source,
+        metric: input.metric,
+        value: input.value.toFixed(2),
+        unit: input.unit,
+        asOf: input.asOf ?? null,
+        confidence: input.confidence ?? "NEEDS_REVIEW",
+        verificationStatus: input.verificationStatus ?? "NEEDS_REVIEW",
+        sourceUrl: input.sourceUrl ?? null,
       }),
     );
   }

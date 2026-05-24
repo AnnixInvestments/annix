@@ -6,6 +6,7 @@ import { EducationAdmissionDistribution } from "./entities/education-admission-d
 import { EducationFaculty } from "./entities/education-faculty.entity";
 import { EducationInstitution } from "./entities/education-institution.entity";
 import { EducationProgramme } from "./entities/education-programme.entity";
+import { EducationProgrammeOutcomeSignal } from "./entities/education-programme-outcome-signal.entity";
 import { EducationRequirementVersion } from "./entities/education-requirement-version.entity";
 import { EducationCatalogAdminService } from "./services/education-catalog-admin.service";
 
@@ -23,6 +24,7 @@ import { EducationCatalogAdminService } from "./services/education-catalog-admin
       EducationProgramme,
       EducationRequirementVersion,
       EducationAdmissionDistribution,
+      EducationProgrammeOutcomeSignal,
     ]),
     AdminModule,
   ],

@@ -19,9 +19,11 @@ import { EducationFaculty } from "./entities/education-faculty.entity";
 import { EducationInstitution } from "./entities/education-institution.entity";
 import { EducationProfile } from "./entities/education-profile.entity";
 import { EducationProgramme } from "./entities/education-programme.entity";
+import { EducationProgrammeOutcomeSignal } from "./entities/education-programme-outcome-signal.entity";
 import { EducationRecommendationSnapshot } from "./entities/education-recommendation-snapshot.entity";
 import { EducationRequirementVersion } from "./entities/education-requirement-version.entity";
 import { GuardianLink } from "./entities/guardian-link.entity";
+import { EducationChoiceAidService } from "./services/education-choice-aid.service";
 import { EducationConsentService } from "./services/education-consent.service";
 import { EducationMentorService } from "./services/education-mentor.service";
 import { EducationProfileService } from "./services/education-profile.service";
@@ -42,6 +44,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
       EducationRequirementVersion,
       EducationAdmissionDistribution,
       EducationRecommendationSnapshot,
+      EducationProgrammeOutcomeSignal,
       AnnixOrbitEeConsentTextVersion,
       User,
       UserAppAccess,
@@ -67,6 +70,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     GuardianLinkService,
     EducationMentorService,
     EducationRecommendationService,
+    EducationChoiceAidService,
     AnnixOrbitEducationCapabilities,
   ],
   exports: [
@@ -74,6 +78,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     EducationProfileService,
     EducationMentorService,
     EducationRecommendationService,
+    EducationChoiceAidService,
   ],
 })
 export class AnnixOrbitEducationModule {}
