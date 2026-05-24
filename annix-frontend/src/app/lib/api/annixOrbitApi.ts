@@ -2088,6 +2088,13 @@ class AnnixOrbitApiClient {
     });
   }
 
+  async seekerEducationRecommendations(
+    intakeYear?: number,
+  ): Promise<SeekerEducationRecommendationsResponse> {
+    const query = intakeYear ? `?intakeYear=${intakeYear}` : "";
+    return this.request(`/annix-orbit/education/me/recommendations${query}`);
+  }
+
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
     return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
@@ -2234,6 +2241,29 @@ export interface SeekerEducationMentorAnswer {
   answer: string;
   model: string;
   logId: string;
+}
+
+export type SeekerEducationBand = "safe" | "match" | "reach" | "below" | "unknown";
+
+export interface SeekerEducationRecommendation {
+  programmeId: string;
+  programmeName: string;
+  institutionId: string;
+  band: SeekerEducationBand;
+  result: {
+    eligibility: {
+      passed: boolean;
+      gates: { description: string; passed: boolean; reason: string }[];
+    };
+    scoring: { adjustedScore: number | null; matched: boolean | null };
+    competitiveness: { band: SeekerEducationBand; cutOff: number | null; margin: number | null };
+    explanation: string[];
+  };
+}
+
+export interface SeekerEducationRecommendationsResponse {
+  intakeYear: number;
+  recommendations: SeekerEducationRecommendation[];
 }
 
 export interface SeekerJobStats {

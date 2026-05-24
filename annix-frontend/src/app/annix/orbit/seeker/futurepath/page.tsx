@@ -10,6 +10,7 @@ import {
   useOrbitInviteSeekerEducationGuardian,
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
+  useOrbitSeekerEducationRecommendations,
   useOrbitUpsertSeekerEducation,
 } from "@/app/lib/query/hooks";
 import { ORBIT_EDUCATION_VERSION } from "../../config/futurepath-version";
@@ -24,6 +25,22 @@ const CURRICULA: OrbitEducationCurriculum[] = [
   "US-GPA",
   "Other",
 ];
+
+const BAND_LABEL: Record<string, string> = {
+  safe: "Safe",
+  match: "Match",
+  reach: "Reach",
+  below: "Below",
+  unknown: "Unknown",
+};
+
+const BAND_CLASS: Record<string, string> = {
+  safe: "bg-green-100 text-green-800",
+  match: "bg-blue-100 text-blue-800",
+  reach: "bg-amber-100 text-amber-800",
+  below: "bg-gray-100 text-gray-600",
+  unknown: "bg-gray-100 text-gray-600",
+};
 
 export default function FuturePathPage() {
   const { showToast } = useToast();
@@ -40,6 +57,13 @@ export default function FuturePathPage() {
   const results = data ? data.results : [];
   const consentRequired = data ? data.consentRequired : false;
   const isMinor = data ? data.isMinor : null;
+
+  const recommendationsQuery = useOrbitSeekerEducationRecommendations(
+    undefined,
+    profile != null && !consentRequired,
+  );
+  const recommendationsData = recommendationsQuery.data;
+  const recommendations = recommendationsData ? recommendationsData.recommendations : [];
 
   const [curriculum, setCurriculum] = useState<OrbitEducationCurriculum>("NSC");
   const [country, setCountry] = useState("");
@@ -359,6 +383,49 @@ export default function FuturePathPage() {
             {mentorAnswer}
           </div>
         ) : null}
+      </section>
+
+      <section className="rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="font-medium text-gray-900 mb-1">Your programme matches</h2>
+        <p className="text-xs text-gray-500 mb-3">
+          Programmes you could qualify for, with a Reach / Match / Safe band and the reasons behind
+          it. Bands are guidance, not guarantees — always confirm with the institution.
+        </p>
+        {recommendationsQuery.isLoading ? (
+          <p className="text-sm text-gray-500">Working out your matches…</p>
+        ) : recommendations.length === 0 ? (
+          <p className="text-sm text-gray-500">
+            No programme matches yet. The curated institution catalogue is still being built — check
+            back soon, or ask the mentor what to aim for in the meantime.
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {recommendations.map((rec) => {
+              const bandLabelRaw = BAND_LABEL[rec.band];
+              const bandClassRaw = BAND_CLASS[rec.band];
+              const bandLabel = bandLabelRaw || "Unknown";
+              const bandClass = bandClassRaw || BAND_CLASS.unknown;
+              const reasons = rec.result.explanation;
+              return (
+                <li key={rec.programmeId} className="rounded border border-gray-200 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{rec.programmeName}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${bandClass}`}>
+                      {bandLabel}
+                    </span>
+                  </div>
+                  {reasons.length > 0 ? (
+                    <ul className="mt-2 list-disc list-inside text-xs text-gray-600 space-y-0.5">
+                      {reasons.map((reason, i) => (
+                        <li key={`${rec.programmeId}-${i}`}>{reason}</li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </section>
 
       <p className="text-right text-xs text-gray-400">FuturePath v{ORBIT_EDUCATION_VERSION}</p>

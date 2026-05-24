@@ -121,6 +121,8 @@ export const annixOrbitKeys = {
   seekerEducation: {
     all: ["annix-orbit", "seeker", "education"] as const,
     detail: () => ["annix-orbit", "seeker", "education", "detail"] as const,
+    recommendations: (intakeYear?: number) =>
+      ["annix-orbit", "seeker", "education", "recommendations", intakeYear ?? "default"] as const,
   },
   workforceNeed: {
     all: ["annix-orbit", "admin", "workforce-needs"] as const,

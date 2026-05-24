@@ -6,6 +6,7 @@ import {
   type SeekerEducationInput,
   type SeekerEducationMentorAnswer,
   type SeekerEducationProfile,
+  type SeekerEducationRecommendationsResponse,
   type SeekerEducationResponse,
   type SeekerEducationResult,
   type SeekerEducationResultInput,
@@ -74,5 +75,17 @@ export function useOrbitInviteSeekerEducationGuardian() {
 export function useOrbitAskSeekerEducationMentor() {
   return useMutation<SeekerEducationMentorAnswer, Error, string>({
     mutationFn: (question) => annixOrbitApiClient.askSeekerEducationMentor(question),
+  });
+}
+
+export function useOrbitSeekerEducationRecommendations(
+  intakeYear?: number,
+  enabled: boolean = true,
+) {
+  return useQuery<SeekerEducationRecommendationsResponse>({
+    queryKey: annixOrbitKeys.seekerEducation.recommendations(intakeYear),
+    queryFn: () => annixOrbitApiClient.seekerEducationRecommendations(intakeYear),
+    enabled,
+    staleTime: 5 * 60 * 1000,
   });
 }
