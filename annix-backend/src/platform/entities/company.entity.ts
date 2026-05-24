@@ -173,6 +173,9 @@ export class Company {
   @Column({ name: "onboarding_complete", type: "boolean", default: false })
   onboardingComplete: boolean;
 
+  @Column({ name: "owner_user_id", type: "integer", nullable: true })
+  ownerUserId: number | null;
+
   @OneToMany(
     () => CompanyModuleSubscription,
     (sub) => sub.company,
