@@ -7,6 +7,7 @@ import { In, IsNull, MoreThan, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
+import { sourceRespectRank } from "../config/job-source-providers";
 import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { ExternalJobAlternate } from "../entities/external-job-alternate.entity";
@@ -113,6 +114,11 @@ export class JobIngestionService {
     await this.backfillCanonicalCategories().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Canonical category backfill failed: ${message}`);
+    });
+
+    await this.autoResolveDuplicates().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Auto-resolve duplicates failed: ${message}`);
     });
   }
 
@@ -587,6 +593,68 @@ export class JobIngestionService {
   async deleteExternalJob(jobId: number): Promise<void> {
     await this.alternateRepo.delete({ canonicalExternalJobId: jobId });
     await this.externalJobRepo.delete(jobId);
+  }
+
+  // Auto-removes EXACT duplicate listings — same title + location + company
+  // (or both company-null) — keeping a single copy: the one from the most
+  // respected source, then the richest (longest description), then the oldest.
+  // Runs on demand (admin button) and after each ingestion poll so the feed
+  // self-cleans and duplicates shrink over time.
+  async autoResolveDuplicates(): Promise<{ deleted: number; groups: number }> {
+    const rows: Array<{
+      id: number;
+      t: string;
+      loc: string;
+      comp: string;
+      provider: string;
+      desc_len: number;
+      created: Date | null;
+    }> = await this.externalJobRepo.query(`
+      SELECT j.id AS id, LOWER(j.title) AS t, LOWER(j.location_area) AS loc,
+             LOWER(COALESCE(j.company, '')) AS comp, s.provider AS provider,
+             LENGTH(COALESCE(j.description, '')) AS desc_len, j.created_at AS created
+      FROM cv_assistant_external_jobs j
+      JOIN cv_assistant_job_market_sources s ON s.id = j.source_id
+      WHERE j.location_area IS NOT NULL AND j.location_area <> ''
+    `);
+
+    const grouped = rows.reduce((map, row) => {
+      const key = `${row.t}||${row.loc}||${row.comp}`;
+      const bucket = map.get(key);
+      if (bucket) bucket.push(row);
+      else map.set(key, [row]);
+      return map;
+    }, new Map<string, typeof rows>());
+
+    const idsToDelete = [...grouped.values()]
+      .filter((bucket) => bucket.length > 1)
+      .flatMap((bucket) => {
+        const sorted = [...bucket].sort((a, b) => {
+          const rankDiff = sourceRespectRank(b.provider) - sourceRespectRank(a.provider);
+          if (rankDiff !== 0) return rankDiff;
+          const lenDiff = Number(b.desc_len) - Number(a.desc_len);
+          if (lenDiff !== 0) return lenDiff;
+          const aTime = a.created ? DateTime.fromJSDate(a.created).toMillis() : 0;
+          const bTime = b.created ? DateTime.fromJSDate(b.created).toMillis() : 0;
+          if (aTime !== bTime) return aTime - bTime;
+          return a.id - b.id;
+        });
+        return sorted.slice(1).map((row) => row.id);
+      });
+
+    const resolvedGroups = [...grouped.values()].filter((bucket) => bucket.length > 1).length;
+
+    if (idsToDelete.length === 0) {
+      return { deleted: 0, groups: 0 };
+    }
+
+    await this.alternateRepo.delete({ canonicalExternalJobId: In(idsToDelete) });
+    await this.externalJobRepo.delete(idsToDelete);
+
+    this.logger.log(
+      `Auto-resolved ${resolvedGroups} duplicate group(s), removed ${idsToDelete.length} listing(s)`,
+    );
+    return { deleted: idsToDelete.length, groups: resolvedGroups };
   }
 
   async publicJobs(

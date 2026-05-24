@@ -125,6 +125,11 @@ export class AdminOrbitJobMarketController {
     );
   }
 
+  @Post("duplicates/auto-resolve")
+  async autoResolveDuplicates() {
+    return this.ingestionService.autoResolveDuplicates();
+  }
+
   @Delete("jobs/:id")
   async deleteJob(@Param("id", ParseIntPipe) id: number) {
     await this.ingestionService.deleteExternalJob(id);

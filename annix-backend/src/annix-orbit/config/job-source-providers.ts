@@ -48,3 +48,18 @@ export const JOB_SOURCE_PROVIDERS: JobSourceProviderInfo[] = [
     credentialFields: [],
   },
 ];
+
+// How "respected" each source is, used to decide which copy of a duplicate job
+// to keep (higher = kept). Tunable — adjust the order to taste.
+export const SOURCE_RESPECT_RANK: Record<string, number> = {
+  [JobSourceProvider.DPSA]: 90,
+  [JobSourceProvider.EXECUTIVE_PLACEMENTS]: 80,
+  [JobSourceProvider.JOB_PLACEMENTS]: 75,
+  [JobSourceProvider.JOBMAIL]: 60,
+  [JobSourceProvider.ADZUNA]: 50,
+  [JobSourceProvider.REMOTIVE]: 40,
+};
+
+export function sourceRespectRank(provider: string): number {
+  return SOURCE_RESPECT_RANK[provider] ?? 0;
+}
