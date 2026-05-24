@@ -15,6 +15,7 @@ import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
 import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
 import { JobSourceProvider } from "../entities/job-market-source.entity";
+import { isSitemapCrawlProvider } from "../services/crawl/sitemap-crawl-profiles";
 import { JobIngestionService } from "../services/job-ingestion.service";
 import { JobMarketSourceService } from "../services/job-market-source.service";
 
@@ -69,16 +70,24 @@ export class AdminOrbitJobMarketController {
   async fetchOnly(@Param("id", ParseIntPipe) id: number) {
     const source = await this.sourceService.findByIdPlatformGlobal(id);
 
-    // DPSA extraction runs ~36 sequential Gemini calls over a 1MB+ circular
-    // (~60-90s) — far longer than the HTTP proxy timeout. Fire-and-forget so the
-    // request returns immediately; the vacancies land in the background.
-    if (source.provider === JobSourceProvider.DPSA) {
+    // DPSA (~36 Gemini calls over a 1MB+ circular) and the sitemap-crawl sources
+    // (up to 150 page fetches + per-page Gemini extraction) run far longer than
+    // the HTTP proxy timeout. Fire-and-forget so the request returns immediately;
+    // results land in the background. Crawl sources vet inline in the background
+    // (no savedIds return to the client); DPSA vets later.
+    const runsLong =
+      source.provider === JobSourceProvider.DPSA || isSitemapCrawlProvider(source.provider);
+    if (runsLong) {
+      const options =
+        source.provider === JobSourceProvider.DPSA ? { vetInline: false } : { vetInline: true };
       void this.ingestionService
-        .triggerIngestion(id, { vetInline: false })
-        .then((result) => this.logger.log(`DPSA background ingestion done: ${result.ingested} new`))
+        .triggerIngestion(id, options)
+        .then((result) =>
+          this.logger.log(`${source.provider} background ingestion done: ${result.ingested} new`),
+        )
         .catch((err) =>
           this.logger.error(
-            `DPSA background ingestion failed: ${err instanceof Error ? err.message : String(err)}`,
+            `${source.provider} background ingestion failed: ${err instanceof Error ? err.message : String(err)}`,
           ),
         );
       return { ingested: 0, skipped: 0, savedIds: [] as number[], started: true };
