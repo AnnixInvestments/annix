@@ -4,10 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { useLayout } from "@/app/context/LayoutContext";
-import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { corpId, PortalType, portalConfig } from "@/app/lib/corpId";
-import { useBranding } from "@/app/lib/query/hooks";
 import AmixLogo from "./AmixLogo";
+import { BrandNavLogo } from "./BrandNavLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { Tooltip } from "./Tooltip";
 
@@ -513,25 +512,4 @@ export default function PortalToolbar(props: PortalToolbarProps) {
       </div>
     </nav>
   );
-}
-
-function BrandNavLogo(props: { brand: string; isOrbit: boolean }) {
-  const { brand, isOrbit } = props;
-  const query = useBranding(brand);
-  const data = query.data;
-  const branding = data ?? null;
-  const hasTextCrop = branding ? brandHasAsset("textCrop", branding) : false;
-
-  if (branding && hasTextCrop) {
-    const iconUrl = resolveBrandAssetUrl("logoIcon", branding);
-    const textUrl = resolveBrandAssetUrl("textCrop", branding);
-    return (
-      <span className="flex items-center gap-2">
-        <img src={iconUrl} alt="" className="h-9 w-9 rounded-[18%] object-contain" />
-        <img src={textUrl} alt="" className="h-8 w-auto max-w-[180px] object-contain" />
-      </span>
-    );
-  }
-
-  return <AmixLogo size="sm" showText={true} wordmark={isOrbit ? "orbit" : "investments"} />;
 }

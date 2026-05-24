@@ -2,9 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { nowMillis } from "@/app/lib/datetime";
 import { useBranding } from "@/app/lib/query/hooks";
+import { BrandNavLogo } from "./BrandNavLogo";
 import type { ExtractionBrand, ExtractionState } from "./ExtractionProgressModal";
 
 interface BrandStyle {
@@ -160,14 +160,7 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
             className="flex items-center justify-between px-6 py-3.5 text-white"
             style={{ backgroundColor: orbitNavbar }}
           >
-            <span className="flex items-center gap-3">
-              <img
-                src={resolveBrandAssetUrl("logoIcon", orbitBranding)}
-                alt="Annix Orbit logo"
-                className="h-8 w-8 object-contain"
-              />
-              <span className="text-base font-semibold tracking-wide">{styles.label}</span>
-            </span>
+            <BrandNavLogo brand="annix-orbit" isOrbit />
             <span className="text-xs text-white/80">
               {elapsedSeconds}s elapsed
               {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
