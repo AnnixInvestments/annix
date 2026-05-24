@@ -24,6 +24,7 @@ import {
   useOrbitUpsertSeekerEducation,
 } from "@/app/lib/query/hooks";
 import { ORBIT_EDUCATION_VERSION } from "../../config/futurepath-version";
+import FuturePathAlternativePathways from "./FuturePathAlternativePathways";
 import FuturePathCostCalculator from "./FuturePathCostCalculator";
 
 const APPLICATION_STATUSES: SeekerEducationApplicationStatus[] = [
@@ -105,6 +106,8 @@ export default function FuturePathPage() {
   const careerFitQuery = useOrbitSeekerEducationCareerFit(profile != null && !consentRequired);
   const careerFitData = careerFitQuery.data;
   const careerFit = careerFitData ? careerFitData.careerFit : [];
+
+  const targetClusters = profile && profile.targetCategories ? profile.targetCategories : [];
   const createApplication = useOrbitCreateSeekerEducationApplication();
   const updateApplicationStatus = useOrbitUpdateSeekerEducationApplicationStatus();
   const deleteApplication = useOrbitDeleteSeekerEducationApplication();
@@ -738,6 +741,8 @@ export default function FuturePathPage() {
           </ul>
         </section>
       ) : null}
+
+      <FuturePathAlternativePathways clusters={targetClusters} />
 
       <FuturePathCostCalculator />
 
