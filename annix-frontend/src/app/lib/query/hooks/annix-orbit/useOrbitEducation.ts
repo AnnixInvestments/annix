@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
+  type SeekerEducationApplication,
+  type SeekerEducationApplicationInput,
+  type SeekerEducationApplicationStatus,
   type SeekerEducationCompareOptionsResponse,
   type SeekerEducationConsent,
   type SeekerEducationGuardianLink,
@@ -100,5 +103,53 @@ export function useOrbitSeekerEducationCompareOptions(
     queryFn: () => annixOrbitApiClient.seekerEducationCompareOptions(intakeYear),
     enabled,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitSeekerEducationApplications(enabled: boolean = true) {
+  return useQuery<{ applications: SeekerEducationApplication[] }>({
+    queryKey: annixOrbitKeys.seekerEducation.applications(),
+    queryFn: () => annixOrbitApiClient.seekerEducationApplications(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitCreateSeekerEducationApplication() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { application: SeekerEducationApplication },
+    Error,
+    SeekerEducationApplicationInput
+  >({
+    mutationFn: (input) => annixOrbitApiClient.createSeekerEducationApplication(input),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerEducation.applications() });
+    },
+  });
+}
+
+export function useOrbitUpdateSeekerEducationApplicationStatus() {
+  const queryClient = useQueryClient();
+  return useMutation<
+    { application: SeekerEducationApplication },
+    Error,
+    { id: string; status: SeekerEducationApplicationStatus }
+  >({
+    mutationFn: ({ id, status }) =>
+      annixOrbitApiClient.updateSeekerEducationApplicationStatus(id, status),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerEducation.applications() });
+    },
+  });
+}
+
+export function useOrbitDeleteSeekerEducationApplication() {
+  const queryClient = useQueryClient();
+  return useMutation<{ deleted: boolean }, Error, string>({
+    mutationFn: (id) => annixOrbitApiClient.deleteSeekerEducationApplication(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerEducation.applications() });
+    },
   });
 }

@@ -2102,6 +2102,35 @@ class AnnixOrbitApiClient {
     return this.request(`/annix-orbit/education/me/compare-options${query}`);
   }
 
+  async seekerEducationApplications(): Promise<{ applications: SeekerEducationApplication[] }> {
+    return this.request("/annix-orbit/education/me/applications");
+  }
+
+  async createSeekerEducationApplication(
+    input: SeekerEducationApplicationInput,
+  ): Promise<{ application: SeekerEducationApplication }> {
+    return this.request("/annix-orbit/education/me/applications", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async updateSeekerEducationApplicationStatus(
+    id: string,
+    status: SeekerEducationApplicationStatus,
+  ): Promise<{ application: SeekerEducationApplication }> {
+    return this.request(`/annix-orbit/education/me/applications/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async deleteSeekerEducationApplication(id: string): Promise<{ deleted: boolean }> {
+    return this.request(`/annix-orbit/education/me/applications/${id}`, { method: "DELETE" });
+  }
+
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
     return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
@@ -2298,6 +2327,34 @@ export interface SeekerEducationChoiceOption {
 export interface SeekerEducationCompareOptionsResponse {
   intakeYear: number;
   options: SeekerEducationChoiceOption[];
+}
+
+export type SeekerEducationApplicationStatus =
+  | "interested"
+  | "applied"
+  | "interview"
+  | "accepted"
+  | "rejected"
+  | "waitlisted";
+
+export interface SeekerEducationApplication {
+  id: string;
+  educationProfileId: string;
+  programmeId: string | null;
+  institutionName: string;
+  programmeName: string;
+  status: SeekerEducationApplicationStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeekerEducationApplicationInput {
+  institutionName: string;
+  programmeName: string;
+  programmeId?: string | null;
+  status?: SeekerEducationApplicationStatus;
+  notes?: string | null;
 }
 
 export interface SeekerJobStats {

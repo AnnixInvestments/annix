@@ -2,19 +2,35 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { OrbitEducationCurriculum } from "@/app/lib/api/annixOrbitApi";
+import type {
+  OrbitEducationCurriculum,
+  SeekerEducationApplicationStatus,
+} from "@/app/lib/api/annixOrbitApi";
 import {
   useOrbitAddSeekerEducationResult,
   useOrbitAskSeekerEducationMentor,
+  useOrbitCreateSeekerEducationApplication,
+  useOrbitDeleteSeekerEducationApplication,
   useOrbitDeleteSeekerEducationResult,
   useOrbitInviteSeekerEducationGuardian,
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
+  useOrbitSeekerEducationApplications,
   useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
+  useOrbitUpdateSeekerEducationApplicationStatus,
   useOrbitUpsertSeekerEducation,
 } from "@/app/lib/query/hooks";
 import { ORBIT_EDUCATION_VERSION } from "../../config/futurepath-version";
+
+const APPLICATION_STATUSES: SeekerEducationApplicationStatus[] = [
+  "interested",
+  "applied",
+  "interview",
+  "accepted",
+  "rejected",
+  "waitlisted",
+];
 
 const CURRICULA: OrbitEducationCurriculum[] = [
   "NSC",
@@ -73,6 +89,15 @@ export default function FuturePathPage() {
   const compareData = compareQuery.data;
   const compareOptions = compareData ? compareData.options : [];
 
+  const applicationsQuery = useOrbitSeekerEducationApplications(
+    profile != null && !consentRequired,
+  );
+  const applicationsData = applicationsQuery.data;
+  const applications = applicationsData ? applicationsData.applications : [];
+  const createApplication = useOrbitCreateSeekerEducationApplication();
+  const updateApplicationStatus = useOrbitUpdateSeekerEducationApplicationStatus();
+  const deleteApplication = useOrbitDeleteSeekerEducationApplication();
+
   const [curriculum, setCurriculum] = useState<OrbitEducationCurriculum>("NSC");
   const [country, setCountry] = useState("");
   const [nationality, setNationality] = useState("");
@@ -87,6 +112,9 @@ export default function FuturePathPage() {
   const [term, setTerm] = useState("");
 
   const [guardianEmail, setGuardianEmail] = useState("");
+
+  const [appInstitution, setAppInstitution] = useState("");
+  const [appProgramme, setAppProgramme] = useState("");
 
   const [question, setQuestion] = useState("");
   const [mentorAnswer, setMentorAnswer] = useState<string | null>(null);
@@ -197,6 +225,45 @@ export default function FuturePathPage() {
       setMentorAnswer(result.answer);
     } catch {
       showToast("The mentor is unavailable right now — please try again.", "error");
+    }
+  };
+
+  const handleAddApplication = async () => {
+    const trimmedInstitution = appInstitution.trim();
+    const trimmedProgramme = appProgramme.trim();
+    if (!trimmedInstitution || !trimmedProgramme) {
+      showToast("Enter an institution and programme first", "info");
+      return;
+    }
+    try {
+      await createApplication.mutateAsync({
+        institutionName: trimmedInstitution,
+        programmeName: trimmedProgramme,
+      });
+      setAppInstitution("");
+      setAppProgramme("");
+      showToast("Application added", "success");
+    } catch {
+      showToast("Could not add the application — please try again.", "error");
+    }
+  };
+
+  const handleUpdateApplicationStatus = async (
+    id: string,
+    status: SeekerEducationApplicationStatus,
+  ) => {
+    try {
+      await updateApplicationStatus.mutateAsync({ id, status });
+    } catch {
+      showToast("Could not update the status — please try again.", "error");
+    }
+  };
+
+  const handleDeleteApplication = async (id: string) => {
+    try {
+      await deleteApplication.mutateAsync(id);
+    } catch {
+      showToast("Could not remove the application — please try again.", "error");
     }
   };
 
@@ -507,6 +574,81 @@ export default function FuturePathPage() {
           </ul>
         </section>
       ) : null}
+
+      <section className="rounded-lg border border-gray-200 bg-white p-5">
+        <h2 className="font-medium text-gray-900 mb-1">Your applications</h2>
+        <p className="text-xs text-gray-500 mb-3">
+          Track where you've applied and how each is going.
+        </p>
+        <div className="flex flex-wrap gap-2 mb-4">
+          <input
+            value={appInstitution}
+            onChange={(e) => setAppInstitution(e.target.value)}
+            placeholder="Institution"
+            className="rounded border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={appProgramme}
+            onChange={(e) => setAppProgramme(e.target.value)}
+            placeholder="Programme"
+            className="rounded border border-gray-300 px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            onClick={handleAddApplication}
+            disabled={createApplication.isPending}
+            className="rounded px-3 py-2 text-sm text-white"
+            style={{ backgroundColor: "var(--brand-accent)" }}
+          >
+            Add
+          </button>
+        </div>
+        {applications.length === 0 ? (
+          <p className="text-sm text-gray-500">No applications tracked yet.</p>
+        ) : (
+          <ul className="divide-y divide-gray-100">
+            {applications.map((app) => {
+              const status = app.status;
+              return (
+                <li
+                  key={app.id}
+                  className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm"
+                >
+                  <span>
+                    <span className="font-medium">{app.programmeName}</span>{" "}
+                    <span className="text-gray-500">— {app.institutionName}</span>
+                  </span>
+                  <span className="flex items-center gap-2">
+                    <select
+                      value={status}
+                      onChange={(e) =>
+                        handleUpdateApplicationStatus(
+                          app.id,
+                          e.target.value as SeekerEducationApplicationStatus,
+                        )
+                      }
+                      className="rounded border border-gray-300 px-2 py-1 text-xs"
+                    >
+                      {APPLICATION_STATUSES.map((s) => (
+                        <option key={s} value={s}>
+                          {s}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteApplication(app.id)}
+                      className="text-red-600 hover:underline text-xs"
+                    >
+                      Remove
+                    </button>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       <p className="text-right text-xs text-gray-400">FuturePath v{ORBIT_EDUCATION_VERSION}</p>
     </div>

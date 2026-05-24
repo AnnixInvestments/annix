@@ -173,12 +173,16 @@ export {
 export {
   useOrbitAddSeekerEducationResult,
   useOrbitAskSeekerEducationMentor,
+  useOrbitCreateSeekerEducationApplication,
+  useOrbitDeleteSeekerEducationApplication,
   useOrbitDeleteSeekerEducationResult,
   useOrbitInviteSeekerEducationGuardian,
   useOrbitRecordSeekerEducationConsent,
   useOrbitSeekerEducation,
+  useOrbitSeekerEducationApplications,
   useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
+  useOrbitUpdateSeekerEducationApplicationStatus,
   useOrbitUpsertSeekerEducation,
 } from "./annix-orbit/useOrbitEducation";
 export {
