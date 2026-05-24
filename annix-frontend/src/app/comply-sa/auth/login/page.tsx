@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { login } from "@/app/comply-sa/lib/api";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,15 +39,15 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0A1B3D] flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+        <div className="flex justify-center mb-8">
           <Link href="/comply-sa" className="inline-flex items-center gap-2">
-            <AmixLogo size="sm" showText useSignatureFont />
+            <AnnixSentinelLogo size="lg" variant="dark" />
           </Link>
         </div>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
+        <div className="bg-[#1A2332] border border-slate-700 rounded-xl p-8">
           <h1 className="text-2xl font-bold text-white mb-6 text-center">Welcome Back</h1>
 
           {error && (
@@ -74,7 +74,7 @@ export default function LoginPage() {
                 autoComplete="username email"
                 required
                 defaultValue=""
-                className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
+                className="w-full bg-[#0A1B3D] border border-slate-600 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-[#1E90FF] transition-colors"
                 placeholder="you@example.com"
               />
             </div>
@@ -90,7 +90,7 @@ export default function LoginPage() {
                   autoComplete="current-password"
                   required
                   defaultValue=""
-                  className="w-full bg-slate-900 border border-slate-600 rounded-lg px-4 py-2.5 pr-11 text-white placeholder-slate-500 focus:outline-none focus:border-teal-500 transition-colors"
+                  className="w-full bg-[#0A1B3D] border border-slate-600 rounded-lg px-4 py-2.5 pr-11 text-white placeholder-slate-500 focus:outline-none focus:border-[#1E90FF] transition-colors"
                   placeholder="Enter your password"
                 />
                 <button
@@ -110,7 +110,7 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-teal-500 hover:bg-teal-600 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-[#1E90FF] hover:bg-[#1565C0] disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               <LogIn className="h-4 w-4" />
               {loading ? "Signing in..." : "Sign In"}
@@ -121,7 +121,7 @@ export default function LoginPage() {
             Don&apos;t have an account?{" "}
             <Link
               href="/comply-sa/auth/signup"
-              className="text-teal-400 hover:text-teal-300 font-medium"
+              className="text-[#1E90FF] hover:text-[#4FA8FF] font-medium"
             >
               Sign up
             </Link>

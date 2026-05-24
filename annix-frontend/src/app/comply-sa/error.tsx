@@ -12,7 +12,7 @@ export default function ComplySaError(props: {
   const { error, reset } = props;
 
   useEffect(() => {
-    console.error("Comply-SA error:", error);
+    console.error("Annix Sentinel error:", error);
     if (isChunkLoadError(error)) {
       attemptChunkErrorRecovery();
     }
@@ -24,7 +24,7 @@ export default function ComplySaError(props: {
 
   return (
     <BrandedErrorScreen
-      area="Comply-SA"
+      area="Annix Sentinel"
       error={error}
       reset={reset}
       backHref="/comply-sa"

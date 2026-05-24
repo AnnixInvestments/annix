@@ -11,7 +11,7 @@ import {
   TURNOVER_OPTIONS,
   WIZARD_DOCUMENTS,
 } from "@/app/comply-sa/config/onboardingConstants";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 import {
   useAssessCompany,
   useUpdateCompanyProfile,
@@ -313,9 +313,11 @@ export default function SetupWizard() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <AmixLogo size="sm" showText useSignatureFont />
+            <AnnixSentinelLogo size="md" variant="auto" />
           </div>
-          <p className="text-lg font-bold text-slate-900 dark:text-white">Welcome to Comply SA</p>
+          <p className="text-lg font-bold text-slate-900 dark:text-white">
+            Welcome to Annix Sentinel
+          </p>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
             {step < 5 ? (
               <>

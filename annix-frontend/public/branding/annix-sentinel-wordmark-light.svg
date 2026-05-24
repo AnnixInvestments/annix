@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 620" width="1400" height="620" role="img" aria-label="Annix Sentinel">
+  <title>Annix Sentinel</title>
+  <desc>ANNIX SENTINEL wordmark for light surfaces — ANNIX in Exo 2 ExtraBold navy with an orange X right-diagonal, above the blue SENTINEL eyebrow flanked by blue rules.</desc>
+  <g font-family="'Exo 2', 'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="700" y="320" font-weight="800" font-size="300" letter-spacing="36" fill="#0A1B3D">ANNIX</text>
+    <g opacity="0.95">
+      <clipPath id="as-wml-x-right">
+        <polygon points="1010,160 1140,160 1216,320 1086,320 1010,160 1086,320 1198,320 1122,160"/>
+      </clipPath>
+      <rect x="965" y="130" width="300" height="210" fill="#FF8A00" clip-path="url(#as-wml-x-right)"/>
+    </g>
+    <line x1="60" y1="470" x2="430" y2="470" stroke="#1E90FF" stroke-width="6" opacity="0.9"/>
+    <line x1="970" y1="470" x2="1340" y2="470" stroke="#1E90FF" stroke-width="6" opacity="0.9"/>
+    <text x="700" y="560" font-weight="600" font-size="210" letter-spacing="88" fill="#1E90FF">SENTINEL</text>
+  </g>
+</svg>

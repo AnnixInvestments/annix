@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 3000" width="2400" height="3000" role="img" aria-label="Annix Sentinel — AI-Powered Compliance & Risk Intelligence">
+  <title>Annix Sentinel — AI-Powered Compliance &amp; Risk Intelligence</title>
+  <desc>Light-background variant of the Annix Sentinel lockup: orbital AN monogram in a navy orbit ring, navy ANNIX wordmark with an orange X right-diagonal, blue SENTINEL eyebrow flanked by blue rules, the tagline, and the MONITOR • PROTECT • PREVENT • EMPOWER pillar row, all on the off-white surface (#F2F4F7).</desc>
+
+  <defs>
+    <radialGradient id="as-light-particle-bright" cx="40%" cy="40%" r="60%">
+      <stop offset="0%" stop-color="#FFD27A"/>
+      <stop offset="35%" stop-color="#FFA500"/>
+      <stop offset="100%" stop-color="#FF8A00"/>
+    </radialGradient>
+  </defs>
+
+  <rect x="0" y="0" width="2400" height="3000" fill="#F2F4F7"/>
+
+  <!-- ─── Orbital AN monogram ─── -->
+  <g transform="translate(200, 60)">
+    <circle cx="1000" cy="1000" r="800" fill="none" stroke="#0A1B3D" stroke-width="32"/>
+
+    <path d="M 280 1320 A 800 800 0 0 1 320 600"
+          fill="none" stroke="#1E90FF" stroke-width="16" stroke-dasharray="8 50" stroke-linecap="round" opacity="0.8"/>
+
+    <!-- Orange A -->
+    <path d="M 900 240
+             L 580 1740
+             L 760 1740
+             L 820 1450
+             L 1080 1450
+             L 1140 1740
+             L 1320 1740
+             L 1000 240 Z
+             M 850 1280
+             L 1050 1280
+             L 950 800 Z"
+          fill="#FF8A00" fill-rule="evenodd"/>
+
+    <!-- Navy N -->
+    <path d="M 1380 280
+             L 1580 280
+             L 1580 920
+             L 1780 280
+             L 1980 280
+             L 1980 1740
+             L 1780 1740
+             L 1780 1100
+             L 1580 1740
+             L 1380 1740 Z"
+          fill="#0A1B3D"/>
+
+    <path d="M 1700 380 A 800 800 0 0 1 1700 1620" fill="none" stroke="#0A1B3D" stroke-width="32"/>
+
+    <circle cx="1580" cy="420" r="62" fill="url(#as-light-particle-bright)"/>
+    <circle cx="360" cy="1620" r="44" fill="#1E90FF"/>
+  </g>
+
+  <!-- ─── ANNIX wordmark (navy) with orange X right-diagonal ─── -->
+  <g font-family="'Exo 2', 'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="1200" y="2160" font-weight="800" font-size="320" letter-spacing="38" fill="#0A1B3D">ANNIX</text>
+
+    <g opacity="0.95">
+      <clipPath id="as-light-x-right">
+        <polygon points="1500,1990 1640,1990 1720,2160 1580,2160 1500,1990 1580,2160 1700,2160 1620,1990"/>
+      </clipPath>
+      <rect x="1450" y="1960" width="320" height="220" fill="#FF8A00" clip-path="url(#as-light-x-right)"/>
+    </g>
+
+    <line x1="430" y1="2310" x2="800" y2="2310" stroke="#1E90FF" stroke-width="6" opacity="0.9"/>
+    <line x1="1600" y1="2310" x2="1970" y2="2310" stroke="#1E90FF" stroke-width="6" opacity="0.9"/>
+
+    <text x="1200" y="2410" font-weight="600" font-size="228" letter-spacing="96" fill="#1E90FF">SENTINEL</text>
+  </g>
+
+  <g font-family="'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="1200" y="2600" font-weight="500" font-size="78" letter-spacing="6" fill="#1A2332">AI-POWERED COMPLIANCE &amp; RISK INTELLIGENCE</text>
+  </g>
+
+  <g font-family="'Inter', system-ui, sans-serif" text-anchor="middle">
+    <text x="1200" y="2740" font-weight="500" font-size="74" letter-spacing="28" fill="#1A2332">
+      MONITOR <tspan fill="#1E90FF">&#x2022;</tspan> PROTECT <tspan fill="#FF8A00">&#x2022;</tspan> PREVENT <tspan fill="#1E90FF">&#x2022;</tspan> EMPOWER
+    </text>
+  </g>
+
+  <line x1="700" y1="2820" x2="1700" y2="2820" stroke="#1E90FF" stroke-width="3" opacity="0.4"/>
+
+  <g font-family="'Inter', system-ui, sans-serif" text-anchor="middle" fill="#475569">
+    <text x="1200" y="2930" font-weight="400" font-size="66">Your AI-powered compliance operating system that monitors,</text>
+    <text x="1200" y="3010" font-weight="400" font-size="66">protects, and strengthens your business against risk.</text>
+  </g>
+</svg>

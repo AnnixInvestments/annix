@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 
 export default function AcceptTermsPage() {
   const router = useRouter();
@@ -47,7 +47,7 @@ export default function AcceptTermsPage() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/comply-sa" className="inline-flex items-center gap-2">
-            <AmixLogo size="sm" showText useSignatureFont />
+            <AnnixSentinelLogo size="md" variant="dark" />
           </Link>
         </div>
 
@@ -55,7 +55,7 @@ export default function AcceptTermsPage() {
           <h1 className="text-2xl font-bold text-white mb-2 text-center">Updated Terms</h1>
           <p className="text-slate-400 text-sm text-center mb-6">
             Our Terms of Service and Privacy Policy have been updated. Please review and accept the
-            new terms to continue using Annix Comply SA.
+            new terms to continue using Annix Sentinel.
           </p>
 
           {error && (

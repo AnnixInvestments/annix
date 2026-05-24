@@ -11,7 +11,7 @@ import {
   TURNOVER_OPTIONS,
 } from "@/app/comply-sa/config/onboardingConstants";
 import { assessCompany, updateCompanyProfile } from "@/app/comply-sa/lib/api";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 
 const TOTAL_STEPS = 4;
 
@@ -128,7 +128,7 @@ export default function OnboardingPage() {
       <div className="w-full max-w-lg">
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 mb-4">
-            <AmixLogo size="sm" showText useSignatureFont />
+            <AnnixSentinelLogo size="md" variant="auto" />
           </div>
           <p className="text-slate-500 dark:text-slate-400 text-sm">
             Step {step} of {TOTAL_STEPS}

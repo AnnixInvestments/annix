@@ -9,7 +9,7 @@ const BRAND_TITLES: Record<string, string> = {
   "annix-orbit": "Annix Orbit",
   "annix-insights": "Annix Insights",
   "annix-rep": "Annix Rep",
-  "comply-sa": "Comply SA",
+  "comply-sa": "Annix Sentinel",
 };
 
 export default function AdminBrandingPage() {

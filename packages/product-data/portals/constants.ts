@@ -48,7 +48,7 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
   },
   {
     code: "comply-sa",
-    displayName: "Comply SA",
+    displayName: "Annix Sentinel",
     internalPathPrefix: "/comply-sa",
     prodHost: "complysa.annix.co.za",
     prodHostAliases: [],

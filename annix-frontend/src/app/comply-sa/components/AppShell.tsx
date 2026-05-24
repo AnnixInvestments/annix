@@ -27,7 +27,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Breadcrumbs from "@/app/comply-sa/components/Breadcrumbs";
 import HelpLinks from "@/app/comply-sa/components/HelpLinks";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import { ThemeToggle } from "@/app/components/ThemeToggle";
 
@@ -110,7 +110,7 @@ function DropdownMenu({
         type="button"
         onClick={onToggle}
         className={`flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
-          active ? "bg-[#FF8A00] text-[#323288]" : "text-[#FF8A00] hover:bg-[#4a4da3]"
+          active ? "bg-[#1E90FF] text-white" : "text-[#1E90FF] hover:bg-[#13294d]"
         }`}
       >
         {group.label}
@@ -156,7 +156,7 @@ function MobileMenu({
     <div className="lg:hidden fixed inset-0 z-50 bg-white dark:bg-slate-900">
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-700">
         <div className="flex items-center gap-2">
-          <AmixLogo size="sm" showText useSignatureFont />
+          <AnnixSentinelLogo size="sm" variant="light" />
         </div>
         <button
           type="button"
@@ -270,7 +270,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-slate-100 dark:bg-slate-900">
-      <header className="sticky top-0 z-50 shadow-lg" style={{ backgroundColor: "#323288" }}>
+      <header className="sticky top-0 z-50 shadow-lg" style={{ backgroundColor: "#0A1B3D" }}>
         <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
@@ -286,7 +286,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 href="/"
                 className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
               >
-                <AmixLogo size="sm" showText useSignatureFont />
+                <AnnixSentinelLogo size="sm" variant="dark" />
               </Link>
             </div>
 
@@ -297,8 +297,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   href={item.href}
                   className={`px-3 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap ${
                     isRouteActive(pathname, item.href)
-                      ? "bg-[#FF8A00] text-[#323288]"
-                      : "text-[#FF8A00] hover:bg-[#4a4da3]"
+                      ? "bg-[#1E90FF] text-white"
+                      : "text-[#1E90FF] hover:bg-[#13294d]"
                   }`}
                 >
                   {item.label}

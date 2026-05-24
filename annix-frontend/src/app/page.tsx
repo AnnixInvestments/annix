@@ -243,17 +243,17 @@ export default function HomePage() {
           </Link>
 
           <Link href="/comply-sa" target="_blank" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-rose-400 hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all duration-300 h-full">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-rose-100 rounded-2xl text-rose-600 mb-6 group-hover:bg-rose-600 group-hover:text-white transition-colors">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
                   <ClipboardCheck {...iconProps} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Comply SA</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Sentinel</h3>
                 <p className="text-gray-600 mb-6">
-                  SA SME compliance dashboard with B-BBEE, tax tools, document templates, and
-                  regulatory tracking.
+                  AI-powered compliance operating system that monitors, protects, and strengthens
+                  your business against risk and regulatory non-compliance.
                 </p>
-                <span className="inline-flex items-center text-rose-600 font-semibold group-hover:translate-x-1 transition-transform">
+                <span className="inline-flex items-center text-blue-600 font-semibold group-hover:translate-x-1 transition-transform">
                   Open App
                   <svg
                     className="w-5 h-5 ml-2"

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2000 2000" width="64" height="64" role="img" aria-label="Annix Sentinel">
+  <title>Annix Sentinel</title>
+  <desc>Favicon variant — orbital AN monogram on a deep-navy rounded-square tile so the brand reads against any browser-chrome colour. Glow filter omitted; satellite painted as a flat circle.</desc>
+
+  <!-- Deep-navy rounded-square tile (#0A1B3D from the brand palette). -->
+  <rect x="0" y="0" width="2000" height="2000" rx="320" fill="#0A1B3D"/>
+
+  <!-- Blue orbit ring (heavier stroke for 16px legibility) -->
+  <circle cx="1000" cy="1000" r="800" fill="none" stroke="#1E90FF" stroke-width="44"/>
+
+  <!-- Orange A -->
+  <path d="M 900 240 L 580 1740 L 760 1740 L 820 1450 L 1080 1450 L 1140 1740 L 1320 1740 L 1000 240 Z M 850 1280 L 1050 1280 L 950 800 Z" fill="#FF8A00" fill-rule="evenodd"/>
+
+  <!-- White N -->
+  <path d="M 1380 280 L 1580 280 L 1580 920 L 1780 280 L 1980 280 L 1980 1740 L 1780 1740 L 1780 1100 L 1580 1740 L 1380 1740 Z" fill="#FFFFFF"/>
+
+  <!-- Orbit segment over N -->
+  <path d="M 1700 380 A 800 800 0 0 1 1700 1620" fill="none" stroke="#1E90FF" stroke-width="44"/>
+
+  <!-- Flat orange satellite — no filter so it survives 16px raster downsampling -->
+  <circle cx="1580" cy="420" r="80" fill="#FFA500"/>
+</svg>

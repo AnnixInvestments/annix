@@ -1,5 +1,5 @@
 import Link from "next/link";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -7,7 +7,7 @@ export default function PrivacyPolicyPage() {
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-8">
           <Link href="/comply-sa" className="inline-flex items-center gap-2">
-            <AmixLogo size="sm" showText useSignatureFont />
+            <AnnixSentinelLogo size="md" variant="dark" />
           </Link>
         </div>
 
@@ -20,7 +20,7 @@ export default function PrivacyPolicyPage() {
             2018/472188/07) (&quot;Annix&quot;, &quot;we&quot;, &quot;us&quot;), the responsible
             party as defined in the Protection of Personal Information Act 4 of 2013
             (&quot;POPIA&quot;), collects, uses, stores, and protects your personal information when
-            you use the Comply SA platform (&quot;the Service&quot;).
+            you use the Annix Sentinel platform (&quot;the Service&quot;).
           </p>
 
           <section className="space-y-3">

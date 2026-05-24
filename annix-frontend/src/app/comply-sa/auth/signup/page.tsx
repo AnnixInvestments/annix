@@ -23,7 +23,7 @@ import {
   PROVINCES,
 } from "@/app/comply-sa/config/onboardingConstants";
 import { signup } from "@/app/comply-sa/lib/api";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 
 type EntityType = "individual" | "company" | "trust";
 
@@ -232,7 +232,7 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
         These Terms and Conditions (&quot;Terms&quot;) constitute a legally binding agreement
         between you (&quot;User&quot;, &quot;you&quot;) and Annix Investments (Pty) Ltd
         (Registration No. 2018/472188/07) (&quot;Annix&quot;, &quot;we&quot;, &quot;us&quot;), the
-        owner and operator of the Comply SA platform (&quot;the Service&quot;). By creating an
+        owner and operator of the Annix Sentinel platform (&quot;the Service&quot;). By creating an
         account and using the Service, you acknowledge that you have read, understood, and agree to
         be bound by these Terms in their entirety.
       </p>
@@ -241,8 +241,8 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
         1. Nature of the Service &mdash; General Guidance Only
       </h4>
       <p>
-        The information, tools, calculators, assessments, and guidance provided through Comply SA
-        are intended for{" "}
+        The information, tools, calculators, assessments, and guidance provided through Annix
+        Sentinel are intended for{" "}
         <strong className="text-white">general informational and educational purposes only</strong>{" "}
         and do not constitute professional legal, tax, accounting, financial, or compliance advice.
         No professional-client relationship of any kind is created by your use of this Service.
@@ -250,7 +250,7 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
       <p>
         In accordance with the Legal Practice Act 28 of 2014 and the Tax Administration Act 28 of
         2011, only admitted attorneys may provide legal advice and only registered tax practitioners
-        may provide tax advice for remuneration. Comply SA does not provide such professional
+        may provide tax advice for remuneration. Annix Sentinel does not provide such professional
         services.
       </p>
       <p>
@@ -304,7 +304,9 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
 
       <h4 className="text-sm font-semibold text-teal-400 pt-1">4. Limitation of Liability</h4>
       <p>
-        <strong className="text-white">Your use of Comply SA is entirely at your own risk.</strong>{" "}
+        <strong className="text-white">
+          Your use of Annix Sentinel is entirely at your own risk.
+        </strong>{" "}
         To the maximum extent permitted by applicable South African law:
       </p>
       <p>
@@ -398,7 +400,7 @@ function TermsAndConditions(props: { onScrolledToBottom: () => void }) {
 
       <h4 className="text-sm font-semibold text-teal-400 pt-1">8. Subscription and Payment</h4>
       <p>
-        Comply SA offers tiered subscription plans. Free accounts are limited to tracking 5
+        Annix Sentinel offers tiered subscription plans. Free accounts are limited to tracking 5
         compliance requirements. Paid subscriptions are billed monthly and may be cancelled at any
         time with effect from the end of the current billing period. Annix reserves the right to
         modify pricing with 20 business days&apos; written notice. Continued use of the Service
@@ -545,7 +547,7 @@ function SuccessModal(props: {
         <div className="w-16 h-16 bg-teal-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
           <CheckCircle2 className="h-8 w-8 text-teal-400" />
         </div>
-        <h2 className="text-xl font-bold text-white mb-2">Welcome to Annix Comply SA!</h2>
+        <h2 className="text-xl font-bold text-white mb-2">Welcome to Annix Sentinel!</h2>
         <p className="text-slate-300 text-sm mb-4">
           Your personalised South African compliance dashboard is ready. Based on your{" "}
           <strong className="text-teal-400">{entityLabel}</strong> in the{" "}
@@ -569,7 +571,7 @@ function SuccessModal(props: {
         <button
           type="button"
           onClick={props.onContinue}
-          className="w-full bg-teal-500 hover:bg-teal-600 text-white font-medium py-2.5 rounded-lg transition-colors"
+          className="w-full bg-[#1E90FF] hover:bg-[#1565C0] text-white font-medium py-2.5 rounded-lg transition-colors"
         >
           Continue to Dashboard
         </button>
@@ -832,11 +834,11 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-900 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen bg-[#0A1B3D] flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-xl" ref={formRef}>
         <div className="text-center mb-6">
-          <Link href="/comply-sa" className="inline-flex items-center gap-2 mb-4">
-            <AmixLogo size="sm" showText useSignatureFont />
+          <Link href="/comply-sa" className="inline-flex items-center justify-center gap-2 mb-4">
+            <AnnixSentinelLogo size="md" variant="dark" />
           </Link>
           <h1 className="text-2xl font-bold text-white">
             Start Your South African Compliance Journey
@@ -1619,7 +1621,7 @@ export default function SignupPage() {
               {currentStep < 3 ? (
                 <button
                   type="submit"
-                  className="px-8 py-2.5 bg-teal-500 hover:bg-teal-600 text-white font-medium rounded-lg transition-colors text-sm flex items-center gap-2"
+                  className="px-8 py-2.5 bg-[#1E90FF] hover:bg-[#1565C0] text-white font-medium rounded-lg transition-colors text-sm flex items-center gap-2"
                 >
                   Next
                   <ChevronRight className="h-4 w-4" />
@@ -1654,7 +1656,7 @@ export default function SignupPage() {
               Already have an account?{" "}
               <Link
                 href="/comply-sa/auth/login"
-                className="text-teal-400 hover:text-teal-300 font-medium"
+                className="text-[#1E90FF] hover:text-[#4FA8FF] font-medium"
               >
                 Sign in
               </Link>

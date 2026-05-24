@@ -7,7 +7,7 @@ export default function AdvisorLayout({ children }: { children: React.ReactNode 
       <AppShell>{children}</AppShell>
       <NixAssistant
         context="general"
-        pageContext={{ currentPage: "Comply SA Advisor", portalContext: "general" }}
+        pageContext={{ currentPage: "Annix Sentinel Advisor", portalContext: "general" }}
       />
     </NixAppProvider>
   );

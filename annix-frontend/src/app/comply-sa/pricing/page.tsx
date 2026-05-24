@@ -3,7 +3,7 @@
 import { ArrowLeft, Check, CheckCircle, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 import { useToast } from "@/app/components/Toast";
 import { useUpgradeSubscription } from "@/app/lib/query/hooks";
 
@@ -214,7 +214,7 @@ export default function PricingPage() {
       <header className="border-b border-slate-700 bg-slate-800">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <Link href="/comply-sa/dashboard" className="flex items-center gap-2">
-            <AmixLogo size="sm" showText useSignatureFont />
+            <AnnixSentinelLogo size="sm" variant="dark" />
           </Link>
           <Link
             href="/comply-sa/settings"
