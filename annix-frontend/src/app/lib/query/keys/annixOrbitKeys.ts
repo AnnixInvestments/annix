@@ -126,6 +126,7 @@ export const annixOrbitKeys = {
     compareOptions: (intakeYear?: number) =>
       ["annix-orbit", "seeker", "education", "compare-options", intakeYear ?? "default"] as const,
     applications: () => ["annix-orbit", "seeker", "education", "applications"] as const,
+    scholarships: () => ["annix-orbit", "seeker", "education", "scholarships"] as const,
   },
   workforceNeed: {
     all: ["annix-orbit", "admin", "workforce-needs"] as const,

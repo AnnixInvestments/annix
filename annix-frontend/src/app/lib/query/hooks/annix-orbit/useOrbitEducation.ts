@@ -14,6 +14,7 @@ import {
   type SeekerEducationResponse,
   type SeekerEducationResult,
   type SeekerEducationResultInput,
+  type SeekerEducationScholarship,
 } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitKeys } from "../../keys";
 
@@ -151,5 +152,14 @@ export function useOrbitDeleteSeekerEducationApplication() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerEducation.applications() });
     },
+  });
+}
+
+export function useOrbitSeekerEducationScholarships(enabled: boolean = true) {
+  return useQuery<{ scholarships: SeekerEducationScholarship[] }>({
+    queryKey: annixOrbitKeys.seekerEducation.scholarships(),
+    queryFn: () => annixOrbitApiClient.seekerEducationScholarships(),
+    enabled,
+    staleTime: 30 * 60 * 1000,
   });
 }

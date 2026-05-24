@@ -2131,6 +2131,10 @@ class AnnixOrbitApiClient {
     return this.request(`/annix-orbit/education/me/applications/${id}`, { method: "DELETE" });
   }
 
+  async seekerEducationScholarships(): Promise<{ scholarships: SeekerEducationScholarship[] }> {
+    return this.request("/annix-orbit/education/me/scholarships");
+  }
+
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
     return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
@@ -2355,6 +2359,19 @@ export interface SeekerEducationApplicationInput {
   programmeId?: string | null;
   status?: SeekerEducationApplicationStatus;
   notes?: string | null;
+}
+
+export interface SeekerEducationScholarship {
+  id: string;
+  name: string;
+  provider: string;
+  country: string | null;
+  amountDisplay: string | null;
+  criteria: string | null;
+  url: string | null;
+  careerCluster: string | null;
+  lastVerifiedAt: string | null;
+  active: boolean;
 }
 
 export interface SeekerJobStats {

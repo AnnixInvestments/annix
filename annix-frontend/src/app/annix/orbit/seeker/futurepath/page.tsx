@@ -18,6 +18,7 @@ import {
   useOrbitSeekerEducationApplications,
   useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
+  useOrbitSeekerEducationScholarships,
   useOrbitUpdateSeekerEducationApplicationStatus,
   useOrbitUpsertSeekerEducation,
 } from "@/app/lib/query/hooks";
@@ -94,6 +95,10 @@ export default function FuturePathPage() {
   );
   const applicationsData = applicationsQuery.data;
   const applications = applicationsData ? applicationsData.applications : [];
+
+  const scholarshipsQuery = useOrbitSeekerEducationScholarships();
+  const scholarshipsData = scholarshipsQuery.data;
+  const scholarships = scholarshipsData ? scholarshipsData.scholarships : [];
   const createApplication = useOrbitCreateSeekerEducationApplication();
   const updateApplicationStatus = useOrbitUpdateSeekerEducationApplicationStatus();
   const deleteApplication = useOrbitDeleteSeekerEducationApplication();
@@ -649,6 +654,45 @@ export default function FuturePathPage() {
           </ul>
         )}
       </section>
+
+      {scholarships.length > 0 ? (
+        <section className="rounded-lg border border-gray-200 bg-white p-5">
+          <h2 className="font-medium text-gray-900 mb-1">Scholarships &amp; bursaries</h2>
+          <p className="text-xs text-gray-500 mb-3">
+            A curated set relevant to you. Always confirm details and deadlines on the provider's
+            site — funding terms change.
+          </p>
+          <ul className="space-y-3">
+            {scholarships.map((s) => {
+              const amount = s.amountDisplay;
+              const verified = s.lastVerifiedAt;
+              return (
+                <li key={s.id} className="rounded border border-gray-200 p-3 text-sm">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium">{s.name}</span>
+                    {amount ? <span className="text-gray-500 text-xs">{amount}</span> : null}
+                  </div>
+                  <p className="text-xs text-gray-500">{s.provider}</p>
+                  {s.criteria ? <p className="mt-1 text-xs text-gray-600">{s.criteria}</p> : null}
+                  <div className="mt-1 flex items-center gap-3 text-xs">
+                    {s.url ? (
+                      <a
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:underline"
+                      >
+                        Visit
+                      </a>
+                    ) : null}
+                    {verified ? <span className="text-gray-400">Verified {verified}</span> : null}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ) : null}
 
       <p className="text-right text-xs text-gray-400">FuturePath v{ORBIT_EDUCATION_VERSION}</p>
     </div>

@@ -182,6 +182,7 @@ export {
   useOrbitSeekerEducationApplications,
   useOrbitSeekerEducationCompareOptions,
   useOrbitSeekerEducationRecommendations,
+  useOrbitSeekerEducationScholarships,
   useOrbitUpdateSeekerEducationApplicationStatus,
   useOrbitUpsertSeekerEducation,
 } from "./annix-orbit/useOrbitEducation";
