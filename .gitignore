@@ -77,3 +77,8 @@ voice-filter/start-filter.vbs
 # Windows nul files (created accidentally on Windows)
 nul
 .parallel-claude-projects.json
+
+# Scratch / temp working files (root-level only — anchored so nested tmp/
+# dirs in app source aren't ignored). Already-tracked files such as
+# tmp/rfq-baseline.md stay tracked.
+/tmp/
