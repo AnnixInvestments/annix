@@ -58,9 +58,9 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
   },
   "annix-orbit": {
     label: "Annix Orbit",
-    bar: "bg-pink-600",
-    bg: "bg-pink-50",
-    text: "text-pink-700",
+    bar: "bg-indigo-700",
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
     logo: null,
   },
   "teacher-assistant": {
