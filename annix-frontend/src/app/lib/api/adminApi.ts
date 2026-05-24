@@ -48,6 +48,7 @@ import type {
 } from "./adminApi.types";
 import type {
   CreateJobMarketSourceDto,
+  DuplicateJobPair,
   ExternalJob,
   JobMarketSource,
   JobMarketStats,
@@ -1063,6 +1064,17 @@ class AdminApiClient {
 
   async orbitJobMarketStats(): Promise<JobMarketStats> {
     return this.request("/admin/annix-orbit/job-market/stats");
+  }
+
+  async orbitJobMarketDuplicates(limit?: number): Promise<DuplicateJobPair[]> {
+    const query = limit ? `?limit=${limit}` : "";
+    return this.request(`/admin/annix-orbit/job-market/duplicates${query}`);
+  }
+
+  async deleteOrbitExternalJob(jobId: number): Promise<{ message: string }> {
+    return this.request(`/admin/annix-orbit/job-market/jobs/${jobId}`, {
+      method: "DELETE",
+    });
   }
 
   async vetPendingOrbitJobs(

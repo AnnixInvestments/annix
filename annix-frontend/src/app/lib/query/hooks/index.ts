@@ -30,8 +30,10 @@ export {
 } from "./admin/useAdminMessaging";
 export {
   useAdminCreateOrbitJobMarketSource,
+  useAdminDeleteOrbitExternalJob,
   useAdminDeleteOrbitJobMarketSource,
   useAdminOrbitExternalJobs,
+  useAdminOrbitJobMarketDuplicates,
   useAdminOrbitJobMarketProviders,
   useAdminOrbitJobMarketSources,
   useAdminOrbitJobMarketStats,

@@ -418,6 +418,22 @@ export interface JobMarketStats {
   }>;
 }
 
+export interface DuplicateJobSide {
+  id: number;
+  title: string;
+  company: string | null;
+  location: string | null;
+  source: string;
+  createdAt: string | null;
+}
+
+export interface DuplicateJobPair {
+  score: number;
+  crossSource: boolean;
+  a: DuplicateJobSide;
+  b: DuplicateJobSide;
+}
+
 export interface SalaryBenchmark {
   category: string;
   averageSalary: number | null;

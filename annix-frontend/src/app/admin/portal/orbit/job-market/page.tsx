@@ -18,6 +18,7 @@ import {
 } from "@/app/lib/query/hooks";
 import { adminKeys } from "@/app/lib/query/keys/adminKeys";
 import { AddSourceForm } from "./components/AddSourceForm";
+import { FindDuplicatesModal } from "./components/FindDuplicatesModal";
 import { JobCard } from "./components/JobCard";
 import { SourceCard } from "./components/SourceCard";
 
@@ -27,6 +28,7 @@ export default function AdminOrbitJobMarketPage() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddSource, setShowAddSource] = useState(false);
+  const [showDuplicates, setShowDuplicates] = useState(false);
   const [ingestionStatus, setIngestionStatus] = useState<Record<number, string>>({});
 
   const statsQuery = useAdminOrbitJobMarketStats();
@@ -248,7 +250,14 @@ export default function AdminOrbitJobMarketPage() {
 
       {activeTab === "sources" && (
         <div className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setShowDuplicates(true)}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+            >
+              Find Duplicates
+            </button>
             <button
               type="button"
               onClick={() => setShowAddSource(true)}
@@ -370,6 +379,8 @@ export default function AdminOrbitJobMarketPage() {
           )}
         </div>
       )}
+
+      <FindDuplicatesModal isOpen={showDuplicates} onClose={() => setShowDuplicates(false)} />
     </div>
   );
 }

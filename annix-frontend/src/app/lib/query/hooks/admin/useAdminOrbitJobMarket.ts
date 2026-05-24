@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApiClient, type OrbitSeekerMatchTier } from "@/app/lib/api/adminApi";
 import type {
   CreateJobMarketSourceDto,
+  DuplicateJobPair,
   ExternalJob,
   JobMarketSource,
   JobMarketStats,
@@ -60,6 +61,25 @@ export function useAdminOrbitExternalJobs(params?: {
         limit: params?.limit,
       }),
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useAdminOrbitJobMarketDuplicates(enabled: boolean) {
+  return useQuery<DuplicateJobPair[]>({
+    queryKey: adminKeys.orbitJobMarket.duplicates(),
+    queryFn: () => adminApiClient.orbitJobMarketDuplicates(200),
+    enabled,
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useAdminDeleteOrbitExternalJob() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (jobId: number) => adminApiClient.deleteOrbitExternalJob(jobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+    },
   });
 }
 

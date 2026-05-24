@@ -95,6 +95,7 @@ export const adminKeys = {
       page?: number;
       limit?: number;
     }) => [...adminKeys.orbitJobMarket.all, "jobs", params ?? {}] as const,
+    duplicates: () => [...adminKeys.orbitJobMarket.all, "duplicates"] as const,
   },
   orbitSeekers: {
     all: ["admin", "orbitSeekers"] as const,
