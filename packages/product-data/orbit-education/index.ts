@@ -1,3 +1,4 @@
+export * from "./applications";
 export * from "./capabilities";
 export * from "./career-clusters";
 export * from "./curricula";

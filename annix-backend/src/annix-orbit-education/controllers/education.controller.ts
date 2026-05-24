@@ -1,9 +1,15 @@
 import {
+  ORBIT_EDUCATION_APPLICATION_STATUSES,
+  type OrbitEducationApplicationStatus,
+} from "@annix/product-data/orbit-education";
+import {
   Body,
   Controller,
   Delete,
   Get,
+  NotFoundException,
   Param,
+  Patch,
   Post,
   Put,
   Query,
@@ -14,6 +20,7 @@ import { IsArray, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 
 import { AnnixOrbitAuthGuard } from "../../annix-orbit/guards/annix-orbit-auth.guard";
 import { now } from "../../lib/datetime";
 import { ORBIT_EDUCATION_CURRICULA } from "../annix-orbit-education.constants";
+import { EducationApplicationService } from "../services/education-application.service";
 import { EducationChoiceAidService } from "../services/education-choice-aid.service";
 import { EducationConsentService } from "../services/education-consent.service";
 import { EducationMentorService } from "../services/education-mentor.service";
@@ -97,6 +104,34 @@ class MentorDto {
   question: string;
 }
 
+class CreateApplicationDto {
+  @IsString()
+  @MaxLength(255)
+  institutionName: string;
+
+  @IsString()
+  @MaxLength(255)
+  programmeName: string;
+
+  @IsOptional()
+  @IsString()
+  programmeId?: string | null;
+
+  @IsOptional()
+  @IsIn(ORBIT_EDUCATION_APPLICATION_STATUSES as unknown as string[])
+  status?: OrbitEducationApplicationStatus;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  notes?: string | null;
+}
+
+class UpdateApplicationStatusDto {
+  @IsIn(ORBIT_EDUCATION_APPLICATION_STATUSES as unknown as string[])
+  status: OrbitEducationApplicationStatus;
+}
+
 @Controller("annix-orbit/education/me")
 @UseGuards(AnnixOrbitAuthGuard)
 export class EducationController {
@@ -107,6 +142,7 @@ export class EducationController {
     private readonly mentorService: EducationMentorService,
     private readonly recommendationService: EducationRecommendationService,
     private readonly choiceAidService: EducationChoiceAidService,
+    private readonly applicationService: EducationApplicationService,
   ) {}
 
   @Get()
@@ -217,5 +253,34 @@ export class EducationController {
     const year = Number.isFinite(parsedYear) ? parsedYear : now().year + 1;
     const options = await this.choiceAidService.compareOptions(req.user.id, year);
     return { intakeYear: year, options };
+  }
+
+  @Get("applications")
+  async applications(@Request() req: SeekerAuthRequest) {
+    const applications = await this.applicationService.listForUser(req.user.id);
+    return { applications };
+  }
+
+  @Post("applications")
+  async createApplication(@Request() req: SeekerAuthRequest, @Body() body: CreateApplicationDto) {
+    const application = await this.applicationService.create(req.user.id, body);
+    return { application };
+  }
+
+  @Patch("applications/:id")
+  async updateApplicationStatus(
+    @Request() req: SeekerAuthRequest,
+    @Param("id") id: string,
+    @Body() body: UpdateApplicationStatusDto,
+  ) {
+    const application = await this.applicationService.updateStatus(req.user.id, id, body.status);
+    if (!application) throw new NotFoundException("Application not found");
+    return { application };
+  }
+
+  @Delete("applications/:id")
+  async deleteApplication(@Request() req: SeekerAuthRequest, @Param("id") id: string) {
+    const deleted = await this.applicationService.delete(req.user.id, id);
+    return { deleted };
   }
 }

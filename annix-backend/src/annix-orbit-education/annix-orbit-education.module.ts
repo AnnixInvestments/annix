@@ -14,6 +14,7 @@ import { EducationController } from "./controllers/education.controller";
 import { AcademicResult } from "./entities/academic-result.entity";
 import { EducationAdmissionDistribution } from "./entities/education-admission-distribution.entity";
 import { EducationAiAdviceLog } from "./entities/education-ai-advice-log.entity";
+import { EducationApplication } from "./entities/education-application.entity";
 import { EducationConsent } from "./entities/education-consent.entity";
 import { EducationFaculty } from "./entities/education-faculty.entity";
 import { EducationInstitution } from "./entities/education-institution.entity";
@@ -23,6 +24,7 @@ import { EducationProgrammeOutcomeSignal } from "./entities/education-programme-
 import { EducationRecommendationSnapshot } from "./entities/education-recommendation-snapshot.entity";
 import { EducationRequirementVersion } from "./entities/education-requirement-version.entity";
 import { GuardianLink } from "./entities/guardian-link.entity";
+import { EducationApplicationService } from "./services/education-application.service";
 import { EducationChoiceAidService } from "./services/education-choice-aid.service";
 import { EducationConsentService } from "./services/education-consent.service";
 import { EducationMentorService } from "./services/education-mentor.service";
@@ -45,6 +47,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
       EducationAdmissionDistribution,
       EducationRecommendationSnapshot,
       EducationProgrammeOutcomeSignal,
+      EducationApplication,
       AnnixOrbitEeConsentTextVersion,
       User,
       UserAppAccess,
@@ -71,6 +74,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     EducationMentorService,
     EducationRecommendationService,
     EducationChoiceAidService,
+    EducationApplicationService,
     AnnixOrbitEducationCapabilities,
   ],
   exports: [
