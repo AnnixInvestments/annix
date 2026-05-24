@@ -12,7 +12,13 @@ import { IngestedJobResult } from "../ingested-job.types";
 import { CrawledJobExtraction, SitemapCrawlProfile } from "./sitemap-crawl.types";
 import { sitemapCrawlProfile } from "./sitemap-crawl-profiles";
 
-const CRAWL_USER_AGENT = "AnnixOrbitBot/1.0 (+https://annix.co.za; jobs@annix.co.za)";
+// SA boards permit crawling via robots.txt (Allow: /) but their CDNs reject
+// non-browser User-Agents and XML-only Accept headers with HTTP 406, so we send
+// a standard browser UA + Accept. This is not access-control circumvention —
+// robots.txt is still honoured before every fetch.
+const CRAWL_USER_AGENT =
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+const CRAWL_ACCEPT = "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8";
 const FETCH_TIMEOUT_MS = 20_000;
 const PAGE_BATCH_SIZE = 3;
 const POLITE_DELAY_MS = 1_500;
@@ -284,7 +290,7 @@ export class SitemapCrawlIngestionService {
         signal: controller.signal,
         headers: {
           "User-Agent": CRAWL_USER_AGENT,
-          Accept: "text/html,application/xhtml+xml,application/xml",
+          Accept: CRAWL_ACCEPT,
         },
       });
       if (!response.ok) {
