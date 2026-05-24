@@ -78,10 +78,13 @@ export default function FuturePathPage() {
   const [nationality, setNationality] = useState("");
   const [school, setSchool] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [languages, setLanguages] = useState("");
 
   const [subject, setSubject] = useState("");
   const [mark, setMark] = useState("");
+  const [predictedMark, setPredictedMark] = useState("");
   const [year, setYear] = useState("");
+  const [term, setTerm] = useState("");
 
   const [guardianEmail, setGuardianEmail] = useState("");
 
@@ -94,14 +97,20 @@ export default function FuturePathPage() {
     const profileNationality = profile.nationality;
     const profileSchool = profile.school;
     const profileDateOfBirth = profile.dateOfBirth;
+    const profileLanguages = profile.languages;
     setCurriculum(profile.curriculum);
     setCountry(profileCountry || "");
     setNationality(profileNationality || "");
     setSchool(profileSchool || "");
     setDateOfBirth(profileDateOfBirth || "");
+    setLanguages((profileLanguages || []).join(", "));
   }, [profile]);
 
   const handleSaveProfile = async () => {
+    const parsedLanguages = languages
+      .split(",")
+      .map((entry) => entry.trim())
+      .filter((entry) => entry.length > 0);
     try {
       await upsertProfile.mutateAsync({
         curriculum,
@@ -109,6 +118,7 @@ export default function FuturePathPage() {
         nationality: nationality || null,
         school: school || null,
         dateOfBirth: dateOfBirth || null,
+        languages: parsedLanguages,
       });
       showToast("Profile saved", "success");
     } catch {
@@ -123,16 +133,21 @@ export default function FuturePathPage() {
       return;
     }
     const parsedMark = mark ? Number(mark) : null;
+    const parsedPredictedMark = predictedMark ? Number(predictedMark) : null;
     const parsedYear = year ? Number(year) : null;
     try {
       await addResult.mutateAsync({
         subject: trimmedSubject,
         mark: parsedMark,
+        predictedMark: parsedPredictedMark,
         year: parsedYear,
+        term: term.trim() || null,
       });
       setSubject("");
       setMark("");
+      setPredictedMark("");
       setYear("");
+      setTerm("");
       showToast("Result added", "success");
     } catch {
       showToast("Could not add the result — please try again.", "error");
@@ -291,6 +306,15 @@ export default function FuturePathPage() {
               <span className="text-xs text-amber-700">Under consent age for your region.</span>
             ) : null}
           </label>
+          <label className="text-sm sm:col-span-2">
+            <span className="block text-gray-600 mb-1">Languages (comma-separated)</span>
+            <input
+              value={languages}
+              onChange={(e) => setLanguages(e.target.value)}
+              placeholder="English, Afrikaans, isiZulu"
+              className="w-full rounded border border-gray-300 px-3 py-2"
+            />
+          </label>
         </div>
         <button
           type="button"
@@ -320,11 +344,24 @@ export default function FuturePathPage() {
             className="w-24 rounded border border-gray-300 px-3 py-2 text-sm"
           />
           <input
+            value={predictedMark}
+            onChange={(e) => setPredictedMark(e.target.value)}
+            placeholder="Predicted %"
+            inputMode="numeric"
+            className="w-28 rounded border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
             value={year}
             onChange={(e) => setYear(e.target.value)}
             placeholder="Year"
             inputMode="numeric"
-            className="w-28 rounded border border-gray-300 px-3 py-2 text-sm"
+            className="w-24 rounded border border-gray-300 px-3 py-2 text-sm"
+          />
+          <input
+            value={term}
+            onChange={(e) => setTerm(e.target.value)}
+            placeholder="Term"
+            className="w-24 rounded border border-gray-300 px-3 py-2 text-sm"
           />
           <button
             type="button"
