@@ -6,7 +6,7 @@ import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
-import { CV_ASSISTANT_VERSION } from "../config/version";
+import { ANNIX_ORBIT_VERSION } from "../config/version";
 
 const companyNavItems: NavItem[] = [
   {
@@ -142,7 +142,7 @@ function PortalContent({ children }: { children: React.ReactNode }) {
             : null
         }
         onLogout={handleLogout}
-        version={CV_ASSISTANT_VERSION}
+        version={ANNIX_ORBIT_VERSION}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>

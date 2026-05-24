@@ -7,7 +7,7 @@ import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { BrandedLoader } from "@/app/lib/branding/components/BrandedLoader";
 import { useOrbitMyProfileStatus } from "@/app/lib/query/hooks";
-import { CV_ASSISTANT_VERSION } from "../config/version";
+import { ANNIX_ORBIT_VERSION } from "../config/version";
 
 const navItems: NavItem[] = [
   {
@@ -133,7 +133,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
             : null
         }
         onLogout={handleLogout}
-        version={CV_ASSISTANT_VERSION}
+        version={ANNIX_ORBIT_VERSION}
       />
 
       <main className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">{children}</main>
