@@ -23,6 +23,7 @@ import { HdpeModule } from "./hdpe/hdpe.module";
 import { HeavyFeaturesModule } from "./heavy-features";
 import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { InsightsModule } from "./insights/insights.module";
+import { LicensingModule } from "./licensing/licensing.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { NominalOutsideDiameterMmModule } from "./nominal-outside-diameter-mm/nominal-outside-diameter-mm.module";
@@ -103,6 +104,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
 
     PublicModule,
     FeatureFlagsModule,
+    LicensingModule,
     DataValidationModule,
     UnifiedApiModule,
     RemoteAccessModule,

@@ -94,6 +94,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 | Support spacing | `pipe-steel-work/support-spacing.service.ts` | Pipe support spacing calculations per standard (ref #198). |
 | Platform base entities | `platform/entities/base-portal-profile.ts` | Extend this for any portal-profile-shaped entity (customer, supplier). |
 | TanStack-compatible query helpers | `shared/validators/` | Shared NestJS validators (e.g. `rfq-compliance.validator.ts`). |
+| Module licensing / feature gating | `licensing/` | Generic per-company tier + feature gating for ANY app. A module registers a `ModuleLicensingDefinition` (features, tiers, tier→feature map) with `FeatureRegistry`; gate endpoints with `@RequireFeature(moduleKey, featureKey)` + `FeatureLicenseGuard`; resolve access via `LicensingService` (`isFeatureEnabled`, `snapshot`, `setTier`, `setFeatureOverride`). Generalises the Stock-Management `sm_company_module_license` pattern onto the shared `module_license` table. Use instead of inventing a new per-app subscription/tier model. (ref #306) |
 
 **When to put new backend code here:** any service or utility that is consumed by more than one app module, or that represents a concept any future app might need.
 
