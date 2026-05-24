@@ -24,15 +24,27 @@ export const JOB_SOURCE_PROVIDERS: JobSourceProviderInfo[] = [
     ],
   },
   {
-    id: JobSourceProvider.JOOBLE,
-    label: "Jooble",
-    description: "Aggregated job listings via the Jooble API",
-    credentialFields: [{ key: "apiKey", label: "API Key", secret: true }],
-  },
-  {
     id: JobSourceProvider.REMOTIVE,
     label: "Remotive",
     description: "Remote job listings via the public Remotive API",
+    credentialFields: [],
+  },
+  {
+    id: JobSourceProvider.EXECUTIVE_PLACEMENTS,
+    label: "Executive Placements",
+    description: "SA job listings crawled from the Executive Placements sitemap (no API key)",
+    credentialFields: [],
+  },
+  {
+    id: JobSourceProvider.JOB_PLACEMENTS,
+    label: "Job Placements",
+    description: "SA job listings crawled from the Job Placements sitemap (no API key)",
+    credentialFields: [],
+  },
+  {
+    id: JobSourceProvider.JOBMAIL,
+    label: "JobMail",
+    description: "SA job listings crawled from the JobMail sitemap (no API key)",
     credentialFields: [],
   },
 ];

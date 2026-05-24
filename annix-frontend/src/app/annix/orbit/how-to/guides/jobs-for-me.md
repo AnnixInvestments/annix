@@ -4,21 +4,21 @@ slug: jobs-for-me
 category: Job Search
 roles: [seeker, individual]
 order: 2
-tags: [jobs, matching, seeker, adzuna, jooble, remotive]
-lastUpdated: 2026-05-13
+tags: [jobs, matching, seeker, adzuna, remotive, executive placements, job placements, jobmail]
+lastUpdated: 2026-05-24
 summary: How Annix Orbit pulls and ranks jobs from external sources against the CV you uploaded.
 readingMinutes: 4
-relatedPaths: [annix-frontend/src/app/annix/orbit/seeker/jobs, annix-frontend/src/app/lib/annix-orbit/components/SeekerJobCard.tsx, annix-backend/src/annix-orbit/services/seeker-job-feed.service.ts, annix-backend/src/annix-orbit/controllers/seeker-jobs.controller.ts, annix-backend/src/annix-orbit/services/jooble.service.ts, annix-backend/src/annix-orbit/services/remotive.service.ts, annix-backend/src/annix-orbit/services/dpsa-circular.service.ts]
+relatedPaths: [annix-frontend/src/app/annix/orbit/seeker/jobs, annix-frontend/src/app/lib/annix-orbit/components/SeekerJobCard.tsx, annix-backend/src/annix-orbit/services/seeker-job-feed.service.ts, annix-backend/src/annix-orbit/controllers/seeker-jobs.controller.ts, annix-backend/src/annix-orbit/services/crawl/sitemap-crawl-ingestion.service.ts, annix-backend/src/annix-orbit/services/remotive.service.ts, annix-backend/src/annix-orbit/services/dpsa-circular.service.ts]
 ---
 
 ## What is it?
 
 The Browse Jobs page shows a personal feed of vacancies pulled from multiple
 external sources and ranked against the CV you've uploaded to Annix Orbit.
-We currently pull from Adzuna SA, Jooble (which aggregates PNet, Careers24,
-Indeed.co.za and others), and Remotive (remote-friendly roles). Every card
-links back to the original posting on the source site — Annix does not host
-the application; you apply at the source.
+We currently pull from Adzuna SA, Remotive (remote-friendly roles), and
+several open SA job boards crawled directly — Executive Placements, Job
+Placements and JobMail. Every card links back to the original posting on the
+source site — Annix does not host the application; you apply at the source.
 
 ## How matches are ranked
 
@@ -45,8 +45,8 @@ location compared.
    **Browse Jobs**. Matches typically appear within an hour of the next
    ingestion cycle.
 4. Use the search box to narrow by title, company, or location.
-5. Use the source dropdown to filter by Adzuna / Jooble / Remotive when
-   more than one source is active.
+5. Use the source dropdown to filter by Adzuna / Remotive / Executive
+   Placements / Job Placements / JobMail when more than one source is active.
 6. Click **View &amp; apply** on any card to open the job at the source and
    apply there.
 7. Click **Not for me** to dismiss a match — it won't show again.
@@ -59,9 +59,10 @@ The filter row above the cards lets you narrow the list:
 - **Province / City** — dependent dropdowns. Pick a province first; the city
   dropdown then shows only cities in that province.
 - **Category** — populated from the categories actually present in your
-  current match list (Adzuna / Jooble / Remotive each tag jobs differently).
-- **Source** — filter by Adzuna / Jooble / Remotive / DPSA when more than
-  one source is active for your account.
+  current match list (each source tags jobs differently).
+- **Source** — filter by Adzuna / Remotive / Executive Placements / Job
+  Placements / JobMail / DPSA when more than one source is active for your
+  account.
 - **Min salary (ZAR / yr)** — drops jobs whose published salary range is
   below this threshold. Jobs with no salary data are kept regardless.
 
@@ -103,7 +104,7 @@ The matcher also pulls the **weekly DPSA Public Service Vacancy Circular**
 spanning national + provincial departments. We extract structured fields
 (post number, title, department, centre, salary, closing date, enquiries,
 plus a short duties + requirements summary) via Gemini and rank them
-alongside the commercial Adzuna / Jooble / Remotive results.
+alongside the Adzuna / Remotive / SA job-board results.
 
 DPSA posts are kept brief on purpose — for the full vacancy detail
 (complete duties list, full requirements, application form), click through

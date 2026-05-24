@@ -11,7 +11,6 @@ import { AnnixOrbitCompany } from "./annix-orbit-company.entity";
 
 export enum JobSourceProvider {
   ADZUNA = "adzuna",
-  JOOBLE = "jooble",
   REMOTIVE = "remotive",
   DPSA = "dpsa",
   EXECUTIVE_PLACEMENTS = "executiveplacements",

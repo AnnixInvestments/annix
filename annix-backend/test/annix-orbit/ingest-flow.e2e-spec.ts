@@ -11,9 +11,9 @@ import {
 import { JobPosting } from "../../src/annix-orbit/entities/job-posting.entity";
 import { AdzunaService } from "../../src/annix-orbit/services/adzuna.service";
 import { CandidateJobMatchingService } from "../../src/annix-orbit/services/candidate-job-matching.service";
+import { SitemapCrawlIngestionService } from "../../src/annix-orbit/services/crawl/sitemap-crawl-ingestion.service";
 import { EmbeddingService } from "../../src/annix-orbit/services/embedding.service";
 import { JobIngestionService } from "../../src/annix-orbit/services/job-ingestion.service";
-import { JoobleService } from "../../src/annix-orbit/services/jooble.service";
 import { RemotiveService } from "../../src/annix-orbit/services/remotive.service";
 import { EmailService } from "../../src/email/email.service";
 
@@ -169,8 +169,8 @@ describe("Annix Orbit - JobIngestionService.ingestFromSource (mocked repos)", ()
           provide: AdzunaService,
           useValue: { searchJobs: adzunaSearchJobs, estimateExpiry: () => null },
         },
-        { provide: JoobleService, useValue: {} },
         { provide: RemotiveService, useValue: {} },
+        { provide: SitemapCrawlIngestionService, useValue: {} },
         { provide: EmbeddingService, useValue: { embedExternalJob } },
         { provide: CandidateJobMatchingService, useValue: { matchJobToCandidates } },
         { provide: EmailService, useValue: { sendEmail: jest.fn().mockResolvedValue(true) } },

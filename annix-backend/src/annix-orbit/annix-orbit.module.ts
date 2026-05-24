@@ -108,7 +108,6 @@ import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
 import { JobVettingService } from "./services/job-vetting.service";
-import { JoobleService } from "./services/jooble.service";
 import { MarketInsightsService } from "./services/market-insights.service";
 import { NixCvPdfService } from "./services/nix-cv-pdf.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
@@ -236,7 +235,6 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     WorkflowAutomationService,
     SettingsService,
     AdzunaService,
-    JoobleService,
     RemotiveService,
     DpsaCircularService,
     SitemapCrawlIngestionService,

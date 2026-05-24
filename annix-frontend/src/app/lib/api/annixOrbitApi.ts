@@ -338,7 +338,13 @@ export interface JobMarketSource {
   updatedAt: string;
 }
 
-export type JobSourceProvider = "adzuna" | "jooble" | "remotive";
+export type JobSourceProvider =
+  | "adzuna"
+  | "remotive"
+  | "dpsa"
+  | "executiveplacements"
+  | "jobplacements"
+  | "jobmail";
 
 export interface JobSourceCredentialField {
   key: "apiId" | "apiKey";

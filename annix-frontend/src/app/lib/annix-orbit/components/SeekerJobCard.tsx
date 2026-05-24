@@ -14,10 +14,11 @@ interface SeekerJobCardProps {
 
 const PROVIDER_LABELS: Record<string, string> = {
   adzuna: "via Adzuna",
-  jooble: "via Jooble",
   remotive: "via Remotive",
-  careerjet: "via Careerjet",
   dpsa: "via DPSA",
+  executiveplacements: "via Executive Placements",
+  jobplacements: "via Job Placements",
+  jobmail: "via JobMail",
 };
 
 export function SeekerJobCard(props: SeekerJobCardProps) {

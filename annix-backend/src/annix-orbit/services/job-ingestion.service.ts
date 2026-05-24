@@ -22,7 +22,6 @@ import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
 import { JobCategorizationService } from "./job-categorization.service";
 import { JobVettingService } from "./job-vetting.service";
-import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -81,7 +80,6 @@ export class JobIngestionService {
     @InjectRepository(AnnixOrbitCompany)
     private readonly companyRepo: Repository<AnnixOrbitCompany>,
     private readonly adzunaService: AdzunaService,
-    private readonly joobleService: JoobleService,
     private readonly remotiveService: RemotiveService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
@@ -667,9 +665,6 @@ export class JobIngestionService {
     if (isSitemapCrawlProvider(source.provider)) {
       return true;
     }
-    if (source.provider === JobSourceProvider.JOOBLE) {
-      return Boolean(source.apiKeyEncrypted);
-    }
     return Boolean(source.apiId && source.apiKeyEncrypted);
   }
 
@@ -678,15 +673,6 @@ export class JobIngestionService {
     country: string,
     category: string | null,
   ): Promise<IngestedJobResult[]> {
-    if (source.provider === JobSourceProvider.JOOBLE) {
-      source.requestsToday += 1;
-      const { jobs } = await this.joobleService.searchJobs(source.apiKeyEncrypted!, {
-        keywords: category ?? undefined,
-        location: joobleLocationForCountry(country),
-        resultsPerPage: 50,
-      });
-      return jobs;
-    }
     if (source.provider === JobSourceProvider.REMOTIVE) {
       source.requestsToday += 1;
       const { jobs } = await this.remotiveService.searchJobs({
@@ -939,9 +925,6 @@ export class JobIngestionService {
   }
 
   private estimateExpiryForSource(source: JobMarketSource, postedDate: string | null): Date | null {
-    if (source.provider === JobSourceProvider.JOOBLE) {
-      return this.joobleService.estimateExpiry(postedDate);
-    }
     if (source.provider === JobSourceProvider.REMOTIVE) {
       return this.remotiveService.estimateExpiry(postedDate);
     }
@@ -1036,16 +1019,6 @@ function escapeHtml(value: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
-}
-
-function joobleLocationForCountry(country: string): string {
-  const code = country.toLowerCase();
-  if (code === "za") return "South Africa";
-  if (code === "gb" || code === "uk") return "United Kingdom";
-  if (code === "us") return "United States";
-  if (code === "ca") return "Canada";
-  if (code === "au") return "Australia";
-  return country;
 }
 
 function annixJobToPublic(job: JobPosting, companyName: string | null): PublicJob {
