@@ -62,12 +62,13 @@ describe("sitemap crawl parsing", () => {
 });
 
 describe("crawl profiles", () => {
-  it("registers the three sitemap-based boards", () => {
+  it("registers the four sitemap-based boards", () => {
     expect(isSitemapCrawlProvider(JobSourceProvider.EXECUTIVE_PLACEMENTS)).toBe(true);
     expect(isSitemapCrawlProvider(JobSourceProvider.JOB_PLACEMENTS)).toBe(true);
     expect(isSitemapCrawlProvider(JobSourceProvider.JOBMAIL)).toBe(true);
+    expect(isSitemapCrawlProvider(JobSourceProvider.CAREERJUNCTION)).toBe(true);
     expect(isSitemapCrawlProvider(JobSourceProvider.ADZUNA)).toBe(false);
-    expect(isSitemapCrawlProvider(JobSourceProvider.CAREERJUNCTION)).toBe(false);
+    expect(isSitemapCrawlProvider(JobSourceProvider.REMOTIVE)).toBe(false);
   });
 
   describe("Executive Placements / Job Placements", () => {
