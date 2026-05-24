@@ -292,9 +292,14 @@ export default function SeekerJobsPage() {
     const poll = async (): Promise<boolean> => {
       if (nowMillis() >= deadline) return false;
       await new Promise((resolve) => setTimeout(resolve, 5000));
-      const refetched = await recommendedQuery.refetch();
-      const refetchedData = refetched.data;
-      const count = refetchedData ? refetchedData.matches.length : 0;
+      let count = startCount;
+      try {
+        const refetched = await recommendedQuery.refetch();
+        const refetchedData = refetched.data;
+        count = refetchedData ? refetchedData.matches.length : startCount;
+      } catch {
+        // transient refetch failure (e.g. backend restarting) — keep polling
+      }
       if (count > startCount) return true;
       const elapsed = nowMillis() - startedAt;
       if (startCount > 0 && elapsed >= minVisibleMs) return true;
@@ -305,40 +310,48 @@ export default function SeekerJobsPage() {
 
   const runNixSearch = async () => {
     setNixSearching(true);
+    const recommendedData = recommendedQuery.data;
+    const startCount = recommendedData ? recommendedData.matches.length : 0;
     try {
-      const result = await rematchMutation.mutateAsync();
-      if (!result.triggered) {
-        if (result.reason === "rate-limited") {
-          await recommendedQuery.refetch().catch(() => {});
-          const mins = Math.max(1, Math.ceil(result.retryAfterSeconds / 60));
-          showToast(
-            `Nix searched recently — your matches are up to date. Try again in about ${mins} min.`,
-            "info",
-          );
-          return;
-        }
-        showToast("Upload your CV first so Nix can match you to jobs.", "error");
-        return;
-      }
-      const recommendedData = recommendedQuery.data;
-      const startCount = recommendedData ? recommendedData.matches.length : 0;
-      const found = await withExtractionProgress(
+      // The branded progress popup wraps the whole search so it appears the moment
+      // Nix starts. The trigger is best-effort: a transient hiccup (backend
+      // restarting, or the candidate still embedding right after consent) must not
+      // abort the search — server-side matching is fire-and-forget, so we keep
+      // polling for results regardless.
+      const outcome = await withExtractionProgress(
         extractionProgress,
         {
           brand: "annix-orbit",
-          label: "Nix is finding jobs that match your CV…",
+          label: "Nix is reading your CV and searching the jobs…",
           estimatedDurationMs: 90_000,
         },
-        () => waitForMatches(startCount),
+        async (): Promise<"found" | "pending" | "cooldown"> => {
+          let rateLimited = false;
+          try {
+            const result = await rematchMutation.mutateAsync();
+            if (!result.triggered && result.reason === "rate-limited") {
+              rateLimited = true;
+            }
+          } catch {
+            // best-effort trigger — keep going and poll for results
+          }
+          if (rateLimited) {
+            await recommendedQuery.refetch().catch(() => {});
+            return "cooldown";
+          }
+          const found = await waitForMatches(startCount);
+          return found ? "found" : "pending";
+        },
       );
-      showToast(
-        found
-          ? "Nix found jobs that match your CV."
-          : "Nix is still searching — your matches will appear here shortly.",
-        found ? "success" : "info",
-      );
+      if (outcome === "found") {
+        showToast("Nix found jobs that match your CV.", "success");
+      } else if (outcome === "cooldown") {
+        showToast("Nix searched recently — your matches are up to date.", "info");
+      } else {
+        showToast("Nix is still searching — your matches will appear here shortly.", "info");
+      }
     } catch {
-      showToast("Couldn't reach Nix right now — please try again.", "error");
+      showToast("Nix couldn't finish the search — please try again in a moment.", "error");
     } finally {
       setNixSearching(false);
     }
