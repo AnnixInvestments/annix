@@ -36,11 +36,18 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     return () => clearTimeout(timer);
   }, [toast.duration, onClose]);
 
-  const bgColor = {
-    success: "bg-green-500",
-    error: "bg-red-500",
-    warning: "bg-yellow-500",
-    info: "bg-blue-500",
+  const accentBorder = {
+    success: "border-l-green-500",
+    error: "border-l-red-500",
+    warning: "border-l-amber-500",
+    info: "border-l-[var(--brand-accent,#FF8A00)]",
+  }[toast.type];
+
+  const iconClasses = {
+    success: "bg-green-100 text-green-600",
+    error: "bg-red-100 text-red-600",
+    warning: "bg-amber-100 text-amber-600",
+    info: "bg-violet-100 text-[var(--brand-accent,#7c3aed)]",
   }[toast.type];
 
   const icon = {
@@ -83,12 +90,20 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
 
   return (
     <div
-      className={`${bgColor} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3 min-w-[300px] max-w-md animate-toast-in pointer-events-auto`}
+      className={`pointer-events-auto flex items-start gap-3 min-w-[300px] max-w-md rounded-xl border border-gray-200 border-l-4 ${accentBorder} bg-white px-4 py-3 shadow-xl animate-toast-in`}
       role="alert"
     >
-      <div className="flex-shrink-0">{icon}</div>
-      <p className="flex-1 text-sm font-medium">{toast.message}</p>
-      <button onClick={onClose} className="flex-shrink-0 ml-2 hover:opacity-80 transition-opacity">
+      <span
+        className={`mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full ${iconClasses}`}
+      >
+        {icon}
+      </span>
+      <p className="flex-1 text-sm font-medium text-gray-900">{toast.message}</p>
+      <button
+        onClick={onClose}
+        aria-label="Dismiss"
+        className="flex-shrink-0 text-gray-400 transition-colors hover:text-gray-600"
+      >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path
             strokeLinecap="round"
@@ -124,7 +139,7 @@ export function ToastProvider(props: { children: React.ReactNode }) {
     <ToastContext.Provider value={{ showToast, hideToast }}>
       {children}
       {mounted && (
-        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] flex flex-col items-center space-y-2 pointer-events-none">
+        <div className="fixed top-4 right-4 z-[10000] flex flex-col items-end space-y-2 pointer-events-none">
           {toasts.map((toast) => (
             <ToastItem key={toast.id} toast={toast} onClose={() => hideToast(toast.id)} />
           ))}
