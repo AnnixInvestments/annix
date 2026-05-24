@@ -4,7 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { useLayout } from "@/app/context/LayoutContext";
+import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { corpId, PortalType, portalConfig } from "@/app/lib/corpId";
+import { useBranding } from "@/app/lib/query/hooks";
 import AmixLogo from "./AmixLogo";
 import { ThemeToggle } from "./ThemeToggle";
 import { Tooltip } from "./Tooltip";
@@ -90,6 +92,8 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   // branding loads (or for portals with no DB branding).
   const isBrandPortal = portalType === "annixOrbit" || portalType === "annixRep";
   const brandPrefix = isBrandPortal ? "brand" : null;
+  const brandCode =
+    portalType === "annixOrbit" ? "annix-orbit" : portalType === "annixRep" ? "annix-rep" : null;
   const navBg = brandPrefix
     ? `var(--${brandPrefix}-navbar, ${colors.background})`
     : colors.background;
@@ -142,7 +146,15 @@ export default function PortalToolbar(props: PortalToolbarProps) {
           <div className="flex items-center">
             <div className="flex-shrink-0 flex items-center">
               <Link href={config.homeHref} className="flex items-center space-x-3">
-                <AmixLogo size="sm" showText={true} wordmark={isOrbit ? "orbit" : "investments"} />
+                {brandCode ? (
+                  <BrandNavLogo brand={brandCode} isOrbit={isOrbit} />
+                ) : (
+                  <AmixLogo
+                    size="sm"
+                    showText={true}
+                    wordmark={isOrbit ? "orbit" : "investments"}
+                  />
+                )}
                 {showTitleOrVersion && (
                   <span
                     className="text-lg font-semibold hidden md:block"
@@ -501,4 +513,19 @@ export default function PortalToolbar(props: PortalToolbarProps) {
       </div>
     </nav>
   );
+}
+
+function BrandNavLogo(props: { brand: string; isOrbit: boolean }) {
+  const { brand, isOrbit } = props;
+  const query = useBranding(brand);
+  const data = query.data;
+  const branding = data ?? null;
+  const hasTextCrop = branding ? brandHasAsset("textCrop", branding) : false;
+
+  if (branding && hasTextCrop) {
+    const url = resolveBrandAssetUrl("textCrop", branding);
+    return <img src={url} alt="" className="h-8 w-auto max-w-[200px] object-contain object-left" />;
+  }
+
+  return <AmixLogo size="sm" showText={true} wordmark={isOrbit ? "orbit" : "investments"} />;
 }
