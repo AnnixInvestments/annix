@@ -85,9 +85,11 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
   const { state } = props;
   const [tickMs, setTickMs] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // Annix Orbit pulls its logo + wordmark live from the branding page so an
-  // admin's uploaded artwork flows straight through to this popup.
-  const { data: orbitBranding } = useBranding("annix-orbit");
+  // One standard branded popup for every generic Annix app/profile: navbar
+  // colour + logo lockup + accent bar, pulled live from the branding page.
+  // Apps with their own company branding (e.g. AU Rubber) keep their static look.
+  const brandForBranding = state ? state.brand : "annix-orbit";
+  const { data: branding } = useBranding(brandForBranding);
 
   useEffect(() => {
     if (!state) {
@@ -114,9 +116,11 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
   if (!docRef) return null;
 
   const styles = BRAND_STYLES[state.brand];
-  const isOrbit = state.brand === "annix-orbit";
-  const orbitNavbar = orbitBranding ? orbitBranding.navbarColor : "#323288";
-  const orbitAccent = orbitBranding ? orbitBranding.accentOrange : "#FF8A00";
+  // AU Rubber carries its own (AU Industries) company branding; everything else
+  // is a generic Annix app and uses the standard branded-navbar style.
+  const useBrandedNavbar = state.brand !== "au-rubber";
+  const navbarColor = branding ? branding.navbarColor : "#323288";
+  const accentColor = branding ? branding.accentOrange : "#FF8A00";
   const totalMs = state.estimatedDurationMs;
   const elapsedMs = tickMs;
   const rawProgress = totalMs > 0 ? elapsedMs / totalMs : 0;
@@ -155,12 +159,12 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
     >
       <div className="fixed inset-0 bg-black/30 backdrop-blur-sm" aria-hidden="true" />
       <div className="relative bg-white rounded-xl shadow-xl max-w-2xl w-full overflow-hidden">
-        {isOrbit && orbitBranding ? (
+        {useBrandedNavbar ? (
           <div
             className="flex items-center justify-between px-6 py-3.5 text-white"
-            style={{ backgroundColor: orbitNavbar }}
+            style={{ backgroundColor: navbarColor }}
           >
-            <BrandNavLogo brand="annix-orbit" isOrbit />
+            <BrandNavLogo brand={state.brand} isOrbit={state.brand === "annix-orbit"} />
             <span className="text-xs text-white/80">
               {elapsedSeconds}s elapsed
               {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
@@ -194,10 +198,10 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
             </p>
           )}
           <div className="mt-4 h-2.5 bg-gray-100 rounded-full overflow-hidden">
-            {isOrbit ? (
+            {useBrandedNavbar ? (
               <div
                 className="h-full transition-all"
-                style={{ width: `${percent}%`, backgroundColor: orbitAccent }}
+                style={{ width: `${percent}%`, backgroundColor: accentColor }}
               />
             ) : (
               <div
