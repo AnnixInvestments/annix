@@ -3,6 +3,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
+import { LicensingModule } from "../licensing";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { App } from "../rbac/entities/app.entity";
@@ -12,6 +13,7 @@ import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { JobCard } from "../stock-control/entities/job-card.entity";
 import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.entity";
+import { AuRubberLicensingRegistrar } from "./au-rubber-licensing.registrar";
 import { BlogPostsController } from "./blog-posts.controller";
 import { BlogPostsService } from "./blog-posts.service";
 import { AuRubberCapabilities } from "./capabilities/au-rubber.capabilities";
@@ -126,6 +128,7 @@ import { WebsitePagesService } from "./website-pages.service";
     AdminModule,
     EmailModule,
     FeatureFlagsModule,
+    LicensingModule,
     MetricsModule,
     NixModule,
     RbacModule,
@@ -199,6 +202,7 @@ import { WebsitePagesService } from "./website-pages.service";
     ChemicalSupplierDocumentController,
   ],
   providers: [
+    AuRubberLicensingRegistrar,
     RubberLiningService,
     RubberStockService,
     RubberBrandingService,

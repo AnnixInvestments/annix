@@ -23,12 +23,22 @@ export interface TierDefinition {
   displayOrder: number;
 }
 
+export interface AddOnDefinition {
+  key: string;
+  label: string;
+  description: string;
+  monthlyPriceCents: number;
+  discountable: boolean;
+  requiresFeature?: string;
+}
+
 export interface ModuleLicensingDefinition {
   moduleKey: string;
   defaultTier: string;
   features: FeatureDefinition[];
   tiers: TierDefinition[];
   tierFeatures: Record<string, string[]>;
+  addOns?: AddOnDefinition[];
 }
 
 export interface LicenseSnapshot {

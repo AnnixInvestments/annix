@@ -9,6 +9,7 @@ export { FeatureRegistry } from "./feature-registry.service";
 export { LicensingModule } from "./licensing.module";
 export { LicensingService } from "./licensing.service";
 export type {
+  AddOnDefinition,
   FeatureDefinition,
   LicenseSnapshot,
   ModuleLicensingDefinition,
