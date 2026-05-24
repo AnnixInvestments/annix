@@ -2037,6 +2037,56 @@ class AnnixOrbitApiClient {
     });
   }
 
+  async seekerEducation(): Promise<SeekerEducationResponse> {
+    return this.request("/annix-orbit/education/me");
+  }
+
+  async upsertSeekerEducation(
+    input: SeekerEducationInput,
+  ): Promise<{ profile: SeekerEducationProfile }> {
+    return this.request("/annix-orbit/education/me", {
+      method: "PUT",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async addSeekerEducationResult(
+    input: SeekerEducationResultInput,
+  ): Promise<{ result: SeekerEducationResult }> {
+    return this.request("/annix-orbit/education/me/results", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async deleteSeekerEducationResult(id: string): Promise<{ deleted: boolean }> {
+    return this.request(`/annix-orbit/education/me/results/${id}`, { method: "DELETE" });
+  }
+
+  async recordSeekerEducationConsent(): Promise<{ consent: SeekerEducationConsent }> {
+    return this.request("/annix-orbit/education/me/consent", { method: "POST" });
+  }
+
+  async inviteSeekerEducationGuardian(
+    guardianEmail: string,
+  ): Promise<{ guardianLink: SeekerEducationGuardianLink }> {
+    return this.request("/annix-orbit/education/me/guardian-invite", {
+      method: "POST",
+      body: JSON.stringify({ guardianEmail }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async askSeekerEducationMentor(question: string): Promise<SeekerEducationMentorAnswer> {
+    return this.request("/annix-orbit/education/me/mentor", {
+      method: "POST",
+      body: JSON.stringify({ question }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
     return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
   }
@@ -2097,6 +2147,92 @@ export interface SeekerCredentialInput {
   issuingAuthority?: string | null;
   documentPath?: string | null;
   notes?: string | null;
+}
+
+export type OrbitEducationCurriculum =
+  | "NSC"
+  | "IEB"
+  | "Cambridge"
+  | "IB"
+  | "GCSE"
+  | "A-Level"
+  | "US-GPA"
+  | "Other";
+
+export interface SeekerEducationProfile {
+  id: string;
+  userId: number;
+  curriculum: OrbitEducationCurriculum;
+  country: string | null;
+  nationality: string | null;
+  languages: string[];
+  school: string | null;
+  dateOfBirth: string | null;
+  jurisdiction: string;
+  targetCategories: string[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SeekerEducationResult {
+  id: string;
+  educationProfileId: string;
+  subject: string;
+  mark: string | null;
+  predictedMark: string | null;
+  year: number | null;
+  term: string | null;
+  createdAt: string;
+}
+
+export interface SeekerEducationGuardianLink {
+  id: string;
+  educationProfileId: string;
+  guardianUserId: number | null;
+  guardianEmail: string;
+  status: "invited" | "accepted" | "declined" | "revoked";
+  invitedAt: string;
+  acceptedAt: string | null;
+}
+
+export interface SeekerEducationConsent {
+  id: string;
+  educationProfileId: string;
+  jurisdiction: string;
+  grantedByRole: "guardian" | "self";
+  grantedAt: string;
+  revokedAt: string | null;
+}
+
+export interface SeekerEducationResponse {
+  profile: SeekerEducationProfile | null;
+  results: SeekerEducationResult[];
+  guardianLinks: SeekerEducationGuardianLink[];
+  isMinor: boolean | null;
+  consentRequired: boolean;
+}
+
+export interface SeekerEducationInput {
+  curriculum?: OrbitEducationCurriculum;
+  country?: string | null;
+  nationality?: string | null;
+  languages?: string[];
+  school?: string | null;
+  dateOfBirth?: string | null;
+}
+
+export interface SeekerEducationResultInput {
+  subject: string;
+  mark?: number | null;
+  predictedMark?: number | null;
+  year?: number | null;
+  term?: string | null;
+}
+
+export interface SeekerEducationMentorAnswer {
+  answer: string;
+  model: string;
+  logId: string;
 }
 
 export interface SeekerJobStats {

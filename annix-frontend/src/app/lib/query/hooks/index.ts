@@ -171,6 +171,15 @@ export {
   useOrbitTopCandidates,
 } from "./annix-orbit/useOrbitDashboard";
 export {
+  useOrbitAddSeekerEducationResult,
+  useOrbitAskSeekerEducationMentor,
+  useOrbitDeleteSeekerEducationResult,
+  useOrbitInviteSeekerEducationGuardian,
+  useOrbitRecordSeekerEducationConsent,
+  useOrbitSeekerEducation,
+  useOrbitUpsertSeekerEducation,
+} from "./annix-orbit/useOrbitEducation";
+export {
   useOrbitEmailTemplate,
   useOrbitEmailTemplates,
   useOrbitNixDraftEmailTemplate,
