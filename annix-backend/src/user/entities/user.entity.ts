@@ -79,6 +79,10 @@ export class User {
   @Column({ type: "timestamp", nullable: true })
   lastLoginAt?: Date;
 
+  @ApiProperty({ description: "Tenant company this user belongs to", example: 1 })
+  @Column({ name: "company_id", type: "integer", nullable: true })
+  companyId: number | null;
+
   @ApiProperty({
     description: "Roles assigned to the user",
     type: () => [UserRole],

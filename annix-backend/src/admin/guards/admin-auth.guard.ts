@@ -9,6 +9,7 @@ export interface AdminRequestContext {
   firstName: string;
   lastName: string;
   roles: string[];
+  companyId: number | null;
   sessionToken: string;
 }
 
@@ -52,6 +53,7 @@ export class AdminAuthGuard implements CanActivate {
         firstName: user.firstName,
         lastName: user.lastName,
         roles: user.roles?.map((r) => r.name) || [],
+        companyId: user.companyId ?? null,
         sessionToken: payload.sessionToken,
       };
 
