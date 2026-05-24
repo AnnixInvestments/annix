@@ -61,7 +61,7 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
     bar: "bg-indigo-700",
     bg: "bg-indigo-50",
     text: "text-indigo-700",
-    logo: null,
+    logo: "/branding/annix-orbit-icon.svg",
   },
   "teacher-assistant": {
     label: "Teacher Assistant",
