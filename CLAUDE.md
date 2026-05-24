@@ -129,7 +129,8 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
       run: async (id) => { /* throw on failure */ },
     });
     ```
-- **One-shot long operations**: use `useExtractionProgress` directly.
+- **One-shot / background long operations**: use `useExtractionProgress` directly.
+- **EVERY progress popup MUST learn its timing — NEVER hardcode `estimatedDurationMs`.** This applies to every progress model ever used or created, repo-wide, across all apps. Seed the estimate from the recorded rolling average via `metricsApi.extractionStats(category, operation)` (fall back to a constant only when there is no history yet), AND make the underlying backend operation record its duration with `ExtractionMetricService.time(category, operation, fn)` so the estimate sharpens every run. `useAdaptiveExtractionProgress` already does both for per-item bulk loops; for one-shot/background work, fetch the stat for the estimate yourself. Fire-and-forget/background popups may also poll for real completion, but the *estimate* still comes from the learned average.
 - **Bulk = orchestrate per-item from the frontend** so progress can update after each item, not as a single long-blocking server-side loop.
 - **Error handling**: the `run` callback should throw on failure; the hook collects throws into `result.failed`. Limit per-failure toasts to 3.
 
