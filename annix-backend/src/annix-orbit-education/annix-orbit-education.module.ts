@@ -73,7 +73,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
         secret:
           configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
           configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT),
-        signOptions: { expiresIn: "1h" },
+        signOptions: { expiresIn: "8h" },
       }),
     }),
     NixModule,

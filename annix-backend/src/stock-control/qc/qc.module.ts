@@ -109,7 +109,7 @@ import { WORK_ITEM_PROVIDER } from "./work-item-provider.interface";
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>("JWT_SECRET", "stock-control-jwt-secret"),
-        signOptions: { expiresIn: "1h" },
+        signOptions: { expiresIn: "8h" },
       }),
     }),
     StorageModule,

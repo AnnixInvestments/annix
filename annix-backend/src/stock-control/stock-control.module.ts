@@ -270,7 +270,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
         secret: configService.get<string>("JWT_SECRET", "stock-control-jwt-secret"),
-        signOptions: { expiresIn: "1h" },
+        signOptions: { expiresIn: "8h" },
       }),
     }),
     MulterModule.register({

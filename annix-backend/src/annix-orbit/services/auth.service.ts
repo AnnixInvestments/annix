@@ -424,7 +424,7 @@ export class AnnixOrbitAuthService {
             companyId: profile?.companyId ?? payload.companyId ?? null,
             type: "annix-orbit",
           },
-          { secret, expiresIn: "1h" },
+          { secret, expiresIn: "8h" },
         ),
       };
     } catch {
@@ -543,7 +543,7 @@ export class AnnixOrbitAuthService {
         companyId: profile?.companyId ?? null,
         type: "annix-orbit",
       },
-      { secret, expiresIn: "1h" },
+      { secret, expiresIn: "8h" },
     );
 
     const refreshToken = this.jwtService.sign(

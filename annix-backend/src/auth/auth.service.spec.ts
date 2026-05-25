@@ -118,7 +118,7 @@ describe("AuthService", () => {
         expires_in: 3600,
       });
       expect(mockJwtService.signAsync).toHaveBeenCalledWith(expect.any(Object), {
-        expiresIn: "1h",
+        expiresIn: "8h",
       });
     });
   });

@@ -69,7 +69,7 @@ import { SupplierPumpQuoteController } from "./supplier-pump-quote.controller";
       useFactory: (configService: ConfigService) => ({
         secret: configService.getOrThrow<string>("JWT_SECRET"),
         signOptions: {
-          expiresIn: "1h",
+          expiresIn: "8h",
         },
       }),
       inject: [ConfigService],

@@ -529,7 +529,7 @@ export class StockControlAuthService {
             companyId: profile.companyId,
             type: "stock-control",
           },
-          { expiresIn: "1h" },
+          { expiresIn: "8h" },
         ),
       };
     } catch {
@@ -1122,7 +1122,7 @@ export class StockControlAuthService {
         companyId: profile.companyId,
         type: "stock-control",
       },
-      { expiresIn: "1h" },
+      { expiresIn: "8h" },
     );
 
     const refreshToken = this.jwtService.sign(

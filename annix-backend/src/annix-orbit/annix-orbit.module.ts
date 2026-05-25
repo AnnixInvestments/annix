@@ -175,7 +175,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
         secret:
           configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
           configService.get<string>("CV_ASSISTANT_JWT_SECRET", "annix-orbit-jwt-secret"),
-        signOptions: { expiresIn: "1h" },
+        signOptions: { expiresIn: "8h" },
       }),
     }),
     MulterModule.register({

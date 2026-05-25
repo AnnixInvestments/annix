@@ -507,7 +507,7 @@ describe("StockControlAuthService", () => {
           email: "test@example.com",
           type: "stock-control",
         }),
-        { expiresIn: "1h" },
+        { expiresIn: "8h" },
       );
     });
 
