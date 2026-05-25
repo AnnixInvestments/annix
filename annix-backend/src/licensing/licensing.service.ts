@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../lib/datetime";
+import { ModuleCatalogOverride } from "./entities/module-catalog-override.entity";
 import { ModuleLicense } from "./entities/module-license.entity";
 import { FeatureRegistry } from "./feature-registry.service";
 import type { LicenseSnapshot } from "./licensing.types";
@@ -13,6 +14,8 @@ export class LicensingService {
   constructor(
     @InjectRepository(ModuleLicense)
     private readonly licenseRepo: Repository<ModuleLicense>,
+    @InjectRepository(ModuleCatalogOverride)
+    private readonly overrideRepo: Repository<ModuleCatalogOverride>,
     private readonly registry: FeatureRegistry,
   ) {}
 
@@ -45,7 +48,20 @@ export class LicensingService {
     if (typeof override === "boolean") {
       return override;
     }
-    return this.registry.tierIncludesFeature(moduleKey, license.tier, featureKey);
+    return this.effectiveTierIncludesFeature(moduleKey, license.tier, featureKey);
+  }
+
+  private async effectiveTierIncludesFeature(
+    moduleKey: string,
+    tier: string,
+    featureKey: string,
+  ): Promise<boolean> {
+    const catalogOverride = await this.overrideRepo.findOne({ where: { moduleKey } });
+    const tierFeatures = catalogOverride ? catalogOverride.tierFeatures[tier] : undefined;
+    if (Array.isArray(tierFeatures)) {
+      return tierFeatures.includes(featureKey);
+    }
+    return this.registry.tierIncludesFeature(moduleKey, tier, featureKey);
   }
 
   async snapshot(companyId: number, moduleKey: string): Promise<LicenseSnapshot> {
