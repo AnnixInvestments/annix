@@ -12,6 +12,7 @@ import { User } from "../user/entities/user.entity";
 import { AnnixOrbitEducationCapabilities } from "./capabilities/annix-orbit-education.capabilities";
 import { EducationController } from "./controllers/education.controller";
 import { EducationGuardianController } from "./controllers/education-guardian.controller";
+import { EducationRequirementsController } from "./controllers/education-requirements.controller";
 import { AcademicResult } from "./entities/academic-result.entity";
 import { EducationAdmissionDistribution } from "./entities/education-admission-distribution.entity";
 import { EducationAiAdviceLog } from "./entities/education-ai-advice-log.entity";
@@ -23,6 +24,7 @@ import { EducationProfile } from "./entities/education-profile.entity";
 import { EducationProgramme } from "./entities/education-programme.entity";
 import { EducationProgrammeOutcomeSignal } from "./entities/education-programme-outcome-signal.entity";
 import { EducationRecommendationSnapshot } from "./entities/education-recommendation-snapshot.entity";
+import { EducationRequirementDraft } from "./entities/education-requirement-draft.entity";
 import { EducationRequirementVersion } from "./entities/education-requirement-version.entity";
 import { EducationScholarship } from "./entities/education-scholarship.entity";
 import { GuardianLink } from "./entities/guardian-link.entity";
@@ -34,6 +36,7 @@ import { EducationGuardianService } from "./services/education-guardian.service"
 import { EducationMentorService } from "./services/education-mentor.service";
 import { EducationProfileService } from "./services/education-profile.service";
 import { EducationRecommendationService } from "./services/education-recommendation.service";
+import { EducationRequirementsReadService } from "./services/education-requirements-read.service";
 import { EducationScholarshipService } from "./services/education-scholarship.service";
 import { GuardianLinkService } from "./services/guardian-link.service";
 
@@ -49,6 +52,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
       EducationFaculty,
       EducationProgramme,
       EducationRequirementVersion,
+      EducationRequirementDraft,
       EducationAdmissionDistribution,
       EducationRecommendationSnapshot,
       EducationProgrammeOutcomeSignal,
@@ -71,9 +75,10 @@ import { GuardianLinkService } from "./services/guardian-link.service";
     NixModule,
     MetricsModule,
   ],
-  controllers: [EducationController, EducationGuardianController],
+  controllers: [EducationController, EducationGuardianController, EducationRequirementsController],
   providers: [
     AnnixOrbitAuthGuard,
+    EducationRequirementsReadService,
     EducationConsentService,
     EducationProfileService,
     GuardianLinkService,
