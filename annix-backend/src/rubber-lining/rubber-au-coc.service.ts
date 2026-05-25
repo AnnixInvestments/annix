@@ -66,7 +66,7 @@ interface CocPdfData {
   productionDate: string;
   rollSizesQty: string;
   batches: BatchTestData[];
-  rollNumber: string;
+  rollNumbers: string[];
   qualityConfig: RubberCompoundQualityConfig | null;
   graphPdfPath?: string | null;
   // Set when the delivery note declares a compound but no supplier CoC of a
@@ -840,6 +840,22 @@ export class RubberAuCocService {
     return `AU-COC-${String(seq).padStart(4, "0")}`;
   }
 
+  private formatRollSizesQty(
+    rolls: { thicknessMm?: number | null; widthMm?: number | null; lengthM?: number | null }[],
+  ): string {
+    if (rolls.length === 0) return "-";
+
+    const groups = rolls.reduce<{ label: string; count: number }[]>((acc, roll) => {
+      const label = `${roll.thicknessMm ?? "-"}mm x ${roll.widthMm ?? "-"}mm x ${roll.lengthM ?? "-"}m`;
+      const existing = acc.find((g) => g.label === label);
+      return existing
+        ? acc.map((g) => (g.label === label ? { ...g, count: g.count + 1 } : g))
+        : [...acc, { label, count: 1 }];
+    }, []);
+
+    return groups.map((g) => `${g.label} (${g.count} roll${g.count !== 1 ? "s" : ""})`).join("; ");
+  }
+
   private async preparePdfData(coc: RubberAuCoc, items: RubberAuCocItem[]): Promise<CocPdfData> {
     const firstRoll = items[0]?.rollStock;
     const compoundCoding = firstRoll?.compoundCoding;
@@ -864,12 +880,15 @@ export class RubberAuCocService {
         })
       : null;
 
-    const rollDimensions = firstRoll
-      ? `${firstRoll.thicknessMm ?? "-"}mm x ${firstRoll.widthMm ?? "-"}mm x ${firstRoll.lengthM ?? "-"}m`
-      : "-";
-    const rollSizesQty = `${rollDimensions} ${items.length} roll${items.length !== 1 ? "s" : ""}`;
+    const rollStocks = items
+      .map((item) => item.rollStock)
+      .filter((rs): rs is RubberRollStock => !!rs);
+    const rollSizesQty = this.formatRollSizesQty(rollStocks);
 
-    const rollNumber = firstRoll?.rollNumber || "-";
+    const presentRollNumbers = rollStocks
+      .map((rs) => rs.rollNumber)
+      .filter((rn): rn is string => !!rn);
+    const rollNumbers = presentRollNumbers.length > 0 ? presentRollNumbers : ["-"];
 
     const batchTestData: BatchTestData[] = batches.map((batch) => ({
       batchNumber: batch.batchNumber,
@@ -898,20 +917,19 @@ export class RubberAuCocService {
       productionDate,
       rollSizesQty,
       batches: batchTestData,
-      rollNumber,
+      rollNumbers,
       qualityConfig,
     };
   }
 
   private async preparePdfDataFromExtractedRolls(coc: RubberAuCoc): Promise<CocPdfData> {
     const extractedRolls = coc.extractedRollData || [];
-    const firstRoll = extractedRolls[0];
 
-    const rollDimensions = firstRoll
-      ? `${firstRoll.thicknessMm || "-"}mm x ${firstRoll.widthMm || "-"}mm x ${firstRoll.lengthM || "-"}m`
-      : "-";
-    const rollSizesQty = `${rollDimensions} ${extractedRolls.length} roll${extractedRolls.length !== 1 ? "s" : ""}`;
-    const rollNumber = firstRoll?.rollNumber || "-";
+    const rollSizesQty = this.formatRollSizesQty(extractedRolls);
+    const presentRollNumbers = extractedRolls
+      .map((r) => r.rollNumber)
+      .filter((rn): rn is string => !!rn);
+    const rollNumbers = presentRollNumbers.length > 0 ? presentRollNumbers : ["-"];
 
     const defaults = {
       compoundCode: "Per Supplier CoC",
@@ -1454,7 +1472,7 @@ export class RubberAuCocService {
       productionDate,
       rollSizesQty,
       batches: batchTestData,
-      rollNumber,
+      rollNumbers,
       qualityConfig,
       graphPdfPath,
       sourceIncomplete,
@@ -1801,13 +1819,29 @@ export class RubberAuCocService {
       return val.toFixed(decimals);
     };
 
+    const dataTop = y;
+    const rollNumbers = data.rollNumbers.length > 0 ? data.rollNumbers : ["-"];
+    const rollLabel =
+      rollNumbers.length === 1
+        ? `Roll No. ${rollNumbers[0]}`
+        : `Roll Nos. ${rollNumbers.join(", ")}`;
+    const rollCellHeight = (data.batches.length > 0 ? data.batches.length : 1) * 13;
+
+    doc.rect(40, dataTop, colWidths[0], rollCellHeight).fillAndStroke("#ffffff", "#cccccc");
+    doc.fillColor("black").font("Helvetica").fontSize(7);
+    doc.text(rollLabel, colStarts[0] + 2, dataTop + 3, {
+      width: colWidths[0] - 4,
+      align: "left",
+    });
+
     data.batches.forEach((batch, index) => {
       const isEven = index % 2 === 0;
-      doc.rect(40, y, 515, 13).fillAndStroke(isEven ? "#ffffff" : "#f9f9f9", "#cccccc");
-      doc.fillColor("black");
+      doc
+        .rect(colStarts[1], y, 515 - colWidths[0], 13)
+        .fillAndStroke(isEven ? "#ffffff" : "#f9f9f9", "#cccccc");
+      doc.fillColor("black").font("Helvetica").fontSize(7);
 
       const rowData = [
-        index === 0 ? `Roll No. ${data.rollNumber}` : "",
         batch.batchNumber,
         batch.shoreA !== null ? String(Math.round(batch.shoreA)) : "",
         formatVal(batch.density, 3),
@@ -1818,9 +1852,9 @@ export class RubberAuCocService {
       ];
 
       rowData.forEach((val, i) => {
-        doc.text(val, colStarts[i] + 2, y + 3, {
-          width: colWidths[i] - 4,
-          align: i === 0 ? "left" : "center",
+        doc.text(val, colStarts[i + 1] + 2, y + 3, {
+          width: colWidths[i + 1] - 4,
+          align: "center",
         });
       });
 
