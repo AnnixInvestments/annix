@@ -31,3 +31,9 @@ export class LoginTeacherDto {
   @MaxLength(120)
   password!: string;
 }
+
+export class RefreshTeacherDto {
+  @IsString()
+  @MinLength(1)
+  refreshToken!: string;
+}

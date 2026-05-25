@@ -4,6 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
+import { authedFetch } from "@/app/lib/api/authedFetch";
 import { formatDateTimeZA, nowISO } from "@/app/lib/datetime";
 import type { AnalysisResult } from "@/app/lib/query/hooks";
 import {
@@ -15,8 +16,7 @@ import {
   useSubmitDrawingForReview,
   useUploadDrawingVersion,
 } from "@/app/lib/query/hooks";
-// eslint-disable-next-line no-restricted-imports -- Drawing detail page performs inline file upload/download with auth headers; remaining mutations are migration candidates but not all drawing detail operations have hooks yet. Tracked as tech debt.
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { browserBaseUrl } from "@/lib/api-config";
 
 export default function DrawingDetailPage() {
   const router = useRouter();
@@ -45,9 +45,7 @@ export default function DrawingDetailPage() {
         ? `${browserBaseUrl()}/drawings/${id}/download?version=${version}`
         : `${browserBaseUrl()}/drawings/${id}/download`;
 
-      const response = await fetch(url, {
-        headers: getAuthHeaders(),
-      });
+      const response = await authedFetch(url);
 
       if (!response.ok) {
         throw new Error("Download failed");

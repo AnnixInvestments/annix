@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { authedFetch } from "@/app/lib/api/authedFetch";
+import { browserBaseUrl } from "@/lib/api-config";
 import { type BoqQueryParams, boqKeys } from "../../keys";
 
 interface Boq {
@@ -73,9 +74,7 @@ async function fetchBoqs(params?: BoqQueryParams): Promise<PaginatedBoqResult> {
     searchParams.set("search", params.search);
   }
 
-  const response = await fetch(`${browserBaseUrl()}/boq?${searchParams.toString()}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authedFetch(`${browserBaseUrl()}/boq?${searchParams.toString()}`);
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -104,12 +103,8 @@ async function uploadBoq(args: {
     formData.append("description", args.description.trim());
   }
 
-  const headers = getAuthHeaders();
-  delete (headers as Record<string, string>)["Content-Type"];
-
-  const response = await fetch(`${browserBaseUrl()}/boq/upload`, {
+  const response = await authedFetch(`${browserBaseUrl()}/boq/upload`, {
     method: "POST",
-    headers,
     body: formData,
   });
 
@@ -125,9 +120,7 @@ async function uploadBoq(args: {
 }
 
 async function fetchBoqDetail(id: number): Promise<BoqDetail> {
-  const response = await fetch(`${browserBaseUrl()}/boq/${id}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authedFetch(`${browserBaseUrl()}/boq/${id}`);
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -161,11 +154,10 @@ export function useAddBoqLineItem(boqId: number) {
 
   return useMutation({
     mutationFn: async (item: Partial<BoqLineItem>) => {
-      const response = await fetch(`${browserBaseUrl()}/boq/${boqId}/line-items`, {
+      const response = await authedFetch(`${browserBaseUrl()}/boq/${boqId}/line-items`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders(),
         },
         body: JSON.stringify(item),
       });
@@ -189,11 +181,10 @@ export function useUpdateBoqLineItem(boqId: number) {
 
   return useMutation({
     mutationFn: async ({ itemId, updates }: { itemId: number; updates: Partial<BoqLineItem> }) => {
-      const response = await fetch(`${browserBaseUrl()}/boq/${boqId}/line-items/${itemId}`, {
+      const response = await authedFetch(`${browserBaseUrl()}/boq/${boqId}/line-items/${itemId}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders(),
         },
         body: JSON.stringify(updates),
       });
@@ -217,9 +208,8 @@ export function useDeleteBoqLineItem(boqId: number) {
 
   return useMutation({
     mutationFn: async (itemId: number) => {
-      const response = await fetch(`${browserBaseUrl()}/boq/${boqId}/line-items/${itemId}`, {
+      const response = await authedFetch(`${browserBaseUrl()}/boq/${boqId}/line-items/${itemId}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
@@ -241,11 +231,10 @@ export function useSubmitBoqForReview(boqId: number) {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${browserBaseUrl()}/workflow/boqs/${boqId}/submit`, {
+      const response = await authedFetch(`${browserBaseUrl()}/workflow/boqs/${boqId}/submit`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders(),
         },
       });
 
@@ -274,11 +263,10 @@ export function useCreateBoq() {
       drawingId?: number;
       rfqId?: number;
     }) => {
-      const response = await fetch(`${browserBaseUrl()}/boq`, {
+      const response = await authedFetch(`${browserBaseUrl()}/boq`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders(),
         },
         body: JSON.stringify(data),
       });

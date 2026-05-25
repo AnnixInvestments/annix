@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { authedFetch } from "@/app/lib/api/authedFetch";
+import { browserBaseUrl } from "@/lib/api-config";
 import { type DrawingQueryParams, drawingKeys } from "../../keys/drawingKeys";
 
 interface Drawing {
@@ -44,9 +45,7 @@ async function fetchDrawings(params?: DrawingQueryParams): Promise<PaginatedDraw
     searchParams.set("search", params.search);
   }
 
-  const response = await fetch(`${browserBaseUrl()}/drawings?${searchParams.toString()}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authedFetch(`${browserBaseUrl()}/drawings?${searchParams.toString()}`);
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -145,9 +144,7 @@ interface AnalysisResult {
 }
 
 async function fetchDrawingDetail(id: number): Promise<DrawingDetail> {
-  const response = await fetch(`${browserBaseUrl()}/drawings/${id}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authedFetch(`${browserBaseUrl()}/drawings/${id}`);
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -158,9 +155,7 @@ async function fetchDrawingDetail(id: number): Promise<DrawingDetail> {
 }
 
 async function fetchDrawingComments(id: number): Promise<DrawingComment[]> {
-  const response = await fetch(`${browserBaseUrl()}/drawings/${id}/comments`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authedFetch(`${browserBaseUrl()}/drawings/${id}/comments`);
 
   if (!response.ok) {
     console.warn(`Failed to fetch drawing comments for drawing ${id}: ${response.status}`);
@@ -182,9 +177,7 @@ export function useDrawingVersions(id: number) {
   return useQuery<DrawingVersion[]>({
     queryKey: drawingKeys.versions(id),
     queryFn: async () => {
-      const response = await fetch(`${browserBaseUrl()}/drawings/${id}/versions?limit=5`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await authedFetch(`${browserBaseUrl()}/drawings/${id}/versions?limit=5`);
 
       if (!response.ok) {
         return [];
@@ -209,11 +202,10 @@ export function useAddDrawingComment(drawingId: number) {
 
   return useMutation({
     mutationFn: async (commentText: string) => {
-      const response = await fetch(`${browserBaseUrl()}/drawings/${drawingId}/comments`, {
+      const response = await authedFetch(`${browserBaseUrl()}/drawings/${drawingId}/comments`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders(),
         },
         body: JSON.stringify({ commentText }),
       });
@@ -243,9 +235,8 @@ export function useUploadDrawingVersion(drawingId: number) {
         formData.append("changeNotes", changeNotes);
       }
 
-      const response = await fetch(`${browserBaseUrl()}/drawings/${drawingId}/version`, {
+      const response = await authedFetch(`${browserBaseUrl()}/drawings/${drawingId}/version`, {
         method: "POST",
-        headers: getAuthHeaders(),
         body: formData,
       });
 
@@ -270,13 +261,15 @@ export function useSubmitDrawingForReview(drawingId: number) {
 
   return useMutation({
     mutationFn: async () => {
-      const response = await fetch(`${browserBaseUrl()}/workflow/drawings/${drawingId}/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
+      const response = await authedFetch(
+        `${browserBaseUrl()}/workflow/drawings/${drawingId}/submit`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -298,9 +291,7 @@ export function useSubmitDrawingForReview(drawingId: number) {
 export function useAnalyzeDrawing(drawingId: number) {
   return useMutation({
     mutationFn: async (): Promise<AnalysisResult> => {
-      const response = await fetch(`${browserBaseUrl()}/drawings/${drawingId}/analyze`, {
-        headers: getAuthHeaders(),
-      });
+      const response = await authedFetch(`${browserBaseUrl()}/drawings/${drawingId}/analyze`);
 
       if (!response.ok) {
         throw new Error("Analysis failed");
@@ -336,9 +327,8 @@ export function useUploadDrawing() {
         formData.append("rfqId", rfqId);
       }
 
-      const response = await fetch(`${browserBaseUrl()}/drawings/upload`, {
+      const response = await authedFetch(`${browserBaseUrl()}/drawings/upload`, {
         method: "POST",
-        headers: getAuthHeaders(),
         body: formData,
       });
 

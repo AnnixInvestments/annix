@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { authedFetch } from "@/app/lib/api/authedFetch";
+import { browserBaseUrl } from "@/lib/api-config";
 import { type RfqQueryParams, rfqKeys } from "../../keys";
 
 interface Rfq {
@@ -23,10 +24,7 @@ async function fetchRfqs(params?: RfqQueryParams, signal?: AbortSignal): Promise
   }
   const query = searchParams.toString();
   const url = query ? `${browserBaseUrl()}/rfq?${query}` : `${browserBaseUrl()}/rfq`;
-  const response = await fetch(url, {
-    headers: getAuthHeaders(),
-    signal,
-  });
+  const response = await authedFetch(url, { signal });
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -98,10 +96,7 @@ interface RfqDetail {
 }
 
 async function fetchRfqDetail(id: number, signal?: AbortSignal): Promise<RfqDetail> {
-  const response = await fetch(`${browserBaseUrl()}/rfq/${id}`, {
-    headers: getAuthHeaders(),
-    signal,
-  });
+  const response = await authedFetch(`${browserBaseUrl()}/rfq/${id}`, { signal });
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");

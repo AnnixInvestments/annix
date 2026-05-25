@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { authedFetch } from "@/app/lib/api/authedFetch";
+import { browserBaseUrl } from "@/lib/api-config";
 import { type ReviewQueryParams, reviewKeys } from "../../keys";
 
 interface ReviewWorkflow {
@@ -63,9 +64,7 @@ async function fetchReviews(
   }
 
   const endpoint = tab === "pending" ? "/workflow/pending" : "/workflow/history";
-  const response = await fetch(`${browserBaseUrl()}${endpoint}?${searchParams.toString()}`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await authedFetch(`${browserBaseUrl()}${endpoint}?${searchParams.toString()}`);
 
   if (!response.ok) {
     const body = await response.text().catch(() => "");
@@ -102,11 +101,10 @@ export function useReviewAction() {
       const endpoint =
         entityType === "drawing" ? `/drawings/${entityId}/${action}` : `/boq/${entityId}/${action}`;
 
-      const response = await fetch(`${browserBaseUrl()}${endpoint}`, {
+      const response = await authedFetch(`${browserBaseUrl()}${endpoint}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...getAuthHeaders(),
         },
         body: JSON.stringify({ comments }),
       });

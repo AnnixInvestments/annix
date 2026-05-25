@@ -27,6 +27,7 @@ export interface TeacherAssistantUser {
 
 export interface TeacherAssistantAuthResult {
   accessToken: string;
+  refreshToken: string;
   expiresIn: number;
   user: TeacherAssistantUser;
 }
@@ -68,7 +69,8 @@ class TeacherAssistantApi {
     this.client = createApiClient({
       baseURL: API_BASE_URL,
       tokenStore: teacherAssistantTokenStore,
-      refreshHandler: async () => false,
+      refreshUrl: `${API_BASE_URL}/teacher-assistant/auth/refresh`,
+      onUnauthorized: () => teacherAssistantTokenStore.clear(),
     });
   }
 

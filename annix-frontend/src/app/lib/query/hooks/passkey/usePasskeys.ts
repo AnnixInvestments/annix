@@ -1,7 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { authedFetch } from "@/app/lib/api/authedFetch";
 import type { PasskeySummary } from "@/app/lib/passkey";
 import { registerPasskey } from "@/app/lib/passkey";
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { browserBaseUrl } from "@/lib/api-config";
 import { passkeyKeys } from "../../keys/passkeyKeys";
 
 interface PasskeyHookOptions {
@@ -9,14 +10,8 @@ interface PasskeyHookOptions {
   enabled?: boolean;
 }
 
-function resolveHeaders(opts: PasskeyHookOptions): Record<string, string> {
-  const override = opts.authHeaders;
-  if (override) return override;
-  return getAuthHeaders();
-}
-
-async function fetchPasskeys(authHeaders: Record<string, string>): Promise<PasskeySummary[]> {
-  const response = await fetch(`${browserBaseUrl()}/auth/passkey`, {
+async function fetchPasskeys(authHeaders?: Record<string, string>): Promise<PasskeySummary[]> {
+  const response = await authedFetch(`${browserBaseUrl()}/auth/passkey`, {
     headers: authHeaders,
   });
 
@@ -28,20 +23,18 @@ async function fetchPasskeys(authHeaders: Record<string, string>): Promise<Passk
 }
 
 export function usePasskeys(opts: PasskeyHookOptions = {}) {
-  const headers = resolveHeaders(opts);
   return useQuery<PasskeySummary[]>({
     queryKey: passkeyKeys.list(),
-    queryFn: () => fetchPasskeys(headers),
+    queryFn: () => fetchPasskeys(opts.authHeaders),
     enabled: opts.enabled !== false,
   });
 }
 
 export function useRegisterPasskey(opts: PasskeyHookOptions = {}) {
   const queryClient = useQueryClient();
-  const headers = resolveHeaders(opts);
 
   return useMutation({
-    mutationFn: (deviceName: string | null) => registerPasskey(deviceName, headers),
+    mutationFn: (deviceName: string | null) => registerPasskey(deviceName, opts.authHeaders),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: passkeyKeys.all });
     },
@@ -50,13 +43,12 @@ export function useRegisterPasskey(opts: PasskeyHookOptions = {}) {
 
 export function useRenamePasskey(opts: PasskeyHookOptions = {}) {
   const queryClient = useQueryClient();
-  const headers = resolveHeaders(opts);
 
   return useMutation({
     mutationFn: async ({ id, deviceName }: { id: number; deviceName: string }) => {
-      const response = await fetch(`${browserBaseUrl()}/auth/passkey/${id}`, {
+      const response = await authedFetch(`${browserBaseUrl()}/auth/passkey/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", ...headers },
+        headers: { "Content-Type": "application/json", ...opts.authHeaders },
         body: JSON.stringify({ deviceName }),
       });
 
@@ -76,13 +68,12 @@ export function useRenamePasskey(opts: PasskeyHookOptions = {}) {
 
 export function useDeletePasskey(opts: PasskeyHookOptions = {}) {
   const queryClient = useQueryClient();
-  const headers = resolveHeaders(opts);
 
   return useMutation({
     mutationFn: async (id: number) => {
-      const response = await fetch(`${browserBaseUrl()}/auth/passkey/${id}`, {
+      const response = await authedFetch(`${browserBaseUrl()}/auth/passkey/${id}`, {
         method: "DELETE",
-        headers,
+        headers: opts.authHeaders,
       });
 
       if (!response.ok) {

@@ -1,14 +1,15 @@
 import { startRegistration } from "@simplewebauthn/browser";
-import { browserBaseUrl, getAuthHeaders } from "@/lib/api-config";
+import { authedFetch } from "@/app/lib/api/authedFetch";
+import { browserBaseUrl } from "@/lib/api-config";
 import { classifyPasskeyError, PasskeyError } from "./errors";
 import type { PasskeySummary } from "./types";
 
 export async function registerPasskey(
   deviceName: string | null,
-  authHeaders: Record<string, string> = getAuthHeaders(),
+  authHeaders?: Record<string, string>,
 ): Promise<PasskeySummary> {
   try {
-    const optionsResponse = await fetch(`${browserBaseUrl()}/auth/passkey/register/options`, {
+    const optionsResponse = await authedFetch(`${browserBaseUrl()}/auth/passkey/register/options`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders },
     });
@@ -21,7 +22,7 @@ export async function registerPasskey(
 
     const attestation = await startRegistration({ optionsJSON: creationOptions });
 
-    const verifyResponse = await fetch(`${browserBaseUrl()}/auth/passkey/register/verify`, {
+    const verifyResponse = await authedFetch(`${browserBaseUrl()}/auth/passkey/register/verify`, {
       method: "POST",
       headers: { "Content-Type": "application/json", ...authHeaders },
       body: JSON.stringify({

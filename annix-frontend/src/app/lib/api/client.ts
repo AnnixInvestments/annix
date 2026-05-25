@@ -70,6 +70,7 @@ import type {
 } from "@annix/product-data/rfq";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { throwIfNotOk } from "@/app/lib/api/apiError";
+import { refreshActivePortalToken } from "@/app/lib/api/portalRefresh";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { log } from "@/app/lib/logger";
 import { API_BASE_URL } from "@/lib/api-config";
@@ -225,40 +226,6 @@ class ApiClient {
     }
   }
 
-  // Attempt to refresh the customer access token using the refresh token
-  private async refreshCustomerToken(): Promise<boolean> {
-    // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
-    if (typeof window === "undefined") return false;
-
-    const refreshToken = localStorage.getItem("customerRefreshToken");
-    if (!refreshToken) return false;
-
-    try {
-      const response = await fetch(`${this.baseURL}/customer/auth/refresh`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ refreshToken }),
-      });
-
-      if (!response.ok) {
-        // Refresh failed - clear tokens
-        localStorage.removeItem("customerAccessToken");
-        localStorage.removeItem("customerRefreshToken");
-        return false;
-      }
-
-      const data = await response.json();
-      if (data.access_token && data.refresh_token) {
-        localStorage.setItem("customerAccessToken", data.access_token);
-        localStorage.setItem("customerRefreshToken", data.refresh_token);
-        return true;
-      }
-      return false;
-    } catch {
-      return false;
-    }
-  }
-
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.baseURL}${endpoint}`;
 
@@ -281,11 +248,13 @@ class ApiClient {
     try {
       let response = await fetch(url, config);
 
-      // Handle 401 by attempting token refresh (only if user had a token)
+      // Handle 401 by attempting a portal-aware token refresh (only if
+      // the user had a token). Resolves the current portal from the URL
+      // prefix / authenticated store, refreshes that portal's token, and
+      // retries once. Falls back to session-expired on failure.
       if (response.status === 401 && token) {
-        const refreshed = await this.refreshCustomerToken();
+        const refreshed = await refreshActivePortalToken();
         if (refreshed) {
-          // Retry with new token
           const newToken = this.getAuthToken();
           if (newToken) {
             config.headers = {

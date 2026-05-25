@@ -1,5 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Req, UseGuards } from "@nestjs/common";
-import { LoginTeacherDto, RegisterTeacherDto } from "./dto/auth.dto";
+import { LoginTeacherDto, RefreshTeacherDto, RegisterTeacherDto } from "./dto/auth.dto";
 import {
   TeacherAssistantAuthGuard,
   type TeacherAssistantRequest,
@@ -8,6 +8,7 @@ import {
   type TeacherAssistantAuthResult,
   TeacherAssistantAuthService,
   type TeacherAssistantAuthUser,
+  type TeacherAssistantRefreshResult,
 } from "./services/teacher-assistant-auth.service";
 
 @Controller("teacher-assistant/auth")
@@ -28,6 +29,12 @@ export class TeacherAssistantAuthController {
   @HttpCode(200)
   async login(@Body() body: LoginTeacherDto): Promise<TeacherAssistantAuthResult> {
     return this.authService.login(body.email, body.password);
+  }
+
+  @Post("refresh")
+  @HttpCode(200)
+  async refresh(@Body() body: RefreshTeacherDto): Promise<TeacherAssistantRefreshResult> {
+    return this.authService.refresh(body.refreshToken);
   }
 
   @Get("me")

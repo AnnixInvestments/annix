@@ -46,13 +46,13 @@ export function TeacherAssistantAuthProvider({ children }: { children: ReactNode
 
   const login = useCallback(async (input: LoginTeacherInput) => {
     const result = await teacherAssistantApi.login(input);
-    teacherAssistantTokenStore.updateAccessToken(result.accessToken);
+    teacherAssistantTokenStore.setTokens(result.accessToken, result.refreshToken, false);
     setUser(result.user);
   }, []);
 
   const register = useCallback(async (input: RegisterTeacherInput) => {
     const result = await teacherAssistantApi.register(input);
-    teacherAssistantTokenStore.updateAccessToken(result.accessToken);
+    teacherAssistantTokenStore.setTokens(result.accessToken, result.refreshToken, false);
     setUser(result.user);
   }, []);
 

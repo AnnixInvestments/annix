@@ -3,11 +3,13 @@ import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
+import { AUTH_CONSTANTS } from "../../shared/auth/auth.constants";
 import { PasswordService } from "../../shared/auth/password.service";
 import { TeacherAssistantUser } from "../entities/teacher-assistant-user.entity";
 
-const TOKEN_TTL_SECONDS = 60 * 60 * 24;
+const TOKEN_TTL_SECONDS = AUTH_CONSTANTS.SESSION_EXPIRY_HOURS * 60 * 60;
 const TOKEN_TYPE = "teacher-assistant";
+const REFRESH_TOKEN_TYPE = "refresh";
 
 export interface TeacherAssistantAuthUser {
   id: number;
@@ -18,8 +20,15 @@ export interface TeacherAssistantAuthUser {
 
 export interface TeacherAssistantAuthResult {
   accessToken: string;
+  refreshToken: string;
   expiresIn: number;
   user: TeacherAssistantAuthUser;
+}
+
+export interface TeacherAssistantRefreshResult {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
 }
 
 @Injectable()
@@ -77,6 +86,30 @@ export class TeacherAssistantAuthService {
     return this.jwtService.verify(token, { secret: this.jwtSecret() });
   }
 
+  async refresh(refreshTokenStr: string): Promise<TeacherAssistantRefreshResult> {
+    try {
+      const payload = this.jwtService.verify<{
+        sub: number;
+        type?: string;
+        tokenType?: string;
+      }>(refreshTokenStr, { secret: this.jwtSecret() });
+      if (payload.tokenType !== REFRESH_TOKEN_TYPE || payload.type !== TOKEN_TYPE) {
+        throw new UnauthorizedException("Invalid token type.");
+      }
+      const user = await this.findById(payload.sub);
+      if (!user) {
+        throw new UnauthorizedException("User not found.");
+      }
+      return {
+        accessToken: this.signAccessToken(user),
+        refreshToken: this.signRefreshToken(user),
+        expiresIn: TOKEN_TTL_SECONDS,
+      };
+    } catch {
+      throw new UnauthorizedException("Invalid or expired refresh token.");
+    }
+  }
+
   toAuthUser(user: TeacherAssistantUser): TeacherAssistantAuthUser {
     return {
       id: user.id,
@@ -87,7 +120,16 @@ export class TeacherAssistantAuthService {
   }
 
   private tokenFor(user: TeacherAssistantUser): TeacherAssistantAuthResult {
-    const accessToken = this.jwtService.sign(
+    return {
+      accessToken: this.signAccessToken(user),
+      refreshToken: this.signRefreshToken(user),
+      expiresIn: TOKEN_TTL_SECONDS,
+      user: this.toAuthUser(user),
+    };
+  }
+
+  private signAccessToken(user: TeacherAssistantUser): string {
+    return this.jwtService.sign(
       {
         sub: user.id,
         email: user.email,
@@ -96,11 +138,17 @@ export class TeacherAssistantAuthService {
       },
       { secret: this.jwtSecret(), expiresIn: TOKEN_TTL_SECONDS },
     );
-    return {
-      accessToken,
-      expiresIn: TOKEN_TTL_SECONDS,
-      user: this.toAuthUser(user),
-    };
+  }
+
+  private signRefreshToken(user: TeacherAssistantUser): string {
+    return this.jwtService.sign(
+      {
+        sub: user.id,
+        type: TOKEN_TYPE,
+        tokenType: REFRESH_TOKEN_TYPE,
+      },
+      { secret: this.jwtSecret(), expiresIn: AUTH_CONSTANTS.REFRESH_TOKEN_EXPIRY },
+    );
   }
 
   private jwtSecret(): string {
