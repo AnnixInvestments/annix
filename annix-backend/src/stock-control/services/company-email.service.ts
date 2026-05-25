@@ -40,6 +40,12 @@ export class CompanyEmailService {
   ) {}
 
   async sendEmail(companyId: number, options: EmailOptions): Promise<boolean> {
+    if (this.configService.get<string>("EMAIL_DELIVERY_DISABLED") === "true") {
+      this.logger.warn(
+        `Email delivery disabled for this environment — not sending "${options.subject}" to ${options.to} (company ${companyId})`,
+      );
+      return true;
+    }
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
 
     const companySmtpConfigured =

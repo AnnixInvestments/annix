@@ -62,6 +62,12 @@ export class EmailService {
   }
 
   async sendEmail(options: EmailOptions): Promise<boolean> {
+    if (this.configService.get<string>("EMAIL_DELIVERY_DISABLED") === "true") {
+      this.logger.warn(
+        `Email delivery disabled for this environment — not sending "${options.subject}" to ${options.to}`,
+      );
+      return true;
+    }
     const fromEmail = this.configService.get<string>("EMAIL_FROM") || "noreply@example.com";
     const fromName =
       options.fromName || this.configService.get<string>("EMAIL_FROM_NAME") || "Annix";

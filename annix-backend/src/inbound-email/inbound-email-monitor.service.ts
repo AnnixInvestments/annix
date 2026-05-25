@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
 import * as Imap from "imap-simple";
 import { simpleParser } from "mailparser";
@@ -35,10 +36,16 @@ export class InboundEmailMonitorService {
     private readonly registry: InboundEmailRegistry,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly configService: ConfigService,
   ) {}
 
   @Cron("0 */6 * * *", { name: "inbound-email:poll-all" })
   async pollAllConfigs(): Promise<void> {
+    if (this.configService.get<string>("EMAIL_DELIVERY_DISABLED") === "true") {
+      this.logger.log("Inbound email polling skipped — email disabled for this environment");
+      return;
+    }
+
     if (this.isPolling) {
       return;
     }

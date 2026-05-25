@@ -251,6 +251,7 @@ jobs:
           for i in 1 2 3; do
             if flyctl deploy -a annix-app-staging \
               --image ${{ env.APP_IMAGE }}:pr-${{ needs.resolve-pr.outputs.pr_number }}-${{ needs.resolve-pr.outputs.head_sha }} \
+              --env EMAIL_DELIVERY_DISABLED=true \
               --local-only; then
               exit 0
             fi
