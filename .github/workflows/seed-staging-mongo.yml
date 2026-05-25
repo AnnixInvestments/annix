@@ -1,0 +1,46 @@
+name: Seed staging Mongo from prod Postgres
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  seed:
+    name: Copy prod Postgres into staging Mongo
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout migration branch
+        uses: actions/checkout@v6
+        with:
+          ref: mongo-migration-298
+
+      - uses: ./.github/actions/setup-monorepo
+
+      - name: Resolve prod Postgres URL into DATABASE_* (for AppDataSource metadata)
+        env:
+          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+        run: |
+          node -e '
+            const u = new URL(process.env.PROD_DATABASE_URL);
+            const fs = require("fs");
+            const out = {
+              DATABASE_HOST: u.hostname,
+              DATABASE_PORT: u.port || "5432",
+              DATABASE_USERNAME: decodeURIComponent(u.username),
+              DATABASE_PASSWORD: decodeURIComponent(u.password),
+              DATABASE_NAME: u.pathname.replace(/^\//, "") || "neondb",
+              DATABASE_SSL: "true",
+            };
+            for (const [k, v] of Object.entries(out)) fs.appendFileSync(process.env.GITHUB_ENV, `${k}=${v}\n`);
+          '
+
+      - name: Copy prod Postgres -> staging Mongo (new cluster)
+        working-directory: annix-backend
+        env:
+          PORT_SOURCE_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
+          MONGODB_URI: ${{ secrets.STAGING_MONGODB_URI }}
+          PORT_TARGET_DATABASE: annix_staging
+        run: npx -y tsx scripts/port-postgres-to-mongo.ts
