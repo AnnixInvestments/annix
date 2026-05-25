@@ -8,6 +8,19 @@ import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 export class AdminOrbitSeekerController {
   constructor(private readonly feedService: SeekerJobFeedService) {}
 
+  @Get()
+  async list(
+    @Query("search") search?: string,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+  ) {
+    return this.feedService.listSeekers({
+      search: search ?? null,
+      page: page ? Number(page) : 1,
+      limit: limit ? Number(limit) : 20,
+    });
+  }
+
   @Get("lookup")
   async lookup(@Query("email") email?: string) {
     return this.feedService.matchTierForSeeker(email ?? null);

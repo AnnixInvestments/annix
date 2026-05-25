@@ -100,5 +100,11 @@ export const adminKeys = {
   orbitSeekers: {
     all: ["admin", "orbitSeekers"] as const,
     matchTier: (email: string) => [...adminKeys.orbitSeekers.all, "matchTier", email] as const,
+    list: (params?: { search?: string; page?: number; limit?: number }) =>
+      [...adminKeys.orbitSeekers.all, "list", params ?? {}] as const,
+  },
+  orbitEeTargets: {
+    all: ["admin", "orbitEeTargets"] as const,
+    list: () => [...adminKeys.orbitEeTargets.all, "list"] as const,
   },
 } as const;

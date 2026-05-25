@@ -12,11 +12,21 @@ const BRAND_TITLES: Record<string, string> = {
   "annix-sentinel": "Annix Sentinel",
 };
 
+const BRAND_HUBS: Record<string, string> = {
+  "annix-orbit": "/admin/portal/orbit",
+  "annix-insights": "/admin/portal/insights",
+  "annix-rep": "/admin/portal/annix-rep",
+  "annix-sentinel": "/admin/portal/annix-sentinel",
+  "annix-investments": "/admin/portal/dashboard",
+};
+
 export default function AdminBrandingPage() {
   const params = useParams();
   const raw = params.brand;
   const brand = isArray(raw) ? raw[0] : (raw ?? "");
   const mappedTitle = BRAND_TITLES[brand];
   const title = mappedTitle || brand;
-  return <BrandingEditor brand={brand} title={title} backHref="/admin/portal/global-apps" />;
+  const mappedHub = BRAND_HUBS[brand];
+  const backHref = mappedHub || "/admin/portal/global-apps";
+  return <BrandingEditor brand={brand} title={title} backHref={backHref} />;
 }

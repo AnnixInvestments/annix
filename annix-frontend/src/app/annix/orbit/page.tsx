@@ -11,7 +11,7 @@ export default function AnnixOrbitHomePage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
-      <div className="max-w-4xl w-full">
+      <div className="max-w-6xl w-full">
         <div className="text-center mb-10">
           <div
             className="inline-flex w-20 h-20 rounded-2xl mb-6 bg-contain bg-center bg-no-repeat"
@@ -27,9 +27,9 @@ export default function AnnixOrbitHomePage() {
           <p className="text-lg text-[#c0c0eb] max-w-2xl mx-auto">{branding.description}</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <CvHomeCard
-            title="I'm a Company"
+            title="Company Postings"
             subtitle="Recruiter, HR, or hiring manager"
             description="Post jobs, screen candidates with AI, manage references, and track your hiring funnel."
             primaryHref="/annix/orbit/register/company"
@@ -54,7 +54,7 @@ export default function AnnixOrbitHomePage() {
           />
 
           <CvHomeCard
-            title="I'm an Individual"
+            title="Job Seeker"
             subtitle="Job seeker or candidate"
             description="Build your CV profile, browse opportunities, get matched to jobs, and manage your applications."
             primaryHref="/annix/orbit/register/individual"
@@ -74,6 +74,38 @@ export default function AnnixOrbitHomePage() {
                   strokeWidth={1.5}
                   d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                 />
+              </svg>
+            }
+          />
+
+          <CvHomeCard
+            title="Student"
+            subtitle="Learner planning your future"
+            description="Plan your subjects and marks, see what you need for the qualification you want, and explore your options with FuturePath."
+            primaryHref="/annix/orbit/register/student"
+            primaryLabel="Sign up as a student"
+            secondaryHref="/annix/orbit/login?type=student"
+            secondaryLabel="Sign in"
+            icon={
+              <svg
+                className="w-7 h-7 text-[#323288]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 14l9-5-9-5-9 5 9 5z"
+                />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z"
+                />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 14v5" />
               </svg>
             }
           />

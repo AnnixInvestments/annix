@@ -239,6 +239,75 @@ export class AnnixOrbitAuthService {
     };
   }
 
+  async registerStudent(email: string, password: string, name: string) {
+    const existing = await this.userRepo.findOne({ where: { email } });
+    if (existing) {
+      throw new ConflictException("Email already registered");
+    }
+
+    const passwordHash = await this.passwordService.hashSimple(password);
+    const verificationToken = uuidv4();
+    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
+
+    const user = this.userRepo.create({
+      email,
+      username: email,
+      passwordHash,
+      firstName: name.split(" ")[0],
+      lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
+      status: "pending",
+      emailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
+    } as Partial<User>);
+    const savedUser = await this.userRepo.save(user);
+
+    const profile = this.profileRepo.create({
+      userId: savedUser.id,
+      companyId: null,
+      userType: AnnixOrbitUserType.STUDENT,
+    });
+    await this.profileRepo.save(profile);
+
+    await this.assignOrbitRbacRole(savedUser.id, "student");
+
+    await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
+
+    return {
+      message: "Registration successful. Please check your email to verify your account.",
+      user: {
+        id: savedUser.id,
+        email: savedUser.email,
+        name,
+        role: AnnixOrbitRole.STUDENT,
+        userType: AnnixOrbitUserType.STUDENT,
+      },
+    };
+  }
+
+  private async assignOrbitRbacRole(userId: number, roleCode: string): Promise<void> {
+    try {
+      const app = await this.appRepo.findOne({ where: { code: "annix-orbit" } });
+      if (!app) return;
+
+      const role = await this.appRoleRepo.findOne({ where: { appId: app.id, code: roleCode } });
+      if (!role) return;
+
+      const existing = await this.userAppAccessRepo.findOne({ where: { userId, appId: app.id } });
+      if (existing) return;
+
+      const access = this.userAppAccessRepo.create({
+        userId,
+        appId: app.id,
+        roleId: role.id,
+        grantedAt: now().toJSDate(),
+      });
+      await this.userAppAccessRepo.save(access);
+    } catch (err) {
+      this.logger.warn(`Failed to assign Annix Orbit role ${roleCode} to user ${userId}: ${err}`);
+    }
+  }
+
   async verifyEmail(token: string) {
     const user = await this.userRepo.findOne({
       where: {
@@ -464,6 +533,9 @@ export class AnnixOrbitAuthService {
   private async resolveRole(userId: number, profile?: AnnixOrbitProfile | null): Promise<string> {
     const resolvedProfile =
       profile === undefined ? await this.profileRepo.findOne({ where: { userId } }) : profile;
+    if (resolvedProfile?.userType === AnnixOrbitUserType.STUDENT) {
+      return AnnixOrbitRole.STUDENT;
+    }
     if (resolvedProfile?.userType === AnnixOrbitUserType.INDIVIDUAL) {
       return AnnixOrbitRole.INDIVIDUAL;
     }

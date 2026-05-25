@@ -7,7 +7,7 @@ export interface AnnixOrbitLoginDto {
   password: string;
 }
 
-export type AnnixOrbitUserType = "company" | "individual";
+export type AnnixOrbitUserType = "company" | "individual" | "student";
 
 export interface AnnixOrbitUser {
   id: number;
@@ -1036,6 +1036,17 @@ class AnnixOrbitApiClient {
     name: string;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/annix-orbit/auth/register/individual", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async registerStudent(dto: {
+    email: string;
+    password: string;
+    name: string;
+  }): Promise<{ message: string; user: AnnixOrbitUser }> {
+    return this.request("/annix-orbit/auth/register/student", {
       method: "POST",
       body: JSON.stringify(dto),
     });

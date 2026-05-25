@@ -55,6 +55,19 @@ export class RegisterIndividualDto {
   name: string;
 }
 
+export class RegisterStudentDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+}
+
 export class LoginDto {
   @IsEmail()
   email: string;

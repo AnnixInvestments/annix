@@ -4,6 +4,7 @@ import {
   LoginDto,
   RegisterDto,
   RegisterIndividualDto,
+  RegisterStudentDto,
   ResendVerificationDto,
   ResetPasswordDto,
 } from "../dto/auth.dto";
@@ -31,6 +32,11 @@ export class AnnixOrbitAuthController {
   @Post("register/individual")
   async registerIndividual(@Body() dto: RegisterIndividualDto) {
     return this.authService.registerIndividual(dto.email, dto.password, dto.name);
+  }
+
+  @Post("register/student")
+  async registerStudent(@Body() dto: RegisterStudentDto) {
+    return this.authService.registerStudent(dto.email, dto.password, dto.name);
   }
 
   @Post("login")

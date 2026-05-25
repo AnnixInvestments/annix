@@ -108,7 +108,7 @@ export default function FuturePathPage() {
   const careerFitData = careerFitQuery.data;
   const careerFit = careerFitData ? careerFitData.careerFit : [];
 
-  const targetClusters = profile && profile.targetCategories ? profile.targetCategories : [];
+  const targetClusters = profile?.targetCategories ? profile.targetCategories : [];
   const createApplication = useOrbitCreateSeekerEducationApplication();
   const updateApplicationStatus = useOrbitUpdateSeekerEducationApplicationStatus();
   const deleteApplication = useOrbitDeleteSeekerEducationApplication();

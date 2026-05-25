@@ -29,6 +29,11 @@ export {
   useUpdateSlaConfig,
 } from "./admin/useAdminMessaging";
 export {
+  useAdminDeleteOrbitEeTarget,
+  useAdminOrbitEeTargets,
+  useAdminUpsertOrbitEeTarget,
+} from "./admin/useAdminOrbitEeTargets";
+export {
   useAdminAutoResolveOrbitDuplicates,
   useAdminCreateOrbitJobMarketSource,
   useAdminDeleteOrbitExternalJob,
@@ -39,6 +44,7 @@ export {
   useAdminOrbitJobMarketSources,
   useAdminOrbitJobMarketStats,
   useAdminOrbitSeekerMatchTier,
+  useAdminOrbitSeekers,
   useAdminSetOrbitSeekerMatchTier,
   useAdminTriggerOrbitIngestion,
   useAdminUpdateOrbitJobMarketSource,
@@ -52,6 +58,19 @@ export {
   useAnnixCompanyProfile,
   useUpdateAnnixCompanyProfile,
 } from "./admin/useCompanyProfile";
+export {
+  useCreateEducationFaculty,
+  useCreateEducationInstitution,
+  useCreateEducationProgramme,
+  useCreateEducationScholarship,
+  useEducationFaculties,
+  useEducationInstitutions,
+  useEducationProgrammes,
+  useEducationScholarships,
+  useUpdateEducationInstitution,
+  useUpdateEducationProgramme,
+  useUpdateEducationScholarship,
+} from "./admin/useEducationCatalog";
 export {
   useApproveDraft,
   useCorrectDraft,

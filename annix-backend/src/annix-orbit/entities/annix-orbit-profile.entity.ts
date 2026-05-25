@@ -16,6 +16,7 @@ import type { ExtractedCvData } from "./candidate.entity";
 export enum AnnixOrbitUserType {
   COMPANY = "company",
   INDIVIDUAL = "individual",
+  STUDENT = "student",
 }
 
 @Entity("cv_assistant_profiles")

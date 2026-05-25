@@ -45,6 +45,18 @@ export interface SeekerJobMatch {
   };
 }
 
+export interface AdminSeekerSummary {
+  id: number;
+  name: string | null;
+  email: string | null;
+  matchTier: string;
+  matchScore: number | null;
+  status: string;
+  hasCv: boolean;
+  lastActiveAt: string | null;
+  createdAt: string | null;
+}
+
 @Injectable()
 export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
@@ -229,6 +241,41 @@ export class SeekerJobFeedService {
     );
     this.logger.log(`Set match tier "${tier}" for ${candidates.length} candidate(s) of ${email}`);
     return { candidatesAffected: candidates.length, matchTier: tier };
+  }
+
+  async listSeekers(params: {
+    search?: string | null;
+    page?: number;
+    limit?: number;
+  }): Promise<{ seekers: AdminSeekerSummary[]; total: number }> {
+    const page = params.page && params.page > 0 ? params.page : 1;
+    const limit = params.limit && params.limit > 0 ? params.limit : 20;
+    const search = params.search ? params.search.trim() : "";
+    const query = this.candidateRepo
+      .createQueryBuilder("candidate")
+      .where("candidate.isTestFixture = :fixture", { fixture: false });
+    if (search) {
+      query.andWhere("(candidate.email ILIKE :term OR candidate.name ILIKE :term)", {
+        term: `%${search}%`,
+      });
+    }
+    const [rows, total] = await query
+      .orderBy("candidate.createdAt", "DESC")
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    const seekers = rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      matchTier: row.matchTier,
+      matchScore: row.matchScore,
+      status: row.status,
+      hasCv: Boolean(row.cvFilePath),
+      lastActiveAt: row.lastActiveAt ? row.lastActiveAt.toISOString() : null,
+      createdAt: row.createdAt ? row.createdAt.toISOString() : null,
+    }));
+    return { seekers, total };
   }
 
   async consentStatusForSeeker(

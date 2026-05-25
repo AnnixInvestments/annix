@@ -79,6 +79,12 @@ export default function AdminOrbitSeekerTiersPage() {
     <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
+          <Link
+            href="/admin/portal/orbit"
+            className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
+          >
+            ← Orbit admin hub
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Seeker match tiers</h1>
           <p className="text-gray-600 mt-1 text-sm">
             Override a seeker's Nix matching strength for testing. Billing will drive this

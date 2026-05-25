@@ -33,6 +33,7 @@ export class AnnixOrbitRoleGuard implements CanActivate {
     }
 
     const roleHierarchy: Record<AnnixOrbitRole, number> = {
+      [AnnixOrbitRole.STUDENT]: 0,
       [AnnixOrbitRole.INDIVIDUAL]: 0,
       [AnnixOrbitRole.VIEWER]: 1,
       [AnnixOrbitRole.RECRUITER]: 2,

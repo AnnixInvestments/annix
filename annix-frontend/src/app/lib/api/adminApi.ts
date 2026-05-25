@@ -1123,6 +1123,26 @@ class AdminApiClient {
     });
   }
 
+  async orbitSeekers(params: {
+    search?: string | null;
+    page?: number;
+    limit?: number;
+  }): Promise<{ seekers: OrbitSeekerSummary[]; total: number }> {
+    const query = new URLSearchParams();
+    const search = params.search ? params.search.trim() : "";
+    if (search) {
+      query.set("search", search);
+    }
+    if (params.page) {
+      query.set("page", String(params.page));
+    }
+    if (params.limit) {
+      query.set("limit", String(params.limit));
+    }
+    const suffix = query.toString();
+    return this.request(`/admin/annix-orbit/seekers${suffix ? `?${suffix}` : ""}`);
+  }
+
   async appBranding(brand: string): Promise<Branding> {
     return this.request(`/admin/branding/${brand}`);
   }
@@ -1156,6 +1176,21 @@ class AdminApiClient {
   async deleteBrandingImage(brand: string, id: string): Promise<{ success: boolean }> {
     return this.request(`/admin/branding/${brand}/images/${id}`, { method: "DELETE" });
   }
+
+  async orbitEeTargets(): Promise<OrbitEeTarget[]> {
+    return this.request("/admin/annix-orbit/ee-sectoral-targets");
+  }
+
+  async upsertOrbitEeTarget(input: UpsertOrbitEeTargetInput): Promise<OrbitEeTarget> {
+    return this.request("/admin/annix-orbit/ee-sectoral-targets", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deleteOrbitEeTarget(id: number): Promise<{ success: boolean }> {
+    return this.request(`/admin/annix-orbit/ee-sectoral-targets/${id}`, { method: "DELETE" });
+  }
 }
 
 export interface OrbitSeekerMatchTier {
@@ -1163,6 +1198,54 @@ export interface OrbitSeekerMatchTier {
   matchTier: string;
   targetCategories: string[];
   candidateIds: number[];
+}
+
+export interface OrbitSeekerSummary {
+  id: number;
+  name: string | null;
+  email: string | null;
+  matchTier: string;
+  matchScore: number | null;
+  status: string;
+  hasCv: boolean;
+  lastActiveAt: string | null;
+  createdAt: string | null;
+}
+
+export type EeTargetMetric =
+  | "race_african_black"
+  | "race_coloured"
+  | "race_indian"
+  | "female"
+  | "disability";
+
+export type EeTargetOccupationalLevel =
+  | "top_management"
+  | "senior_management"
+  | "professionally_qualified"
+  | "skilled"
+  | "semi_skilled"
+  | "unskilled"
+  | "all_levels";
+
+export interface OrbitEeTarget {
+  id: number;
+  sectorCode: string;
+  occupationalLevel: EeTargetOccupationalLevel;
+  targetYear: number;
+  targetMetric: EeTargetMetric;
+  targetPercent: string;
+  gazetteReference: string | null;
+}
+
+export interface UpsertOrbitEeTargetInput {
+  id: number | null;
+  sectorCode: string;
+  occupationalLevel: EeTargetOccupationalLevel;
+  targetYear: number;
+  targetMetric: EeTargetMetric;
+  targetPercent: number;
+  gazetteReference: string | null;
 }
 
 export interface BrandingImage {

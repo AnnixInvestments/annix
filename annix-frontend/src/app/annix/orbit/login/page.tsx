@@ -14,6 +14,7 @@ import { useBranding } from "@/app/lib/query/hooks";
 
 function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
   if (returnUrl) return returnUrl;
+  if (userType === "student") return "/annix/orbit/student/dashboard";
   if (userType === "individual") return "/annix/orbit/seeker/dashboard";
   return "/annix/orbit/portal/dashboard";
 }
@@ -58,7 +59,9 @@ function AnnixOrbitLoginContent() {
       ? "/annix/orbit/register/individual"
       : accountType === "company"
         ? "/annix/orbit/register/company"
-        : "/annix/orbit";
+        : accountType === "student"
+          ? "/annix/orbit/register/student"
+          : "/annix/orbit";
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4">
@@ -96,7 +99,9 @@ function AnnixOrbitLoginContent() {
                 ? "Sign in to your job seeker account"
                 : accountType === "company"
                   ? "Sign in to your company account"
-                  : "Sign in"}
+                  : accountType === "student"
+                    ? "Sign in to your student account"
+                    : "Sign in"}
             </p>
           </div>
 

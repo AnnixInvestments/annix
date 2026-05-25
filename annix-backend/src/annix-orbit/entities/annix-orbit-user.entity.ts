@@ -14,6 +14,7 @@ export enum AnnixOrbitRole {
   RECRUITER = "recruiter",
   ADMIN = "admin",
   INDIVIDUAL = "individual",
+  STUDENT = "student",
 }
 
 @Entity("cv_assistant_users")
