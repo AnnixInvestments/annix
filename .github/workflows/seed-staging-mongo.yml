@@ -43,4 +43,4 @@ jobs:
           PORT_SOURCE_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
           MONGODB_URI: ${{ secrets.STAGING_MONGODB_URI }}
           PORT_TARGET_DATABASE: annix_staging
-        run: npx -y tsx scripts/port-postgres-to-mongo.ts
+        run: pnpm exec ts-node --project tsconfig.json --transpile-only -r tsconfig-paths/register scripts/port-postgres-to-mongo.ts
