@@ -1,4 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
+import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
@@ -98,6 +99,50 @@ export class EducationAdmissionIngestionService {
       `Ingested ${rows.length} draft requirement(s) from ${params.sourceUrl} (programme ${params.programmeId ?? "n/a"})`,
     );
     return { drafts: rows.length, screenshotPath, sourceUrl: params.sourceUrl };
+  }
+
+  @Cron("0 3 1 */3 *", { name: "orbit-education:refresh-admission-data" })
+  async refreshAdmissionData(): Promise<void> {
+    const enabled =
+      process.env.NODE_ENV === "production" ||
+      process.env.ENABLE_ORBIT_ADMISSION_REFRESH === "true";
+    if (!enabled) {
+      return;
+    }
+    const sources = await this.distinctSources();
+    this.logger.log(`Refreshing ${sources.length} admission source(s)`);
+    await sources.reduce<Promise<void>>(async (previous, source) => {
+      await previous;
+      try {
+        await this.draftRepo.delete({ sourceUrl: source.sourceUrl, status: "draft" });
+        await this.ingest(source);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Refresh failed for ${source.sourceUrl}: ${message}`);
+      }
+    }, Promise.resolve());
+  }
+
+  private async distinctSources(): Promise<IngestionParams[]> {
+    const rows = await this.draftRepo
+      .createQueryBuilder("draft")
+      .select("draft.institution_id", "institutionId")
+      .addSelect("draft.programme_id", "programmeId")
+      .addSelect("draft.intake_year", "intakeYear")
+      .addSelect("draft.source_url", "sourceUrl")
+      .distinct(true)
+      .getRawMany<{
+        institutionId: string | null;
+        programmeId: string | null;
+        intakeYear: number;
+        sourceUrl: string;
+      }>();
+    return rows.map((row) => ({
+      institutionId: row.institutionId,
+      programmeId: row.programmeId,
+      intakeYear: Number(row.intakeYear),
+      sourceUrl: row.sourceUrl,
+    }));
   }
 
   private async capture(url: string): Promise<{ html: string; screenshot: Buffer }> {

@@ -215,6 +215,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "AU Rubber",
     defaultCron: "0 8 * * *",
   },
+  "orbit-education:refresh-admission-data": {
+    description:
+      "Re-scrape known university admission pages and flag changed requirements for review",
+    module: "Annix Orbit Education",
+    defaultCron: "0 3 1 */3 *",
+  },
   "secure-docs:cleanup-deleted": {
     description: "Permanently delete soft-deleted secure document folders",
     module: "Secure Docs",
