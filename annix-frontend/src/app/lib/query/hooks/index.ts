@@ -176,6 +176,7 @@ export {
   useUpdateSecureDocument,
   useUploadNixDocument,
 } from "./admin/useSecureDocuments";
+export { useSsoIdentityReconciliation } from "./admin/useSsoReconciliation";
 export {
   useCreateTenant,
   useInviteTenantUser,

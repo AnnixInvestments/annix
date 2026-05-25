@@ -107,4 +107,8 @@ export const adminKeys = {
     all: ["admin", "orbitEeTargets"] as const,
     list: () => [...adminKeys.orbitEeTargets.all, "list"] as const,
   },
+  sso: {
+    all: ["admin", "sso"] as const,
+    identityReconciliation: () => [...adminKeys.sso.all, "identityReconciliation"] as const,
+  },
 } as const;

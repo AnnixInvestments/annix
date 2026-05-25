@@ -787,6 +787,10 @@ class AdminApiClient {
     path: "/admin/rbac/users/all",
   });
 
+  ssoIdentityReconciliation = createEndpoint<[], IdentityReconciliationReport>(apiClient, "GET", {
+    path: "/admin/sso/identity-reconciliation",
+  });
+
   rbacAssignAccess = createEndpoint<[userId: number, dto: AssignUserAccessDto], RbacUserAccess>(
     apiClient,
     "POST",
@@ -1694,6 +1698,84 @@ export interface RbacDeleteRoleResponse {
 export interface RbacRoleProductsResponse {
   roleId: number;
   productKeys: string[];
+}
+
+export interface SsoAppAccessCount {
+  appCode: string;
+  appName: string;
+  accessCount: number;
+}
+
+export interface SsoProfileCount {
+  portal: string;
+  table: string;
+  profileCount: number;
+}
+
+export interface SsoCoverageSection {
+  totalCoreUsers: number;
+  accessByApp: SsoAppAccessCount[];
+  profilesByPortal: SsoProfileCount[];
+}
+
+export interface SsoIdentityRef {
+  userId: number;
+  email: string;
+}
+
+export interface SsoAnnixRepGapSection {
+  missingAccessCount: number;
+  totalRepProfiles: number;
+  sample: SsoIdentityRef[];
+}
+
+export interface SsoStandaloneIdentity {
+  standaloneId: number;
+  email: string;
+  coreUserId: number | null;
+}
+
+export interface SsoTeacherAssistantSection {
+  totalStandaloneUsers: number;
+  unlinkedDuplicateCount: number;
+  fullyStandaloneCount: number;
+  unlinkedDuplicateSample: SsoStandaloneIdentity[];
+  fullyStandaloneSample: SsoStandaloneIdentity[];
+}
+
+export interface SsoUnbridgedTable {
+  table: string;
+  unbridgedCount: number;
+  totalRows: number;
+  sample: SsoStandaloneIdentity[];
+}
+
+export interface SsoUnbridgedLegacySection {
+  tables: SsoUnbridgedTable[];
+}
+
+export interface SsoPerAppRole {
+  app: string;
+  role: string | null;
+}
+
+export interface SsoPrivilegeConflict {
+  email: string;
+  perApp: SsoPerAppRole[];
+}
+
+export interface SsoSameEmailDifferentPrivilegeSection {
+  conflictCount: number;
+  sample: SsoPrivilegeConflict[];
+}
+
+export interface IdentityReconciliationReport {
+  generatedAt: string;
+  coverage: SsoCoverageSection;
+  annixRepGap: SsoAnnixRepGapSection;
+  teacherAssistant: SsoTeacherAssistantSection;
+  unbridgedLegacy: SsoUnbridgedLegacySection;
+  sameEmailDifferentPrivilege: SsoSameEmailDifferentPrivilegeSection;
 }
 
 export type NightSuspensionHours = 6 | 8 | 12 | null;
