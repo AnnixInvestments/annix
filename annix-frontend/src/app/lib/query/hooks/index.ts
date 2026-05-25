@@ -52,6 +52,13 @@ export {
   useAnnixCompanyProfile,
   useUpdateAnnixCompanyProfile,
 } from "./admin/useCompanyProfile";
+export {
+  useApproveDraft,
+  useCorrectDraft,
+  useEducationDrafts,
+  useIngestAdmission,
+  useRejectDraft,
+} from "./admin/useEducationIngestion";
 export { useExtractionMetricsUsage } from "./admin/useExtractionMetricsUsage";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
 export {
