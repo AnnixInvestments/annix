@@ -18,6 +18,7 @@ import { EducationRequirementVersion } from "./entities/education-requirement-ve
 import { EducationScholarship } from "./entities/education-scholarship.entity";
 import { EducationAdmissionIngestionService } from "./services/education-admission-ingestion.service";
 import { EducationCatalogAdminService } from "./services/education-catalog-admin.service";
+import { EducationDraftReviewService } from "./services/education-draft-review.service";
 
 /**
  * Admin curation of the FuturePath admissions catalog (#308). Kept SEPARATE from
@@ -45,6 +46,10 @@ import { EducationCatalogAdminService } from "./services/education-catalog-admin
     MetricsModule,
   ],
   controllers: [AdminEducationCatalogController, AdminEducationIngestionController],
-  providers: [EducationCatalogAdminService, EducationAdmissionIngestionService],
+  providers: [
+    EducationCatalogAdminService,
+    EducationAdmissionIngestionService,
+    EducationDraftReviewService,
+  ],
 })
 export class AnnixOrbitEducationAdminModule {}
