@@ -81,6 +81,7 @@ const PORTAL_ROUTE_TO_STORE: ReadonlyArray<{ prefix: string; store: PortalTokenS
   { prefix: "/admin", store: adminTokenStore },
   { prefix: "/supplier", store: supplierTokenStore },
   { prefix: "/customer", store: customerTokenStore },
+  { prefix: "/rfq", store: customerTokenStore },
   { prefix: "/annix-rep", store: annixRepTokenStore },
   { prefix: "/teacher-assistant", store: teacherAssistantTokenStore },
   { prefix: "/insights", store: insightsTokenStore },
@@ -97,8 +98,13 @@ export function anyPortalAuthHeaders(): Record<string, string> {
   if (typeof window !== "undefined") {
     const path = window.location.pathname;
     const match = PORTAL_ROUTE_TO_STORE.find((p) => path.startsWith(p.prefix));
-    if (match?.store.isAuthenticated()) {
-      return match.store.authHeaders();
+    if (match) {
+      // On a known portal surface, use ONLY that portal's token. If it isn't
+      // authenticated, send no Authorization header rather than another
+      // portal's token — a foreign token is always rejected with a 401, which
+      // is what produced the stray "session expired / please log in" prompts
+      // when moving between apps.
+      return match.store.isAuthenticated() ? match.store.authHeaders() : {};
     }
   }
   for (const store of ALL_PORTAL_TOKEN_STORES) {
