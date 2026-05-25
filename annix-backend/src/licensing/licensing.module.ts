@@ -15,6 +15,7 @@ import { LicensingService } from "./licensing.service";
 import { LicensingAdminController } from "./licensing-admin.controller";
 import { LicensingCatalogController } from "./licensing-catalog.controller";
 import { LicensingCatalogService } from "./licensing-catalog.service";
+import { LicensingSeatService } from "./licensing-seat.service";
 import { PromoCodeService } from "./promo-code.service";
 import { PromoCodeAdminController } from "./promo-code-admin.controller";
 import { TenancyService } from "./tenancy.service";
@@ -44,6 +45,7 @@ import { TenancyAdminController } from "./tenancy-admin.controller";
     FeatureRegistry,
     LicensingService,
     LicensingCatalogService,
+    LicensingSeatService,
     PromoCodeService,
     TenancyService,
     FeatureLicenseGuard,
@@ -52,6 +54,7 @@ import { TenancyAdminController } from "./tenancy-admin.controller";
     FeatureRegistry,
     LicensingService,
     LicensingCatalogService,
+    LicensingSeatService,
     PromoCodeService,
     TenancyService,
     FeatureLicenseGuard,

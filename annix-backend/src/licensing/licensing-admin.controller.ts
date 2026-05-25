@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, Req, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, ParseIntPipe, Put, Req, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiTags } from "@nestjs/swagger";
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { AuditService } from "../audit/audit.service";
@@ -8,6 +8,7 @@ import { RolesGuard } from "../auth/roles.guard";
 import { SetAddOnDto, SetTierFeaturesDto, SetTierPricingDto } from "./dto/licensing-admin.dto";
 import type { ModuleCatalog } from "./dto/module-catalog";
 import { LicensingCatalogService } from "./licensing-catalog.service";
+import { LicensingSeatService, type SeatUsage } from "./licensing-seat.service";
 
 @ApiTags("Admin Licensing")
 @Controller("admin/licensing")
@@ -17,6 +18,7 @@ import { LicensingCatalogService } from "./licensing-catalog.service";
 export class LicensingAdminController {
   constructor(
     private readonly catalogService: LicensingCatalogService,
+    private readonly seatService: LicensingSeatService,
     private readonly auditService: AuditService,
   ) {}
 
@@ -24,6 +26,15 @@ export class LicensingAdminController {
   @ApiOperation({ summary: "Effective (override-applied) catalog for editing" })
   catalog(@Param("moduleKey") moduleKey: string): Promise<ModuleCatalog> {
     return this.catalogService.effectiveCatalog(moduleKey);
+  }
+
+  @Get(":moduleKey/companies/:companyId/seats")
+  @ApiOperation({ summary: "Seat usage for a company: used vs included + overage" })
+  seats(
+    @Param("moduleKey") moduleKey: string,
+    @Param("companyId", ParseIntPipe) companyId: number,
+  ): Promise<SeatUsage> {
+    return this.seatService.seatUsage(companyId, moduleKey);
   }
 
   @Put(":moduleKey/tiers/:tierKey/pricing")
