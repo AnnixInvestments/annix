@@ -85,6 +85,7 @@ export default function AuCocsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isRegeneratingSelected, setIsRegeneratingSelected] = useState(false);
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [emailModalMode, setEmailModalMode] = useState<CocEmailMode | null>(null);
@@ -329,6 +330,55 @@ export default function AuCocsPage() {
     setRestrictSendToIds(Array.from(selectedCocIds));
     setEmailModalMode("send");
   };
+  const handleResendSelected = () => {
+    if (selectedCocIds.size === 0) return;
+    setRestrictSendToIds(Array.from(selectedCocIds));
+    setEmailModalMode("resend");
+  };
+  const handleRegenerateSelected = async () => {
+    if (selectedCocIds.size === 0) return;
+    const ids = Array.from(selectedCocIds);
+    const selected = cocs.filter((c) => ids.includes(c.id));
+    try {
+      setIsRegeneratingSelected(true);
+      let regenerated = 0;
+      const failures: string[] = [];
+      for (const [i, coc] of selected.entries()) {
+        setProgressModal({
+          visible: true,
+          title: "Regenerating Selected CoCs",
+          status: "running",
+          message: `Regenerating ${coc.cocNumber}...`,
+          current: i + 1,
+          total: selected.length,
+          currentLabel: coc.cocNumber,
+        });
+        try {
+          await auRubberApiClient.generateAuCocPdf(coc.id);
+          regenerated++;
+        } catch (err) {
+          failures.push(`${coc.cocNumber}: ${err instanceof Error ? err.message : "failed"}`);
+        }
+      }
+      const failedInfo = failures.length > 0 ? `\nFailed: ${failures.join("\n")}` : "";
+      setProgressModal({
+        visible: true,
+        title: "Regeneration Complete",
+        status: failures.length > 0 && regenerated === 0 ? "error" : "done",
+        message: `Regenerated ${regenerated} of ${selected.length} selected CoC(s).${failedInfo}`,
+      });
+      await refresh();
+    } catch (err) {
+      setProgressModal({
+        visible: true,
+        title: "Regeneration Failed",
+        status: "error",
+        message: err instanceof Error ? err.message : "An unexpected error occurred.",
+      });
+    } finally {
+      setIsRegeneratingSelected(false);
+    }
+  };
 
   const filteredCocs = sortCocs(
     cocs.filter((coc) => {
@@ -562,18 +612,46 @@ export default function AuCocsPage() {
             </button>
           )}
           {selectedCocIds.size > 0 && (
-            <button
-              onClick={handleSendSelected}
-              disabled={isBulkSending}
-              className="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
-            >
-              {isBulkSending ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Mail className="w-4 h-4 mr-2" />
-              )}
-              Send Selected ({selectedCocIds.size})
-            </button>
+            <>
+              <button
+                onClick={handleRegenerateSelected}
+                disabled={isRegeneratingSelected}
+                className="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isRegeneratingSelected ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                )}
+                {isRegeneratingSelected
+                  ? "Regenerating..."
+                  : `Regenerate Selected (${selectedCocIds.size})`}
+              </button>
+              <button
+                onClick={handleResendSelected}
+                disabled={isResending}
+                className="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-orange-500 hover:bg-orange-600 disabled:opacity-50"
+              >
+                {isResending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Mail className="w-4 h-4 mr-2" />
+                )}
+                Resend Selected ({selectedCocIds.size})
+              </button>
+              <button
+                onClick={handleSendSelected}
+                disabled={isBulkSending}
+                className="inline-flex items-center px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 disabled:opacity-50"
+              >
+                {isBulkSending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Mail className="w-4 h-4 mr-2" />
+                )}
+                Send Selected ({selectedCocIds.size})
+              </button>
+            </>
           )}
           <Link
             href="/au-rubber/portal/au-cocs/new"
