@@ -1104,6 +1104,7 @@ class AdminApiClient {
     candidatesTotal: number;
     candidatesEmbedded: number;
     running: boolean;
+    lastError: string | null;
   }> {
     return this.request("/admin/annix-orbit/job-market/embeddings/coverage");
   }

@@ -33,6 +33,8 @@ export class EmbeddingService {
   private readonly logger = new Logger(EmbeddingService.name);
   private readonly apiKey: string;
   private backfillRunning = false;
+  private lastEmbedError: string | null = null;
+  private lastBackfillError: string | null = null;
 
   constructor(
     @InjectRepository(Candidate)
@@ -51,6 +53,7 @@ export class EmbeddingService {
 
   async generateEmbedding(text: string): Promise<number[] | null> {
     if (!this.apiKey) {
+      this.lastEmbedError = "GEMINI_API_KEY not set";
       this.logger.warn("GEMINI_API_KEY not set, skipping embedding generation");
       return null;
     }
@@ -61,37 +64,49 @@ export class EmbeddingService {
 
     const startTime = nowMillis();
 
-    const response = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: `models/${GEMINI_EMBEDDING_MODEL}`,
-        content: {
-          parts: [{ text: truncatedText }],
-        },
-        outputDimensionality: EMBEDDING_DIMENSIONS,
-      }),
-    });
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: `models/${GEMINI_EMBEDDING_MODEL}`,
+          content: {
+            parts: [{ text: truncatedText }],
+          },
+          outputDimensionality: EMBEDDING_DIMENSIONS,
+        }),
+      });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      this.logger.error(`Gemini embedding API error ${response.status}: ${errorText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        this.lastEmbedError = `Gemini ${response.status}: ${errorText.slice(0, 300)}`;
+        this.logger.error(`Gemini embedding API error ${response.status}: ${errorText}`);
+        return null;
+      }
+
+      const data: GeminiEmbeddingResponse = await response.json();
+      const processingTimeMs = nowMillis() - startTime;
+
+      this.aiUsageService.log({
+        app: AiApp.ANNIX_ORBIT,
+        actionType: "embedding-generation",
+        provider: AiProvider.GEMINI,
+        model: GEMINI_EMBEDDING_MODEL,
+        tokensUsed: Math.ceil(truncatedText.length / 4),
+        processingTimeMs,
+      });
+
+      const values = data.embedding?.values ?? null;
+      if (!values || values.length === 0) {
+        this.lastEmbedError = `Gemini returned no embedding values (keys: ${Object.keys(data).join(",")})`;
+        return null;
+      }
+      return values;
+    } catch (err) {
+      this.lastEmbedError = `Embedding request failed: ${err instanceof Error ? err.message : String(err)}`;
+      this.logger.error(this.lastEmbedError);
       return null;
     }
-
-    const data: GeminiEmbeddingResponse = await response.json();
-    const processingTimeMs = nowMillis() - startTime;
-
-    this.aiUsageService.log({
-      app: AiApp.ANNIX_ORBIT,
-      actionType: "embedding-generation",
-      provider: AiProvider.GEMINI,
-      model: GEMINI_EMBEDDING_MODEL,
-      tokensUsed: Math.ceil(truncatedText.length / 4),
-      processingTimeMs,
-    });
-
-    return data.embedding.values;
   }
 
   async candidateEmbeddingText(candidate: Candidate): Promise<string> {
@@ -273,6 +288,7 @@ export class EmbeddingService {
     candidatesTotal: number;
     candidatesEmbedded: number;
     running: boolean;
+    lastError: string | null;
   }> {
     const [jobs] = await this.externalJobRepo.query(
       "SELECT COUNT(*)::int AS total, COUNT(embedding)::int AS embedded FROM cv_assistant_external_jobs",
@@ -286,6 +302,7 @@ export class EmbeddingService {
       candidatesTotal: Number(candidates.total),
       candidatesEmbedded: Number(candidates.embedded),
       running: this.backfillRunning,
+      lastError: this.lastBackfillError ?? this.lastEmbedError,
     };
   }
 
@@ -294,6 +311,8 @@ export class EmbeddingService {
       return { started: false, alreadyRunning: true };
     }
     this.backfillRunning = true;
+    this.lastBackfillError = null;
+    this.lastEmbedError = null;
     void this.extractionMetricService
       .time("orbit-embedding-backfill", "all", async () => {
         const candidates = await this.backfillCandidateEmbeddings();
@@ -303,11 +322,10 @@ export class EmbeddingService {
         );
         return jobs.processed + candidates.processed;
       })
-      .catch((err) =>
-        this.logger.error(
-          `On-demand embedding backfill failed: ${err instanceof Error ? err.message : String(err)}`,
-        ),
-      )
+      .catch((err) => {
+        this.lastBackfillError = err instanceof Error ? err.message : String(err);
+        this.logger.error(`On-demand embedding backfill failed: ${this.lastBackfillError}`);
+      })
       .finally(() => {
         this.backfillRunning = false;
       });

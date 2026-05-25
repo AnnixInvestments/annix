@@ -129,9 +129,9 @@ export default function AdminOrbitJobMarketPage() {
       hideExtraction();
       const finalCoverage = await adminApiClient.orbitEmbeddingCoverage().catch(() => null);
       if (finalCoverage) {
-        setBackfillSummary(
-          `Embedded ${finalCoverage.jobsEmbedded}/${finalCoverage.jobsTotal} jobs and ${finalCoverage.candidatesEmbedded}/${finalCoverage.candidatesTotal} CVs.`,
-        );
+        const lastError = finalCoverage.lastError;
+        const base = `Embedded ${finalCoverage.jobsEmbedded}/${finalCoverage.jobsTotal} jobs and ${finalCoverage.candidatesEmbedded}/${finalCoverage.candidatesTotal} CVs.`;
+        setBackfillSummary(lastError ? `${base} Last error: ${lastError}` : base);
       } else {
         setBackfillSummary("Embedding backfill finished.");
       }
