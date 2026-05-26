@@ -73,10 +73,6 @@ export class DpsaCircularService {
   @Cron("0 7 * * 1", { name: "annix-orbit:dpsa-weekly" })
   async pollDpsa(): Promise<void> {
     if (!isAnnixOrbitCronEnabled()) return;
-    if (process.env.DPSA_INGESTION_ENABLED !== "true") {
-      this.logger.debug("DPSA ingestion disabled (DPSA_INGESTION_ENABLED not 'true')");
-      return;
-    }
     const source = await this.sourceRepo.findOne({
       where: { provider: JobSourceProvider.DPSA, enabled: true },
     });

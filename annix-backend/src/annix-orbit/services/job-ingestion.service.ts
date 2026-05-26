@@ -422,11 +422,6 @@ export class JobIngestionService {
     source: JobMarketSource,
     options: { vetInline: boolean },
   ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
-    if (process.env.DPSA_INGESTION_ENABLED !== "true") {
-      this.logger.warn("DPSA ingestion disabled — set DPSA_INGESTION_ENABLED=true to enable");
-      return { ingested: 0, skipped: 0, savedIds: [] };
-    }
-
     const result = await this.dpsaCircularService.ingestLatestCircular(source);
 
     if (options.vetInline && result.savedIds.length > 0) {
