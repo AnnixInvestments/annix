@@ -42,6 +42,14 @@ export class JobMarketSource {
   @Column({ name: "categories", type: "jsonb", default: "[]" })
   categories: string[];
 
+  /**
+   * Seeker match-tiers (soft/medium/hard) this source's jobs are visible to.
+   * Empty/null = visible to all tiers. Drives tier-gated source visibility in
+   * the seeker job feed (#305).
+   */
+  @Column({ name: "visible_tiers", type: "jsonb", nullable: true })
+  visibleTiers: string[] | null;
+
   @Column({ type: "boolean", default: true })
   enabled: boolean;
 

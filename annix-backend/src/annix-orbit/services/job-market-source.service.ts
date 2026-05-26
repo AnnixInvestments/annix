@@ -19,6 +19,7 @@ export class JobMarketSourceService {
       apiKeyEncrypted: dto.apiKey ?? null,
       countryCodes: dto.countryCodes ?? ["za"],
       categories: dto.categories ?? [],
+      visibleTiers: dto.visibleTiers ?? null,
       ingestionIntervalHours: dto.ingestionIntervalHours ?? 6,
       companyId,
     });
@@ -50,6 +51,7 @@ export class JobMarketSourceService {
     if (dto.apiKey != null) source.apiKeyEncrypted = dto.apiKey;
     if (dto.countryCodes != null) source.countryCodes = dto.countryCodes;
     if (dto.categories != null) source.categories = dto.categories;
+    if (dto.visibleTiers != null) source.visibleTiers = dto.visibleTiers;
     if (dto.enabled != null) source.enabled = dto.enabled;
     if (dto.ingestionIntervalHours != null)
       source.ingestionIntervalHours = dto.ingestionIntervalHours;
@@ -70,6 +72,7 @@ export class JobMarketSourceService {
       apiKeyEncrypted: dto.apiKey ?? null,
       countryCodes: dto.countryCodes ?? ["za"],
       categories: dto.categories ?? [],
+      visibleTiers: dto.visibleTiers ?? null,
       ingestionIntervalHours: dto.ingestionIntervalHours ?? 6,
       companyId: null,
     });
@@ -100,6 +103,7 @@ export class JobMarketSourceService {
     if (dto.apiKey != null) source.apiKeyEncrypted = dto.apiKey;
     if (dto.countryCodes != null) source.countryCodes = dto.countryCodes;
     if (dto.categories != null) source.categories = dto.categories;
+    if (dto.visibleTiers != null) source.visibleTiers = dto.visibleTiers;
     if (dto.enabled != null) source.enabled = dto.enabled;
     if (dto.ingestionIntervalHours != null)
       source.ingestionIntervalHours = dto.ingestionIntervalHours;

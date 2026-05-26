@@ -26,9 +26,14 @@ export class CreateJobMarketSourceDto {
   @IsOptional()
   categories?: string[];
 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  visibleTiers?: string[];
+
   @IsInt()
   @Min(1)
-  @Max(24)
+  @Max(168)
   @IsOptional()
   ingestionIntervalHours?: number;
 }
@@ -56,13 +61,18 @@ export class UpdateJobMarketSourceDto {
   @IsOptional()
   categories?: string[];
 
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  visibleTiers?: string[];
+
   @IsBoolean()
   @IsOptional()
   enabled?: boolean;
 
   @IsInt()
   @Min(1)
-  @Max(24)
+  @Max(168)
   @IsOptional()
   ingestionIntervalHours?: number;
 }

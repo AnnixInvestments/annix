@@ -354,8 +354,24 @@ export class SeekerJobFeedService {
     const sources = sourceIds.length > 0 ? await this.sourceRepo.findByIds(sourceIds) : [];
     const sourceById = new Map(sources.map((s) => [s.id, s]));
 
+    // Per-source tier gating: a source's jobs only show to seekers whose match-
+    // tier is in the source's visibleTiers (null/empty = visible to all). Use the
+    // seeker's highest tier across their candidates.
+    const tierRank: Record<MatchTier, number> = { soft: 0, medium: 1, hard: 2 };
+    const seekerTier = candidates.reduce<MatchTier>((best, candidate) => {
+      const tier = isMatchTier(candidate.matchTier) ? candidate.matchTier : DEFAULT_MATCH_TIER;
+      return tierRank[tier] > tierRank[best] ? tier : best;
+    }, DEFAULT_MATCH_TIER);
+    const sourceVisibleToSeeker = (sourceId: number): boolean => {
+      const source = sourceById.get(sourceId);
+      const tiers = source?.visibleTiers;
+      if (!tiers || tiers.length === 0) return true;
+      return tiers.includes(seekerTier);
+    };
+
     const bestByJob = new Map<number, CandidateJobMatch & { externalJob: ExternalJob }>();
     flat.forEach((match) => {
+      if (!sourceVisibleToSeeker(match.externalJob.sourceId)) return;
       const jobId = match.externalJobId;
       const existing = bestByJob.get(jobId);
       if (!existing || match.overallScore > existing.overallScore) {

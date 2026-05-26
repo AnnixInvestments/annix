@@ -5,7 +5,10 @@ import Link from "next/link";
 import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { adminApiClient } from "@/app/lib/api/adminApi";
-import type { CreateJobMarketSourceDto } from "@/app/lib/api/annixOrbitApi";
+import type {
+  CreateJobMarketSourceDto,
+  JobSourceCredentialField,
+} from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import {
@@ -20,6 +23,7 @@ import {
 import { adminKeys } from "@/app/lib/query/keys/adminKeys";
 import { AddSourceForm } from "./components/AddSourceForm";
 import { FindDuplicatesModal } from "./components/FindDuplicatesModal";
+import { IngestionScheduleControl } from "./components/IngestionScheduleControl";
 import { JobCard } from "./components/JobCard";
 import { SourceCard } from "./components/SourceCard";
 
@@ -71,6 +75,10 @@ export default function AdminOrbitJobMarketPage() {
   const stats = statsQuery.data;
   const statsSources = stats ? stats.sources : [];
   const jobCountBySource = new Map(statsSources.map((s) => [s.id, s.jobCount]));
+  const providersData = providersQuery.data;
+  const credentialFieldsByProvider = new Map<string, JobSourceCredentialField[]>(
+    (providersData ?? []).map((p) => [p.id, p.credentialFields]),
+  );
   const sourcesData = sourcesQuery.data;
   const sources = sourcesData ?? [];
   const jobsData = jobsQuery.data;
@@ -395,6 +403,8 @@ export default function AdminOrbitJobMarketPage() {
             />
           )}
 
+          <IngestionScheduleControl />
+
           {sources.length === 0 ? (
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
               <p className="text-gray-500">
@@ -410,9 +420,12 @@ export default function AdminOrbitJobMarketPage() {
                   source={source}
                   ingestionStatus={ingestionStatus[source.id]}
                   jobCount={jobCountBySource.get(source.id)}
+                  credentialFields={credentialFieldsByProvider.get(source.provider)}
+                  saving={updateSource.isPending}
                   onTrigger={() => handleTriggerIngestion(source.id)}
                   onToggle={() => handleToggleSource(source)}
                   onDelete={() => handleDeleteSource(source.id)}
+                  onSave={(data) => updateSource.mutate({ id: source.id, data })}
                 />
               ))}
             </div>

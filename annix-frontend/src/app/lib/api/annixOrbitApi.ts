@@ -332,6 +332,7 @@ export interface JobMarketSource {
   requestsToday: number;
   lastIngestedAt: string | null;
   ingestionIntervalHours: number;
+  visibleTiers: string[] | null;
   requiresVetting: boolean;
   companyId: number | null;
   createdAt: string;
@@ -366,6 +367,7 @@ export interface CreateJobMarketSourceDto {
   apiKey?: string | null;
   countryCodes?: string[];
   categories?: string[];
+  visibleTiers?: string[];
   ingestionIntervalHours?: number;
 }
 
@@ -375,6 +377,7 @@ export interface UpdateJobMarketSourceDto {
   apiKey?: string;
   countryCodes?: string[];
   categories?: string[];
+  visibleTiers?: string[];
   enabled?: boolean;
   ingestionIntervalHours?: number;
 }
