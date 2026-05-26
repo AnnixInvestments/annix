@@ -100,6 +100,13 @@ export class RubberAuCocReadinessService {
       // that provides the batches to be APPROVED (QC sign-off) — never email a
       // customer a certificate built from raw, unapproved extracted data.
       result = make(false, AuCocReadinessStatus.WAITING_FOR_APPROVAL, ["Supplier CoC approval"]);
+    } else if (auCoc.status !== AuCocStatus.DRAFT) {
+      // Sources are all present AND the cert has already been produced/sent — it
+      // is done, not "ready to generate". Keep the terminal AUTO_GENERATED badge
+      // so a delivered cert never reads "Ready": a readiness re-check used to
+      // downgrade already-sent certs back to READY_FOR_GENERATION, leaving a
+      // confusing "Sent / Ready" pair on the list.
+      result = make(true, AuCocReadinessStatus.AUTO_GENERATED, []);
     } else {
       result = make(true, AuCocReadinessStatus.READY_FOR_GENERATION, []);
       this.logger.log(

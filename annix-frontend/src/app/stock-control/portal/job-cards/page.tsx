@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import type { JobCard } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
   useCreateJobCard,
@@ -31,8 +32,122 @@ type SortKey =
   | "jobName"
   | "customerName"
   | "status"
+  | "workflow"
+  | "quality"
   | "createdAt";
+// Keys whose values come straight off the job card and sort as text.
+type StringSortKey = Exclude<SortKey, "workflow" | "quality">;
 type SortDir = "asc" | "desc";
+
+type DataBookStatus = { exists: boolean; isStale: boolean; certificateCount: number };
+
+// Workflow progression order — duplicate statuses (legacy + current) share a rank
+// so rows group by where they are in the pipeline rather than alphabetically.
+const WORKFLOW_SORT_RANK: Record<string, number> = {
+  draft: 0,
+  document_upload: 1,
+  document_uploaded: 1,
+  admin_approval: 1,
+  admin_approved: 2,
+  manager_approval: 2,
+  manager_approved: 3,
+  quality_check: 3,
+  requisition: 3,
+  requisition_sent: 3,
+  stock_allocation: 3,
+  stock_allocated: 3,
+  manager_final: 3,
+  ready: 4,
+  ready_for_dispatch: 4,
+  dispatched: 4,
+  file_closed: 5,
+};
+
+const getWorkflowRank = (job: JobCard): number => {
+  const effective = job.effectiveWorkflowStatus;
+  const workflow = job.workflowStatus;
+  const fallback = job.status;
+  const status = effective || workflow || fallback || "";
+  const rank = WORKFLOW_SORT_RANK[status];
+  return rank ?? -1;
+};
+
+// Compiled (3) > Stale (2) > certs only (1) > nothing (0), tie-broken by cert count.
+const getQualityRank = (status: DataBookStatus | undefined): number => {
+  if (!status) return 0;
+  const base = status.exists && !status.isStale ? 3 : status.exists ? 2 : 1;
+  return base * 1000 + Math.min(status.certificateCount, 999);
+};
+
+const getSortString = (job: JobCard, key: StringSortKey): string => {
+  const raw = job[key];
+  return (raw ? raw : "").toString().toLowerCase();
+};
+
+const ASC_PATH =
+  "M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z";
+const DESC_PATH =
+  "M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z";
+
+function SortIcon({ active, dir }: { active: boolean; dir: SortDir }) {
+  if (active) {
+    return (
+      <svg
+        className="h-3 w-3 text-teal-600"
+        fill="currentColor"
+        viewBox="0 0 20 20"
+        aria-hidden="true"
+      >
+        <path d={dir === "asc" ? ASC_PATH : DESC_PATH} />
+      </svg>
+    );
+  }
+  // Faint up/down chevrons that show every column can be sorted ("spooled").
+  return (
+    <svg
+      className="h-3 w-3 text-gray-300 group-hover:text-gray-500"
+      fill="currentColor"
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+    >
+      <path d="M6 8l4-4 4 4H6z" />
+      <path d="M6 12l4 4 4-4H6z" />
+    </svg>
+  );
+}
+
+function SortableHeader({
+  label,
+  columnKey,
+  activeKey,
+  dir,
+  onSort,
+  className,
+}: {
+  label: string;
+  columnKey: SortKey;
+  activeKey: SortKey | null;
+  dir: SortDir;
+  onSort: (key: SortKey) => void;
+  className: string;
+}) {
+  const active = activeKey === columnKey;
+  return (
+    <th
+      scope="col"
+      onClick={() => onSort(columnKey)}
+      aria-sort={active ? (dir === "asc" ? "ascending" : "descending") : "none"}
+      className={`group px-3 py-3 text-left text-xs font-medium uppercase tracking-wider cursor-pointer select-none ${
+        active ? "text-gray-700" : "text-gray-500 hover:text-gray-700"
+      } ${className}`}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        <SortIcon active={active} dir={dir} />
+      </span>
+    </th>
+  );
+}
 
 export default function JobCardsPage() {
   const router = useRouter();
@@ -87,41 +202,49 @@ export default function JobCardsPage() {
   const queryClient = useQueryClient();
   const { data: rawJobCards = [], isLoading, error } = useJobCards(activeTab);
 
-  const jobCards = useMemo(() => {
+  const filteredJobCards = useMemo(() => {
     const lowerQuery = searchQuery.toLowerCase().trim();
-    const filtered = lowerQuery
-      ? rawJobCards.filter((jc) => {
-          const searchable = [
-            jc.jobNumber,
-            jc.jtDnNumber,
-            jc.jcNumber,
-            jc.pageNumber,
-            jc.jobName,
-            jc.customerName,
-            jc.status,
-            formatDateZA(jc.createdAt),
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-          return searchable.includes(lowerQuery);
-        })
-      : rawJobCards;
+    if (!lowerQuery) return rawJobCards;
+    return rawJobCards.filter((jc) => {
+      const searchable = [
+        jc.jobNumber,
+        jc.jtDnNumber,
+        jc.jcNumber,
+        jc.pageNumber,
+        jc.jobName,
+        jc.customerName,
+        jc.status,
+        formatDateZA(jc.createdAt),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+      return searchable.includes(lowerQuery);
+    });
+  }, [rawJobCards, searchQuery]);
 
-    if (!sortKey) return filtered;
+  // Derive ids from the filtered (not sorted) list and sort them numerically so the
+  // data-book query key — which spreads the ids — stays stable when rows are re-spooled.
+  const jobCardIds = useMemo(
+    () => filteredJobCards.map((jc) => jc.id).sort((a, b) => a - b),
+    [filteredJobCards],
+  );
+  const { data: dataBookStatuses = {} } = useDataBookStatuses(jobCardIds);
 
-    return [...filtered].sort((a, b) => {
-      const aRaw = a[sortKey];
-      const bRaw = b[sortKey];
-      const aVal = (aRaw ? aRaw : "").toString().toLowerCase();
-      const bVal = (bRaw ? bRaw : "").toString().toLowerCase();
-      const cmp = aVal.localeCompare(bVal);
+  const jobCards = useMemo(() => {
+    if (!sortKey) return filteredJobCards;
+    return [...filteredJobCards].sort((a, b) => {
+      let cmp: number;
+      if (sortKey === "workflow") {
+        cmp = getWorkflowRank(a) - getWorkflowRank(b);
+      } else if (sortKey === "quality") {
+        cmp = getQualityRank(dataBookStatuses[a.id]) - getQualityRank(dataBookStatuses[b.id]);
+      } else {
+        cmp = getSortString(a, sortKey).localeCompare(getSortString(b, sortKey));
+      }
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [rawJobCards, searchQuery, sortKey, sortDir]);
-
-  const jobCardIds = useMemo(() => jobCards.map((jc) => jc.id), [jobCards]);
-  const { data: dataBookStatuses = {} } = useDataBookStatuses(jobCardIds);
+  }, [filteredJobCards, sortKey, sortDir, dataBookStatuses]);
   const createJobCard = useCreateJobCard();
   const deleteJobCard = useDeleteJobCard();
   const deduplicateMutation = useDeduplicateJobCards();
@@ -555,144 +678,78 @@ export default function JobCardsPage() {
           <table className="hidden sm:table w-full table-fixed divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("jobNumber")}
-                  className="w-[15%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Job No.
-                    {sortKey === "jobNumber" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("jcNumber")}
-                  className="hidden lg:table-cell w-[8%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    JC No.
-                    {sortKey === "jcNumber" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("pageNumber")}
-                  className="hidden xl:table-cell w-[6%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Page
-                    {sortKey === "pageNumber" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("jobName")}
-                  className="w-[20%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Job Name
-                    {sortKey === "jobName" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("customerName")}
-                  className="hidden md:table-cell w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Customer
-                    {sortKey === "customerName" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("status")}
-                  className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Status
-                    {sortKey === "status" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
-                <th
-                  scope="col"
-                  className="hidden xl:table-cell w-[14%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Workflow
-                </th>
-                <th
-                  scope="col"
-                  className="hidden lg:table-cell w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                >
-                  Quality
-                </th>
-                <th
-                  scope="col"
-                  onClick={() => toggleSort("createdAt")}
-                  className="w-[10%] px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer select-none hover:text-gray-700"
-                >
-                  <span className="inline-flex items-center gap-1">
-                    Created
-                    {sortKey === "createdAt" ? (
-                      <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                        {sortDir === "asc" ? (
-                          <path d="M5.293 9.707a1 1 0 010-1.414l4-4a1 1 0 011.414 0l4 4a1 1 0 01-1.414 1.414L10 6.414l-3.293 3.293a1 1 0 01-1.414 0z" />
-                        ) : (
-                          <path d="M14.707 10.293a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 111.414-1.414L10 13.586l3.293-3.293a1 1 0 011.414 0z" />
-                        )}
-                      </svg>
-                    ) : null}
-                  </span>
-                </th>
+                <SortableHeader
+                  label="Job No."
+                  columnKey="jobNumber"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="w-[15%]"
+                />
+                <SortableHeader
+                  label="JC No."
+                  columnKey="jcNumber"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="hidden lg:table-cell w-[8%]"
+                />
+                <SortableHeader
+                  label="Page"
+                  columnKey="pageNumber"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="hidden xl:table-cell w-[6%]"
+                />
+                <SortableHeader
+                  label="Job Name"
+                  columnKey="jobName"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="w-[20%]"
+                />
+                <SortableHeader
+                  label="Customer"
+                  columnKey="customerName"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="hidden md:table-cell w-[14%]"
+                />
+                <SortableHeader
+                  label="Status"
+                  columnKey="status"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="w-[10%]"
+                />
+                <SortableHeader
+                  label="Workflow"
+                  columnKey="workflow"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="hidden xl:table-cell w-[14%]"
+                />
+                <SortableHeader
+                  label="Quality"
+                  columnKey="quality"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="hidden lg:table-cell w-[10%]"
+                />
+                <SortableHeader
+                  label="Created"
+                  columnKey="createdAt"
+                  activeKey={sortKey}
+                  dir={sortDir}
+                  onSort={toggleSort}
+                  className="w-[10%]"
+                />
                 <th scope="col" className="w-[3%] relative px-3 py-3">
                   <span className="sr-only">Actions</span>
                 </th>

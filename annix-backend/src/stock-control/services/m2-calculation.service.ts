@@ -42,12 +42,17 @@ interface RegexParseResult {
   fittingDimensionsB: number | null;
   cfDimensionMm: number | null;
   branchDiameterMm: number | null;
+  branchDiametersMm: number[];
+  smallEndOdMm: number | null;
 }
 
-const REDUCING_NB_PATTERN = /(\d+)\s*x\s*(\d+)\s*NB/i;
-const NB_PATTERN = /(\d+)\s*NB/i;
+// Captures the full leading bore list so "350x80x50NB" yields [350, 80, 50] and the
+// FIRST entry is taken as the main run (not the last pair, the old REDUCING_NB bug).
+const BORE_LIST_PATTERN = /(\d+(?:\s*[xX]\s*\d+)*)\s*NB/i;
 const NB_PREFIX_PATTERN = /\bNB\s*(\d+)/i;
 const BARE_REDUCING_PATTERN = /^(\d{2,4})\s*x\s*\d{2,4}\b/;
+// Explicit small-end outside diameter for fabricated reducers, e.g. "180 OD", "228 O/D".
+const SMALL_OD_PATTERN = /(\d{2,4})\s*O\s*\/?\s*D\b/i;
 const LG_PATTERN = /(\d+)\s*LG/i;
 const LG_METERS_PATTERN = /(\d+\.\d+)\s*Lg\b/i;
 const MM_PATTERN = /(\d+)\s*mm\b/i;
@@ -107,6 +112,12 @@ const ITEM_TYPE_PATTERNS: { pattern: RegExp; type: string }[] = [
   { pattern: /\bBEND\b/i, type: "bend" },
   { pattern: /\bELBOW\b/i, type: "bend" },
   { pattern: /\bREDUCER\b/i, type: "reducer" },
+  // Shop abbreviations: "CON RED", "ECC RED", "ECC/REDUCERS", "OBLIQUE REDUCER".
+  // Excludes reducing tees ("RED/TEE", "RED TEE") which must stay type "tee".
+  {
+    pattern: /\b(?:CONC(?:ENTRIC)?|CON|ECC(?:ENTRIC)?|OBLIQUE)[\s./]*RED(?:UCER|UCERS|UCING)?\b/i,
+    type: "reducer",
+  },
   { pattern: /\bTEE\b/i, type: "tee" },
   { pattern: /\bT[- ]?PIECE\b/i, type: "tee" },
   { pattern: /\bLATERAL\b/i, type: "lateral" },
@@ -121,6 +132,9 @@ const FITTING_TYPE_PATTERNS: { pattern: RegExp; fittingType: string }[] = [
   { pattern: /\bRED(?:UCING)?[\s/]+TEE\b/i, fittingType: "reducing_tee" },
   { pattern: /\bCONCENTRIC\s+REDUCER\b/i, fittingType: "concentric_reducer" },
   { pattern: /\bECCENTRIC\s+REDUCER\b/i, fittingType: "eccentric_reducer" },
+  { pattern: /\bCONC?(?:ENTRIC)?[\s./]*RED(?:UCER|UCERS)?\b/i, fittingType: "concentric_reducer" },
+  { pattern: /\bECC(?:ENTRIC)?[\s./]*RED(?:UCER|UCERS)?\b/i, fittingType: "eccentric_reducer" },
+  { pattern: /\bOBLIQUE[\s./]*RED(?:UCER)?\b/i, fittingType: "eccentric_reducer" },
   { pattern: /\bREDUCER\b/i, fittingType: "reducer" },
   { pattern: /\bLATERAL\b/i, fittingType: "lateral" },
   { pattern: /\bSHORT\s+EQUAL\s+TEE\b/i, fittingType: "equal_tee" },
@@ -147,21 +161,30 @@ export class M2CalculationService {
   }
 
   private regexParse(description: string): RegexParseResult {
-    const reducingMatch = description.match(REDUCING_NB_PATTERN);
-    const nbMatch = description.match(NB_PATTERN);
+    const boreListMatch = description.match(BORE_LIST_PATTERN);
+    const bores = boreListMatch
+      ? boreListMatch[1]
+          .split(/[xX]/)
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => Number.isFinite(n))
+      : [];
     const nbPrefixMatch = description.match(NB_PREFIX_PATTERN);
     const bareReducingMatch = description.match(BARE_REDUCING_PATTERN);
-    const diameterMm = reducingMatch
-      ? parseInt(reducingMatch[1], 10)
-      : nbMatch
-        ? parseInt(nbMatch[1], 10)
+    const diameterMm =
+      bores.length > 0
+        ? bores[0]
         : nbPrefixMatch
           ? parseInt(nbPrefixMatch[1], 10)
           : bareReducingMatch
             ? parseInt(bareReducingMatch[1], 10)
             : null;
 
-    const branchDiameterMm = reducingMatch ? parseInt(reducingMatch[2], 10) : null;
+    // First branch / small-end bore (kept singular for existing tee & reducer logic);
+    // any further branches are carried in branchDiametersMm for multi-branch fittings.
+    const branchDiameterMm = bores.length > 1 ? bores[1] : null;
+    const branchDiametersMm = bores.slice(1);
+    const smallOdMatch = description.match(SMALL_OD_PATTERN);
+    const smallEndOdMm = smallOdMatch ? parseInt(smallOdMatch[1], 10) : null;
 
     const itemType = ITEM_TYPE_PATTERNS.find((it) => it.pattern.test(description))?.type ?? null;
 
@@ -239,6 +262,8 @@ export class M2CalculationService {
       fittingDimensionsB,
       cfDimensionMm,
       branchDiameterMm,
+      branchDiametersMm,
+      smallEndOdMm,
     };
   }
 
@@ -301,6 +326,12 @@ export class M2CalculationService {
   }
 
   private parseFlangeCount(description: string): number {
+    // Numeric "flanged N ends" codes: F2E, F3E, F4E ... (F4E lateral = 4 flanged ends).
+    const fneMatch = description.match(/\bF([1-9])E\b/i);
+    if (fneMatch) {
+      return parseInt(fneMatch[1], 10);
+    }
+
     const comboMatch =
       description.match(FLANGE_COUNT_PATTERNS[0].pattern) ||
       description.match(FLANGE_COUNT_PATTERNS[1].pattern);
@@ -425,8 +456,7 @@ export class M2CalculationService {
     fittingType: string | null,
     dimA: number | null,
     dimB: number | null,
-    branchOdMm: number | null,
-    branchIdMm: number | null,
+    branches: Array<{ odMm: number; idMm: number }>,
   ): { external: number; internal: number } {
     const armA = dimA ? dimA / 1000 : odMm / 1000;
     const armB = dimB ? dimB / 1000 : odMm / 1000;
@@ -434,18 +464,21 @@ export class M2CalculationService {
     const mainRunExternal = Math.PI * (odMm / 1000) * (armA + armB);
     const mainRunInternal = Math.PI * (idMm / 1000) * (armA + armB);
 
-    const isReducing = fittingType === "unequal_tee" || fittingType === "reducing_tee";
-    const effectiveBranchOd = isReducing && branchOdMm ? branchOdMm : odMm;
-    const effectiveBranchId = isReducing && branchIdMm ? branchIdMm : idMm;
+    const branchLengthM = dimB ? dimB / 1000 : odMm / 1000;
+    let branchExternal = 0;
+    let branchInternal = 0;
 
-    const branchLengthM = dimB ? dimB / 1000 : effectiveBranchOd / 1000;
-    let branchExternal: number;
-    let branchInternal: number;
-
-    if (isReducing && branchOdMm) {
-      branchExternal = Math.PI * (effectiveBranchOd / 1000) * branchLengthM;
-      branchInternal = Math.PI * (effectiveBranchId / 1000) * branchLengthM;
+    if (branches.length > 0) {
+      // Each parsed branch bore is its own cylinder — handles multi-branch laterals /
+      // manifolds (e.g. 350x80x50) and reducing tees with a different-sized branch.
+      for (const b of branches) {
+        branchExternal += Math.PI * (b.odMm / 1000) * branchLengthM;
+        branchInternal += Math.PI * (b.idMm / 1000) * branchLengthM;
+      }
     } else {
+      // Equal tee / single-bore lateral: branch is the same size as the run, approximated
+      // with the Steinmetz saddle factor.
+      const isReducing = fittingType === "unequal_tee" || fittingType === "reducing_tee";
       const branchFactor = isReducing ? 2.0 : STEINMETZ_FACTOR_EQUAL_TEE;
       branchExternal = (branchFactor * (odMm / 1000) * (odMm / 1000)) / 4;
       branchInternal = (branchFactor * (idMm / 1000) * (idMm / 1000)) / 4;
@@ -735,30 +768,28 @@ export class M2CalculationService {
         const dimA = regex.fittingDimensionsA || (isSingleCfTee ? regex.cfDimensionMm! * 2 : null);
         const dimB = regex.fittingDimensionsB || (isSingleCfTee ? regex.cfDimensionMm! : null);
 
-        let branchOdMm: number | null = null;
-        let branchIdMm: number | null = null;
-        if (regex.branchDiameterMm) {
-          const branchOdResult = await this.nbOdLookup.nbToOd(regex.branchDiameterMm);
-          branchOdMm = branchOdResult.outsideDiameterMm;
-          const branchWt = await this.resolveWallThickness(null, schedule, regex.branchDiameterMm);
-          branchIdMm = branchWt > 0 ? branchOdMm - 2 * branchWt : branchOdMm * 0.9;
+        const branches: Array<{ odMm: number; idMm: number }> = [];
+        for (const branchNb of regex.branchDiametersMm) {
+          const branchOdResult = await this.nbOdLookup.nbToOd(branchNb);
+          const branchOdMm = branchOdResult.outsideDiameterMm;
+          const branchWt = await this.resolveWallThickness(null, schedule, branchNb);
+          const branchIdMm = branchWt > 0 ? branchOdMm - 2 * branchWt : branchOdMm * 0.9;
+          branches.push({ odMm: branchOdMm, idMm: branchIdMm });
         }
 
-        const teeResult = this.calculateTeeM2(
-          odMm,
-          idMm,
-          regex.fittingType,
-          dimA,
-          dimB,
-          branchOdMm,
-          branchIdMm,
-        );
+        const teeResult = this.calculateTeeM2(odMm, idMm, regex.fittingType, dimA, dimB, branches);
         externalM2 = teeResult.external;
         internalM2 = teeResult.internal;
       } else if (itemType === "reducer") {
         let smallEndOdMm: number | null = null;
         let smallEndIdMm: number | null = null;
-        if (regex.branchDiameterMm) {
+        if (regex.smallEndOdMm) {
+          // Explicit fabricated small-end OD in mm (e.g. "180 OD"); estimate its wall
+          // from the main run's wall thickness.
+          smallEndOdMm = regex.smallEndOdMm;
+          smallEndIdMm =
+            wallThicknessMm > 0 ? smallEndOdMm - 2 * wallThicknessMm : smallEndOdMm * 0.9;
+        } else if (regex.branchDiameterMm) {
           const branchOdResult = await this.nbOdLookup.nbToOd(regex.branchDiameterMm);
           smallEndOdMm = branchOdResult.outsideDiameterMm;
           const branchWt = await this.resolveWallThickness(null, schedule, regex.branchDiameterMm);

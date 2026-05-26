@@ -514,6 +514,7 @@ export class JobCardsController {
       quantity?: number;
       jtNo?: string;
       m2?: number;
+      liningM2?: number;
     },
   ) {
     const jobCard = await this.jobCardService.findById(req.user.companyId, id);
@@ -535,6 +536,7 @@ export class JobCardsController {
       quantity: body.quantity || null,
       jtNo: body.jtNo || null,
       m2: body.m2 || null,
+      liningM2: body.liningM2 || null,
       sortOrder: maxSort + 1,
     });
 

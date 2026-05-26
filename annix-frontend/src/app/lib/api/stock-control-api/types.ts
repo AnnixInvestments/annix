@@ -324,6 +324,7 @@ export interface JobCardLineItem {
   quantity: number | null;
   jtNo: string | null;
   m2: number | null;
+  liningM2: number | null;
   notes: string | null;
   sortOrder: number;
   companyId: number;

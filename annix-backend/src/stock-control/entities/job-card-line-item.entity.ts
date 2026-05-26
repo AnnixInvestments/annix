@@ -41,8 +41,13 @@ export class JobCardLineItem {
   @Column({ name: "jt_no", type: "varchar", length: 500, nullable: true })
   jtNo: string | null;
 
+  // External / paint surface area (outer surface).
   @Column({ name: "m2", type: "numeric", precision: 12, scale: 4, nullable: true })
   m2: number | null;
+
+  // Internal / rubber-lining surface area (bore + flange faces). Drives rubber quoting.
+  @Column({ name: "lining_m2", type: "numeric", precision: 12, scale: 4, nullable: true })
+  liningM2: number | null;
 
   @Column({ type: "text", nullable: true })
   notes: string | null;

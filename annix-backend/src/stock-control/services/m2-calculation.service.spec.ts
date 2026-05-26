@@ -799,4 +799,78 @@ describe("M2CalculationService", () => {
       expect(result.externalM2).toBeGreaterThan(3.0);
     });
   });
+
+  describe("LYCO patterns: 3+ bore lists, FnE flanges, CON RED reducers", () => {
+    it("takes the FIRST bore as the main run for 3-bore lists (350x80x50NB)", async () => {
+      setupStandardMocks(355.6, 9.53);
+      const [result] = await service.calculateM2ForItems(["350x80x50NB 1701x847 LATERAL F4E"]);
+      expect(result.parsedDiameterMm).toBe(350);
+      expect(result.parsedItemType).toBe("lateral");
+    });
+
+    it("parses F4E as 4 flanged ends", async () => {
+      setupStandardMocks(355.6, 9.53);
+      const [result] = await service.calculateM2ForItems(["350x80x50NB 1701x847 LATERAL F4E"]);
+      expect(result.parsedFlangeCount).toBe(4);
+    });
+
+    it("parses F3E as 3 flanged ends", async () => {
+      setupStandardMocks(355.6, 9.53);
+      const [result] = await service.calculateM2ForItems(["350x200x50NB 47° BEND F3E C/F 500"]);
+      expect(result.parsedFlangeCount).toBe(3);
+    });
+
+    it("still parses 2-bore lists with the first as main (regression)", async () => {
+      setupStandardMocks(406.4, 9.53);
+      const [result] = await service.calculateM2ForItems(["400x150NB 810x405 RED/TEE FAE 1000/3"]);
+      expect(result.parsedDiameterMm).toBe(400);
+      expect(result.parsedItemType).toBe("tee");
+    });
+
+    it("recognises 'CON RED' abbreviation as a concentric reducer", async () => {
+      setupStandardMocks(355.6, 9.53);
+      const [result] = await service.calculateM2ForItems(["350NB 180 OD 769LG CON RED FOE"]);
+      expect(result.parsedItemType).toBe("reducer");
+      expect(result.parsedFittingType).toBe("concentric_reducer");
+      expect(result.parsedDiameterMm).toBe(350);
+      expect(result.parsedLengthM).toBeCloseTo(0.769, 2);
+      expect(result.externalM2).toBeGreaterThan(0);
+    });
+
+    it("uses an explicit small-end 'NNN OD' for the reducer (smaller than a full-bore pipe)", async () => {
+      setupStandardMocks(355.6, 9.53);
+      const [reducer] = await service.calculateM2ForItems(["350NB 180 OD 769LG CON RED PE"]);
+      const [pipe] = await service.calculateM2ForItems(["350NB 769LG PIPE PE"]);
+      // a 350->180 reducer body has less surface than a straight 350 pipe of the same length
+      expect(reducer.externalM2!).toBeLessThan(pipe.externalM2!);
+    });
+
+    it("recognises 'ECC/REDUCERS' abbreviation as a reducer", async () => {
+      setupStandardMocks(508.0, 9.53);
+      const [result] = await service.calculateM2ForItems([
+        "600x500NB  400LG ECC/REDUCERS FBE 1000/3",
+      ]);
+      expect(result.parsedItemType).toBe("reducer");
+    });
+
+    it("looks up and includes BOTH branches on a multi-branch lateral (350x80x50)", async () => {
+      mockNbOdLookup.nbToOd
+        .mockResolvedValueOnce({ outsideDiameterMm: 355.6 }) // main run
+        .mockResolvedValueOnce({ outsideDiameterMm: 88.9 }) // 80NB branch
+        .mockResolvedValueOnce({ outsideDiameterMm: 60.3 }); // 50NB branch
+      mockPipeSchedule.getSchedulesByNbMm.mockResolvedValue([
+        { schedule: "Std", wallThicknessMm: 9.53 },
+      ]);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue(null);
+
+      const [result] = await service.calculateM2ForItems(["350x80x50NB 1701x847 LATERAL F4E"]);
+
+      expect(result.parsedItemType).toBe("lateral");
+      expect(result.parsedFlangeCount).toBe(4);
+      // main run + 80NB branch + 50NB branch = three OD lookups
+      expect(mockNbOdLookup.nbToOd).toHaveBeenCalledTimes(3);
+      expect(result.externalM2).toBeGreaterThan(0);
+      expect(result.internalM2).toBeGreaterThan(0);
+    });
+  });
 });

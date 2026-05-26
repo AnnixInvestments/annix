@@ -622,6 +622,10 @@ export class CoatingAnalysisService {
       const result = results[idx];
       if (result.externalM2 && result.externalM2 > 0) {
         li.m2 = Math.round(result.externalM2 * 10000) / 10000;
+        const lining = result.internalM2;
+        if (lining && lining > 0) {
+          li.liningM2 = Math.round(lining * 10000) / 10000;
+        }
         itemsToUpdate.push(li);
       }
     });
@@ -665,8 +669,13 @@ export class CoatingAnalysisService {
 
         if (result.externalM2 && result.externalM2 > 0) {
           const calculated = Math.round(result.externalM2 * 10000) / 10000;
-          if (li.m2 !== calculated) {
+          const lining = result.internalM2;
+          const liningCalc = lining && lining > 0 ? Math.round(lining * 10000) / 10000 : null;
+          if (li.m2 !== calculated || (liningCalc !== null && li.liningM2 !== liningCalc)) {
             li.m2 = calculated;
+            if (liningCalc !== null) {
+              li.liningM2 = liningCalc;
+            }
             itemsToUpdate.push(li);
           }
         }

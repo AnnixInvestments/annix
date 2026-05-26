@@ -33,6 +33,7 @@ interface AddLineFormData {
   itemNo: string;
   quantity: string;
   jtNo: string;
+  liningM2: string;
   m2: string;
 }
 
@@ -42,6 +43,7 @@ const EMPTY_FORM: AddLineFormData = {
   itemNo: "",
   quantity: "",
   jtNo: "",
+  liningM2: "",
   m2: "",
 };
 
@@ -114,6 +116,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
     if (addForm.itemNo.trim()) data.itemNo = addForm.itemNo.trim();
     if (addForm.quantity.trim()) data.quantity = Number(addForm.quantity);
     if (addForm.jtNo.trim()) data.jtNo = addForm.jtNo.trim();
+    if (addForm.liningM2.trim()) data.liningM2 = Number(addForm.liningM2);
     if (addForm.m2.trim()) data.m2 = Number(addForm.m2);
 
     addLineItem.mutate(
@@ -131,7 +134,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
   function renderAddForm() {
     return (
       <div className="px-4 py-3 bg-teal-50 border-b border-teal-200">
-        <div className="grid grid-cols-2 sm:grid-cols-7 gap-2 mb-2">
+        <div className="grid grid-cols-2 sm:grid-cols-8 gap-2 mb-2">
           <input
             type="text"
             value={addForm.itemCode}
@@ -169,9 +172,16 @@ export function LineItemsTab(props: LineItemsTabProps) {
           />
           <input
             type="text"
+            value={addForm.liningM2}
+            onChange={(e) => setAddForm({ ...addForm, liningM2: e.target.value })}
+            placeholder="Lining m²"
+            className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
+          />
+          <input
+            type="text"
             value={addForm.m2}
             onChange={(e) => setAddForm({ ...addForm, m2: e.target.value })}
-            placeholder="m²"
+            placeholder="Paint m²"
             className="px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-teal-500 focus:border-teal-500"
           />
         </div>
@@ -289,8 +299,11 @@ export function LineItemsTab(props: LineItemsTabProps) {
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                 Qty
               </th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
-                m²
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                Lining m²
+              </th>
+              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                Paint m²
               </th>
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 JT No
@@ -333,6 +346,9 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                       {quantity || "-"}
                     </td>
+                    <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-teal-700">
+                      {li.liningM2 ? Number(li.liningM2).toFixed(2) : "-"}
+                    </td>
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
                       {li.m2 ? Number(li.m2).toFixed(2) : "-"}
                     </td>
@@ -360,7 +376,7 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     <tr key={`note-${li.id}`} className="bg-amber-50">
                       <td className="px-3 py-1.5" />
                       <td
-                        colSpan={canManageLineItems ? 7 : 6}
+                        colSpan={canManageLineItems ? 8 : 7}
                         className="px-3 py-1.5 text-sm italic text-amber-800 whitespace-pre-wrap"
                       >
                         <span className="font-semibold not-italic text-amber-900 mr-1">
@@ -403,7 +419,14 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     {li.quantity && (
                       <span className="font-semibold text-gray-900">Qty: {li.quantity}</span>
                     )}
-                    {li.m2 && <span className="text-gray-600">{Number(li.m2).toFixed(2)} m²</span>}
+                    {li.liningM2 ? (
+                      <span className="text-teal-700">
+                        Lining {Number(li.liningM2).toFixed(2)} m²
+                      </span>
+                    ) : null}
+                    {li.m2 ? (
+                      <span className="text-gray-600">Paint {Number(li.m2).toFixed(2)} m²</span>
+                    ) : null}
                     {canManageLineItems && (
                       <button
                         type="button"

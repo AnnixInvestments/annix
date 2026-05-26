@@ -2323,6 +2323,11 @@ export class RubberDeliveryNoteService {
     // Status repair: a customer DN that already carries a CoC link but is still
     // PENDING/EXTRACTED should read as LINKED. Covers CDNs linked directly (not
     // via the cascade) — without this they stay "Pending" in the UI forever.
+    // STOCK_CREATED is repaired here too: it is a supplier-side state (rolls
+    // turned into inventory), but a customer DN ships stock OUT and never
+    // creates it — so a linked customer DN marked STOCK_CREATED is mislabelled
+    // and should read LINKED like every other linked CDN. This query is
+    // customer-scoped, so genuine STOCK_CREATED supplier DNs are never touched.
     const customerCompanies = await this.companyRepository.find({
       where: { companyType: CompanyType.CUSTOMER },
     });
@@ -2333,7 +2338,11 @@ export class RubberDeliveryNoteService {
             where: customerIds.map((id) => ({
               supplierCompanyId: id,
               linkedCocId: Not(IsNull()),
-              status: In([DeliveryNoteStatus.PENDING, DeliveryNoteStatus.EXTRACTED]),
+              status: In([
+                DeliveryNoteStatus.PENDING,
+                DeliveryNoteStatus.EXTRACTED,
+                DeliveryNoteStatus.STOCK_CREATED,
+              ]),
             })),
           })
         : [];

@@ -434,16 +434,27 @@ export class SageJcDumpService {
       for (const [jtNumber, items] of jtEntries) {
         const existingJcId = existingJtMap.get(jtNumber.toUpperCase());
         if (existingJcId) {
+          // Gate against the CPO so re-confirming the dump cannot re-pool items
+          // that are already fully called off (the duplicate-line-item bug). Only
+          // genuinely new quantity (up to the CPO ordered qty), or items that were
+          // never on the original CPO, are appended.
+          const gated = this.gateItemsByCpo(items, cpo, queryRunner);
+          if (gated.length === 0) {
+            this.logger.log(
+              `Skipped JT ${jtNumber} for JC #${existingJcId}: all items already called off against CPO ${cpo.cpoNumber}`,
+            );
+            continue;
+          }
           const priorItemCount = await queryRunner.manager.count(JobCardLineItem, {
             where: { jobCardId: existingJcId },
           });
-          const appendedLineItems = items.map((item, idx) =>
+          const appendedLineItems = gated.map(({ item, qty }, idx) =>
             this.lineItemRepo.create({
               jobCardId: existingJcId,
               itemCode: item.itemCode || null,
               itemDescription: item.itemDescription || null,
               itemNo: item.itemNo || null,
-              quantity: item.quantity,
+              quantity: qty,
               jtNo: jtNumber,
               sortOrder: priorItemCount + idx,
               companyId,
@@ -451,14 +462,21 @@ export class SageJcDumpService {
             }),
           );
           await queryRunner.manager.save(JobCardLineItem, appendedLineItems);
-          this.updateCpoFulfillment(items, cpo, queryRunner);
           mergedJobCards.push({
             id: existingJcId,
             jtNumber,
-            addedItemCount: items.length,
+            addedItemCount: appendedLineItems.length,
           });
           this.logger.log(
-            `Pooled ${items.length} item(s) into existing JC #${existingJcId} for JT ${jtNumber} (job ${parentJc.jobNumber})`,
+            `Pooled ${appendedLineItems.length} new item(s) into existing JC #${existingJcId} for JT ${jtNumber} (job ${parentJc.jobNumber})`,
+          );
+          continue;
+        }
+
+        const gated = this.gateItemsByCpo(items, cpo, queryRunner);
+        if (gated.length === 0) {
+          this.logger.log(
+            `Skipped JT ${jtNumber}: all items already called off against CPO ${cpo.cpoNumber}`,
           );
           continue;
         }
@@ -500,13 +518,13 @@ export class SageJcDumpService {
 
         const savedJc = await queryRunner.manager.save(JobCard, deliveryJc);
 
-        const lineItemEntities = items.map((item, idx) =>
+        const lineItemEntities = gated.map(({ item, qty }, idx) =>
           this.lineItemRepo.create({
             jobCardId: savedJc.id,
             itemCode: item.itemCode || null,
             itemDescription: item.itemDescription || null,
             itemNo: item.itemNo || null,
-            quantity: item.quantity,
+            quantity: qty,
             jtNo: jtNumber,
             sortOrder: idx,
             companyId,
@@ -516,16 +534,14 @@ export class SageJcDumpService {
 
         await queryRunner.manager.save(JobCardLineItem, lineItemEntities);
 
-        this.updateCpoFulfillment(items, cpo, queryRunner);
-
         createdJobCards.push({
           id: savedJc.id,
           jtNumber,
-          itemCount: items.length,
+          itemCount: lineItemEntities.length,
         });
 
         this.logger.log(
-          `Created delivery JC #${savedJc.id} for JT ${jtNumber} with ${items.length} items`,
+          `Created delivery JC #${savedJc.id} for JT ${jtNumber} with ${lineItemEntities.length} items`,
         );
       }
 
@@ -868,25 +884,47 @@ export class SageJcDumpService {
     return match ? match[1] : null;
   }
 
-  private updateCpoFulfillment(
+  /**
+   * Decide how much of each parsed item may actually be turned into call-off line
+   * items, using the CPO as the source of truth, and advance CPO fulfilment by that
+   * amount. An item matched to a CPO line is capped at its remaining ordered quantity
+   * (so re-running the dump after it's fully called off adds nothing — the fix for the
+   * duplicate-line-item bug). Items not present on the original CPO are additional
+   * drop-ins and are always allowed. Mutates cpoItem.quantityFulfilled in memory and
+   * persists it within the supplied transaction.
+   */
+  private gateItemsByCpo(
     items: SageJcDumpParsedItem[],
     cpo: CustomerPurchaseOrder,
     queryRunner: any,
-  ): void {
-    items.forEach((item) => {
+  ): Array<{ item: SageJcDumpParsedItem; qty: number }> {
+    const gated: Array<{ item: SageJcDumpParsedItem; qty: number }> = [];
+
+    for (const item of items) {
       const cpoItem = matchCpoItem(cpo.items, item.itemNoBase, item.itemDescription);
-      if (!cpoItem) return;
 
-      const newFulfilled = Math.min(
-        Number(cpoItem.quantityFulfilled) + item.quantity,
-        Number(cpoItem.quantityOrdered),
-      );
+      if (!cpoItem) {
+        // Not on the original CPO — an additional item being dropped in; allow it.
+        gated.push({ item, qty: item.quantity });
+        continue;
+      }
 
+      const remaining = Number(cpoItem.quantityOrdered) - Number(cpoItem.quantityFulfilled);
+      if (remaining <= 0) {
+        // Already fully called off against the CPO — skip (prevents re-import duplicates).
+        continue;
+      }
+
+      const qty = Math.min(item.quantity, remaining);
+      const newFulfilled = Number(cpoItem.quantityFulfilled) + qty;
       queryRunner.manager.update(CustomerPurchaseOrderItem, cpoItem.id, {
         quantityFulfilled: newFulfilled,
       });
-
       cpoItem.quantityFulfilled = newFulfilled;
-    });
+
+      gated.push({ item, qty });
+    }
+
+    return gated;
   }
 }
