@@ -91,6 +91,29 @@ const parseCocNumberRolls = (cocNumber: string | null): string[] => {
   return out;
 };
 
+// The roll "ticket" is the 4-6 digit suffix of an "ORDER-TICKET" roll number
+// (e.g. 41169 in "168-41169"). It is the calenderer's globally-unique physical
+// roll id, so it is a safe order-prefix-agnostic key: a customer DN's
+// "168-41169" and a supplier CoC's "188-41169" describe the same roll even
+// though the order prefixes disagree.
+const rollTicket = (rollNumber: string | null | undefined): string | null => {
+  if (!rollNumber) return null;
+  const parts = String(rollNumber).trim().split("-");
+  const tail = (parts.length >= 2 ? parts[parts.length - 1] : parts[0]).trim();
+  return /^\d{4,6}$/.test(tail) ? tail : null;
+};
+
+const supplierCocRollTickets = (
+  cocNumber: string | null,
+  rollNumbers: string[] | undefined,
+): string[] => {
+  const fromExtracted = (rollNumbers || [])
+    .map((rn) => rollTicket(rn))
+    .filter((t): t is string => t !== null);
+  const fromCocNumber = parseCocNumberRolls(cocNumber).filter((t) => /^\d{4,6}$/.test(t));
+  return [...new Set([...fromExtracted, ...fromCocNumber])];
+};
+
 @Injectable()
 export class RubberDeliveryNoteService {
   private readonly logger = new Logger(RubberDeliveryNoteService.name);
@@ -2301,20 +2324,100 @@ export class RubberDeliveryNoteService {
       this.logger.log(`Marked already-linked CDN ${cdn.deliveryNoteNumber} (#${cdn.id}) → LINKED`);
     }, Promise.resolve());
 
-    const linked = results.linked + staleLinkedCdns.length;
-    const details =
-      staleLinkedCdns.length > 0
+    // Direct CDN → supplier CoC fallback (roll-ticket match). The cascade above
+    // only reaches a customer DN through an intermediate supplier DN that
+    // already carries the CoC link. When that supplier DN was never created or
+    // linked, but the supplier CoC itself lists the roll in its coc_number
+    // (e.g. "188-40961, 41169-41171"), the customer DN stays orphaned and no AU
+    // CoC is ever created. Match on the roll ticket — unique per physical roll —
+    // so "168-41169" links to that CoC despite the 168-vs-188 order mismatch.
+    const directResult = await this.linkUnlinkedCustomerDnsByRollTicket(customerIds);
+
+    const linked = results.linked + staleLinkedCdns.length + directResult.linked;
+    const details = [
+      ...results.details,
+      ...(staleLinkedCdns.length > 0
         ? [
-            ...results.details,
             `Marked ${staleLinkedCdns.length} already-linked CDN(s) as LINKED [${staleLinkedCdns
               .map((c) => c.id)
               .join(", ")}]`,
           ]
-        : results.details;
+        : []),
+      ...directResult.details,
+    ];
 
     this.logger.log(
       `Bulk CDN link complete: ${linked} CDN(s) linked/repaired from ${sdns.length} SDN(s)`,
     );
     return { linked, details };
+  }
+
+  private async linkUnlinkedCustomerDnsByRollTicket(
+    customerIds: number[],
+  ): Promise<{ linked: number; details: string[] }> {
+    if (customerIds.length === 0) return { linked: 0, details: [] };
+
+    const stillUnlinkedCdns = await this.deliveryNoteRepository.find({
+      where: customerIds.map((id) => ({
+        supplierCompanyId: id,
+        linkedCocId: IsNull(),
+        deliveryNoteType: DeliveryNoteType.ROLL,
+      })),
+    });
+    if (stillUnlinkedCdns.length === 0) return { linked: 0, details: [] };
+
+    const activeCocs = await this.supplierCocRepository.find({
+      where: { versionStatus: DocumentVersionStatus.ACTIVE },
+    });
+    const ticketToCocIds = activeCocs.reduce((map, coc) => {
+      for (const ticket of supplierCocRollTickets(coc.cocNumber, coc.extractedData?.rollNumbers)) {
+        const ids = map.get(ticket) ?? new Set<number>();
+        ids.add(coc.id);
+        map.set(ticket, ids);
+      }
+      return map;
+    }, new Map<string, Set<number>>());
+
+    const cdnRollMap = await this.rollNumbersByDeliveryNoteIds(stillUnlinkedCdns.map((c) => c.id));
+
+    return stillUnlinkedCdns.reduce(
+      async (accPromise, cdn) => {
+        const acc = await accPromise;
+        const itemRolls = cdnRollMap.get(cdn.id);
+        const cdnRolls =
+          itemRolls && itemRolls.length > 0
+            ? itemRolls
+            : ((cdn.extractedData?.rolls || [])
+                .map((r) => r.rollNumber)
+                .filter(Boolean) as string[]);
+
+        const tally = cdnRolls.reduce((counts, rn) => {
+          const ticket = rollTicket(rn);
+          if (ticket === null) return counts;
+          const ids = ticketToCocIds.get(ticket);
+          if (!ids || ids.size !== 1) return counts;
+          const cocId = [...ids][0];
+          return new Map(counts).set(cocId, (counts.get(cocId) ?? 0) + 1);
+        }, new Map<number, number>());
+
+        if (tally.size === 0) return acc;
+
+        const [cocId] = [...tally.entries()].reduce((best, entry) =>
+          entry[1] > best[1] ? entry : best,
+        );
+        await this.linkToCoc(cdn.id, cocId);
+        this.logger.log(
+          `Direct roll-ticket link: CDN ${cdn.deliveryNoteNumber} (#${cdn.id}) → CoC ${cocId}`,
+        );
+        return {
+          linked: acc.linked + 1,
+          details: [
+            ...acc.details,
+            `CDN ${cdn.deliveryNoteNumber} (#${cdn.id}): linked to CoC ${cocId} via roll ticket`,
+          ],
+        };
+      },
+      Promise.resolve({ linked: 0, details: [] as string[] }),
+    );
   }
 }
