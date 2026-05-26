@@ -1,8 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
 import { GasketWeight } from "./entities/gasket-weight.entity";
+import { GasketWeightRepository } from "./gasket-weight.repository";
 
 export interface FlangeWeightResult {
   found: boolean;
@@ -27,27 +25,19 @@ export interface BoltSetInfo {
 
 @Injectable()
 export class GasketWeightService {
-  constructor(
-    @InjectRepository(GasketWeight)
-    private gasketWeightRepository: Repository<GasketWeight>,
-    @InjectRepository(FlangeDimension)
-    private flangeDimensionRepository: Repository<FlangeDimension>,
-  ) {}
+  constructor(private readonly gasketWeightRepository: GasketWeightRepository) {}
 
   async findAll(): Promise<GasketWeight[]> {
-    return this.gasketWeightRepository.find();
+    return this.gasketWeightRepository.findAllGaskets();
   }
 
   async gasketWeight(gasketType: string, nominalBoreMm: number): Promise<GasketWeightResult> {
-    const gasket = await this.gasketWeightRepository.findOne({
-      where: {
-        gasket_type: gasketType.toUpperCase(),
-        nominal_bore_mm: nominalBoreMm,
-      },
-    });
+    const gasket = await this.gasketWeightRepository.findGasketByTypeAndBore(
+      gasketType,
+      nominalBoreMm,
+    );
 
     if (!gasket) {
-      // Estimate based on bore size (fallback)
       const estimatedWeight = nominalBoreMm * 0.015;
       return {
         found: false,
@@ -70,23 +60,13 @@ export class GasketWeightService {
     pressureClass: string,
     flangeStandardCode?: string,
   ): Promise<FlangeWeightResult> {
-    // Build query
-    const query = this.flangeDimensionRepository
-      .createQueryBuilder("fd")
-      .leftJoinAndSelect("fd.nominalOutsideDiameter", "nb")
-      .leftJoinAndSelect("fd.pressureClass", "pc")
-      .leftJoinAndSelect("fd.standard", "std")
-      .where("nb.nominal_bore_mm = :nominalBoreMm", { nominalBoreMm })
-      .andWhere("pc.designation = :pressureClass", { pressureClass });
-
-    if (flangeStandardCode) {
-      query.andWhere("std.code = :flangeStandardCode", { flangeStandardCode });
-    }
-
-    const flangeDimension = await query.getOne();
+    const flangeDimension = await this.gasketWeightRepository.findFlangeDimension(
+      nominalBoreMm,
+      pressureClass,
+      flangeStandardCode,
+    );
 
     if (!flangeDimension) {
-      // Fallback estimate
       const estimatedWeight = nominalBoreMm * 0.15;
       return {
         found: false,
@@ -110,20 +90,11 @@ export class GasketWeightService {
     pressureClass: string,
     flangeStandardCode?: string,
   ): Promise<BoltSetInfo | null> {
-    const query = this.flangeDimensionRepository
-      .createQueryBuilder("fd")
-      .leftJoinAndSelect("fd.nominalOutsideDiameter", "nb")
-      .leftJoinAndSelect("fd.pressureClass", "pc")
-      .leftJoinAndSelect("fd.standard", "std")
-      .leftJoinAndSelect("fd.bolt", "bolt")
-      .where("nb.nominal_bore_mm = :nominalBoreMm", { nominalBoreMm })
-      .andWhere("pc.designation = :pressureClass", { pressureClass });
-
-    if (flangeStandardCode) {
-      query.andWhere("std.code = :flangeStandardCode", { flangeStandardCode });
-    }
-
-    const flangeDimension = await query.getOne();
+    const flangeDimension = await this.gasketWeightRepository.findFlangeDimensionWithBolt(
+      nominalBoreMm,
+      pressureClass,
+      flangeStandardCode,
+    );
 
     if (!flangeDimension?.bolt) {
       return null;
@@ -140,8 +111,6 @@ export class GasketWeightService {
     nominalBoreMm: number,
     pressureClass: string,
   ): Promise<FlangeWeightResult> {
-    // Blank flanges are typically ~2x the weight of slip-on flanges
-    // This is a rough estimate - in reality would need separate table
     const slipOnResult = await this.flangeWeight(nominalBoreMm, pressureClass);
 
     return {
@@ -154,12 +123,7 @@ export class GasketWeightService {
   }
 
   async availableGasketTypes(): Promise<string[]> {
-    const result = await this.gasketWeightRepository
-      .createQueryBuilder("gasket")
-      .select("DISTINCT gasket.gasket_type", "type")
-      .orderBy("gasket.gasket_type", "ASC")
-      .getRawMany();
-
+    const result = await this.gasketWeightRepository.distinctGasketTypes();
     return result.map((r) => r.type);
   }
 }

@@ -1,9 +1,8 @@
 import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { JobPosting } from "../entities/job-posting.entity";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import {
   descriptionPrompt,
   type NixDescriptionResponse,
@@ -39,8 +38,7 @@ export class NixJobAssistService {
   constructor(
     private readonly aiChatService: AiChatService,
     private readonly metrics: ExtractionMetricService,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
+    private readonly jobPostingRepo: JobPostingRepository,
     private readonly salaryBenchmarks: SalaryBenchmarkService,
   ) {}
 
@@ -63,10 +61,10 @@ export class NixJobAssistService {
   }
 
   async outcomesDraft(companyId: number, jobPostingId: number): Promise<NixOutcomesDraftResponse> {
-    const posting = await this.jobPostingRepo.findOne({
-      where: { id: jobPostingId, companyId },
-      relations: ["company"],
-    });
+    const posting = await this.jobPostingRepo.findByIdForCompanyWithCompany(
+      jobPostingId,
+      companyId,
+    );
     if (!posting) throw new NotFoundException("Job posting not found");
     if (!posting.title || posting.title === "Untitled draft") {
       throw new NotFoundException("Set a job title in step 1 before drafting outcomes");
@@ -166,10 +164,10 @@ export class NixJobAssistService {
   }
 
   async qualityScore(companyId: number, jobPostingId: number): Promise<NixQualityScoreResponse> {
-    const posting = await this.jobPostingRepo.findOne({
-      where: { id: jobPostingId, companyId },
-      relations: ["skills", "successMetrics", "screeningQuestions"],
-    });
+    const posting = await this.jobPostingRepo.findByIdForCompanyWithWizardRelations(
+      jobPostingId,
+      companyId,
+    );
     if (!posting) throw new NotFoundException("Job posting not found");
 
     const { in3, in12 } = summariseSuccessMetrics(posting);
@@ -345,16 +343,13 @@ export class NixJobAssistService {
   }
 
   private async loadPosting(companyId: number, id: number): Promise<JobPosting> {
-    const posting = await this.jobPostingRepo.findOne({ where: { id, companyId } });
+    const posting = await this.jobPostingRepo.findByIdForCompany(id, companyId);
     if (!posting) throw new NotFoundException("Job posting not found");
     return posting;
   }
 
   private async loadPostingWithRelations(companyId: number, id: number): Promise<JobPosting> {
-    const posting = await this.jobPostingRepo.findOne({
-      where: { id, companyId },
-      relations: ["skills", "successMetrics"],
-    });
+    const posting = await this.jobPostingRepo.findByIdForCompanyWithSkillsAndMetrics(id, companyId);
     if (!posting) throw new NotFoundException("Job posting not found");
     return posting;
   }

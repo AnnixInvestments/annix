@@ -1,26 +1,20 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { FlangeType } from "./entities/flange-type.entity";
+import { FlangeTypeRepository } from "./flange-type.repository";
 
 @Injectable()
 export class FlangeTypeService {
-  constructor(
-    @InjectRepository(FlangeType)
-    private readonly flangeTypeRepo: Repository<FlangeType>,
-  ) {}
+  constructor(private readonly flangeTypeRepository: FlangeTypeRepository) {}
 
   findAll(): Promise<FlangeType[]> {
-    return this.flangeTypeRepo.find({
-      order: { code: "ASC" },
-    });
+    return this.flangeTypeRepository.findAllOrdered();
   }
 
   findByCode(code: string): Promise<FlangeType | null> {
-    return this.flangeTypeRepo.findOne({ where: { code } });
+    return this.flangeTypeRepository.findByCode(code);
   }
 
   findByAbbreviation(abbreviation: string): Promise<FlangeType | null> {
-    return this.flangeTypeRepo.findOne({ where: { abbreviation } });
+    return this.flangeTypeRepository.findByAbbreviation(abbreviation);
   }
 }

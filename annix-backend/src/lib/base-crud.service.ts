@@ -1,76 +1,69 @@
 import { BadRequestException, Logger, NotFoundException } from "@nestjs/common";
-import type { DeepPartial, FindOptionsWhere, Repository } from "typeorm";
-import { findOneOrFail } from "./entity-helpers";
+import { CrudRepository, type DeepPartial } from "./persistence/crud-repository";
 
 export interface BaseCrudOptions {
+  entityName: string;
   defaultRelations?: string[];
-  entityName?: string;
 }
 
 export abstract class BaseCrudService<
   Entity extends { id: number },
-  CreateDto = DeepPartial<Entity>,
-  UpdateDto = DeepPartial<Entity>,
+  CreateDto = Partial<Entity>,
+  UpdateDto = Partial<Entity>,
 > {
   protected readonly logger: Logger;
   protected readonly entityName: string;
   protected readonly defaultRelations: string[];
 
   constructor(
-    protected readonly repo: Repository<Entity>,
-    options: BaseCrudOptions = {},
+    protected readonly repository: CrudRepository<Entity>,
+    options: BaseCrudOptions,
   ) {
-    this.entityName = options.entityName ?? repo.metadata.targetName;
+    this.entityName = options.entityName;
     this.defaultRelations = options.defaultRelations ?? [];
     this.logger = new Logger(`${this.entityName}Service`);
   }
 
   async create(dto: CreateDto): Promise<Entity> {
-    const entity = this.repo.create(dto as DeepPartial<Entity>);
-    return this.repo.save(entity);
+    return this.repository.create(dto as unknown as DeepPartial<Entity>);
   }
 
   async findAll(relations?: string[]): Promise<Entity[]> {
-    const effectiveRelations = relations ?? this.defaultRelations;
-    return this.repo.find(effectiveRelations.length > 0 ? { relations: effectiveRelations } : {});
+    return this.repository.findAll(relations ?? this.defaultRelations);
   }
 
   async findOne(id: number, relations?: string[]): Promise<Entity> {
-    const effectiveRelations = relations ?? this.defaultRelations;
-    return findOneOrFail(
-      this.repo,
-      {
-        where: { id } as FindOptionsWhere<Entity>,
-        ...(effectiveRelations.length > 0 ? { relations: effectiveRelations } : {}),
-      },
-      this.entityName,
-    );
+    const entity = await this.repository.findById(id, relations ?? this.defaultRelations);
+    if (!entity) {
+      throw new NotFoundException(`${this.entityName} ${id} not found`);
+    }
+    return entity;
   }
 
   async update(id: number, dto: UpdateDto): Promise<Entity> {
     const entity = await this.findOne(id);
     Object.assign(entity as object, dto as object);
-    return this.repo.save(entity);
+    return this.repository.save(entity);
   }
 
   async remove(id: number): Promise<void> {
     const entity = await this.findOne(id);
-    await this.repo.remove(entity);
+    await this.repository.remove(entity);
   }
 
-  protected async checkUnique(where: FindOptionsWhere<Entity>, message: string): Promise<void> {
-    const exists = await this.repo.findOne({ where });
+  protected async checkUnique(where: Record<string, unknown>, message: string): Promise<void> {
+    const exists = await this.repository.findOneWhere(where as unknown as DeepPartial<Entity>);
     if (exists) {
       throw new BadRequestException(message);
     }
   }
 
   protected async checkUniqueExceptId(
-    where: FindOptionsWhere<Entity>,
+    where: Record<string, unknown>,
     excludeId: number,
     message: string,
   ): Promise<void> {
-    const exists = await this.repo.findOne({ where });
+    const exists = await this.repository.findOneWhere(where as unknown as DeepPartial<Entity>);
     if (exists && exists.id !== excludeId) {
       throw new BadRequestException(message);
     }

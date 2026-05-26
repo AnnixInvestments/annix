@@ -12,8 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
+import { CompanyRepository } from "../../platform/company.repository";
 import { Company, CompanyType } from "../../platform/entities/company.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 
@@ -50,10 +49,7 @@ export interface QuoteCustomerDto {
 @UseGuards(StockControlAuthGuard)
 @Controller("stock-control/customers")
 export class StockControlCustomersController {
-  constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-  ) {}
+  constructor(private readonly companyRepo: CompanyRepository) {}
 
   @Get()
   @ApiOperation({
@@ -62,15 +58,12 @@ export class StockControlCustomersController {
   })
   async list(@Query("q") q?: string): Promise<QuoteCustomerDto[]> {
     const trimmed = (q ?? "").trim();
-    const where =
-      trimmed.length > 0
-        ? { companyType: CompanyType.CUSTOMER, name: ILike(`%${trimmed}%`) }
-        : { companyType: CompanyType.CUSTOMER };
-    const rows = await this.companyRepo.find({
-      where,
-      order: { name: "ASC" },
-      take: 50,
-    });
+    const namePattern = trimmed.length > 0 ? `%${trimmed}%` : null;
+    const rows = await this.companyRepo.findByTypeAndNameLike(
+      CompanyType.CUSTOMER,
+      namePattern,
+      50,
+    );
     return rows.map(toDto);
   }
 
@@ -80,9 +73,7 @@ export class StockControlCustomersController {
       "Fetch a single customer company by id. Used by the CustomerCard to live-render the LATEST master details — so when the quoter enriches the master row later, every working quote that references this customer reflects the new fields without a re-pick.",
   })
   async findOne(@Param("id", ParseIntPipe) id: number): Promise<QuoteCustomerDto> {
-    const row = await this.companyRepo.findOne({
-      where: { id, companyType: CompanyType.CUSTOMER },
-    });
+    const row = await this.companyRepo.findOneByIdAndType(id, CompanyType.CUSTOMER);
     if (!row) {
       throw new NotFoundException(`Customer ${id} not found`);
     }
@@ -98,9 +89,7 @@ export class StockControlCustomersController {
     @Param("id", ParseIntPipe) id: number,
     @Body() body: Partial<QuoteCustomerDto>,
   ): Promise<QuoteCustomerDto> {
-    const row = await this.companyRepo.findOne({
-      where: { id, companyType: CompanyType.CUSTOMER },
-    });
+    const row = await this.companyRepo.findOneByIdAndType(id, CompanyType.CUSTOMER);
     if (!row) {
       throw new NotFoundException(`Customer ${id} not found`);
     }
@@ -136,7 +125,7 @@ export class StockControlCustomersController {
     if (name.length === 0) {
       throw new BadRequestException("Customer name is required");
     }
-    const row = this.companyRepo.create({
+    const row = this.companyRepo.build({
       name,
       companyType: CompanyType.CUSTOMER,
       customerCode: body.customerCode ?? null,

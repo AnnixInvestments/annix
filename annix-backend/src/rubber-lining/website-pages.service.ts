@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { WebsitePage } from "./entities/website-page.entity";
+import { WebsitePageRepository } from "./repositories/website-page.repository";
 
 export interface CreateWebsitePageDto {
   title: string;
@@ -33,22 +32,14 @@ export interface UpdateWebsitePageDto {
 export class WebsitePagesService {
   private readonly logger = new Logger(WebsitePagesService.name);
 
-  constructor(
-    @InjectRepository(WebsitePage)
-    private readonly pageRepository: Repository<WebsitePage>,
-  ) {}
+  constructor(private readonly pageRepository: WebsitePageRepository) {}
 
   async publishedPages(): Promise<WebsitePage[]> {
-    return this.pageRepository.find({
-      where: { isPublished: true },
-      order: { sortOrder: "ASC", title: "ASC" },
-    });
+    return this.pageRepository.findPublishedOrdered();
   }
 
   async publishedPageBySlug(slug: string): Promise<WebsitePage> {
-    const page = await this.pageRepository.findOne({
-      where: { slug, isPublished: true },
-    });
+    const page = await this.pageRepository.findOnePublishedBySlug(slug);
     if (!page) {
       throw new NotFoundException(`Page not found: ${slug}`);
     }
@@ -56,19 +47,15 @@ export class WebsitePagesService {
   }
 
   async homePage(): Promise<WebsitePage | null> {
-    return this.pageRepository.findOne({
-      where: { isHomePage: true, isPublished: true },
-    });
+    return this.pageRepository.findOneHomePagePublished();
   }
 
   async allPages(): Promise<WebsitePage[]> {
-    return this.pageRepository.find({
-      order: { sortOrder: "ASC", title: "ASC" },
-    });
+    return this.pageRepository.findAllOrdered();
   }
 
   async pageById(id: string): Promise<WebsitePage> {
-    const page = await this.pageRepository.findOne({ where: { id } });
+    const page = await this.pageRepository.findById(id);
     if (!page) {
       throw new NotFoundException(`Page not found: ${id}`);
     }
@@ -76,7 +63,7 @@ export class WebsitePagesService {
   }
 
   async createPage(dto: CreateWebsitePageDto): Promise<WebsitePage> {
-    const existing = await this.pageRepository.findOne({ where: { slug: dto.slug } });
+    const existing = await this.pageRepository.findOneBySlug(dto.slug);
     if (existing) {
       throw new BadRequestException(`A page with slug "${dto.slug}" already exists`);
     }
@@ -85,7 +72,7 @@ export class WebsitePagesService {
       await this.clearHomePage();
     }
 
-    const page = this.pageRepository.create({
+    const page = this.pageRepository.build({
       title: dto.title,
       slug: dto.slug,
       metaTitle: dto.metaTitle || null,
@@ -106,7 +93,7 @@ export class WebsitePagesService {
     const page = await this.pageById(id);
 
     if (dto.slug && dto.slug !== page.slug) {
-      const existing = await this.pageRepository.findOne({ where: { slug: dto.slug } });
+      const existing = await this.pageRepository.findOneBySlug(dto.slug);
       if (existing) {
         throw new BadRequestException(`A page with slug "${dto.slug}" already exists`);
       }
@@ -135,6 +122,6 @@ export class WebsitePagesService {
   }
 
   private async clearHomePage(): Promise<void> {
-    await this.pageRepository.update({ isHomePage: true }, { isHomePage: false });
+    await this.pageRepository.clearHomePage();
   }
 }

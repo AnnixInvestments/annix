@@ -1,8 +1,7 @@
 import { Body, Controller, Delete, Get, Patch, Post, Request, UseGuards } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AnnixOrbitUser } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { AnnixOrbitUserRepository } from "../repositories/annix-orbit-user.repository";
 import { CvNotificationService } from "../services/cv-notification.service";
 
 @Controller("annix-orbit/notifications")
@@ -10,8 +9,7 @@ import { CvNotificationService } from "../services/cv-notification.service";
 export class NotificationController {
   constructor(
     private readonly notificationService: CvNotificationService,
-    @InjectRepository(AnnixOrbitUser)
-    private readonly userRepo: Repository<AnnixOrbitUser>,
+    private readonly userRepo: AnnixOrbitUserRepository,
   ) {}
 
   @Get("vapid-key")
@@ -39,7 +37,7 @@ export class NotificationController {
 
   @Get("preferences")
   async preferences(@Request() req: { user: { userId: number } }) {
-    const user = await this.userRepo.findOne({ where: { id: req.user.userId } });
+    const user = await this.userRepo.findById(req.user.userId);
     return {
       matchAlertThreshold: user?.matchAlertThreshold ?? 80,
       digestEnabled: user?.digestEnabled ?? true,
@@ -64,7 +62,7 @@ export class NotificationController {
       updates.pushEnabled = body.pushEnabled;
     }
 
-    await this.userRepo.update(req.user.userId, updates);
+    await this.userRepo.updatePreferences(req.user.userId, updates);
     return { message: "Notification preferences updated" };
   }
 }

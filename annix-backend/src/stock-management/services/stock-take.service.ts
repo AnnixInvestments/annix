@@ -1,14 +1,13 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { IssuableProduct } from "../entities/issuable-product.entity";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockTake, type StockTakeStatus } from "../entities/stock-take.entity";
 import { StockTakeLine } from "../entities/stock-take-line.entity";
-import {
-  StockTakeVarianceCategory,
-  type VarianceCategorySeverity,
-} from "../entities/stock-take-variance-category.entity";
+import type { VarianceCategorySeverity } from "../entities/stock-take-variance-category.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { StockTakeRepository } from "../repositories/stock-take.repository";
+import { StockTakeLineRepository } from "../repositories/stock-take-line.repository";
+import { StockTakeVarianceCategoryRepository } from "../repositories/stock-take-variance-category.repository";
 
 export interface CreateStockTakeInput {
   name: string;
@@ -35,19 +34,15 @@ export class StockTakeService {
   private readonly logger = new Logger(StockTakeService.name);
 
   constructor(
-    @InjectRepository(StockTake)
-    private readonly stockTakeRepo: Repository<StockTake>,
-    @InjectRepository(StockTakeLine)
-    private readonly lineRepo: Repository<StockTakeLine>,
-    @InjectRepository(StockTakeVarianceCategory)
-    private readonly categoryRepo: Repository<StockTakeVarianceCategory>,
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
-    private readonly dataSource: DataSource,
+    private readonly stockTakeRepo: StockTakeRepository,
+    private readonly lineRepo: StockTakeLineRepository,
+    private readonly categoryRepo: StockTakeVarianceCategoryRepository,
+    private readonly productRepo: IssuableProductRepository,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
   async createSession(companyId: number, input: CreateStockTakeInput): Promise<StockTake> {
-    const stockTake = this.stockTakeRepo.create({
+    const stockTake = this.stockTakeRepo.build({
       companyId,
       name: input.name,
       periodLabel: input.periodLabel ?? null,
@@ -61,12 +56,12 @@ export class StockTakeService {
   }
 
   async captureSnapshot(companyId: number, stockTakeId: number): Promise<StockTake> {
-    return this.dataSource.transaction(async (manager) => {
-      const takeRepo = manager.getRepository(StockTake);
-      const lineRepo = manager.getRepository(StockTakeLine);
-      const productRepo = manager.getRepository(IssuableProduct);
+    return this.txRunner.run(async (context) => {
+      const takeRepo = this.stockTakeRepo.withTransaction(context);
+      const lineRepo = this.lineRepo.withTransaction(context);
+      const productRepo = this.productRepo.withTransaction(context);
 
-      const stockTake = await takeRepo.findOne({ where: { id: stockTakeId, companyId } });
+      const stockTake = await takeRepo.findByIdForCompany(companyId, stockTakeId);
       if (!stockTake) {
         throw new NotFoundException(`Stock take ${stockTakeId} not found`);
       }
@@ -74,9 +69,9 @@ export class StockTakeService {
         throw new BadRequestException(`Stock take ${stockTakeId} already has a snapshot`);
       }
 
-      const products = await productRepo.find({ where: { companyId, active: true } });
+      const products = await productRepo.findActiveForCompany(companyId);
       const lines = products.map((product) =>
-        lineRepo.create({
+        lineRepo.build({
           stockTakeId,
           companyId,
           productId: product.id,
@@ -87,7 +82,7 @@ export class StockTakeService {
           expectedAtSnapshot: product.quantity,
         }),
       );
-      await lineRepo.save(lines);
+      await lineRepo.saveMany(lines);
 
       stockTake.snapshotAt = now().toJSDate();
       stockTake.status = "counting";
@@ -101,9 +96,7 @@ export class StockTakeService {
     stockTakeId: number,
     input: RecordCountInput,
   ): Promise<StockTakeLine> {
-    const stockTake = await this.stockTakeRepo.findOne({
-      where: { id: stockTakeId, companyId },
-    });
+    const stockTake = await this.stockTakeRepo.findByIdForCompany(companyId, stockTakeId);
     if (!stockTake) {
       throw new NotFoundException(`Stock take ${stockTakeId} not found`);
     }
@@ -112,18 +105,14 @@ export class StockTakeService {
         `Stock take ${stockTakeId} is in status "${stockTake.status}" — cannot record counts`,
       );
     }
-    const line = await this.lineRepo.findOne({
-      where: { stockTakeId, productId: input.productId, companyId },
-    });
+    const line = await this.lineRepo.findOneForStockTake(stockTakeId, input.productId, companyId);
     if (!line) {
       throw new NotFoundException(
         `Stock take line for product ${input.productId} not found in stock take ${stockTakeId}`,
       );
     }
 
-    const product = await this.productRepo.findOne({
-      where: { id: input.productId, companyId },
-    });
+    const product = await this.productRepo.findByIdForCompany(companyId, input.productId);
     if (!product) {
       throw new NotFoundException(`Product ${input.productId} not found`);
     }
@@ -155,10 +144,10 @@ export class StockTakeService {
     if (stockTake.status !== "counting" && stockTake.status !== "draft") {
       throw new BadRequestException(`Cannot submit stock take in status "${stockTake.status}"`);
     }
-    const lines = await this.lineRepo.find({ where: { stockTakeId, companyId } });
+    const lines = await this.lineRepo.findForStockTake(stockTakeId, companyId);
     const photoMissing = lines.some(async (line) => {
       if (line.varianceCategoryId === null) return false;
-      const cat = await this.categoryRepo.findOne({ where: { id: line.varianceCategoryId } });
+      const cat = await this.categoryRepo.findById(line.varianceCategoryId);
       return cat?.requiresPhoto === true && !line.photoUrl;
     });
     if (await Promise.resolve(photoMissing)) {
@@ -224,21 +213,11 @@ export class StockTakeService {
   }
 
   async list(companyId: number, status?: StockTakeStatus): Promise<StockTake[]> {
-    const where: { companyId: number; status?: StockTakeStatus } = { companyId };
-    if (status) {
-      where.status = status;
-    }
-    return this.stockTakeRepo.find({
-      where,
-      order: { createdAt: "DESC" },
-    });
+    return this.stockTakeRepo.findForCompany(companyId, status);
   }
 
   async byId(companyId: number, id: number): Promise<StockTake> {
-    const stockTake = await this.stockTakeRepo.findOne({
-      where: { id, companyId },
-      relations: { lines: { product: true, varianceCategory: true } },
-    });
+    const stockTake = await this.stockTakeRepo.findByIdForCompanyWithLines(companyId, id);
     if (!stockTake) {
       throw new NotFoundException(`Stock take ${id} not found`);
     }
@@ -262,51 +241,7 @@ export class StockTakeService {
     }>
   > {
     const monthsBack = options.sinceMonths ?? 12;
-    const rows = await this.lineRepo
-      .createQueryBuilder("line")
-      .innerJoin("line.stockTake", "st")
-      .innerJoin("line.product", "product")
-      .select("line.product_id", "product_id")
-      .addSelect("product.sku", "product_sku")
-      .addSelect("product.name", "product_name")
-      .addSelect("COUNT(DISTINCT line.stock_take_id)", "stock_take_count")
-      .addSelect("COUNT(CASE WHEN line.variance_qty < 0 THEN 1 END)", "shortage_count")
-      .addSelect("COUNT(CASE WHEN line.variance_qty > 0 THEN 1 END)", "overage_count")
-      .addSelect("SUM(COALESCE(line.variance_qty, 0))", "total_variance_qty")
-      .addSelect("SUM(COALESCE(line.variance_value_r, 0))", "total_variance_value_r")
-      .addSelect("MAX(line.created_at)", "last_seen_at")
-      .where("line.company_id = :companyId", { companyId })
-      .andWhere("line.variance_qty IS NOT NULL")
-      .andWhere("line.variance_qty != 0")
-      .andWhere("st.status IN ('approved', 'posted', 'archived')")
-      .andWhere(`st.created_at > NOW() - (INTERVAL '1 month' * :monthsBack)`, { monthsBack })
-      .groupBy("line.product_id")
-      .addGroupBy("product.sku")
-      .addGroupBy("product.name")
-      .orderBy("ABS(SUM(COALESCE(line.variance_value_r, 0)))", "DESC")
-      .limit(100)
-      .getRawMany<{
-        product_id: number;
-        product_sku: string;
-        product_name: string;
-        stock_take_count: string;
-        shortage_count: string;
-        overage_count: string;
-        total_variance_qty: string;
-        total_variance_value_r: string;
-        last_seen_at: string;
-      }>();
-    return rows.map((row) => ({
-      productId: Number(row.product_id),
-      productSku: row.product_sku,
-      productName: row.product_name,
-      stockTakeCount: Number(row.stock_take_count),
-      shortageCount: Number(row.shortage_count),
-      overageCount: Number(row.overage_count),
-      totalVarianceQty: Number(row.total_variance_qty),
-      totalVarianceValueR: Number(row.total_variance_value_r),
-      lastSeenAt: row.last_seen_at,
-    }));
+    return this.lineRepo.varianceArchive(companyId, monthsBack);
   }
 
   private async detectCriticalSeverity(lines: StockTakeLine[]): Promise<boolean> {
@@ -316,10 +251,7 @@ export class StockTakeService {
     if (categoryIds.length === 0) {
       return false;
     }
-    const categories = await this.categoryRepo
-      .createQueryBuilder("c")
-      .where("c.id IN (:...ids)", { ids: categoryIds })
-      .getMany();
+    const categories = await this.categoryRepo.findByIds(categoryIds);
     return categories.some((cat) => cat.severity === ("critical" as VarianceCategorySeverity));
   }
 }

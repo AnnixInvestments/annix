@@ -1,6 +1,4 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { AiChatService } from "../ai-providers/ai-chat.service";
@@ -12,6 +10,8 @@ import {
 } from "../capabilities";
 import { NixChatMessage } from "../entities/nix-chat-message.entity";
 import { NixChatSession } from "../entities/nix-chat-session.entity";
+import { NixChatMessageRepository } from "../nix-chat-message.repository";
+import { NixChatSessionRepository } from "../nix-chat-session.repository";
 import { GUIDED_MODE_INSTRUCTIONS, PIPING_DOMAIN_KNOWLEDGE } from "../prompts/piping-domain.prompt";
 import { NixItemParserService } from "./nix-item-parser.service";
 
@@ -60,10 +60,8 @@ export class NixChatService {
   private readonly contextWindow = 20;
 
   constructor(
-    @InjectRepository(NixChatSession)
-    private readonly sessionRepository: Repository<NixChatSession>,
-    @InjectRepository(NixChatMessage)
-    private readonly messageRepository: Repository<NixChatMessage>,
+    private readonly sessionRepository: NixChatSessionRepository,
+    private readonly messageRepository: NixChatMessageRepository,
     private readonly itemParserService: NixItemParserService,
     private readonly aiChatService: AiChatService,
     private readonly aiUsageService: AiUsageService,
@@ -72,19 +70,16 @@ export class NixChatService {
   ) {}
 
   async createSession(dto: CreateSessionDto): Promise<NixChatSession> {
-    const existingActiveSession = await this.sessionRepository.findOne({
-      where: {
-        userId: dto.userId,
-        rfqId: dto.rfqId ?? IsNull(),
-        isActive: true,
-      },
-    });
+    const existingActiveSession = await this.sessionRepository.findActiveForUser(
+      dto.userId,
+      dto.rfqId,
+    );
 
     if (existingActiveSession) {
       return existingActiveSession;
     }
 
-    const session = this.sessionRepository.create({
+    return this.sessionRepository.create({
       userId: dto.userId,
       rfqId: dto.rfqId,
       isActive: true,
@@ -92,14 +87,10 @@ export class NixChatService {
       userPreferences: { learningEnabled: true },
       sessionContext: {},
     });
-
-    return this.sessionRepository.save(session);
   }
 
   async session(sessionId: number): Promise<NixChatSession> {
-    const session = await this.sessionRepository.findOne({
-      where: { id: sessionId },
-    });
+    const session = await this.sessionRepository.findById(sessionId);
 
     if (!session) {
       throw new NotFoundException(`Session ${sessionId} not found`);
@@ -352,11 +343,7 @@ export class NixChatService {
   }
 
   async conversationHistory(sessionId: number, limit: number = 50): Promise<NixChatMessage[]> {
-    return this.messageRepository.find({
-      where: { sessionId },
-      order: { createdAt: "DESC" },
-      take: limit,
-    });
+    return this.messageRepository.findRecentForSession(sessionId, limit);
   }
 
   async updateUserPreferences(
@@ -518,14 +505,12 @@ Instead, directly help them with their request based on this context.`;
     content: string,
     metadata?: any,
   ): Promise<NixChatMessage> {
-    const message = this.messageRepository.create({
+    return this.messageRepository.create({
       sessionId,
       role,
       content,
       metadata,
     });
-
-    return this.messageRepository.save(message);
   }
 
   /**

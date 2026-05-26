@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Company } from "../../platform/entities/company.entity";
+import { CompanyRepository } from "../../platform/company.repository";
 import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import { StockControlCompany } from "../../stock-control/entities/stock-control-company.entity";
+import { StockControlCompanyRepository } from "../../stock-control/repositories/stock-control-company.repository";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { QuotePdfSnapshotDto } from "../dto/quote-pdf.dto";
 import { NixExtractionSession } from "../entities/nix-extraction-session.entity";
+import { NixExtractionSessionRepository } from "../nix-extraction-session.repository";
 
 interface LetterheadData {
   companyName: string;
@@ -30,12 +30,9 @@ export class QuotePdfService {
   private readonly logger = new Logger(QuotePdfService.name);
 
   constructor(
-    @InjectRepository(NixExtractionSession)
-    private readonly sessionRepo: Repository<NixExtractionSession>,
-    @InjectRepository(StockControlCompany)
-    private readonly tenantRepo: Repository<StockControlCompany>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
+    private readonly sessionRepo: NixExtractionSessionRepository,
+    private readonly tenantRepo: StockControlCompanyRepository,
+    private readonly companyRepo: CompanyRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storage: IStorageService,
     private readonly puppeteerPool: PuppeteerPoolService,
@@ -46,12 +43,12 @@ export class QuotePdfService {
     companyId: number,
     snapshot: QuotePdfSnapshotDto,
   ): Promise<{ buffer: Buffer; filename: string }> {
-    const session = await this.sessionRepo.findOne({ where: { id: sessionId } });
+    const session = await this.sessionRepo.findById(sessionId);
     if (!session) {
       throw new NotFoundException(`Quote session ${sessionId} not found`);
     }
 
-    const tenant = await this.tenantRepo.findOne({ where: { id: companyId } });
+    const tenant = await this.tenantRepo.findById(companyId);
     const letterhead = await this.buildLetterhead(tenant);
     const customer = await this.resolveCustomer(session);
 
@@ -144,7 +141,7 @@ export class QuotePdfService {
   private async resolveCustomer(session: NixExtractionSession): Promise<CustomerData | null> {
     const customerCompanyId = session.customerCompanyId;
     if (customerCompanyId != null) {
-      const live = await this.companyRepo.findOne({ where: { id: customerCompanyId } });
+      const live = await this.companyRepo.findById(customerCompanyId);
       if (live) {
         return this.shapeCustomer({
           name: live.name,

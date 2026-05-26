@@ -1,11 +1,10 @@
 import { randomBytes } from "node:crypto";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Not, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { InspectionBooking } from "../entities/inspection-booking.entity";
-import { JobCard } from "../entities/job-card.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { InspectionBookingRepository } from "../repositories/inspection-booking.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 import { BackgroundStepService } from "./background-step.service";
 import { CompanyEmailService } from "./company-email.service";
 
@@ -36,12 +35,9 @@ export class InspectionBookingService {
   private readonly logger = new Logger(InspectionBookingService.name);
 
   constructor(
-    @InjectRepository(InspectionBooking)
-    private readonly bookingRepo: Repository<InspectionBooking>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
+    private readonly bookingRepo: InspectionBookingRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
     private readonly emailService: CompanyEmailService,
     private readonly backgroundStepService: BackgroundStepService,
   ) {}
@@ -69,7 +65,7 @@ export class InspectionBookingService {
     const token = randomBytes(24).toString("hex");
     const expiresAt = now().plus({ days: 30 }).toJSDate();
 
-    const booking = this.bookingRepo.create({
+    const saved = await this.bookingRepo.create({
       companyId,
       jobCardId,
       inspectionDate: input.inspectionDate,
@@ -85,8 +81,6 @@ export class InspectionBookingService {
       tokenExpiresAt: expiresAt,
     });
 
-    const saved = await this.bookingRepo.save(booking);
-
     this.logger.log(
       `Inspection booked for job card ${jobCardId} on ${input.inspectionDate} ${input.startTime}-${input.endTime} by ${user.name}`,
     );
@@ -97,10 +91,7 @@ export class InspectionBookingService {
   }
 
   async bookingsForJobCard(companyId: number, jobCardId: number): Promise<InspectionBooking[]> {
-    return this.bookingRepo.find({
-      where: { companyId, jobCardId },
-      order: { inspectionDate: "DESC", startTime: "DESC" },
-    });
+    return this.bookingRepo.findForJobCard(companyId, jobCardId);
   }
 
   async bookingsForDateRange(
@@ -108,25 +99,11 @@ export class InspectionBookingService {
     startDate: string,
     endDate: string,
   ): Promise<InspectionBooking[]> {
-    return this.bookingRepo.find({
-      where: {
-        companyId,
-        inspectionDate: Between(startDate, endDate),
-      },
-      relations: ["jobCard"],
-      order: { inspectionDate: "ASC", startTime: "ASC" },
-    });
+    return this.bookingRepo.findForDateRange(companyId, startDate, endDate);
   }
 
   async bookedSlotsForDate(companyId: number, date: string): Promise<InspectionBooking[]> {
-    return this.bookingRepo.find({
-      where: {
-        companyId,
-        inspectionDate: date,
-        status: Not("cancelled"),
-      },
-      order: { startTime: "ASC" },
-    });
+    return this.bookingRepo.findActiveForDate(companyId, date);
   }
 
   async completeInspection(
@@ -135,9 +112,7 @@ export class InspectionBookingService {
     user: UserContext,
     notes: string | null,
   ): Promise<InspectionBooking> {
-    const booking = await this.bookingRepo.findOne({
-      where: { id: bookingId, companyId },
-    });
+    const booking = await this.bookingRepo.findOneForCompany(bookingId, companyId);
 
     if (!booking) {
       throw new NotFoundException(`Inspection booking ${bookingId} not found`);
@@ -173,9 +148,7 @@ export class InspectionBookingService {
     bookingId: number,
     user: UserContext,
   ): Promise<InspectionBooking> {
-    const booking = await this.bookingRepo.findOne({
-      where: { id: bookingId, companyId },
-    });
+    const booking = await this.bookingRepo.findOneForCompany(bookingId, companyId);
 
     if (!booking) {
       throw new NotFoundException(`Inspection booking ${bookingId} not found`);
@@ -201,15 +174,15 @@ export class InspectionBookingService {
     jobCard: { id: number; jobName: string | null; jcNumber: string | null } | null;
     company: { name: string };
   }> {
-    const booking = await this.bookingRepo.findOne({ where: { responseToken: token } });
+    const booking = await this.bookingRepo.findOneByResponseToken(token);
     if (!booking) {
       throw new NotFoundException("Response link not found or invalid");
     }
     if (booking.tokenExpiresAt && booking.tokenExpiresAt < now().toJSDate()) {
       throw new BadRequestException("This response link has expired");
     }
-    const jobCard = await this.jobCardRepo.findOne({ where: { id: booking.jobCardId } });
-    const company = await this.companyRepo.findOne({ where: { id: booking.companyId } });
+    const jobCard = await this.jobCardRepo.findById(booking.jobCardId);
+    const company = await this.companyRepo.findById(booking.companyId);
     return {
       booking,
       jobCard: jobCard
@@ -224,7 +197,7 @@ export class InspectionBookingService {
   }
 
   async respondAccept(token: string): Promise<InspectionBooking> {
-    const booking = await this.bookingRepo.findOne({ where: { responseToken: token } });
+    const booking = await this.bookingRepo.findOneByResponseToken(token);
     if (!booking) {
       throw new NotFoundException("Response link not found or invalid");
     }
@@ -253,7 +226,7 @@ export class InspectionBookingService {
   }
 
   async respondPropose(token: string, input: ProposeInput): Promise<InspectionBooking> {
-    const booking = await this.bookingRepo.findOne({ where: { responseToken: token } });
+    const booking = await this.bookingRepo.findOneByResponseToken(token);
     if (!booking) {
       throw new NotFoundException("Response link not found or invalid");
     }
@@ -285,9 +258,7 @@ export class InspectionBookingService {
     bookingId: number,
     user: UserContext,
   ): Promise<InspectionBooking> {
-    const booking = await this.bookingRepo.findOne({
-      where: { id: bookingId, companyId },
-    });
+    const booking = await this.bookingRepo.findOneForCompany(bookingId, companyId);
     if (!booking) {
       throw new NotFoundException(`Inspection booking ${bookingId} not found`);
     }
@@ -326,9 +297,7 @@ export class InspectionBookingService {
     bookingId: number,
     user: UserContext,
   ): Promise<InspectionBooking> {
-    const booking = await this.bookingRepo.findOne({
-      where: { id: bookingId, companyId },
-    });
+    const booking = await this.bookingRepo.findOneForCompany(bookingId, companyId);
     if (!booking) {
       throw new NotFoundException(`Inspection booking ${bookingId} not found`);
     }
@@ -374,8 +343,8 @@ export class InspectionBookingService {
   }
 
   private async sendBookingEmail(booking: InspectionBooking): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({ where: { id: booking.jobCardId } });
-    const company = await this.companyRepo.findOne({ where: { id: booking.companyId } });
+    const jobCard = await this.jobCardRepo.findById(booking.jobCardId);
+    const company = await this.companyRepo.findById(booking.companyId);
     const baseUrl = this.frontendBaseUrl();
     const respondUrl = `${baseUrl}/stock-control/inspections/respond/${booking.responseToken}`;
     const companyName = company?.name || "Stock Control";
@@ -433,7 +402,7 @@ This link expires in 30 days.`;
   private async notifyBookerAccepted(booking: InspectionBooking): Promise<void> {
     const bookerEmail = await this.bookerEmail(booking);
     if (!bookerEmail) return;
-    const jobCard = await this.jobCardRepo.findOne({ where: { id: booking.jobCardId } });
+    const jobCard = await this.jobCardRepo.findById(booking.jobCardId);
     const jobRef = jobCard?.jcNumber || (jobCard ? `JC-${jobCard.id}` : "");
 
     await this.emailService.sendEmail(booking.companyId, {
@@ -447,7 +416,7 @@ This link expires in 30 days.`;
   private async notifyBookerProposed(booking: InspectionBooking): Promise<void> {
     const bookerEmail = await this.bookerEmail(booking);
     if (!bookerEmail) return;
-    const jobCard = await this.jobCardRepo.findOne({ where: { id: booking.jobCardId } });
+    const jobCard = await this.jobCardRepo.findById(booking.jobCardId);
     const jobRef = jobCard?.jcNumber || (jobCard ? `JC-${jobCard.id}` : "");
     const baseUrl = this.frontendBaseUrl();
     const jobCardUrl = `${baseUrl}/stock-control/portal/job-cards/${booking.jobCardId}#quality`;
@@ -480,7 +449,7 @@ This link expires in 30 days.`;
   }
 
   private async bookerEmail(booking: InspectionBooking): Promise<string | null> {
-    const company = await this.companyRepo.findOne({ where: { id: booking.companyId } });
+    const company = await this.companyRepo.findById(booking.companyId);
     const notifyEmails = company?.notificationEmails || [];
     if (notifyEmails.length > 0) return notifyEmails[0];
     return null;
@@ -508,13 +477,7 @@ This link expires in 30 days.`;
     endTime: string,
     excludeBookingId: number | null,
   ): Promise<InspectionBooking[]> {
-    const allBookings = await this.bookingRepo.find({
-      where: {
-        companyId,
-        inspectionDate: date,
-        status: Not("cancelled"),
-      },
-    });
+    const allBookings = await this.bookingRepo.findActiveForDateUnordered(companyId, date);
 
     return allBookings.filter((existing) => {
       if (excludeBookingId && existing.id === excludeBookingId) {

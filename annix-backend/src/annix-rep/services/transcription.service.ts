@@ -2,21 +2,20 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
 import FormData from "form-data";
-import { Repository } from "typeorm";
 import { TranscriptResponseDto, TranscriptWithSegmentsDto, UpdateTranscriptDto } from "../dto";
 import {
   type ActionItem,
   type DealProbability,
   type MeetingAnalysis,
-  MeetingRecording,
   MeetingTranscript,
   type ObjectionResponse,
   RecordingProcessingStatus,
   type SpeakerSegment,
   type TranscriptSegment,
 } from "../entities";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { MeetingTranscriptRepository } from "../meeting-transcript.repository";
 
 interface WhisperSegment {
   start_time: number;
@@ -42,10 +41,8 @@ export class TranscriptionService {
   private readonly uploadDir: string;
 
   constructor(
-    @InjectRepository(MeetingRecording)
-    private readonly recordingRepo: Repository<MeetingRecording>,
-    @InjectRepository(MeetingTranscript)
-    private readonly transcriptRepo: Repository<MeetingTranscript>,
+    private readonly recordingRepo: MeetingRecordingRepository,
+    private readonly transcriptRepo: MeetingTranscriptRepository,
     private readonly configService: ConfigService,
   ) {
     this.whisperUrl = this.configService.get<string>("WHISPER_API_URL") ?? "http://localhost:8000";
@@ -53,17 +50,13 @@ export class TranscriptionService {
   }
 
   async transcribeRecording(recordingId: number): Promise<MeetingTranscript> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-    });
+    const recording = await this.recordingRepo.findById(recordingId);
 
     if (!recording) {
       throw new NotFoundException(`Recording ${recordingId} not found`);
     }
 
-    const existingTranscript = await this.transcriptRepo.findOne({
-      where: { recordingId },
-    });
+    const existingTranscript = await this.transcriptRepo.findByRecordingId(recordingId);
 
     if (existingTranscript) {
       this.logger.log(`Transcript already exists for recording ${recordingId}`);
@@ -92,7 +85,7 @@ export class TranscriptionService {
 
       const fullText = alignedSegments.map((s) => s.text).join(" ");
 
-      const transcript = this.transcriptRepo.create({
+      const saved = await this.transcriptRepo.create({
         recordingId,
         fullText,
         segments: alignedSegments,
@@ -102,8 +95,6 @@ export class TranscriptionService {
         language: whisperResponse.language,
         processingTimeMs: whisperResponse.processing_time_ms,
       });
-
-      const saved = await this.transcriptRepo.save(transcript);
 
       recording.processingStatus = RecordingProcessingStatus.COMPLETED;
       await this.recordingRepo.save(recording);
@@ -721,9 +712,7 @@ export class TranscriptionService {
   }
 
   async transcript(recordingId: number): Promise<TranscriptWithSegmentsDto | null> {
-    const transcript = await this.transcriptRepo.findOne({
-      where: { recordingId },
-    });
+    const transcript = await this.transcriptRepo.findByRecordingId(recordingId);
 
     if (!transcript) {
       return null;
@@ -733,9 +722,7 @@ export class TranscriptionService {
   }
 
   async transcriptByMeeting(meetingId: number): Promise<TranscriptWithSegmentsDto | null> {
-    const recording = await this.recordingRepo.findOne({
-      where: { meetingId },
-    });
+    const recording = await this.recordingRepo.findByMeetingId(meetingId);
 
     if (!recording) {
       return null;
@@ -745,9 +732,7 @@ export class TranscriptionService {
   }
 
   async deleteTranscript(recordingId: number): Promise<void> {
-    const transcript = await this.transcriptRepo.findOne({
-      where: { recordingId },
-    });
+    const transcript = await this.transcriptRepo.findByRecordingId(recordingId);
 
     if (transcript) {
       await this.transcriptRepo.remove(transcript);
@@ -765,10 +750,7 @@ export class TranscriptionService {
     transcriptId: number,
     dto: UpdateTranscriptDto,
   ): Promise<TranscriptWithSegmentsDto> {
-    const transcript = await this.transcriptRepo.findOne({
-      where: { id: transcriptId },
-      relations: ["recording", "recording.meeting"],
-    });
+    const transcript = await this.transcriptRepo.findWithRecordingMeeting(transcriptId);
 
     if (!transcript) {
       throw new NotFoundException(`Transcript ${transcriptId} not found`);

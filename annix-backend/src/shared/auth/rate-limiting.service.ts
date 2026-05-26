@@ -1,9 +1,10 @@
 import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
-import { MoreThanOrEqual, ObjectLiteral, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import type { DeepPartial, PersistedEntity } from "../../lib/persistence/crud-repository";
 import { AUTH_CONSTANTS } from "./auth.constants";
 import { LogLoginAttemptData } from "./auth.interfaces";
 import { AuthConfigService } from "./auth-config.service";
+import type { AuthLoginAttemptRepository } from "./auth-login-attempt.repository";
 
 @Injectable()
 export class RateLimitingService {
@@ -11,8 +12,8 @@ export class RateLimitingService {
 
   constructor(private readonly authConfigService: AuthConfigService) {}
 
-  async checkLoginAttempts<T extends ObjectLiteral>(
-    repo: Repository<T>,
+  async checkLoginAttempts<T extends PersistedEntity>(
+    repo: AuthLoginAttemptRepository<T>,
     email: string,
   ): Promise<void> {
     if (this.authConfigService.isRateLimitingDisabled()) {
@@ -22,13 +23,7 @@ export class RateLimitingService {
     try {
       const lockoutTime = now().minus({ minutes: AUTH_CONSTANTS.LOGIN_LOCKOUT_MINUTES }).toJSDate();
 
-      const recentAttempts = await repo.count({
-        where: {
-          email,
-          success: false,
-          attemptTime: MoreThanOrEqual(lockoutTime),
-        } as any,
-      });
+      const recentAttempts = await repo.countRecentFailures(email, lockoutTime);
 
       if (recentAttempts >= AUTH_CONSTANTS.MAX_LOGIN_ATTEMPTS) {
         throw new UnauthorizedException(
@@ -43,12 +38,12 @@ export class RateLimitingService {
     }
   }
 
-  async logLoginAttempt<T extends ObjectLiteral, TProfileId extends string>(
-    repo: Repository<T>,
+  async logLoginAttempt<T extends PersistedEntity, TProfileId extends string>(
+    repo: AuthLoginAttemptRepository<T>,
     data: LogLoginAttemptData<TProfileId>,
   ): Promise<void> {
     try {
-      const attemptData: Record<string, any> = {
+      const attemptData: Record<string, unknown> = {
         email: data.email,
         success: data.success,
         deviceFingerprint: data.deviceFingerprint,
@@ -65,8 +60,7 @@ export class RateLimitingService {
         attemptData.failureReason = data.failureReason;
       }
 
-      const attempt = repo.create(attemptData as any);
-      await repo.save(attempt);
+      await repo.create(attemptData as DeepPartial<T>);
     } catch (error) {
       this.logger.warn(`Failed to log login attempt (table may not exist): ${error.message}`);
     }

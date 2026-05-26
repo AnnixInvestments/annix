@@ -1,172 +1,118 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { DataSource } from "typeorm";
-import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
-import { Boq } from "../boq/entities/boq.entity";
-import { BoqSupplierAccess } from "../boq/entities/boq-supplier-access.entity";
+import { BoqRepository } from "../boq/boq.repository";
+import { BoqSupplierAccessRepository } from "../boq/boq-supplier-access.repository";
 import { EmailService } from "../email/email.service";
 import { FittingService } from "../fitting/fitting.service";
-import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
-import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
-import { NutMass } from "../nut-mass/entities/nut-mass.entity";
-import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
-import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { TransactionRunner } from "../lib/persistence/transaction-runner";
+import { SteelSpecificationRepository } from "../steel-specification/steel-specification.repository";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
-import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
-import { User } from "../user/entities/user.entity";
-import { BendRfq } from "./entities/bend-rfq.entity";
-import { ExpansionJointRfq } from "./entities/expansion-joint-rfq.entity";
-import { FastenerRfq } from "./entities/fastener-rfq.entity";
-import { FittingRfq } from "./entities/fitting-rfq.entity";
-import { InstrumentRfq } from "./entities/instrument-rfq.entity";
-import { PumpRfq } from "./entities/pump-rfq.entity";
+import { SupplierProfileRepository } from "../supplier/supplier-profile.repository";
+import { UserRepository } from "../user/user.repository";
+import { BendRfqRepository } from "./bend-rfq.repository";
 import { Rfq } from "./entities/rfq.entity";
-import { RfqClarificationRequest } from "./entities/rfq-clarification-request.entity";
-import { RfqDocument } from "./entities/rfq-document.entity";
-import { RfqDraft } from "./entities/rfq-draft.entity";
-import { RfqItem } from "./entities/rfq-item.entity";
-import { RfqSequence } from "./entities/rfq-sequence.entity";
-import { StraightPipeRfq } from "./entities/straight-pipe-rfq.entity";
-import { TankChuteRfq } from "./entities/tank-chute-rfq.entity";
-import { ValveRfq } from "./entities/valve-rfq.entity";
+import { ExpansionJointRfqRepository } from "./expansion-joint-rfq.repository";
+import { FastenerRfqRepository } from "./fastener-rfq.repository";
+import { FittingRfqRepository } from "./fitting-rfq.repository";
+import { InstrumentRfqRepository } from "./instrument-rfq.repository";
+import { PumpRfqRepository } from "./pump-rfq.repository";
+import { RfqRepository } from "./rfq.repository";
 import { RfqService } from "./rfq.service";
+import { RfqClarificationRequestRepository } from "./rfq-clarification-request.repository";
+import { RfqDocumentRepository } from "./rfq-document.repository";
+import { RfqDraftRepository } from "./rfq-draft.repository";
+import { RfqItemRepository } from "./rfq-item.repository";
+import { RfqSequenceRepository } from "./rfq-sequence.repository";
 import { ReferenceDataCacheService } from "./services/reference-data-cache.service";
 import { RfqCalculationService } from "./services/rfq-calculation.service";
+import { StraightPipeRfqRepository } from "./straight-pipe-rfq.repository";
+import { TankChuteRfqRepository } from "./tank-chute-rfq.repository";
+import { ValveRfqRepository } from "./valve-rfq.repository";
 
 describe("RfqService", () => {
   let service: RfqService;
 
-  const mockRfqRepo = {
+  const crudRepoMock = () => ({
     create: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
     remove: jest.fn(),
     count: jest.fn(),
-    createQueryBuilder: jest.fn(),
+  });
+
+  const mockRfqRepo = {
+    ...crudRepoMock(),
+    withTransaction: jest.fn(),
+    findBySubmissionId: jest.fn(),
+    findAllWithItemsOrdered: jest.fn(),
+    findPaginatedWithItems: jest.fn(),
   };
 
   const mockRfqItemRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
+    ...crudRepoMock(),
+    withTransaction: jest.fn(),
+    countByRfqId: jest.fn(),
+    deleteByRfqId: jest.fn(),
   };
 
   const mockStraightPipeRfqRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
+    ...crudRepoMock(),
+    withTransaction: jest.fn(),
   };
 
-  const mockBendRfqRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockFittingRfqRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
+  const mockBendRfqRepo = crudRepoMock();
+  const mockFittingRfqRepo = crudRepoMock();
+  const mockExpansionJointRfqRepo = crudRepoMock();
+  const mockValveRfqRepo = crudRepoMock();
+  const mockInstrumentRfqRepo = crudRepoMock();
+  const mockPumpRfqRepo = crudRepoMock();
+  const mockTankChuteRfqRepo = crudRepoMock();
+  const mockFastenerRfqRepo = crudRepoMock();
 
   const mockRfqDocumentRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
+    ...crudRepoMock(),
+    findByRfqIdWithUploadedBy: jest.fn(),
+    findByIdWithRfqAndUploadedBy: jest.fn(),
+    findByIdWithRfqCreatedBy: jest.fn(),
   };
 
   const mockRfqDraftRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
+    ...crudRepoMock(),
+    findByIdForUser: jest.fn(),
+    findByDraftNumberForUser: jest.fn(),
+    findAllForUserWithConvertedRfq: jest.fn(),
   };
 
   const mockRfqClarificationRequestRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
+    ...crudRepoMock(),
+    findByToken: jest.fn(),
   };
 
   const mockRfqSequenceRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-    count: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    ...crudRepoMock(),
+    findByYear: jest.fn(),
+    findAllOrderedByYearDesc: jest.fn(),
   };
 
   const mockUserRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findById: jest.fn(),
+    findByIds: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockSteelSpecRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockPipeDimensionRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockNbNpsLookupRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockFlangeDimensionRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockBoltMassRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-    createQueryBuilder: jest.fn(),
-  };
-
-  const mockNutMassRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findById: jest.fn(),
+    findByIds: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -182,24 +128,25 @@ describe("RfqService", () => {
   const mockBoqRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findById: jest.fn(),
+    findByRfqId: jest.fn(),
+    findRfqLinksByRfqIds: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockBoqSupplierAccessRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findByBoqIdsExcludingStatus: jest.fn(),
+    countDistinctSuppliersByStatusForBoqs: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockSupplierProfileRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findById: jest.fn(),
+    findByIdsWithUserAndCompany: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -212,116 +159,36 @@ describe("RfqService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RfqService,
-        { provide: getRepositoryToken(Rfq), useValue: mockRfqRepo },
-        { provide: getRepositoryToken(RfqItem), useValue: mockRfqItemRepo },
+        { provide: RfqRepository, useValue: mockRfqRepo },
+        { provide: RfqItemRepository, useValue: mockRfqItemRepo },
+        { provide: StraightPipeRfqRepository, useValue: mockStraightPipeRfqRepo },
+        { provide: BendRfqRepository, useValue: mockBendRfqRepo },
+        { provide: FittingRfqRepository, useValue: mockFittingRfqRepo },
+        { provide: ExpansionJointRfqRepository, useValue: mockExpansionJointRfqRepo },
+        { provide: ValveRfqRepository, useValue: mockValveRfqRepo },
+        { provide: InstrumentRfqRepository, useValue: mockInstrumentRfqRepo },
+        { provide: PumpRfqRepository, useValue: mockPumpRfqRepo },
+        { provide: TankChuteRfqRepository, useValue: mockTankChuteRfqRepo },
+        { provide: FastenerRfqRepository, useValue: mockFastenerRfqRepo },
+        { provide: RfqDocumentRepository, useValue: mockRfqDocumentRepo },
+        { provide: RfqDraftRepository, useValue: mockRfqDraftRepo },
         {
-          provide: getRepositoryToken(StraightPipeRfq),
-          useValue: mockStraightPipeRfqRepo,
-        },
-        { provide: getRepositoryToken(BendRfq), useValue: mockBendRfqRepo },
-        {
-          provide: getRepositoryToken(FittingRfq),
-          useValue: mockFittingRfqRepo,
-        },
-        {
-          provide: getRepositoryToken(ExpansionJointRfq),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            remove: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(ValveRfq),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            remove: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(InstrumentRfq),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            remove: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(PumpRfq),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            remove: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(TankChuteRfq),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            remove: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(FastenerRfq),
-          useValue: {
-            create: jest.fn(),
-            save: jest.fn(),
-            find: jest.fn(),
-            findOne: jest.fn(),
-            remove: jest.fn(),
-          },
-        },
-        {
-          provide: getRepositoryToken(RfqDocument),
-          useValue: mockRfqDocumentRepo,
-        },
-        { provide: getRepositoryToken(RfqDraft), useValue: mockRfqDraftRepo },
-        {
-          provide: getRepositoryToken(RfqClarificationRequest),
+          provide: RfqClarificationRequestRepository,
           useValue: mockRfqClarificationRequestRepo,
         },
+        { provide: RfqSequenceRepository, useValue: mockRfqSequenceRepo },
+        { provide: UserRepository, useValue: mockUserRepo },
         {
-          provide: getRepositoryToken(RfqSequence),
-          useValue: mockRfqSequenceRepo,
-        },
-        { provide: getRepositoryToken(User), useValue: mockUserRepo },
-        {
-          provide: getRepositoryToken(SteelSpecification),
+          provide: SteelSpecificationRepository,
           useValue: mockSteelSpecRepo,
         },
+        { provide: BoqRepository, useValue: mockBoqRepo },
         {
-          provide: getRepositoryToken(PipeDimension),
-          useValue: mockPipeDimensionRepo,
-        },
-        {
-          provide: getRepositoryToken(NbNpsLookup),
-          useValue: mockNbNpsLookupRepo,
-        },
-        {
-          provide: getRepositoryToken(FlangeDimension),
-          useValue: mockFlangeDimensionRepo,
-        },
-        { provide: getRepositoryToken(BoltMass), useValue: mockBoltMassRepo },
-        { provide: getRepositoryToken(NutMass), useValue: mockNutMassRepo },
-        { provide: getRepositoryToken(Boq), useValue: mockBoqRepo },
-        {
-          provide: getRepositoryToken(BoqSupplierAccess),
+          provide: BoqSupplierAccessRepository,
           useValue: mockBoqSupplierAccessRepo,
         },
         {
-          provide: getRepositoryToken(SupplierProfile),
+          provide: SupplierProfileRepository,
           useValue: mockSupplierProfileRepo,
         },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
@@ -355,14 +222,9 @@ describe("RfqService", () => {
           },
         },
         {
-          provide: DataSource,
+          provide: TransactionRunner,
           useValue: {
-            transaction: jest.fn((callback) =>
-              callback({
-                create: jest.fn().mockReturnValue({}),
-                save: jest.fn().mockResolvedValue({ id: 1 }),
-              }),
-            ),
+            run: jest.fn((work) => work({})),
           },
         },
       ],
@@ -380,7 +242,7 @@ describe("RfqService", () => {
   describe("findAllRfqs", () => {
     it("should return array of RFQs", async () => {
       const rfqs = [{ id: 1, rfqNumber: "RFQ-2024-0001" }] as Rfq[];
-      mockRfqRepo.find.mockResolvedValue(rfqs);
+      mockRfqRepo.findAllWithItemsOrdered.mockResolvedValue(rfqs);
 
       const result = await service.findAllRfqs();
 
@@ -395,33 +257,30 @@ describe("RfqService", () => {
   describe("findRfqById", () => {
     it("should return an RFQ by id", async () => {
       const rfq = { id: 1, rfqNumber: "RFQ-2024-0001" } as Rfq;
-      mockRfqRepo.findOne.mockResolvedValue(rfq);
+      mockRfqRepo.findById.mockResolvedValue(rfq);
 
       const result = await service.findRfqById(1);
 
       expect(result).toEqual(rfq);
-      expect(mockRfqRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: [
-          "items",
-          "items.straightPipeDetails",
-          "items.straightPipeDetails.steelSpecification",
-          "items.bendDetails",
-          "items.fittingDetails",
-          "items.expansionJointDetails",
-          "items.valveDetails",
-          "items.instrumentDetails",
-          "items.pumpDetails",
-          "items.tankChuteDetails",
-          "items.fastenerDetails",
-          "drawings",
-          "boqs",
-        ],
-      });
+      expect(mockRfqRepo.findById).toHaveBeenCalledWith(1, [
+        "items",
+        "items.straightPipeDetails",
+        "items.straightPipeDetails.steelSpecification",
+        "items.bendDetails",
+        "items.fittingDetails",
+        "items.expansionJointDetails",
+        "items.valveDetails",
+        "items.instrumentDetails",
+        "items.pumpDetails",
+        "items.tankChuteDetails",
+        "items.fastenerDetails",
+        "drawings",
+        "boqs",
+      ]);
     });
 
     it("should throw NotFoundException if RFQ not found", async () => {
-      mockRfqRepo.findOne.mockResolvedValue(null);
+      mockRfqRepo.findById.mockResolvedValue(null);
 
       await expect(service.findRfqById(1)).rejects.toThrow(NotFoundException);
     });

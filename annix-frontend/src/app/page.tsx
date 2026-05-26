@@ -201,7 +201,6 @@ export default function HomePage() {
           >
             <AnnixOrbitCard
               variant="dark"
-              ctaHref="/annix/orbit"
               className="h-full hover:shadow-2xl transition-all duration-300"
             />
           </Link>

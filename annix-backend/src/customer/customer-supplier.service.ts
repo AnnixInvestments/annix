@@ -5,48 +5,30 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
-import { Company } from "../platform/entities/company.entity";
-import { SupplierCapability } from "../supplier/entities/supplier-capability.entity";
-import {
-  SupplierAccountStatus,
-  SupplierProfile,
-} from "../supplier/entities/supplier-profile.entity";
+import { SupplierProfileRepository } from "../supplier/supplier-profile.repository";
+import { CustomerBlockedSupplierRepository } from "./customer-blocked-supplier.repository";
+import { CustomerPreferredSupplierRepository } from "./customer-preferred-supplier.repository";
+import { CustomerProfileRepository } from "./customer-profile.repository";
 import { DirectoryQueryDto, DirectorySupplierDto } from "./dto/supplier-directory.dto";
-import {
-  CustomerBlockedSupplier,
-  CustomerPreferredSupplier,
-  CustomerProfile,
-  CustomerRole,
-  SupplierInvitation,
-} from "./entities";
+import { CustomerRole } from "./entities";
 import { SupplierInvitationStatus } from "./entities/supplier-invitation.entity";
+import { SupplierInvitationRepository } from "./supplier-invitation.repository";
 
 const INVITATION_EXPIRY_DAYS = 7;
 
 @Injectable()
 export class CustomerSupplierService {
   constructor(
-    @InjectRepository(CustomerPreferredSupplier)
-    private readonly preferredSupplierRepo: Repository<CustomerPreferredSupplier>,
-    @InjectRepository(CustomerBlockedSupplier)
-    private readonly blockedSupplierRepo: Repository<CustomerBlockedSupplier>,
-    @InjectRepository(SupplierInvitation)
-    private readonly invitationRepo: Repository<SupplierInvitation>,
-    @InjectRepository(CustomerProfile)
-    private readonly profileRepo: Repository<CustomerProfile>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(SupplierProfile)
-    private readonly supplierProfileRepo: Repository<SupplierProfile>,
-    @InjectRepository(SupplierCapability)
-    private readonly supplierCapabilityRepo: Repository<SupplierCapability>,
+    private readonly preferredSupplierRepository: CustomerPreferredSupplierRepository,
+    private readonly blockedSupplierRepository: CustomerBlockedSupplierRepository,
+    private readonly invitationRepository: SupplierInvitationRepository,
+    private readonly profileRepository: CustomerProfileRepository,
+    private readonly supplierProfileRepo: SupplierProfileRepository,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
   ) {}
@@ -54,20 +36,16 @@ export class CustomerSupplierService {
   // Preferential Suppliers
 
   async getPreferredSuppliers(customerId: number) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
     }
 
-    const suppliers = await this.preferredSupplierRepo.find({
-      where: { customerCompanyId: profile.companyId, isActive: true },
-      relations: ["supplierProfile", "supplierProfile.company", "addedBy"],
-      order: { priority: "ASC", createdAt: "DESC" },
-    });
+    const suppliers = await this.preferredSupplierRepository.findActiveByCompany(
+      profile.companyId,
+      ["supplierProfile", "supplierProfile.company", "addedBy"],
+    );
 
     return suppliers.map((s) => ({
       id: s.id,
@@ -93,10 +71,7 @@ export class CustomerSupplierService {
     },
     clientIp: string,
   ) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -109,20 +84,17 @@ export class CustomerSupplierService {
 
     // Check if supplier already exists
     if (data.supplierProfileId) {
-      const existing = await this.preferredSupplierRepo.findOne({
-        where: {
-          customerCompanyId: profile.companyId,
-          supplierProfileId: data.supplierProfileId,
-          isActive: true,
-        },
-      });
+      const existing = await this.preferredSupplierRepository.findActiveByCompanyAndSupplier(
+        profile.companyId,
+        data.supplierProfileId,
+      );
 
       if (existing) {
         throw new ConflictException("Supplier is already in your preferred list");
       }
     }
 
-    const supplier = this.preferredSupplierRepo.create({
+    const saved = await this.preferredSupplierRepository.create({
       customerCompanyId: profile.companyId,
       supplierProfileId: data.supplierProfileId || null,
       supplierName: data.supplierName || null,
@@ -132,8 +104,6 @@ export class CustomerSupplierService {
       notes: data.notes || null,
       isActive: true,
     });
-
-    const saved = await this.preferredSupplierRepo.save(supplier);
 
     await this.auditService.log({
       entityType: "customer_preferred_supplier",
@@ -159,9 +129,7 @@ export class CustomerSupplierService {
     data: { priority?: number; notes?: string },
     clientIp: string,
   ) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -171,13 +139,10 @@ export class CustomerSupplierService {
       throw new ForbiddenException("Only customer admins can manage preferred suppliers");
     }
 
-    const supplier = await this.preferredSupplierRepo.findOne({
-      where: {
-        id: supplierId,
-        customerCompanyId: profile.companyId,
-        isActive: true,
-      },
-    });
+    const supplier = await this.preferredSupplierRepository.findActiveByIdInCompany(
+      supplierId,
+      profile.companyId,
+    );
 
     if (!supplier) {
       throw new NotFoundException("Preferred supplier not found");
@@ -186,7 +151,7 @@ export class CustomerSupplierService {
     if (data.priority !== undefined) supplier.priority = data.priority;
     if (data.notes !== undefined) supplier.notes = data.notes;
 
-    await this.preferredSupplierRepo.save(supplier);
+    await this.preferredSupplierRepository.save(supplier);
 
     await this.auditService.log({
       entityType: "customer_preferred_supplier",
@@ -200,9 +165,7 @@ export class CustomerSupplierService {
   }
 
   async removePreferredSupplier(customerId: number, supplierId: number, clientIp: string) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -212,16 +175,17 @@ export class CustomerSupplierService {
       throw new ForbiddenException("Only customer admins can manage preferred suppliers");
     }
 
-    const supplier = await this.preferredSupplierRepo.findOne({
-      where: { id: supplierId, customerCompanyId: profile.companyId },
-    });
+    const supplier = await this.preferredSupplierRepository.findByIdInCompany(
+      supplierId,
+      profile.companyId,
+    );
 
     if (!supplier) {
       throw new NotFoundException("Preferred supplier not found");
     }
 
     supplier.isActive = false;
-    await this.preferredSupplierRepo.save(supplier);
+    await this.preferredSupplierRepository.save(supplier);
 
     await this.auditService.log({
       entityType: "customer_preferred_supplier",
@@ -237,19 +201,13 @@ export class CustomerSupplierService {
   // Supplier Invitations
 
   async getInvitations(customerId: number) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
     }
 
-    const invitations = await this.invitationRepo.find({
-      where: { customerCompanyId: profile.companyId },
-      relations: ["invitedBy", "supplierProfile"],
-      order: { createdAt: "DESC" },
-    });
+    const invitations = await this.invitationRepository.findByCompany(profile.companyId);
 
     return invitations.map((inv) => ({
       id: inv.id,
@@ -273,10 +231,7 @@ export class CustomerSupplierService {
     },
     clientIp: string,
   ) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -287,24 +242,18 @@ export class CustomerSupplierService {
     }
 
     // Check if active invitation already exists
-    const existingInvitation = await this.invitationRepo.findOne({
-      where: {
-        customerCompanyId: profile.companyId,
-        email: data.email,
-        status: SupplierInvitationStatus.PENDING,
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-    });
+    const existingInvitation = await this.invitationRepository.findActivePendingByCompanyAndEmail(
+      profile.companyId,
+      data.email,
+      now().toJSDate(),
+    );
 
     if (existingInvitation) {
       throw new ConflictException("An active invitation already exists for this email");
     }
 
     // Check if supplier is already registered
-    const existingSupplier = await this.supplierProfileRepo.findOne({
-      where: { user: { email: data.email } },
-      relations: ["user"],
-    });
+    const existingSupplier = await this.supplierProfileRepo.findByUserEmail(data.email);
 
     if (existingSupplier) {
       throw new BadRequestException(
@@ -316,7 +265,7 @@ export class CustomerSupplierService {
     const token = uuidv4();
     const expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
 
-    const invitation = this.invitationRepo.create({
+    const saved = await this.invitationRepository.create({
       customerCompanyId: profile.companyId,
       invitedById: customerId,
       token,
@@ -326,8 +275,6 @@ export class CustomerSupplierService {
       expiresAt,
       message: data.message || null,
     });
-
-    const saved = await this.invitationRepo.save(invitation);
 
     // Send invitation email
     await this.emailService.sendSupplierInvitationEmail(
@@ -356,9 +303,7 @@ export class CustomerSupplierService {
   }
 
   async cancelInvitation(customerId: number, invitationId: number, clientIp: string) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -368,9 +313,10 @@ export class CustomerSupplierService {
       throw new ForbiddenException("Only customer admins can manage invitations");
     }
 
-    const invitation = await this.invitationRepo.findOne({
-      where: { id: invitationId, customerCompanyId: profile.companyId },
-    });
+    const invitation = await this.invitationRepository.findByIdInCompany(
+      invitationId,
+      profile.companyId,
+    );
 
     if (!invitation) {
       throw new NotFoundException("Invitation not found");
@@ -381,7 +327,7 @@ export class CustomerSupplierService {
     }
 
     invitation.status = SupplierInvitationStatus.CANCELLED;
-    await this.invitationRepo.save(invitation);
+    await this.invitationRepository.save(invitation);
 
     await this.auditService.log({
       entityType: "supplier_invitation",
@@ -395,10 +341,7 @@ export class CustomerSupplierService {
   }
 
   async resendInvitation(customerId: number, invitationId: number, clientIp: string) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -408,9 +351,10 @@ export class CustomerSupplierService {
       throw new ForbiddenException("Only customer admins can manage invitations");
     }
 
-    const invitation = await this.invitationRepo.findOne({
-      where: { id: invitationId, customerCompanyId: profile.companyId },
-    });
+    const invitation = await this.invitationRepository.findByIdInCompany(
+      invitationId,
+      profile.companyId,
+    );
 
     if (!invitation) {
       throw new NotFoundException("Invitation not found");
@@ -421,7 +365,7 @@ export class CustomerSupplierService {
     invitation.expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
     invitation.status = SupplierInvitationStatus.PENDING;
 
-    await this.invitationRepo.save(invitation);
+    await this.invitationRepository.save(invitation);
 
     // Resend email
     await this.emailService.sendSupplierInvitationEmail(
@@ -448,14 +392,10 @@ export class CustomerSupplierService {
 
   // Public method for validating invitation token (used by supplier registration)
   async validateInvitationToken(token: string) {
-    const invitation = await this.invitationRepo.findOne({
-      where: {
-        token,
-        status: SupplierInvitationStatus.PENDING,
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-      relations: ["customerCompany"],
-    });
+    const invitation = await this.invitationRepository.findActivePendingByToken(
+      token,
+      now().toJSDate(),
+    );
 
     if (!invitation) {
       return null;
@@ -472,9 +412,7 @@ export class CustomerSupplierService {
 
   // Mark invitation as accepted (called after supplier registration)
   async acceptInvitation(token: string, supplierProfileId: number) {
-    const invitation = await this.invitationRepo.findOne({
-      where: { token },
-    });
+    const invitation = await this.invitationRepository.findByToken(token);
 
     if (!invitation) {
       return;
@@ -483,16 +421,15 @@ export class CustomerSupplierService {
     invitation.status = SupplierInvitationStatus.ACCEPTED;
     invitation.acceptedAt = now().toJSDate();
     invitation.supplierProfileId = supplierProfileId;
-    await this.invitationRepo.save(invitation);
+    await this.invitationRepository.save(invitation);
 
     // Auto-add to preferred suppliers
-    const preferredSupplier = this.preferredSupplierRepo.create({
+    await this.preferredSupplierRepository.create({
       customerCompanyId: invitation.customerCompanyId,
       supplierProfileId,
       addedById: invitation.invitedById,
       isActive: true,
     });
-    await this.preferredSupplierRepo.save(preferredSupplier);
   }
 
   // Auto-accept all pending invitations for a supplier email when they are approved
@@ -500,39 +437,33 @@ export class CustomerSupplierService {
     supplierEmail: string,
     supplierProfileId: number,
   ): Promise<number> {
-    const pendingInvitations = await this.invitationRepo.find({
-      where: {
-        email: supplierEmail.toLowerCase(),
-        status: SupplierInvitationStatus.PENDING,
-      },
-    });
+    const pendingInvitations = await this.invitationRepository.findPendingByEmail(
+      supplierEmail.toLowerCase(),
+    );
 
     let acceptedCount = 0;
 
     for (const invitation of pendingInvitations) {
       // Check if preferred supplier relationship already exists
-      const existingRelation = await this.preferredSupplierRepo.findOne({
-        where: {
-          customerCompanyId: invitation.customerCompanyId,
-          supplierProfileId,
-        },
-      });
+      const existingRelation = await this.preferredSupplierRepository.findByCompanyAndSupplier(
+        invitation.customerCompanyId,
+        supplierProfileId,
+      );
 
       if (!existingRelation) {
         // Mark invitation as accepted
         invitation.status = SupplierInvitationStatus.ACCEPTED;
         invitation.acceptedAt = now().toJSDate();
         invitation.supplierProfileId = supplierProfileId;
-        await this.invitationRepo.save(invitation);
+        await this.invitationRepository.save(invitation);
 
         // Auto-add to preferred suppliers
-        const preferredSupplier = this.preferredSupplierRepo.create({
+        await this.preferredSupplierRepository.create({
           customerCompanyId: invitation.customerCompanyId,
           supplierProfileId,
           addedById: invitation.invitedById,
           isActive: true,
         });
-        await this.preferredSupplierRepo.save(preferredSupplier);
 
         acceptedCount++;
       } else {
@@ -540,7 +471,7 @@ export class CustomerSupplierService {
         invitation.status = SupplierInvitationStatus.ACCEPTED;
         invitation.acceptedAt = now().toJSDate();
         invitation.supplierProfileId = supplierProfileId;
-        await this.invitationRepo.save(invitation);
+        await this.invitationRepository.save(invitation);
       }
     }
 
@@ -576,47 +507,25 @@ export class CustomerSupplierService {
     customerId: number,
     filters?: DirectoryQueryDto,
   ): Promise<DirectorySupplierDto[]> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
     }
 
-    const queryBuilder = this.supplierProfileRepo
-      .createQueryBuilder("sp")
-      .leftJoinAndSelect("sp.company", "company")
-      .leftJoinAndSelect("sp.capabilities", "cap", "cap.is_active = true")
-      .where("sp.account_status = :status", {
-        status: SupplierAccountStatus.ACTIVE,
-      })
-      .andWhere("company.id IS NOT NULL");
-
-    if (filters?.search) {
-      queryBuilder.andWhere(
-        "(LOWER(company.legal_name) LIKE :search OR LOWER(company.trading_name) LIKE :search)",
-        { search: `%${filters.search.toLowerCase()}%` },
-      );
-    }
-
-    if (filters?.province) {
-      queryBuilder.andWhere("LOWER(company.province_state) = :province", {
-        province: filters.province.toLowerCase(),
-      });
-    }
-
-    const suppliers = await queryBuilder.getMany();
-
-    const preferredSuppliers = await this.preferredSupplierRepo.find({
-      where: { customerCompanyId: profile.companyId, isActive: true },
+    const suppliers = await this.supplierProfileRepo.searchActiveWithCompany({
+      search: filters?.search ?? null,
+      province: filters?.province ?? null,
     });
+
+    const preferredSuppliers = await this.preferredSupplierRepository.findActiveByCompany(
+      profile.companyId,
+    );
     const preferredMap = new Map(preferredSuppliers.map((ps) => [ps.supplierProfileId, ps]));
 
-    const blockedSuppliers = await this.blockedSupplierRepo.find({
-      where: { customerCompanyId: profile.companyId, isActive: true },
-    });
+    const blockedSuppliers = await this.blockedSupplierRepository.findActiveByCompany(
+      profile.companyId,
+    );
     const blockedMap = new Map(blockedSuppliers.map((bs) => [bs.supplierProfileId, bs]));
 
     const results: DirectorySupplierDto[] = suppliers
@@ -665,9 +574,7 @@ export class CustomerSupplierService {
     reason: string | null,
     clientIp: string,
   ) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -677,37 +584,29 @@ export class CustomerSupplierService {
       throw new ForbiddenException("Only customer admins can block suppliers");
     }
 
-    const supplierProfile = await this.supplierProfileRepo.findOne({
-      where: { id: supplierProfileId },
-    });
+    const supplierProfile = await this.supplierProfileRepo.findById(supplierProfileId);
 
     if (!supplierProfile) {
       throw new NotFoundException("Supplier not found");
     }
 
-    const existingBlock = await this.blockedSupplierRepo.findOne({
-      where: {
-        customerCompanyId: profile.companyId,
-        supplierProfileId,
-        isActive: true,
-      },
-    });
+    const existingBlock = await this.blockedSupplierRepository.findActiveByCompanyAndSupplier(
+      profile.companyId,
+      supplierProfileId,
+    );
 
     if (existingBlock) {
       throw new ConflictException("Supplier is already blocked");
     }
 
-    const existingPreferred = await this.preferredSupplierRepo.findOne({
-      where: {
-        customerCompanyId: profile.companyId,
-        supplierProfileId,
-        isActive: true,
-      },
-    });
+    const existingPreferred = await this.preferredSupplierRepository.findActiveByCompanyAndSupplier(
+      profile.companyId,
+      supplierProfileId,
+    );
 
     if (existingPreferred) {
       existingPreferred.isActive = false;
-      await this.preferredSupplierRepo.save(existingPreferred);
+      await this.preferredSupplierRepository.save(existingPreferred);
 
       await this.auditService.log({
         entityType: "customer_preferred_supplier",
@@ -718,15 +617,13 @@ export class CustomerSupplierService {
       });
     }
 
-    const blocked = this.blockedSupplierRepo.create({
+    const saved = await this.blockedSupplierRepository.create({
       customerCompanyId: profile.companyId,
       supplierProfileId,
       blockedById: customerId,
       reason,
       isActive: true,
     });
-
-    const saved = await this.blockedSupplierRepo.save(blocked);
 
     await this.auditService.log({
       entityType: "customer_blocked_supplier",
@@ -743,9 +640,7 @@ export class CustomerSupplierService {
   }
 
   async unblockSupplier(customerId: number, supplierProfileId: number, clientIp: string) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -755,20 +650,17 @@ export class CustomerSupplierService {
       throw new ForbiddenException("Only customer admins can unblock suppliers");
     }
 
-    const blocked = await this.blockedSupplierRepo.findOne({
-      where: {
-        customerCompanyId: profile.companyId,
-        supplierProfileId,
-        isActive: true,
-      },
-    });
+    const blocked = await this.blockedSupplierRepository.findActiveByCompanyAndSupplier(
+      profile.companyId,
+      supplierProfileId,
+    );
 
     if (!blocked) {
       throw new NotFoundException("Blocked supplier not found");
     }
 
     blocked.isActive = false;
-    await this.blockedSupplierRepo.save(blocked);
+    await this.blockedSupplierRepository.save(blocked);
 
     await this.auditService.log({
       entityType: "customer_blocked_supplier",

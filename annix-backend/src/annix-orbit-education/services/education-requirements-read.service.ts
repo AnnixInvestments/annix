@@ -1,7 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { EducationRequirementDraft } from "../entities/education-requirement-draft.entity";
+import { EducationRequirementDraftRepository } from "../repositories/education-requirement-draft.repository";
 
 export interface PublicRequirement {
   fieldKey: string;
@@ -20,16 +18,13 @@ export interface PublicProgrammeRequirements {
 
 @Injectable()
 export class EducationRequirementsReadService {
-  constructor(
-    @InjectRepository(EducationRequirementDraft)
-    private readonly draftRepo: Repository<EducationRequirementDraft>,
-  ) {}
+  constructor(private readonly draftRepo: EducationRequirementDraftRepository) {}
 
   async approvedForProgramme(
     programmeId: string,
     intakeYear: number,
   ): Promise<PublicProgrammeRequirements> {
-    const drafts = await this.draftRepo.find({ where: { programmeId, intakeYear } });
+    const drafts = await this.draftRepo.findForProgrammeYear(programmeId, intakeYear);
     const approved = drafts.filter((draft) => draft.status === "approved");
     const pendingCount = drafts.filter(
       (draft) => draft.status === "draft" || draft.status === "changed",

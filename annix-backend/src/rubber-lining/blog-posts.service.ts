@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../lib/datetime";
 import { BlogPost } from "./entities/blog-post.entity";
+import { BlogPostRepository } from "./repositories/blog-post.repository";
 
 export interface CreateBlogPostDto {
   slug: string;
@@ -34,22 +33,14 @@ export interface UpdateBlogPostDto {
 export class BlogPostsService {
   private readonly logger = new Logger(BlogPostsService.name);
 
-  constructor(
-    @InjectRepository(BlogPost)
-    private readonly blogPostRepository: Repository<BlogPost>,
-  ) {}
+  constructor(private readonly blogPostRepository: BlogPostRepository) {}
 
   async publishedPosts(): Promise<BlogPost[]> {
-    return this.blogPostRepository.find({
-      where: { isPublished: true },
-      order: { publishedAt: "DESC", createdAt: "DESC" },
-    });
+    return this.blogPostRepository.findPublishedOrdered();
   }
 
   async publishedPostBySlug(slug: string): Promise<BlogPost> {
-    const post = await this.blogPostRepository.findOne({
-      where: { slug, isPublished: true },
-    });
+    const post = await this.blogPostRepository.findOnePublishedBySlug(slug);
     if (!post) {
       throw new NotFoundException(`Blog post not found: ${slug}`);
     }
@@ -57,13 +48,11 @@ export class BlogPostsService {
   }
 
   async allPosts(): Promise<BlogPost[]> {
-    return this.blogPostRepository.find({
-      order: { publishedAt: "DESC", createdAt: "DESC" },
-    });
+    return this.blogPostRepository.findAllOrdered();
   }
 
   async postById(id: string): Promise<BlogPost> {
-    const post = await this.blogPostRepository.findOne({ where: { id } });
+    const post = await this.blogPostRepository.findById(id);
     if (!post) {
       throw new NotFoundException(`Blog post not found: ${id}`);
     }
@@ -71,12 +60,12 @@ export class BlogPostsService {
   }
 
   async createPost(dto: CreateBlogPostDto): Promise<BlogPost> {
-    const existing = await this.blogPostRepository.findOne({ where: { slug: dto.slug } });
+    const existing = await this.blogPostRepository.findOneBySlug(dto.slug);
     if (existing) {
       throw new BadRequestException(`A blog post with slug "${dto.slug}" already exists`);
     }
     const publishedAtRaw = dto.publishedAt;
-    const post = this.blogPostRepository.create({
+    const post = this.blogPostRepository.build({
       slug: dto.slug,
       title: dto.title,
       metaTitle: dto.metaTitle || null,
@@ -96,7 +85,7 @@ export class BlogPostsService {
   async updatePost(id: string, dto: UpdateBlogPostDto): Promise<BlogPost> {
     const post = await this.postById(id);
     if (dto.slug && dto.slug !== post.slug) {
-      const existing = await this.blogPostRepository.findOne({ where: { slug: dto.slug } });
+      const existing = await this.blogPostRepository.findOneBySlug(dto.slug);
       if (existing) {
         throw new BadRequestException(`A blog post with slug "${dto.slug}" already exists`);
       }

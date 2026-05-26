@@ -1,6 +1,4 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
@@ -12,14 +10,18 @@ import {
   JobCardCoatingAnalysis,
   StockAssessmentItem,
 } from "../entities/coating-analysis.entity";
-import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { INVALID_LINE_ITEM_PATTERNS } from "../lib/line-item-validation";
-import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { CustomerPurchaseOrderRepository } from "../repositories/customer-purchase-order.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardExtractionCorrectionRepository } from "../repositories/job-card-extraction-correction.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 import {
   validateCoatingExtraction,
   validPercentage,
@@ -91,20 +93,13 @@ export class CoatingAnalysisService {
   private readonly logger = new Logger(CoatingAnalysisService.name);
 
   constructor(
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly analysisRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
-    @InjectRepository(JobCardExtractionCorrection)
-    private readonly correctionRepo: Repository<JobCardExtractionCorrection>,
-    @InjectRepository(CustomerPurchaseOrder)
-    private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
+    private readonly analysisRepo: JobCardCoatingAnalysisRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
+    private readonly correctionRepo: JobCardExtractionCorrectionRepository,
+    private readonly cpoRepo: CustomerPurchaseOrderRepository,
     private readonly aiChatService: AiChatService,
     private readonly m2CalculationService: M2CalculationService,
     @Inject(STORAGE_SERVICE)
@@ -124,34 +119,24 @@ export class CoatingAnalysisService {
   }
 
   async analyseJobCard(jobCardId: number, companyId: number): Promise<JobCardCoatingAnalysis> {
-    const existing = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const existing = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     const analysis =
       existing ??
-      this.analysisRepo.create({
+      (await this.analysisRepo.create({
         jobCardId,
         companyId,
         status: CoatingAnalysisStatus.PENDING,
-      });
-
-    if (!existing) {
-      await this.analysisRepo.save(analysis);
-    }
+      }));
 
     try {
-      const jobCard = await this.jobCardRepo.findOne({
-        where: { id: jobCardId, companyId },
-      });
+      const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
       if (!jobCard) {
         return this.markFailed(analysis, `Job card ${jobCardId} not found`);
       }
 
-      const allLineItems = await this.lineItemRepo.find({
-        where: { jobCardId, companyId },
-      });
+      const allLineItems = await this.lineItemRepo.findForJobCardAndCompany(jobCardId, companyId);
 
       const junkItemIds = new Set(
         allLineItems
@@ -311,19 +296,14 @@ export class CoatingAnalysisService {
     companyId: number,
     jobCardId: number,
   ): Promise<JobCardCoatingAnalysis | null> {
-    return this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    return this.analysisRepo.findOneForJobCard(companyId, jobCardId);
   }
 
   async flagsByJobCard(
     companyId: number,
     jobCardId: number,
   ): Promise<{ hasInternalLining: boolean } | null> {
-    return this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-      select: { id: true, hasInternalLining: true },
-    });
+    return this.analysisRepo.findLiningFlagForJobCard(companyId, jobCardId);
   }
 
   async updateSurfacePrep(
@@ -331,9 +311,7 @@ export class CoatingAnalysisService {
     jobCardId: number,
     updates: { extSurfacePrep?: string; intSurfacePrep?: string },
   ): Promise<JobCardCoatingAnalysis> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
@@ -355,9 +333,7 @@ export class CoatingAnalysisService {
     extM2: number,
     intM2: number,
   ): Promise<JobCardCoatingAnalysis> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
@@ -385,9 +361,7 @@ export class CoatingAnalysisService {
     coatIndex: number,
     updates: { minDftUm?: number; maxDftUm?: number },
   ): Promise<JobCardCoatingAnalysis> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
@@ -418,9 +392,7 @@ export class CoatingAnalysisService {
     jobCardId: number,
     coatIndex: number,
   ): Promise<JobCardCoatingAnalysis> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
@@ -443,9 +415,7 @@ export class CoatingAnalysisService {
     companyId: number,
     jobCardId: number,
   ): Promise<{ product: string; genericType: string | null; estimatedVolumeSolids: number }[]> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       return [];
@@ -465,9 +435,7 @@ export class CoatingAnalysisService {
     jobCardId: number,
     file: Express.Multer.File,
   ): Promise<JobCardCoatingAnalysis> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
@@ -565,9 +533,7 @@ export class CoatingAnalysisService {
     jobCardId: number,
     acceptedBy: string,
   ): Promise<JobCardCoatingAnalysis> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
@@ -599,9 +565,7 @@ export class CoatingAnalysisService {
   }
 
   async recalculateLineItemM2(companyId: number, jobCardId: number): Promise<JobCardLineItem[]> {
-    const lineItems = await this.lineItemRepo.find({
-      where: { jobCardId, companyId },
-    });
+    const lineItems = await this.lineItemRepo.findForJobCardAndCompany(jobCardId, companyId);
 
     const PIPE_ITEM_PATTERN =
       /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b|\d+(?:\.\d+)?\s*m\s*(?:²|2))/i;
@@ -631,15 +595,13 @@ export class CoatingAnalysisService {
     });
 
     if (itemsToUpdate.length > 0) {
-      await this.lineItemRepo.save(itemsToUpdate);
+      await this.lineItemRepo.saveMany(itemsToUpdate);
       this.logger.log(
         `Force-recalculated m² on ${itemsToUpdate.length} line item(s) for job card ${jobCardId}`,
       );
     }
 
-    return await this.lineItemRepo.find({
-      where: { jobCardId, companyId },
-    });
+    return this.lineItemRepo.findForJobCardAndCompany(jobCardId, companyId);
   }
 
   private async calculatePipeM2(
@@ -686,7 +648,7 @@ export class CoatingAnalysisService {
     );
 
     if (itemsToUpdate.length > 0) {
-      await this.lineItemRepo.save(itemsToUpdate);
+      await this.lineItemRepo.saveMany(itemsToUpdate);
       this.logger.log(
         `Updated m² on ${itemsToUpdate.length} line item(s) from pipe dimension calculation`,
       );
@@ -755,7 +717,7 @@ export class CoatingAnalysisService {
   }
 
   private async lossFactorForCompany(companyId: number): Promise<number> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     const lossPct = company?.pipingLossFactorPct ?? 45;
     return (100 - lossPct) / 100;
   }
@@ -837,10 +799,7 @@ export class CoatingAnalysisService {
     coats: CoatDetail[],
     companyId: number,
   ): Promise<StockAssessmentItem[]> {
-    const stockItems = await this.stockItemRepo.find({
-      where: { companyId },
-      select: STOCK_ITEM_MATCH_SELECT,
-    });
+    const stockItems = await this.stockItemRepo.findForCompanySelectMatch(companyId);
 
     const grouped = coats.reduce<Record<string, { totalRequired: number; coat: CoatDetail }>>(
       (acc, coat) => {
@@ -906,9 +865,7 @@ export class CoatingAnalysisService {
     items: StockAssessmentItem[],
     userName: string,
   ): Promise<JobCardCoatingAnalysis> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException(`Coating analysis not found for job card ${jobCardId}`);
@@ -925,9 +882,10 @@ export class CoatingAnalysisService {
     const existingNotes = (jobCard.notes || "").trim();
     if (existingNotes) return;
 
-    const lineItems = await this.lineItemRepo.find({
-      where: { jobCardId: jobCard.id, companyId: jobCard.companyId },
-    });
+    const lineItems = await this.lineItemRepo.findForJobCardAndCompany(
+      jobCard.id,
+      jobCard.companyId,
+    );
     const lineItemNotes = lineItems.map((li) => (li.notes || "").trim()).filter(Boolean);
     const combined = sanitizeNotes(lineItemNotes.join("\n"));
 
@@ -937,9 +895,7 @@ export class CoatingAnalysisService {
     }
 
     if (jobCard.cpoId) {
-      const cpo = await this.cpoRepo.findOne({
-        where: { id: jobCard.cpoId, companyId: jobCard.companyId },
-      });
+      const cpo = await this.cpoRepo.findOneForCompany(jobCard.cpoId, jobCard.companyId);
       if (cpo?.coatingSpecs) {
         jobCard.notes = sanitizeNotes(cpo.coatingSpecs);
       }
@@ -949,12 +905,7 @@ export class CoatingAnalysisService {
   async bulkReanalyse(companyId: number): Promise<{ processed: number; failed: number }> {
     const BATCH_SIZE = 5;
 
-    const draftJobCards = await this.jobCardRepo.find({
-      where: [
-        { companyId, status: "draft" as any },
-        { companyId, status: "active" as any },
-      ],
-    });
+    const draftJobCards = await this.jobCardRepo.findActiveOrDraftForCompany(companyId);
 
     const sanitizedCards = await Promise.all(
       draftJobCards.map(async (jc) => {
@@ -998,10 +949,7 @@ export class CoatingAnalysisService {
   }
 
   async corrections(companyId: number, jobCardId: number): Promise<JobCardExtractionCorrection[]> {
-    return this.correctionRepo.find({
-      where: { companyId, jobCardId },
-      order: { createdAt: "DESC" },
-    });
+    return this.correctionRepo.findForJobCardOrdered(companyId, jobCardId);
   }
 
   async saveCorrection(
@@ -1012,15 +960,13 @@ export class CoatingAnalysisService {
     correctedValue: string,
     correctedBy: number,
   ): Promise<JobCardExtractionCorrection> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
     }
 
-    const correction = this.correctionRepo.create({
+    const saved = await this.correctionRepo.create({
       companyId,
       jobCardId,
       customerName: jobCard.customerName,
@@ -1029,8 +975,6 @@ export class CoatingAnalysisService {
       correctedValue,
       correctedBy,
     });
-
-    const saved = await this.correctionRepo.save(correction);
 
     this.logger.log(
       `Correction saved for JC ${jobCardId}, field "${fieldName}" by user ${correctedBy}`,
@@ -1045,11 +989,11 @@ export class CoatingAnalysisService {
   ): Promise<string | null> {
     if (!customerName) return null;
 
-    const recentCorrections = await this.correctionRepo.find({
-      where: { companyId, customerName },
-      order: { createdAt: "DESC" },
-      take: 30,
-    });
+    const recentCorrections = await this.correctionRepo.findRecentForCustomer(
+      companyId,
+      customerName,
+      30,
+    );
 
     if (recentCorrections.length === 0) return null;
 

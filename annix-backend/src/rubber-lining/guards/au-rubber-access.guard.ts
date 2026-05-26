@@ -1,18 +1,13 @@
 import { CanActivate, ExecutionContext, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { App } from "../../rbac/entities/app.entity";
-import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
+import { AppRepository, UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { RbacService } from "../../rbac/rbac.service";
 
 @Injectable()
 export class AuRubberAccessGuard implements CanActivate {
   constructor(
-    @InjectRepository(App)
-    private readonly appRepo: Repository<App>,
-    @InjectRepository(UserAppAccess)
-    private readonly userAppAccessRepo: Repository<UserAppAccess>,
+    private readonly appRepo: AppRepository,
+    private readonly userAppAccessRepo: UserAppAccessRepository,
     private readonly rbacService: RbacService,
   ) {}
 
@@ -32,18 +27,13 @@ export class AuRubberAccessGuard implements CanActivate {
       return true;
     }
 
-    const app = await this.appRepo.findOne({
-      where: { code: "au-rubber", isActive: true },
-    });
+    const app = await this.appRepo.findOneWhere({ code: "au-rubber", isActive: true });
 
     if (!app) {
       return false;
     }
 
-    const userAccess = await this.userAppAccessRepo.findOne({
-      where: { userId: user.id, appId: app.id },
-      relations: ["role"],
-    });
+    const userAccess = await this.userAppAccessRepo.findOneByUserAndAppWithRole(user.id, app.id);
 
     if (!userAccess) {
       return false;

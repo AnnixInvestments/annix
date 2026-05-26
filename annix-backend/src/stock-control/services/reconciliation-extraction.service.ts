@@ -1,6 +1,4 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -11,10 +9,11 @@ import {
   ReconciliationDocument,
 } from "../entities/reconciliation-document.entity";
 import {
-  ReconciliationItem,
   ReconciliationSourceType,
   ReconciliationStatus,
 } from "../entities/reconciliation-item.entity";
+import { ReconciliationDocumentRepository } from "../repositories/reconciliation-document.repository";
+import { ReconciliationItemRepository } from "../repositories/reconciliation-item.repository";
 
 const CATEGORY_TO_SOURCE: Record<string, ReconciliationSourceType> = {
   [ReconciliationDocCategory.CPO]: ReconciliationSourceType.CPO,
@@ -33,20 +32,18 @@ export class ReconciliationExtractionService {
   private readonly logger = new Logger(ReconciliationExtractionService.name);
 
   constructor(
-    @InjectRepository(ReconciliationDocument)
-    private readonly docRepo: Repository<ReconciliationDocument>,
-    @InjectRepository(ReconciliationItem)
-    private readonly itemRepo: Repository<ReconciliationItem>,
+    private readonly docRepo: ReconciliationDocumentRepository,
+    private readonly itemRepo: ReconciliationItemRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
   ) {}
 
   async extractItems(documentId: number): Promise<void> {
-    const doc = await this.docRepo.findOne({ where: { id: documentId } });
+    const doc = await this.docRepo.findById(documentId);
     if (!doc) return;
 
-    await this.docRepo.update(doc.id, { extractionStatus: ExtractionStatus.PROCESSING });
+    await this.docRepo.updateById(doc.id, { extractionStatus: ExtractionStatus.PROCESSING });
 
     try {
       const buffer = await this.storageService.download(doc.filePath);
@@ -67,7 +64,7 @@ export class ReconciliationExtractionService {
 
       const items = this.parseExtractedItems(content);
 
-      await this.docRepo.update(doc.id, {
+      await this.docRepo.updateById(doc.id, {
         extractionStatus: ExtractionStatus.COMPLETED,
         extractedItems: items,
         extractedAt: now().toJSDate(),
@@ -85,7 +82,7 @@ export class ReconciliationExtractionService {
       const message = err instanceof Error ? err.message : "Unknown extraction error";
       this.logger.error(`Extraction failed for document ${doc.id}: ${message}`);
 
-      await this.docRepo.update(doc.id, {
+      await this.docRepo.updateById(doc.id, {
         extractionStatus: ExtractionStatus.FAILED,
         extractionError: message,
       });
@@ -153,21 +150,19 @@ export class ReconciliationExtractionService {
   ): Promise<void> {
     const sourceType = CATEGORY_TO_SOURCE[doc.documentCategory] || ReconciliationSourceType.MANUAL;
 
-    const existing = await this.itemRepo.find({
-      where: { companyId: doc.companyId, jobCardId: doc.jobCardId },
-    });
+    const existing = await this.itemRepo.findForJobCard(doc.companyId, doc.jobCardId);
 
-    const newItems = items
-      .filter(
-        (extracted) =>
-          !existing.some(
-            (e) =>
-              e.itemDescription.toLowerCase().trim() ===
-                extracted.itemDescription.toLowerCase().trim() && e.sourceDocumentId === doc.id,
-          ),
-      )
-      .map((extracted, idx) =>
-        this.itemRepo.create({
+    const newItems = this.itemRepo.buildMany(
+      items
+        .filter(
+          (extracted) =>
+            !existing.some(
+              (e) =>
+                e.itemDescription.toLowerCase().trim() ===
+                  extracted.itemDescription.toLowerCase().trim() && e.sourceDocumentId === doc.id,
+            ),
+        )
+        .map((extracted, idx) => ({
           companyId: doc.companyId,
           jobCardId: doc.jobCardId,
           itemDescription: extracted.itemDescription,
@@ -177,11 +172,11 @@ export class ReconciliationExtractionService {
           quantityOrdered: extracted.quantity,
           reconciliationStatus: ReconciliationStatus.PENDING,
           sortOrder: existing.length + idx,
-        }),
-      );
+        })),
+    );
 
     if (newItems.length > 0) {
-      await this.itemRepo.save(newItems);
+      await this.itemRepo.saveMany(newItems);
       this.logger.log(`Created ${newItems.length} reconciliation items from document ${doc.id}`);
     }
   }

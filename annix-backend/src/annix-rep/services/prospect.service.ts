@@ -1,7 +1,5 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { isDate, keys, values } from "es-toolkit/compat";
-import { In, Repository } from "typeorm";
 import { fromISO, fromJSDate, now, nowMillis } from "../../lib/datetime";
 import {
   BulkDeleteResponseDto,
@@ -15,6 +13,7 @@ import {
   UpdateProspectDto,
 } from "../dto";
 import { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "../entities";
+import { ProspectRepository } from "../prospect.repository";
 import { ProspectActivityService } from "./prospect-activity.service";
 
 @Injectable()
@@ -22,14 +21,13 @@ export class ProspectService {
   private readonly logger = new Logger(ProspectService.name);
 
   constructor(
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
+    private readonly prospectRepo: ProspectRepository,
     @Inject(forwardRef(() => ProspectActivityService))
     private readonly activityService: ProspectActivityService,
   ) {}
 
   async create(ownerId: number, dto: CreateProspectDto): Promise<Prospect> {
-    const prospect = this.prospectRepo.create({
+    const saved = await this.prospectRepo.create({
       ownerId,
       companyName: dto.companyName,
       contactName: dto.contactName ?? null,
@@ -53,8 +51,6 @@ export class ProspectService {
       followUpRecurrence: dto.followUpRecurrence ?? FollowUpRecurrence.NONE,
       customFields: dto.customFields ?? null,
     });
-
-    const saved = await this.prospectRepo.save(prospect);
     this.logger.log(`Prospect created: ${saved.id} by user ${ownerId}`);
 
     await this.activityService.logCreated(saved.id, ownerId, saved.companyName);
@@ -63,24 +59,15 @@ export class ProspectService {
   }
 
   async findAll(ownerId: number, limit: number = 500): Promise<Prospect[]> {
-    return this.prospectRepo.find({
-      where: { ownerId },
-      order: { updatedAt: "DESC" },
-      take: limit,
-    });
+    return this.prospectRepo.findByOwner(ownerId, limit);
   }
 
   async findByStatus(ownerId: number, status: ProspectStatus): Promise<Prospect[]> {
-    return this.prospectRepo.find({
-      where: { ownerId, status },
-      order: { updatedAt: "DESC" },
-    });
+    return this.prospectRepo.findByOwnerAndStatus(ownerId, status);
   }
 
   async findOne(ownerId: number, id: number): Promise<Prospect> {
-    const prospect = await this.prospectRepo.findOne({
-      where: { id, ownerId },
-    });
+    const prospect = await this.prospectRepo.findByOwnerAndId(ownerId, id);
 
     if (!prospect) {
       throw new NotFoundException(`Prospect ${id} not found`);
@@ -201,45 +188,11 @@ export class ProspectService {
     const radiusKm = query.radiusKm ?? 10;
     const limit = query.limit ?? 20;
 
-    const results = await this.prospectRepo
-      .createQueryBuilder("prospect")
-      .where("prospect.owner_id = :ownerId", { ownerId })
-      .andWhere("prospect.latitude IS NOT NULL")
-      .andWhere("prospect.longitude IS NOT NULL")
-      .andWhere(
-        `(
-          6371 * acos(
-            cos(radians(:lat)) * cos(radians(prospect.latitude)) *
-            cos(radians(prospect.longitude) - radians(:lng)) +
-            sin(radians(:lat)) * sin(radians(prospect.latitude))
-          )
-        ) <= :radius`,
-        { lat: query.latitude, lng: query.longitude, radius: radiusKm },
-      )
-      .orderBy(
-        `6371 * acos(
-          cos(radians(:lat)) * cos(radians(prospect.latitude)) *
-          cos(radians(prospect.longitude) - radians(:lng)) +
-          sin(radians(:lat)) * sin(radians(prospect.latitude))
-        )`,
-        "ASC",
-      )
-      .setParameter("lat", query.latitude)
-      .setParameter("lng", query.longitude)
-      .limit(limit)
-      .getMany();
-
-    return results;
+    return this.prospectRepo.findNearby(ownerId, query.latitude, query.longitude, radiusKm, limit);
   }
 
   async countByStatus(ownerId: number): Promise<Record<ProspectStatus, number>> {
-    const results = await this.prospectRepo
-      .createQueryBuilder("prospect")
-      .select("prospect.status", "status")
-      .addSelect("COUNT(*)", "count")
-      .where("prospect.owner_id = :ownerId", { ownerId })
-      .groupBy("prospect.status")
-      .getRawMany();
+    const results = await this.prospectRepo.countByStatusGrouped(ownerId);
 
     const counts = values(ProspectStatus).reduce(
       (acc, status) => {
@@ -257,15 +210,7 @@ export class ProspectService {
   }
 
   async followUpsDue(ownerId: number): Promise<Prospect[]> {
-    return this.prospectRepo
-      .createQueryBuilder("prospect")
-      .where("prospect.owner_id = :ownerId", { ownerId })
-      .andWhere("prospect.next_follow_up_at <= :now", { now: now().toJSDate() })
-      .andWhere("prospect.status NOT IN (:...closedStatuses)", {
-        closedStatuses: [ProspectStatus.WON, ProspectStatus.LOST],
-      })
-      .orderBy("prospect.next_follow_up_at", "ASC")
-      .getMany();
+    return this.prospectRepo.findFollowUpsDue(ownerId, now().toJSDate());
   }
 
   async completeFollowUp(ownerId: number, id: number): Promise<Prospect> {
@@ -314,16 +259,13 @@ export class ProspectService {
     ids: number[],
     status: ProspectStatus,
   ): Promise<BulkUpdateStatusResponseDto> {
-    const ownedProspects = await this.prospectRepo.find({
-      where: { ownerId, id: In(ids) },
-      select: ["id"],
-    });
+    const ownedProspects = await this.prospectRepo.findByOwnerInIdsSelectId(ownerId, ids);
 
     const ownedIds = ownedProspects.map((p) => p.id);
     const notFoundIds = ids.filter((id) => !ownedIds.includes(id));
 
     if (ownedIds.length > 0) {
-      await this.prospectRepo.update({ id: In(ownedIds), ownerId }, { status });
+      await this.prospectRepo.updateStatusForOwner(ownerId, ownedIds, status);
       this.logger.log(
         `Bulk status update: ${ownedIds.length} prospects to ${status} by user ${ownerId}`,
       );
@@ -337,16 +279,13 @@ export class ProspectService {
   }
 
   async bulkDelete(ownerId: number, ids: number[]): Promise<BulkDeleteResponseDto> {
-    const ownedProspects = await this.prospectRepo.find({
-      where: { ownerId, id: In(ids) },
-      select: ["id"],
-    });
+    const ownedProspects = await this.prospectRepo.findByOwnerInIdsSelectId(ownerId, ids);
 
     const ownedIds = ownedProspects.map((p) => p.id);
     const notFoundIds = ids.filter((id) => !ownedIds.includes(id));
 
     if (ownedIds.length > 0) {
-      await this.prospectRepo.delete({ id: In(ownedIds), ownerId });
+      await this.prospectRepo.deleteByOwnerInIds(ownerId, ownedIds);
       this.logger.log(`Bulk delete: ${ownedIds.length} prospects by user ${ownerId}`);
     }
 
@@ -543,8 +482,7 @@ export class ProspectService {
     }
 
     if (validProspects.length > 0) {
-      const prospects = validProspects.map((p) => this.prospectRepo.create(p.data!));
-      const saved = await this.prospectRepo.save(prospects);
+      const saved = await this.prospectRepo.createMany(validProspects.map((p) => p.data!));
       result.imported = saved.length;
       result.createdIds = saved.map((p) => p.id);
       this.logger.log(`Imported ${saved.length} prospects for user ${ownerId}`);
@@ -556,9 +494,7 @@ export class ProspectService {
   async mergeProspects(ownerId: number, dto: MergeProspectsDto): Promise<Prospect> {
     const primary = await this.findOne(ownerId, dto.primaryId);
 
-    const toMerge = await this.prospectRepo.find({
-      where: { ownerId, id: In(dto.mergeIds) },
-    });
+    const toMerge = await this.prospectRepo.findByOwnerInIds(ownerId, dto.mergeIds);
 
     if (toMerge.length !== dto.mergeIds.length) {
       const foundIds = toMerge.map((p) => p.id);
@@ -611,7 +547,7 @@ export class ProspectService {
 
     const saved = await this.prospectRepo.save(primary);
 
-    await this.prospectRepo.delete({ id: In(dto.mergeIds) });
+    await this.prospectRepo.deleteByIds(dto.mergeIds);
 
     await this.activityService.logMerged(dto.primaryId, ownerId, dto.mergeIds);
 
@@ -722,7 +658,7 @@ export class ProspectService {
       return prospect;
     });
 
-    await this.prospectRepo.save(updatedProspects);
+    await this.prospectRepo.saveMany(updatedProspects);
     this.logger.log(
       `Recalculated scores for ${updatedProspects.length} prospects for user ${ownerId}`,
     );
@@ -735,16 +671,14 @@ export class ProspectService {
     ids: number[],
     assignedToId: number | null,
   ): Promise<{ updated: number; updatedIds: number[] }> {
-    const prospects = await this.prospectRepo.find({
-      where: { ownerId, id: In(ids) },
-    });
+    const prospects = await this.prospectRepo.findByOwnerInIds(ownerId, ids);
 
     const updatedProspects = prospects.map((prospect) => {
       prospect.assignedToId = assignedToId;
       return prospect;
     });
 
-    await this.prospectRepo.save(updatedProspects);
+    await this.prospectRepo.saveMany(updatedProspects);
     this.logger.log(
       `Bulk assigned ${updatedProspects.length} prospects to user ${assignedToId ?? "unassigned"} by user ${ownerId}`,
     );
@@ -759,9 +693,7 @@ export class ProspectService {
     ownerId: number,
     dto: BulkTagOperationDto,
   ): Promise<{ updated: number; updatedIds: number[] }> {
-    const prospects = await this.prospectRepo.find({
-      where: { ownerId, id: In(dto.ids) },
-    });
+    const prospects = await this.prospectRepo.findByOwnerInIds(ownerId, dto.ids);
 
     const updatedProspects = prospects.map((prospect) => {
       const currentTags = new Set(prospect.tags ?? []);
@@ -778,7 +710,9 @@ export class ProspectService {
       return { prospect, oldTags };
     });
 
-    const savedProspects = await this.prospectRepo.save(updatedProspects.map((u) => u.prospect));
+    const savedProspects = await this.prospectRepo.saveMany(
+      updatedProspects.map((u) => u.prospect),
+    );
 
     await Promise.all(
       updatedProspects.map(({ prospect, oldTags }) =>

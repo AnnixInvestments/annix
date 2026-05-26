@@ -1,8 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { STEEL_DENSITY_KG_M3 } from "../lib/steel-constants";
 import { RetainingRingWeight } from "./entities/retaining-ring-weight.entity";
+import { RetainingRingWeightRepository } from "./retaining-ring-weight.repository";
 
 export interface RetainingRingWeightResult {
   found: boolean;
@@ -15,21 +14,14 @@ export interface RetainingRingWeightResult {
 export class RetainingRingWeightService {
   private readonly STEEL_DENSITY_KG_M3 = STEEL_DENSITY_KG_M3;
 
-  constructor(
-    @InjectRepository(RetainingRingWeight)
-    private retainingRingWeightRepository: Repository<RetainingRingWeight>,
-  ) {}
+  constructor(private readonly retainingRingWeightRepository: RetainingRingWeightRepository) {}
 
   async findAll(): Promise<RetainingRingWeight[]> {
-    return this.retainingRingWeightRepository.find({
-      order: { nominal_bore_mm: "ASC" },
-    });
+    return this.retainingRingWeightRepository.findAllOrdered();
   }
 
   async retainingRingWeight(nominalBoreMm: number): Promise<RetainingRingWeightResult> {
-    const result = await this.retainingRingWeightRepository.findOne({
-      where: { nominal_bore_mm: nominalBoreMm },
-    });
+    const result = await this.retainingRingWeightRepository.findByNominalBore(nominalBoreMm);
 
     if (!result) {
       const estimatedWeight = this.estimateRetainingRingWeight(nominalBoreMm);

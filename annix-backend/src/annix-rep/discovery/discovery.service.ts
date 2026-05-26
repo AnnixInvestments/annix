@@ -1,10 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now, nowMillis } from "../../lib/datetime";
-import { Prospect, ProspectStatus } from "../entities/prospect.entity";
+import { ProspectStatus } from "../entities/prospect.entity";
+import { ProspectRepository } from "../prospect.repository";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
+import { RepProfileRepository } from "../rep-profile/rep-profile.repository";
 import { DiscoverySearchParams } from "./discovery-source.interface";
 import {
   DiscoveredBusiness,
@@ -27,10 +27,8 @@ export class DiscoveryService {
   private readonly cacheTtlMs: number;
 
   constructor(
-    @InjectRepository(Prospect)
-    private readonly prospectRepository: Repository<Prospect>,
-    @InjectRepository(RepProfile)
-    private readonly repProfileRepository: Repository<RepProfile>,
+    private readonly prospectRepository: ProspectRepository,
+    private readonly repProfileRepository: RepProfileRepository,
     private readonly googlePlacesProvider: GooglePlacesProvider,
     private readonly yellowPagesProvider: YellowPagesProvider,
     private readonly osmOverpassProvider: OsmOverpassProvider,
@@ -43,9 +41,7 @@ export class DiscoveryService {
   }
 
   async search(userId: number, dto: DiscoverProspectsDto): Promise<DiscoverySearchResult> {
-    const repProfile = await this.repProfileRepository.findOne({
-      where: { userId },
-    });
+    const repProfile = await this.repProfileRepository.findByUserId(userId);
 
     const searchTerms = this.buildSearchTerms(repProfile, dto.searchTerms);
     const radiusKm = dto.radiusKm ?? repProfile?.defaultSearchRadiusKm ?? 10;
@@ -101,7 +97,7 @@ export class DiscoveryService {
           return { ...acc, duplicates: acc.duplicates + 1 };
         }
 
-        const prospect = this.prospectRepository.create({
+        const saved = await this.prospectRepository.create({
           ownerId: userId,
           companyName: business.companyName,
           streetAddress: business.streetAddress,
@@ -119,8 +115,6 @@ export class DiscoveryService {
           tags: business.businessTypes.slice(0, 5),
           notes: business.website ? `Website: ${business.website}` : null,
         });
-
-        const saved = await this.prospectRepository.save(prospect);
         return { ...acc, createdIds: [...acc.createdIds, saved.id] };
       },
       Promise.resolve({ createdIds: [] as number[], duplicates: 0 }),
@@ -204,10 +198,7 @@ export class DiscoveryService {
   }
 
   private async existingExternalIds(userId: number): Promise<Set<string>> {
-    const prospects = await this.prospectRepository.find({
-      where: { ownerId: userId },
-      select: ["googlePlaceId", "externalId"],
-    });
+    const prospects = await this.prospectRepository.findExistingExternalIds(userId);
 
     return new Set(
       prospects.flatMap((p) =>
@@ -219,12 +210,10 @@ export class DiscoveryService {
   }
 
   private async checkForDuplicate(userId: number, business: DiscoveredBusiness): Promise<boolean> {
-    const byExternalId = await this.prospectRepository.findOne({
-      where: [
-        { ownerId: userId, googlePlaceId: business.externalId },
-        { ownerId: userId, externalId: business.externalId },
-      ],
-    });
+    const byExternalId = await this.prospectRepository.findOwnerDuplicate(
+      userId,
+      business.externalId,
+    );
 
     if (byExternalId) {
       return true;
@@ -232,30 +221,21 @@ export class DiscoveryService {
 
     if (business.phone) {
       const normalizedPhone = this.normalizePhone(business.phone);
-      const byPhone = await this.prospectRepository
-        .createQueryBuilder("prospect")
-        .where("prospect.owner_id = :userId", { userId })
-        .andWhere(
-          "REPLACE(REPLACE(REPLACE(prospect.contact_phone, ' ', ''), '-', ''), '+', '') LIKE :phone",
-          { phone: `%${normalizedPhone.replace(/\D/g, "").slice(-9)}%` },
-        )
-        .getOne();
+      const byPhone = await this.prospectRepository.findOwnerByNormalizedPhone(
+        userId,
+        normalizedPhone.replace(/\D/g, "").slice(-9),
+      );
 
       if (byPhone) {
         return true;
       }
     }
 
-    const byNameAndCity = await this.prospectRepository
-      .createQueryBuilder("prospect")
-      .where("prospect.owner_id = :userId", { userId })
-      .andWhere("LOWER(prospect.company_name) = LOWER(:name)", {
-        name: business.companyName,
-      })
-      .andWhere("LOWER(prospect.city) = LOWER(:city)", {
-        city: business.city ?? "",
-      })
-      .getOne();
+    const byNameAndCity = await this.prospectRepository.findOwnerByNameAndCity(
+      userId,
+      business.companyName,
+      business.city ?? "",
+    );
 
     return !!byNameAndCity;
   }

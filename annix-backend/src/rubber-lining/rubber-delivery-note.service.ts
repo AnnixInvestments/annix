@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, Not, Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
 import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { ExtractionMetricService } from "../metrics/extraction-metric.service";
@@ -17,7 +15,6 @@ import {
   DOCUMENT_VERSION_STATUS_LABELS,
   DocumentVersionStatus,
 } from "./entities/document-version.types";
-import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import {
@@ -30,9 +27,16 @@ import {
 } from "./entities/rubber-delivery-note.entity";
 import { RubberDeliveryNoteCorrection } from "./entities/rubber-delivery-note-correction.entity";
 import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
-import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { ExtractedCocData, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { ExtractedCocData } from "./entities/rubber-supplier-coc.entity";
+import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
+import { RubberDeliveryNoteCorrectionRepository } from "./repositories/rubber-delivery-note-correction.repository";
+import { RubberDeliveryNoteItemRepository } from "./repositories/rubber-delivery-note-item.repository";
+import { RubberProductRepository } from "./repositories/rubber-product.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
@@ -120,22 +124,14 @@ export class RubberDeliveryNoteService {
   private readonly logger = new Logger(RubberDeliveryNoteService.name);
 
   constructor(
-    @InjectRepository(RubberDeliveryNote)
-    private deliveryNoteRepository: Repository<RubberDeliveryNote>,
-    @InjectRepository(RubberDeliveryNoteItem)
-    private deliveryNoteItemRepository: Repository<RubberDeliveryNoteItem>,
-    @InjectRepository(RubberDeliveryNoteCorrection)
-    private correctionRepository: Repository<RubberDeliveryNoteCorrection>,
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberSupplierCoc)
-    private supplierCocRepository: Repository<RubberSupplierCoc>,
-    @InjectRepository(RubberProduct)
-    private productRepository: Repository<RubberProduct>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
-    @InjectRepository(RubberAuCoc)
-    private auCocRepository: Repository<RubberAuCoc>,
+    private deliveryNoteRepository: RubberDeliveryNoteRepository,
+    private deliveryNoteItemRepository: RubberDeliveryNoteItemRepository,
+    private correctionRepository: RubberDeliveryNoteCorrectionRepository,
+    private companyRepository: RubberCompanyRepository,
+    private supplierCocRepository: RubberSupplierCocRepository,
+    private productRepository: RubberProductRepository,
+    private productCodingRepository: RubberProductCodingRepository,
+    private auCocRepository: RubberAuCocRepository,
     private rubberStockService: RubberStockService,
     private rubberRollStockService: RubberRollStockService,
     private auCocReadinessService: RubberAuCocReadinessService,
@@ -150,36 +146,7 @@ export class RubberDeliveryNoteService {
     companyType?: CompanyType;
     includeAllVersions?: boolean;
   }): Promise<RubberDeliveryNoteDto[]> {
-    const query = this.deliveryNoteRepository
-      .createQueryBuilder("dn")
-      .leftJoinAndSelect("dn.supplierCompany", "company")
-      .leftJoinAndSelect("dn.linkedCoc", "coc")
-      .orderBy("dn.created_at", "DESC");
-
-    if (!filters?.includeAllVersions) {
-      query.andWhere("dn.version_status = :versionStatus", {
-        versionStatus: DocumentVersionStatus.ACTIVE,
-      });
-    }
-
-    if (filters?.deliveryNoteType) {
-      query.andWhere("dn.delivery_note_type = :type", { type: filters.deliveryNoteType });
-    }
-    if (filters?.status) {
-      query.andWhere("dn.status = :status", { status: filters.status });
-    }
-    if (filters?.supplierCompanyId) {
-      query.andWhere("dn.supplier_company_id = :companyId", {
-        companyId: filters.supplierCompanyId,
-      });
-    }
-    if (filters?.companyType) {
-      query.andWhere("company.company_type = :companyType", {
-        companyType: filters.companyType,
-      });
-    }
-
-    const notes = await query.getMany();
+    const notes = await this.deliveryNoteRepository.findFiltered(filters);
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
     const siblingCounts = await this.documentPathSiblingCounts(notes);
@@ -207,63 +174,12 @@ export class RubberDeliveryNoteService {
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResult<RubberDeliveryNoteDto>> {
-    const page = Math.max(1, filters?.page ?? 1);
-    const pageSize = Math.max(1, Math.min(200, filters?.pageSize ?? 25));
-    const skip = (page - 1) * pageSize;
-
-    // List rows never need the heavy extracted_data jsonb (or the linked CoC's),
-    // and shipping it on every poll was the bulk of this endpoint's DB egress.
-    const dnColumns = this.deliveryNoteRepository.metadata.columns
-      .map((c) => c.propertyName)
-      .filter((p) => p !== "extractedData")
-      .map((p) => `dn.${p}`);
-
-    const query = this.deliveryNoteRepository
-      .createQueryBuilder("dn")
-      .select(dnColumns)
-      .leftJoin("dn.supplierCompany", "company")
-      .addSelect(["company.id", "company.name", "company.companyType"])
-      .leftJoin("dn.linkedCoc", "coc")
-      .addSelect(["coc.id", "coc.cocNumber"]);
-
-    if (!filters?.includeAllVersions) {
-      query.andWhere("dn.version_status = :versionStatus", {
-        versionStatus: DocumentVersionStatus.ACTIVE,
-      });
-    }
-    if (filters?.deliveryNoteType) {
-      query.andWhere("dn.delivery_note_type = :type", { type: filters.deliveryNoteType });
-    }
-    if (filters?.status) {
-      query.andWhere("dn.status = :status", { status: filters.status });
-    }
-    if (filters?.supplierCompanyId) {
-      query.andWhere("dn.supplier_company_id = :companyId", {
-        companyId: filters.supplierCompanyId,
-      });
-    }
-    if (filters?.companyType) {
-      query.andWhere("company.company_type = :companyType", {
-        companyType: filters.companyType,
-      });
-    }
-    if (filters?.search) {
-      query.andWhere(
-        "(dn.delivery_note_number ILIKE :search OR dn.customer_reference ILIKE :search OR company.name ILIKE :search)",
-        { search: `%${filters.search}%` },
-      );
-    }
-
-    const sortKey = filters?.sortColumn ?? "createdAt";
-    const sortColumn = DELIVERY_NOTE_SORT_MAP[sortKey] ?? "dn.created_at";
-    const sortDirection = filters?.sortDirection === "asc" ? "ASC" : "DESC";
-    query.orderBy(sortColumn, sortDirection, "NULLS LAST");
-    query.addOrderBy("dn.id", "DESC");
-
-    const total = await query.clone().getCount();
-
-    query.offset(skip).limit(pageSize);
-    const notes = await query.getMany();
+    const {
+      items: notes,
+      total,
+      page,
+      pageSize,
+    } = await this.deliveryNoteRepository.findPaginated(filters ?? {}, DELIVERY_NOTE_SORT_MAP);
     const noteIds = notes.map((n) => n.id);
     const auCocMap = noteIds.length > 0 ? await this.auCocMapByDeliveryNoteIds(noteIds) : new Map();
     const siblingCounts = await this.documentPathSiblingCounts(notes);
@@ -286,16 +202,9 @@ export class RubberDeliveryNoteService {
   }
 
   async deliveryNoteById(id: number): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
     const siblingCounts = await this.documentPathSiblingCounts([note]);
-    // Source-SCoC trace only makes sense on customer-side delivery notes
-    // (rolls dispatched OUT to a customer trace back to the supplier CoCs
-    // they arrived IN under). Supplier-side DNs are the originating end of
-    // that chain so there's nothing upstream to surface.
     const isCustomerSide = note.supplierCompany?.companyType === CompanyType.CUSTOMER;
     const sourceSupplierCocs = isCustomerSide
       ? await this.sourceSupplierCocsForCustomerDn(note.id)
@@ -311,49 +220,44 @@ export class RubberDeliveryNoteService {
   }
 
   async markExtractionFailed(id: number): Promise<void> {
-    await this.deliveryNoteRepository.update(
-      { id, status: DeliveryNoteStatus.PENDING },
-      { status: DeliveryNoteStatus.FAILED },
-    );
+    await this.deliveryNoteRepository.updatePendingToFailed(id);
   }
 
-  // Batched roll-number fetch for a set of DN ids — one query rather than N.
-  // Reads from rubber_delivery_note_items (where the analyze-and-create flow
-  // stores rolls). Returns DN id → ordered, de-duped roll numbers.
   private async rollNumbersByDeliveryNoteIds(noteIds: number[]): Promise<Map<number, string[]>> {
     if (noteIds.length === 0) return new Map();
-    const rows = await this.deliveryNoteItemRepository
-      .createQueryBuilder("dni")
-      .select("dni.delivery_note_id", "deliveryNoteId")
-      .addSelect("dni.roll_number", "rollNumber")
-      .where("dni.delivery_note_id IN (:...ids)", { ids: noteIds })
-      .andWhere("dni.roll_number IS NOT NULL")
-      .orderBy("dni.id", "ASC")
-      .getRawMany<{ deliveryNoteId: number; rollNumber: string }>();
-    const map = new Map<number, string[]>();
-    for (const row of rows) {
+    const rows = await this.deliveryNoteItemRepository.findRollNumbersByDeliveryNoteIds(noteIds);
+    const map = rows.reduce((acc, row) => {
       const id = Number(row.deliveryNoteId);
-      const list = map.get(id) ?? [];
+      const list = acc.get(id) ?? [];
       const rn = String(row.rollNumber).trim();
-      if (rn.length > 0 && !list.includes(rn)) list.push(rn);
-      map.set(id, list);
-    }
+      if (rn.length > 0 && !list.includes(rn)) {
+        return new Map(acc).set(id, [...list, rn]);
+      }
+      return acc.set(id, list);
+    }, new Map<number, string[]>());
 
-    // The items cache can be stale or empty (legacy rows, or a re-extraction
-    // that refreshed extracted_data without re-syncing items). Fall back to
-    // extracted_data.rolls for any DN left without item-sourced roll numbers,
-    // so roll numbers always surface in lists and in auto-link matching.
     const missingIds = noteIds.filter((id) => (map.get(id)?.length ?? 0) === 0);
     if (missingIds.length > 0) {
-      const notes = await this.deliveryNoteRepository.find({ where: { id: In(missingIds) } });
-      for (const note of notes) {
+      const notes = await this.deliveryNoteRepository.findManyByIds(missingIds);
+      notes.forEach((note) => {
         const rolls = (note.extractedData?.rolls ?? [])
           .map((r) => r.rollNumber)
           .filter((rn): rn is string => typeof rn === "string" && rn.trim().length > 0);
         if (rolls.length > 0) map.set(note.id, rolls);
-      }
+      });
     }
     return map;
+  }
+
+  private async sourceSupplierCocsForCustomerDn(noteId: number): Promise<SourceSupplierCocDto[]> {
+    const rows = await this.deliveryNoteItemRepository.sourceSupplierCocsForCustomerDn(noteId);
+    return rows.map((row) => ({
+      id: row.id,
+      cocNumber: row.cocNumber,
+      supplierCompanyId: row.supplierCompanyId,
+      supplierCompanyName: row.supplierCompanyName,
+      rollCount: row.rollCount,
+    }));
   }
 
   private async documentPathSiblingCounts(
@@ -364,16 +268,7 @@ export class RubberDeliveryNoteService {
     );
     if (docPaths.length === 0) return new Map();
 
-    const counts = await this.deliveryNoteRepository
-      .createQueryBuilder("dn")
-      .select("dn.document_path", "documentPath")
-      .addSelect("COUNT(*)", "count")
-      .where("dn.document_path IN (:...docPaths)", { docPaths })
-      .andWhere("dn.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
-      .groupBy("dn.document_path")
-      .getRawMany<{ documentPath: string; count: string }>();
-
-    const countByPath = new Map(counts.map((c) => [c.documentPath, parseInt(c.count, 10)]));
+    const countByPath = await this.deliveryNoteRepository.documentPathSiblingCounts(docPaths);
 
     return new Map(
       notes.map((n) => [n.id, n.documentPath ? (countByPath.get(n.documentPath) ?? 1) : 1]),
@@ -384,9 +279,7 @@ export class RubberDeliveryNoteService {
     dto: CreateDeliveryNoteDto,
     createdBy?: string,
   ): Promise<RubberDeliveryNoteDto> {
-    const company = await this.companyRepository.findOne({
-      where: { id: dto.supplierCompanyId },
-    });
+    const company = await this.companyRepository.findById(dto.supplierCompanyId);
     if (!company) {
       throw new BadRequestException("Supplier company not found");
     }
@@ -400,11 +293,11 @@ export class RubberDeliveryNoteService {
 
     const isDuplicate = existingActive !== null;
 
-    const note = this.deliveryNoteRepository.create({
+    const note = this.deliveryNoteRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       deliveryNoteType: dto.deliveryNoteType,
       deliveryNoteNumber: dto.deliveryNoteNumber,
-      deliveryDate: dto.deliveryDate || null,
+      deliveryDate: (dto.deliveryDate as unknown as Date) || null,
       customerReference: dto.customerReference ?? null,
       supplierCompanyId: dto.supplierCompanyId,
       documentPath: dto.documentPath ?? null,
@@ -425,10 +318,10 @@ export class RubberDeliveryNoteService {
     }
 
     const saved = await this.deliveryNoteRepository.save(note);
-    const result = await this.deliveryNoteRepository.findOne({
-      where: { id: saved.id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const result = await this.deliveryNoteRepository.findById(saved.id, [
+      "supplierCompany",
+      "linkedCoc",
+    ]);
     return this.mapDeliveryNoteToDto(result!);
   }
 
@@ -436,10 +329,7 @@ export class RubberDeliveryNoteService {
     id: number,
     dto: UpdateDeliveryNoteDto,
   ): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
 
     if (dto.deliveryNoteNumber !== undefined) note.deliveryNoteNumber = dto.deliveryNoteNumber;
@@ -451,10 +341,7 @@ export class RubberDeliveryNoteService {
 
     await this.deliveryNoteRepository.save(note);
 
-    const result = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const result = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     return this.mapDeliveryNoteToDto(result!);
   }
 
@@ -462,10 +349,7 @@ export class RubberDeliveryNoteService {
     id: number,
     extractedData: ExtractedDeliveryNoteData,
   ): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
 
     note.extractedData = extractedData;
@@ -507,10 +391,7 @@ export class RubberDeliveryNoteService {
     id: number,
     correctedData: ExtractedDeliveryNoteData,
   ): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
 
     const previousData = note.extractedData ?? null;
@@ -541,7 +422,7 @@ export class RubberDeliveryNoteService {
 
     if (corrections.length > 0 && supplierName) {
       const correctionEntities = corrections.map((c) =>
-        this.correctionRepository.create({
+        this.correctionRepository.build({
           deliveryNoteId: id,
           supplierName,
           fieldName: c.field,
@@ -550,7 +431,7 @@ export class RubberDeliveryNoteService {
           correctedBy: null,
         }),
       );
-      await this.correctionRepository.save(correctionEntities);
+      await this.correctionRepository.saveMany(correctionEntities);
       this.logger.log(
         `Saved ${correctionEntities.length} delivery-note correction(s) for ${supplierName} on note #${id}`,
       );
@@ -623,122 +504,11 @@ export class RubberDeliveryNoteService {
     return corrections;
   }
 
-  /**
-   * Persist a batch of corrections for a customer DN created via the
-   * analyze-and-edit modal. The original Gemini analysis and the user's
-   * final overrides are both supplied; the difference is what Nix learns
-   * for next time.
-   *
-   * Stored under `supplierName = customerName` so the existing
-   * `correctionHintsForDnSupplier` lookup picks them up for the same
-   * customer's future uploads.
-   */
-  async recordCdnAnalysisCorrections(args: {
-    deliveryNoteId: number;
-    customerName: string | null;
-    original: {
-      deliveryNoteNumber?: string | null;
-      customerName?: string | null;
-      customerReference?: string | null;
-      deliveryDate?: string | null;
-      allLineItems?: Array<{
-        rollNumber?: string | null;
-        compoundType?: string | null;
-        thicknessMm?: number | null;
-        widthMm?: number | null;
-        lengthM?: number | null;
-        rollWeightKg?: number | null;
-      }>;
-    };
-    override: {
-      deliveryNoteNumber?: string;
-      customerId?: number;
-      customerReference?: string;
-      deliveryDate?: string;
-      lineItems?: Array<{
-        rollNumber?: string | null;
-        compoundType?: string | null;
-        thicknessMm?: number | null;
-        widthMm?: number | null;
-        lengthM?: number | null;
-        rollWeightKg?: number | null;
-      }>;
-    };
-    correctedLineItems: Array<{
-      rollNumber?: string | null;
-      compoundType?: string | null;
-      thicknessMm?: number | null;
-      widthMm?: number | null;
-      lengthM?: number | null;
-      rollWeightKg?: number | null;
-    }>;
-    correctedBy: string | null;
-  }): Promise<number> {
-    const { deliveryNoteId, customerName, original, override, correctedLineItems, correctedBy } =
-      args;
-    if (!customerName) return 0;
-    const corrections: { field: string; original: string; corrected: string }[] = [];
-
-    const diffScalar = (field: string, prev: unknown, next: unknown): void => {
-      if (next === undefined) return;
-      if (prev === next) return;
-      const o = prev == null ? "" : String(prev);
-      const c = next == null ? "" : String(next);
-      if (o === c) return;
-      corrections.push({ field, original: o, corrected: c });
-    };
-
-    diffScalar("deliveryNoteNumber", original.deliveryNoteNumber, override.deliveryNoteNumber);
-    diffScalar("customerReference", original.customerReference, override.customerReference);
-    diffScalar("deliveryDate", original.deliveryDate, override.deliveryDate);
-
-    // Per-roll diff — match by rollNumber where possible so we capture
-    // "Nix said widthMm 850, operator corrected to 800" type changes.
-    const originalRollsByNumber = new Map<string, (typeof correctedLineItems)[number]>();
-    (original.allLineItems ?? []).forEach((roll) => {
-      if (roll?.rollNumber) originalRollsByNumber.set(String(roll.rollNumber), roll);
-    });
-    const rollFields = [
-      "compoundType",
-      "thicknessMm",
-      "widthMm",
-      "lengthM",
-      "rollWeightKg",
-    ] as const;
-    correctedLineItems.forEach((roll) => {
-      if (!roll?.rollNumber) return;
-      const prev = originalRollsByNumber.get(String(roll.rollNumber));
-      rollFields.forEach((f) => {
-        diffScalar(`roll[${roll.rollNumber}].${f}`, prev?.[f], roll[f]);
-      });
-    });
-
-    if (corrections.length === 0) return 0;
-    const rows = corrections.map((c) =>
-      this.correctionRepository.create({
-        deliveryNoteId,
-        supplierName: customerName,
-        fieldName: c.field,
-        originalValue: c.original,
-        correctedValue: c.corrected,
-        correctedBy,
-      }),
-    );
-    await this.correctionRepository.save(rows);
-    this.logger.log(
-      `Persisted ${rows.length} correction(s) for customer DN ${deliveryNoteId} (${customerName}) — Nix will use these as hints next time`,
-    );
-    return rows.length;
-  }
-
   async correctionHintsForDnSupplier(supplierName: string | null): Promise<string | null> {
     if (!supplierName) return null;
 
-    const recentCorrections = await this.correctionRepository.find({
-      where: { supplierName },
-      order: { createdAt: "DESC" },
-      take: 40,
-    });
+    const recentCorrections =
+      await this.correctionRepository.findRecentBySupplierName(supplierName);
 
     if (recentCorrections.length === 0) return null;
 
@@ -761,15 +531,10 @@ export class RubberDeliveryNoteService {
   }
 
   async linkToCoc(deliveryNoteId: number, cocId: number): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id: deliveryNoteId },
-      relations: ["supplierCompany"],
-    });
+    const note = await this.deliveryNoteRepository.findById(deliveryNoteId, ["supplierCompany"]);
     if (!note) return null;
 
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id: cocId },
-    });
+    const coc = await this.supplierCocRepository.findById(cocId);
     if (!coc) {
       throw new BadRequestException("Supplier CoC not found");
     }
@@ -786,10 +551,10 @@ export class RubberDeliveryNoteService {
 
     this.triggerDownstreamAuCocGeneration(note);
 
-    const result = await this.deliveryNoteRepository.findOne({
-      where: { id: deliveryNoteId },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const result = await this.deliveryNoteRepository.findById(deliveryNoteId, [
+      "supplierCompany",
+      "linkedCoc",
+    ]);
     return this.mapDeliveryNoteToDto(result!);
   }
 
@@ -799,21 +564,17 @@ export class RubberDeliveryNoteService {
   ): Promise<void> {
     if (!compoundCode) return;
 
-    const supplier = await this.companyRepository.findOne({
-      where: { id: supplierCompanyId },
-    });
+    const supplier = await this.companyRepository.findById(supplierCompanyId);
     if (!supplier) return;
 
-    const compoundCoding = await this.productCodingRepository.findOne({
-      where: {
-        codingType: ProductCodingType.COMPOUND,
-        code: compoundCode,
-      },
-    });
+    const compoundCoding = await this.productCodingRepository.findOneByCodeAndType(
+      compoundCode,
+      ProductCodingType.COMPOUND,
+    );
     if (!compoundCoding) return;
 
-    const matchingProducts = await this.productRepository.find({
-      where: { compoundFirebaseUid: compoundCoding.firebaseUid },
+    const matchingProducts = await this.productRepository.findManyWhere({
+      compoundFirebaseUid: compoundCoding.firebaseUid,
     });
 
     if (matchingProducts.length === 0) return;
@@ -870,19 +631,14 @@ export class RubberDeliveryNoteService {
 
     if (sdnRollNumbers.length === 0) return empty;
 
-    const customers = await this.companyRepository.find({
-      where: { companyType: CompanyType.CUSTOMER },
-    });
+    const customers = await this.companyRepository.findByCompanyType(CompanyType.CUSTOMER);
 
     if (customers.length === 0) return empty;
 
     const customerIds = customers.map((c) => c.id);
 
-    const customerDns = await this.deliveryNoteRepository
-      .createQueryBuilder("dn")
-      .where("dn.supplier_company_id IN (:...customerIds)", { customerIds })
-      .andWhere("dn.delivery_note_type = :type", { type: DeliveryNoteType.ROLL })
-      .getMany();
+    const customerDns =
+      await this.deliveryNoteRepository.findRollDeliveryNotesByCompanyIds(customerIds);
 
     if (customerDns.length === 0) return empty;
 
@@ -953,10 +709,7 @@ export class RubberDeliveryNoteService {
   }
 
   async finalizeDeliveryNote(id: number): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
 
     note.status = DeliveryNoteStatus.STOCK_CREATED;
@@ -968,10 +721,7 @@ export class RubberDeliveryNoteService {
   }
 
   async approveDeliveryNote(id: number): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
 
     if (note.status !== DeliveryNoteStatus.EXTRACTED) {
@@ -987,10 +737,7 @@ export class RubberDeliveryNoteService {
   }
 
   async refileStock(id: number): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
 
     if (note.status !== DeliveryNoteStatus.STOCK_CREATED) {
@@ -1057,9 +804,7 @@ export class RubberDeliveryNoteService {
       return;
     }
 
-    const items = await this.deliveryNoteItemRepository.find({
-      where: { deliveryNoteId: note.id },
-    });
+    const items = await this.deliveryNoteItemRepository.findByDeliveryNoteId(note.id);
 
     const totalKg = this.totalKgFromItems(note.deliveryNoteType, items);
     if (totalKg <= 0) {
@@ -1085,20 +830,20 @@ export class RubberDeliveryNoteService {
   ): Promise<RubberProductCoding | null> {
     const compoundCode = note.linkedCoc?.compoundCode;
     if (compoundCode) {
-      const coding = await this.productCodingRepository.findOne({
-        where: { code: compoundCode, codingType: ProductCodingType.COMPOUND },
-      });
+      const coding = await this.productCodingRepository.findOneByCodeAndType(
+        compoundCode,
+        ProductCodingType.COMPOUND,
+      );
       if (coding) return coding;
     }
 
-    const items = await this.deliveryNoteItemRepository.find({
-      where: { deliveryNoteId: note.id },
-    });
+    const items = await this.deliveryNoteItemRepository.findByDeliveryNoteId(note.id);
     const itemWithCompound = items.find((item) => item.compoundType !== null);
     if (itemWithCompound?.compoundType) {
-      const coding = await this.productCodingRepository.findOne({
-        where: { code: itemWithCompound.compoundType, codingType: ProductCodingType.COMPOUND },
-      });
+      const coding = await this.productCodingRepository.findOneByCodeAndType(
+        itemWithCompound.compoundType,
+        ProductCodingType.COMPOUND,
+      );
       if (coding) return coding;
     }
 
@@ -1107,17 +852,19 @@ export class RubberDeliveryNoteService {
       const cocCompound = cocData?.compoundCode;
       if (cocCompound) {
         const strippedCode = cocCompound.replace(/-/g, "");
-        const coding = await this.productCodingRepository.findOne({
-          where: { code: strippedCode, codingType: ProductCodingType.COMPOUND },
-        });
+        const coding = await this.productCodingRepository.findOneByCodeAndType(
+          strippedCode,
+          ProductCodingType.COMPOUND,
+        );
         if (coding) return coding;
 
         const snMatch = strippedCode.match(/AU[A-Z]\d{2}[A-Z]{1,2}[A-Z]{2}[A-Z0-9]{2,3}/i);
         if (snMatch) {
           const code = snMatch[0].toUpperCase();
-          const existing = await this.productCodingRepository.findOne({
-            where: { code, codingType: ProductCodingType.COMPOUND },
-          });
+          const existing = await this.productCodingRepository.findOneByCodeAndType(
+            code,
+            ProductCodingType.COMPOUND,
+          );
           if (existing) return existing;
         }
       }
@@ -1140,39 +887,33 @@ export class RubberDeliveryNoteService {
     deliveryNoteNumber: string,
     supplierCompanyId: number,
   ): Promise<RubberDeliveryNote | null> {
-    return this.deliveryNoteRepository.findOne({
-      where: { deliveryNoteNumber, supplierCompanyId },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    return this.deliveryNoteRepository.findByNumberAndCompany(
+      deliveryNoteNumber,
+      supplierCompanyId,
+    );
   }
 
   async replaceDeliveryNoteItems(deliveryNoteId: number): Promise<void> {
-    await this.deliveryNoteItemRepository.delete({ deliveryNoteId });
+    await this.deliveryNoteItemRepository.deleteByDeliveryNoteId(deliveryNoteId);
   }
 
   async deliveryNoteEntityById(id: number): Promise<RubberDeliveryNote | null> {
-    return this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    return this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
   }
 
   async replaceItemsFromRolls(
     deliveryNoteId: number,
     rolls: ExtractedDeliveryNoteRoll[],
   ): Promise<void> {
-    await this.deliveryNoteItemRepository.delete({ deliveryNoteId });
+    await this.deliveryNoteItemRepository.deleteByDeliveryNoteId(deliveryNoteId);
     if (rolls.length === 0) return;
 
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id: deliveryNoteId },
-      relations: ["supplierCompany"],
-    });
+    const note = await this.deliveryNoteRepository.findById(deliveryNoteId, ["supplierCompany"]);
     if (!note) return;
     const sg = await this.specificGravityForDeliveryNote(note);
 
     const items = rolls.map((roll) => {
-      const item = this.deliveryNoteItemRepository.create({
+      const item = this.deliveryNoteItemRepository.build({
         firebaseUid: `pg_${generateUniqueId()}`,
         deliveryNoteId,
         rollNumber: roll.rollNumber ?? null,
@@ -1189,84 +930,26 @@ export class RubberDeliveryNoteService {
       return item;
     });
 
-    await this.deliveryNoteItemRepository.save(items);
+    await this.deliveryNoteItemRepository.saveMany(items);
   }
 
   async deleteDeliveryNote(id: number): Promise<boolean> {
-    const result = await this.deliveryNoteRepository.delete(id);
-    return (result.affected || 0) > 0;
-  }
-
-  /**
-   * One-shot backfill — repair every delivery note where extracted_data
-   * carries rolls but rubber_delivery_note_items is empty. This happened
-   * historically when the multi-DN-PDF splitter saved the child DN rows
-   * with their extracted_data but never ran replaceItemsFromRolls on
-   * them, leaving the line-items table empty. Without items, downstream
-   * steps (AU CoC readiness, roll-stock dispatch) silently skip the DN.
-   *
-   * Returns the IDs that were repaired so the caller can re-dispatch
-   * rolls + trigger AU-CoC readiness for each.
-   */
-  async backfillMissingDeliveryNoteItems(): Promise<{ repaired: number[]; skipped: number }> {
-    const rows = await this.deliveryNoteRepository.query<{ id: number }[]>(`
-      SELECT dn.id
-      FROM rubber_delivery_notes dn
-      WHERE dn.extracted_data IS NOT NULL
-        AND dn.extracted_data->'rolls' IS NOT NULL
-        AND jsonb_array_length(dn.extracted_data->'rolls') > 0
-        AND NOT EXISTS (
-          SELECT 1 FROM rubber_delivery_note_items dni
-          WHERE dni.delivery_note_id = dn.id
-        )
-      ORDER BY dn.id
-    `);
-    const repaired: number[] = [];
-    let skipped = 0;
-    for (const row of rows) {
-      const note = await this.deliveryNoteRepository.findOne({
-        where: { id: row.id },
-        relations: ["supplierCompany"],
-      });
-      const rolls = note?.extractedData?.rolls;
-      if (!note || !rolls || rolls.length === 0) {
-        skipped++;
-        continue;
-      }
-      try {
-        await this.replaceItemsFromRolls(note.id, rolls);
-        repaired.push(note.id);
-      } catch (err) {
-        skipped++;
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.warn(
-          `backfillMissingDeliveryNoteItems: failed to repair DN ${note.id}: ${message}`,
-        );
-      }
-    }
-    this.logger.log(
-      `backfillMissingDeliveryNoteItems: repaired ${repaired.length} DN(s), skipped ${skipped}`,
-    );
-    return { repaired, skipped };
+    return this.deliveryNoteRepository.deleteById(id);
   }
 
   async itemsByDeliveryNoteId(deliveryNoteId: number): Promise<DeliveryNoteItemDto[]> {
-    const items = await this.deliveryNoteItemRepository.find({
-      where: { deliveryNoteId },
-      order: { id: "ASC" },
-    });
+    const items =
+      await this.deliveryNoteItemRepository.findByDeliveryNoteIdOrderedById(deliveryNoteId);
     return items.map((item) => this.mapDeliveryNoteItemToDto(item));
   }
 
   async createDeliveryNoteItem(dto: CreateDeliveryNoteItemDto): Promise<DeliveryNoteItemDto> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id: dto.deliveryNoteId },
-    });
+    const note = await this.deliveryNoteRepository.findById(dto.deliveryNoteId);
     if (!note) {
       throw new BadRequestException("Delivery note not found");
     }
 
-    const item = this.deliveryNoteItemRepository.create({
+    const item = this.deliveryNoteItemRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       deliveryNoteId: dto.deliveryNoteId,
       batchNumberStart: dto.batchNumberStart ?? null,
@@ -1292,30 +975,43 @@ export class RubberDeliveryNoteService {
     return this.mapDeliveryNoteItemToDto(saved);
   }
 
-  /**
-   * Apply user corrections to a delivery note's line items. Entries with an
-   * `id` update that existing item in place — preserving its batch links and
-   * firebase UID — while entries without an `id` are inserted as new rows.
-   * Existing items omitted from the submitted list are deleted. Theoretical
-   * weight and deviation are always recomputed from the corrected dimensions.
-   *
-   * This is the manual fallback the operator uses when extraction (or
-   * re-extraction) gets a value wrong — e.g. a transposed roll number that
-   * stops a customer DN from auto-linking to its supplier CoC.
-   */
+  async backfillMissingDeliveryNoteItems(): Promise<{ repaired: number[]; skipped: number }> {
+    const ids = await this.deliveryNoteRepository.findIdsWithRollsButNoItems();
+    const result = await ids.reduce(
+      async (accPromise, id) => {
+        const acc = await accPromise;
+        const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany"]);
+        const rolls = note?.extractedData?.rolls;
+        if (!note || !rolls || rolls.length === 0) {
+          return { repaired: acc.repaired, skipped: acc.skipped + 1 };
+        }
+        try {
+          await this.replaceItemsFromRolls(note.id, rolls);
+          return { repaired: [...acc.repaired, note.id], skipped: acc.skipped };
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.warn(
+            `backfillMissingDeliveryNoteItems: failed to repair DN ${note.id}: ${message}`,
+          );
+          return { repaired: acc.repaired, skipped: acc.skipped + 1 };
+        }
+      },
+      Promise.resolve({ repaired: [] as number[], skipped: 0 }),
+    );
+    this.logger.log(
+      `backfillMissingDeliveryNoteItems: repaired ${result.repaired.length} DN(s), skipped ${result.skipped}`,
+    );
+    return result;
+  }
+
   async updateDeliveryNoteItems(
     id: number,
     entries: UpdateDeliveryNoteItemEntryDto[],
   ): Promise<DeliveryNoteItemDto[] | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany"]);
     if (!note) return null;
 
-    const existing = await this.deliveryNoteItemRepository.find({
-      where: { deliveryNoteId: id },
-    });
+    const existing = await this.deliveryNoteItemRepository.findByDeliveryNoteId(id);
     const existingById = new Map(existing.map((it) => [it.id, it]));
     const sg = await this.specificGravityForDeliveryNote(note);
 
@@ -1326,13 +1022,11 @@ export class RubberDeliveryNoteService {
     };
 
     const keptIds = new Set<number>();
-    const toSave: RubberDeliveryNoteItem[] = [];
-
-    for (const entry of entries) {
-      const existingItem = entry.id != null ? existingById.get(entry.id) : undefined;
+    const toSave = entries.map((entry) => {
+      const existingItem = entry.id != null ? (existingById.get(entry.id) ?? null) : null;
       const item =
         existingItem ??
-        this.deliveryNoteItemRepository.create({
+        this.deliveryNoteItemRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           deliveryNoteId: id,
           linkedBatchIds: [],
@@ -1356,21 +1050,19 @@ export class RubberDeliveryNoteService {
         item.quantity = entry.quantity != null ? Math.round(entry.quantity) : null;
       }
 
-      // Always recompute — clear first so a now-incomplete row drops its stale
-      // theoretical weight / deviation rather than keeping the old values.
       item.theoreticalWeightKg = null;
       item.weightDeviationPct = null;
       this.calculateWeightDeviation(item, sg);
 
-      toSave.push(item);
-    }
+      return item;
+    });
 
     const toDelete = existing.filter((it) => !keptIds.has(it.id));
     if (toDelete.length > 0) {
-      await this.deliveryNoteItemRepository.remove(toDelete);
+      await this.deliveryNoteItemRepository.removeMany(toDelete);
     }
     if (toSave.length > 0) {
-      await this.deliveryNoteItemRepository.save(toSave);
+      await this.deliveryNoteItemRepository.saveMany(toSave);
     }
 
     this.logger.log(
@@ -1383,10 +1075,7 @@ export class RubberDeliveryNoteService {
     id: number,
     documentPath: string,
   ): Promise<RubberDeliveryNoteDto | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) return null;
 
     note.documentPath = documentPath;
@@ -1395,7 +1084,7 @@ export class RubberDeliveryNoteService {
   }
 
   async setPodPageNumbers(id: number, podPageNumbers: number[]): Promise<void> {
-    await this.deliveryNoteRepository.update(id, {
+    await this.deliveryNoteRepository.updateById(id, {
       podPageNumbers: podPageNumbers.length > 0 ? podPageNumbers : null,
     });
   }
@@ -1407,11 +1096,7 @@ export class RubberDeliveryNoteService {
     const normalizedName = name.trim().toUpperCase();
     const typeEnum = companyType === "supplier" ? CompanyType.SUPPLIER : CompanyType.CUSTOMER;
 
-    const existing = await this.companyRepository
-      .createQueryBuilder("c")
-      .where("UPPER(c.name) = :name", { name: normalizedName })
-      .andWhere("c.company_type = :type", { type: typeEnum })
-      .getOne();
+    const existing = await this.companyRepository.findOneByNameAndType(normalizedName, typeEnum);
 
     if (existing) {
       return { id: existing.id, name: existing.name };
@@ -1428,10 +1113,7 @@ export class RubberDeliveryNoteService {
   }
 
   async acceptExtractAndSplit(id: number): Promise<{ deliveryNoteIds: number[] }> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany", "linkedCoc"],
-    });
+    const note = await this.deliveryNoteRepository.findById(id, ["supplierCompany", "linkedCoc"]);
     if (!note) {
       throw new BadRequestException("Delivery note not found");
     }
@@ -1451,9 +1133,7 @@ export class RubberDeliveryNoteService {
         return new Map(map).set(dnNumber, [...existing, roll]);
       }, new Map<string, typeof extractedData.rolls>());
 
-    const suppliers = await this.companyRepository.find({
-      where: { companyType: CompanyType.SUPPLIER },
-    });
+    const suppliers = await this.companyRepository.findByCompanyType(CompanyType.SUPPLIER);
 
     const noteDnNumber = note.deliveryNoteNumber;
     const isPlaceholderDn = !noteDnNumber || /^DN-\d+$/.test(noteDnNumber);
@@ -1571,7 +1251,7 @@ export class RubberDeliveryNoteService {
           return acc;
         }
 
-        const newNote = this.deliveryNoteRepository.create({
+        const newNote = this.deliveryNoteRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           deliveryNoteType: note.deliveryNoteType,
           deliveryNoteNumber: dnNumber,
@@ -1602,10 +1282,7 @@ export class RubberDeliveryNoteService {
     deliveryNoteIds: number[];
     skipped: { dnNumber: string; reason: string }[];
   }> {
-    const parent = await this.deliveryNoteRepository.findOne({
-      where: { id: parentId },
-      relations: ["supplierCompany"],
-    });
+    const parent = await this.deliveryNoteRepository.findById(parentId, ["supplierCompany"]);
     if (!parent) {
       throw new BadRequestException("Parent delivery note not found");
     }
@@ -1613,9 +1290,7 @@ export class RubberDeliveryNoteService {
       throw new BadRequestException("Parent delivery note has no source document");
     }
 
-    const suppliers = await this.companyRepository.find({
-      where: { companyType: CompanyType.SUPPLIER },
-    });
+    const suppliers = await this.companyRepository.findByCompanyType(CompanyType.SUPPLIER);
 
     const result = await extractedDns.reduce(
       async (accPromise, dn, idx) => {
@@ -1686,7 +1361,7 @@ export class RubberDeliveryNoteService {
           rolls,
         };
 
-        const newNote = this.deliveryNoteRepository.create({
+        const newNote = this.deliveryNoteRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           deliveryNoteType: parent.deliveryNoteType,
           deliveryNoteNumber: dnNumber,
@@ -1791,11 +1466,7 @@ export class RubberDeliveryNoteService {
   private async auCocMapByDeliveryNoteIds(
     dnIds: number[],
   ): Promise<Map<number, { id: number; cocNumber: string }>> {
-    const auCocs = await this.auCocRepository
-      .createQueryBuilder("ac")
-      .select(["ac.id", "ac.cocNumber", "ac.sourceDeliveryNoteId"])
-      .where("ac.source_delivery_note_id IN (:...dnIds)", { dnIds })
-      .getMany();
+    const auCocs = await this.auCocRepository.findRefsByDeliveryNoteIds(dnIds);
 
     return auCocs.reduce((map, ac) => {
       if (ac.sourceDeliveryNoteId) {
@@ -1803,6 +1474,102 @@ export class RubberDeliveryNoteService {
       }
       return map;
     }, new Map<number, { id: number; cocNumber: string }>());
+  }
+
+  async recordCdnAnalysisCorrections(args: {
+    deliveryNoteId: number;
+    customerName: string | null;
+    original: {
+      deliveryNoteNumber?: string | null;
+      customerName?: string | null;
+      customerReference?: string | null;
+      deliveryDate?: string | null;
+      allLineItems?: Array<{
+        rollNumber?: string | null;
+        compoundType?: string | null;
+        thicknessMm?: number | null;
+        widthMm?: number | null;
+        lengthM?: number | null;
+        rollWeightKg?: number | null;
+      }>;
+    };
+    override: {
+      deliveryNoteNumber?: string;
+      customerId?: number;
+      customerReference?: string;
+      deliveryDate?: string;
+      lineItems?: Array<{
+        rollNumber?: string | null;
+        compoundType?: string | null;
+        thicknessMm?: number | null;
+        widthMm?: number | null;
+        lengthM?: number | null;
+        rollWeightKg?: number | null;
+      }>;
+    };
+    correctedLineItems: Array<{
+      rollNumber?: string | null;
+      compoundType?: string | null;
+      thicknessMm?: number | null;
+      widthMm?: number | null;
+      lengthM?: number | null;
+      rollWeightKg?: number | null;
+    }>;
+    correctedBy: string | null;
+  }): Promise<number> {
+    const { deliveryNoteId, customerName, original, override, correctedLineItems, correctedBy } =
+      args;
+    if (!customerName) return 0;
+    const corrections: { field: string; original: string; corrected: string }[] = [];
+
+    const diffScalar = (field: string, prev: unknown, next: unknown): void => {
+      if (next === undefined) return;
+      if (prev === next) return;
+      const o = prev == null ? "" : String(prev);
+      const c = next == null ? "" : String(next);
+      if (o === c) return;
+      corrections.push({ field, original: o, corrected: c });
+    };
+
+    diffScalar("deliveryNoteNumber", original.deliveryNoteNumber, override.deliveryNoteNumber);
+    diffScalar("customerReference", original.customerReference, override.customerReference);
+    diffScalar("deliveryDate", original.deliveryDate, override.deliveryDate);
+
+    const originalRollsByNumber = new Map<string, (typeof correctedLineItems)[number]>();
+    (original.allLineItems ?? []).forEach((roll) => {
+      if (roll?.rollNumber) originalRollsByNumber.set(String(roll.rollNumber), roll);
+    });
+    const rollFields = [
+      "compoundType",
+      "thicknessMm",
+      "widthMm",
+      "lengthM",
+      "rollWeightKg",
+    ] as const;
+    correctedLineItems.forEach((roll) => {
+      if (!roll?.rollNumber) return;
+      const prev = originalRollsByNumber.get(String(roll.rollNumber));
+      rollFields.forEach((f) => {
+        diffScalar(`roll[${roll.rollNumber}].${f}`, prev?.[f], roll[f]);
+      });
+    });
+
+    if (corrections.length === 0) return 0;
+    const rows = corrections.map((c) =>
+      this.correctionRepository.build({
+        deliveryNoteId,
+        supplierName: customerName,
+        fieldName: c.field,
+        originalValue: c.original,
+        correctedValue: c.corrected,
+        correctedBy,
+      }),
+    );
+    await this.correctionRepository.saveMany(rows);
+    this.logger.log(
+      `Persisted ${rows.length} correction(s) for customer DN ${deliveryNoteId} (${customerName}) — Nix will use these as hints next time`,
+    );
+    return rows.length;
   }
 
   private mapDeliveryNoteToDto(
@@ -1845,9 +1612,6 @@ export class RubberDeliveryNoteService {
         : null,
       documentPathSiblingCount,
       sourceSupplierCocs,
-      // Prefer the batched items-table roll numbers; fall back to
-      // extracted_data.rolls for legacy DNs / the detail view (where the
-      // jsonb is loaded). Either way the column populates.
       rollNumbers:
         rollNumbers.length > 0
           ? rollNumbers
@@ -1855,50 +1619,6 @@ export class RubberDeliveryNoteService {
               .map((r) => r.rollNumber)
               .filter((rn): rn is string => typeof rn === "string" && rn.trim().length > 0),
     };
-  }
-
-  // Back-trace the supplier CoCs that the rolls dispatched on this customer
-  // delivery note originated from. The chain is:
-  //
-  //   CDN → rubber_delivery_note_items.rollNumber
-  //       → rubber_roll_stock (by roll_number)
-  //       → roll_stock.supplier_delivery_note_id → SDN
-  //       → SDN.linked_coc_id → rubber_supplier_cocs
-  //
-  // Returns one row per distinct upstream SCoC, with a count of how many
-  // rolls on this CDN trace back to that SCoC.
-  async sourceSupplierCocsForCustomerDn(deliveryNoteId: number): Promise<SourceSupplierCocDto[]> {
-    const rows = await this.deliveryNoteRepository.query(
-      `
-      SELECT coc.id AS id,
-             coc.coc_number AS coc_number,
-             coc.supplier_company_id AS supplier_company_id,
-             comp.name AS supplier_name,
-             COUNT(DISTINCT rs.id) AS roll_count
-      FROM rubber_delivery_note_items dni
-      JOIN rubber_roll_stock rs
-        ON rs.roll_number = dni.roll_number
-       AND rs.customer_delivery_note_id = dni.delivery_note_id
-      JOIN rubber_delivery_notes sdn
-        ON sdn.id = rs.supplier_delivery_note_id
-      JOIN rubber_supplier_cocs coc
-        ON coc.id = sdn.linked_coc_id
-      LEFT JOIN rubber_company comp
-        ON comp.id = coc.supplier_company_id
-      WHERE dni.delivery_note_id = $1
-        AND coc.version_status NOT IN ('REJECTED','SUPERSEDED')
-      GROUP BY coc.id, coc.coc_number, coc.supplier_company_id, comp.name
-      ORDER BY roll_count DESC, coc.coc_number ASC
-      `,
-      [deliveryNoteId],
-    );
-    return rows.map((row: Record<string, unknown>) => ({
-      id: Number(row.id),
-      cocNumber: row.coc_number == null ? null : String(row.coc_number),
-      supplierCompanyId: row.supplier_company_id == null ? null : Number(row.supplier_company_id),
-      supplierCompanyName: row.supplier_name == null ? null : String(row.supplier_name),
-      rollCount: Number(row.roll_count),
-    }));
   }
 
   private mapDeliveryNoteItemToDto(item: RubberDeliveryNoteItem): DeliveryNoteItemDto {
@@ -1962,9 +1682,9 @@ export class RubberDeliveryNoteService {
 
     const compoundCoding = await this.compoundCodingFromDeliveryNote(note);
     if (compoundCoding) {
-      const product = await this.productRepository.findOne({
-        where: { compoundFirebaseUid: compoundCoding.firebaseUid },
-      });
+      const product = await this.productRepository.findOneByCompoundFirebaseUid(
+        compoundCoding.firebaseUid,
+      );
       if (product?.specificGravity) {
         return Number(product.specificGravity);
       }
@@ -1974,19 +1694,13 @@ export class RubberDeliveryNoteService {
   }
 
   async autoLinkToSupplierCoc(deliveryNoteId: number): Promise<number | null> {
-    const note = await this.deliveryNoteRepository.findOne({
-      where: { id: deliveryNoteId },
-    });
+    const note = await this.deliveryNoteRepository.findById(deliveryNoteId);
 
     if (!note || note.linkedCocId) return note?.linkedCocId ?? null;
 
-    const supplierCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.supplier_company_id = :companyId", {
-        companyId: note.supplierCompanyId,
-      })
-      .orderBy("coc.id", "DESC")
-      .getMany();
+    const supplierCocs = await this.supplierCocRepository.findBySupplierCompanyIdLatest(
+      note.supplierCompanyId,
+    );
 
     if (supplierCocs.length === 0) return null;
 
@@ -2051,33 +1765,14 @@ export class RubberDeliveryNoteService {
   }
 
   async autoLinkUnlinkedDnsToSupplierCoc(supplierCocId: number): Promise<number[]> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id: supplierCocId },
-    });
+    const coc = await this.supplierCocRepository.findById(supplierCocId);
 
     if (!coc) return [];
 
-    // Consider EVERY unlinked DN for this supplier regardless of how far it
-    // has progressed — a DN that's already STOCK_CREATED (or APPROVED /
-    // LINKED) is just as eligible to be linked to a freshly-uploaded CoC as
-    // a PENDING one. The previous PENDING/EXTRACTED-only filter meant that
-    // any DN whose stock had already been created (the common case by the
-    // time the matching CoC arrives) was silently skipped and stayed "Not
-    // linked" forever. Only FAILED notes (no usable extracted data) are
-    // excluded.
-    const unlinkedNotes = await this.deliveryNoteRepository.find({
-      where: {
-        supplierCompanyId: coc.supplierCompanyId,
-        linkedCocId: IsNull(),
-        status: In([
-          DeliveryNoteStatus.PENDING,
-          DeliveryNoteStatus.EXTRACTED,
-          DeliveryNoteStatus.APPROVED,
-          DeliveryNoteStatus.LINKED,
-          DeliveryNoteStatus.STOCK_CREATED,
-        ]),
-      },
-    });
+    const unlinkedNotes = await this.deliveryNoteRepository.findUnlinkedBySupplierAndStatuses(
+      coc.supplierCompanyId,
+      [DeliveryNoteStatus.PENDING, DeliveryNoteStatus.EXTRACTED],
+    );
 
     this.logger.log(
       `CoC ${supplierCocId}: type=${coc.cocType}, supplierCompanyId=${coc.supplierCompanyId}, orderNumber=${coc.orderNumber}, extractedOrderNumber=${coc.extractedData?.orderNumber}, rollNumbers=${JSON.stringify(coc.extractedData?.rollNumbers)}`,
@@ -2170,14 +1865,10 @@ export class RubberDeliveryNoteService {
   }> {
     const [allCocs, allUnlinkedNotes] = await Promise.all([
       // Only ACTIVE CoCs are valid link targets — never a superseded version.
-      this.supplierCocRepository.find({
-        where: { versionStatus: DocumentVersionStatus.ACTIVE },
-      }),
+      this.supplierCocRepository.findByVersionStatus(DocumentVersionStatus.ACTIVE),
       // Any unlinked DN is a candidate, regardless of processing status —
       // a STOCK_CREATED DN can still be missing its CoC link.
-      this.deliveryNoteRepository.find({
-        where: { linkedCocId: IsNull() },
-      }),
+      this.deliveryNoteRepository.findAllUnlinked(),
     ]);
 
     const notesBySupplier = allUnlinkedNotes.reduce(
@@ -2290,15 +1981,9 @@ export class RubberDeliveryNoteService {
     // SDN is just as valid a source for its customer DNs as a LINKED one. The
     // old status=LINKED filter excluded the majority (most SDNs progress to
     // STOCK_CREATED), so the cascade silently found nothing to do.
-    const linkedSupplierDns = await this.deliveryNoteRepository.find({
-      where: {
-        linkedCocId: Not(IsNull()),
-      },
-    });
+    const linkedSupplierDns = await this.deliveryNoteRepository.findAllWithCocLink();
 
-    const supplierCompanies = await this.companyRepository.find({
-      where: { companyType: CompanyType.SUPPLIER },
-    });
+    const supplierCompanies = await this.companyRepository.findByCompanyType(CompanyType.SUPPLIER);
     const supplierIds = new Set(supplierCompanies.map((c) => c.id));
 
     const sdns = linkedSupplierDns.filter((dn) => supplierIds.has(dn.supplierCompanyId));
@@ -2328,23 +2013,11 @@ export class RubberDeliveryNoteService {
     // creates it — so a linked customer DN marked STOCK_CREATED is mislabelled
     // and should read LINKED like every other linked CDN. This query is
     // customer-scoped, so genuine STOCK_CREATED supplier DNs are never touched.
-    const customerCompanies = await this.companyRepository.find({
-      where: { companyType: CompanyType.CUSTOMER },
-    });
+    const customerCompanies = await this.companyRepository.findByCompanyType(CompanyType.CUSTOMER);
     const customerIds = customerCompanies.map((c) => c.id);
     const staleLinkedCdns =
       customerIds.length > 0
-        ? await this.deliveryNoteRepository.find({
-            where: customerIds.map((id) => ({
-              supplierCompanyId: id,
-              linkedCocId: Not(IsNull()),
-              status: In([
-                DeliveryNoteStatus.PENDING,
-                DeliveryNoteStatus.EXTRACTED,
-                DeliveryNoteStatus.STOCK_CREATED,
-              ]),
-            })),
-          })
+        ? await this.deliveryNoteRepository.findLinkedCustomerDnsNeedingStatusRepair(customerIds)
         : [];
     await staleLinkedCdns.reduce(async (prev, cdn) => {
       await prev;
@@ -2386,18 +2059,13 @@ export class RubberDeliveryNoteService {
   ): Promise<{ linked: number; details: string[] }> {
     if (customerIds.length === 0) return { linked: 0, details: [] };
 
-    const stillUnlinkedCdns = await this.deliveryNoteRepository.find({
-      where: customerIds.map((id) => ({
-        supplierCompanyId: id,
-        linkedCocId: IsNull(),
-        deliveryNoteType: DeliveryNoteType.ROLL,
-      })),
-    });
+    const stillUnlinkedCdns =
+      await this.deliveryNoteRepository.findUnlinkedRollDnsByCustomerIds(customerIds);
     if (stillUnlinkedCdns.length === 0) return { linked: 0, details: [] };
 
-    const activeCocs = await this.supplierCocRepository.find({
-      where: { versionStatus: DocumentVersionStatus.ACTIVE },
-    });
+    const activeCocs = await this.supplierCocRepository.findByVersionStatus(
+      DocumentVersionStatus.ACTIVE,
+    );
     const ticketToCocIds = activeCocs.reduce((map, coc) => {
       for (const ticket of supplierCocRollTickets(coc.cocNumber, coc.extractedData?.rollNumbers)) {
         const ids = map.get(ticket) ?? new Set<number>();

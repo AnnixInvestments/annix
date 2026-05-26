@@ -6,13 +6,12 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import {
   RubberCompound,
   type RubberCompoundDatasheetStatus,
   type RubberCompoundFamily,
 } from "../entities/rubber-compound.entity";
+import { RubberCompoundRepository } from "../repositories/rubber-compound.repository";
 import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
 export interface CreateRubberCompoundDto {
@@ -146,25 +145,17 @@ export class RubberCompoundService {
   private readonly logger = new Logger(RubberCompoundService.name);
 
   constructor(
-    @InjectRepository(RubberCompound)
-    private readonly compoundRepo: Repository<RubberCompound>,
+    private readonly compoundRepo: RubberCompoundRepository,
     @Inject(forwardRef(() => StockManagementNotificationsService))
     private readonly notifications: StockManagementNotificationsService,
   ) {}
 
   async list(companyId: number, includeInactive = false): Promise<RubberCompound[]> {
-    const where: { companyId: number; active?: boolean } = { companyId };
-    if (!includeInactive) {
-      where.active = true;
-    }
-    return this.compoundRepo.find({
-      where,
-      order: { compoundFamily: "ASC", shoreHardness: "ASC", name: "ASC" },
-    });
+    return this.compoundRepo.findForCompany(companyId, includeInactive);
   }
 
   async byId(companyId: number, id: number): Promise<RubberCompound> {
-    const compound = await this.compoundRepo.findOne({ where: { id, companyId } });
+    const compound = await this.compoundRepo.findOneForCompany(companyId, id);
     if (!compound) {
       throw new NotFoundException(`Rubber compound ${id} not found`);
     }
@@ -172,17 +163,15 @@ export class RubberCompoundService {
   }
 
   async byCode(companyId: number, code: string): Promise<RubberCompound | null> {
-    return this.compoundRepo.findOne({ where: { companyId, code } });
+    return this.compoundRepo.findOneByCode(companyId, code);
   }
 
   async create(companyId: number, dto: CreateRubberCompoundDto): Promise<RubberCompound> {
-    const existing = await this.compoundRepo.findOne({
-      where: { companyId, code: dto.code },
-    });
+    const existing = await this.compoundRepo.findOneByCode(companyId, dto.code);
     if (existing) {
       throw new ConflictException(`Rubber compound with code "${dto.code}" already exists`);
     }
-    const created = this.compoundRepo.create({
+    const created = this.compoundRepo.build({
       companyId,
       code: dto.code,
       name: dto.name,
@@ -251,21 +240,21 @@ export class RubberCompoundService {
     status: RubberCompoundDatasheetStatus,
     datasheetId?: number,
   ): Promise<void> {
-    await this.compoundRepo.update(id, {
+    await this.compoundRepo.updateById(id, {
       datasheetStatus: status,
       ...(datasheetId !== undefined ? { lastExtractionDatasheetId: datasheetId } : {}),
     });
   }
 
   async ensureSeedCompoundsForCompany(companyId: number): Promise<number> {
-    const existing = await this.compoundRepo.find({ where: { companyId } });
+    const existing = await this.compoundRepo.findAllForCompany(companyId);
     const existingCodes = new Set(existing.map((c) => c.code));
     const toCreate = SEED_COMPOUNDS.filter((seed) => !existingCodes.has(seed.code));
     if (toCreate.length === 0) {
       return 0;
     }
     const records = toCreate.map((seed) =>
-      this.compoundRepo.create({
+      this.compoundRepo.build({
         companyId,
         code: seed.code,
         name: seed.name,
@@ -280,7 +269,7 @@ export class RubberCompoundService {
         active: true,
       }),
     );
-    await this.compoundRepo.save(records);
+    await this.compoundRepo.saveMany(records);
     this.logger.log(`Seeded ${records.length} rubber compounds for company ${companyId}`);
     return records.length;
   }

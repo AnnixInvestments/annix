@@ -1,14 +1,16 @@
 import { ConflictException, UnauthorizedException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
 import { PasswordService, TokenService } from "../../shared/auth";
 import { SessionInvalidationReason } from "../../shared/enums";
 import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { UserRole } from "../../user-roles/entities/user-role.entity";
+import { UserRoleRepository } from "../../user-roles/user-roles.repository";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
+import { RepProfileRepository } from "../rep-profile/rep-profile.repository";
 import { AnnixRepAuthService } from "./annix-rep-auth.service";
+import { AnnixRepSessionRepository } from "./annix-rep-session.repository";
 import { AnnixRepSession } from "./entities";
 import { OAuthLoginProvider } from "./oauth-login.provider";
 
@@ -18,10 +20,10 @@ jest.mock("uuid", () => ({
 
 describe("AnnixRepAuthService", () => {
   let service: AnnixRepAuthService;
-  let sessionRepo: jest.Mocked<Repository<AnnixRepSession>>;
-  let userRepo: jest.Mocked<Repository<User>>;
-  let userRoleRepo: jest.Mocked<Repository<UserRole>>;
-  let repProfileRepo: jest.Mocked<Repository<RepProfile>>;
+  let sessionRepo: any;
+  let userRepo: any;
+  let userRoleRepo: any;
+  let repProfileRepo: any;
   let passwordService: jest.Mocked<PasswordService>;
   let tokenService: jest.Mocked<TokenService>;
   let oauthProvider: jest.Mocked<OAuthLoginProvider>;
@@ -64,27 +66,29 @@ describe("AnnixRepAuthService", () => {
   } as AnnixRepSession;
 
   beforeEach(async () => {
-    const mockSessionRepo: Partial<Repository<AnnixRepSession>> = {
-      findOne: jest.fn(),
+    const mockSessionRepo = {
+      findActiveByToken: jest.fn(),
+      findActiveByTokenWithUser: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
-      update: jest.fn(),
+      updateActiveUserSessions: jest.fn(),
     };
 
-    const mockUserRepo: Partial<Repository<User>> = {
-      findOne: jest.fn(),
-      create: jest.fn(),
-      save: jest.fn(),
-    };
-
-    const mockUserRoleRepo: Partial<Repository<UserRole>> = {
-      findOne: jest.fn(),
+    const mockUserRepo = {
+      findOneByEmail: jest.fn(),
+      findByEmailWithRoles: jest.fn(),
+      findById: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
     };
 
-    const mockRepProfileRepo: Partial<Repository<RepProfile>> = {
-      findOne: jest.fn(),
+    const mockUserRoleRepo = {
+      findByName: jest.fn(),
+      create: jest.fn(),
+    };
+
+    const mockRepProfileRepo = {
+      findByUserId: jest.fn(),
     };
 
     const mockPasswordService = {
@@ -106,10 +110,10 @@ describe("AnnixRepAuthService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnnixRepAuthService,
-        { provide: getRepositoryToken(AnnixRepSession), useValue: mockSessionRepo },
-        { provide: getRepositoryToken(User), useValue: mockUserRepo },
-        { provide: getRepositoryToken(UserRole), useValue: mockUserRoleRepo },
-        { provide: getRepositoryToken(RepProfile), useValue: mockRepProfileRepo },
+        { provide: AnnixRepSessionRepository, useValue: mockSessionRepo },
+        { provide: UserRepository, useValue: mockUserRepo },
+        { provide: UserRoleRepository, useValue: mockUserRoleRepo },
+        { provide: RepProfileRepository, useValue: mockRepProfileRepo },
         { provide: PasswordService, useValue: mockPasswordService },
         { provide: TokenService, useValue: mockTokenService },
         { provide: OAuthLoginProvider, useValue: mockOAuthProvider },
@@ -117,10 +121,10 @@ describe("AnnixRepAuthService", () => {
     }).compile();
 
     service = module.get<AnnixRepAuthService>(AnnixRepAuthService);
-    sessionRepo = module.get(getRepositoryToken(AnnixRepSession));
-    userRepo = module.get(getRepositoryToken(User));
-    userRoleRepo = module.get(getRepositoryToken(UserRole));
-    repProfileRepo = module.get(getRepositoryToken(RepProfile));
+    sessionRepo = module.get(AnnixRepSessionRepository);
+    userRepo = module.get(UserRepository);
+    userRoleRepo = module.get(UserRoleRepository);
+    repProfileRepo = module.get(RepProfileRepository);
     passwordService = module.get(PasswordService);
     tokenService = module.get(TokenService);
     oauthProvider = module.get(OAuthLoginProvider);
@@ -141,17 +145,15 @@ describe("AnnixRepAuthService", () => {
     };
 
     it("should register a new user and return auth response", async () => {
-      userRepo.findOne.mockResolvedValue(null);
-      userRoleRepo.findOne.mockResolvedValue(mockAnnixRepRole);
+      userRepo.findOneByEmail.mockResolvedValue(null);
+      userRoleRepo.findByName.mockResolvedValue(mockAnnixRepRole);
       passwordService.hash.mockResolvedValue({
         hash: "hashed-pw",
         salt: "salt-value",
         passwordHash: "hashed-pw",
       });
-      userRepo.create.mockReturnValue({ ...mockUser, email: registerDto.email } as User);
-      userRepo.save.mockResolvedValue({ ...mockUser, id: 2, email: registerDto.email } as User);
-      sessionRepo.create.mockReturnValue(mockSession);
-      sessionRepo.save.mockResolvedValue(mockSession);
+      userRepo.create.mockResolvedValue({ ...mockUser, id: 2, email: registerDto.email } as User);
+      sessionRepo.create.mockResolvedValue(mockSession);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
 
       const result = await service.register(registerDto, "127.0.0.1", "test-agent");
@@ -161,12 +163,12 @@ describe("AnnixRepAuthService", () => {
       expect(result.expiresIn).toBe(3600);
       expect(result.email).toBe(registerDto.email);
       expect(result.setupCompleted).toBe(false);
-      expect(userRepo.findOne).toHaveBeenCalledWith({ where: { email: registerDto.email } });
+      expect(userRepo.findOneByEmail).toHaveBeenCalledWith(registerDto.email);
       expect(passwordService.hash).toHaveBeenCalledWith(registerDto.password);
     });
 
     it("should throw ConflictException when email already exists", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findOneByEmail.mockResolvedValue(mockUser);
 
       await expect(service.register(registerDto, "127.0.0.1", "test-agent")).rejects.toThrow(
         ConflictException,
@@ -174,25 +176,21 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should create annixRep role if it does not exist", async () => {
-      userRepo.findOne.mockResolvedValue(null);
-      userRoleRepo.findOne.mockResolvedValue(null);
-      userRoleRepo.create.mockReturnValue(mockAnnixRepRole);
-      userRoleRepo.save.mockResolvedValue(mockAnnixRepRole);
+      userRepo.findOneByEmail.mockResolvedValue(null);
+      userRoleRepo.findByName.mockResolvedValue(null);
+      userRoleRepo.create.mockResolvedValue(mockAnnixRepRole);
       passwordService.hash.mockResolvedValue({
         hash: "hashed-pw",
         salt: "salt-value",
         passwordHash: "hashed-pw",
       });
-      userRepo.create.mockReturnValue(mockUser);
-      userRepo.save.mockResolvedValue(mockUser);
-      sessionRepo.create.mockReturnValue(mockSession);
-      sessionRepo.save.mockResolvedValue(mockSession);
+      userRepo.create.mockResolvedValue(mockUser);
+      sessionRepo.create.mockResolvedValue(mockSession);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
 
       await service.register(registerDto, "127.0.0.1", "test-agent");
 
       expect(userRoleRepo.create).toHaveBeenCalledWith({ name: "annixRep" });
-      expect(userRoleRepo.save).toHaveBeenCalled();
     });
   });
 
@@ -200,27 +198,23 @@ describe("AnnixRepAuthService", () => {
     const loginDto = { email: "rep@example.com", password: "mock-test-password" };
 
     it("should login and return auth response with profile status", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findByEmailWithRoles.mockResolvedValue(mockUser);
       passwordService.verify.mockResolvedValue(true);
-      sessionRepo.update.mockResolvedValue({ affected: 1 } as any);
-      sessionRepo.create.mockReturnValue(mockSession);
-      sessionRepo.save.mockResolvedValue(mockSession);
+      sessionRepo.updateActiveUserSessions.mockResolvedValue(undefined);
+      sessionRepo.create.mockResolvedValue(mockSession);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
-      repProfileRepo.findOne.mockResolvedValue(mockRepProfile);
+      repProfileRepo.findByUserId.mockResolvedValue(mockRepProfile);
 
       const result = await service.login(loginDto, "127.0.0.1", "test-agent");
 
       expect(result.accessToken).toBe("mock-access-token");
       expect(result.userId).toBe(1);
       expect(result.setupCompleted).toBe(true);
-      expect(userRepo.findOne).toHaveBeenCalledWith({
-        where: { email: loginDto.email },
-        relations: ["roles"],
-      });
+      expect(userRepo.findByEmailWithRoles).toHaveBeenCalledWith(loginDto.email);
     });
 
     it("should throw UnauthorizedException when user not found", async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findByEmailWithRoles.mockResolvedValue(null);
 
       await expect(service.login(loginDto, "127.0.0.1", "test-agent")).rejects.toThrow(
         UnauthorizedException,
@@ -228,7 +222,7 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should throw UnauthorizedException when password is invalid", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findByEmailWithRoles.mockResolvedValue(mockUser);
       passwordService.verify.mockResolvedValue(false);
 
       await expect(service.login(loginDto, "127.0.0.1", "test-agent")).rejects.toThrow(
@@ -238,7 +232,7 @@ describe("AnnixRepAuthService", () => {
 
     it("should throw UnauthorizedException when user lacks annixRep role", async () => {
       const userWithoutRole = { ...mockUser, roles: [{ id: 5, name: "employee" }] as UserRole[] };
-      userRepo.findOne.mockResolvedValue(userWithoutRole as User);
+      userRepo.findByEmailWithRoles.mockResolvedValue(userWithoutRole as User);
       passwordService.verify.mockResolvedValue(true);
 
       await expect(service.login(loginDto, "127.0.0.1", "test-agent")).rejects.toThrow(
@@ -247,18 +241,17 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should invalidate existing sessions before creating new one", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findByEmailWithRoles.mockResolvedValue(mockUser);
       passwordService.verify.mockResolvedValue(true);
-      sessionRepo.update.mockResolvedValue({ affected: 2 } as any);
-      sessionRepo.create.mockReturnValue(mockSession);
-      sessionRepo.save.mockResolvedValue(mockSession);
+      sessionRepo.updateActiveUserSessions.mockResolvedValue(undefined);
+      sessionRepo.create.mockResolvedValue(mockSession);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
-      repProfileRepo.findOne.mockResolvedValue(null);
+      repProfileRepo.findByUserId.mockResolvedValue(null);
 
       await service.login(loginDto, "127.0.0.1", "test-agent");
 
-      expect(sessionRepo.update).toHaveBeenCalledWith(
-        { userId: 1, isActive: true },
+      expect(sessionRepo.updateActiveUserSessions).toHaveBeenCalledWith(
+        1,
         expect.objectContaining({
           isActive: false,
           invalidationReason: SessionInvalidationReason.NEW_LOGIN,
@@ -267,13 +260,12 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should return setupCompleted false when no rep profile exists", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findByEmailWithRoles.mockResolvedValue(mockUser);
       passwordService.verify.mockResolvedValue(true);
-      sessionRepo.update.mockResolvedValue({ affected: 0 } as any);
-      sessionRepo.create.mockReturnValue(mockSession);
-      sessionRepo.save.mockResolvedValue(mockSession);
+      sessionRepo.updateActiveUserSessions.mockResolvedValue(undefined);
+      sessionRepo.create.mockResolvedValue(mockSession);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
-      repProfileRepo.findOne.mockResolvedValue(null);
+      repProfileRepo.findByUserId.mockResolvedValue(null);
 
       const result = await service.login(loginDto, "127.0.0.1", "test-agent");
 
@@ -284,14 +276,12 @@ describe("AnnixRepAuthService", () => {
   describe("logout", () => {
     it("should deactivate an active session", async () => {
       const activeSession = { ...mockSession, isActive: true };
-      sessionRepo.findOne.mockResolvedValue(activeSession as AnnixRepSession);
+      sessionRepo.findActiveByToken.mockResolvedValue(activeSession as AnnixRepSession);
       sessionRepo.save.mockResolvedValue(activeSession as AnnixRepSession);
 
       await service.logout("mock-session-token-uuid");
 
-      expect(sessionRepo.findOne).toHaveBeenCalledWith({
-        where: { sessionToken: "mock-session-token-uuid", isActive: true },
-      });
+      expect(sessionRepo.findActiveByToken).toHaveBeenCalledWith("mock-session-token-uuid");
       expect(sessionRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           isActive: false,
@@ -301,7 +291,7 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should do nothing when session not found", async () => {
-      sessionRepo.findOne.mockResolvedValue(null);
+      sessionRepo.findActiveByToken.mockResolvedValue(null);
 
       await service.logout("nonexistent-token");
 
@@ -321,10 +311,10 @@ describe("AnnixRepAuthService", () => {
         annixRepUserId: 1,
       };
       tokenService.verifyToken.mockResolvedValue(payload);
-      userRepo.findOne.mockResolvedValue(mockUser);
-      sessionRepo.update.mockResolvedValue({ affected: 1 } as any);
+      userRepo.findById.mockResolvedValue(mockUser);
+      sessionRepo.updateActiveUserSessions.mockResolvedValue(undefined);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
-      repProfileRepo.findOne.mockResolvedValue(mockRepProfile);
+      repProfileRepo.findByUserId.mockResolvedValue(mockRepProfile);
 
       const result = await service.refreshSession(refreshDto, "127.0.0.1", "test-agent");
 
@@ -363,7 +353,7 @@ describe("AnnixRepAuthService", () => {
         sessionToken: "token",
         annixRepUserId: 999,
       });
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findById.mockResolvedValue(null);
 
       await expect(service.refreshSession(refreshDto, "127.0.0.1", "test-agent")).rejects.toThrow(
         UnauthorizedException,
@@ -373,8 +363,8 @@ describe("AnnixRepAuthService", () => {
 
   describe("profile", () => {
     it("should return profile response for existing user", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
-      repProfileRepo.findOne.mockResolvedValue(mockRepProfile);
+      userRepo.findById.mockResolvedValue(mockUser);
+      repProfileRepo.findByUserId.mockResolvedValue(mockRepProfile);
 
       const result = await service.profile(1);
 
@@ -388,14 +378,14 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should throw UnauthorizedException when user not found", async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findById.mockResolvedValue(null);
 
       await expect(service.profile(999)).rejects.toThrow(UnauthorizedException);
     });
 
     it("should return setupCompleted false when no rep profile", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
-      repProfileRepo.findOne.mockResolvedValue(null);
+      userRepo.findById.mockResolvedValue(mockUser);
+      repProfileRepo.findByUserId.mockResolvedValue(null);
 
       const result = await service.profile(1);
 
@@ -405,7 +395,7 @@ describe("AnnixRepAuthService", () => {
 
   describe("checkEmailAvailable", () => {
     it("should return true when email is not taken", async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findOneByEmail.mockResolvedValue(null);
 
       const result = await service.checkEmailAvailable("new@example.com");
 
@@ -413,7 +403,7 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should return false when email already exists", async () => {
-      userRepo.findOne.mockResolvedValue(mockUser);
+      userRepo.findOneByEmail.mockResolvedValue(mockUser);
 
       const result = await service.checkEmailAvailable("rep@example.com");
 
@@ -427,7 +417,7 @@ describe("AnnixRepAuthService", () => {
         ...mockSession,
         expiresAt: fromISO("2099-01-15T10:00:00Z").toJSDate(),
       };
-      sessionRepo.findOne.mockResolvedValue(futureSession as AnnixRepSession);
+      sessionRepo.findActiveByTokenWithUser.mockResolvedValue(futureSession as AnnixRepSession);
       sessionRepo.save.mockResolvedValue(futureSession as AnnixRepSession);
 
       const result = await service.verifySession("mock-session-token-uuid");
@@ -439,7 +429,7 @@ describe("AnnixRepAuthService", () => {
     });
 
     it("should return null when session not found", async () => {
-      sessionRepo.findOne.mockResolvedValue(null);
+      sessionRepo.findActiveByTokenWithUser.mockResolvedValue(null);
 
       const result = await service.verifySession("nonexistent-token");
 
@@ -451,7 +441,7 @@ describe("AnnixRepAuthService", () => {
         ...mockSession,
         expiresAt: fromISO("2020-01-01T00:00:00Z").toJSDate(),
       };
-      sessionRepo.findOne.mockResolvedValue(expiredSession as AnnixRepSession);
+      sessionRepo.findActiveByTokenWithUser.mockResolvedValue(expiredSession as AnnixRepSession);
       sessionRepo.save.mockResolvedValue(expiredSession as AnnixRepSession);
 
       const result = await service.verifySession("mock-session-token-uuid");
@@ -510,23 +500,17 @@ describe("AnnixRepAuthService", () => {
         firstName: "OAuth",
         lastName: "User",
       });
-      userRepo.findOne.mockResolvedValue(null);
-      userRoleRepo.findOne.mockResolvedValue(mockAnnixRepRole);
-      userRepo.create.mockReturnValue({
+      userRepo.findByEmailWithRoles.mockResolvedValue(null);
+      userRoleRepo.findByName.mockResolvedValue(mockAnnixRepRole);
+      userRepo.create.mockResolvedValue({
         ...mockUser,
         id: 5,
         email: "oauth@example.com",
       } as User);
-      userRepo.save.mockResolvedValue({
-        ...mockUser,
-        id: 5,
-        email: "oauth@example.com",
-      } as User);
-      sessionRepo.update.mockResolvedValue({ affected: 0 } as any);
-      sessionRepo.create.mockReturnValue(mockSession);
-      sessionRepo.save.mockResolvedValue(mockSession);
+      sessionRepo.updateActiveUserSessions.mockResolvedValue(undefined);
+      sessionRepo.create.mockResolvedValue(mockSession);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
-      repProfileRepo.findOne.mockResolvedValue(null);
+      repProfileRepo.findByUserId.mockResolvedValue(null);
 
       const result = await service.oauthLogin(
         "google",
@@ -564,14 +548,13 @@ describe("AnnixRepAuthService", () => {
         oauthProvider: "google",
         oauthId: "google-456",
       };
-      userRepo.findOne.mockResolvedValue(existingUserNoRole as User);
-      userRoleRepo.findOne.mockResolvedValue(mockAnnixRepRole);
+      userRepo.findByEmailWithRoles.mockResolvedValue(existingUserNoRole as User);
+      userRoleRepo.findByName.mockResolvedValue(mockAnnixRepRole);
       userRepo.save.mockResolvedValue(existingUserNoRole as User);
-      sessionRepo.update.mockResolvedValue({ affected: 0 } as any);
-      sessionRepo.create.mockReturnValue(mockSession);
-      sessionRepo.save.mockResolvedValue(mockSession);
+      sessionRepo.updateActiveUserSessions.mockResolvedValue(undefined);
+      sessionRepo.create.mockResolvedValue(mockSession);
       tokenService.generateTokenPair.mockResolvedValue(mockTokenPair);
-      repProfileRepo.findOne.mockResolvedValue(null);
+      repProfileRepo.findByUserId.mockResolvedValue(null);
 
       await service.oauthLogin("google", "auth-code", "http://callback", "127.0.0.1", "test-agent");
 

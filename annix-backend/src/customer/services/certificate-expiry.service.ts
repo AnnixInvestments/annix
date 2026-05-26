@@ -1,10 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { formatDate, now } from "../../lib/datetime";
+import { CompanyRepository } from "../../platform/company.repository";
 import { Company } from "../../platform/entities/company.entity";
+import { CustomerProfileRepository } from "../customer-profile.repository";
 import { CustomerProfile } from "../entities/customer-profile.entity";
 
 @Injectable()
@@ -12,10 +12,8 @@ export class CertificateExpiryService {
   private readonly logger = new Logger(CertificateExpiryService.name);
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CustomerProfile)
-    private readonly profileRepo: Repository<CustomerProfile>,
+    private readonly companyRepo: CompanyRepository,
+    private readonly profileRepository: CustomerProfileRepository,
     private readonly emailService: EmailService,
   ) {}
 
@@ -26,16 +24,7 @@ export class CertificateExpiryService {
     try {
       const todayStr = now().toFormat("yyyy-MM-dd");
 
-      const profiles = await this.profileRepo
-        .createQueryBuilder("profile")
-        .leftJoinAndSelect("profile.company", "company")
-        .leftJoinAndSelect("profile.user", "user")
-        .where("company.beeCertificateExpiry IS NOT NULL")
-        .andWhere("DATE(company.beeCertificateExpiry) <= :today", { today: todayStr })
-        .andWhere(
-          "(company.beeExpiryNotificationSentAt IS NULL OR DATE(company.beeExpiryNotificationSentAt) < DATE(company.beeCertificateExpiry))",
-        )
-        .getMany();
+      const profiles = await this.profileRepository.findWithExpiringBeeCertificates(todayStr);
 
       const companiesMap = new Map<number, { company: Company; profiles: CustomerProfile[] }>();
       for (const profile of profiles) {

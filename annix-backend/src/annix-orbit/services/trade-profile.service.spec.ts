@@ -1,25 +1,24 @@
 import { emptyTradeProfile, type TradeProfile } from "@annix/product-data/sa-market";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { Candidate } from "../entities/candidate.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
 import { TradeProfileService } from "./trade-profile.service";
 
 describe("TradeProfileService", () => {
   let service: TradeProfileService;
-  let repo: { find: jest.Mock; update: jest.Mock };
+  let repo: { findByEmail: jest.Mock; updateTradeProfile: jest.Mock };
   let aiChat: { chat: jest.Mock };
 
   beforeEach(async () => {
     repo = {
-      find: jest.fn(),
-      update: jest.fn().mockResolvedValue({ affected: 1 }),
+      findByEmail: jest.fn(),
+      updateTradeProfile: jest.fn().mockResolvedValue(undefined),
     };
     aiChat = { chat: jest.fn() };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TradeProfileService,
-        { provide: getRepositoryToken(Candidate), useValue: repo },
+        { provide: CandidateRepository, useValue: repo },
         { provide: AiChatService, useValue: aiChat },
       ],
     }).compile();
@@ -28,7 +27,7 @@ describe("TradeProfileService", () => {
 
   describe("forSeeker", () => {
     it("returns an empty profile when the candidate has none yet", async () => {
-      repo.find.mockResolvedValue([{ id: 1, email: "a@example.com", tradeProfile: null }]);
+      repo.findByEmail.mockResolvedValue([{ id: 1, email: "a@example.com", tradeProfile: null }]);
 
       const result = await service.forSeeker("a@example.com");
 
@@ -50,7 +49,9 @@ describe("TradeProfileService", () => {
         saqccCertificateNumber: "SAQCC-12345",
         saqccValidUntil: "2027-01-01",
       };
-      repo.find.mockResolvedValue([{ id: 2, email: "w@example.com", tradeProfile: persisted }]);
+      repo.findByEmail.mockResolvedValue([
+        { id: 2, email: "w@example.com", tradeProfile: persisted },
+      ]);
 
       const result = await service.forSeeker("w@example.com");
 
@@ -59,7 +60,7 @@ describe("TradeProfileService", () => {
     });
 
     it("returns empty when the seeker has no candidate row", async () => {
-      repo.find.mockResolvedValue([]);
+      repo.findByEmail.mockResolvedValue([]);
       const result = await service.forSeeker("nobody@example.com");
       expect(result.candidateIds).toEqual([]);
       expect(result.profile.shared.tradeKeys).toEqual([]);
@@ -68,13 +69,13 @@ describe("TradeProfileService", () => {
     it("returns empty when email is null", async () => {
       const result = await service.forSeeker(null);
       expect(result.candidateIds).toEqual([]);
-      expect(repo.find).not.toHaveBeenCalled();
+      expect(repo.findByEmail).not.toHaveBeenCalled();
     });
   });
 
   describe("upsertForSeeker", () => {
     it("persists a normalised profile to every candidate row owned by the seeker", async () => {
-      repo.find.mockResolvedValue([
+      repo.findByEmail.mockResolvedValue([
         { id: 3, email: "u@example.com" },
         { id: 4, email: "u@example.com" },
       ]);
@@ -91,8 +92,8 @@ describe("TradeProfileService", () => {
       const result = await service.upsertForSeeker("u@example.com", input);
 
       expect(result.saved).toBe(true);
-      expect(repo.update).toHaveBeenCalledTimes(2);
-      const persisted = repo.update.mock.calls[0][1].tradeProfile as TradeProfile;
+      expect(repo.updateTradeProfile).toHaveBeenCalledTimes(2);
+      const persisted = repo.updateTradeProfile.mock.calls[0][1] as TradeProfile;
       expect(persisted.shared.tradeKeys).toEqual(["boilermaker", "coded_welder"]);
       expect(persisted.shared.yearsExperience).toBe(9);
       expect(persisted.shared.commoditiesWorked).toEqual(["gold", "coal"]);
@@ -101,29 +102,29 @@ describe("TradeProfileService", () => {
     });
 
     it("rejects negative yearsExperience and siteRadiusKm", async () => {
-      repo.find.mockResolvedValue([{ id: 5, email: "n@example.com" }]);
+      repo.findByEmail.mockResolvedValue([{ id: 5, email: "n@example.com" }]);
       const input: TradeProfile = emptyTradeProfile();
       input.shared.yearsExperience = -3;
       input.shared.siteRadiusKm = -100;
 
       await service.upsertForSeeker("n@example.com", input);
 
-      const persisted = repo.update.mock.calls[0][1].tradeProfile as TradeProfile;
+      const persisted = repo.updateTradeProfile.mock.calls[0][1] as TradeProfile;
       expect(persisted.shared.yearsExperience).toBeNull();
       expect(persisted.shared.siteRadiusKm).toBeNull();
     });
 
     it("returns saved=false when the seeker has no candidate row", async () => {
-      repo.find.mockResolvedValue([]);
+      repo.findByEmail.mockResolvedValue([]);
       const result = await service.upsertForSeeker("nobody@example.com", emptyTradeProfile());
       expect(result.saved).toBe(false);
-      expect(repo.update).not.toHaveBeenCalled();
+      expect(repo.updateTradeProfile).not.toHaveBeenCalled();
     });
   });
 
   describe("autofillFromCvForSeeker", () => {
     it("returns reason=no-candidate when seeker has no candidate row", async () => {
-      repo.find.mockResolvedValue([]);
+      repo.findByEmail.mockResolvedValue([]);
       const result = await service.autofillFromCvForSeeker("nobody@example.com");
       expect(result.extracted).toBe(false);
       expect(result.reason).toBe("no-candidate");
@@ -131,7 +132,7 @@ describe("TradeProfileService", () => {
     });
 
     it("returns reason=no-cv-text when candidate has no rawCvText", async () => {
-      repo.find.mockResolvedValue([{ id: 1, email: "a@example.com", rawCvText: null }]);
+      repo.findByEmail.mockResolvedValue([{ id: 1, email: "a@example.com", rawCvText: null }]);
       const result = await service.autofillFromCvForSeeker("a@example.com");
       expect(result.extracted).toBe(false);
       expect(result.reason).toBe("no-cv-text");
@@ -139,7 +140,7 @@ describe("TradeProfileService", () => {
     });
 
     it("returns reason=no-trade-keywords when CV has no trade keywords", async () => {
-      repo.find.mockResolvedValue([
+      repo.findByEmail.mockResolvedValue([
         {
           id: 1,
           email: "a@example.com",
@@ -155,7 +156,7 @@ describe("TradeProfileService", () => {
     it("calls Gemini, parses trade profile, persists, and merges with existing profile", async () => {
       const existing: TradeProfile = emptyTradeProfile();
       existing.shared.commoditiesWorked = ["gold"];
-      repo.find.mockResolvedValue([
+      repo.findByEmail.mockResolvedValue([
         {
           id: 1,
           email: "boilie@example.com",
@@ -192,11 +193,11 @@ describe("TradeProfileService", () => {
       expect(result.profile.shared.commoditiesWorked.sort()).toEqual(["coal", "gold"]);
       expect(result.profile.shared.yearsExperience).toBe(12);
       expect(result.profile.perTrade.boilermaker?.codedTickets).toEqual(["6G"]);
-      expect(repo.update).toHaveBeenCalledTimes(1);
+      expect(repo.updateTradeProfile).toHaveBeenCalledTimes(1);
     });
 
     it("returns reason=ai-failed when Gemini returns non-JSON", async () => {
-      repo.find.mockResolvedValue([
+      repo.findByEmail.mockResolvedValue([
         {
           id: 1,
           email: "boilie@example.com",
@@ -213,7 +214,7 @@ describe("TradeProfileService", () => {
 
       expect(result.extracted).toBe(false);
       expect(result.reason).toBe("ai-failed");
-      expect(repo.update).not.toHaveBeenCalled();
+      expect(repo.updateTradeProfile).not.toHaveBeenCalled();
     });
   });
 });

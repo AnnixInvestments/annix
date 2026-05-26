@@ -1,50 +1,69 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
-import { JobCard } from "../entities/job-card.entity";
-import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
-import { RequisitionItem } from "../entities/requisition-item.entity";
-import { StockItem } from "../entities/stock-item.entity";
+import { RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { RequisitionRepository } from "../repositories/requisition.repository";
+import { RequisitionItemRepository } from "../repositories/requisition-item.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 import { RequisitionService } from "./requisition.service";
 
 describe("RequisitionService", () => {
   let service: RequisitionService;
 
+  const reqFindOne = jest.fn();
+  const reqCount = jest.fn().mockResolvedValue(0);
   const mockRequisitionRepo = {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    count: jest.fn().mockResolvedValue(0),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findOne: reqFindOne,
+    findActiveForJobCard: reqFindOne,
+    findActiveForJobCardWithItems: reqFindOne,
+    findOneForCompanyWithDetails: reqFindOne,
+    findOneForCompanyWithItems: reqFindOne,
+    findByExactNumber: reqFindOne,
+    findActiveReorderByNumber: reqFindOne,
+    findForCpo: reqFindOne,
+    findCalloffForCpo: reqFindOne,
+    findAllForCompanyPaginated: jest.fn(),
+    count: reqCount,
+    countByNumberPrefix: reqCount,
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
+  const itemSave = jest.fn().mockImplementation((items) => Promise.resolve(items));
+  const itemFindOne = jest.fn();
   const mockItemRepo = {
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((items) => Promise.resolve(items)),
-    findOne: jest.fn(),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
+    buildMany: jest.fn().mockImplementation((rows) => rows.map((r: object) => ({ ...r }))),
+    save: itemSave,
+    saveMany: itemSave,
+    findOne: itemFindOne,
+    findOneForCompanyWithStockItem: itemFindOne,
+    findOneForRequisition: itemFindOne,
   };
 
+  const jobCardFindOne = jest.fn();
   const mockJobCardRepo = {
-    findOne: jest.fn(),
+    findOne: jobCardFindOne,
+    findOneForCompany: jobCardFindOne,
   };
 
   const mockAnalysisRepo = {
-    findOne: jest.fn(),
+    findOneForJobCard: jest.fn(),
   };
 
   const mockStockItemRepo = {
-    findOne: jest.fn(),
+    findOneForCompany: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RequisitionService,
-        { provide: getRepositoryToken(Requisition), useValue: mockRequisitionRepo },
-        { provide: getRepositoryToken(RequisitionItem), useValue: mockItemRepo },
-        { provide: getRepositoryToken(JobCard), useValue: mockJobCardRepo },
-        { provide: getRepositoryToken(JobCardCoatingAnalysis), useValue: mockAnalysisRepo },
-        { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
+        { provide: RequisitionRepository, useValue: mockRequisitionRepo },
+        { provide: RequisitionItemRepository, useValue: mockItemRepo },
+        { provide: JobCardRepository, useValue: mockJobCardRepo },
+        { provide: JobCardCoatingAnalysisRepository, useValue: mockAnalysisRepo },
+        { provide: StockItemRepository, useValue: mockStockItemRepo },
       ],
     }).compile();
 
@@ -68,7 +87,7 @@ describe("RequisitionService", () => {
 
     it("returns null when no coating analysis exists", async () => {
       mockRequisitionRepo.findOne.mockResolvedValueOnce(null);
-      mockAnalysisRepo.findOne.mockResolvedValue(null);
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
 
       const result = await service.createFromJobCard(1, 1, "admin");
       expect(result).toBeNull();
@@ -76,7 +95,7 @@ describe("RequisitionService", () => {
 
     it("returns null when analysis has 0 coats", async () => {
       mockRequisitionRepo.findOne.mockResolvedValueOnce(null);
-      mockAnalysisRepo.findOne.mockResolvedValue({ coats: [] });
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue({ coats: [] });
 
       const result = await service.createFromJobCard(1, 1, "admin");
       expect(result).toBeNull();
@@ -84,7 +103,7 @@ describe("RequisitionService", () => {
 
     it("returns null when job card not found", async () => {
       mockRequisitionRepo.findOne.mockResolvedValueOnce(null);
-      mockAnalysisRepo.findOne.mockResolvedValue({
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue({
         coats: [{ product: "Paint", litersRequired: 10 }],
         stockAssessment: [],
       });
@@ -99,7 +118,7 @@ describe("RequisitionService", () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
-      mockAnalysisRepo.findOne.mockResolvedValue({
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue({
         coats: [{ product: "Paint", litersRequired: 10, area: "external" }],
         stockAssessment: [],
       });
@@ -120,7 +139,7 @@ describe("RequisitionService", () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
-      mockAnalysisRepo.findOne.mockResolvedValue({
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue({
         coats: [
           { product: "Primer", litersRequired: 10, area: "external" },
           { product: "Topcoat", litersRequired: 20, area: "external" },
@@ -131,7 +150,12 @@ describe("RequisitionService", () => {
 
       await service.createFromJobCard(1, 1, "admin");
 
-      expect(mockItemRepo.create).toHaveBeenCalledTimes(2);
+      expect(mockItemRepo.buildMany).toHaveBeenCalledWith(
+        expect.arrayContaining([
+          expect.objectContaining({ productName: "Primer" }),
+          expect.objectContaining({ productName: "Topcoat" }),
+        ]),
+      );
     });
   });
 
@@ -141,7 +165,7 @@ describe("RequisitionService", () => {
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce(null)
         .mockResolvedValueOnce({ id: 1, items: [] });
-      mockAnalysisRepo.findOne.mockResolvedValue({
+      mockAnalysisRepo.findOneForJobCard.mockResolvedValue({
         coats: [{ product: "Paint", litersRequired: litres, area: "external" }],
         stockAssessment: [],
       });
@@ -151,45 +175,45 @@ describe("RequisitionService", () => {
     it("calculates packsToOrder as ceil(litres / 20) for 0.5L", async () => {
       setupForPackSize(0.5);
       await service.createFromJobCard(1, 1, "admin");
-      expect(mockItemRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ packsToOrder: 1 }),
+      expect(mockItemRepo.buildMany).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ packsToOrder: 1 })]),
       );
     });
 
     it("calculates packsToOrder as ceil(litres / 20) for 21L", async () => {
       setupForPackSize(21);
       await service.createFromJobCard(1, 1, "admin");
-      expect(mockItemRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ packsToOrder: 2 }),
+      expect(mockItemRepo.buildMany).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ packsToOrder: 2 })]),
       );
     });
 
     it("calculates packsToOrder as ceil(litres / 20) for 68.6L", async () => {
       setupForPackSize(68.6);
       await service.createFromJobCard(1, 1, "admin");
-      expect(mockItemRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ packsToOrder: 4 }),
+      expect(mockItemRepo.buildMany).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ packsToOrder: 4 })]),
       );
     });
 
     it("calculates packsToOrder as ceil(litres / 20) for exact 20L", async () => {
       setupForPackSize(20);
       await service.createFromJobCard(1, 1, "admin");
-      expect(mockItemRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ packsToOrder: 1 }),
+      expect(mockItemRepo.buildMany).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ packsToOrder: 1 })]),
       );
     });
   });
 
   describe("createReorderRequisition", () => {
     it("returns null when stock item not found", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue(null);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(null);
       const result = await service.createReorderRequisition(1, 999);
       expect(result).toBeNull();
     });
 
     it("returns null when minStockLevel is 0", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue({
+      mockStockItemRepo.findOneForCompany.mockResolvedValue({
         id: 1,
         sku: "PAINT-001",
         name: "Paint",
@@ -201,7 +225,7 @@ describe("RequisitionService", () => {
     });
 
     it("returns null when stock is above minimum", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue({
+      mockStockItemRepo.findOneForCompany.mockResolvedValue({
         id: 1,
         sku: "PAINT-001",
         name: "Paint",
@@ -213,7 +237,7 @@ describe("RequisitionService", () => {
     });
 
     it("calculates deficit correctly", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue({
+      mockStockItemRepo.findOneForCompany.mockResolvedValue({
         id: 1,
         sku: "PAINT-001",
         name: "Paint",
@@ -233,7 +257,7 @@ describe("RequisitionService", () => {
     });
 
     it("uses REORDER-{sku} format", async () => {
-      mockStockItemRepo.findOne.mockResolvedValue({
+      mockStockItemRepo.findOneForCompany.mockResolvedValue({
         id: 1,
         sku: "PAINT-001",
         name: "Paint",

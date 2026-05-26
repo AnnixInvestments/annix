@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { generateUniqueId } from "../lib/datetime";
 import {
   AdjustOtherStockDto,
@@ -12,7 +10,8 @@ import {
   UpdateOtherStockDto,
 } from "./dto/rubber-portal.dto";
 import { OtherStockUnitOfMeasure, RubberOtherStock } from "./entities/rubber-other-stock.entity";
-import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
+import { RubberOtherStockRepository } from "./repositories/rubber-other-stock.repository";
+import { RubberStockLocationRepository } from "./repositories/rubber-stock-location.repository";
 
 const UNIT_OF_MEASURE_LABELS: Record<OtherStockUnitOfMeasure, string> = {
   [OtherStockUnitOfMeasure.EACH]: "Each",
@@ -30,10 +29,8 @@ const UNIT_OF_MEASURE_LABELS: Record<OtherStockUnitOfMeasure, string> = {
 @Injectable()
 export class RubberOtherStockService {
   constructor(
-    @InjectRepository(RubberOtherStock)
-    private otherStockRepository: Repository<RubberOtherStock>,
-    @InjectRepository(RubberStockLocation)
-    private stockLocationRepository: Repository<RubberStockLocation>,
+    private otherStockRepository: RubberOtherStockRepository,
+    private stockLocationRepository: RubberStockLocationRepository,
   ) {}
 
   private mapOtherStockToDto(stock: RubberOtherStock): RubberOtherStockDto {
@@ -63,57 +60,35 @@ export class RubberOtherStockService {
   }
 
   async allOtherStocks(includeInactive = false): Promise<RubberOtherStockDto[]> {
-    const query = this.otherStockRepository
-      .createQueryBuilder("stock")
-      .leftJoinAndSelect("stock.stockLocation", "location")
-      .orderBy("stock.item_name", "ASC");
-
-    if (!includeInactive) {
-      query.where("stock.is_active = :isActive", { isActive: true });
-    }
-
-    const stocks = await query.getMany();
+    const stocks = await this.otherStockRepository.findAllWithLocation(includeInactive);
     return stocks.map((s) => this.mapOtherStockToDto(s));
   }
 
   async lowStockItems(): Promise<RubberOtherStockDto[]> {
-    const stocks = await this.otherStockRepository
-      .createQueryBuilder("stock")
-      .leftJoinAndSelect("stock.stockLocation", "location")
-      .where("stock.is_active = :isActive", { isActive: true })
-      .andWhere("stock.quantity <= stock.reorder_point")
-      .orderBy("stock.item_name", "ASC")
-      .getMany();
+    const stocks = await this.otherStockRepository.findLowStockWithLocation();
     return stocks.map((s) => this.mapOtherStockToDto(s));
   }
 
   async otherStockById(id: number): Promise<RubberOtherStockDto | null> {
-    const stock = await this.otherStockRepository.findOne({
-      where: { id },
-      relations: ["stockLocation"],
-    });
+    const stock = await this.otherStockRepository.findByIdWithLocation(id);
     return stock ? this.mapOtherStockToDto(stock) : null;
   }
 
   async createOtherStock(dto: CreateOtherStockDto): Promise<RubberOtherStockDto> {
-    const existing = await this.otherStockRepository.findOne({
-      where: { itemCode: dto.itemCode },
-    });
+    const existing = await this.otherStockRepository.findOneByItemCode(dto.itemCode);
     if (existing) {
       throw new BadRequestException(`Item code '${dto.itemCode}' already exists`);
     }
 
     let locationName: string | null = null;
     if (dto.locationId) {
-      const location = await this.stockLocationRepository.findOne({
-        where: { id: dto.locationId },
-      });
+      const location = await this.stockLocationRepository.findById(dto.locationId);
       if (location) {
         locationName = location.name;
       }
     }
 
-    const stock = this.otherStockRepository.create({
+    const stock = this.otherStockRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       itemCode: dto.itemCode,
       itemName: dto.itemName,
@@ -133,10 +108,7 @@ export class RubberOtherStockService {
     });
 
     const saved = await this.otherStockRepository.save(stock);
-    const result = await this.otherStockRepository.findOne({
-      where: { id: saved.id },
-      relations: ["stockLocation"],
-    });
+    const result = await this.otherStockRepository.findByIdWithLocation(saved.id);
     return this.mapOtherStockToDto(result!);
   }
 
@@ -144,10 +116,7 @@ export class RubberOtherStockService {
     id: number,
     dto: UpdateOtherStockDto,
   ): Promise<RubberOtherStockDto | null> {
-    const stock = await this.otherStockRepository.findOne({
-      where: { id },
-      relations: ["stockLocation"],
-    });
+    const stock = await this.otherStockRepository.findByIdWithLocation(id);
     if (!stock) {
       return null;
     }
@@ -168,9 +137,7 @@ export class RubberOtherStockService {
     if (dto.locationId !== undefined) {
       stock.locationId = dto.locationId;
       if (dto.locationId) {
-        const location = await this.stockLocationRepository.findOne({
-          where: { id: dto.locationId },
-        });
+        const location = await this.stockLocationRepository.findById(dto.locationId);
         stock.location = location ? location.name : null;
       } else {
         stock.location = null;
@@ -178,15 +145,12 @@ export class RubberOtherStockService {
     }
 
     await this.otherStockRepository.save(stock);
-    const result = await this.otherStockRepository.findOne({
-      where: { id },
-      relations: ["stockLocation"],
-    });
+    const result = await this.otherStockRepository.findByIdWithLocation(id);
     return this.mapOtherStockToDto(result!);
   }
 
   async deleteOtherStock(id: number): Promise<boolean> {
-    const stock = await this.otherStockRepository.findOne({ where: { id } });
+    const stock = await this.otherStockRepository.findById(id);
     if (!stock) {
       return false;
     }
@@ -195,10 +159,7 @@ export class RubberOtherStockService {
   }
 
   async receiveOtherStock(dto: ReceiveOtherStockDto): Promise<RubberOtherStockDto> {
-    const stock = await this.otherStockRepository.findOne({
-      where: { id: dto.otherStockId },
-      relations: ["stockLocation"],
-    });
+    const stock = await this.otherStockRepository.findByIdWithLocation(dto.otherStockId);
     if (!stock) {
       throw new NotFoundException("Stock item not found");
     }
@@ -210,10 +171,7 @@ export class RubberOtherStockService {
   }
 
   async adjustOtherStock(dto: AdjustOtherStockDto): Promise<RubberOtherStockDto> {
-    const stock = await this.otherStockRepository.findOne({
-      where: { id: dto.otherStockId },
-      relations: ["stockLocation"],
-    });
+    const stock = await this.otherStockRepository.findByIdWithLocation(dto.otherStockId);
     if (!stock) {
       throw new NotFoundException("Stock item not found");
     }
@@ -266,9 +224,7 @@ export class RubberOtherStockService {
 
       const unitOfMeasure = this.parseUnitOfMeasure(row.unitOfMeasure);
 
-      const existing = await this.otherStockRepository.findOne({
-        where: { itemCode: row.itemCode },
-      });
+      const existing = await this.otherStockRepository.findOneByItemCode(row.itemCode);
 
       if (existing) {
         existing.quantity = Number(existing.quantity) + row.quantity;
@@ -292,7 +248,7 @@ export class RubberOtherStockService {
         return { ...acc, updated: acc.updated + 1 };
       }
 
-      const stock = this.otherStockRepository.create({
+      const stock = this.otherStockRepository.build({
         firebaseUid: `pg_${generateUniqueId()}`,
         itemCode: row.itemCode,
         itemName: row.itemName,

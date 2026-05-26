@@ -1,12 +1,13 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { FindOptionsWhere, Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { now } from "../lib/datetime";
 import { PaginatedResponse } from "../shared/dto";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { User } from "../user/entities/user.entity";
+import { DrawingRepository } from "./drawing.repository";
+import { DrawingCommentRepository } from "./drawing-comment.repository";
+import { DrawingVersionRepository } from "./drawing-version.repository";
 import { CreateDrawingDto } from "./dto/create-drawing.dto";
 import { CreateDrawingCommentDto } from "./dto/create-drawing-comment.dto";
 import { DrawingQueryDto } from "./dto/drawing-query.dto";
@@ -27,20 +28,17 @@ const ALLOWED_MIME_TYPES: Record<string, DrawingFileType> = {
   "application/x-acad": DrawingFileType.DWG,
   "application/dxf": DrawingFileType.DXF,
   "application/x-dxf": DrawingFileType.DXF,
-  "application/octet-stream": DrawingFileType.DWG, // CAD files often come as this
+  "application/octet-stream": DrawingFileType.DWG,
 };
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024;
 
 @Injectable()
 export class DrawingsService {
   constructor(
-    @InjectRepository(Drawing)
-    private drawingRepository: Repository<Drawing>,
-    @InjectRepository(DrawingVersion)
-    private versionRepository: Repository<DrawingVersion>,
-    @InjectRepository(DrawingComment)
-    private commentRepository: Repository<DrawingComment>,
+    private readonly drawingRepository: DrawingRepository,
+    private readonly versionRepository: DrawingVersionRepository,
+    private readonly commentRepository: DrawingCommentRepository,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private auditService: AuditService,
@@ -51,7 +49,6 @@ export class DrawingsService {
       throw new BadRequestException("File size exceeds 50MB limit");
     }
 
-    // Check by extension if mime type is generic
     const ext = file.originalname.split(".").pop()?.toLowerCase();
 
     if (file.mimetype === "application/octet-stream") {
@@ -61,7 +58,6 @@ export class DrawingsService {
 
     const fileType = ALLOWED_MIME_TYPES[file.mimetype];
     if (!fileType) {
-      // Try by extension
       const extTypes: Record<string, DrawingFileType> = {
         pdf: DrawingFileType.PDF,
         png: DrawingFileType.PNG,
@@ -85,11 +81,7 @@ export class DrawingsService {
     const year = now().year;
     const prefix = `DRW-${year}-`;
 
-    const lastDrawing = await this.drawingRepository
-      .createQueryBuilder("drawing")
-      .where("drawing.drawing_number LIKE :prefix", { prefix: `${prefix}%` })
-      .orderBy("drawing.drawing_number", "DESC")
-      .getOne();
+    const lastDrawing = await this.drawingRepository.findLastByNumberPrefix(prefix);
 
     let nextNumber = 1;
     if (lastDrawing) {
@@ -108,15 +100,13 @@ export class DrawingsService {
     const fileType = this.validateFile(file);
     const drawingNumber = await this.generateDrawingNumber();
 
-    // Upload file
     const currentDate = now();
     const year = currentDate.year;
     const month = String(currentDate.month).padStart(2, "0");
     const subPath = `annix-app/drawings/${year}/${month}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
-    // Create drawing entity
-    const drawing = this.drawingRepository.create({
+    const savedDrawing = await this.drawingRepository.create({
       drawingNumber,
       title: dto.title,
       description: dto.description,
@@ -131,10 +121,7 @@ export class DrawingsService {
       rfq: dto.rfqId ? ({ id: dto.rfqId } as any) : undefined,
     });
 
-    const savedDrawing = await this.drawingRepository.save(drawing);
-
-    // Create initial version record
-    const version = this.versionRepository.create({
+    await this.versionRepository.create({
       drawing: savedDrawing,
       versionNumber: 1,
       filePath: storageResult.path,
@@ -143,9 +130,7 @@ export class DrawingsService {
       changeNotes: "Initial upload",
       uploadedBy: user,
     });
-    await this.versionRepository.save(version);
 
-    // Audit log
     await this.auditService.log({
       entityType: "drawing",
       entityId: savedDrawing.id,
@@ -184,8 +169,7 @@ export class DrawingsService {
 
     const newVersionNumber = drawing.currentVersion + 1;
 
-    // Create version record
-    const version = this.versionRepository.create({
+    const savedVersion = await this.versionRepository.create({
       drawing,
       versionNumber: newVersionNumber,
       filePath: storageResult.path,
@@ -194,18 +178,15 @@ export class DrawingsService {
       changeNotes: dto.changeNotes,
       uploadedBy: user,
     });
-    const savedVersion = await this.versionRepository.save(version);
 
-    // Update drawing with new version
     drawing.currentVersion = newVersionNumber;
     drawing.filePath = storageResult.path;
     drawing.originalFilename = storageResult.originalFilename;
     drawing.fileSizeBytes = storageResult.size;
     drawing.mimeType = storageResult.mimeType;
-    drawing.status = DrawingStatus.DRAFT; // Reset to draft on new version
+    drawing.status = DrawingStatus.DRAFT;
     await this.drawingRepository.save(drawing);
 
-    // Audit log
     await this.auditService.log({
       entityType: "drawing",
       entityId: drawing.id,
@@ -222,59 +203,18 @@ export class DrawingsService {
   }
 
   async findAll(query: DrawingQueryDto): Promise<PaginatedResult<Drawing>> {
-    const where: FindOptionsWhere<Drawing> = {};
-
-    if (query.status) {
-      where.status = query.status;
-    }
-
-    if (query.rfqId) {
-      where.rfq = { id: query.rfqId };
-    }
-
-    if (query.uploadedByUserId) {
-      where.uploadedBy = { id: query.uploadedByUserId };
-    }
-
     const page = query.page || 1;
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
-    let queryBuilder = this.drawingRepository
-      .createQueryBuilder("drawing")
-      .leftJoinAndSelect("drawing.uploadedBy", "uploadedBy")
-      .leftJoinAndSelect("drawing.rfq", "rfq");
-
-    if (query.status) {
-      queryBuilder = queryBuilder.andWhere("drawing.status = :status", {
-        status: query.status,
-      });
-    }
-
-    if (query.rfqId) {
-      queryBuilder = queryBuilder.andWhere("drawing.rfq_id = :rfqId", {
-        rfqId: query.rfqId,
-      });
-    }
-
-    if (query.uploadedByUserId) {
-      queryBuilder = queryBuilder.andWhere("drawing.uploaded_by_user_id = :userId", {
-        userId: query.uploadedByUserId,
-      });
-    }
-
-    if (query.search) {
-      queryBuilder = queryBuilder.andWhere(
-        "(drawing.title ILIKE :search OR drawing.description ILIKE :search OR drawing.drawing_number ILIKE :search)",
-        { search: `%${query.search}%` },
-      );
-    }
-
-    const [data, total] = await queryBuilder
-      .orderBy("drawing.updated_at", "DESC")
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const [data, total] = await this.drawingRepository.findAllPaginated({
+      status: query.status ?? null,
+      rfqId: query.rfqId ?? null,
+      uploadedByUserId: query.uploadedByUserId ?? null,
+      search: query.search ?? null,
+      skip,
+      limit,
+    });
 
     return {
       data,
@@ -286,10 +226,7 @@ export class DrawingsService {
   }
 
   async findOne(id: number): Promise<Drawing> {
-    const drawing = await this.drawingRepository.findOne({
-      where: { id },
-      relations: ["uploadedBy", "rfq"],
-    });
+    const drawing = await this.drawingRepository.findOneWithRelations(id);
 
     if (!drawing) {
       throw new NotFoundException(`Drawing with ID ${id} not found`);
@@ -353,13 +290,7 @@ export class DrawingsService {
 
   async getVersionHistory(id: number, limit?: number): Promise<DrawingVersion[]> {
     await this.findOne(id);
-
-    return this.versionRepository.find({
-      where: { drawing: { id } },
-      relations: ["uploadedBy"],
-      order: { versionNumber: "DESC" },
-      ...(limit ? { take: limit } : {}),
-    });
+    return this.versionRepository.findByDrawing(id, limit);
   }
 
   async downloadFile(
@@ -373,9 +304,7 @@ export class DrawingsService {
     let filename = drawing.originalFilename;
 
     if (version) {
-      const versionRecord = await this.versionRepository.findOne({
-        where: { drawing: { id }, versionNumber: version },
-      });
+      const versionRecord = await this.versionRepository.findByDrawingAndVersion(id, version);
 
       if (!versionRecord) {
         throw new NotFoundException(`Version ${version} not found`);
@@ -400,7 +329,6 @@ export class DrawingsService {
     return { buffer, filename, mimeType: drawing.mimeType };
   }
 
-  // Comments
   async addComment(
     drawingId: number,
     dto: CreateDrawingCommentDto,
@@ -408,7 +336,7 @@ export class DrawingsService {
   ): Promise<DrawingComment> {
     const drawing = await this.findOne(drawingId);
 
-    const comment = this.commentRepository.create({
+    const savedComment = await this.commentRepository.create({
       drawing,
       user,
       commentText: dto.commentText,
@@ -418,8 +346,6 @@ export class DrawingsService {
       pageNumber: dto.pageNumber,
       parentComment: dto.parentCommentId ? ({ id: dto.parentCommentId } as any) : undefined,
     });
-
-    const savedComment = await this.commentRepository.save(comment);
 
     await this.auditService.log({
       entityType: "drawing",
@@ -436,20 +362,12 @@ export class DrawingsService {
   }
 
   async getComments(drawingId: number): Promise<DrawingComment[]> {
-    await this.findOne(drawingId); // Validate drawing exists
-
-    return this.commentRepository.find({
-      where: { drawing: { id: drawingId } },
-      relations: ["user", "parentComment"],
-      order: { createdAt: "ASC" },
-    });
+    await this.findOne(drawingId);
+    return this.commentRepository.findByDrawing(drawingId);
   }
 
   async resolveComment(commentId: number, user: User): Promise<DrawingComment> {
-    const comment = await this.commentRepository.findOne({
-      where: { id: commentId },
-      relations: ["drawing"],
-    });
+    const comment = await this.commentRepository.findByIdWithDrawing(commentId);
 
     if (!comment) {
       throw new NotFoundException(`Comment with ID ${commentId} not found`);
@@ -469,7 +387,6 @@ export class DrawingsService {
     return updatedComment;
   }
 
-  // Workflow status updates
   async updateStatus(id: number, status: DrawingStatus): Promise<Drawing> {
     const drawing = await this.findOne(id);
     drawing.status = status;

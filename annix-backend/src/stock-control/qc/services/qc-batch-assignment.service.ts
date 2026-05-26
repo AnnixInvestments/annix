@@ -1,12 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
 import { fromISO, now } from "../../../lib/datetime";
-import { JobCard } from "../../entities/job-card.entity";
+import { JobCardRepository } from "../../repositories/job-card.repository";
 import { PositectorUpload } from "../entities/positector-upload.entity";
 import { QcBatchAssignment } from "../entities/qc-batch-assignment.entity";
-import { QcEnvironmentalBatchLink } from "../entities/qc-environmental-batch-link.entity";
-import { QcEnvironmentalRecord } from "../entities/qc-environmental-record.entity";
+import { PositectorUploadRepository } from "../repositories/positector-upload.repository";
+import { QcBatchAssignmentRepository } from "../repositories/qc-batch-assignment.repository";
+import { QcEnvironmentalBatchLinkRepository } from "../repositories/qc-environmental-batch-link.repository";
+import { QcEnvironmentalRecordRepository } from "../repositories/qc-environmental-record.repository";
 
 const FIELD_KEY_LOOKBACK_DAYS: Record<string, number> = {
   paint_blast_profile: 0,
@@ -22,30 +22,19 @@ export class QcBatchAssignmentService {
   private readonly logger = new Logger(QcBatchAssignmentService.name);
 
   constructor(
-    @InjectRepository(QcBatchAssignment)
-    private readonly assignmentRepo: Repository<QcBatchAssignment>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(QcEnvironmentalRecord)
-    private readonly envRecordRepo: Repository<QcEnvironmentalRecord>,
-    @InjectRepository(QcEnvironmentalBatchLink)
-    private readonly envLinkRepo: Repository<QcEnvironmentalBatchLink>,
-    @InjectRepository(PositectorUpload)
-    private readonly uploadRepo: Repository<PositectorUpload>,
+    private readonly assignmentRepo: QcBatchAssignmentRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly envRecordRepo: QcEnvironmentalRecordRepository,
+    private readonly envLinkRepo: QcEnvironmentalBatchLinkRepository,
+    private readonly uploadRepo: PositectorUploadRepository,
   ) {}
 
   async assignmentsForJobCard(companyId: number, jobCardId: number): Promise<QcBatchAssignment[]> {
-    return this.assignmentRepo.find({
-      where: { companyId, jobCardId },
-      order: { fieldKey: "ASC", batchNumber: "ASC" },
-    });
+    return this.assignmentRepo.findForJobCard(companyId, jobCardId);
   }
 
   async assignmentsForCpo(companyId: number, cpoId: number): Promise<QcBatchAssignment[]> {
-    return this.assignmentRepo.find({
-      where: { companyId, cpoId },
-      order: { jobCardId: "ASC", fieldKey: "ASC", batchNumber: "ASC" },
-    });
+    return this.assignmentRepo.findForCpo(companyId, cpoId);
   }
 
   async saveBatchAssignment(
@@ -61,9 +50,7 @@ export class QcBatchAssignmentService {
     },
     user: { id?: number; name: string },
   ): Promise<QcBatchAssignment[]> {
-    const jc = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jc = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
     if (!jc) {
       throw new Error(`Job card ${jobCardId} not found`);
     }
@@ -71,9 +58,10 @@ export class QcBatchAssignmentService {
 
     const results: QcBatchAssignment[] = [];
     for (const lineItemId of data.lineItemIds) {
-      const existing = await this.assignmentRepo.findOne({
-        where: { lineItemId, fieldKey: data.fieldKey },
-      });
+      const existing = await this.assignmentRepo.findByLineItemAndFieldKey(
+        lineItemId,
+        data.fieldKey,
+      );
 
       if (existing && existing.batchNumber !== data.batchNumber) {
         throw new Error(
@@ -88,27 +76,28 @@ export class QcBatchAssignmentService {
         existing.capturedById = user.id ?? null;
         results.push(await this.assignmentRepo.save(existing));
       } else {
-        const assignment = this.assignmentRepo.create({
-          companyId,
-          batchNumber: data.batchNumber,
-          fieldKey: data.fieldKey,
-          category: data.category,
-          label: data.label,
-          lineItemId,
-          jobCardId,
-          cpoId,
-          notApplicable: data.notApplicable || false,
-          capturedByName: user.name,
-          capturedById: user.id ?? null,
-        });
-        results.push(await this.assignmentRepo.save(assignment));
+        results.push(
+          await this.assignmentRepo.create({
+            companyId,
+            batchNumber: data.batchNumber,
+            fieldKey: data.fieldKey,
+            category: data.category,
+            label: data.label,
+            lineItemId,
+            jobCardId,
+            cpoId,
+            notApplicable: data.notApplicable || false,
+            capturedByName: user.name,
+            capturedById: user.id ?? null,
+          }),
+        );
       }
     }
     return results;
   }
 
   async removeAssignment(companyId: number, id: number): Promise<void> {
-    await this.assignmentRepo.delete({ id, companyId });
+    await this.assignmentRepo.deleteByIdForCompany(id, companyId);
   }
 
   async unassignedItemsForJobCard(
@@ -116,16 +105,14 @@ export class QcBatchAssignmentService {
     jobCardId: number,
     fieldKey: string,
   ): Promise<number[]> {
-    const assigned = await this.assignmentRepo.find({
-      where: { companyId, jobCardId, fieldKey },
-      select: ["lineItemId"],
-    });
+    const assigned = await this.assignmentRepo.findLineItemsForFieldKey(
+      companyId,
+      jobCardId,
+      fieldKey,
+    );
     const assignedIds = new Set(assigned.map((a) => a.lineItemId));
 
-    const jc = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-      relations: ["lineItems"],
-    });
+    const jc = await this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId);
     if (!jc) return [];
 
     return (jc.lineItems || [])
@@ -137,9 +124,7 @@ export class QcBatchAssignmentService {
     companyId: number,
     cpoId: number,
   ): Promise<Record<string, { total: number; assigned: number; fieldKey: string }>> {
-    const assignments = await this.assignmentRepo.find({
-      where: { companyId, cpoId },
-    });
+    const assignments = await this.assignmentRepo.findForCpo(companyId, cpoId);
 
     const summary: Record<string, { total: number; assigned: number; fieldKey: string }> = {};
     for (const a of assignments) {
@@ -165,9 +150,7 @@ export class QcBatchAssignmentService {
     earliestDate: string | null;
     latestDate: string | null;
   }> {
-    const uploads = await this.uploadRepo.find({
-      where: { linkedJobCardId: jobCardId, companyId },
-    });
+    const uploads = await this.uploadRepo.findLinkedToJobCard(companyId, jobCardId);
 
     if (uploads.length === 0) {
       return {
@@ -195,9 +178,7 @@ export class QcBatchAssignmentService {
 
       const batchName = upload.batchName;
       const assignments = batchName
-        ? await this.assignmentRepo.find({
-            where: { companyId, jobCardId, batchNumber: batchName },
-          })
+        ? await this.assignmentRepo.findForJobCardAndBatch(companyId, jobCardId, batchName)
         : [];
 
       const fieldKeys =
@@ -228,9 +209,7 @@ export class QcBatchAssignmentService {
       };
     }
 
-    const envRecords = await this.envRecordRepo.find({
-      where: { companyId, jobCardId },
-    });
+    const envRecords = await this.envRecordRepo.findForJobCard(companyId, jobCardId);
     const coveredSet = new Set(envRecords.map((r) => r.recordDate.slice(0, 10)));
 
     const coveredDates = requiredDates.filter((d) => coveredSet.has(d));
@@ -263,9 +242,7 @@ export class QcBatchAssignmentService {
   }
 
   async resolveEnvironmentalLinks(companyId: number, jobCardId: number): Promise<void> {
-    const assignments = await this.assignmentRepo.find({
-      where: { companyId, jobCardId },
-    });
+    const assignments = await this.assignmentRepo.findForJobCard(companyId, jobCardId);
 
     const assignmentsWithUpload = assignments.filter((a) => a.positectorUploadId !== null);
 
@@ -273,7 +250,7 @@ export class QcBatchAssignmentService {
       ...new Set(assignmentsWithUpload.map((a) => a.positectorUploadId as number)),
     ];
     const uploads = await Promise.all(
-      uploadIds.map((uid) => this.uploadRepo.findOne({ where: { id: uid, companyId } })),
+      uploadIds.map((uid) => this.uploadRepo.findByIdForCompany(companyId, uid)),
     );
     const uploadMap = new Map(uploads.filter((u) => u !== null).map((u) => [u.id, u]));
 
@@ -298,24 +275,21 @@ export class QcBatchAssignmentService {
       const startDateStr = startDate.toFormat("yyyy-MM-dd");
       const endDateStr = endDate.toFormat("yyyy-MM-dd");
 
-      const envRecords = await this.envRecordRepo.find({
-        where: {
-          companyId,
-          jobCardId,
-          recordDate: Between(startDateStr, endDateStr),
-        },
-      });
+      const envRecords = await this.envRecordRepo.findForJobCardInRange(
+        companyId,
+        jobCardId,
+        startDateStr,
+        endDateStr,
+      );
 
       for (const envRecord of envRecords) {
-        const existingLink = await this.envLinkRepo.findOne({
-          where: {
-            batchAssignmentId: assignment.id,
-            environmentalRecordId: envRecord.id,
-          },
-        });
+        const existingLink = await this.envLinkRepo.findByAssignmentAndRecord(
+          assignment.id,
+          envRecord.id,
+        );
 
         if (!existingLink) {
-          const link = this.envLinkRepo.create({
+          await this.envLinkRepo.create({
             companyId,
             batchAssignmentId: assignment.id,
             environmentalRecordId: envRecord.id,
@@ -323,7 +297,6 @@ export class QcBatchAssignmentService {
             pullRule,
             resolvedDate: new Date(envRecord.recordDate),
           });
-          await this.envLinkRepo.save(link);
         }
       }
     }

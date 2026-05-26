@@ -1,6 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
+import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlRbacConfig } from "../entities/stock-control-rbac-config.entity";
+import { StockControlRbacConfigRepository } from "../repositories/stock-control-rbac-config.repository";
 import { ActionPermissionService } from "./action-permission.service";
 import { RbacConfigService } from "./rbac-config.service";
 
@@ -14,17 +16,21 @@ describe("RbacConfigService", () => {
   };
 
   const mockRepo = {
-    find: jest.fn(),
-    manager: {
-      transaction: jest.fn().mockImplementation((fn) => fn(mockManager)),
-    },
+    findForCompany: jest.fn(),
+  };
+
+  const mockTxRunner = {
+    run: jest
+      .fn()
+      .mockImplementation((fn) => fn(new TypeOrmTransactionContext(mockManager as never))),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RbacConfigService,
-        { provide: getRepositoryToken(StockControlRbacConfig), useValue: mockRepo },
+        { provide: StockControlRbacConfigRepository, useValue: mockRepo },
+        { provide: TransactionRunner, useValue: mockTxRunner },
         {
           provide: ActionPermissionService,
           useValue: { permissionsForCompany: jest.fn().mockResolvedValue({}) },
@@ -42,11 +48,11 @@ describe("RbacConfigService", () => {
 
   describe("navConfig", () => {
     it("should return hardcoded defaults when no rows exist for company", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       const result = await service.navConfig(1);
 
-      expect(mockRepo.find).toHaveBeenCalledWith({ where: { companyId: 1 } });
+      expect(mockRepo.findForCompany).toHaveBeenCalledWith(1);
       expect(result.dashboard).toContain("admin");
       expect(result.dashboard).toContain("viewer");
       expect(result.dashboard).toContain("storeman");
@@ -56,7 +62,7 @@ describe("RbacConfigService", () => {
     });
 
     it("should return stored config when rows exist", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, navKey: "dashboard", role: "admin" },
         { companyId: 1, navKey: "dashboard", role: "manager" },
         { companyId: 1, navKey: "inventory", role: "admin" },
@@ -69,7 +75,9 @@ describe("RbacConfigService", () => {
     });
 
     it("should fill in defaults for nav keys not present in stored config", async () => {
-      mockRepo.find.mockResolvedValue([{ companyId: 1, navKey: "dashboard", role: "admin" }]);
+      mockRepo.findForCompany.mockResolvedValue([
+        { companyId: 1, navKey: "dashboard", role: "admin" },
+      ]);
 
       const result = await service.navConfig(1);
 
@@ -80,7 +88,7 @@ describe("RbacConfigService", () => {
     });
 
     it("should always enforce settings as admin-only regardless of stored config", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, navKey: "settings", role: "manager" },
         { companyId: 1, navKey: "settings", role: "admin" },
         { companyId: 1, navKey: "dashboard", role: "admin" },
@@ -92,17 +100,17 @@ describe("RbacConfigService", () => {
     });
 
     it("should scope queries by companyId", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       await service.navConfig(42);
 
-      expect(mockRepo.find).toHaveBeenCalledWith({ where: { companyId: 42 } });
+      expect(mockRepo.findForCompany).toHaveBeenCalledWith(42);
     });
   });
 
   describe("updateNavConfig", () => {
     beforeEach(() => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
     });
 
     it("should delete existing config and insert new rows in a transaction", async () => {
@@ -169,13 +177,13 @@ describe("RbacConfigService", () => {
     });
 
     it("should return the refreshed config after update", async () => {
-      mockRepo.find.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
+      mockRepo.findForCompany.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 
       const result = await service.updateNavConfig(1, { dashboard: ["admin"] });
 
       expect(result).toBeDefined();
       expect(result.dashboard).toBeDefined();
-      expect(mockRepo.find).toHaveBeenCalledTimes(1);
+      expect(mockRepo.findForCompany).toHaveBeenCalledTimes(1);
     });
 
     it("should scope delete to the correct companyId", async () => {
@@ -208,37 +216,37 @@ describe("RbacConfigService", () => {
 
   describe("viewer role — nav visibility", () => {
     it("viewer should see dashboard by default", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
       const result = await service.navConfig(1);
       expect(result.dashboard).toContain("viewer");
     });
 
     it("viewer should see job-cards by default", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
       const result = await service.navConfig(1);
       expect(result["job-cards"]).toContain("viewer");
     });
 
     it("viewer should see deliveries by default", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
       const result = await service.navConfig(1);
       expect(result.deliveries).toContain("viewer");
     });
 
     it("viewer should NOT see issue-stock by default", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
       const result = await service.navConfig(1);
       expect(result["issue-stock"]).not.toContain("viewer");
     });
 
     it("viewer should NOT see reports by default", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
       const result = await service.navConfig(1);
       expect(result.reports).not.toContain("viewer");
     });
 
     it("viewer should NOT see settings even if stored config says so", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, navKey: "settings", role: "viewer" },
         { companyId: 1, navKey: "settings", role: "admin" },
       ]);
@@ -253,7 +261,7 @@ describe("RbacConfigService", () => {
 
   describe("admin restricting viewer access", () => {
     it("admin can remove viewer from dashboard", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       await service.updateNavConfig(1, {
         dashboard: ["storeman", "accounts", "manager", "admin"],
@@ -269,7 +277,7 @@ describe("RbacConfigService", () => {
     });
 
     it("admin can remove viewer from job-cards", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       await service.updateNavConfig(1, {
         "job-cards": ["manager", "admin"],
@@ -284,7 +292,7 @@ describe("RbacConfigService", () => {
     });
 
     it("admin can grant viewer access to reports (non-default)", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       await service.updateNavConfig(1, {
         reports: ["viewer", "manager", "admin"],
@@ -299,7 +307,7 @@ describe("RbacConfigService", () => {
     });
 
     it("admin can grant viewer access to issue-stock (non-default)", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       await service.updateNavConfig(1, {
         "issue-stock": ["viewer", "storeman", "manager", "admin"],
@@ -314,7 +322,7 @@ describe("RbacConfigService", () => {
     });
 
     it("stored config with viewer removed from all pages is respected", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, navKey: "dashboard", role: "admin" },
         { companyId: 1, navKey: "dashboard", role: "manager" },
         { companyId: 1, navKey: "inventory", role: "admin" },
@@ -331,7 +339,7 @@ describe("RbacConfigService", () => {
     });
 
     it("stored config with viewer added to restricted pages is respected", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, navKey: "reports", role: "viewer" },
         { companyId: 1, navKey: "reports", role: "manager" },
         { companyId: 1, navKey: "reports", role: "admin" },
@@ -350,7 +358,7 @@ describe("RbacConfigService", () => {
 
   describe("multi-company isolation", () => {
     it("company A config should not affect company B", async () => {
-      mockRepo.find.mockImplementation(({ where: { companyId } }) => {
+      mockRepo.findForCompany.mockImplementation((companyId: number) => {
         if (companyId === 1) {
           return Promise.resolve([{ companyId: 1, navKey: "dashboard", role: "admin" }]);
         }

@@ -1,12 +1,11 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
 import * as nodemailer from "nodemailer";
-import { Repository } from "typeorm";
 import { EmailOptions, EmailService } from "../../email/email.service";
 import { nowMillis } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 
 export interface SmtpConfigDto {
   smtpHost: string | null;
@@ -33,8 +32,7 @@ export class CompanyEmailService {
   private readonly logger = new Logger(CompanyEmailService.name);
 
   constructor(
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
+    private readonly companyRepo: StockControlCompanyRepository,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
   ) {}
@@ -46,7 +44,7 @@ export class CompanyEmailService {
       );
       return true;
     }
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
 
     const companySmtpConfigured =
       !!company?.smtpHost &&
@@ -144,7 +142,7 @@ export class CompanyEmailService {
   }
 
   async smtpConfig(companyId: number): Promise<SmtpConfigResponse> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
 
     return {
       smtpHost: company?.smtpHost ?? null,
@@ -182,12 +180,12 @@ export class CompanyEmailService {
       update.smtpPassEncrypted = null;
     }
 
-    await this.companyRepo.update(companyId, update);
+    await this.companyRepo.updateById(companyId, update);
     return { message: "SMTP configuration updated" };
   }
 
   async testSmtpConfig(companyId: number, recipientEmail: string): Promise<{ message: string }> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
 
     if (!company?.smtpHost || !company.smtpPort || !company.smtpUser) {
       throw new BadRequestException(

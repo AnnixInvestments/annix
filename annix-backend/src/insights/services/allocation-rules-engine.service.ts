@@ -1,10 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { isString } from "es-toolkit/compat";
-import { In, Repository } from "typeorm";
 import { daysBetween, now, nowISO } from "../../lib/datetime";
-import { Asset } from "../entities/asset.entity";
-import { NewsItem } from "../entities/news-item.entity";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import {
   type AllocationRules,
@@ -12,10 +8,14 @@ import {
   type PaperPortfolioSlug,
 } from "../entities/paper-portfolio.entity";
 import type { NewsProvenance } from "../entities/paper-trade.entity";
-import { PaperTrade } from "../entities/paper-trade.entity";
-import { PriceHistory } from "../entities/price-history.entity";
-import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
-import { WatchlistItem } from "../entities/watchlist-item.entity";
+import { type SignalComponentBreakdown } from "../entities/signal-snapshot.entity";
+import { NewsItemRepository } from "../repositories/news-item.repository";
+import { PaperHoldingRepository } from "../repositories/paper-holding.repository";
+import { PaperPortfolioRepository } from "../repositories/paper-portfolio.repository";
+import { PaperTradeRepository } from "../repositories/paper-trade.repository";
+import { PriceHistoryRepository } from "../repositories/price-history.repository";
+import { SignalSnapshotRepository } from "../repositories/signal-snapshot.repository";
+import { WatchlistItemRepository } from "../repositories/watchlist-item.repository";
 import { dedupeProvenance, toNewsProvenance } from "./news-provenance";
 
 export interface BuyDecision {
@@ -84,17 +84,13 @@ export class AllocationRulesEngineService {
   private readonly logger = new Logger(AllocationRulesEngineService.name);
 
   constructor(
-    @InjectRepository(PaperPortfolio)
-    private readonly portfolioRepo: Repository<PaperPortfolio>,
-    @InjectRepository(PaperHolding) private readonly holdingRepo: Repository<PaperHolding>,
-    @InjectRepository(PaperTrade) private readonly tradeRepo: Repository<PaperTrade>,
-    @InjectRepository(WatchlistItem)
-    private readonly watchlistRepo: Repository<WatchlistItem>,
-    @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
-    @InjectRepository(PriceHistory) private readonly historyRepo: Repository<PriceHistory>,
-    @InjectRepository(SignalSnapshot)
-    private readonly signalRepo: Repository<SignalSnapshot>,
-    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
+    private readonly portfolioRepo: PaperPortfolioRepository,
+    private readonly holdingRepo: PaperHoldingRepository,
+    private readonly tradeRepo: PaperTradeRepository,
+    private readonly watchlistRepo: WatchlistItemRepository,
+    private readonly historyRepo: PriceHistoryRepository,
+    private readonly signalRepo: SignalSnapshotRepository,
+    private readonly newsRepo: NewsItemRepository,
   ) {}
 
   async evaluateOne(portfolio: PaperPortfolio): Promise<PortfolioDecisions> {
@@ -112,14 +108,9 @@ export class AllocationRulesEngineService {
       };
     }
 
-    const holdings = await this.holdingRepo.find({
-      where: { portfolioId: portfolio.id },
-      relations: { asset: true },
-    });
+    const holdings = await this.holdingRepo.findByPortfolioWithAsset(portfolio.id);
 
-    const watchlist = await this.watchlistRepo.find({
-      relations: { asset: true },
-    });
+    const watchlist = await this.watchlistRepo.findAllWithAsset();
 
     const candidateAssets = watchlist.map((w) => w.asset);
     const allAssetIds = [
@@ -309,9 +300,7 @@ export class AllocationRulesEngineService {
   }
 
   async evaluateAll(): Promise<PortfolioDecisions[]> {
-    const portfolios = await this.portfolioRepo.find({
-      where: { isActive: true },
-    });
+    const portfolios = await this.portfolioRepo.findActive();
     const results: PortfolioDecisions[] = [];
     for (const portfolio of portfolios) {
       if (portfolio.allocationRulesJson.fixedHolding) continue;
@@ -369,10 +358,7 @@ export class AllocationRulesEngineService {
 
     const isVeryHighRisk = portfolio.slug === "signal-very-high-risk";
     if (!isVeryHighRisk && plPct <= STOP_LOSS_THRESHOLD_PCT) {
-      const originalBuy = await this.tradeRepo.findOne({
-        where: { portfolioId: portfolio.id, assetId: holding.assetId, action: "buy" },
-        order: { executedAt: "ASC" },
-      });
+      const originalBuy = await this.tradeRepo.findEarliestBuy(portfolio.id, holding.assetId);
       const originalConfidence =
         originalBuy?.confidenceScore !== null && originalBuy?.confidenceScore !== undefined
           ? Number(originalBuy.confidenceScore)
@@ -397,16 +383,7 @@ export class AllocationRulesEngineService {
   private async latestPrices(assetIds: string[]): Promise<Map<string, PriceSnapshot>> {
     const map = new Map<string, PriceSnapshot>();
     if (assetIds.length === 0) return map;
-    const rows = await this.historyRepo
-      .createQueryBuilder("h")
-      .select("h.asset_id", "asset_id")
-      .addSelect("h.close", "close")
-      .addSelect("h.date", "date")
-      .distinctOn(["h.asset_id"])
-      .where({ assetId: In(assetIds) })
-      .orderBy("h.asset_id")
-      .addOrderBy("h.date", "DESC")
-      .getRawMany<{ asset_id: string; close: string; date: string | Date }>();
+    const rows = await this.historyRepo.latestPriceRows(assetIds);
     for (const row of rows) {
       const date = isString(row.date) ? row.date.slice(0, 10) : row.date.toISOString().slice(0, 10);
       map.set(row.asset_id, { close: Number(row.close), date });
@@ -422,9 +399,7 @@ export class AllocationRulesEngineService {
     }
     const map = new Map<string, NewsProvenance>();
     if (articleIds.size === 0) return map;
-    const rows = await this.newsRepo.find({
-      where: { id: In(Array.from(articleIds)) },
-    });
+    const rows = await this.newsRepo.findByIds(Array.from(articleIds));
     for (const row of rows) {
       map.set(row.id, toNewsProvenance(row));
     }
@@ -434,12 +409,7 @@ export class AllocationRulesEngineService {
   private async latestSignals(assetIds: string[]): Promise<Map<string, SignalSummary>> {
     const map = new Map<string, SignalSummary>();
     if (assetIds.length === 0) return map;
-    const rows = await this.signalRepo
-      .createQueryBuilder("s")
-      .where({ assetId: In(assetIds) })
-      .orderBy("s.asset_id")
-      .addOrderBy("s.snapshot_date", "DESC")
-      .getMany();
+    const rows = await this.signalRepo.findForAssetsOrderedByDate(assetIds);
     for (const row of rows) {
       if (map.has(row.assetId)) continue;
       map.set(row.assetId, {

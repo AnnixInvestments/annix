@@ -1,15 +1,22 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, ILike, IsNull, MoreThan, Repository } from "typeorm";
+import { IsNull } from "typeorm";
 import { now } from "../../lib/datetime";
-import { JobCardCoatingAnalysis, StockAssessmentItem } from "../entities/coating-analysis.entity";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import { type StockAssessmentItem } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
 import { StockReturn } from "../entities/stock-return.entity";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
-import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 
 export interface AllocationPlanItem {
   product: string;
@@ -48,28 +55,25 @@ export class StockAllocationService {
   private readonly logger = new Logger(StockAllocationService.name);
 
   constructor(
-    @InjectRepository(StockAllocation)
-    private readonly allocationRepo: Repository<StockAllocation>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(StockReturn)
-    private readonly returnRepo: Repository<StockReturn>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly analysisRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    private readonly dataSource: DataSource,
+    private readonly allocationRepo: StockAllocationRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly analysisRepo: JobCardCoatingAnalysisRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly txRunner: TransactionRunner,
   ) {}
+
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("StockAllocationService transactions require a TypeOrmTransactionContext");
+    }
+    return context.manager;
+  }
 
   async recommendedAllocations(
     companyId: number,
     jobCardId: number,
   ): Promise<{ items: AllocationPlanItem[]; leftovers: LeftoverSuggestion[] }> {
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const analysis = await this.analysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       throw new NotFoundException("Coating analysis not found for this job card");
@@ -78,10 +82,7 @@ export class StockAllocationService {
     const assessment: StockAssessmentItem[] =
       analysis.pmEditedAssessment || analysis.stockAssessment || [];
 
-    const stockItems = await this.stockItemRepo.find({
-      where: { companyId },
-      select: STOCK_ITEM_MATCH_SELECT,
-    });
+    const stockItems = await this.stockItemRepo.findForCompanySelectMatch(companyId);
     const leftoverItems = stockItems.filter((si) => si.isLeftover && Number(si.quantity) > 0);
 
     const leftovers: LeftoverSuggestion[] = [];
@@ -165,19 +166,13 @@ export class StockAllocationService {
     companyId: number,
     jobCardId: number,
   ): Promise<AllocationPlanItem[]> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-      relations: ["lineItems"],
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId);
 
     if (!jobCard) {
       return [];
     }
 
-    const analysis = await this.analysisRepo.findOne({
-      where: { jobCardId, companyId },
-      select: { id: true, hasInternalLining: true },
-    });
+    const analysis = await this.analysisRepo.findLiningFlagForJobCard(companyId, jobCardId);
 
     const override = jobCard.rubberPlanOverride;
     const hasOverride = override && override.status !== "pending";
@@ -186,14 +181,7 @@ export class StockAllocationService {
       return [];
     }
 
-    const rubberStock = await this.stockItemRepo.find({
-      where: {
-        companyId,
-        category: ILike("%rubber%"),
-        quantity: MoreThan(0),
-      },
-      order: { thicknessMm: "ASC", widthMm: "ASC" },
-    });
+    const rubberStock = await this.stockItemRepo.findRubberInStockForCompanyOrdered(companyId);
 
     if (rubberStock.length === 0) {
       return [];
@@ -339,12 +327,9 @@ export class StockAllocationService {
     staffMemberId: number | null,
     allocatedByName: string | null,
   ): Promise<StockAllocation[]> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const jobCard = await queryRunner.manager.findOne(JobCard, {
+    const allocations = await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
+      const jobCard = await manager.findOne(JobCard, {
         where: { id: jobCardId, companyId },
       });
 
@@ -352,11 +337,11 @@ export class StockAllocationService {
         throw new NotFoundException(`Job card ${jobCardId} not found`);
       }
 
-      const allocations = await items.reduce(
+      return items.reduce(
         async (accPromise, item) => {
           const acc = await accPromise;
 
-          const stockItem = await queryRunner.manager.findOne(StockItem, {
+          const stockItem = await manager.findOne(StockItem, {
             where: { id: item.stockItemId, companyId },
             lock: { mode: "pessimistic_write" },
           });
@@ -377,9 +362,9 @@ export class StockAllocationService {
           }
 
           stockItem.quantity = Number(stockItem.quantity) - totalLitres;
-          await queryRunner.manager.save(StockItem, stockItem);
+          await manager.save(StockItem, stockItem);
 
-          const allocation = queryRunner.manager.create(StockAllocation, {
+          const allocation = manager.create(StockAllocation, {
             stockItemId: stockItem.id,
             jobCardId,
             companyId,
@@ -393,9 +378,9 @@ export class StockAllocationService {
             sourceLeftoverItemId: item.sourceLeftoverItemId || null,
             pendingApproval: false,
           });
-          const saved = await queryRunner.manager.save(StockAllocation, allocation);
+          const saved = await manager.save(StockAllocation, allocation);
 
-          const movement = queryRunner.manager.create(StockMovement, {
+          const movement = manager.create(StockMovement, {
             stockItem,
             movementType: MovementType.OUT,
             quantity: totalLitres,
@@ -404,26 +389,19 @@ export class StockAllocationService {
             createdBy: allocatedByName,
             companyId,
           });
-          await queryRunner.manager.save(StockMovement, movement);
+          await manager.save(StockMovement, movement);
 
           return [...acc, saved];
         },
         Promise.resolve([] as StockAllocation[]),
       );
+    });
 
-      await queryRunner.commitTransaction();
+    this.logger.log(
+      `Allocated ${allocations.length} items for JC ${jobCardId} by ${allocatedByName}`,
+    );
 
-      this.logger.log(
-        `Allocated ${allocations.length} items for JC ${jobCardId} by ${allocatedByName}`,
-      );
-
-      return allocations;
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
-    }
+    return allocations;
   }
 
   async deallocate(
@@ -432,12 +410,9 @@ export class StockAllocationService {
     allocationId: number,
     userName: string | null,
   ): Promise<StockAllocation> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const allocation = await queryRunner.manager.findOne(StockAllocation, {
+    return this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
+      const allocation = await manager.findOne(StockAllocation, {
         where: { id: allocationId, jobCardId, companyId, undone: false, issuedAt: IsNull() },
       });
 
@@ -445,7 +420,7 @@ export class StockAllocationService {
         throw new NotFoundException("Allocation not found or already issued/undone");
       }
 
-      const stockItem = await queryRunner.manager.findOne(StockItem, {
+      const stockItem = await manager.findOne(StockItem, {
         where: { id: allocation.stockItemId, companyId },
         lock: { mode: "pessimistic_write" },
       });
@@ -453,16 +428,16 @@ export class StockAllocationService {
       if (stockItem) {
         stockItem.quantity =
           Number(stockItem.quantity) + Number(allocation.totalLitres || allocation.quantityUsed);
-        await queryRunner.manager.save(StockItem, stockItem);
+        await manager.save(StockItem, stockItem);
       }
 
       allocation.undone = true;
       allocation.undoneAt = now().toJSDate();
       allocation.undoneByName = userName;
-      const saved = await queryRunner.manager.save(StockAllocation, allocation);
+      const saved = await manager.save(StockAllocation, allocation);
 
       if (stockItem) {
-        const movement = queryRunner.manager.create(StockMovement, {
+        const movement = manager.create(StockMovement, {
           stockItem,
           movementType: MovementType.IN,
           quantity: Number(allocation.totalLitres || allocation.quantityUsed),
@@ -472,17 +447,11 @@ export class StockAllocationService {
           createdBy: userName,
           companyId,
         });
-        await queryRunner.manager.save(StockMovement, movement);
+        await manager.save(StockMovement, movement);
       }
 
-      await queryRunner.commitTransaction();
       return saved;
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
-    }
+    });
   }
 
   async confirmIssuance(
@@ -491,15 +460,11 @@ export class StockAllocationService {
     allocationIds: number[],
     issuedByName: string | null,
   ): Promise<StockAllocation[]> {
-    const allocations = await this.allocationRepo.find({
-      where: allocationIds.map((id) => ({
-        id,
-        jobCardId,
-        companyId,
-        undone: false,
-        issuedAt: IsNull(),
-      })),
-    });
+    const allocations = await this.allocationRepo.findPendingByIdsForJobCard(
+      allocationIds,
+      jobCardId,
+      companyId,
+    );
 
     if (allocations.length === 0) {
       throw new NotFoundException("No pending allocations found");
@@ -513,7 +478,7 @@ export class StockAllocationService {
       allocationType: "issuance",
     }));
 
-    const saved = await this.allocationRepo.save(updated);
+    const saved = await this.allocationRepo.saveMany(updated);
 
     this.logger.log(`Issued ${saved.length} allocations for JC ${jobCardId} by ${issuedByName}`);
 
@@ -529,10 +494,11 @@ export class StockAllocationService {
     staffMemberId: number | null,
     notes: string | null,
   ): Promise<{ stockReturn: StockReturn; costReduction: number }> {
-    const allocation = await this.allocationRepo.findOne({
-      where: { id: allocationId, jobCardId, companyId, undone: false },
-      relations: ["stockItem"],
-    });
+    const allocation = await this.allocationRepo.findActiveByIdForJobCard(
+      allocationId,
+      jobCardId,
+      companyId,
+    );
 
     if (!allocation) {
       throw new NotFoundException("Allocation not found");
@@ -545,11 +511,8 @@ export class StockAllocationService {
       );
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
+    return this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
       const originalItem = allocation.stockItem;
       const costPerLitre = originalItem.packSizeLitres
         ? Number(originalItem.costPerUnit) / Number(originalItem.packSizeLitres)
@@ -559,15 +522,15 @@ export class StockAllocationService {
       const costReduction = Math.round(litresReturned * costPerLitre * 100) / 100;
 
       const leftoverName = `${originalItem.name} (Leftover)`;
-      let leftoverItem = await queryRunner.manager.findOne(StockItem, {
+      let leftoverItem = await manager.findOne(StockItem, {
         where: { companyId, name: leftoverName, isLeftover: true },
       });
 
       if (leftoverItem) {
         leftoverItem.quantity = Number(leftoverItem.quantity) + litresReturned;
-        leftoverItem = await queryRunner.manager.save(StockItem, leftoverItem);
+        leftoverItem = await manager.save(StockItem, leftoverItem);
       } else {
-        leftoverItem = queryRunner.manager.create(StockItem, {
+        leftoverItem = manager.create(StockItem, {
           sku: `${originalItem.sku}-LO`,
           name: leftoverName,
           description: `Leftover from ${originalItem.name}`,
@@ -586,10 +549,10 @@ export class StockAllocationService {
           componentRole: originalItem.componentRole,
           mixRatio: originalItem.mixRatio,
         });
-        leftoverItem = await queryRunner.manager.save(StockItem, leftoverItem);
+        leftoverItem = await manager.save(StockItem, leftoverItem);
       }
 
-      const movement = queryRunner.manager.create(StockMovement, {
+      const movement = manager.create(StockMovement, {
         stockItem: leftoverItem,
         movementType: MovementType.IN,
         quantity: litresReturned,
@@ -599,9 +562,9 @@ export class StockAllocationService {
         createdBy: returnedByName,
         companyId,
       });
-      await queryRunner.manager.save(StockMovement, movement);
+      await manager.save(StockMovement, movement);
 
-      const stockReturn = queryRunner.manager.create(StockReturn, {
+      const stockReturn = manager.create(StockReturn, {
         companyId,
         jobCardId,
         allocationId,
@@ -613,27 +576,18 @@ export class StockAllocationService {
         returnedByStaffId: staffMemberId,
         notes,
       });
-      const savedReturn = await queryRunner.manager.save(StockReturn, stockReturn);
-
-      await queryRunner.commitTransaction();
+      const savedReturn = await manager.save(StockReturn, stockReturn);
 
       this.logger.log(
         `Returned ${litresReturned}L from allocation ${allocationId}, cost reduction: R${costReduction}`,
       );
 
       return { stockReturn: savedReturn, costReduction };
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
-    }
+    });
   }
 
   async leftoverItems(companyId: number): Promise<StockItem[]> {
-    return this.stockItemRepo.find({
-      where: { companyId, isLeftover: true },
-    });
+    return this.stockItemRepo.findLeftoverForCompany(companyId);
   }
 
   private fuzzyMatchStockItem(productName: string, stockItems: StockItem[]): StockItem | null {

@@ -1,8 +1,7 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { IssuableProduct } from "../entities/issuable-product.entity";
-import { StockHoldItem } from "../entities/stock-hold-item.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { StockHoldItemRepository } from "../repositories/stock-hold-item.repository";
 import { StockHoldService } from "./stock-hold.service";
 import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
@@ -10,14 +9,15 @@ describe("StockHoldService", () => {
   let service: StockHoldService;
 
   const mockHoldRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findPendingForCompany: jest.fn(),
+    findAllForCompany: jest.fn(),
+    findByIdForCompanyWithDetail: jest.fn(),
+    build: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
   const mockProductRepo = {
-    findOne: jest.fn(),
+    findByIdForCompany: jest.fn(),
   };
 
   const mockNotifications = {
@@ -28,14 +28,17 @@ describe("StockHoldService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StockHoldService,
-        { provide: getRepositoryToken(StockHoldItem), useValue: mockHoldRepo },
-        { provide: getRepositoryToken(IssuableProduct), useValue: mockProductRepo },
+        { provide: StockHoldItemRepository, useValue: mockHoldRepo },
+        { provide: IssuableProductRepository, useValue: mockProductRepo },
         { provide: StockManagementNotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
     service = module.get<StockHoldService>(StockHoldService);
     jest.clearAllMocks();
+    mockHoldRepo.build.mockImplementation((data) => ({ ...data }));
+    mockHoldRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockNotifications.notifyStockHoldFlagged.mockResolvedValue(undefined);
   });
 
   it("should be defined", () => {
@@ -44,7 +47,7 @@ describe("StockHoldService", () => {
 
   describe("flagStock", () => {
     it("throws NotFoundException when product does not exist", async () => {
-      mockProductRepo.findOne.mockResolvedValueOnce(null);
+      mockProductRepo.findByIdForCompany.mockResolvedValueOnce(null);
       await expect(
         service.flagStock(1, {
           productId: 999,
@@ -57,7 +60,7 @@ describe("StockHoldService", () => {
     });
 
     it("requires a photo for damaged items", async () => {
-      mockProductRepo.findOne.mockResolvedValueOnce({ id: 1, costPerUnit: 100 });
+      mockProductRepo.findByIdForCompany.mockResolvedValueOnce({ id: 1, costPerUnit: 100 });
       await expect(
         service.flagStock(1, {
           productId: 1,
@@ -69,7 +72,7 @@ describe("StockHoldService", () => {
     });
 
     it("requires a photo for expired items", async () => {
-      mockProductRepo.findOne.mockResolvedValueOnce({ id: 1, costPerUnit: 100 });
+      mockProductRepo.findByIdForCompany.mockResolvedValueOnce({ id: 1, costPerUnit: 100 });
       await expect(
         service.flagStock(1, {
           productId: 1,
@@ -81,7 +84,7 @@ describe("StockHoldService", () => {
     });
 
     it("computes write-off value as quantity × costPerUnit", async () => {
-      mockProductRepo.findOne.mockResolvedValueOnce({ id: 1, costPerUnit: 200 });
+      mockProductRepo.findByIdForCompany.mockResolvedValueOnce({ id: 1, costPerUnit: 200 });
       const result = await service.flagStock(1, {
         productId: 1,
         quantity: 5,
@@ -97,7 +100,7 @@ describe("StockHoldService", () => {
 
   describe("resolveDisposition", () => {
     it("throws when hold item does not exist", async () => {
-      mockHoldRepo.findOne.mockResolvedValueOnce(null);
+      mockHoldRepo.findByIdForCompanyWithDetail.mockResolvedValueOnce(null);
       await expect(
         service.resolveDisposition(1, 999, {
           status: "scrapped",
@@ -108,7 +111,7 @@ describe("StockHoldService", () => {
     });
 
     it("throws when hold item is already resolved", async () => {
-      mockHoldRepo.findOne.mockResolvedValueOnce({
+      mockHoldRepo.findByIdForCompanyWithDetail.mockResolvedValueOnce({
         id: 1,
         companyId: 1,
         dispositionStatus: "scrapped",

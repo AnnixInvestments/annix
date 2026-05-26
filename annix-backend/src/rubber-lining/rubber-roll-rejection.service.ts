@@ -1,11 +1,11 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { generateUniqueId, now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { RollRejectionStatus, RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
-import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
-import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
+import { RubberRollRejectionRepository } from "./repositories/rubber-roll-rejection.repository";
+import { RubberRollStockRepository } from "./repositories/rubber-roll-stock.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 
 export interface RejectRollInput {
   originalSupplierCocId: number;
@@ -45,28 +45,21 @@ const STATUS_LABELS: Record<RollRejectionStatus, string> = {
 @Injectable()
 export class RubberRollRejectionService {
   constructor(
-    @InjectRepository(RubberRollRejection)
-    private readonly rejectionRepo: Repository<RubberRollRejection>,
-    @InjectRepository(RubberRollStock)
-    private readonly rollStockRepo: Repository<RubberRollStock>,
-    @InjectRepository(RubberSupplierCoc)
-    private readonly supplierCocRepo: Repository<RubberSupplierCoc>,
+    private readonly rejectionRepo: RubberRollRejectionRepository,
+    private readonly rollStockRepo: RubberRollStockRepository,
+    private readonly supplierCocRepo: RubberSupplierCocRepository,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
   async rejectRoll(input: RejectRollInput): Promise<RollRejectionDto> {
-    const coc = await this.supplierCocRepo.findOne({
-      where: { id: input.originalSupplierCocId },
-    });
+    const coc = await this.supplierCocRepo.findById(input.originalSupplierCocId);
     if (!coc) {
       throw new NotFoundException("Supplier CoC not found");
     }
 
-    const rollStock = await this.rollStockRepo.findOne({
-      where: { rollNumber: input.rollNumber.trim() },
-    });
+    const rollStock = await this.rollStockRepo.findOneByRollNumber(input.rollNumber.trim());
 
-    const rejection = this.rejectionRepo.create({
+    const rejection = this.rejectionRepo.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       originalSupplierCocId: input.originalSupplierCocId,
       rollNumber: input.rollNumber.trim(),
@@ -92,10 +85,7 @@ export class RubberRollRejectionService {
     rejectionId: number,
     file: Express.Multer.File,
   ): Promise<RollRejectionDto> {
-    const rejection = await this.rejectionRepo.findOne({
-      where: { id: rejectionId },
-      relations: ["originalSupplierCoc", "replacementSupplierCoc"],
-    });
+    const rejection = await this.rejectionRepo.findByIdWithCocs(rejectionId);
     if (!rejection) {
       throw new NotFoundException("Roll rejection not found");
     }
@@ -116,17 +106,12 @@ export class RubberRollRejectionService {
     replacementCocId: number,
     replacementRollNumber?: string,
   ): Promise<RollRejectionDto> {
-    const rejection = await this.rejectionRepo.findOne({
-      where: { id: rejectionId },
-      relations: ["originalSupplierCoc", "replacementSupplierCoc"],
-    });
+    const rejection = await this.rejectionRepo.findByIdWithCocs(rejectionId);
     if (!rejection) {
       throw new NotFoundException("Roll rejection not found");
     }
 
-    const replacementCoc = await this.supplierCocRepo.findOne({
-      where: { id: replacementCocId },
-    });
+    const replacementCoc = await this.supplierCocRepo.findById(replacementCocId);
     if (!replacementCoc) {
       throw new NotFoundException("Replacement supplier CoC not found");
     }
@@ -139,10 +124,7 @@ export class RubberRollRejectionService {
   }
 
   async closeRejection(rejectionId: number): Promise<RollRejectionDto> {
-    const rejection = await this.rejectionRepo.findOne({
-      where: { id: rejectionId },
-      relations: ["originalSupplierCoc", "replacementSupplierCoc"],
-    });
+    const rejection = await this.rejectionRepo.findByIdWithCocs(rejectionId);
     if (!rejection) {
       throw new NotFoundException("Roll rejection not found");
     }
@@ -153,28 +135,19 @@ export class RubberRollRejectionService {
   }
 
   async rejectionsBySupplierCoc(supplierCocId: number): Promise<RollRejectionDto[]> {
-    const rejections = await this.rejectionRepo.find({
-      where: { originalSupplierCocId: supplierCocId },
-      relations: ["originalSupplierCoc", "replacementSupplierCoc"],
-      order: { createdAt: "DESC" },
-    });
+    const rejections = await this.rejectionRepo.findBySupplierCocOrdered(supplierCocId);
     return rejections.map((r) => this.mapToDto(r));
   }
 
   async rejectedRollNumbersForCoc(supplierCocId: number): Promise<string[]> {
-    const rejections = await this.rejectionRepo.find({
-      where: { originalSupplierCocId: supplierCocId },
-      select: ["rollNumber"],
-    });
+    const rejections = await this.rejectionRepo.findRollNumbersBySupplierCoc(supplierCocId);
     return rejections.map((r) => r.rollNumber);
   }
 
   async rejectedRollNumbersMap(): Promise<
     Map<number, { rollNumber: string; replacementCocId: number | null }>
   > {
-    const rejections = await this.rejectionRepo.find({
-      select: ["originalSupplierCocId", "rollNumber", "replacementSupplierCocId"],
-    });
+    const rejections = await this.rejectionRepo.findAllRejectionRefs();
     const map = new Map<number, { rollNumber: string; replacementCocId: number | null }>();
     rejections.forEach((r) => {
       map.set(r.originalSupplierCocId, {
@@ -186,22 +159,12 @@ export class RubberRollRejectionService {
   }
 
   async allRejections(statusFilter?: RollRejectionStatus): Promise<RollRejectionDto[]> {
-    const where: Record<string, unknown> = {};
-    if (statusFilter) {
-      where.status = statusFilter;
-    }
-    const rejections = await this.rejectionRepo.find({
-      where,
-      relations: ["originalSupplierCoc", "replacementSupplierCoc"],
-      order: { createdAt: "DESC" },
-    });
+    const rejections = await this.rejectionRepo.findAllOrdered(statusFilter);
     return rejections.map((r) => this.mapToDto(r));
   }
 
   async returnDocumentPresignedUrl(rejectionId: number): Promise<string | null> {
-    const rejection = await this.rejectionRepo.findOne({
-      where: { id: rejectionId },
-    });
+    const rejection = await this.rejectionRepo.findById(rejectionId);
     if (!rejection?.returnDocumentPath) return null;
     return this.storageService.presignedUrl(rejection.returnDocumentPath, 3600);
   }

@@ -1,41 +1,39 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard } from "../entities/job-card.entity";
-import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { ExtractionStatus } from "../entities/job-card-attachment.entity";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardAttachmentRepository } from "../repositories/job-card-attachment.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 
 describe("DrawingExtractionService", () => {
   let service: DrawingExtractionService;
 
   const mockAttachmentRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findForJobCard: jest.fn(),
+    findOneForJobCard: jest.fn(),
+    findExtractableForJobCard: jest.fn(),
     save: jest
       .fn()
       .mockImplementation((entity) =>
         Promise.resolve(Array.isArray(entity) ? entity : { id: 1, ...entity }),
       ),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    update: jest.fn(),
+    saveMany: jest.fn().mockImplementation((entities) => Promise.resolve(entities)),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
+    updateMany: jest.fn(),
     remove: jest.fn(),
   };
 
   const mockJobCardRepo = {
-    findOne: jest.fn(),
+    findOneForCompany: jest.fn(),
   };
 
   const mockLineItemRepo = {
-    find: jest.fn(),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-    create: jest
-      .fn()
-      .mockImplementation((data) =>
-        Array.isArray(data) ? data.map((d) => ({ ...d })) : [{ ...data }],
-      ),
+    findForJobCardOrderedBySort: jest.fn(),
+    saveMany: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    buildMany: jest.fn().mockImplementation((rows) => rows.map((r: object) => ({ ...r }))),
   };
 
   const mockStorageService = {
@@ -56,9 +54,9 @@ describe("DrawingExtractionService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DrawingExtractionService,
-        { provide: getRepositoryToken(JobCardAttachment), useValue: mockAttachmentRepo },
-        { provide: getRepositoryToken(JobCard), useValue: mockJobCardRepo },
-        { provide: getRepositoryToken(JobCardLineItem), useValue: mockLineItemRepo },
+        { provide: JobCardAttachmentRepository, useValue: mockAttachmentRepo },
+        { provide: JobCardRepository, useValue: mockJobCardRepo },
+        { provide: JobCardLineItemRepository, useValue: mockLineItemRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: AiChatService, useValue: mockAiChatService },
       ],
@@ -300,7 +298,7 @@ describe("DrawingExtractionService", () => {
 
   describe("uploadAttachment", () => {
     it("throws NotFoundException when job card does not exist", async () => {
-      mockJobCardRepo.findOne.mockResolvedValue(null);
+      mockJobCardRepo.findOneForCompany.mockResolvedValue(null);
 
       const file = {
         originalname: "drawing.pdf",
@@ -315,7 +313,7 @@ describe("DrawingExtractionService", () => {
     });
 
     it("uploads file and creates attachment record", async () => {
-      mockJobCardRepo.findOne.mockResolvedValue({ id: 1, companyId: 10 });
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
       mockAttachmentRepo.save.mockResolvedValue({
         id: 5,
         jobCardId: 1,
@@ -348,14 +346,14 @@ describe("DrawingExtractionService", () => {
 
   describe("deleteAttachment", () => {
     it("throws NotFoundException when attachment does not exist", async () => {
-      mockAttachmentRepo.findOne.mockResolvedValue(null);
+      mockAttachmentRepo.findOneForJobCard.mockResolvedValue(null);
 
       await expect(service.deleteAttachment(10, 1, 999)).rejects.toThrow(NotFoundException);
     });
 
     it("removes the attachment record", async () => {
       const attachment = { id: 5, jobCardId: 1, companyId: 10 };
-      mockAttachmentRepo.findOne.mockResolvedValue(attachment);
+      mockAttachmentRepo.findOneForJobCard.mockResolvedValue(attachment);
 
       await service.deleteAttachment(10, 1, 5);
 
@@ -365,14 +363,14 @@ describe("DrawingExtractionService", () => {
 
   describe("attachments", () => {
     it("throws NotFoundException when job card does not exist", async () => {
-      mockJobCardRepo.findOne.mockResolvedValue(null);
+      mockJobCardRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.attachments(10, 999)).rejects.toThrow(NotFoundException);
     });
 
     it("returns attachments with signed URLs", async () => {
-      mockJobCardRepo.findOne.mockResolvedValue({ id: 1, companyId: 10 });
-      mockAttachmentRepo.find.mockResolvedValue([
+      mockJobCardRepo.findOneForCompany.mockResolvedValue({ id: 1, companyId: 10 });
+      mockAttachmentRepo.findForJobCard.mockResolvedValue([
         {
           id: 5,
           jobCardId: 1,

@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { CustomFieldValueRepository } from "../custom-field-value.repository";
 import { CustomFieldValue } from "../entities/custom-field-value.entity";
-import { NixExtractionRegion } from "../entities/nix-extraction-region.entity";
+import { NixExtractionRegionRepository } from "../nix-extraction-region.repository";
 
 export interface SaveCustomFieldDto {
   entityType: "customer" | "supplier";
@@ -25,22 +24,18 @@ export class CustomFieldService {
   private readonly logger = new Logger(CustomFieldService.name);
 
   constructor(
-    @InjectRepository(CustomFieldValue)
-    private readonly customFieldValueRepo: Repository<CustomFieldValue>,
-    @InjectRepository(NixExtractionRegion)
-    private readonly extractionRegionRepo: Repository<NixExtractionRegion>,
+    private readonly customFieldValueRepo: CustomFieldValueRepository,
+    private readonly extractionRegionRepo: NixExtractionRegionRepository,
   ) {}
 
   async saveCustomFieldValue(dto: SaveCustomFieldDto): Promise<CustomFieldValue> {
     this.logger.log(`Saving custom field ${dto.fieldName} for ${dto.entityType} ${dto.entityId}`);
 
-    const existing = await this.customFieldValueRepo.findOne({
-      where: {
-        entityType: dto.entityType,
-        entityId: dto.entityId,
-        fieldName: dto.fieldName,
-      },
-    });
+    const existing = await this.customFieldValueRepo.findByEntityAndField(
+      dto.entityType,
+      dto.entityId,
+      dto.fieldName,
+    );
 
     if (existing) {
       existing.fieldValue = dto.fieldValue;
@@ -50,7 +45,7 @@ export class CustomFieldService {
       return this.customFieldValueRepo.save(existing);
     }
 
-    const customField = this.customFieldValueRepo.create({
+    return this.customFieldValueRepo.create({
       entityType: dto.entityType,
       entityId: dto.entityId,
       fieldName: dto.fieldName,
@@ -60,25 +55,17 @@ export class CustomFieldService {
       confidence: dto.confidence ?? null,
       isVerified: false,
     });
-
-    return this.customFieldValueRepo.save(customField);
   }
 
   async customFieldsForEntity(
     entityType: "customer" | "supplier",
     entityId: number,
   ): Promise<CustomFieldValue[]> {
-    return this.customFieldValueRepo.find({
-      where: { entityType, entityId },
-      order: { fieldName: "ASC" },
-    });
+    return this.customFieldValueRepo.findForEntityOrdered(entityType, entityId);
   }
 
   async customFieldDefinitions(): Promise<CustomFieldDefinition[]> {
-    const regions = await this.extractionRegionRepo.find({
-      where: { isCustomField: true, isActive: true },
-      order: { documentCategory: "ASC", fieldName: "ASC" },
-    });
+    const regions = await this.extractionRegionRepo.findCustomFieldDefinitions();
 
     return regions.map((r) => ({
       fieldName: r.fieldName,
@@ -90,10 +77,8 @@ export class CustomFieldService {
   async customFieldDefinitionsForDocumentCategory(
     documentCategory: string,
   ): Promise<CustomFieldDefinition[]> {
-    const regions = await this.extractionRegionRepo.find({
-      where: { isCustomField: true, isActive: true, documentCategory },
-      order: { fieldName: "ASC" },
-    });
+    const regions =
+      await this.extractionRegionRepo.findCustomFieldDefinitionsForCategory(documentCategory);
 
     return regions.map((r) => ({
       fieldName: r.fieldName,
@@ -103,18 +88,14 @@ export class CustomFieldService {
   }
 
   async verifyCustomField(id: number, verifiedByUserId: number): Promise<CustomFieldValue> {
-    const field = await this.customFieldValueRepo.findOneOrFail({
-      where: { id },
-    });
+    const field = await this.customFieldValueRepo.findByIdOrFail(id);
     field.isVerified = true;
     field.verifiedByUserId = verifiedByUserId;
     return this.customFieldValueRepo.save(field);
   }
 
   async updateCustomFieldValue(id: number, newValue: string): Promise<CustomFieldValue> {
-    const field = await this.customFieldValueRepo.findOneOrFail({
-      where: { id },
-    });
+    const field = await this.customFieldValueRepo.findByIdOrFail(id);
     field.fieldValue = newValue;
     field.isVerified = false;
     field.verifiedByUserId = null;
@@ -122,6 +103,6 @@ export class CustomFieldService {
   }
 
   async deleteCustomFieldValue(id: number): Promise<void> {
-    await this.customFieldValueRepo.delete(id);
+    await this.customFieldValueRepo.deleteById(id);
   }
 }

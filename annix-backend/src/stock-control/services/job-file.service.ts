@@ -1,11 +1,10 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard } from "../entities/job-card.entity";
 import { JobCardJobFile } from "../entities/job-card-job-file.entity";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
 
 const FILE_NAMING_SYSTEM_PROMPT =
   "You are a document classification assistant. Given a filename and MIME type, provide a short descriptive name (max 80 chars) that describes the document's purpose. For example: 'Material Test Certificate - Grade 350WA Steel Plate'. Return ONLY the name, nothing else.";
@@ -15,28 +14,21 @@ export class JobFileService {
   private readonly logger = new Logger(JobFileService.name);
 
   constructor(
-    @InjectRepository(JobCardJobFile)
-    private readonly jobFileRepo: Repository<JobCardJobFile>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
+    private readonly jobFileRepo: JobCardJobFileRepository,
+    private readonly jobCardRepo: JobCardRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
   ) {}
 
   async filesForJobCard(companyId: number, jobCardId: number): Promise<JobCardJobFile[]> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
 
-    const files = await this.jobFileRepo.find({
-      where: { jobCardId, companyId },
-      order: { createdAt: "DESC" },
-    });
+    const files = await this.jobFileRepo.findForJobCardOrdered(jobCardId, companyId);
 
     const filesWithUrls = await Promise.all(
       files.map(async (file) => {
@@ -56,9 +48,7 @@ export class JobFileService {
     uploadedById: number | null,
     uploadedByName: string | null,
   ): Promise<JobCardJobFile> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
@@ -71,7 +61,7 @@ export class JobFileService {
 
     const extension = file.originalname.split(".").pop() || "";
 
-    const jobFile = this.jobFileRepo.create({
+    const saved = await this.jobFileRepo.create({
       jobCardId,
       companyId,
       filePath: uploadResult.path,
@@ -83,8 +73,6 @@ export class JobFileService {
       uploadedById,
       uploadedByName,
     });
-
-    const saved = await this.jobFileRepo.save(jobFile);
     this.logger.log(`Uploaded job file ${saved.id} for job card ${jobCardId}`);
 
     this.analyzeAndNameFile(saved.id).catch((err) => {
@@ -102,9 +90,7 @@ export class JobFileService {
     fileId: number,
     userId: number | null,
   ): Promise<void> {
-    const file = await this.jobFileRepo.findOne({
-      where: { id: fileId, jobCardId, companyId },
-    });
+    const file = await this.jobFileRepo.findOneForJobCard(fileId, jobCardId, companyId);
 
     if (!file) {
       throw new NotFoundException("Job file not found");
@@ -123,9 +109,7 @@ export class JobFileService {
     jobCardId: number,
     fileId: number,
   ): Promise<{ url: string }> {
-    const file = await this.jobFileRepo.findOne({
-      where: { id: fileId, jobCardId, companyId },
-    });
+    const file = await this.jobFileRepo.findOneForJobCard(fileId, jobCardId, companyId);
 
     if (!file) {
       throw new NotFoundException("Job file not found");
@@ -137,18 +121,12 @@ export class JobFileService {
   }
 
   async hasImageFiles(companyId: number, jobCardId: number): Promise<boolean> {
-    const count = await this.jobFileRepo.count({
-      where: [
-        { jobCardId, companyId, mimeType: "image/jpeg" },
-        { jobCardId, companyId, mimeType: "image/png" },
-        { jobCardId, companyId, mimeType: "image/jpg" },
-      ],
-    });
+    const count = await this.jobFileRepo.countImageFiles(jobCardId, companyId);
     return count > 0;
   }
 
   private async analyzeAndNameFile(fileId: number): Promise<void> {
-    const file = await this.jobFileRepo.findOne({ where: { id: fileId } });
+    const file = await this.jobFileRepo.findById(fileId);
 
     if (!file) {
       return;
@@ -164,7 +142,7 @@ export class JobFileService {
       );
 
       const trimmedName = aiName.trim().substring(0, 80);
-      await this.jobFileRepo.update(fileId, { aiGeneratedName: trimmedName });
+      await this.jobFileRepo.updateById(fileId, { aiGeneratedName: trimmedName });
       this.logger.log(`AI named job file ${fileId}: "${trimmedName}"`);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";

@@ -40,7 +40,7 @@ class SaveQuoteDto {
   weldUnitPrices: Record<string, number>;
 }
 
-class SubmitQuoteDto {
+class SupplierBoqSubmitQuoteDto {
   @IsObject()
   pricingInputs: Record<string, any>;
 
@@ -254,7 +254,7 @@ export class SupplierBoqController {
   async submitQuote(
     @Request() req: any,
     @Param("id", ParseIntPipe) boqId: number,
-    @Body() body: SubmitQuoteDto,
+    @Body() body: SupplierBoqSubmitQuoteDto,
   ) {
     const supplierProfileId = req.supplier.supplierId;
     const access = await this.distributionService.submitQuote(boqId, supplierProfileId, body);

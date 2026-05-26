@@ -1,10 +1,8 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 
 type PDFDoc = InstanceType<typeof PDFDocument>;
 
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
   A4_PORTRAIT as A4,
@@ -25,6 +23,17 @@ import { QcItemsRelease, type ReleasePartySignOff } from "../qc/entities/qc-item
 import { QcPullTest } from "../qc/entities/qc-pull-test.entity";
 import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../qc/entities/qc-shore-hardness.entity";
+import { QcBatchAssignmentRepository } from "../qc/repositories/qc-batch-assignment.repository";
+import { QcBlastProfileRepository } from "../qc/repositories/qc-blast-profile.repository";
+import { QcControlPlanRepository } from "../qc/repositories/qc-control-plan.repository";
+import { QcDftReadingRepository } from "../qc/repositories/qc-dft-reading.repository";
+import { QcDustDebrisTestRepository } from "../qc/repositories/qc-dust-debris-test.repository";
+import { QcItemsReleaseRepository } from "../qc/repositories/qc-items-release.repository";
+import { QcPullTestRepository } from "../qc/repositories/qc-pull-test.repository";
+import { QcReleaseCertificateRepository } from "../qc/repositories/qc-release-certificate.repository";
+import { QcShoreHardnessRepository } from "../qc/repositories/qc-shore-hardness.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 
 interface DocNumberEntry {
   docNumber: string;
@@ -131,28 +140,17 @@ export class DataBookPdfService {
   private readonly logger = new Logger(DataBookPdfService.name);
 
   constructor(
-    @InjectRepository(QcBatchAssignment)
-    private readonly batchAssignmentRepo: Repository<QcBatchAssignment>,
-    @InjectRepository(QcShoreHardness)
-    private readonly shoreHardnessRepo: Repository<QcShoreHardness>,
-    @InjectRepository(QcDftReading)
-    private readonly dftReadingRepo: Repository<QcDftReading>,
-    @InjectRepository(QcBlastProfile)
-    private readonly blastProfileRepo: Repository<QcBlastProfile>,
-    @InjectRepository(QcDustDebrisTest)
-    private readonly dustDebrisRepo: Repository<QcDustDebrisTest>,
-    @InjectRepository(QcPullTest)
-    private readonly pullTestRepo: Repository<QcPullTest>,
-    @InjectRepository(QcControlPlan)
-    private readonly controlPlanRepo: Repository<QcControlPlan>,
-    @InjectRepository(QcReleaseCertificate)
-    private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
-    @InjectRepository(QcItemsRelease)
-    private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
+    private readonly batchAssignmentRepo: QcBatchAssignmentRepository,
+    private readonly shoreHardnessRepo: QcShoreHardnessRepository,
+    private readonly dftReadingRepo: QcDftReadingRepository,
+    private readonly blastProfileRepo: QcBlastProfileRepository,
+    private readonly dustDebrisRepo: QcDustDebrisTestRepository,
+    private readonly pullTestRepo: QcPullTestRepository,
+    private readonly controlPlanRepo: QcControlPlanRepository,
+    private readonly releaseCertRepo: QcReleaseCertificateRepository,
+    private readonly itemsReleaseRepo: QcItemsReleaseRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -176,9 +174,9 @@ export class DataBookPdfService {
     certificateId: number,
   ): Promise<Buffer | null> {
     const [jobCard, company, certificate] = await Promise.all([
-      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
-      this.companyRepo.findOne({ where: { id: companyId } }),
-      this.releaseCertRepo.findOne({ where: { id: certificateId, companyId, jobCardId } }),
+      this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId),
+      this.companyRepo.findById(companyId),
+      this.releaseCertRepo.findOneByIdForJobCard(certificateId, companyId, jobCardId),
     ]);
 
     if (!jobCard || !certificate) {
@@ -211,10 +209,10 @@ export class DataBookPdfService {
     releaseId: number,
   ): Promise<Buffer | null> {
     const [jobCard, company, release, controlPlans] = await Promise.all([
-      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
-      this.companyRepo.findOne({ where: { id: companyId } }),
-      this.itemsReleaseRepo.findOne({ where: { id: releaseId, companyId } }),
-      this.controlPlanRepo.find({ where: { companyId, jobCardId } }),
+      this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId),
+      this.companyRepo.findById(companyId),
+      this.itemsReleaseRepo.findByIdForCompany(companyId, releaseId),
+      this.controlPlanRepo.findForJobCardUnordered(companyId, jobCardId),
     ]);
 
     if (!jobCard || !release) {
@@ -253,9 +251,9 @@ export class DataBookPdfService {
     planId: number,
   ): Promise<Buffer | null> {
     const [jobCard, company, plan] = await Promise.all([
-      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId }, relations: ["lineItems"] }),
-      this.companyRepo.findOne({ where: { id: companyId } }),
-      this.controlPlanRepo.findOne({ where: { id: planId, companyId } }),
+      this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId),
+      this.companyRepo.findById(companyId),
+      this.controlPlanRepo.findByIdForCompany(companyId, planId),
     ]);
 
     if (!jobCard || !plan) {
@@ -389,29 +387,17 @@ export class DataBookPdfService {
       itemsReleases,
       batchAssignments,
     ] = await Promise.all([
-      this.jobCardRepo.findOne({
-        where: { id: jobCardId, companyId },
-        relations: ["lineItems"],
-      }),
-      this.companyRepo.findOne({ where: { id: companyId } }),
-      this.shoreHardnessRepo.find({
-        where: { companyId, jobCardId },
-        order: { readingDate: "ASC" },
-      }),
-      this.dftReadingRepo.find({ where: { companyId, jobCardId }, order: { readingDate: "ASC" } }),
-      this.blastProfileRepo.find({
-        where: { companyId, jobCardId },
-        order: { readingDate: "ASC" },
-      }),
-      this.dustDebrisRepo.find({ where: { companyId, jobCardId }, order: { readingDate: "ASC" } }),
-      this.pullTestRepo.find({ where: { companyId, jobCardId }, order: { readingDate: "ASC" } }),
-      this.controlPlanRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
-      this.releaseCertRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
-      this.itemsReleaseRepo.find({ where: { companyId, jobCardId }, order: { createdAt: "ASC" } }),
-      this.batchAssignmentRepo.find({
-        where: { companyId, jobCardId },
-        order: { lineItemId: "ASC", fieldKey: "ASC" },
-      }),
+      this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId),
+      this.companyRepo.findById(companyId),
+      this.shoreHardnessRepo.findForJobCardOrderedByReadingDateAsc(companyId, jobCardId),
+      this.dftReadingRepo.findForJobCardOrderedByReadingDateAsc(companyId, jobCardId),
+      this.blastProfileRepo.findForJobCardOrderedByReadingDateAsc(companyId, jobCardId),
+      this.dustDebrisRepo.findForJobCardOrderedByReadingDateAsc(companyId, jobCardId),
+      this.pullTestRepo.findForJobCardOrderedByReadingDateAsc(companyId, jobCardId),
+      this.controlPlanRepo.findForJobCardOrderedByCreatedAsc(companyId, jobCardId),
+      this.releaseCertRepo.findForJobCardOrderedByCreatedAsc(companyId, jobCardId),
+      this.itemsReleaseRepo.findForJobCardOrderedByCreatedAsc(companyId, jobCardId),
+      this.batchAssignmentRepo.findForJobCardOrderedByLineItemAndFieldKey(companyId, jobCardId),
     ]);
 
     if (!jobCard) {

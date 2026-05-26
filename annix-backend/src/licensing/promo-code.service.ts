@@ -1,10 +1,10 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO, now } from "../lib/datetime";
 import type { CreatePromoCodeDto, UpdatePromoCodeDto } from "./dto/promo-code.dto";
 import { PromoCode } from "./entities/promo-code.entity";
 import { PromoCodeRedemption } from "./entities/promo-code-redemption.entity";
+import { PromoCodeRepository } from "./repositories/promo-code.repository";
+import { PromoCodeRedemptionRepository } from "./repositories/promo-code-redemption.repository";
 
 export interface PromoEvaluationContext {
   code: string;
@@ -27,30 +27,25 @@ export interface PromoEvaluation {
 @Injectable()
 export class PromoCodeService {
   constructor(
-    @InjectRepository(PromoCode)
-    private readonly promoRepo: Repository<PromoCode>,
-    @InjectRepository(PromoCodeRedemption)
-    private readonly redemptionRepo: Repository<PromoCodeRedemption>,
+    private readonly promoRepo: PromoCodeRepository,
+    private readonly redemptionRepo: PromoCodeRedemptionRepository,
   ) {}
 
   list(): Promise<PromoCode[]> {
-    return this.promoRepo.find({ order: { createdAt: "DESC" } });
+    return this.promoRepo.allOrderedByCreatedAt();
   }
 
   redemptions(promoCodeId: number): Promise<PromoCodeRedemption[]> {
-    return this.redemptionRepo.find({
-      where: { promoCodeId },
-      order: { redeemedAt: "DESC" },
-    });
+    return this.redemptionRepo.forPromoCode(promoCodeId);
   }
 
   async create(dto: CreatePromoCodeDto, createdById: number | null): Promise<PromoCode> {
     const code = dto.code.trim().toUpperCase();
-    const existing = await this.promoRepo.findOne({ where: { code } });
+    const existing = await this.promoRepo.findByCode(code);
     if (existing) {
       throw new BadRequestException(`A promo code "${code}" already exists.`);
     }
-    const promo = this.promoRepo.create({
+    return this.promoRepo.create({
       code,
       description: dto.description ?? "",
       moduleKey: dto.moduleKey ?? null,
@@ -67,11 +62,10 @@ export class PromoCodeService {
       active: dto.active ?? true,
       createdById,
     });
-    return this.promoRepo.save(promo);
   }
 
   async update(id: number, dto: UpdatePromoCodeDto): Promise<PromoCode> {
-    const promo = await this.promoRepo.findOne({ where: { id } });
+    const promo = await this.promoRepo.findById(id);
     if (!promo) {
       throw new NotFoundException(`Promo code ${id} not found.`);
     }
@@ -115,12 +109,12 @@ export class PromoCodeService {
   }
 
   async remove(id: number): Promise<void> {
-    await this.promoRepo.delete({ id });
+    await this.promoRepo.deleteById(id);
   }
 
   async evaluate(context: PromoEvaluationContext): Promise<PromoEvaluation> {
     const code = context.code.trim().toUpperCase();
-    const promo = await this.promoRepo.findOne({ where: { code } });
+    const promo = await this.promoRepo.findByCode(code);
     const invalid = (reason: string): PromoEvaluation => ({
       valid: false,
       reason,
@@ -130,7 +124,7 @@ export class PromoCodeService {
       durationMonths: null,
     });
 
-    if (!promo || !promo.active) {
+    if (!promo?.active) {
       return invalid("This code is not valid.");
     }
     const current = now().toJSDate();
@@ -158,9 +152,7 @@ export class PromoCodeService {
     if (promo.billingCycle !== "any" && promo.billingCycle !== context.billingCycle) {
       return invalid("This code applies to a different billing cycle.");
     }
-    const already = await this.redemptionRepo.findOne({
-      where: { promoCodeId: promo.id, companyId: context.companyId },
-    });
+    const already = await this.redemptionRepo.findByPromoAndCompany(promo.id, context.companyId);
     if (already) {
       return invalid("You have already used this code.");
     }
@@ -180,23 +172,16 @@ export class PromoCodeService {
     subscriptionId: number | null,
     discountCents: number,
   ): Promise<PromoCodeRedemption> {
-    const result = await this.promoRepo
-      .createQueryBuilder()
-      .update(PromoCode)
-      .set({ timesRedeemed: () => "times_redeemed + 1" })
-      .where("id = :id", { id: promoCodeId })
-      .andWhere("(max_redemptions IS NULL OR times_redeemed < max_redemptions)")
-      .execute();
-    if (!result.affected || result.affected === 0) {
+    const affected = await this.promoRepo.incrementRedemptionWhenAvailable(promoCodeId);
+    if (affected === 0) {
       throw new BadRequestException("This code has been fully redeemed.");
     }
-    const redemption = this.redemptionRepo.create({
+    return this.redemptionRepo.create({
       promoCodeId,
       companyId,
       subscriptionId,
       discountAppliedCents: discountCents,
     });
-    return this.redemptionRepo.save(redemption);
   }
 
   private computeDiscount(promo: PromoCode, grossCents: number): number {

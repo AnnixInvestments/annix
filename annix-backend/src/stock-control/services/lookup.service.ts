@@ -1,36 +1,26 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { StockControlDepartment } from "../entities/stock-control-department.entity";
 import { StockControlLocation } from "../entities/stock-control-location.entity";
+import { StockControlDepartmentRepository } from "../repositories/stock-control-department.repository";
+import { StockControlLocationRepository } from "../repositories/stock-control-location.repository";
 
 @Injectable()
 export class LookupService {
   constructor(
-    @InjectRepository(StockControlDepartment)
-    private readonly departmentRepo: Repository<StockControlDepartment>,
-    @InjectRepository(StockControlLocation)
-    private readonly locationRepo: Repository<StockControlLocation>,
+    private readonly departmentRepo: StockControlDepartmentRepository,
+    private readonly locationRepo: StockControlLocationRepository,
   ) {}
 
   async departmentsByCompany(companyId: number): Promise<StockControlDepartment[]> {
-    return this.departmentRepo.find({
-      where: { companyId, active: true },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.departmentRepo.findActiveForCompanyOrdered(companyId);
   }
 
   async allDepartmentsByCompany(companyId: number): Promise<StockControlDepartment[]> {
-    return this.departmentRepo.find({
-      where: { companyId },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.departmentRepo.findAllForCompanyOrdered(companyId);
   }
 
   async departmentById(companyId: number, id: number): Promise<StockControlDepartment> {
-    const department = await this.departmentRepo.findOne({
-      where: { id, companyId },
-    });
+    const department = await this.departmentRepo.findOneForCompany(id, companyId);
 
     if (!department) {
       throw new NotFoundException(`Department ${id} not found`);
@@ -44,12 +34,11 @@ export class LookupService {
     name: string,
     displayOrder?: number,
   ): Promise<StockControlDepartment> {
-    const department = this.departmentRepo.create({
+    return this.departmentRepo.create({
       companyId,
       name,
       displayOrder: displayOrder ?? null,
     });
-    return this.departmentRepo.save(department);
   }
 
   async updateDepartment(
@@ -69,23 +58,15 @@ export class LookupService {
   }
 
   async locationsByCompany(companyId: number): Promise<StockControlLocation[]> {
-    return this.locationRepo.find({
-      where: { companyId, active: true },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.locationRepo.findActiveForCompanyOrdered(companyId);
   }
 
   async allLocationsByCompany(companyId: number): Promise<StockControlLocation[]> {
-    return this.locationRepo.find({
-      where: { companyId },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.locationRepo.findAllForCompanyOrdered(companyId);
   }
 
   async locationById(companyId: number, id: number): Promise<StockControlLocation> {
-    const location = await this.locationRepo.findOne({
-      where: { id, companyId },
-    });
+    const location = await this.locationRepo.findOneForCompany(id, companyId);
 
     if (!location) {
       throw new NotFoundException(`Location ${id} not found`);
@@ -100,13 +81,12 @@ export class LookupService {
     description?: string,
     displayOrder?: number,
   ): Promise<StockControlLocation> {
-    const location = this.locationRepo.create({
+    return this.locationRepo.create({
       companyId,
       name,
       description: description ?? null,
       displayOrder: displayOrder ?? null,
     });
-    return this.locationRepo.save(location);
   }
 
   async updateLocation(

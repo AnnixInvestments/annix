@@ -1,10 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
-import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
+import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockIssuanceRepository } from "../repositories/stock-issuance.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 
 export interface CostByJob {
   jobCardId: number;
@@ -73,53 +73,21 @@ export interface StaffStockReportResult {
 @Injectable()
 export class ReportsService {
   constructor(
-    @InjectRepository(StockAllocation)
-    private readonly allocationRepo: Repository<StockAllocation>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(StockIssuance)
-    private readonly issuanceRepo: Repository<StockIssuance>,
+    private readonly allocationRepo: StockAllocationRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly movementRepo: StockMovementRepository,
+    private readonly issuanceRepo: StockIssuanceRepository,
   ) {}
 
   async costByJob(companyId: number): Promise<CostByJob[]> {
-    const result = await this.allocationRepo
-      .createQueryBuilder("a")
-      .innerJoin("a.jobCard", "j")
-      .innerJoin("a.stockItem", "i")
-      .select("j.id", "jobCardId")
-      .addSelect("j.job_number", "jobNumber")
-      .addSelect("j.job_name", "jobName")
-      .addSelect("j.customer_name", "customerName")
-      .addSelect("SUM(a.quantity_used * i.cost_per_unit)", "totalCost")
-      .addSelect("SUM(a.quantity_used)", "totalItemsAllocated")
-      .where("a.company_id = :companyId", { companyId })
-      .groupBy("j.id")
-      .addGroupBy("j.job_number")
-      .addGroupBy("j.job_name")
-      .addGroupBy("j.customer_name")
-      .orderBy('"totalCost"', "DESC")
-      .getRawMany();
-
-    return result.map((r) => ({
-      jobCardId: Number(r.jobCardId),
-      jobNumber: r.jobNumber,
-      jobName: r.jobName,
-      customerName: r.customerName,
-      totalCost: Number(r.totalCost || 0),
-      totalItemsAllocated: Number(r.totalItemsAllocated || 0),
-    }));
+    return this.allocationRepo.costByJob(companyId);
   }
 
   async stockValuation(companyId: number): Promise<{
     items: StockValuationItem[];
     totalValue: number;
   }> {
-    const items = await this.stockItemRepo.find({
-      where: { companyId },
-      order: { name: "ASC" },
-    });
+    const items = await this.stockItemRepo.findAllForCompanyOrderedByName(companyId);
 
     const valuationItems = items.map((item) => ({
       id: item.id,
@@ -145,29 +113,7 @@ export class ReportsService {
       stockItemId?: number;
     },
   ): Promise<StockMovement[]> {
-    const query = this.movementRepo
-      .createQueryBuilder("m")
-      .leftJoinAndSelect("m.stockItem", "item")
-      .where("m.company_id = :companyId", { companyId })
-      .orderBy("m.created_at", "DESC");
-
-    if (filters?.startDate) {
-      query.andWhere("m.created_at >= :startDate", { startDate: filters.startDate });
-    }
-
-    if (filters?.endDate) {
-      query.andWhere("m.created_at <= :endDate", { endDate: filters.endDate });
-    }
-
-    if (filters?.movementType) {
-      query.andWhere("m.movement_type = :movementType", { movementType: filters.movementType });
-    }
-
-    if (filters?.stockItemId) {
-      query.andWhere("m.stock_item_id = :stockItemId", { stockItemId: filters.stockItemId });
-    }
-
-    return query.take(500).getMany();
+    return this.movementRepo.movementHistoryForCompany(companyId, filters);
   }
 
   async staffStockReport(
@@ -176,55 +122,7 @@ export class ReportsService {
   ): Promise<StaffStockReportResult> {
     const anomalyThreshold = filters?.anomalyThreshold ?? 2.0;
 
-    const query = this.issuanceRepo
-      .createQueryBuilder("i")
-      .innerJoin("i.recipientStaff", "staff")
-      .innerJoin("i.stockItem", "item")
-      .leftJoin("staff.departmentEntity", "dept")
-      .select("staff.id", "staffMemberId")
-      .addSelect("staff.name", "staffName")
-      .addSelect("staff.employee_number", "employeeNumber")
-      .addSelect("COALESCE(dept.name, staff.department)", "department")
-      .addSelect("staff.department_id", "departmentId")
-      .addSelect("SUM(i.quantity)", "totalQuantityReceived")
-      .addSelect("SUM(i.quantity * item.cost_per_unit)", "totalValue")
-      .addSelect("COUNT(i.id)", "issuanceCount")
-      .where("i.company_id = :companyId", { companyId });
-
-    if (filters?.startDate) {
-      query.andWhere("i.issued_at >= :startDate", { startDate: filters.startDate });
-    }
-
-    if (filters?.endDate) {
-      query.andWhere("i.issued_at <= :endDate", { endDate: filters.endDate });
-    }
-
-    if (filters?.staffMemberId) {
-      query.andWhere("i.recipient_staff_id = :staffMemberId", {
-        staffMemberId: filters.staffMemberId,
-      });
-    }
-
-    if (filters?.departmentId) {
-      query.andWhere("staff.department_id = :departmentId", {
-        departmentId: filters.departmentId,
-      });
-    }
-
-    if (filters?.stockItemId) {
-      query.andWhere("i.stock_item_id = :stockItemId", { stockItemId: filters.stockItemId });
-    }
-
-    query
-      .groupBy("staff.id")
-      .addGroupBy("staff.name")
-      .addGroupBy("staff.employee_number")
-      .addGroupBy("staff.department")
-      .addGroupBy("staff.department_id")
-      .addGroupBy("dept.name")
-      .orderBy('"totalQuantityReceived"', "DESC");
-
-    const rawResults = await query.getRawMany();
+    const rawResults = await this.issuanceRepo.staffStockReportRows(companyId, filters);
 
     const staffSummaries: StaffStockSummary[] = rawResults.map((r) => ({
       staffMemberId: Number(r.staffMemberId),
@@ -254,41 +152,11 @@ export class ReportsService {
 
     const staffIds = summariesWithAnomalies.map((s) => s.staffMemberId);
     if (staffIds.length > 0) {
-      const itemBreakdownQuery = this.issuanceRepo
-        .createQueryBuilder("i")
-        .innerJoin("i.stockItem", "item")
-        .select("i.recipient_staff_id", "staffMemberId")
-        .addSelect("item.id", "stockItemId")
-        .addSelect("item.name", "stockItemName")
-        .addSelect("item.sku", "sku")
-        .addSelect("item.category", "category")
-        .addSelect("SUM(i.quantity)", "totalQuantity")
-        .addSelect("SUM(i.quantity * item.cost_per_unit)", "totalValue")
-        .where("i.company_id = :companyId", { companyId })
-        .andWhere("i.recipient_staff_id IN (:...staffIds)", { staffIds });
-
-      if (filters?.startDate) {
-        itemBreakdownQuery.andWhere("i.issued_at >= :startDate", { startDate: filters.startDate });
-      }
-
-      if (filters?.endDate) {
-        itemBreakdownQuery.andWhere("i.issued_at <= :endDate", { endDate: filters.endDate });
-      }
-
-      if (filters?.stockItemId) {
-        itemBreakdownQuery.andWhere("i.stock_item_id = :stockItemId", {
-          stockItemId: filters.stockItemId,
-        });
-      }
-
-      itemBreakdownQuery
-        .groupBy("i.recipient_staff_id")
-        .addGroupBy("item.id")
-        .addGroupBy("item.name")
-        .addGroupBy("item.sku")
-        .addGroupBy("item.category");
-
-      const itemBreakdowns = await itemBreakdownQuery.getRawMany();
+      const itemBreakdowns = await this.issuanceRepo.staffItemBreakdownRows(
+        companyId,
+        staffIds,
+        filters,
+      );
 
       const breakdownsByStaff = itemBreakdowns.reduce<Record<number, StaffItemBreakdown[]>>(
         (acc, row) => {
@@ -341,24 +209,7 @@ export class ReportsService {
     staffMemberId: number,
     filters?: { startDate?: string; endDate?: string },
   ): Promise<StockIssuance[]> {
-    const query = this.issuanceRepo
-      .createQueryBuilder("i")
-      .leftJoinAndSelect("i.stockItem", "item")
-      .leftJoinAndSelect("i.jobCard", "jobCard")
-      .leftJoinAndSelect("i.issuerStaff", "issuer")
-      .where("i.company_id = :companyId", { companyId })
-      .andWhere("i.recipient_staff_id = :staffMemberId", { staffMemberId })
-      .orderBy("i.issued_at", "DESC");
-
-    if (filters?.startDate) {
-      query.andWhere("i.issued_at >= :startDate", { startDate: filters.startDate });
-    }
-
-    if (filters?.endDate) {
-      query.andWhere("i.issued_at <= :endDate", { endDate: filters.endDate });
-    }
-
-    return query.getMany();
+    return this.issuanceRepo.staffStockDetail(companyId, staffMemberId, filters);
   }
 
   private calculateMeanAndStdDev(values: number[]): { mean: number; stdDev: number } {

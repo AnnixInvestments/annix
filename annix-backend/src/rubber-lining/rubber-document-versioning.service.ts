@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import {
   DOCUMENT_VERSION_STATUS_LABELS,
   DocumentVersionStatus,
@@ -8,8 +6,19 @@ import {
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { RubberSupplierCoc, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { RubberTaxInvoice, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
+import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
 
 export type VersionableEntityType = "tax-invoice" | "delivery-note" | "supplier-coc";
+
+type VersionableEntity = RubberTaxInvoice | RubberDeliveryNote | RubberSupplierCoc;
+
+interface VersionableRepository<T extends VersionableEntity> {
+  findById(id: number): Promise<T | null>;
+  save(entity: T): Promise<T>;
+  findNewerVersionsByPreviousId(id: number): Promise<T[]>;
+}
 
 export interface VersionHistoryEntry {
   id: number;
@@ -25,12 +34,9 @@ export class RubberDocumentVersioningService {
   private readonly logger = new Logger(RubberDocumentVersioningService.name);
 
   constructor(
-    @InjectRepository(RubberTaxInvoice)
-    private taxInvoiceRepository: Repository<RubberTaxInvoice>,
-    @InjectRepository(RubberDeliveryNote)
-    private deliveryNoteRepository: Repository<RubberDeliveryNote>,
-    @InjectRepository(RubberSupplierCoc)
-    private supplierCocRepository: Repository<RubberSupplierCoc>,
+    private taxInvoiceRepository: RubberTaxInvoiceRepository,
+    private deliveryNoteRepository: RubberDeliveryNoteRepository,
+    private supplierCocRepository: RubberSupplierCocRepository,
   ) {}
 
   async existingActiveTaxInvoice(
@@ -40,13 +46,11 @@ export class RubberDocumentVersioningService {
   ): Promise<RubberTaxInvoice | null> {
     if (!invoiceNumber) return null;
 
-    return this.taxInvoiceRepository
-      .createQueryBuilder("ti")
-      .where("LOWER(TRIM(ti.invoice_number)) = LOWER(TRIM(:invoiceNumber))", { invoiceNumber })
-      .andWhere("ti.company_id = :companyId", { companyId })
-      .andWhere("ti.invoice_type = :invoiceType", { invoiceType })
-      .andWhere("ti.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
-      .getOne();
+    return this.taxInvoiceRepository.findOneActiveByNumberCompanyAndType(
+      invoiceNumber,
+      companyId,
+      invoiceType,
+    );
   }
 
   async existingActiveDeliveryNote(
@@ -55,14 +59,10 @@ export class RubberDocumentVersioningService {
   ): Promise<RubberDeliveryNote | null> {
     if (!deliveryNoteNumber) return null;
 
-    return this.deliveryNoteRepository
-      .createQueryBuilder("dn")
-      .where("LOWER(TRIM(dn.delivery_note_number)) = LOWER(TRIM(:deliveryNoteNumber))", {
-        deliveryNoteNumber,
-      })
-      .andWhere("dn.supplier_company_id = :supplierCompanyId", { supplierCompanyId })
-      .andWhere("dn.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
-      .getOne();
+    return this.deliveryNoteRepository.findOneActiveByNumberAndSupplier(
+      deliveryNoteNumber,
+      supplierCompanyId,
+    );
   }
 
   async existingActiveSupplierCoc(
@@ -74,27 +74,11 @@ export class RubberDocumentVersioningService {
 
     const normalized = cocNumber.trim().replace(/\s+/g, "").replace(/[–—]/g, "-");
 
-    const qb = this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where(
-        "LOWER(TRIM(REPLACE(REPLACE(coc.coc_number, ' ', ''), '–', '-'))) = LOWER(:cocNumber)",
-        {
-          cocNumber: normalized,
-        },
-      )
-      .andWhere("coc.coc_type = :cocType", { cocType })
-      .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE });
-
-    if (options.excludeId !== undefined) {
-      qb.andWhere("coc.id != :excludeId", { excludeId: options.excludeId });
-    }
-    if (options.supplierCompanyId !== undefined) {
-      qb.andWhere("coc.supplier_company_id = :supplierCompanyId", {
-        supplierCompanyId: options.supplierCompanyId,
-      });
-    }
-
-    return qb.orderBy("coc.id", "DESC").getOne();
+    return this.supplierCocRepository.findOneActiveByNormalizedNumberAndType(
+      normalized,
+      cocType,
+      options,
+    );
   }
 
   async repointSupplierCocReferences(oldId: number, newId: number): Promise<void> {
@@ -106,38 +90,40 @@ export class RubberDocumentVersioningService {
     id: number,
   ): Promise<{ authorizedId: number; supersededId: number | null }> {
     const repo = this.repositoryForType(entityType);
-    const entity = await repo.findOne({ where: { id } as any });
+    const entity = await repo.findById(id);
 
     if (!entity) {
       throw new BadRequestException(`${entityType} not found`);
     }
 
-    if ((entity as any).versionStatus !== DocumentVersionStatus.PENDING_AUTHORIZATION) {
+    if (
+      (entity as VersionableEntity).versionStatus !== DocumentVersionStatus.PENDING_AUTHORIZATION
+    ) {
       throw new BadRequestException("Only documents awaiting authorization can be authorized");
     }
 
-    const previousVersionId = (entity as any).previousVersionId;
+    const previousVersionId = (entity as VersionableEntity).previousVersionId;
     let supersededId: number | null = null;
 
     if (previousVersionId) {
-      const previousVersion = await repo.findOne({ where: { id: previousVersionId } as any });
+      const previousVersion = await repo.findById(previousVersionId);
       if (
         previousVersion &&
-        (previousVersion as any).versionStatus === DocumentVersionStatus.ACTIVE
+        (previousVersion as VersionableEntity).versionStatus === DocumentVersionStatus.ACTIVE
       ) {
-        (previousVersion as any).versionStatus = DocumentVersionStatus.SUPERSEDED;
-        await repo.save(previousVersion as any);
+        (previousVersion as VersionableEntity).versionStatus = DocumentVersionStatus.SUPERSEDED;
+        await repo.save(previousVersion);
         supersededId = previousVersionId;
 
         await this.updateDownstreamReferences(entityType, previousVersionId, id);
       }
     }
 
-    (entity as any).versionStatus = DocumentVersionStatus.ACTIVE;
-    await repo.save(entity as any);
+    (entity as VersionableEntity).versionStatus = DocumentVersionStatus.ACTIVE;
+    await repo.save(entity);
 
     this.logger.log(
-      `Authorized ${entityType} #${id} (v${(entity as any).version}), superseded #${supersededId}`,
+      `Authorized ${entityType} #${id} (v${(entity as VersionableEntity).version}), superseded #${supersededId}`,
     );
 
     return { authorizedId: id, supersededId };
@@ -145,20 +131,22 @@ export class RubberDocumentVersioningService {
 
   async rejectVersion(entityType: VersionableEntityType, id: number): Promise<void> {
     const repo = this.repositoryForType(entityType);
-    const entity = await repo.findOne({ where: { id } as any });
+    const entity = await repo.findById(id);
 
     if (!entity) {
       throw new BadRequestException(`${entityType} not found`);
     }
 
-    if ((entity as any).versionStatus !== DocumentVersionStatus.PENDING_AUTHORIZATION) {
+    if (
+      (entity as VersionableEntity).versionStatus !== DocumentVersionStatus.PENDING_AUTHORIZATION
+    ) {
       throw new BadRequestException("Only documents awaiting authorization can be rejected");
     }
 
-    (entity as any).versionStatus = DocumentVersionStatus.REJECTED;
-    await repo.save(entity as any);
+    (entity as VersionableEntity).versionStatus = DocumentVersionStatus.REJECTED;
+    await repo.save(entity);
 
-    this.logger.log(`Rejected ${entityType} #${id} (v${(entity as any).version})`);
+    this.logger.log(`Rejected ${entityType} #${id} (v${(entity as VersionableEntity).version})`);
   }
 
   async versionHistory(
@@ -166,12 +154,12 @@ export class RubberDocumentVersioningService {
     id: number,
   ): Promise<VersionHistoryEntry[]> {
     const repo = this.repositoryForType(entityType);
-    const entity = await repo.findOne({ where: { id } as any });
+    const entity = await repo.findById(id);
 
     if (!entity) return [];
 
     const chain: VersionHistoryEntry[] = [];
-    let current: any = entity;
+    let current: VersionableEntity | null = entity;
 
     while (current) {
       chain.push({
@@ -185,20 +173,17 @@ export class RubberDocumentVersioningService {
       });
 
       if (current.previousVersionId) {
-        current = await repo.findOne({ where: { id: current.previousVersionId } as any });
+        current = await repo.findById(current.previousVersionId);
       } else {
         current = null;
       }
     }
 
-    const newerVersions = await repo
-      .createQueryBuilder("e")
-      .where("e.previous_version_id = :id", { id })
-      .getMany();
+    const newerVersions = await repo.findNewerVersionsByPreviousId(id);
 
     const newerEntries = newerVersions
-      .filter((v: any) => !chain.some((c) => c.id === v.id))
-      .map((v: any) => ({
+      .filter((v) => !chain.some((c) => c.id === v.id))
+      .map((v) => ({
         id: v.id,
         version: v.version,
         versionStatus: v.versionStatus,
@@ -211,10 +196,16 @@ export class RubberDocumentVersioningService {
     return [...newerEntries, ...chain].sort((a, b) => b.version - a.version);
   }
 
-  private repositoryForType(entityType: VersionableEntityType): Repository<any> {
-    if (entityType === "tax-invoice") return this.taxInvoiceRepository;
-    if (entityType === "delivery-note") return this.deliveryNoteRepository;
-    return this.supplierCocRepository;
+  private repositoryForType(
+    entityType: VersionableEntityType,
+  ): VersionableRepository<VersionableEntity> {
+    if (entityType === "tax-invoice") {
+      return this.taxInvoiceRepository as VersionableRepository<VersionableEntity>;
+    }
+    if (entityType === "delivery-note") {
+      return this.deliveryNoteRepository as VersionableRepository<VersionableEntity>;
+    }
+    return this.supplierCocRepository as VersionableRepository<VersionableEntity>;
   }
 
   private async updateDownstreamReferences(
@@ -223,21 +214,11 @@ export class RubberDocumentVersioningService {
     newId: number,
   ): Promise<void> {
     if (entityType === "supplier-coc") {
-      await this.deliveryNoteRepository
-        .createQueryBuilder()
-        .update()
-        .set({ linkedCocId: newId })
-        .where("linked_coc_id = :oldId", { oldId })
-        .execute();
+      await this.deliveryNoteRepository.repointLinkedCocId(oldId, newId);
 
       this.logger.log(`Updated delivery note linked_coc_id references from #${oldId} to #${newId}`);
     } else if (entityType === "delivery-note") {
-      await this.supplierCocRepository
-        .createQueryBuilder()
-        .update()
-        .set({ linkedDeliveryNoteId: newId })
-        .where("linked_delivery_note_id = :oldId", { oldId })
-        .execute();
+      await this.supplierCocRepository.repointLinkedDeliveryNoteId(oldId, newId);
 
       this.logger.log(
         `Updated supplier CoC linked_delivery_note_id references from #${oldId} to #${newId}`,

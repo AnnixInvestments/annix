@@ -1,20 +1,25 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
 import { chunk } from "es-toolkit/compat";
-import { In, IsNull, MoreThan, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { sourceRespectRank } from "../config/job-source-providers";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { ExternalJob } from "../entities/external-job.entity";
-import { ExternalJobAlternate } from "../entities/external-job-alternate.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
-import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
-import { SourceRespectRank } from "../entities/source-respect-rank.entity";
+import { JobPosting } from "../entities/job-posting.entity";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import {
+  DedupCandidateRow,
+  DuplicateJobPair,
+  ExternalJobRepository,
+} from "../repositories/external-job.repository";
+import { ExternalJobAlternateRepository } from "../repositories/external-job-alternate.repository";
+import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
+import { SourceRespectRankRepository } from "../repositories/source-respect-rank.repository";
 import { AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { SitemapCrawlIngestionService } from "./crawl/sitemap-crawl-ingestion.service";
@@ -72,18 +77,12 @@ export class JobIngestionService {
   private readonly lastIngestionErrorBySource = new Map<number, string>();
 
   constructor(
-    @InjectRepository(JobMarketSource)
-    private readonly sourceRepo: Repository<JobMarketSource>,
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
-    @InjectRepository(ExternalJobAlternate)
-    private readonly alternateRepo: Repository<ExternalJobAlternate>,
-    @InjectRepository(SourceRespectRank)
-    private readonly sourceRespectRankRepo: Repository<SourceRespectRank>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly companyRepo: Repository<AnnixOrbitCompany>,
+    private readonly sourceRepo: JobMarketSourceRepository,
+    private readonly externalJobRepo: ExternalJobRepository,
+    private readonly alternateRepo: ExternalJobAlternateRepository,
+    private readonly sourceRespectRankRepo: SourceRespectRankRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
     private readonly adzunaService: AdzunaService,
     private readonly remotiveService: RemotiveService,
     private readonly embeddingService: EmbeddingService,
@@ -101,7 +100,7 @@ export class JobIngestionService {
   @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
   async pollSources(): Promise<void> {
     if (!isAnnixOrbitCronEnabled()) return;
-    const sources = await this.sourceRepo.find({ where: { enabled: true } });
+    const sources = await this.sourceRepo.findEnabled();
 
     const dueForIngestion = sources.filter((source) => this.isDueForIngestion(source));
 
@@ -118,7 +117,7 @@ export class JobIngestionService {
 
     await this.backfillCanonicalCategories().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Canonical category backfill failed: ${message}`);
+      this.logger.warn(`Backfill canonical categories failed: ${message}`);
     });
 
     await this.autoResolveDuplicates().catch((error) => {
@@ -134,12 +133,7 @@ export class JobIngestionService {
 
   async backfillCanonicalCategories(limit = 200): Promise<{ updated: number }> {
     const aiBudget = 25;
-    const pending = await this.externalJobRepo.find({
-      where: { canonicalCategory: IsNull() },
-      select: ["id", "title", "category", "description"],
-      take: limit,
-      order: { id: "DESC" },
-    });
+    const pending = await this.externalJobRepo.findPendingCanonicalCategory(limit);
     if (pending.length === 0) return { updated: 0 };
 
     const ruled = pending.map((job) => ({
@@ -153,9 +147,7 @@ export class JobIngestionService {
     const misses = ruled.filter((entry) => entry.key === null).slice(0, aiBudget);
 
     await Promise.all(
-      matched.map((entry) =>
-        this.externalJobRepo.update(entry.job.id, { canonicalCategory: entry.key }),
-      ),
+      matched.map((entry) => this.externalJobRepo.updateCanonicalCategory(entry.job.id, entry.key)),
     );
 
     const aiResults = await Promise.all(
@@ -170,7 +162,7 @@ export class JobIngestionService {
     );
     await Promise.all(
       aiResults.map((result) =>
-        this.externalJobRepo.update(result.id, { canonicalCategory: result.key }),
+        this.externalJobRepo.updateCanonicalCategory(result.id, result.key),
       ),
     );
 
@@ -184,7 +176,7 @@ export class JobIngestionService {
     const vetInline = (options.vetInline ?? true) && source.requiresVetting;
 
     if (source.provider === JobSourceProvider.DPSA) {
-      return this.ingestDpsaSource(source, { vetInline });
+      return this.ingestDpsaSource(source);
     }
 
     this.resetDailyCounterIfNeeded(source);
@@ -250,9 +242,7 @@ export class JobIngestionService {
 
   private async maybeEmitZeroJobsAlert(source: JobMarketSource): Promise<void> {
     const cutoff = DateTime.now().minus({ hours: 24 }).toJSDate();
-    const recentCount = await this.externalJobRepo.count({
-      where: { sourceId: source.id, createdAt: MoreThan(cutoff) },
-    });
+    const recentCount = await this.externalJobRepo.countForSourceSince(source.id, cutoff);
 
     if (recentCount > 0) {
       return;
@@ -299,19 +289,17 @@ export class JobIngestionService {
     sourceId: number,
     options: { vetInline?: boolean } = {},
   ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
-    const source = await this.sourceRepo.findOne({ where: { id: sourceId } });
+    const source = await this.sourceRepo.findById(sourceId);
     if (!source) {
       throw new Error(`Source ${sourceId} not found`);
     }
-    // Record the run duration per provider so the admin progress popup can
-    // estimate the next run from the rolling average (it gets sharper each run).
     return this.extractionMetricService.time("orbit-source-ingest", source.provider, () =>
       this.ingestFromSource(source, options),
     );
   }
 
   async vetSingleJob(jobId: number): Promise<{ acceptsZa: boolean | null; notes: string }> {
-    const job = await this.externalJobRepo.findOne({ where: { id: jobId } });
+    const job = await this.externalJobRepo.findById(jobId);
     if (!job) {
       throw new Error(`Job ${jobId} not found`);
     }
@@ -321,50 +309,12 @@ export class JobIngestionService {
       locationRaw: job.locationRaw,
       description: job.description,
     });
-    await this.externalJobRepo.update(jobId, {
+    await this.externalJobRepo.updateVetting(jobId, {
       acceptsZa: result.acceptsZa,
       vettingNotes: result.notes,
       vettedAt: DateTime.now().toJSDate(),
     });
     return result;
-  }
-
-  async externalJobsForCompany(
-    companyId: number,
-    options: {
-      country?: string;
-      category?: string;
-      search?: string;
-      page?: number;
-      limit?: number;
-    } = {},
-  ): Promise<{ jobs: ExternalJob[]; total: number }> {
-    const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
-
-    const qb = this.externalJobRepo
-      .createQueryBuilder("job")
-      .innerJoin("job.source", "source")
-      .where("source.company_id = :companyId", { companyId });
-
-    if (options.country) {
-      qb.andWhere("job.country = :country", { country: options.country });
-    }
-    if (options.category) {
-      qb.andWhere("job.category = :category", { category: options.category });
-    }
-    if (options.search) {
-      qb.andWhere("(job.title ILIKE :search OR job.company ILIKE :search)", {
-        search: `%${options.search}%`,
-      });
-    }
-
-    qb.orderBy("job.postedAt", "DESC", "NULLS LAST")
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [jobs, total] = await qb.getManyAndCount();
-    return { jobs, total };
   }
 
   async platformGlobalExternalJobs(
@@ -376,46 +326,15 @@ export class JobIngestionService {
       limit?: number;
     } = {},
   ): Promise<{ jobs: ExternalJob[]; total: number }> {
-    const page = options.page ?? 1;
-    const limit = options.limit ?? 20;
-
-    const qb = this.externalJobRepo
-      .createQueryBuilder("job")
-      .innerJoin("job.source", "source")
-      .where("source.company_id IS NULL")
-      .andWhere("(job.accepts_za IS NULL OR job.accepts_za = true)")
-      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())");
-
-    if (options.country) {
-      qb.andWhere("job.country = :country", { country: options.country });
-    }
-    if (options.category) {
-      qb.andWhere("job.category = :category", { category: options.category });
-    }
-    if (options.search) {
-      qb.andWhere("(job.title ILIKE :search OR job.company ILIKE :search)", {
-        search: `%${options.search}%`,
-      });
-    }
-
-    qb.orderBy("job.postedAt", "DESC", "NULLS LAST")
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [jobs, total] = await qb.getManyAndCount();
-    await this.attachSourceInfo(jobs);
-    return { jobs, total };
+    const result = await this.externalJobRepo.platformGlobalExternalJobs(options);
+    await this.attachSourceInfo(result.jobs);
+    return result;
   }
 
-  // Populates each job's `source` with id/name/provider only (never the
-  // encrypted API key) so the admin feed can show where each listing came from.
   private async attachSourceInfo(jobs: ExternalJob[]): Promise<void> {
     const sourceIds = [...new Set(jobs.map((job) => job.sourceId))];
     if (sourceIds.length === 0) return;
-    const sources = await this.sourceRepo.find({
-      where: { id: In(sourceIds) },
-      select: ["id", "name", "provider"],
-    });
+    const sources = await this.sourceRepo.findByIds(sourceIds);
     const byId = new Map(sources.map((source) => [source.id, source]));
     jobs.forEach((job) => {
       const source = byId.get(job.sourceId);
@@ -425,21 +344,13 @@ export class JobIngestionService {
 
   private async ingestDpsaSource(
     source: JobMarketSource,
-    options: { vetInline: boolean },
   ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
     const result = await this.dpsaCircularService.ingestLatestCircular(source);
-
-    if (options.vetInline && result.savedIds.length > 0) {
-      const savedJobs = await this.externalJobRepo.find({
-        where: { id: In(result.savedIds) },
-      });
-      await this.vetSavedJobs(savedJobs);
-    }
 
     source.lastIngestedAt = DateTime.now().toJSDate();
     await this.sourceRepo.save(source);
 
-    return { ingested: result.ingested, skipped: 0, savedIds: result.savedIds };
+    return { ingested: result.ingested, skipped: 0, savedIds: [] };
   }
 
   private async vetSavedJobs(savedJobs: ExternalJob[]): Promise<void> {
@@ -456,7 +367,7 @@ export class JobIngestionService {
               locationRaw: saved.locationRaw,
               description: saved.description,
             });
-            await this.externalJobRepo.update(saved.id, {
+            await this.externalJobRepo.updateVetting(saved.id, {
               acceptsZa: result.acceptsZa,
               vettingNotes: result.notes,
               vettedAt: DateTime.now().toJSDate(),
@@ -476,37 +387,38 @@ export class JobIngestionService {
     rejected: number;
     ambiguous: number;
   }> {
-    const pending = await this.externalJobRepo.find({
-      where: { acceptsZa: IsNull() },
-      take: limit,
-    });
+    const pending = await this.externalJobRepo.findPendingVetting(limit);
 
-    let accepted = 0;
-    let rejected = 0;
-    let ambiguous = 0;
-
-    for (const job of pending) {
-      const result = await this.jobVettingService.vet({
-        title: job.title,
-        company: job.company,
-        locationRaw: job.locationRaw,
-        description: job.description,
-      });
-      await this.externalJobRepo.update(job.id, {
-        acceptsZa: result.acceptsZa,
-        vettingNotes: result.notes,
-        vettedAt: DateTime.now().toJSDate(),
-      });
-      if (result.acceptsZa === true) accepted += 1;
-      else if (result.acceptsZa === false) rejected += 1;
-      else ambiguous += 1;
-    }
+    const tally = await pending.reduce(
+      async (accPromise, job) => {
+        const acc = await accPromise;
+        const result = await this.jobVettingService.vet({
+          title: job.title,
+          company: job.company,
+          locationRaw: job.locationRaw,
+          description: job.description,
+        });
+        await this.externalJobRepo.updateVetting(job.id, {
+          acceptsZa: result.acceptsZa,
+          vettingNotes: result.notes,
+          vettedAt: DateTime.now().toJSDate(),
+        });
+        if (result.acceptsZa === true) {
+          return { ...acc, accepted: acc.accepted + 1 };
+        } else if (result.acceptsZa === false) {
+          return { ...acc, rejected: acc.rejected + 1 };
+        } else {
+          return { ...acc, ambiguous: acc.ambiguous + 1 };
+        }
+      },
+      Promise.resolve({ accepted: 0, rejected: 0, ambiguous: 0 }),
+    );
 
     return {
       vetted: pending.length,
-      accepted,
-      rejected,
-      ambiguous,
+      accepted: tally.accepted,
+      rejected: tally.rejected,
+      ambiguous: tally.ambiguous,
     };
   }
 
@@ -524,43 +436,18 @@ export class JobIngestionService {
       jobCount: number;
     }>;
   }> {
-    const sources = await this.sourceRepo.find({ where: { companyId: IsNull() } });
+    const sources = await this.sourceRepo.findPlatformGlobal();
     const sourceIds = sources.map((s) => s.id);
 
-    const perSourceCounts =
-      sourceIds.length > 0
-        ? await this.externalJobRepo
-            .createQueryBuilder("job")
-            .select("job.source_id", "sourceId")
-            .addSelect("COUNT(*)", "count")
-            .where("job.source_id IN (:...sourceIds)", { sourceIds })
-            .groupBy("job.source_id")
-            .getRawMany()
-        : [];
+    const perSourceCounts = await this.externalJobRepo.perSourceJobCounts(sourceIds);
     const countBySource = new Map<number, number>(
-      perSourceCounts.map((row: { sourceId: number; count: string }) => [
-        Number(row.sourceId),
-        Number(row.count),
-      ]),
+      perSourceCounts.map((row) => [row.sourceId, row.count]),
     );
 
-    const totalJobs =
-      sourceIds.length > 0
-        ? await this.externalJobRepo
-            .createQueryBuilder("job")
-            .where("job.source_id IN (:...sourceIds)", { sourceIds })
-            .getCount()
-        : 0;
+    const totalJobs = await this.externalJobRepo.countForSources(sourceIds);
 
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
-    const jobsLast7Days =
-      sourceIds.length > 0
-        ? await this.externalJobRepo
-            .createQueryBuilder("job")
-            .where("job.source_id IN (:...sourceIds)", { sourceIds })
-            .andWhere("job.created_at >= :sevenDaysAgo", { sevenDaysAgo })
-            .getCount()
-        : 0;
+    const jobsLast7Days = await this.externalJobRepo.countForSourcesSince(sourceIds, sevenDaysAgo);
 
     return {
       totalJobs,
@@ -578,66 +465,31 @@ export class JobIngestionService {
     };
   }
 
-  async externalJobById(jobId: number): Promise<ExternalJob | null> {
-    return this.externalJobRepo.findOne({ where: { id: jobId }, relations: ["source"] });
+  async externalJobsForCompany(
+    companyId: number,
+    options: {
+      country?: string;
+      category?: string;
+      search?: string;
+      page?: number;
+      limit?: number;
+    } = {},
+  ): Promise<{ jobs: ExternalJob[]; total: number }> {
+    return this.externalJobRepo.externalJobsForCompany(companyId, options);
   }
 
-  // Admin audit: near-duplicate listings the ingest-time dedup may have missed
-  // (e.g. the same role on two boards under slightly different titles, or
-  // within-source title variants). Pairs share a country + non-empty location
-  // and a fuzzy title match (pg_trgm similarity > 0.6), heaviest matches first.
+  async externalJobById(jobId: number): Promise<ExternalJob | null> {
+    return this.externalJobRepo.findByIdWithSource(jobId);
+  }
+
   async findDuplicateJobPairs(limit = 100): Promise<DuplicateJobPair[]> {
     const capped = Math.min(Math.max(limit, 1), 500);
-    const rows = await this.externalJobRepo.query(
-      `
-      SELECT
-        a.id AS a_id, a.title AS a_title, a.company AS a_company,
-        a.location_raw AS a_location, sa.name AS a_source, a.created_at AS a_created,
-        b.id AS b_id, b.title AS b_title, b.company AS b_company,
-        b.location_raw AS b_location, sb.name AS b_source, b.created_at AS b_created,
-        ROUND(similarity(LOWER(a.title), LOWER(b.title))::numeric, 2) AS score
-      FROM cv_assistant_external_jobs a
-      JOIN cv_assistant_external_jobs b
-        ON a.id < b.id
-        AND a.country = b.country
-        AND a.location_area IS NOT NULL AND b.location_area IS NOT NULL
-        AND LOWER(a.location_area) = LOWER(b.location_area)
-        AND similarity(LOWER(a.title), LOWER(b.title)) > 0.6
-      JOIN cv_assistant_job_market_sources sa ON sa.id = a.source_id
-      JOIN cv_assistant_job_market_sources sb ON sb.id = b.source_id
-      ORDER BY score DESC, a.id
-      LIMIT $1
-      `,
-      [capped],
-    );
-
-    return rows.map(
-      (row: Record<string, unknown>): DuplicateJobPair => ({
-        score: Number(row.score ?? 0),
-        crossSource: row.a_source !== row.b_source,
-        a: {
-          id: Number(row.a_id),
-          title: String(row.a_title ?? ""),
-          company: (row.a_company as string | null) ?? null,
-          location: (row.a_location as string | null) ?? null,
-          source: String(row.a_source ?? ""),
-          createdAt: row.a_created ? DateTime.fromJSDate(row.a_created as Date).toISO() : null,
-        },
-        b: {
-          id: Number(row.b_id),
-          title: String(row.b_title ?? ""),
-          company: (row.b_company as string | null) ?? null,
-          location: (row.b_location as string | null) ?? null,
-          source: String(row.b_source ?? ""),
-          createdAt: row.b_created ? DateTime.fromJSDate(row.b_created as Date).toISO() : null,
-        },
-      }),
-    );
+    return this.externalJobRepo.findDuplicateJobPairs(capped);
   }
 
   async deleteExternalJob(jobId: number): Promise<void> {
-    await this.alternateRepo.delete({ canonicalExternalJobId: jobId });
-    await this.externalJobRepo.delete(jobId);
+    await this.alternateRepo.deleteByCanonicalId(jobId);
+    await this.externalJobRepo.deleteById(jobId);
   }
 
   async deleteExternalJobs(ids: number[]): Promise<{ deleted: number }> {
@@ -645,28 +497,14 @@ export class JobIngestionService {
     if (unique.length === 0) {
       return { deleted: 0 };
     }
-    await this.alternateRepo.delete({ canonicalExternalJobId: In(unique) });
-    await this.externalJobRepo.delete(unique);
+    await this.alternateRepo.deleteByCanonicalIds(unique);
+    await this.externalJobRepo.deleteByIds(unique);
     this.logger.log(`Bulk-deleted ${unique.length} external job listing(s)`);
     return { deleted: unique.length };
   }
 
-  // Source-agnostic staleness sweep: a listing absent from its source's feed for
-  // STALE_JOB_DAYS is treated as no longer available (job boards like Adzuna serve
-  // a "no longer available" page rather than a 404, so feed-absence is the reliable
-  // signal). It is hidden from the seeker site — the public feed and the match
-  // queries already filter on expires_at. Runs once per poll across every source:
-  // API feeds, sitemap crawls and DPSA alike, since last_seen_at is stamped on each.
   async expireStaleJobs(): Promise<{ expired: number }> {
-    const result = await this.externalJobRepo
-      .createQueryBuilder()
-      .update()
-      .set({ expiresAt: () => "now()" })
-      .where("(expires_at IS NULL OR expires_at > now())")
-      .andWhere("last_seen_at IS NOT NULL")
-      .andWhere("last_seen_at < now() - INTERVAL '14 days'")
-      .execute();
-    const expired = result.affected ?? 0;
+    const expired = await this.externalJobRepo.expireStaleJobs();
     if (expired > 0) {
       this.logger.log(
         `Stale-job sweep: hid ${expired} listing(s) absent from their source for 14+ days`,
@@ -675,72 +513,42 @@ export class JobIngestionService {
     return { expired };
   }
 
-  // Auto-removes duplicate listings sharing the same title + location. Within
-  // such a group: if there is at most one distinct named employer, every copy
-  // is treated as the same job (including employer-blank copies, which are just
-  // incomplete versions) and a single best record is kept. If two or more
-  // distinct named employers appear, only same-employer copies are collapsed —
-  // the different-employer listings are left for human review (they may be
-  // genuinely separate jobs). Additionally, an employer-blank copy that shares
-  // its source (provider) with a named listing in the same group is treated as
-  // that listing missing its employer field and is removed too; blanks with no
-  // same-source named sibling stay for review (ambiguous). The kept record is
-  // the most respected source, then the one with a named employer, then the
-  // richest (longest description), then the oldest. Runs on demand (admin
-  // button) and after each ingestion poll so the feed self-cleans and
-  // duplicates shrink over time.
   async autoResolveDuplicates(): Promise<{ deleted: number; groups: number }> {
-    type DedupRow = {
-      id: number;
-      t: string;
-      loc: string;
-      comp: string;
-      provider: string;
-      desc_len: number;
-      created: Date | null;
-    };
-    const rows: DedupRow[] = await this.externalJobRepo.query(`
-      SELECT j.id AS id, LOWER(j.title) AS t, LOWER(j.location_area) AS loc,
-             LOWER(COALESCE(j.company, '')) AS comp, s.provider AS provider,
-             LENGTH(COALESCE(j.description, '')) AS desc_len, j.created_at AS created
-      FROM cv_assistant_external_jobs j
-      JOIN cv_assistant_job_market_sources s ON s.id = j.source_id
-      WHERE j.location_area IS NOT NULL AND j.location_area <> ''
-    `);
+    const rows = await this.externalJobRepo.dedupCandidateRows();
 
-    const rankRows = await this.sourceRespectRankRepo.find();
+    const rankRows = await this.sourceRespectRankRepo.findAll();
     const rankByProvider = new Map(rankRows.map((row) => [row.provider, row.rank]));
     const rankFor = (provider: string): number =>
       rankByProvider.get(provider) ?? sourceRespectRank(provider);
 
-    const preferenceSort = (bucket: DedupRow[]): DedupRow[] =>
+    const preferenceSort = (bucket: DedupCandidateRow[]): DedupCandidateRow[] =>
       [...bucket].sort((a, b) => {
         const rankDiff = rankFor(b.provider) - rankFor(a.provider);
         if (rankDiff !== 0) return rankDiff;
-        const compDiff = (b.comp === "" ? 0 : 1) - (a.comp === "" ? 0 : 1);
+        const compDiff = (b.company === "" ? 0 : 1) - (a.company === "" ? 0 : 1);
         if (compDiff !== 0) return compDiff;
-        const lenDiff = Number(b.desc_len) - Number(a.desc_len);
+        const lenDiff = b.descriptionLength - a.descriptionLength;
         if (lenDiff !== 0) return lenDiff;
-        const aTime = a.created ? DateTime.fromJSDate(a.created).toMillis() : 0;
-        const bTime = b.created ? DateTime.fromJSDate(b.created).toMillis() : 0;
+        const aTime = a.createdAt ? DateTime.fromJSDate(a.createdAt).toMillis() : 0;
+        const bTime = b.createdAt ? DateTime.fromJSDate(b.createdAt).toMillis() : 0;
         if (aTime !== bTime) return aTime - bTime;
         return a.id - b.id;
       });
 
-    const deletionsFor = (bucket: DedupRow[]): number[] => {
-      const named = bucket.filter((r) => r.comp !== "");
-      const distinctEmployers = new Set(named.map((r) => r.comp));
+    const deletionsFor = (bucket: DedupCandidateRow[]): number[] => {
+      const named = bucket.filter((r) => r.company !== "");
+      const distinctEmployers = new Set(named.map((r) => r.company));
       if (distinctEmployers.size <= 1) {
         return preferenceSort(bucket)
           .slice(1)
           .map((r) => r.id);
       }
       const byEmployer = named.reduce((map, row) => {
-        const sub = map.get(row.comp);
+        const sub = map.get(row.company);
         if (sub) sub.push(row);
-        else map.set(row.comp, [row]);
+        else map.set(row.company, [row]);
         return map;
-      }, new Map<string, DedupRow[]>());
+      }, new Map<string, DedupCandidateRow[]>());
       const sameEmployerDeletions = [...byEmployer.values()]
         .filter((sub) => sub.length > 1)
         .flatMap((sub) =>
@@ -750,18 +558,18 @@ export class JobIngestionService {
         );
       const namedProviders = new Set(named.map((r) => r.provider));
       const blankSameSourceDeletions = bucket
-        .filter((r) => r.comp === "" && namedProviders.has(r.provider))
+        .filter((r) => r.company === "" && namedProviders.has(r.provider))
         .map((r) => r.id);
       return [...sameEmployerDeletions, ...blankSameSourceDeletions];
     };
 
     const grouped = rows.reduce((map, row) => {
-      const key = `${row.t}||${row.loc}`;
+      const key = `${row.title}||${row.locationArea}`;
       const bucket = map.get(key);
       if (bucket) bucket.push(row);
       else map.set(key, [row]);
       return map;
-    }, new Map<string, DedupRow[]>());
+    }, new Map<string, DedupCandidateRow[]>());
 
     const bucketDeletions = [...grouped.values()]
       .filter((bucket) => bucket.length > 1)
@@ -774,8 +582,8 @@ export class JobIngestionService {
       return { deleted: 0, groups: 0 };
     }
 
-    await this.alternateRepo.delete({ canonicalExternalJobId: In(idsToDelete) });
-    await this.externalJobRepo.delete(idsToDelete);
+    await this.alternateRepo.deleteByCanonicalIds(idsToDelete);
+    await this.externalJobRepo.deleteByIds(idsToDelete);
 
     this.logger.log(
       `Auto-resolved ${resolvedGroups} duplicate group(s), removed ${idsToDelete.length} listing(s)`,
@@ -798,23 +606,7 @@ export class JobIngestionService {
 
     const annixJobs = await this.activeAnnixPublicJobs(options);
 
-    const qb = this.externalJobRepo
-      .createQueryBuilder("job")
-      .where("(job.accepts_za IS NULL OR job.accepts_za = true)")
-      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())");
-    if (options.country) {
-      qb.andWhere("job.country = :country", { country: options.country });
-    }
-    if (options.category) {
-      qb.andWhere("job.category = :category", { category: options.category });
-    }
-    if (options.search) {
-      qb.andWhere("(job.title ILIKE :search OR job.company ILIKE :search)", {
-        search: `%${options.search}%`,
-      });
-    }
-    qb.orderBy("job.postedAt", "DESC", "NULLS LAST");
-    const externals = await qb.getMany();
+    const externals = await this.externalJobRepo.publicExternalJobs(options);
     const externalPublic = externals.map(toPublicJob);
 
     const merged = [...annixJobs, ...externalPublic].sort((a, b) => {
@@ -839,25 +631,18 @@ export class JobIngestionService {
     if (options.country && options.country.toUpperCase() !== "ZA") {
       return [];
     }
-    const qb = this.jobPostingRepo
-      .createQueryBuilder("job")
-      .where("job.status = :status", { status: JobPostingStatus.ACTIVE })
-      .andWhere("(job.test_mode IS NULL OR job.test_mode = false)");
-    if (options.search) {
-      qb.andWhere("(job.title ILIKE :search OR job.industry ILIKE :search)", {
-        search: `%${options.search}%`,
-      });
-    }
-    const jobs = await qb.orderBy("job.activatedAt", "DESC", "NULLS LAST").getMany();
+    const jobs = await this.jobPostingRepo.activePublicJobs(options.search);
     if (jobs.length === 0) return [];
     const companyIds = [...new Set(jobs.map((j) => j.companyId))];
-    const companies = await this.companyRepo.find({ where: { id: In(companyIds) } });
-    const nameById = new Map(companies.map((c) => [c.id, c.name]));
+    const companies = await Promise.all(companyIds.map((id) => this.companyRepo.findById(id)));
+    const nameById = new Map(
+      companies.filter((c): c is NonNullable<typeof c> => c !== null).map((c) => [c.id, c.name]),
+    );
     return jobs.map((j) => annixJobToPublic(j, nameById.get(j.companyId) ?? null));
   }
 
   async publicJobById(jobId: number): Promise<PublicJob | null> {
-    const job = await this.externalJobRepo.findOne({ where: { id: jobId } });
+    const job = await this.externalJobRepo.findById(jobId);
     return job ? toPublicJob(job) : null;
   }
 
@@ -874,26 +659,13 @@ export class JobIngestionService {
       rateLimitPerDay: number;
     }>;
   }> {
-    const sources = await this.sourceRepo.find({ where: { companyId } });
+    const sources = await this.sourceRepo.findForCompany(companyId);
     const sourceIds = sources.map((s) => s.id);
 
-    const totalJobs =
-      sourceIds.length > 0
-        ? await this.externalJobRepo
-            .createQueryBuilder("job")
-            .where("job.source_id IN (:...sourceIds)", { sourceIds })
-            .getCount()
-        : 0;
+    const totalJobs = await this.externalJobRepo.countForSources(sourceIds);
 
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
-    const jobsLast7Days =
-      sourceIds.length > 0
-        ? await this.externalJobRepo
-            .createQueryBuilder("job")
-            .where("job.source_id IN (:...sourceIds)", { sourceIds })
-            .andWhere("job.created_at >= :sevenDaysAgo", { sevenDaysAgo })
-            .getCount()
-        : 0;
+    const jobsLast7Days = await this.externalJobRepo.countForSourcesSince(sourceIds, sevenDaysAgo);
 
     return {
       totalJobs,
@@ -958,15 +730,18 @@ export class JobIngestionService {
     category: string | null,
   ): Promise<IngestedJobResult[]> {
     const categories = category ? [category] : this.adzunaCategoriesForToday();
-    const collected: IngestedJobResult[] = [];
-    for (const cat of categories) {
-      if (source.requestsToday >= source.rateLimitPerDay) {
-        this.logger.warn(`Adzuna daily request limit reached for source ${source.name}`);
-        break;
-      }
-      const catJobs = await this.fetchAdzunaCategoryPages(source, country, cat);
-      collected.push(...catJobs);
-    }
+    const collected = await categories.reduce(
+      async (accPromise, cat) => {
+        const acc = await accPromise;
+        if (source.requestsToday >= source.rateLimitPerDay) {
+          this.logger.warn(`Adzuna daily request limit reached for source ${source.name}`);
+          return acc;
+        }
+        const catJobs = await this.fetchAdzunaCategoryPages(source, country, cat);
+        return [...acc, ...catJobs];
+      },
+      Promise.resolve([] as IngestedJobResult[]),
+    );
     return collected;
   }
 
@@ -975,26 +750,31 @@ export class JobIngestionService {
     country: string,
     category: string,
   ): Promise<IngestedJobResult[]> {
-    const collected: IngestedJobResult[] = [];
-    // eslint-disable-next-line no-restricted-syntax -- sequential paginated fetch that must stop early on daily rate limit or a short page
-    for (let page = 1; page <= ADZUNA_PAGES_PER_CATEGORY; page += 1) {
-      if (source.requestsToday >= source.rateLimitPerDay) break;
-      source.requestsToday += 1;
-      const { jobs } = await this.adzunaService.searchJobs(
-        source.apiId!,
-        source.apiKeyEncrypted!,
-        country,
-        {
-          category,
-          maxDaysOld: ADZUNA_MAX_DAYS_OLD,
-          resultsPerPage: ADZUNA_PAGE_SIZE,
-          page,
-        },
-      );
-      collected.push(...jobs);
-      if (jobs.length < ADZUNA_PAGE_SIZE) break;
-    }
-    return collected;
+    const pages = Array.from({ length: ADZUNA_PAGES_PER_CATEGORY }, (_, index) => index + 1);
+    const collected = await pages.reduce(
+      async (accPromise, page) => {
+        const acc = await accPromise;
+        if (acc.stop || source.requestsToday >= source.rateLimitPerDay) {
+          return { ...acc, stop: true };
+        }
+        source.requestsToday += 1;
+        const { jobs } = await this.adzunaService.searchJobs(
+          source.apiId!,
+          source.apiKeyEncrypted!,
+          country,
+          {
+            category,
+            maxDaysOld: ADZUNA_MAX_DAYS_OLD,
+            resultsPerPage: ADZUNA_PAGE_SIZE,
+            page,
+          },
+        );
+        const next = [...acc.jobs, ...jobs];
+        return { jobs: next, stop: jobs.length < ADZUNA_PAGE_SIZE };
+      },
+      Promise.resolve({ jobs: [] as IngestedJobResult[], stop: false }),
+    );
+    return collected.jobs;
   }
 
   private adzunaCategoriesForToday(): string[] {
@@ -1016,36 +796,19 @@ export class JobIngestionService {
       return { ingested: 0, skipped: 0, savedIds: [] };
     }
 
-    const existingJobs = await this.externalJobRepo.find({
-      where: { sourceExternalId: In(externalIds), sourceId: source.id },
-      select: ["sourceExternalId"],
-    });
-    const existingAlternates = await this.alternateRepo.find({
-      where: { sourceExternalId: In(externalIds), sourceId: source.id },
-      select: ["sourceExternalId", "canonicalExternalJobId"],
-    });
+    const existingJobs = await this.externalJobRepo.findByExternalIds(externalIds, source.id);
+    const existingAlternates = await this.alternateRepo.findByExternalIds(externalIds, source.id);
 
     const alreadyKnown = new Set<string>();
     existingJobs.forEach((j) => alreadyKnown.add(j.sourceExternalId));
     existingAlternates.forEach((a) => alreadyKnown.add(a.sourceExternalId));
 
-    // Liveness signal: every job the source still returns is stamped as seen now.
-    // Canonical jobs represented only by a re-seen alternate are stamped too, so a
-    // job kept alive through a duplicate listing is not wrongly swept as stale.
     const seenAt = DateTime.now().toJSDate();
-    await this.externalJobRepo.update(
-      { sourceId: source.id, sourceExternalId: In(externalIds) },
-      { lastSeenAt: seenAt },
-    );
+    await this.externalJobRepo.stampLastSeenByExternalIds(source.id, externalIds, seenAt);
     const canonicalIdsFromAlternates = [
       ...new Set(existingAlternates.map((a) => a.canonicalExternalJobId)),
     ];
-    if (canonicalIdsFromAlternates.length > 0) {
-      await this.externalJobRepo.update(
-        { id: In(canonicalIdsFromAlternates) },
-        { lastSeenAt: seenAt },
-      );
-    }
+    await this.externalJobRepo.stampLastSeenByIds(canonicalIdsFromAlternates, seenAt);
 
     const candidates = jobs.filter((job) => !alreadyKnown.has(job.id));
 
@@ -1062,24 +825,22 @@ export class JobIngestionService {
     if (alternates.length > 0) {
       await Promise.all(
         alternates.map(({ job, duplicate }) =>
-          this.alternateRepo.save(
-            this.alternateRepo.create({
-              canonicalExternalJobId: duplicate!.id,
-              sourceId: source.id,
-              sourceExternalId: job.id,
-              sourceUrl: job.redirectUrl,
-              title: job.title,
-              company: job.company,
-              locationArea: job.locationArea,
-            }),
-          ),
+          this.alternateRepo.create({
+            canonicalExternalJobId: duplicate!.id,
+            sourceId: source.id,
+            sourceExternalId: job.id,
+            sourceUrl: job.redirectUrl,
+            title: job.title,
+            company: job.company,
+            locationArea: job.locationArea,
+          }),
         ),
       );
     }
 
     const savedJobs = await Promise.all(
-      fresh.map((job) => {
-        const externalJob = this.externalJobRepo.create({
+      fresh.map((job) =>
+        this.externalJobRepo.create({
           title: job.title,
           company: job.company,
           country,
@@ -1100,9 +861,8 @@ export class JobIngestionService {
           expiresAt: this.estimateExpiryForSource(source, job.created),
           lastSeenAt: seenAt,
           sourceId: source.id,
-        });
-        return this.externalJobRepo.save(externalJob);
-      }),
+        }),
+      ),
     );
 
     savedJobs.forEach((saved) => {
@@ -1113,7 +873,9 @@ export class JobIngestionService {
             providerCategory: saved.category,
             description: saved.description,
           })
-          .then((canonicalCategory) => this.externalJobRepo.update(saved.id, { canonicalCategory }))
+          .then((canonicalCategory) =>
+            this.externalJobRepo.updateCanonicalCategory(saved.id, canonicalCategory),
+          )
           .catch((err) => {
             this.logger.warn(`Failed to categorize job ${saved.id}: ${err.message}`);
           });
@@ -1125,10 +887,7 @@ export class JobIngestionService {
           .geocode(addressForGeocode)
           .then((coords) => {
             if (!coords) return;
-            return this.externalJobRepo.update(saved.id, {
-              locationLat: coords.lat,
-              locationLon: coords.lon,
-            });
+            return this.externalJobRepo.updateLocation(saved.id, coords.lat, coords.lon);
           })
           .catch((err) => {
             this.logger.warn(`Failed to geocode job ${saved.id}: ${err.message}`);
@@ -1172,27 +931,13 @@ export class JobIngestionService {
     const normalisedCompany = normaliseCompanyName(candidate.company);
     const normalisedLocation = (candidate.locationArea ?? "").trim().toLowerCase();
 
-    const result = await this.externalJobRepo.query(
-      `
-      SELECT j.id
-      FROM cv_assistant_external_jobs j
-      WHERE LOWER(j.country) = LOWER($1)
-        AND j.source_id <> $2
-        AND similarity(LOWER(j.title), LOWER($3)) > 0.6
-        AND (
-          ($4 = '' OR LOWER(COALESCE(j.location_area, '')) = $4)
-          OR ($5 = '' OR LOWER(COALESCE(j.company, '')) LIKE '%' || $5 || '%')
-        )
-      ORDER BY similarity(LOWER(j.title), LOWER($3)) DESC
-      LIMIT 1
-      `,
-      [country, source.id, title, normalisedLocation, normalisedCompany],
+    return this.externalJobRepo.findDuplicateCanonicalJob(
+      title,
+      source.id,
+      country,
+      normalisedLocation,
+      normalisedCompany,
     );
-
-    if (!result || result.length === 0) {
-      return null;
-    }
-    return this.externalJobRepo.findOne({ where: { id: result[0].id } });
   }
 
   private estimateExpiryForSource(source: JobMarketSource, postedDate: string | null): Date | null {
@@ -1224,22 +969,6 @@ export class JobIngestionService {
       source.requestsResetAt = DateTime.now().endOf("day").toJSDate();
     }
   }
-}
-
-export interface DuplicateJobSide {
-  id: number;
-  title: string;
-  company: string | null;
-  location: string | null;
-  source: string;
-  createdAt: string | null;
-}
-
-export interface DuplicateJobPair {
-  score: number;
-  crossSource: boolean;
-  a: DuplicateJobSide;
-  b: DuplicateJobSide;
 }
 
 export interface PublicJob {
@@ -1310,7 +1039,7 @@ function escapeHtml(value: string): string {
 
 function annixJobToPublic(job: JobPosting, companyName: string | null): PublicJob {
   const postedDate = job.activatedAt ?? job.createdAt;
-  const country = job.province ? "ZA" : "ZA";
+  const country = "ZA";
   const locationParts = [job.location, job.province].filter((part): part is string =>
     Boolean(part),
   );

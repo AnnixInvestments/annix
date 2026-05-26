@@ -1,10 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { BaseCrudService } from "../lib/base-crud.service";
 import { CreateNominalOutsideDiameterMmDto } from "./dto/create-nominal-outside-diameter-mm.dto";
 import { UpdateNominalOutsideDiameterMmDto } from "./dto/update-nominal-outside-diameter-mm.dto";
 import { NominalOutsideDiameterMm } from "./entities/nominal-outside-diameter-mm.entity";
+import { NominalOutsideDiameterMmRepository } from "./nominal-outside-diameter-mm.repository";
 
 @Injectable()
 export class NominalOutsideDiameterMmService extends BaseCrudService<
@@ -14,11 +13,8 @@ export class NominalOutsideDiameterMmService extends BaseCrudService<
 > {
   private findAllCache: NominalOutsideDiameterMm[] | null = null;
 
-  constructor(
-    @InjectRepository(NominalOutsideDiameterMm)
-    nominalRepo: Repository<NominalOutsideDiameterMm>,
-  ) {
-    super(nominalRepo, {
+  constructor(repository: NominalOutsideDiameterMmRepository) {
+    super(repository, {
       entityName: "NominalOutsideDiameterMm",
       defaultRelations: ["pipeDimensions", "fittingBores"],
     });

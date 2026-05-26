@@ -1,10 +1,10 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Fitting } from "../fitting/entities/fitting.entity";
-import { FittingBore } from "../fitting-bore/entities/fitting-bore.entity";
-import { FittingDimension } from "../fitting-dimension/entities/fitting-dimension.entity";
+import { FittingRepository } from "../fitting/fitting.repository";
+import { FittingBoreRepository } from "../fitting-bore/fitting-bore.repository";
+import { FittingDimensionRepository } from "../fitting-dimension/fitting-dimension.repository";
 import { FittingVariant } from "./entities/fitting-variant.entity";
+import { FittingVariantRepository } from "./fitting-variant.repository";
 import { FittingVariantService } from "./fitting-variant.service";
 
 describe("FittingVariantService", () => {
@@ -13,37 +13,34 @@ describe("FittingVariantService", () => {
   const mockVariantRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     remove: jest.fn(),
+    count: jest.fn(),
   };
 
   const mockFittingRepo = {
-    findOne: jest.fn(),
+    findById: jest.fn(),
   };
 
   const mockBoreRepo = {
-    create: jest.fn(),
+    instantiate: jest.fn(),
   };
 
   const mockDimensionRepo = {
-    create: jest.fn(),
+    instantiate: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FittingVariantService,
-        {
-          provide: getRepositoryToken(FittingVariant),
-          useValue: mockVariantRepo,
-        },
-        { provide: getRepositoryToken(Fitting), useValue: mockFittingRepo },
-        { provide: getRepositoryToken(FittingBore), useValue: mockBoreRepo },
-        {
-          provide: getRepositoryToken(FittingDimension),
-          useValue: mockDimensionRepo,
-        },
+        { provide: FittingVariantRepository, useValue: mockVariantRepo },
+        { provide: FittingRepository, useValue: mockFittingRepo },
+        { provide: FittingBoreRepository, useValue: mockBoreRepo },
+        { provide: FittingDimensionRepository, useValue: mockDimensionRepo },
       ],
     }).compile();
 
@@ -59,29 +56,24 @@ describe("FittingVariantService", () => {
   describe("findAll", () => {
     it("should return array of fitting variants", async () => {
       const result = [{ id: 1 }] as FittingVariant[];
-      mockVariantRepo.find.mockResolvedValue(result);
+      mockVariantRepo.findAll.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockVariantRepo.find).toHaveBeenCalledWith({
-        relations: ["fitting", "bores", "dimensions"],
-      });
+      expect(mockVariantRepo.findAll).toHaveBeenCalledWith(["fitting", "bores", "dimensions"]);
     });
   });
 
   describe("findOne", () => {
     it("should return a fitting variant by id", async () => {
       const result = { id: 1 } as FittingVariant;
-      mockVariantRepo.findOne.mockResolvedValue(result);
+      mockVariantRepo.findById.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
-      expect(mockVariantRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ["fitting", "bores", "dimensions"],
-      });
+      expect(mockVariantRepo.findById).toHaveBeenCalledWith(1, ["fitting", "bores", "dimensions"]);
     });
 
     it("should throw NotFoundException if fitting variant not found", async () => {
-      mockVariantRepo.findOne.mockResolvedValue(undefined);
+      mockVariantRepo.findById.mockResolvedValue(null);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
@@ -90,7 +82,7 @@ describe("FittingVariantService", () => {
   describe("remove", () => {
     it("should delete a fitting variant", async () => {
       const entity = { id: 1 } as FittingVariant;
-      mockVariantRepo.findOne.mockResolvedValue(entity);
+      mockVariantRepo.findById.mockResolvedValue(entity);
       mockVariantRepo.remove.mockResolvedValue(undefined);
 
       await expect(service.remove(1)).resolves.toBeUndefined();

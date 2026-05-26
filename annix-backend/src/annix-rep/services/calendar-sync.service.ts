@@ -1,9 +1,9 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
 import { isAnnixRepCronEnabled } from "../annix-rep-cron.config";
+import { CalendarConnectionRepository } from "../calendar-connection.repository";
+import { CalendarEventRepository } from "../calendar-event.repository";
 import {
   CalendarConnection,
   CalendarEvent,
@@ -13,6 +13,8 @@ import {
   MeetingStatus,
   SyncConflict,
 } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { SyncConflictRepository } from "../sync-conflict.repository";
 import { CalendarService } from "./calendar.service";
 
 export interface SyncConflictDto {
@@ -36,14 +38,10 @@ export class CalendarSyncService {
   private isSyncing = false;
 
   constructor(
-    @InjectRepository(CalendarConnection)
-    private readonly connectionRepo: Repository<CalendarConnection>,
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(CalendarEvent)
-    private readonly calendarEventRepo: Repository<CalendarEvent>,
-    @InjectRepository(SyncConflict)
-    private readonly conflictRepo: Repository<SyncConflict>,
+    private readonly connectionRepo: CalendarConnectionRepository,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly calendarEventRepo: CalendarEventRepository,
+    private readonly conflictRepo: SyncConflictRepository,
     private readonly calendarService: CalendarService,
   ) {}
 
@@ -58,9 +56,10 @@ export class CalendarSyncService {
 
     this.isSyncing = true;
 
-    const connections = await this.connectionRepo.find({
-      where: { syncStatus: In([CalendarSyncStatus.ACTIVE, CalendarSyncStatus.ERROR]) },
-    });
+    const connections = await this.connectionRepo.findBySyncStatuses([
+      CalendarSyncStatus.ACTIVE,
+      CalendarSyncStatus.ERROR,
+    ]);
 
     if (connections.length === 0) {
       this.isSyncing = false;
@@ -99,24 +98,17 @@ export class CalendarSyncService {
     const today = now().startOf("day").toJSDate();
     const futureDate = now().plus({ days: 30 }).endOf("day").toJSDate();
 
-    const meetings = await this.meetingRepo.find({
-      where: {
-        salesRepId: userId,
-        scheduledStart: MoreThanOrEqual(today),
-        scheduledEnd: LessThanOrEqual(futureDate),
-      },
-      order: { scheduledStart: "ASC" },
-    });
+    const meetings = await this.meetingRepo.findFutureForOverlapDetection(
+      userId,
+      today,
+      futureDate,
+    );
 
-    const calendarEvents = await this.calendarEventRepo.find({
-      where: {
-        connection: { userId },
-        startTime: MoreThanOrEqual(today),
-        endTime: LessThanOrEqual(futureDate),
-      },
-      relations: ["connection"],
-      order: { startTime: "ASC" },
-    });
+    const calendarEvents = await this.calendarEventRepo.findOverlapsForUser(
+      userId,
+      today,
+      futureDate,
+    );
 
     const meetingEventPairs = meetings.flatMap((meeting) =>
       calendarEvents
@@ -140,14 +132,11 @@ export class CalendarSyncService {
       async (accPromise, { meeting, event }) => {
         const acc = await accPromise;
 
-        const existingConflict = await this.conflictRepo.findOne({
-          where: {
-            userId,
-            meetingId: meeting.id,
-            calendarEventId: event.id,
-            resolution: "pending",
-          },
-        });
+        const existingConflict = await this.conflictRepo.findPendingForPair(
+          userId,
+          meeting.id,
+          event.id,
+        );
 
         if (existingConflict) {
           return acc;
@@ -173,9 +162,7 @@ export class CalendarSyncService {
           resolution: "pending" as const,
         };
 
-        const conflictEntity = this.conflictRepo.create(conflictData as Partial<SyncConflict>);
-        const saved = await this.conflictRepo.save(conflictEntity);
-        const savedSingle = Array.isArray(saved) ? saved[0] : saved;
+        const savedSingle = await this.conflictRepo.create(conflictData as Partial<SyncConflict>);
         return [
           ...acc,
           {
@@ -205,11 +192,7 @@ export class CalendarSyncService {
   }
 
   async pendingConflicts(userId: number): Promise<SyncConflictDto[]> {
-    const conflicts = await this.conflictRepo.find({
-      where: { userId, resolution: "pending" },
-      relations: ["meeting", "calendarEvent"],
-      order: { createdAt: "DESC" },
-    });
+    const conflicts = await this.conflictRepo.findPendingForUser(userId);
 
     return conflicts.map((c) => ({
       id: c.id,
@@ -228,10 +211,7 @@ export class CalendarSyncService {
   }
 
   async conflictById(userId: number, conflictId: number): Promise<SyncConflictDto> {
-    const conflict = await this.conflictRepo.findOne({
-      where: { id: conflictId, userId },
-      relations: ["meeting", "calendarEvent"],
-    });
+    const conflict = await this.conflictRepo.findByIdAndUser(conflictId, userId);
 
     if (!conflict) {
       throw new NotFoundException(`Conflict ${conflictId} not found`);
@@ -258,10 +238,7 @@ export class CalendarSyncService {
     conflictId: number,
     resolution: "keep_local" | "keep_remote" | "dismissed",
   ): Promise<SyncConflictDto> {
-    const conflict = await this.conflictRepo.findOne({
-      where: { id: conflictId, userId },
-      relations: ["meeting", "calendarEvent"],
-    });
+    const conflict = await this.conflictRepo.findByIdAndUser(conflictId, userId);
 
     if (!conflict) {
       throw new NotFoundException(`Conflict ${conflictId} not found`);
@@ -272,12 +249,9 @@ export class CalendarSyncService {
     conflict.resolvedById = userId;
 
     if (resolution === "keep_local" && conflict.calendarEventId) {
-      await this.calendarEventRepo.delete({ id: conflict.calendarEventId });
+      await this.calendarEventRepo.deleteById(conflict.calendarEventId);
     } else if (resolution === "keep_remote" && conflict.meetingId) {
-      await this.meetingRepo.update(
-        { id: conflict.meetingId },
-        { status: MeetingStatus.CANCELLED },
-      );
+      await this.meetingRepo.updateStatus(conflict.meetingId, MeetingStatus.CANCELLED);
     }
 
     const saved = await this.conflictRepo.save(conflict);
@@ -299,8 +273,6 @@ export class CalendarSyncService {
   }
 
   async conflictCount(userId: number): Promise<number> {
-    return this.conflictRepo.count({
-      where: { userId, resolution: "pending" },
-    });
+    return this.conflictRepo.countPendingForUser(userId);
   }
 }

@@ -1,7 +1,5 @@
 import { ForbiddenException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, LessThan, Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
@@ -16,7 +14,10 @@ import {
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
 import { AnnixOrbitEeConsentTextVersion } from "../entities/annix-orbit-ee-consent-text-version.entity";
 import { Candidate } from "../entities/candidate.entity";
-import { CandidateReference } from "../entities/candidate-reference.entity";
+import { AnnixOrbitCandidateEeAttributesRepository } from "../repositories/annix-orbit-candidate-ee-attributes.repository";
+import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-orbit-ee-consent-text-version.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { CvAuditService, ErasureReason } from "./cv-audit.service";
 
 export interface RecordEeConsentInput {
@@ -73,14 +74,10 @@ export class PopiaService {
   private static readonly RETENTION_MONTHS = 12;
 
   constructor(
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(CandidateReference)
-    private readonly referenceRepo: Repository<CandidateReference>,
-    @InjectRepository(AnnixOrbitCandidateEeAttributes)
-    private readonly eeAttributesRepo: Repository<AnnixOrbitCandidateEeAttributes>,
-    @InjectRepository(AnnixOrbitEeConsentTextVersion)
-    private readonly eeConsentTextVersionRepo: Repository<AnnixOrbitEeConsentTextVersion>,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly referenceRepo: CandidateReferenceRepository,
+    private readonly eeAttributesRepo: AnnixOrbitCandidateEeAttributesRepository,
+    private readonly eeConsentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly cvAuditService: CvAuditService,
@@ -91,13 +88,7 @@ export class PopiaService {
     if (!isAnnixOrbitCronEnabled()) return { purged: 0 };
     const cutoffDate = DateTime.now().minus({ months: PopiaService.RETENTION_MONTHS }).toJSDate();
 
-    const inactiveCandidates = await this.candidateRepo.find({
-      where: [
-        { lastActiveAt: LessThan(cutoffDate) },
-        { lastActiveAt: null as unknown as Date, createdAt: LessThan(cutoffDate) },
-      ],
-      relations: ["references"],
-    });
+    const inactiveCandidates = await this.candidateRepo.findInactiveBefore(cutoffDate);
 
     const purged = await inactiveCandidates.reduce(async (accPromise, candidate) => {
       const acc = await accPromise;
@@ -138,7 +129,7 @@ export class PopiaService {
     }
 
     if (candidate.references?.length > 0) {
-      await this.referenceRepo.remove(candidate.references);
+      await this.referenceRepo.removeMany(candidate.references);
     }
 
     await this.candidateRepo.remove(candidate);
@@ -147,10 +138,7 @@ export class PopiaService {
   }
 
   async rightToErasure(companyId: number, candidateId: number): Promise<{ message: string }> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting", "references"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobAndReferences(candidateId);
 
     if (!candidate || !candidate.jobPosting || candidate.jobPosting.companyId !== companyId) {
       return { message: "Candidate not found" };
@@ -180,11 +168,7 @@ export class PopiaService {
 
     const expiryDate = DateTime.now().minus({ months: PopiaService.RETENTION_MONTHS }).toJSDate();
 
-    const candidates = await this.candidateRepo
-      .createQueryBuilder("candidate")
-      .innerJoin("candidate.jobPosting", "jobPosting")
-      .where("jobPosting.companyId = :companyId", { companyId })
-      .getMany();
+    const candidates = await this.candidateRepo.candidatesForCompany(companyId);
 
     const expiringWithin30Days = candidates.filter((c) => {
       const activeDate = c.lastActiveAt || c.createdAt;
@@ -203,33 +187,29 @@ export class PopiaService {
 
   async activeConsentTextVersion(): Promise<AnnixOrbitEeConsentTextVersion | null> {
     const activeNow = DateTime.now().toJSDate();
-    const active = await this.eeConsentTextVersionRepo.findOne({
-      where: [{ effectiveFrom: LessThan(activeNow), effectiveTo: IsNull() }],
-      order: { effectiveFrom: "DESC" },
-    });
-    return active;
+    return this.eeConsentTextVersionRepo.activeOpenEnded(activeNow);
   }
 
   async recordEeConsent(input: RecordEeConsentInput): Promise<AnnixOrbitCandidateEeAttributes> {
-    const candidate = await this.candidateRepo.findOne({ where: { id: input.candidateId } });
+    const candidate = await this.candidateRepo.findById(input.candidateId);
     if (!candidate) {
       throw new NotFoundException("Candidate not found");
     }
 
-    const consentTextVersion = await this.eeConsentTextVersionRepo.findOne({
-      where: { id: input.consentTextVersionId },
-    });
+    const consentTextVersion = await this.eeConsentTextVersionRepo.findById(
+      input.consentTextVersionId,
+    );
     if (!consentTextVersion) {
       throw new NotFoundException("Consent text version not found");
     }
 
-    const tombstoneResult = await this.eeAttributesRepo.update(
-      { candidateId: input.candidateId, deletedAt: IsNull() },
-      { deletedAt: DateTime.now().toJSDate() },
+    const tombstonedCount = await this.eeAttributesRepo.tombstoneActiveForCandidate(
+      input.candidateId,
+      DateTime.now().toJSDate(),
     );
-    const isCorrection = (tombstoneResult.affected ?? 0) > 0;
+    const isCorrection = tombstonedCount > 0;
 
-    const newRow = this.eeAttributesRepo.create({
+    const saved = await this.eeAttributesRepo.create({
       candidateId: input.candidateId,
       populationGroup: input.populationGroup,
       gender: input.gender,
@@ -242,7 +222,6 @@ export class PopiaService {
       consentSource: input.consentSource,
       purposes: input.purposes,
     });
-    const saved = await this.eeAttributesRepo.save(newRow);
 
     await this.cvAuditService.logEeAttributesAction(
       input.candidateId,
@@ -264,9 +243,7 @@ export class PopiaService {
       throw new ForbiddenException("System role may not read EE attributes");
     }
 
-    const row = await this.eeAttributesRepo.findOne({
-      where: { candidateId, deletedAt: IsNull() },
-    });
+    const row = await this.eeAttributesRepo.findActiveForCandidate(candidateId);
 
     await this.cvAuditService.logEeAttributesAccess(
       candidateId,
@@ -290,12 +267,12 @@ export class PopiaService {
   }
 
   async tombstoneEeAttributes(candidateId: number, actorId: number | null): Promise<void> {
-    const updated = await this.eeAttributesRepo.update(
-      { candidateId, deletedAt: IsNull() },
-      { deletedAt: DateTime.now().toJSDate() },
+    const tombstonedCount = await this.eeAttributesRepo.tombstoneActiveForCandidate(
+      candidateId,
+      DateTime.now().toJSDate(),
     );
 
-    if (updated.affected && updated.affected > 0) {
+    if (tombstonedCount > 0) {
       await this.cvAuditService.logEeAttributesAction(
         candidateId,
         "tombstoned",
@@ -306,23 +283,7 @@ export class PopiaService {
   }
 
   async aggregateForJob(jobPostingId: number, actorId: number | null): Promise<EeJobAggregate> {
-    const rows = await this.eeAttributesRepo
-      .createQueryBuilder("ee")
-      .innerJoin("cv_assistant_candidates", "candidate", "candidate.id = ee.candidate_id")
-      .where("candidate.job_posting_id = :jobPostingId", { jobPostingId })
-      .andWhere("ee.deleted_at IS NULL")
-      .select([
-        "ee.population_group AS population_group",
-        "ee.gender AS gender",
-        "ee.disability_status AS disability_status",
-        "ee.nationality_status AS nationality_status",
-      ])
-      .getRawMany<{
-        population_group: EePopulationGroup;
-        gender: EeGender;
-        disability_status: EeDisabilityStatus;
-        nationality_status: EeNationalityStatus;
-      }>();
+    const rows = await this.eeAttributesRepo.aggregateForJob(jobPostingId);
 
     await this.cvAuditService.logEeAttributesAccess(
       0,
@@ -347,30 +308,7 @@ export class PopiaService {
     dateTo: Date,
     actorId: number | null,
   ): Promise<EeCompanyAggregate> {
-    const rows = await this.eeAttributesRepo
-      .createQueryBuilder("ee")
-      .innerJoin("cv_assistant_candidates", "candidate", "candidate.id = ee.candidate_id")
-      .innerJoin(
-        "cv_assistant_job_postings",
-        "job_posting",
-        "job_posting.id = candidate.job_posting_id",
-      )
-      .where("job_posting.company_id = :companyId", { companyId })
-      .andWhere("ee.deleted_at IS NULL")
-      .andWhere("ee.consent_granted_at >= :dateFrom", { dateFrom })
-      .andWhere("ee.consent_granted_at < :dateTo", { dateTo })
-      .select([
-        "ee.population_group AS population_group",
-        "ee.gender AS gender",
-        "ee.disability_status AS disability_status",
-        "ee.nationality_status AS nationality_status",
-      ])
-      .getRawMany<{
-        population_group: EePopulationGroup;
-        gender: EeGender;
-        disability_status: EeDisabilityStatus;
-        nationality_status: EeNationalityStatus;
-      }>();
+    const rows = await this.eeAttributesRepo.aggregateForCompany(companyId, dateFrom, dateTo);
 
     await this.cvAuditService.logEeAttributesAccess(
       0,

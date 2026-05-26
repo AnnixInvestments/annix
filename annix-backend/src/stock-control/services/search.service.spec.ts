@@ -1,21 +1,17 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { JobCard, JobCardStatus } from "../entities/job-card.entity";
 import { StaffMember } from "../entities/staff-member.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { CustomerPurchaseOrderRepository } from "../repositories/customer-purchase-order.repository";
+import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StaffMemberRepository } from "../repositories/staff-member.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
 import { SearchService } from "./search.service";
-
-const createMockQueryBuilder = (rows: unknown[] = []) => ({
-  select: jest.fn().mockReturnThis(),
-  where: jest.fn().mockReturnThis(),
-  andWhere: jest.fn().mockReturnThis(),
-  orderBy: jest.fn().mockReturnThis(),
-  take: jest.fn().mockReturnThis(),
-  getMany: jest.fn().mockResolvedValue(rows),
-});
 
 const makeJobCard = (overrides: Partial<JobCard> = {}): Partial<JobCard> => ({
   id: 1,
@@ -87,26 +83,20 @@ const makeCpo = (
 describe("SearchService", () => {
   let service: SearchService;
 
-  const mockJobCardRepo = { createQueryBuilder: jest.fn() };
-  const mockStockItemRepo = { createQueryBuilder: jest.fn() };
-  const mockStaffRepo = { createQueryBuilder: jest.fn() };
-  const mockDeliveryNoteRepo = { createQueryBuilder: jest.fn() };
-  const mockInvoiceRepo = { createQueryBuilder: jest.fn() };
-  const mockCpoRepo = { createQueryBuilder: jest.fn() };
-
-  const allRepos = [
-    mockJobCardRepo,
-    mockStockItemRepo,
-    mockStaffRepo,
-    mockDeliveryNoteRepo,
-    mockInvoiceRepo,
-    mockCpoRepo,
-  ];
+  const mockJobCardRepo = { searchForCompany: jest.fn() };
+  const mockStockItemRepo = { searchSummaryForCompany: jest.fn() };
+  const mockStaffRepo = { searchForCompany: jest.fn() };
+  const mockDeliveryNoteRepo = { searchForCompany: jest.fn() };
+  const mockInvoiceRepo = { searchSummaryForCompany: jest.fn() };
+  const mockCpoRepo = { searchForCompany: jest.fn() };
 
   const configureAllReposEmpty = () => {
-    allRepos.forEach((repo) => {
-      repo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([]));
-    });
+    mockStockItemRepo.searchSummaryForCompany.mockResolvedValue([]);
+    mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([]);
+    mockJobCardRepo.searchForCompany.mockResolvedValue([]);
+    mockStaffRepo.searchForCompany.mockResolvedValue([]);
+    mockDeliveryNoteRepo.searchForCompany.mockResolvedValue([]);
+    mockCpoRepo.searchForCompany.mockResolvedValue([]);
   };
 
   beforeEach(async () => {
@@ -115,12 +105,12 @@ describe("SearchService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SearchService,
-        { provide: getRepositoryToken(JobCard), useValue: mockJobCardRepo },
-        { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
-        { provide: getRepositoryToken(StaffMember), useValue: mockStaffRepo },
-        { provide: getRepositoryToken(DeliveryNote), useValue: mockDeliveryNoteRepo },
-        { provide: getRepositoryToken(SupplierInvoice), useValue: mockInvoiceRepo },
-        { provide: getRepositoryToken(CustomerPurchaseOrder), useValue: mockCpoRepo },
+        { provide: JobCardRepository, useValue: mockJobCardRepo },
+        { provide: StockItemRepository, useValue: mockStockItemRepo },
+        { provide: StaffMemberRepository, useValue: mockStaffRepo },
+        { provide: DeliveryNoteRepository, useValue: mockDeliveryNoteRepo },
+        { provide: SupplierInvoiceRepository, useValue: mockInvoiceRepo },
+        { provide: CustomerPurchaseOrderRepository, useValue: mockCpoRepo },
       ],
     }).compile();
 
@@ -143,14 +133,12 @@ describe("SearchService", () => {
         const invoice = makeInvoice();
         const cpo = makeCpo();
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([jobCard]));
-        mockStockItemRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([stockItem]));
-        mockStaffRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([staff]));
-        mockDeliveryNoteRepo.createQueryBuilder.mockReturnValue(
-          createMockQueryBuilder([deliveryNote]),
-        );
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([invoice]));
-        mockCpoRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([cpo]));
+        mockJobCardRepo.searchForCompany.mockResolvedValue([jobCard]);
+        mockStockItemRepo.searchSummaryForCompany.mockResolvedValue([stockItem]);
+        mockStaffRepo.searchForCompany.mockResolvedValue([staff]);
+        mockDeliveryNoteRepo.searchForCompany.mockResolvedValue([deliveryNote]);
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([invoice]);
+        mockCpoRepo.searchForCompany.mockResolvedValue([cpo]);
 
         const result = await service.search(1, "test", "admin", 20);
 
@@ -166,7 +154,7 @@ describe("SearchService", () => {
       });
 
       it("formats job card titles with jobNumber, jcNumber, and jobName", async () => {
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([makeJobCard()]));
+        mockJobCardRepo.searchForCompany.mockResolvedValue([makeJobCard()]);
 
         const result = await service.search(1, "JC-001", "admin", 20);
 
@@ -177,9 +165,7 @@ describe("SearchService", () => {
       });
 
       it("formats stock item titles with sku and name", async () => {
-        mockStockItemRepo.createQueryBuilder.mockReturnValue(
-          createMockQueryBuilder([makeStockItem()]),
-        );
+        mockStockItemRepo.searchSummaryForCompany.mockResolvedValue([makeStockItem()]);
 
         const result = await service.search(1, "SKU", "admin", 20);
 
@@ -190,9 +176,7 @@ describe("SearchService", () => {
       });
 
       it("formats staff results with active/inactive status", async () => {
-        mockStaffRepo.createQueryBuilder.mockReturnValue(
-          createMockQueryBuilder([makeStaff({ active: false })]),
-        );
+        mockStaffRepo.searchForCompany.mockResolvedValue([makeStaff({ active: false })]);
 
         const result = await service.search(1, "John", "admin", 20);
 
@@ -202,9 +186,7 @@ describe("SearchService", () => {
       });
 
       it("formats delivery note titles with DN prefix", async () => {
-        mockDeliveryNoteRepo.createQueryBuilder.mockReturnValue(
-          createMockQueryBuilder([makeDeliveryNote()]),
-        );
+        mockDeliveryNoteRepo.searchForCompany.mockResolvedValue([makeDeliveryNote()]);
 
         const result = await service.search(1, "DN", "admin", 20);
 
@@ -215,7 +197,7 @@ describe("SearchService", () => {
       });
 
       it("formats invoice results with amount and extraction status", async () => {
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([makeInvoice()]));
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([makeInvoice()]);
 
         const result = await service.search(1, "INV", "admin", 20);
 
@@ -227,7 +209,7 @@ describe("SearchService", () => {
       });
 
       it("formats CPO results with cpoNumber and jobName", async () => {
-        mockCpoRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([makeCpo()]));
+        mockCpoRepo.searchForCompany.mockResolvedValue([makeCpo()]);
 
         const result = await service.search(1, "CPO", "admin", 20);
 
@@ -243,14 +225,14 @@ describe("SearchService", () => {
         const jobCard = makeJobCard();
         const invoice = makeInvoice();
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([jobCard]));
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([invoice]));
+        mockJobCardRepo.searchForCompany.mockResolvedValue([jobCard]);
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([invoice]);
 
         const result = await service.search(1, "test", "viewer", 20);
 
         const resultTypes = result.results.map((r) => r.type);
         expect(resultTypes).not.toContain("invoice");
-        expect(mockInvoiceRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(mockInvoiceRepo.searchSummaryForCompany).not.toHaveBeenCalled();
       });
 
       it("excludes invoices for operator role", async () => {
@@ -258,11 +240,11 @@ describe("SearchService", () => {
 
         const resultTypes = result.results.map((r) => r.type);
         expect(resultTypes).not.toContain("invoice");
-        expect(mockInvoiceRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(mockInvoiceRepo.searchSummaryForCompany).not.toHaveBeenCalled();
       });
 
       it("includes invoices for accounts role", async () => {
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([makeInvoice()]));
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([makeInvoice()]);
 
         const result = await service.search(1, "test", "accounts", 20);
 
@@ -271,7 +253,7 @@ describe("SearchService", () => {
       });
 
       it("includes invoices for manager role", async () => {
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([makeInvoice()]));
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([makeInvoice()]);
 
         const result = await service.search(1, "test", "manager", 20);
 
@@ -280,7 +262,7 @@ describe("SearchService", () => {
       });
 
       it("includes invoices for admin role", async () => {
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([makeInvoice()]));
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([makeInvoice()]);
 
         const result = await service.search(1, "test", "admin", 20);
 
@@ -294,14 +276,14 @@ describe("SearchService", () => {
         const result = await service.search(1, "", "admin", 20);
 
         expect(result).toEqual({ results: [], totalCount: 0, query: "" });
-        expect(mockJobCardRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(mockJobCardRepo.searchForCompany).not.toHaveBeenCalled();
       });
 
       it("returns empty results for whitespace-only query", async () => {
         const result = await service.search(1, "   ", "admin", 20);
 
         expect(result).toEqual({ results: [], totalCount: 0, query: "   " });
-        expect(mockJobCardRepo.createQueryBuilder).not.toHaveBeenCalled();
+        expect(mockJobCardRepo.searchForCompany).not.toHaveBeenCalled();
       });
     });
 
@@ -315,7 +297,7 @@ describe("SearchService", () => {
           }),
         );
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder(jobCards));
+        mockJobCardRepo.searchForCompany.mockResolvedValue(jobCards);
 
         const result = await service.search(1, "JC", "admin", 3);
 
@@ -332,7 +314,7 @@ describe("SearchService", () => {
           }),
         );
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder(jobCards));
+        mockJobCardRepo.searchForCompany.mockResolvedValue(jobCards);
 
         const result = await service.search(1, "JC", "admin");
 
@@ -341,10 +323,8 @@ describe("SearchService", () => {
       });
 
       it("returns all results when total is under the limit", async () => {
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([makeJobCard()]));
-        mockStockItemRepo.createQueryBuilder.mockReturnValue(
-          createMockQueryBuilder([makeStockItem()]),
-        );
+        mockJobCardRepo.searchForCompany.mockResolvedValue([makeJobCard()]);
+        mockStockItemRepo.searchSummaryForCompany.mockResolvedValue([makeStockItem()]);
 
         const result = await service.search(1, "test", "viewer", 50);
 
@@ -370,9 +350,7 @@ describe("SearchService", () => {
           updatedAt: new Date("2026-03-01T12:00:00Z"),
         });
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(
-          createMockQueryBuilder([exactMatch, patternMatch]),
-        );
+        mockJobCardRepo.searchForCompany.mockResolvedValue([exactMatch, patternMatch]);
 
         const result = await service.search(1, "JC-001", "admin", 20);
 
@@ -397,7 +375,7 @@ describe("SearchService", () => {
           updatedAt: new Date("2026-03-15T12:00:00Z"),
         });
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([older, newer]));
+        mockJobCardRepo.searchForCompany.mockResolvedValue([older, newer]);
 
         const result = await service.search(1, "JC", "admin", 20);
 
@@ -410,7 +388,7 @@ describe("SearchService", () => {
       it("assigns matchRank 1 for exact SKU match on stock items", async () => {
         const exactSku = makeStockItem({ id: 10, sku: "BOLT-M12" });
 
-        mockStockItemRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([exactSku]));
+        mockStockItemRepo.searchSummaryForCompany.mockResolvedValue([exactSku]);
 
         const result = await service.search(1, "BOLT-M12", "admin", 20);
 
@@ -422,7 +400,7 @@ describe("SearchService", () => {
       it("assigns matchRank 1 for exact delivery number match", async () => {
         const exactDn = makeDeliveryNote({ id: 20, deliveryNumber: "DN-5000" });
 
-        mockDeliveryNoteRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([exactDn]));
+        mockDeliveryNoteRepo.searchForCompany.mockResolvedValue([exactDn]);
 
         const result = await service.search(1, "DN-5000", "admin", 20);
 
@@ -434,7 +412,7 @@ describe("SearchService", () => {
       it("assigns matchRank 1 for exact invoice number match", async () => {
         const exactInv = makeInvoice({ id: 30, invoiceNumber: "INV-9999" });
 
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([exactInv]));
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([exactInv]);
 
         const result = await service.search(1, "INV-9999", "admin", 20);
 
@@ -446,7 +424,7 @@ describe("SearchService", () => {
       it("assigns matchRank 1 for exact CPO number match", async () => {
         const exactCpo = makeCpo({ id: 40, cpoNumber: "CPO-100" });
 
-        mockCpoRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([exactCpo]));
+        mockCpoRepo.searchForCompany.mockResolvedValue([exactCpo]);
 
         const result = await service.search(1, "CPO-100", "admin", 20);
 
@@ -463,7 +441,7 @@ describe("SearchService", () => {
           jobName: "Some Long Name",
         });
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([partialMatch]));
+        mockJobCardRepo.searchForCompany.mockResolvedValue([partialMatch]);
 
         const result = await service.search(1, "JC-001", "admin", 20);
 
@@ -480,7 +458,7 @@ describe("SearchService", () => {
           description: null,
         });
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([jobCard]));
+        mockJobCardRepo.searchForCompany.mockResolvedValue([jobCard]);
 
         const result = await service.search(1, "test", "admin", 20);
 
@@ -492,7 +470,7 @@ describe("SearchService", () => {
       it("handles job card without jcNumber", async () => {
         const jobCard = makeJobCard({ jcNumber: null });
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([jobCard]));
+        mockJobCardRepo.searchForCompany.mockResolvedValue([jobCard]);
 
         const result = await service.search(1, "test", "admin", 20);
 
@@ -504,7 +482,7 @@ describe("SearchService", () => {
       it("handles CPO without jobName falling back to jobNumber", async () => {
         const cpo = makeCpo({ jobName: null, jobNumber: "JC-FALLBACK" });
 
-        mockCpoRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([cpo]));
+        mockCpoRepo.searchForCompany.mockResolvedValue([cpo]);
 
         const result = await service.search(1, "CPO", "admin", 20);
 
@@ -516,7 +494,7 @@ describe("SearchService", () => {
       it("handles invoice with null totalAmount", async () => {
         const invoice = makeInvoice({ totalAmount: null });
 
-        mockInvoiceRepo.createQueryBuilder.mockReturnValue(createMockQueryBuilder([invoice]));
+        mockInvoiceRepo.searchSummaryForCompany.mockResolvedValue([invoice]);
 
         const result = await service.search(1, "INV", "admin", 20);
 
@@ -541,9 +519,7 @@ describe("SearchService", () => {
           updatedAt: undefined,
         });
 
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(
-          createMockQueryBuilder([withDate, withoutDate]),
-        );
+        mockJobCardRepo.searchForCompany.mockResolvedValue([withDate, withoutDate]);
 
         const result = await service.search(1, "JC", "admin", 20);
 
@@ -554,15 +530,11 @@ describe("SearchService", () => {
       });
 
       it("trims whitespace from query before searching", async () => {
-        const qb = createMockQueryBuilder([makeJobCard()]);
-        mockJobCardRepo.createQueryBuilder.mockReturnValue(qb);
+        mockJobCardRepo.searchForCompany.mockResolvedValue([makeJobCard()]);
 
         await service.search(1, "  JC-001  ", "admin", 20);
 
-        expect(qb.andWhere).toHaveBeenCalledWith(
-          expect.any(String),
-          expect.objectContaining({ pattern: "%JC-001%" }),
-        );
+        expect(mockJobCardRepo.searchForCompany).toHaveBeenCalledWith(1, "%JC-001%", 20);
       });
 
       it("preserves original query in response even when trimmed internally", async () => {

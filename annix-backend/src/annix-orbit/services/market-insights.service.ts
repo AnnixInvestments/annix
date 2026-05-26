@@ -1,10 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { SA_SALARY_RANGES } from "../config/sa-market.config";
-import { ExternalJob } from "../entities/external-job.entity";
-import { JobMarketSource } from "../entities/job-market-source.entity";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 
 export interface SalaryBenchmark {
   category: string;
@@ -44,10 +42,8 @@ export interface MarketInsights {
 @Injectable()
 export class MarketInsightsService {
   constructor(
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
-    @InjectRepository(JobMarketSource)
-    private readonly sourceRepo: Repository<JobMarketSource>,
+    private readonly externalJobRepo: ExternalJobRepository,
+    private readonly sourceRepo: JobMarketSourceRepository,
   ) {}
 
   async insights(companyId: number): Promise<MarketInsights> {
@@ -84,31 +80,11 @@ export class MarketInsightsService {
   }
 
   private async companySourceIds(companyId: number): Promise<number[]> {
-    const sources = await this.sourceRepo.find({
-      where: { companyId },
-      select: ["id"],
-    });
-    return sources.map((s) => s.id);
+    return this.sourceRepo.sourceIdsForCompany(companyId);
   }
 
   private async salaryBenchmarks(sourceIds: number[]): Promise<SalaryBenchmark[]> {
-    const results = await this.externalJobRepo
-      .createQueryBuilder("job")
-      .select("job.category", "category")
-      .addSelect(
-        "AVG((COALESCE(job.salary_min, 0) + COALESCE(job.salary_max, 0)) / 2)",
-        "avgSalary",
-      )
-      .addSelect("MIN(job.salary_min)", "minSalary")
-      .addSelect("MAX(job.salary_max)", "maxSalary")
-      .addSelect("COUNT(*)", "sampleSize")
-      .where("job.source_id IN (:...sourceIds)", { sourceIds })
-      .andWhere("job.salary_min IS NOT NULL OR job.salary_max IS NOT NULL")
-      .andWhere("job.category IS NOT NULL")
-      .groupBy("job.category")
-      .orderBy('"sampleSize"', "DESC")
-      .limit(10)
-      .getRawMany();
+    const results = await this.externalJobRepo.salaryBenchmarks(sourceIds);
 
     return results.map((row) => {
       const avgSalary = row.avgSalary ? Math.round(Number(row.avgSalary)) : null;
@@ -135,28 +111,13 @@ export class MarketInsightsService {
     const currentStart = now.minus({ days: 7 }).toJSDate();
     const previousStart = now.minus({ days: 14 }).toJSDate();
 
-    const currentCounts = await this.externalJobRepo
-      .createQueryBuilder("job")
-      .select("job.category", "category")
-      .addSelect("COUNT(*)", "count")
-      .where("job.source_id IN (:...sourceIds)", { sourceIds })
-      .andWhere("job.created_at >= :start", { start: currentStart })
-      .andWhere("job.category IS NOT NULL")
-      .groupBy("job.category")
-      .getRawMany();
+    const currentCounts = await this.externalJobRepo.demandCounts(sourceIds, currentStart, null);
 
-    const previousCounts = await this.externalJobRepo
-      .createQueryBuilder("job")
-      .select("job.category", "category")
-      .addSelect("COUNT(*)", "count")
-      .where("job.source_id IN (:...sourceIds)", { sourceIds })
-      .andWhere("job.created_at >= :start AND job.created_at < :end", {
-        start: previousStart,
-        end: currentStart,
-      })
-      .andWhere("job.category IS NOT NULL")
-      .groupBy("job.category")
-      .getRawMany();
+    const previousCounts = await this.externalJobRepo.demandCounts(
+      sourceIds,
+      previousStart,
+      currentStart,
+    );
 
     const previousMap = new Map(previousCounts.map((r) => [r.category, Number(r.count)]));
 
@@ -186,20 +147,7 @@ export class MarketInsightsService {
   }
 
   private async locationDemand(sourceIds: number[]): Promise<LocationDemand[]> {
-    const results = await this.externalJobRepo
-      .createQueryBuilder("job")
-      .select("job.location_area", "location")
-      .addSelect("COUNT(*)", "jobCount")
-      .addSelect(
-        "AVG((COALESCE(job.salary_min, 0) + COALESCE(job.salary_max, 0)) / 2)",
-        "avgSalary",
-      )
-      .where("job.source_id IN (:...sourceIds)", { sourceIds })
-      .andWhere("job.location_area IS NOT NULL")
-      .groupBy("job.location_area")
-      .orderBy('"jobCount"', "DESC")
-      .limit(10)
-      .getRawMany();
+    const results = await this.externalJobRepo.locationDemand(sourceIds);
 
     return results.map((row) => {
       const avgSalary = row.avgSalary ? Math.round(Number(row.avgSalary)) : null;
@@ -219,14 +167,7 @@ export class MarketInsightsService {
   private async topExtractedSkills(
     sourceIds: number[],
   ): Promise<Array<{ skill: string; count: number }>> {
-    const jobs = await this.externalJobRepo
-      .createQueryBuilder("job")
-      .select("job.extracted_skills", "skills")
-      .where("job.source_id IN (:...sourceIds)", { sourceIds })
-      .andWhere("jsonb_array_length(job.extracted_skills) > 0")
-      .orderBy("job.createdAt", "DESC")
-      .limit(500)
-      .getRawMany();
+    const jobs = await this.externalJobRepo.topExtractedSkillRows(sourceIds);
 
     const skillCounts = jobs
       .flatMap((row) => {
@@ -245,10 +186,6 @@ export class MarketInsightsService {
   }
 
   private async activeJobCount(sourceIds: number[]): Promise<number> {
-    return this.externalJobRepo
-      .createQueryBuilder("job")
-      .where("job.source_id IN (:...sourceIds)", { sourceIds })
-      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
-      .getCount();
+    return this.externalJobRepo.activeJobCount(sourceIds);
   }
 }

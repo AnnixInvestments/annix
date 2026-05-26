@@ -5,17 +5,17 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
-import { DispatchCdn } from "../entities/dispatch-cdn.entity";
-import { DispatchLoadPhoto } from "../entities/dispatch-load-photo.entity";
 import { DispatchScan } from "../entities/dispatch-scan.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { StockMovement } from "../entities/stock-movement.entity";
+import { DispatchCdnRepository } from "../repositories/dispatch-cdn.repository";
+import { DispatchLoadPhotoRepository } from "../repositories/dispatch-load-photo.repository";
+import { DispatchScanRepository } from "../repositories/dispatch-scan.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 
 interface UserContext {
   id: number;
@@ -46,21 +46,12 @@ export class DispatchService {
   private readonly logger = new Logger(DispatchService.name);
 
   constructor(
-    @InjectRepository(DispatchScan)
-    private readonly dispatchScanRepo: Repository<DispatchScan>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockAllocation)
-    private readonly allocationRepo: Repository<StockAllocation>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(DispatchCdn)
-    private readonly cdnRepo: Repository<DispatchCdn>,
-    @InjectRepository(DispatchLoadPhoto)
-    private readonly loadPhotoRepo: Repository<DispatchLoadPhoto>,
-    private readonly dataSource: DataSource,
+    private readonly dispatchScanRepo: DispatchScanRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly allocationRepo: StockAllocationRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly cdnRepo: DispatchCdnRepository,
+    private readonly loadPhotoRepo: DispatchLoadPhotoRepository,
     private readonly auditService: AuditService,
   ) {}
 
@@ -68,10 +59,10 @@ export class DispatchService {
     companyId: number,
     jobCardId: number,
   ): Promise<{ jobCard: JobCard; progress: DispatchProgress }> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-      relations: ["allocations", "allocations.stockItem"],
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompanyWithRelations(jobCardId, companyId, [
+      "allocations",
+      "allocations.stockItem",
+    ]);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
@@ -96,9 +87,7 @@ export class DispatchService {
     user: UserContext,
     notes?: string,
   ): Promise<DispatchScan> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
@@ -108,10 +97,7 @@ export class DispatchService {
       throw new BadRequestException("Job card is not ready for dispatch");
     }
 
-    const allocation = await this.allocationRepo.findOne({
-      where: { jobCard: { id: jobCardId }, stockItem: { id: stockItemId } },
-      relations: ["stockItem"],
-    });
+    const allocation = await this.allocationRepo.findOneByJobAndStockItem(jobCardId, stockItemId);
 
     if (!allocation) {
       throw new BadRequestException(
@@ -119,9 +105,7 @@ export class DispatchService {
       );
     }
 
-    const existingScans = await this.dispatchScanRepo.find({
-      where: { jobCardId, stockItemId },
-    });
+    const existingScans = await this.dispatchScanRepo.findForJobCardItem(jobCardId, stockItemId);
 
     const alreadyDispatched = existingScans.reduce((sum, scan) => sum + scan.quantityDispatched, 0);
 
@@ -133,7 +117,7 @@ export class DispatchService {
       );
     }
 
-    const scan = this.dispatchScanRepo.create({
+    const saved = await this.dispatchScanRepo.create({
       jobCardId,
       companyId,
       stockItemId,
@@ -144,8 +128,6 @@ export class DispatchService {
       dispatchNotes: notes ?? null,
     });
 
-    const saved = await this.dispatchScanRepo.save(scan);
-
     this.logger.log(
       `Dispatched ${quantity} of item ${stockItemId} for job card ${jobCardId} by ${user.name}`,
     );
@@ -154,14 +136,9 @@ export class DispatchService {
   }
 
   async dispatchProgress(companyId: number, jobCardId: number): Promise<DispatchProgress> {
-    const allocations = await this.allocationRepo.find({
-      where: { jobCard: { id: jobCardId }, companyId },
-      relations: ["stockItem"],
-    });
+    const allocations = await this.allocationRepo.findForJobCardWithStockItem(companyId, jobCardId);
 
-    const scans = await this.dispatchScanRepo.find({
-      where: { jobCardId, companyId },
-    });
+    const scans = await this.dispatchScanRepo.findForJobCard(jobCardId, companyId);
 
     const scansByItem = scans.reduce(
       (acc, scan) => {
@@ -186,8 +163,8 @@ export class DispatchService {
     const totalDispatched = items.reduce((sum, item) => sum + item.dispatchedQuantity, 0);
     const isComplete = items.every((item) => item.remainingQuantity === 0);
 
-    const cdnCount = await this.cdnRepo.count({ where: { jobCardId, companyId } });
-    const photoCount = await this.loadPhotoRepo.count({ where: { jobCardId, companyId } });
+    const cdnCount = await this.cdnRepo.count({ jobCardId, companyId });
+    const photoCount = await this.loadPhotoRepo.count({ jobCardId, companyId });
     const hasCdn = cdnCount > 0;
     const hasLoadPhotos = photoCount > 0;
     const canComplete = hasCdn && hasLoadPhotos;
@@ -204,11 +181,7 @@ export class DispatchService {
   }
 
   async dispatchHistory(companyId: number, jobCardId: number): Promise<DispatchScan[]> {
-    return this.dispatchScanRepo.find({
-      where: { jobCardId, companyId },
-      relations: ["stockItem", "scannedBy"],
-      order: { scannedAt: "DESC" },
-    });
+    return this.dispatchScanRepo.findHistoryForJobCard(jobCardId, companyId);
   }
 
   async completeDispatch(
@@ -229,12 +202,14 @@ export class DispatchService {
       throw new BadRequestException(`Cannot complete dispatch. Missing: ${missing.join(" and ")}.`);
     }
 
-    const result = await this.jobCardRepo.update(
-      { id: jobCardId, companyId, workflowStatus: "ready" },
-      { workflowStatus: "dispatched" },
+    const updateAffected = await this.jobCardRepo.updateWorkflowStatusIfMatches(
+      jobCardId,
+      companyId,
+      "ready",
+      "dispatched",
     );
 
-    if (result.affected === 0) {
+    if (updateAffected === 0) {
       throw new ConflictException("Job card status has changed. Please refresh and try again.");
     }
 
@@ -250,7 +225,7 @@ export class DispatchService {
 
     this.logger.log(`Job card ${jobCardId} dispatch completed by ${user.name}`);
 
-    const jobCard = await this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
     }
@@ -263,10 +238,7 @@ export class DispatchService {
     scanId: number,
     user: { id: number; name: string },
   ): Promise<void> {
-    const scan = await this.dispatchScanRepo.findOne({
-      where: { id: scanId, companyId },
-      relations: ["jobCard"],
-    });
+    const scan = await this.dispatchScanRepo.findOneForCompanyWithJobCard(scanId, companyId);
 
     if (!scan) {
       throw new NotFoundException(`Dispatch scan ${scanId} not found`);
@@ -301,21 +273,13 @@ export class DispatchService {
     companyId: number,
     qrToken: string,
   ): Promise<{ type: "job_card" | "stock_item"; id: number }> {
-    const jobCard = await this.jobCardRepo
-      .createQueryBuilder("jc")
-      .where("jc.companyId = :companyId", { companyId })
-      .andWhere("jc.id::text = :qrToken OR jc.jobNumber = :qrToken", { qrToken })
-      .getOne();
+    const jobCard = await this.jobCardRepo.findByQrToken(companyId, qrToken);
 
     if (jobCard) {
       return { type: "job_card", id: jobCard.id };
     }
 
-    const stockItem = await this.stockItemRepo
-      .createQueryBuilder("si")
-      .where("si.companyId = :companyId", { companyId })
-      .andWhere("si.id::text = :qrToken OR si.sku = :qrToken", { qrToken })
-      .getOne();
+    const stockItem = await this.stockItemRepo.findOneByQrTokenForCompany(companyId, qrToken);
 
     if (stockItem) {
       return { type: "stock_item", id: stockItem.id };

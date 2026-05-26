@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
+import { NixExtractionRepository } from "./nix-extraction.repository";
 import { RevisionTrackingService } from "./revision-tracking.service";
 
 function fakeExtraction(partial: Partial<NixExtraction> = {}): NixExtraction {
@@ -15,17 +15,20 @@ function fakeExtraction(partial: Partial<NixExtraction> = {}): NixExtraction {
 
 describe("RevisionTrackingService", () => {
   let service: RevisionTrackingService;
-  let extractionRepo: { find: jest.Mock; update: jest.Mock };
+  let extractionRepo: {
+    findRevisionCandidates: jest.Mock;
+    markSuperseded: jest.Mock;
+  };
 
   beforeEach(async () => {
     extractionRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      update: jest.fn().mockResolvedValue({}),
+      findRevisionCandidates: jest.fn().mockResolvedValue([]),
+      markSuperseded: jest.fn().mockResolvedValue(undefined),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RevisionTrackingService,
-        { provide: getRepositoryToken(NixExtraction), useValue: extractionRepo },
+        { provide: NixExtractionRepository, useValue: extractionRepo },
       ],
     }).compile();
     service = module.get(RevisionTrackingService);
@@ -70,12 +73,12 @@ describe("RevisionTrackingService", () => {
 
   describe("processIncomingExtraction", () => {
     it("returns 'first' when no other extraction has the same documentNumber", async () => {
-      extractionRepo.find.mockResolvedValue([]);
+      extractionRepo.findRevisionCandidates.mockResolvedValue([]);
       const verdict = await service.processIncomingExtraction(
         fakeExtraction({ id: 5, documentNumber: "DOC-001", documentRevision: "01" }),
       );
       expect(verdict).toEqual({ action: "first" });
-      expect(extractionRepo.update).not.toHaveBeenCalled();
+      expect(extractionRepo.markSuperseded).not.toHaveBeenCalled();
     });
 
     it("returns 'first' when documentNumber is missing", async () => {
@@ -83,11 +86,11 @@ describe("RevisionTrackingService", () => {
         fakeExtraction({ id: 5, documentNumber: undefined }),
       );
       expect(verdict).toEqual({ action: "first" });
-      expect(extractionRepo.find).not.toHaveBeenCalled();
+      expect(extractionRepo.findRevisionCandidates).not.toHaveBeenCalled();
     });
 
     it("returns 'same' when an existing canonical has the same revision", async () => {
-      extractionRepo.find.mockResolvedValue([
+      extractionRepo.findRevisionCandidates.mockResolvedValue([
         fakeExtraction({ id: 1, documentNumber: "DOC-001", documentRevision: "03" }),
       ]);
       const verdict = await service.processIncomingExtraction(
@@ -98,11 +101,11 @@ describe("RevisionTrackingService", () => {
         canonicalExtractionId: 1,
         canonicalRevision: "03",
       });
-      expect(extractionRepo.update).not.toHaveBeenCalled();
+      expect(extractionRepo.markSuperseded).not.toHaveBeenCalled();
     });
 
     it("supersedes the older canonical when a newer revision arrives", async () => {
-      extractionRepo.find.mockResolvedValue([
+      extractionRepo.findRevisionCandidates.mockResolvedValue([
         fakeExtraction({ id: 1, documentNumber: "DOC-001", documentRevision: "02" }),
       ]);
       const verdict = await service.processIncomingExtraction(
@@ -113,14 +116,11 @@ describe("RevisionTrackingService", () => {
         previousCanonicalExtractionId: 1,
         previousCanonicalRevision: "02",
       });
-      expect(extractionRepo.update).toHaveBeenCalledWith(
-        { id: 1 },
-        { isLatestRevision: false, supersededByExtractionId: 5 },
-      );
+      expect(extractionRepo.markSuperseded).toHaveBeenCalledWith(1, false, 5);
     });
 
     it("flags incoming as not-latest when an older revision is uploaded", async () => {
-      extractionRepo.find.mockResolvedValue([
+      extractionRepo.findRevisionCandidates.mockResolvedValue([
         fakeExtraction({ id: 1, documentNumber: "DOC-001", documentRevision: "04" }),
       ]);
       const verdict = await service.processIncomingExtraction(
@@ -131,14 +131,11 @@ describe("RevisionTrackingService", () => {
         latestExtractionId: 1,
         latestRevision: "04",
       });
-      expect(extractionRepo.update).toHaveBeenCalledWith(
-        { id: 5 },
-        { isLatestRevision: false, supersededByExtractionId: 1 },
-      );
+      expect(extractionRepo.markSuperseded).toHaveBeenCalledWith(5, false, 1);
     });
 
     it("returns 'unknown' (and flags incoming as not-latest) when revs can't be ordered", async () => {
-      extractionRepo.find.mockResolvedValue([
+      extractionRepo.findRevisionCandidates.mockResolvedValue([
         fakeExtraction({ id: 1, documentNumber: "DOC-001", documentRevision: "AD" }),
       ]);
       const verdict = await service.processIncomingExtraction(
@@ -149,11 +146,11 @@ describe("RevisionTrackingService", () => {
         otherExtractionId: 1,
         otherRevision: "AD",
       });
-      expect(extractionRepo.update).toHaveBeenCalledWith({ id: 5 }, { isLatestRevision: false });
+      expect(extractionRepo.markSuperseded).toHaveBeenCalledWith(5, false, null);
     });
 
     it("ignores the incoming extraction's own row when it appears in the canonical lookup", async () => {
-      extractionRepo.find.mockResolvedValue([
+      extractionRepo.findRevisionCandidates.mockResolvedValue([
         fakeExtraction({ id: 5, documentNumber: "DOC-001", documentRevision: "03" }),
       ]);
       const verdict = await service.processIncomingExtraction(

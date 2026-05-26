@@ -1,6 +1,4 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { STEEL_DENSITY_KG_M3 } from "../lib/steel-constants";
 import {
   CalculateFabricationCostDto,
@@ -20,113 +18,55 @@ import { ShopLaborRate } from "./entities/shop-labor-rate.entity";
 import { StructuralSteelGrade } from "./entities/structural-steel-grade.entity";
 import { StructuralSteelSection } from "./entities/structural-steel-section.entity";
 import { StructuralSteelType } from "./entities/structural-steel-type.entity";
+import { StructuralSteelRepository } from "./structural-steel.repository";
 
 @Injectable()
 export class StructuralSteelService {
-  constructor(
-    @InjectRepository(StructuralSteelType)
-    private readonly typeRepo: Repository<StructuralSteelType>,
-    @InjectRepository(StructuralSteelSection)
-    private readonly sectionRepo: Repository<StructuralSteelSection>,
-    @InjectRepository(StructuralSteelGrade)
-    private readonly gradeRepo: Repository<StructuralSteelGrade>,
-    @InjectRepository(FabricationOperation)
-    private readonly operationRepo: Repository<FabricationOperation>,
-    @InjectRepository(FabricationComplexity)
-    private readonly complexityRepo: Repository<FabricationComplexity>,
-    @InjectRepository(ShopLaborRate)
-    private readonly laborRateRepo: Repository<ShopLaborRate>,
-  ) {}
-
-  // ==================== Type Methods ====================
+  constructor(private readonly structuralSteelRepository: StructuralSteelRepository) {}
 
   async getAllTypes(): Promise<StructuralSteelType[]> {
-    return this.typeRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.structuralSteelRepository.findAllActiveTypes();
   }
 
   async getTypeByCode(code: string): Promise<StructuralSteelType | null> {
-    return this.typeRepo.findOne({ where: { code, isActive: true } });
+    return this.structuralSteelRepository.findTypeByCode(code);
   }
 
   async getTypeWithSections(typeId: number): Promise<StructuralSteelType | null> {
-    return this.typeRepo.findOne({
-      where: { id: typeId, isActive: true },
-      relations: ["sections"],
-    });
+    return this.structuralSteelRepository.findTypeWithSections(typeId);
   }
 
-  // ==================== Section Methods ====================
-
   async getAllSections(): Promise<StructuralSteelSection[]> {
-    return this.sectionRepo.find({
-      where: { isActive: true },
-      relations: ["steelType"],
-      order: { typeId: "ASC", displayOrder: "ASC" },
-    });
+    return this.structuralSteelRepository.findAllActiveSections();
   }
 
   async getSectionsByType(typeCode: string): Promise<StructuralSteelSection[]> {
-    const type = await this.typeRepo.findOne({
-      where: { code: typeCode, isActive: true },
-    });
+    const type = await this.structuralSteelRepository.findTypeByCode(typeCode);
     if (!type) return [];
 
-    return this.sectionRepo.find({
-      where: { typeId: type.id, isActive: true },
-      order: { displayOrder: "ASC", designation: "ASC" },
-    });
+    return this.structuralSteelRepository.findSectionsByTypeId(type.id);
   }
 
   async getSectionById(id: number): Promise<StructuralSteelSection | null> {
-    return this.sectionRepo.findOne({
-      where: { id, isActive: true },
-      relations: ["steelType"],
-    });
+    return this.structuralSteelRepository.findSectionById(id);
   }
 
   async searchSections(query: string): Promise<StructuralSteelSection[]> {
-    return this.sectionRepo
-      .createQueryBuilder("section")
-      .leftJoinAndSelect("section.steelType", "type")
-      .where("section.is_active = :active", { active: true })
-      .andWhere("(section.designation ILIKE :query OR type.name ILIKE :query)", {
-        query: `%${query}%`,
-      })
-      .orderBy("type.display_order", "ASC")
-      .addOrderBy("section.display_order", "ASC")
-      .getMany();
+    return this.structuralSteelRepository.searchSections(query);
   }
 
-  // ==================== Grade Methods ====================
-
   async getAllGrades(): Promise<StructuralSteelGrade[]> {
-    return this.gradeRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC", code: "ASC" },
-    });
+    return this.structuralSteelRepository.findAllActiveGrades();
   }
 
   async getGradesForType(typeCode: string): Promise<StructuralSteelGrade[]> {
-    return this.gradeRepo
-      .createQueryBuilder("grade")
-      .where("grade.is_active = :active", { active: true })
-      .andWhere(":typeCode = ANY(grade.compatible_types)", { typeCode })
-      .orderBy("grade.display_order", "ASC")
-      .getMany();
+    return this.structuralSteelRepository.findGradesByTypeCode(typeCode);
   }
 
   async getGradeByCode(code: string): Promise<StructuralSteelGrade | null> {
-    return this.gradeRepo.findOne({ where: { code, isActive: true } });
+    return this.structuralSteelRepository.findGradeByCode(code);
   }
 
-  // ==================== Calculation Methods ====================
-
-  /**
-   * Calculate weight and surface area for a standard section
-   */
   async calculateForSection(dto: CalculateSteelWeightDto): Promise<SteelCalculationResultDto> {
     const section = await this.getSectionById(dto.sectionId);
     if (!section) {
@@ -152,22 +92,14 @@ export class StructuralSteelService {
     };
   }
 
-  /**
-   * Calculate weight and surface area for a steel plate
-   * Weight = thickness(m) × width(m) × length(m) × density(kg/m³)
-   * Surface = 2 × width(m) × length(m) (top and bottom, ignoring edges for thin plates)
-   */
   calculatePlate(dto: CalculatePlateDto): SteelCalculationResultDto {
     const thicknessM = dto.thicknessMm / 1000;
     const widthM = dto.widthMm / 1000;
     const lengthM = dto.lengthMm / 1000;
 
-    // Weight per plate
     const weightPerPlateKg = thicknessM * widthM * lengthM * STEEL_DENSITY_KG_M3;
-    // Surface area per plate (both sides)
     const surfacePerPlateM2 = 2 * widthM * lengthM;
 
-    // For consistency with linear sections, express as per-meter values
     const weightKgPerM = thicknessM * widthM * STEEL_DENSITY_KG_M3;
     const surfaceAreaM2PerM = 2 * widthM;
 
@@ -191,16 +123,10 @@ export class StructuralSteelService {
     };
   }
 
-  /**
-   * Calculate weight and surface area for a flat bar
-   * Weight = width(m) × thickness(m) × length(m) × density(kg/m³)
-   * Surface = (2×width + 2×thickness)(m) × length(m)
-   */
   calculateFlatBar(dto: CalculateFlatBarDto): SteelCalculationResultDto {
     const widthM = dto.widthMm / 1000;
     const thicknessM = dto.thicknessMm / 1000;
 
-    // Per meter values
     const weightKgPerM = widthM * thicknessM * STEEL_DENSITY_KG_M3;
     const surfaceAreaM2PerM = 2 * (widthM + thicknessM);
 
@@ -223,16 +149,10 @@ export class StructuralSteelService {
     };
   }
 
-  /**
-   * Calculate weight and surface area for a round bar
-   * Weight = π × (d/2)² × length × density
-   * Surface = π × d × length (external surface)
-   */
   calculateRoundBar(dto: CalculateRoundBarDto): SteelCalculationResultDto {
     const diameterM = dto.diameterMm / 1000;
     const radiusM = diameterM / 2;
 
-    // Per meter values
     const weightKgPerM = Math.PI * radiusM * radiusM * STEEL_DENSITY_KG_M3;
     const surfaceAreaM2PerM = Math.PI * diameterM;
 
@@ -254,15 +174,9 @@ export class StructuralSteelService {
     };
   }
 
-  /**
-   * Calculate weight and surface area for a square bar
-   * Weight = side² × length × density
-   * Surface = 4 × side × length (external surface)
-   */
   calculateSquareBar(dto: CalculateSquareBarDto): SteelCalculationResultDto {
     const sideM = dto.sideMm / 1000;
 
-    // Per meter values
     const weightKgPerM = sideM * sideM * STEEL_DENSITY_KG_M3;
     const surfaceAreaM2PerM = 4 * sideM;
 
@@ -284,9 +198,6 @@ export class StructuralSteelService {
     };
   }
 
-  /**
-   * Generic calculation given weight per meter and surface per meter
-   */
   calculateGeneric(
     weightKgPerM: number,
     surfaceAreaM2PerM: number,
@@ -299,12 +210,6 @@ export class StructuralSteelService {
     };
   }
 
-  // ==================== Integration with Surface Protection ====================
-
-  /**
-   * Get surface area for coating calculation
-   * This method can be called from the coating specification module
-   */
   async getSurfaceAreaForCoating(
     sectionId: number,
     lengthM: number,
@@ -317,53 +222,32 @@ export class StructuralSteelService {
     return Number(section.surfaceAreaM2PerM) * lengthM * quantity;
   }
 
-  // ==================== Fabrication Operation Methods ====================
-
   async getAllOperations(): Promise<FabricationOperation[]> {
-    return this.operationRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.structuralSteelRepository.findAllActiveOperations();
   }
 
   async getOperationByCode(code: string): Promise<FabricationOperation | null> {
-    return this.operationRepo.findOne({
-      where: { code, isActive: true },
-    });
+    return this.structuralSteelRepository.findOperationByCode(code);
   }
 
-  // ==================== Fabrication Complexity Methods ====================
-
   async getAllComplexityLevels(): Promise<FabricationComplexity[]> {
-    return this.complexityRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC" },
-    });
+    return this.structuralSteelRepository.findAllActiveComplexityLevels();
   }
 
   async getComplexityByLevel(level: string): Promise<FabricationComplexity | null> {
-    return this.complexityRepo.findOne({
-      where: { level, isActive: true },
-    });
+    return this.structuralSteelRepository.findComplexityByLevel(level);
   }
 
-  // ==================== Labor Rate Methods ====================
-
   async getAllLaborRates(): Promise<ShopLaborRate[]> {
-    return this.laborRateRepo.find({
-      where: { isActive: true },
-      order: { code: "ASC" },
-    });
+    return this.structuralSteelRepository.findAllActiveLaborRates();
   }
 
   async getLaborRateByCode(code: string): Promise<ShopLaborRate | null> {
-    return this.laborRateRepo.findOne({
-      where: { code, isActive: true },
-    });
+    return this.structuralSteelRepository.findLaborRateByCode(code);
   }
 
   async updateLaborRate(code: string, dto: UpdateLaborRateDto): Promise<ShopLaborRate> {
-    const rate = await this.laborRateRepo.findOne({ where: { code } });
+    const rate = await this.structuralSteelRepository.findLaborRateByCodeUnfiltered(code);
     if (!rate) {
       throw new NotFoundException(`Labor rate with code ${code} not found`);
     }
@@ -371,30 +255,17 @@ export class StructuralSteelService {
     if (dto.currency) {
       rate.currency = dto.currency;
     }
-    return this.laborRateRepo.save(rate);
+    return this.structuralSteelRepository.saveLaborRate(rate);
   }
 
-  // ==================== Fabrication Cost Calculation ====================
-
-  /**
-   * Calculate fabrication cost based on weight, complexity, and operations
-   *
-   * Base hours = weight (tons) × hours_per_ton for complexity level
-   * Operation hours = sum of (operation.hours_per_unit × quantity) for each operation
-   * Total hours = base hours + operation hours
-   * Stainless multiplier = 1.5x for stainless steel
-   * Total cost = total hours × labor rate × stainless multiplier
-   */
   async calculateFabricationCost(
     dto: CalculateFabricationCostDto,
   ): Promise<FabricationCostResultDto> {
-    // Get complexity level
     const complexity = await this.getComplexityByLevel(dto.complexityLevel);
     if (!complexity) {
       throw new NotFoundException(`Complexity level ${dto.complexityLevel} not found`);
     }
 
-    // Get labor rate
     const laborRateCode =
       dto.laborRateCode || (dto.isStainless ? "stainless_steel" : "carbon_steel");
     const laborRate = await this.getLaborRateByCode(laborRateCode);
@@ -402,14 +273,11 @@ export class StructuralSteelService {
       throw new NotFoundException(`Labor rate ${laborRateCode} not found`);
     }
 
-    // Convert to tons
     const weightTons = dto.totalWeightKg / 1000;
 
-    // Calculate base fabrication hours from complexity
     const hoursPerTon = Number(complexity.hoursPerTon);
     const baseFabricationHours = weightTons * hoursPerTon;
 
-    // Calculate operation hours
     const operationBreakdown: FabricationCostBreakdownDto[] = [];
     let totalOperationHours = 0;
 
@@ -438,7 +306,6 @@ export class StructuralSteelService {
       }
     }
 
-    // Calculate totals
     const totalLaborHours = baseFabricationHours + totalOperationHours;
     const stainlessMultiplier = dto.isStainless ? 1.5 : 1.0;
     const totalFabricationCost =
@@ -460,9 +327,6 @@ export class StructuralSteelService {
     };
   }
 
-  /**
-   * Quick estimate using just weight and complexity (no detailed operations)
-   */
   async quickFabricationEstimate(
     totalWeightKg: number,
     complexityLevel: string,

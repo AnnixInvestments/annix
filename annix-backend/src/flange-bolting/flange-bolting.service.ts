@@ -1,6 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import {
   BulkCreateFlangeBoltingDto,
   CreateFlangeBoltingDto,
@@ -8,29 +6,30 @@ import {
 } from "./dto/create-flange-bolting.dto";
 import { FlangeBolting } from "./entities/flange-bolting.entity";
 import { FlangeBoltingMaterial } from "./entities/flange-bolting-material.entity";
+import {
+  FlangeBoltingMaterialRepository,
+  FlangeBoltingRepository,
+} from "./flange-bolting.repository";
 
 @Injectable()
 export class FlangeBoltingService {
   constructor(
-    @InjectRepository(FlangeBolting)
-    private readonly boltingRepo: Repository<FlangeBolting>,
-    @InjectRepository(FlangeBoltingMaterial)
-    private readonly boltingMaterialRepo: Repository<FlangeBoltingMaterial>,
+    private readonly boltingRepository: FlangeBoltingRepository,
+    private readonly boltingMaterialRepository: FlangeBoltingMaterialRepository,
   ) {}
 
   async createMaterial(dto: CreateFlangeBoltingMaterialDto): Promise<FlangeBoltingMaterial> {
-    const entity = this.boltingMaterialRepo.create({
+    return this.boltingMaterialRepository.create({
       materialGroup: dto.materialGroup,
       studSpec: dto.studSpec,
       machineBoltSpec: dto.machineBoltSpec,
       nutSpec: dto.nutSpec,
       washerSpec: dto.washerSpec,
     });
-    return this.boltingMaterialRepo.save(entity);
   }
 
   async createBolting(dto: CreateFlangeBoltingDto): Promise<FlangeBolting> {
-    const entity = this.boltingRepo.create({
+    return this.boltingRepository.create({
       standardId: dto.standardId,
       pressureClass: dto.pressureClass,
       nps: dto.nps,
@@ -40,87 +39,57 @@ export class FlangeBoltingService {
       boltLengthSoSwTh: dto.boltLengthSoSwTh || null,
       boltLengthLj: dto.boltLengthLj || null,
     });
-    return this.boltingRepo.save(entity);
   }
 
   async bulkCreateBolting(dto: BulkCreateFlangeBoltingDto): Promise<FlangeBolting[]> {
-    const entities = dto.boltingData.map((data) =>
-      this.boltingRepo.create({
-        standardId: dto.standardId,
-        pressureClass: dto.pressureClass,
-        nps: data.nps,
-        numBolts: data.numBolts,
-        boltDia: data.boltDia,
-        boltLengthDefault: data.boltLengthDefault || null,
-        boltLengthSoSwTh: data.boltLengthSoSwTh || null,
-        boltLengthLj: data.boltLengthLj || null,
-      }),
-    );
-    return this.boltingRepo.save(entities);
+    const entities = dto.boltingData.map((data) => ({
+      standardId: dto.standardId,
+      pressureClass: dto.pressureClass,
+      nps: data.nps,
+      numBolts: data.numBolts,
+      boltDia: data.boltDia,
+      boltLengthDefault: data.boltLengthDefault || null,
+      boltLengthSoSwTh: data.boltLengthSoSwTh || null,
+      boltLengthLj: data.boltLengthLj || null,
+    }));
+    return this.boltingRepository.saveMany(entities as FlangeBolting[]);
   }
 
   async findAllMaterials(): Promise<FlangeBoltingMaterial[]> {
-    return this.boltingMaterialRepo.find({
-      order: { materialGroup: "ASC" },
-    });
+    return this.boltingMaterialRepository.findAllOrderedByGroup();
   }
 
   async findMaterialByGroup(materialGroup: string): Promise<FlangeBoltingMaterial | null> {
-    return this.boltingMaterialRepo.findOne({
-      where: { materialGroup },
-    });
+    return this.boltingMaterialRepository.findByMaterialGroup(materialGroup);
   }
 
   async findAllBolting(): Promise<FlangeBolting[]> {
-    return this.boltingRepo.find({
-      relations: ["standard"],
-      order: { standardId: "ASC", pressureClass: "ASC", nps: "ASC" },
-    });
+    return this.boltingRepository.findAllWithStandard();
   }
 
   async findBoltingByStandard(standardId: number): Promise<FlangeBolting[]> {
-    return this.boltingRepo.find({
-      where: { standardId },
-      order: { pressureClass: "ASC", nps: "ASC" },
-    });
+    return this.boltingRepository.findByStandardId(standardId);
   }
 
   async findBoltingByStandardAndClass(
     standardId: number,
     pressureClass: string,
   ): Promise<FlangeBolting[]> {
-    return this.boltingRepo.find({
-      where: { standardId, pressureClass },
-      order: { nps: "ASC" },
-    });
+    return this.boltingRepository.findByStandardAndClass(standardId, pressureClass);
   }
 
-  /**
-   * Get bolting requirements for a specific flange configuration
-   */
   async getBoltingForFlange(
     standardId: number,
     pressureClass: string,
     nps: string,
   ): Promise<FlangeBolting | null> {
-    return this.boltingRepo.findOne({
-      where: { standardId, pressureClass, nps },
-      relations: ["standard"],
-    });
+    return this.boltingRepository.findByStandardClassAndNps(standardId, pressureClass, nps);
   }
 
-  /**
-   * Get bolting material specifications for a material group
-   */
   async getBoltingMaterialSpecs(materialGroup: string): Promise<FlangeBoltingMaterial | null> {
-    return this.boltingMaterialRepo.findOne({
-      where: { materialGroup },
-    });
+    return this.boltingMaterialRepository.findByMaterialGroup(materialGroup);
   }
 
-  /**
-   * Get complete bolting information including material specs
-   */
   async getCompleteBoltingInfo(
     standardId: number,
     pressureClass: string,

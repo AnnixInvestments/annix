@@ -1,11 +1,13 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { FlangeDimension } from "../../flange-dimension/entities/flange-dimension.entity";
+import { FlangeDimensionRepository } from "../../flange-dimension/flange-dimension.repository";
 import { now } from "../../lib/datetime";
 import { NbNpsLookup } from "../../nb-nps-lookup/entities/nb-nps-lookup.entity";
+import { NbNpsLookupRepository } from "../../nb-nps-lookup/nb-nps-lookup.repository";
 import { PipeDimension } from "../../pipe-dimension/entities/pipe-dimension.entity";
+import { PipeDimensionRepository } from "../../pipe-dimension/pipe-dimension.repository";
 import { SteelSpecification } from "../../steel-specification/entities/steel-specification.entity";
+import { SteelSpecificationRepository } from "../../steel-specification/steel-specification.repository";
 
 interface CacheEntry<T> {
   data: T;
@@ -22,14 +24,10 @@ export class ReferenceDataCacheService implements OnModuleInit {
   private flangeDimensionsByNbCache: CacheEntry<Map<string, FlangeDimension[]>> | null = null;
 
   constructor(
-    @InjectRepository(NbNpsLookup)
-    private readonly nbNpsLookupRepository: Repository<NbNpsLookup>,
-    @InjectRepository(SteelSpecification)
-    private readonly steelSpecRepository: Repository<SteelSpecification>,
-    @InjectRepository(PipeDimension)
-    private readonly pipeDimensionRepository: Repository<PipeDimension>,
-    @InjectRepository(FlangeDimension)
-    private readonly flangeDimensionRepository: Repository<FlangeDimension>,
+    private readonly nbNpsLookupRepository: NbNpsLookupRepository,
+    private readonly steelSpecRepository: SteelSpecificationRepository,
+    private readonly pipeDimensionRepository: PipeDimensionRepository,
+    private readonly flangeDimensionRepository: FlangeDimensionRepository,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -44,23 +42,21 @@ export class ReferenceDataCacheService implements OnModuleInit {
   }
 
   private async loadNbNpsLookup(): Promise<void> {
-    const data = await this.nbNpsLookupRepository.find();
+    const data = await this.nbNpsLookupRepository.findAll();
     const map = new Map(data.map((item) => [item.nb_mm, item]));
     this.nbNpsLookupCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} NB-NPS lookup entries`);
   }
 
   private async loadSteelSpecifications(): Promise<void> {
-    const data = await this.steelSpecRepository.find();
+    const data = await this.steelSpecRepository.findAll();
     const map = new Map(data.map((item) => [item.id, item]));
     this.steelSpecCache = { data: map, loadedAt: now().toJSDate() };
     this.logger.debug(`Loaded ${data.length} steel specifications`);
   }
 
   private async loadPipeDimensions(): Promise<void> {
-    const data = await this.pipeDimensionRepository.find({
-      relations: ["nominalOutsideDiameter", "steelSpecification"],
-    });
+    const data = await this.pipeDimensionRepository.findAllWithDiameterAndSpec();
     const map = data.reduce((acc, item) => {
       const nb = item.nominalOutsideDiameter?.nominal_diameter_mm;
       if (nb === undefined) {
@@ -74,9 +70,7 @@ export class ReferenceDataCacheService implements OnModuleInit {
   }
 
   private async loadFlangeDimensions(): Promise<void> {
-    const data = await this.flangeDimensionRepository.find({
-      relations: ["nominalOutsideDiameter", "standard", "pressureClass", "bolt"],
-    });
+    const data = await this.flangeDimensionRepository.findAllWithRelations();
     const map = data.reduce((acc, item) => {
       const nb = item.nominalOutsideDiameter?.nominal_diameter_mm;
       if (nb === undefined) {

@@ -1,14 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { CompanyModuleLicense } from "../entities/company-module-license.entity";
+import { CompanyModuleLicenseRepository } from "../repositories/company-module-license.repository";
 import { StockManagementLicenseService } from "./stock-management-license.service";
 
 describe("StockManagementLicenseService", () => {
   let service: StockManagementLicenseService;
 
   const mockLicenseRepo = {
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findByCompanyModule: jest.fn(),
+    build: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
@@ -16,12 +15,14 @@ describe("StockManagementLicenseService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StockManagementLicenseService,
-        { provide: getRepositoryToken(CompanyModuleLicense), useValue: mockLicenseRepo },
+        { provide: CompanyModuleLicenseRepository, useValue: mockLicenseRepo },
       ],
     }).compile();
 
     service = module.get<StockManagementLicenseService>(StockManagementLicenseService);
     jest.clearAllMocks();
+    mockLicenseRepo.build.mockImplementation((data) => ({ ...data }));
+    mockLicenseRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
   });
 
   it("should be defined", () => {
@@ -38,23 +39,21 @@ describe("StockManagementLicenseService", () => {
         featureOverrides: {},
         active: true,
       };
-      mockLicenseRepo.findOne.mockResolvedValueOnce(existing);
+      mockLicenseRepo.findByCompanyModule.mockResolvedValueOnce(existing);
 
       const result = await service.ensureLicense(42);
 
       expect(result).toEqual(existing);
-      expect(mockLicenseRepo.findOne).toHaveBeenCalledWith({
-        where: { companyId: 42, moduleKey: "stock-management" },
-      });
+      expect(mockLicenseRepo.findByCompanyModule).toHaveBeenCalledWith(42, "stock-management");
       expect(mockLicenseRepo.save).not.toHaveBeenCalled();
     });
 
     it("creates a new basic-tier license when none exists", async () => {
-      mockLicenseRepo.findOne.mockResolvedValueOnce(null);
+      mockLicenseRepo.findByCompanyModule.mockResolvedValueOnce(null);
 
       const result = await service.ensureLicense(99);
 
-      expect(mockLicenseRepo.create).toHaveBeenCalledWith({
+      expect(mockLicenseRepo.build).toHaveBeenCalledWith({
         companyId: 99,
         moduleKey: "stock-management",
         tier: "basic",
@@ -68,7 +67,7 @@ describe("StockManagementLicenseService", () => {
 
   describe("isFeatureEnabled", () => {
     it("returns false when license is inactive", async () => {
-      mockLicenseRepo.findOne.mockResolvedValueOnce({
+      mockLicenseRepo.findByCompanyModule.mockResolvedValueOnce({
         id: 1,
         companyId: 1,
         moduleKey: "stock-management",
@@ -81,7 +80,7 @@ describe("StockManagementLicenseService", () => {
     });
 
     it("respects per-feature overrides over the tier default", async () => {
-      mockLicenseRepo.findOne.mockResolvedValueOnce({
+      mockLicenseRepo.findByCompanyModule.mockResolvedValueOnce({
         id: 1,
         companyId: 1,
         moduleKey: "stock-management",
@@ -94,7 +93,7 @@ describe("StockManagementLicenseService", () => {
     });
 
     it("falls through to the tier default when no override is present", async () => {
-      mockLicenseRepo.findOne.mockResolvedValueOnce({
+      mockLicenseRepo.findByCompanyModule.mockResolvedValueOnce({
         id: 1,
         companyId: 1,
         moduleKey: "stock-management",
@@ -104,7 +103,7 @@ describe("StockManagementLicenseService", () => {
       });
 
       expect(await service.isFeatureEnabled(1, "FIFO_BATCH_TRACKING")).toBe(true);
-      mockLicenseRepo.findOne.mockResolvedValueOnce({
+      mockLicenseRepo.findByCompanyModule.mockResolvedValueOnce({
         id: 1,
         companyId: 1,
         moduleKey: "stock-management",

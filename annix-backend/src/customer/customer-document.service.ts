@@ -7,8 +7,6 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
@@ -16,8 +14,11 @@ import { now } from "../lib/datetime";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
-import { CustomerDocument, CustomerOnboarding, CustomerProfile } from "./entities";
+import { CustomerDocumentRepository } from "./customer-document.repository";
+import { CustomerOnboardingRepository } from "./customer-onboarding.repository";
+import { CustomerProfileRepository } from "./customer-profile.repository";
 import {
+  CustomerDocument,
   CustomerDocumentType,
   CustomerDocumentValidationStatus,
 } from "./entities/customer-document.entity";
@@ -32,12 +33,9 @@ export class CustomerDocumentService {
   private readonly logger = new Logger(CustomerDocumentService.name);
 
   constructor(
-    @InjectRepository(CustomerDocument)
-    private readonly documentRepo: Repository<CustomerDocument>,
-    @InjectRepository(CustomerProfile)
-    private readonly profileRepo: Repository<CustomerProfile>,
-    @InjectRepository(CustomerOnboarding)
-    private readonly onboardingRepo: Repository<CustomerOnboarding>,
+    private readonly documentRepository: CustomerDocumentRepository,
+    private readonly profileRepository: CustomerProfileRepository,
+    private readonly onboardingRepository: CustomerOnboardingRepository,
     private readonly storageService: S3StorageService,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
@@ -47,10 +45,7 @@ export class CustomerDocumentService {
   ) {}
 
   async getDocuments(customerId: number) {
-    const documents = await this.documentRepo.find({
-      where: { customerId },
-      order: { uploadedAt: "DESC" },
-    });
+    const documents = await this.documentRepository.findByCustomerIdOrdered(customerId);
 
     return documents.map((doc) => ({
       id: doc.id,
@@ -87,28 +82,25 @@ export class CustomerDocumentService {
     },
   ) {
     // Validate onboarding status
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { customerId },
-    });
+    const onboarding = await this.onboardingRepository.findByCustomerId(customerId);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding record not found");
     }
 
     // Check if there's an existing invalid document of this type that needs replacement
-    const existingInvalidDoc = await this.documentRepo.findOne({
-      where: {
-        customerId,
-        documentType,
-        validationStatus: CustomerDocumentValidationStatus.INVALID,
-      },
+    const existingInvalidDoc = await this.documentRepository.findOneWhere({
+      customerId,
+      documentType,
+      validationStatus: CustomerDocumentValidationStatus.INVALID,
     });
 
     // Check if this is an expired BEE certificate being replaced
     let isExpiredBeeCertReplacement = false;
     if (documentType === CustomerDocumentType.BEE_CERT) {
-      const existingBeeDoc = await this.documentRepo.findOne({
-        where: { customerId, documentType: CustomerDocumentType.BEE_CERT },
+      const existingBeeDoc = await this.documentRepository.findOneWhere({
+        customerId,
+        documentType: CustomerDocumentType.BEE_CERT,
       });
       if (existingBeeDoc?.expiryDate) {
         const today = now().startOf("day");
@@ -152,8 +144,9 @@ export class CustomerDocumentService {
     }
 
     // Check if document of same type already exists
-    const existingDoc = await this.documentRepo.findOne({
-      where: { customerId, documentType },
+    const existingDoc = await this.documentRepository.findOneWhere({
+      customerId,
+      documentType,
     });
 
     // Upload file to storage (S3 or local based on STORAGE_TYPE env var)
@@ -195,7 +188,7 @@ export class CustomerDocumentService {
         existingDoc.validationNotes = null;
       }
 
-      const savedDoc = await this.documentRepo.save(existingDoc);
+      const savedDoc = await this.documentRepository.save(existingDoc);
 
       await this.auditService.log({
         entityType: "customer_document",
@@ -251,8 +244,7 @@ export class CustomerDocumentService {
       documentData.validationStatus = CustomerDocumentValidationStatus.PENDING;
     }
 
-    const document = this.documentRepo.create(documentData);
-    const savedDoc = await this.documentRepo.save(document);
+    const savedDoc = await this.documentRepository.create(documentData);
 
     await this.auditService.log({
       entityType: "customer_document",
@@ -288,10 +280,7 @@ export class CustomerDocumentService {
   ): void {
     setImmediate(async () => {
       try {
-        const profile = await this.profileRepo.findOne({
-          where: { id: customerId },
-          relations: ["user"],
-        });
+        const profile = await this.profileRepository.findById(customerId, ["user"]);
         if (!profile) {
           this.logger.warn(`Profile not found for customer ${customerId} - skipping secure copy`);
           return;
@@ -379,18 +368,14 @@ export class CustomerDocumentService {
   }
 
   async deleteDocument(customerId: number, documentId: number, clientIp: string) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId, customerId },
-    });
+    const document = await this.documentRepository.findOneWhere({ id: documentId, customerId });
 
     if (!document) {
       throw new NotFoundException("Document not found");
     }
 
     // Validate onboarding status - allow deletion if document is invalid (rejected)
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { customerId },
-    });
+    const onboarding = await this.onboardingRepository.findByCustomerId(customerId);
 
     const isInvalidDocument =
       document.validationStatus === CustomerDocumentValidationStatus.INVALID;
@@ -412,7 +397,7 @@ export class CustomerDocumentService {
       // Ignore if file doesn't exist
     }
 
-    await this.documentRepo.remove(document);
+    await this.documentRepository.remove(document);
 
     await this.auditService.log({
       entityType: "customer_document",
@@ -429,8 +414,9 @@ export class CustomerDocumentService {
   }
 
   async getDocumentFile(customerId: number, documentId: number) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId, customerId },
+    const document = await this.documentRepository.findOneWhere({
+      id: documentId,
+      customerId,
     });
 
     if (!document) {
@@ -470,10 +456,11 @@ export class CustomerDocumentService {
     },
     customerId: number,
   ) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId, customerId },
-      relations: ["customer", "customer.company", "customer.user"],
-    });
+    const document = await this.documentRepository.findOneForCustomerWithRelations(
+      documentId,
+      customerId,
+      ["customer", "customer.company", "customer.user"],
+    );
 
     if (!document) {
       throw new NotFoundException("Document not found");
@@ -514,7 +501,7 @@ export class CustomerDocumentService {
     document.ocrProcessedAt = now().toJSDate();
     document.ocrFailed = ocrResult.ocrFailed;
 
-    await this.documentRepo.save(document);
+    await this.documentRepository.save(document);
 
     // Send admin notification if manual review is required
     if (validationStatus === CustomerDocumentValidationStatus.MANUAL_REVIEW) {

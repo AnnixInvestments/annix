@@ -1,10 +1,11 @@
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
-import { PaperHolding } from "../entities/paper-holding.entity";
 import { PaperPortfolio } from "../entities/paper-portfolio.entity";
-import { type NewsProvenance, PaperTrade } from "../entities/paper-trade.entity";
+import { type NewsProvenance } from "../entities/paper-trade.entity";
+import { PaperHoldingRepository } from "../repositories/paper-holding.repository";
+import { PaperPortfolioRepository } from "../repositories/paper-portfolio.repository";
+import { PaperTradeRepository } from "../repositories/paper-trade.repository";
 import { AiExecutorService } from "./ai-executor.service";
 import {
   AllocationRulesEngineService,
@@ -23,6 +24,13 @@ export interface ExecutionResult {
   skipReason: string | null;
 }
 
+export interface TradeDecisionRepositories {
+  txRunner: TransactionRunner;
+  portfolioRepo: PaperPortfolioRepository;
+  holdingRepo: PaperHoldingRepository;
+  tradeRepo: PaperTradeRepository;
+}
+
 const METRIC_CATEGORY = "insights-portfolio-exec";
 const BYTES_PER_TRADE_ROW = 400;
 
@@ -31,17 +39,27 @@ export class PaperTradeExecutionService {
   private readonly logger = new Logger(PaperTradeExecutionService.name);
 
   constructor(
-    @InjectRepository(PaperPortfolio)
-    private readonly portfolioRepo: Repository<PaperPortfolio>,
-    private readonly dataSource: DataSource,
+    private readonly portfolioRepo: PaperPortfolioRepository,
+    private readonly holdingRepo: PaperHoldingRepository,
+    private readonly tradeRepo: PaperTradeRepository,
+    private readonly txRunner: TransactionRunner,
     private readonly rulesEngine: AllocationRulesEngineService,
     private readonly metrics: ExtractionMetricService,
     @Inject(forwardRef(() => AiExecutorService))
     private readonly aiExecutor: AiExecutorService,
   ) {}
 
+  tradeDecisionRepositories(): TradeDecisionRepositories {
+    return {
+      txRunner: this.txRunner,
+      portfolioRepo: this.portfolioRepo,
+      holdingRepo: this.holdingRepo,
+      tradeRepo: this.tradeRepo,
+    };
+  }
+
   async executeAll(): Promise<ExecutionResult[]> {
-    const portfolios = await this.portfolioRepo.find({ where: { isActive: true } });
+    const portfolios = await this.portfolioRepo.findActive();
     const results: ExecutionResult[] = [];
     for (const portfolio of portfolios) {
       const strategy = portfolio.executorStrategy;
@@ -99,7 +117,12 @@ export class PaperTradeExecutionService {
             skipReason: null,
           };
         }
-        return applyTradeDecisions(this.dataSource, portfolio, decisions.decisions, this.logger);
+        return applyTradeDecisions(
+          this.tradeDecisionRepositories(),
+          portfolio,
+          decisions.decisions,
+          this.logger,
+        );
       },
       (result) => (result.buysExecuted + result.sellsExecuted) * BYTES_PER_TRADE_ROW,
     );
@@ -107,7 +130,7 @@ export class PaperTradeExecutionService {
 }
 
 export async function applyTradeDecisions(
-  dataSource: DataSource,
+  repositories: TradeDecisionRepositories,
   portfolio: PaperPortfolio,
   decisions: Decision[],
   logger: Logger,
@@ -122,12 +145,12 @@ export async function applyTradeDecisions(
   let cashDeployed = 0;
   let cashRaised = 0;
 
-  await dataSource.transaction(async (manager) => {
-    const portfolioRepo = manager.getRepository(PaperPortfolio);
-    const holdingRepo = manager.getRepository(PaperHolding);
-    const tradeRepo = manager.getRepository(PaperTrade);
+  await repositories.txRunner.run(async (ctx) => {
+    const portfolioRepo = repositories.portfolioRepo.withTransaction(ctx);
+    const holdingRepo = repositories.holdingRepo.withTransaction(ctx);
+    const tradeRepo = repositories.tradeRepo.withTransaction(ctx);
 
-    const fresh = await portfolioRepo.findOneOrFail({ where: { id: portfolio.id } });
+    const fresh = await portfolioRepo.findByIdOrFail(portfolio.id);
     let cashBalance = Number(fresh.currentCashBalance);
 
     for (const decision of sortedSellsFirst) {
@@ -153,10 +176,9 @@ export async function applyTradeDecisions(
       }
     }
 
-    await portfolioRepo.update(
-      { id: portfolio.id },
-      { currentCashBalance: cashBalance.toFixed(2) },
-    );
+    await portfolioRepo.updateById(portfolio.id, {
+      currentCashBalance: cashBalance.toFixed(2),
+    });
   });
 
   return {
@@ -172,10 +194,10 @@ export async function applyTradeDecisions(
 
 async function applySell(
   decision: SellDecision,
-  holdingRepo: Repository<PaperHolding>,
-  tradeRepo: Repository<PaperTrade>,
+  holdingRepo: PaperHoldingRepository,
+  tradeRepo: PaperTradeRepository,
 ): Promise<boolean> {
-  const holding = await holdingRepo.findOne({ where: { id: decision.holdingId } });
+  const holding = await holdingRepo.findById(decision.holdingId);
   if (!holding) return false;
   const heldQty = Number(holding.quantity);
   const remainingQty = heldQty - decision.qty;
@@ -184,51 +206,47 @@ async function applySell(
     const newMarketValue = remainingQty * decision.estimatedPrice;
     const newUnrealised = newMarketValue - remainingQty * avg;
     const newUnrealisedPct = avg > 0 ? (newUnrealised / (remainingQty * avg)) * 100 : 0;
-    await holdingRepo.update(
-      { id: holding.id },
-      {
-        quantity: remainingQty.toString(),
-        currentPrice: decision.estimatedPrice.toFixed(6),
-        marketValue: newMarketValue.toFixed(2),
-        unrealisedGainLoss: newUnrealised.toFixed(2),
-        unrealisedGainLossPercent: newUnrealisedPct.toFixed(4),
-      },
-    );
+    await holdingRepo.updateById(holding.id, {
+      quantity: remainingQty.toString(),
+      currentPrice: decision.estimatedPrice.toFixed(6),
+      marketValue: newMarketValue.toFixed(2),
+      unrealisedGainLoss: newUnrealised.toFixed(2),
+      unrealisedGainLossPercent: newUnrealisedPct.toFixed(4),
+    });
   } else {
-    await holdingRepo.delete({ id: holding.id });
+    await holdingRepo.deleteById(holding.id);
   }
-  await tradeRepo.save(
-    tradeRepo.create({
-      portfolioId: decision.portfolioId,
-      assetId: decision.assetId,
-      action: "sell",
-      quantity: decision.qty.toString(),
-      price: decision.estimatedPrice.toFixed(6),
-      tradeValue: decision.estimatedTradeValue.toFixed(2),
-      fees: "0",
-      appReasoning: decision.reasoning,
-      opportunityScore: decision.opportunityScore.toFixed(2),
-      riskScore: decision.riskScore.toFixed(2),
-      confidenceScore: decision.confidenceScore.toFixed(2),
-      marketRegime: null,
-      signalSnapshot: decision.signalSnapshotId
-        ? { signalSnapshotId: decision.signalSnapshotId, reasonCode: decision.reasonCode }
-        : null,
-      relatedNewsIds: newsIds(decision.newsConsidered),
-      newsConsidered: decision.newsConsidered.length > 0 ? decision.newsConsidered : null,
-    }),
-  );
+  await tradeRepo.create({
+    portfolioId: decision.portfolioId,
+    assetId: decision.assetId,
+    action: "sell",
+    quantity: decision.qty.toString(),
+    price: decision.estimatedPrice.toFixed(6),
+    tradeValue: decision.estimatedTradeValue.toFixed(2),
+    fees: "0",
+    appReasoning: decision.reasoning,
+    opportunityScore: decision.opportunityScore.toFixed(2),
+    riskScore: decision.riskScore.toFixed(2),
+    confidenceScore: decision.confidenceScore.toFixed(2),
+    marketRegime: null,
+    signalSnapshot: decision.signalSnapshotId
+      ? { signalSnapshotId: decision.signalSnapshotId, reasonCode: decision.reasonCode }
+      : null,
+    relatedNewsIds: newsIds(decision.newsConsidered),
+    newsConsidered: decision.newsConsidered.length > 0 ? decision.newsConsidered : null,
+  });
   return true;
 }
 
 async function applyBuy(
   decision: BuyDecision,
-  holdingRepo: Repository<PaperHolding>,
-  tradeRepo: Repository<PaperTrade>,
+  holdingRepo: PaperHoldingRepository,
+  tradeRepo: PaperTradeRepository,
 ): Promise<void> {
-  const existing = await holdingRepo.findOne({
-    where: { portfolioId: decision.portfolioId, assetId: decision.assetId },
-  });
+  const existing = await holdingRepo.findByPortfolioAndAsset(
+    decision.portfolioId,
+    decision.assetId,
+  );
   if (existing) {
     const existingQty = Number(existing.quantity);
     const existingAvg = Number(existing.averageBuyPrice);
@@ -237,56 +255,49 @@ async function applyBuy(
     const newMarketValue = newQty * decision.estimatedPrice;
     const newUnrealised = newMarketValue - newQty * newAvg;
     const newUnrealisedPct = newAvg > 0 ? (newUnrealised / (newQty * newAvg)) * 100 : 0;
-    await holdingRepo.update(
-      { id: existing.id },
-      {
-        quantity: newQty.toString(),
-        averageBuyPrice: newAvg.toFixed(6),
-        currentPrice: decision.estimatedPrice.toFixed(6),
-        marketValue: newMarketValue.toFixed(2),
-        unrealisedGainLoss: newUnrealised.toFixed(2),
-        unrealisedGainLossPercent: newUnrealisedPct.toFixed(4),
-      },
-    );
+    await holdingRepo.updateById(existing.id, {
+      quantity: newQty.toString(),
+      averageBuyPrice: newAvg.toFixed(6),
+      currentPrice: decision.estimatedPrice.toFixed(6),
+      marketValue: newMarketValue.toFixed(2),
+      unrealisedGainLoss: newUnrealised.toFixed(2),
+      unrealisedGainLossPercent: newUnrealisedPct.toFixed(4),
+    });
   } else {
-    await holdingRepo.save(
-      holdingRepo.create({
-        portfolioId: decision.portfolioId,
-        assetId: decision.assetId,
-        quantity: decision.qty.toString(),
-        averageBuyPrice: decision.estimatedPrice.toFixed(6),
-        currentPrice: decision.estimatedPrice.toFixed(6),
-        marketValue: decision.estimatedTradeValue.toFixed(2),
-        unrealisedGainLoss: "0",
-        unrealisedGainLossPercent: "0",
-      }),
-    );
-  }
-
-  await tradeRepo.save(
-    tradeRepo.create({
+    await holdingRepo.create({
       portfolioId: decision.portfolioId,
       assetId: decision.assetId,
-      action: "buy",
       quantity: decision.qty.toString(),
-      price: decision.estimatedPrice.toFixed(6),
-      tradeValue: decision.estimatedTradeValue.toFixed(2),
-      fees: "0",
-      appReasoning: decision.reasoning,
-      opportunityScore: decision.opportunityScore.toFixed(2),
-      riskScore: decision.riskScore.toFixed(2),
-      confidenceScore: decision.confidenceScore.toFixed(2),
-      marketRegime: null,
-      signalSnapshot: {
-        signalSnapshotId: decision.signalSnapshotId,
-        signalSnapshotDate: decision.signalSnapshotDate,
-        breakdown: decision.signalBreakdown,
-        adjustedScore: decision.adjustedScore,
-      },
-      relatedNewsIds: newsIds(decision.newsConsidered),
-      newsConsidered: decision.newsConsidered.length > 0 ? decision.newsConsidered : null,
-    }),
-  );
+      averageBuyPrice: decision.estimatedPrice.toFixed(6),
+      currentPrice: decision.estimatedPrice.toFixed(6),
+      marketValue: decision.estimatedTradeValue.toFixed(2),
+      unrealisedGainLoss: "0",
+      unrealisedGainLossPercent: "0",
+    });
+  }
+
+  await tradeRepo.create({
+    portfolioId: decision.portfolioId,
+    assetId: decision.assetId,
+    action: "buy",
+    quantity: decision.qty.toString(),
+    price: decision.estimatedPrice.toFixed(6),
+    tradeValue: decision.estimatedTradeValue.toFixed(2),
+    fees: "0",
+    appReasoning: decision.reasoning,
+    opportunityScore: decision.opportunityScore.toFixed(2),
+    riskScore: decision.riskScore.toFixed(2),
+    confidenceScore: decision.confidenceScore.toFixed(2),
+    marketRegime: null,
+    signalSnapshot: {
+      signalSnapshotId: decision.signalSnapshotId,
+      signalSnapshotDate: decision.signalSnapshotDate,
+      breakdown: decision.signalBreakdown,
+      adjustedScore: decision.adjustedScore,
+    },
+    relatedNewsIds: newsIds(decision.newsConsidered),
+    newsConsidered: decision.newsConsidered.length > 0 ? decision.newsConsidered : null,
+  });
 }
 
 function newsIds(provenance: NewsProvenance[]): string[] | null {

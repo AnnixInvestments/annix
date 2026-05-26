@@ -8,16 +8,19 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, In, IsNull, Repository } from "typeorm";
 import { fromISO, fromJSDate, now, nowMillis } from "../../lib/datetime";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { CvEmailTemplateKind } from "../entities/annix-orbit-email-template.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { InterviewBooking, InterviewBookingStatus } from "../entities/interview-booking.entity";
 import { InterviewInvite } from "../entities/interview-invite.entity";
 import { InterviewSlot } from "../entities/interview-slot.entity";
 import { JobPosting } from "../entities/job-posting.entity";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { InterviewBookingRepository } from "../repositories/interview-booking.repository";
+import { InterviewInviteRepository } from "../repositories/interview-invite.repository";
+import { InterviewSlotRepository } from "../repositories/interview-slot.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { EmailTemplateService } from "./email-template.service";
 
 const INVITE_TOKEN_TTL_DAYS = 30;
@@ -38,40 +41,26 @@ export class InterviewBookingService {
   private readonly logger = new Logger(InterviewBookingService.name);
 
   constructor(
-    @InjectRepository(InterviewSlot)
-    private readonly slotRepo: Repository<InterviewSlot>,
-    @InjectRepository(InterviewBooking)
-    private readonly bookingRepo: Repository<InterviewBooking>,
-    @InjectRepository(InterviewInvite)
-    private readonly inviteRepo: Repository<InterviewInvite>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly companyRepo: Repository<AnnixOrbitCompany>,
+    private readonly slotRepo: InterviewSlotRepository,
+    private readonly bookingRepo: InterviewBookingRepository,
+    private readonly inviteRepo: InterviewInviteRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
     private readonly emailTemplateService: EmailTemplateService,
     private readonly configService: ConfigService,
   ) {}
 
   async listSlotsForJob(companyId: number, jobPostingId: number): Promise<InterviewSlot[]> {
     await this.assertJobOwnership(companyId, jobPostingId);
-    return this.slotRepo.find({
-      where: { companyId, jobPostingId },
-      relations: ["bookings", "bookings.candidate"],
-      order: { startsAt: "ASC" },
-    });
+    return this.slotRepo.listForJob(companyId, jobPostingId);
   }
 
   async listSlotsForCompany(companyId: number, fromIso: string | null): Promise<InterviewSlot[]> {
     const fromDateTime = fromIso ? fromISO(fromIso) : now().minus({ days: 1 });
     const fromDate = fromDateTime.toJSDate();
     const toDate = fromDateTime.plus({ days: 90 }).toJSDate();
-    return this.slotRepo.find({
-      where: { companyId, startsAt: Between(fromDate, toDate) },
-      relations: ["jobPosting", "bookings", "bookings.candidate"],
-      order: { startsAt: "ASC" },
-    });
+    return this.slotRepo.listForCompanyBetween(companyId, fromDate, toDate);
   }
 
   async createSlot(
@@ -83,7 +72,7 @@ export class InterviewBookingService {
     if (input.endsAt.getTime() <= input.startsAt.getTime()) {
       throw new BadRequestException("Slot end time must be after start time");
     }
-    const slot = this.slotRepo.create({
+    return this.slotRepo.create({
       companyId,
       jobPostingId,
       startsAt: input.startsAt,
@@ -96,14 +85,10 @@ export class InterviewBookingService {
       notes: input.notes ?? null,
       isCancelled: false,
     });
-    return this.slotRepo.save(slot);
   }
 
   async deleteSlot(companyId: number, slotId: number): Promise<{ deleted: boolean }> {
-    const slot = await this.slotRepo.findOne({
-      where: { id: slotId, companyId },
-      relations: ["bookings"],
-    });
+    const slot = await this.slotRepo.findByIdForCompanyWithBookings(slotId, companyId);
     if (!slot) throw new NotFoundException("Slot not found");
     const activeBookings = (slot.bookings ?? []).filter(
       (b) => b.status === InterviewBookingStatus.BOOKED,
@@ -113,7 +98,7 @@ export class InterviewBookingService {
         "Slot has an active booking. Cancel the booking before deleting the slot.",
       );
     }
-    await this.slotRepo.delete({ id: slotId });
+    await this.slotRepo.deleteById(slotId);
     return { deleted: true };
   }
 
@@ -121,10 +106,7 @@ export class InterviewBookingService {
     companyId: number,
     candidateId: number,
   ): Promise<{ sent: boolean; bookingLink: string }> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobPosting(candidateId);
     if (!candidate) throw new NotFoundException("Candidate not found");
     const jobPosting = candidate.jobPosting;
     if (!jobPosting || jobPosting.companyId !== companyId) {
@@ -144,13 +126,12 @@ export class InterviewBookingService {
 
     const token = randomBytes(24).toString("hex");
     const expiresAt = now().plus({ days: INVITE_TOKEN_TTL_DAYS }).toJSDate();
-    const invite = this.inviteRepo.create({
+    await this.inviteRepo.create({
       candidateId: candidate.id,
       jobPostingId: jobPosting.id,
       token,
       expiresAt,
     });
-    await this.inviteRepo.save(invite);
 
     const bookingLink = this.bookingLinkFor(token);
     const companyName = await this.companyName(companyId);
@@ -177,7 +158,7 @@ export class InterviewBookingService {
     slots: InterviewSlot[];
     currentBooking: InterviewBooking | null;
   }> {
-    const invite = await this.inviteRepo.findOne({ where: { token } });
+    const invite = await this.inviteRepo.findByToken(token);
     if (!invite) throw new NotFoundException("Invitation link not found");
     if (fromJSDate(invite.expiresAt).toMillis() < nowMillis()) {
       throw new ForbiddenException(
@@ -185,27 +166,16 @@ export class InterviewBookingService {
       );
     }
 
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: invite.candidateId },
-      relations: ["jobPosting"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobPosting(invite.candidateId);
     if (!candidate) throw new NotFoundException("Candidate not found");
     const jobPosting = candidate.jobPosting;
     if (!jobPosting) throw new NotFoundException("Candidate is not linked to a job posting");
 
-    const slots = await this.slotRepo.find({
-      where: { jobPostingId: invite.jobPostingId, isCancelled: false },
-      relations: ["bookings"],
-      order: { startsAt: "ASC" },
-    });
+    const slots = await this.slotRepo.listOpenForJob(invite.jobPostingId);
 
-    const currentBooking = await this.bookingRepo.findOne({
-      where: {
-        candidateId: invite.candidateId,
-        status: InterviewBookingStatus.BOOKED,
-      },
-      relations: ["slot"],
-    });
+    const currentBooking = await this.bookingRepo.findActiveForCandidateWithSlot(
+      invite.candidateId,
+    );
 
     return {
       invite,
@@ -230,13 +200,12 @@ export class InterviewBookingService {
     }
 
     try {
-      const booking = this.bookingRepo.create({
+      const saved = await this.bookingRepo.create({
         slotId: slot.id,
         candidateId: candidate.id,
         status: InterviewBookingStatus.BOOKED,
         bookedAt: now().toJSDate(),
       });
-      const saved = await this.bookingRepo.save(booking);
 
       invite.usedAt = now().toJSDate();
       await this.inviteRepo.save(invite);
@@ -253,7 +222,7 @@ export class InterviewBookingService {
 
   async cancelByToken(token: string, bookingId: number): Promise<{ cancelled: boolean }> {
     const { candidate } = await this.lookupByToken(token);
-    const booking = await this.bookingRepo.findOne({ where: { id: bookingId } });
+    const booking = await this.bookingRepo.findById(bookingId);
     if (!booking || booking.candidateId !== candidate.id) {
       throw new NotFoundException("Booking not found");
     }
@@ -265,37 +234,19 @@ export class InterviewBookingService {
   }
 
   async bookingsForCandidate(candidateId: number): Promise<InterviewBooking[]> {
-    return this.bookingRepo.find({
-      where: { candidateId, status: InterviewBookingStatus.BOOKED },
-      relations: ["slot", "slot.jobPosting", "slot.company"],
-      order: { bookedAt: "ASC" },
-    });
+    return this.bookingRepo.bookingsForCandidate(candidateId);
   }
 
   async bookingsForIndividualByEmail(email: string): Promise<InterviewBooking[]> {
-    const candidates = await this.candidateRepo.find({ where: { email } });
+    const candidates = await this.candidateRepo.findByEmail(email);
     if (candidates.length === 0) return [];
-    return this.bookingRepo.find({
-      where: {
-        candidateId: In(candidates.map((c) => c.id)),
-        status: InterviewBookingStatus.BOOKED,
-        cancelledAt: IsNull(),
-      },
-      relations: ["slot", "slot.jobPosting"],
-      order: { bookedAt: "ASC" },
-    });
+    return this.bookingRepo.bookingsForCandidates(candidates.map((c) => c.id));
   }
 
   async openInvitesForIndividualByEmail(email: string): Promise<InterviewInvite[]> {
-    const candidates = await this.candidateRepo.find({ where: { email } });
+    const candidates = await this.candidateRepo.findByEmail(email);
     if (candidates.length === 0) return [];
-    const invites = await this.inviteRepo.find({
-      where: {
-        candidateId: In(candidates.map((c) => c.id)),
-      },
-      relations: ["jobPosting"],
-      order: { createdAt: "DESC" },
-    });
+    const invites = await this.inviteRepo.findForCandidatesWithJob(candidates.map((c) => c.id));
     const nowMs = nowMillis();
     return invites.filter((i) => fromJSDate(i.expiresAt).toMillis() > nowMs);
   }
@@ -307,14 +258,12 @@ export class InterviewBookingService {
   }
 
   private async assertJobOwnership(companyId: number, jobPostingId: number): Promise<void> {
-    const job = await this.jobPostingRepo.findOne({
-      where: { id: jobPostingId, companyId },
-    });
+    const job = await this.jobPostingRepo.findByIdForCompany(jobPostingId, companyId);
     if (!job) throw new NotFoundException("Job posting not found");
   }
 
   private async companyName(companyId: number): Promise<string> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     return company?.name ?? "the hiring team";
   }
 }

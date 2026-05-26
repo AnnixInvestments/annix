@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../../lib/datetime";
 import { PositectorDevice } from "../entities/positector-device.entity";
+import { PositectorDeviceRepository } from "../repositories/positector-device.repository";
 
 export interface RegisterDeviceDto {
   deviceName: string;
@@ -68,25 +67,20 @@ export interface DeviceConnectionStatus {
 export class PositectorService {
   private readonly logger = new Logger(PositectorService.name);
 
-  constructor(
-    @InjectRepository(PositectorDevice)
-    private readonly deviceRepo: Repository<PositectorDevice>,
-  ) {}
+  constructor(private readonly deviceRepo: PositectorDeviceRepository) {}
 
   async registerDevice(
     companyId: number,
     dto: RegisterDeviceDto,
     user: { id?: number; name: string },
   ): Promise<PositectorDevice> {
-    const existing = await this.deviceRepo.findOne({
-      where: { companyId, ipAddress: dto.ipAddress },
-    });
+    const existing = await this.deviceRepo.findByCompanyAndIp(companyId, dto.ipAddress);
 
     if (existing) {
       throw new BadRequestException(`A device is already registered at ${dto.ipAddress}`);
     }
 
-    const device = this.deviceRepo.create({
+    return this.deviceRepo.create({
       companyId,
       deviceName: dto.deviceName,
       ipAddress: dto.ipAddress,
@@ -97,27 +91,14 @@ export class PositectorService {
       registeredByName: user.name,
       registeredById: user.id ?? null,
     });
-
-    return this.deviceRepo.save(device);
   }
 
   async findAll(companyId: number, filters?: { active?: boolean }): Promise<PositectorDevice[]> {
-    const qb = this.deviceRepo
-      .createQueryBuilder("d")
-      .where("d.companyId = :companyId", { companyId })
-      .orderBy("d.deviceName", "ASC");
-
-    if (filters?.active !== undefined) {
-      qb.andWhere("d.isActive = :active", { active: filters.active });
-    }
-
-    return qb.getMany();
+    return this.deviceRepo.findAllForCompany(companyId, filters?.active);
   }
 
   async findById(companyId: number, id: number): Promise<PositectorDevice> {
-    const device = await this.deviceRepo.findOne({
-      where: { id, companyId },
-    });
+    const device = await this.deviceRepo.findByIdForCompany(companyId, id);
 
     if (!device) {
       throw new NotFoundException(`Device ${id} not found`);
@@ -189,7 +170,7 @@ export class PositectorService {
         updates.serialNumber = detectedSerial;
       }
 
-      await this.deviceRepo.update({ id: device.id }, updates);
+      await this.deviceRepo.updateById(device.id, updates);
     } catch (err) {
       this.logger.warn(
         `Connection check failed for device ${device.deviceName} (${device.ipAddress}): ${err instanceof Error ? err.message : err}`,
@@ -236,7 +217,7 @@ export class PositectorService {
       }),
     );
 
-    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: now().toJSDate() });
+    await this.deviceRepo.updateById(device.id, { lastConnectedAt: now().toJSDate() });
 
     return summaries;
   }
@@ -259,7 +240,7 @@ export class PositectorService {
       this.logger.debug(`No statistics.txt found for batch ${buid}`);
     }
 
-    await this.deviceRepo.update({ id: device.id }, { lastConnectedAt: now().toJSDate() });
+    await this.deviceRepo.updateById(device.id, { lastConnectedAt: now().toJSDate() });
 
     return { buid, header, readings, statistics };
   }

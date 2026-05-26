@@ -1,7 +1,4 @@
 import { Injectable, type OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
-import { now } from "../lib/datetime";
 import type { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import type { SageExportLineItem } from "../sage-export/interfaces/sage-invoice";
 import type {
@@ -11,11 +8,8 @@ import type {
   SageInvoiceAdapter,
 } from "../sage-export/interfaces/sage-invoice-adapter.interface";
 import { SageAdapterRegistry } from "../sage-export/sage-adapter-registry.service";
-import {
-  RubberTaxInvoice,
-  TaxInvoiceStatus,
-  TaxInvoiceType,
-} from "./entities/rubber-tax-invoice.entity";
+import { RubberTaxInvoice, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
 
 const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
@@ -23,8 +17,7 @@ const DEFAULT_ACCOUNT_CODE = "5000";
 @Injectable()
 export class RubberSageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleInit {
   constructor(
-    @InjectRepository(RubberTaxInvoice)
-    private readonly invoiceRepo: Repository<RubberTaxInvoice>,
+    private readonly invoiceRepo: RubberTaxInvoiceRepository,
     private readonly sageAdapterRegistry: SageAdapterRegistry,
   ) {}
 
@@ -44,31 +37,13 @@ export class RubberSageInvoiceAdapterService implements SageInvoiceAdapter, OnMo
     const invoiceType =
       filters.invoiceType === "CUSTOMER" ? TaxInvoiceType.CUSTOMER : TaxInvoiceType.SUPPLIER;
 
-    const qb = this.invoiceRepo
-      .createQueryBuilder("invoice")
-      .leftJoinAndSelect("invoice.company", "company")
-      .where("invoice.invoice_type = :type", { type: invoiceType })
-      .andWhere("invoice.status = :status", { status: TaxInvoiceStatus.APPROVED });
-
-    if (filters.dateFrom) {
-      qb.andWhere("invoice.invoice_date >= :dateFrom", { dateFrom: filters.dateFrom });
-    }
-
-    if (filters.dateTo) {
-      qb.andWhere("invoice.invoice_date <= :dateTo", { dateTo: filters.dateTo });
-    }
-
-    if (filters.excludeExported) {
-      qb.andWhere("invoice.exported_to_sage_at IS NULL");
-    }
-
-    if (filters.invoiceId) {
-      qb.andWhere("invoice.id = :invoiceId", { invoiceId: filters.invoiceId });
-    }
-
-    qb.orderBy("invoice.invoice_date", "ASC");
-
-    const entities = await qb.getMany();
+    const entities = await this.invoiceRepo.findExportableInvoices({
+      invoiceType,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      excludeExported: filters.excludeExported,
+      invoiceId: filters.invoiceId,
+    });
 
     return {
       invoices: entities.map((entity) => toSageInvoice(entity)),
@@ -81,12 +56,7 @@ export class RubberSageInvoiceAdapterService implements SageInvoiceAdapter, OnMo
       return;
     }
 
-    await this.invoiceRepo
-      .createQueryBuilder()
-      .update(RubberTaxInvoice)
-      .set({ exportedToSageAt: now().toJSDate() } as unknown as RubberTaxInvoice)
-      .where({ id: In(entityIds) })
-      .execute();
+    await this.invoiceRepo.markExportedToSage(entityIds);
   }
 
   async previewCount(

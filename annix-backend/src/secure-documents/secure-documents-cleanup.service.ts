@@ -1,9 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
 import { now } from "../lib/datetime";
-import { SecureDocument } from "./secure-document.entity";
+import {
+  SecureDocumentRepository,
+  SecureEntityFolderRepository,
+} from "./secure-documents.repository";
 import { SecureDocumentsService } from "./secure-documents.service";
 import { SecureEntityFolder } from "./secure-entity-folder.entity";
 
@@ -13,10 +14,8 @@ export class SecureDocumentsCleanupService {
   private readonly retentionDays = 90;
 
   constructor(
-    @InjectRepository(SecureEntityFolder)
-    private readonly folderRepo: Repository<SecureEntityFolder>,
-    @InjectRepository(SecureDocument)
-    private readonly documentRepo: Repository<SecureDocument>,
+    private readonly folderRepo: SecureEntityFolderRepository,
+    private readonly documentRepo: SecureDocumentRepository,
     private readonly secureDocumentsService: SecureDocumentsService,
   ) {}
 
@@ -26,12 +25,7 @@ export class SecureDocumentsCleanupService {
 
     const cutoffDate = now().minus({ days: this.retentionDays }).toJSDate();
 
-    const expiredFolders = await this.folderRepo.find({
-      where: {
-        isActive: false,
-        deletedAt: LessThan(cutoffDate),
-      },
-    });
+    const expiredFolders = await this.folderRepo.findInactiveExpiredBefore(cutoffDate);
 
     if (expiredFolders.length === 0) {
       this.logger.log("No expired folders to clean up");
@@ -55,9 +49,7 @@ export class SecureDocumentsCleanupService {
   }
 
   private async permanentlyDeleteFolder(folder: SecureEntityFolder): Promise<void> {
-    const documents = await this.documentRepo.find({
-      where: { folder: folder.secureFolderPath },
-    });
+    const documents = await this.documentRepo.findByFolder(folder.secureFolderPath);
 
     for (const document of documents) {
       try {
@@ -78,20 +70,13 @@ export class SecureDocumentsCleanupService {
 
     const cutoffDate = now().minus({ days: this.retentionDays }).toJSDate();
 
-    const expiredFolders = await this.folderRepo.find({
-      where: {
-        isActive: false,
-        deletedAt: LessThan(cutoffDate),
-      },
-    });
+    const expiredFolders = await this.folderRepo.findInactiveExpiredBefore(cutoffDate);
 
     let deletedFolders = 0;
     let deletedDocuments = 0;
 
     for (const folder of expiredFolders) {
-      const documents = await this.documentRepo.find({
-        where: { folder: folder.secureFolderPath },
-      });
+      const documents = await this.documentRepo.findByFolder(folder.secureFolderPath);
 
       for (const document of documents) {
         try {
@@ -124,21 +109,11 @@ export class SecureDocumentsCleanupService {
   }> {
     const cutoffDate = now().minus({ days: this.retentionDays }).toJSDate();
 
-    const totalInactive = await this.folderRepo.count({
-      where: { isActive: false },
-    });
+    const totalInactive = await this.folderRepo.countInactive();
 
-    const pendingCleanup = await this.folderRepo.count({
-      where: {
-        isActive: false,
-        deletedAt: LessThan(cutoffDate),
-      },
-    });
+    const pendingCleanup = await this.folderRepo.countInactiveExpiredBefore(cutoffDate);
 
-    const oldestFolder = await this.folderRepo.findOne({
-      where: { isActive: false },
-      order: { deletedAt: "ASC" },
-    });
+    const oldestFolder = await this.folderRepo.findOldestInactive();
 
     return {
       totalInactive,

@@ -1,18 +1,19 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
 import { now, nowMillis } from "../../lib/datetime";
-import {
-  ConsumableReturn,
-  type ConsumableReturnCondition,
-} from "../entities/consumable-return.entity";
-import { IssuableProduct } from "../entities/issuable-product.entity";
-import { PaintReturn, type PaintReturnCondition } from "../entities/paint-return.entity";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import type { ConsumableReturnCondition } from "../entities/consumable-return.entity";
+import type { PaintReturnCondition } from "../entities/paint-return.entity";
 import { ReturnSession, type ReturnSessionKind } from "../entities/return-session.entity";
-import { RubberOffcutReturn } from "../entities/rubber-offcut-return.entity";
-import { RubberOffcutStock } from "../entities/rubber-offcut-stock.entity";
 import { RubberWastageBin } from "../entities/rubber-wastage-bin.entity";
 import { RubberWastageEntry } from "../entities/rubber-wastage-entry.entity";
+import { ConsumableReturnRepository } from "../repositories/consumable-return.repository";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { PaintReturnRepository } from "../repositories/paint-return.repository";
+import { ReturnSessionRepository } from "../repositories/return-session.repository";
+import { RubberOffcutReturnRepository } from "../repositories/rubber-offcut-return.repository";
+import { RubberOffcutStockRepository } from "../repositories/rubber-offcut-stock.repository";
+import { RubberWastageBinRepository } from "../repositories/rubber-wastage-bin.repository";
+import { RubberWastageEntryRepository } from "../repositories/rubber-wastage-entry.repository";
 
 export interface CreateOffcutReturnInput {
   targetIssuanceRowId?: number | null;
@@ -67,31 +68,19 @@ export class ReturnsService {
   private readonly logger = new Logger(ReturnsService.name);
 
   constructor(
-    @InjectRepository(ReturnSession)
-    private readonly sessionRepo: Repository<ReturnSession>,
-    @InjectRepository(RubberOffcutReturn)
-    private readonly offcutReturnRepo: Repository<RubberOffcutReturn>,
-    @InjectRepository(RubberOffcutStock)
-    private readonly offcutStockRepo: Repository<RubberOffcutStock>,
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
-    @InjectRepository(RubberWastageBin)
-    private readonly binRepo: Repository<RubberWastageBin>,
-    @InjectRepository(RubberWastageEntry)
-    private readonly wastageEntryRepo: Repository<RubberWastageEntry>,
-    @InjectRepository(PaintReturn)
-    private readonly paintReturnRepo: Repository<PaintReturn>,
-    @InjectRepository(ConsumableReturn)
-    private readonly consumableReturnRepo: Repository<ConsumableReturn>,
-    private readonly dataSource: DataSource,
+    private readonly sessionRepo: ReturnSessionRepository,
+    private readonly offcutReturnRepo: RubberOffcutReturnRepository,
+    private readonly offcutStockRepo: RubberOffcutStockRepository,
+    private readonly productRepo: IssuableProductRepository,
+    private readonly binRepo: RubberWastageBinRepository,
+    private readonly wastageEntryRepo: RubberWastageEntryRepository,
+    private readonly paintReturnRepo: PaintReturnRepository,
+    private readonly consumableReturnRepo: ConsumableReturnRepository,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
   async outstandingReturns(companyId: number): Promise<ReturnSession[]> {
-    return this.sessionRepo.find({
-      where: { companyId, status: "pending" },
-      relations: { offcutReturns: true, paintReturns: true, consumableReturns: true },
-      order: { createdAt: "DESC" },
-    });
+    return this.sessionRepo.findOutstandingForCompany(companyId);
   }
 
   async createPaintReturnSession(
@@ -104,11 +93,11 @@ export class ReturnsService {
     if (input.condition !== "usable" && input.condition !== "contaminated") {
       throw new BadRequestException("condition must be 'usable' or 'contaminated'");
     }
-    return this.dataSource.transaction(async (manager) => {
-      const sessionRepo = manager.getRepository(ReturnSession);
-      const paintReturnRepo = manager.getRepository(PaintReturn);
+    return this.txRunner.run(async (context) => {
+      const sessionRepo = this.sessionRepo.withTransaction(context);
+      const paintReturnRepo = this.paintReturnRepo.withTransaction(context);
 
-      const session = sessionRepo.create({
+      const session = sessionRepo.build({
         companyId,
         returnKind: "paint_litres" as ReturnSessionKind,
         targetIssuanceRowId: input.targetIssuanceRowId ?? null,
@@ -120,7 +109,7 @@ export class ReturnsService {
       });
       const savedSession = await sessionRepo.save(session);
 
-      const paintReturn = paintReturnRepo.create({
+      const paintReturn = paintReturnRepo.build({
         returnSessionId: savedSession.id,
         companyId,
         sourceIssuanceRowId: input.targetIssuanceRowId ?? null,
@@ -133,16 +122,7 @@ export class ReturnsService {
       });
       await paintReturnRepo.save(paintReturn);
 
-      // TODO (post-preview): when condition === "usable", restore the returned
-      // litres to the source StockPurchaseBatch remaining quantity, or create a
-      // new micro-batch so FIFO valuation reflects the return. When
-      // contaminated, log to a paint wastage bin analogous to rubber wastage.
-      // Tracked as scope gap on issue #192.
-
-      const fullSession = await sessionRepo.findOne({
-        where: { id: savedSession.id },
-        relations: { offcutReturns: true, paintReturns: true, consumableReturns: true },
-      });
+      const fullSession = await sessionRepo.findByIdWithReturns(savedSession.id);
       if (!fullSession) {
         throw new NotFoundException(`Return session ${savedSession.id} disappeared after creation`);
       }
@@ -160,11 +140,11 @@ export class ReturnsService {
     if (input.condition !== "usable" && input.condition !== "contaminated") {
       throw new BadRequestException("condition must be 'usable' or 'contaminated'");
     }
-    return this.dataSource.transaction(async (manager) => {
-      const sessionRepo = manager.getRepository(ReturnSession);
-      const consumableReturnRepo = manager.getRepository(ConsumableReturn);
+    return this.txRunner.run(async (context) => {
+      const sessionRepo = this.sessionRepo.withTransaction(context);
+      const consumableReturnRepo = this.consumableReturnRepo.withTransaction(context);
 
-      const session = sessionRepo.create({
+      const session = sessionRepo.build({
         companyId,
         returnKind: "consumable_qty" as ReturnSessionKind,
         targetIssuanceRowId: input.targetIssuanceRowId ?? null,
@@ -176,7 +156,7 @@ export class ReturnsService {
       });
       const savedSession = await sessionRepo.save(session);
 
-      const consumableReturn = consumableReturnRepo.create({
+      const consumableReturn = consumableReturnRepo.build({
         returnSessionId: savedSession.id,
         companyId,
         sourceIssuanceRowId: input.targetIssuanceRowId ?? null,
@@ -189,14 +169,7 @@ export class ReturnsService {
       });
       await consumableReturnRepo.save(consumableReturn);
 
-      // TODO (post-preview): restore usable quantities to source
-      // StockPurchaseBatch or log contaminated units to a consumable wastage
-      // sink. Tracked as scope gap on issue #192.
-
-      const fullSession = await sessionRepo.findOne({
-        where: { id: savedSession.id },
-        relations: { offcutReturns: true, paintReturns: true, consumableReturns: true },
-      });
+      const fullSession = await sessionRepo.findByIdWithReturns(savedSession.id);
       if (!fullSession) {
         throw new NotFoundException(`Return session ${savedSession.id} disappeared after creation`);
       }
@@ -211,13 +184,13 @@ export class ReturnsService {
     if (input.widthMm <= 0 || input.lengthM <= 0 || input.thicknessMm <= 0) {
       throw new BadRequestException("Offcut dimensions must be positive");
     }
-    return this.dataSource.transaction(async (manager) => {
-      const sessionRepo = manager.getRepository(ReturnSession);
-      const offcutReturnRepo = manager.getRepository(RubberOffcutReturn);
-      const productRepo = manager.getRepository(IssuableProduct);
-      const offcutStockRepo = manager.getRepository(RubberOffcutStock);
+    return this.txRunner.run(async (context) => {
+      const sessionRepo = this.sessionRepo.withTransaction(context);
+      const offcutReturnRepo = this.offcutReturnRepo.withTransaction(context);
+      const productRepo = this.productRepo.withTransaction(context);
+      const offcutStockRepo = this.offcutStockRepo.withTransaction(context);
 
-      const session = sessionRepo.create({
+      const session = sessionRepo.build({
         companyId,
         returnKind: "rubber_offcut" as ReturnSessionKind,
         targetIssuanceRowId: input.targetIssuanceRowId ?? null,
@@ -233,7 +206,7 @@ export class ReturnsService {
       const productSku = `OFFCUT-${offcutNumber}`;
       const computedWeightKg = this.computeWeight(input.widthMm, input.lengthM, input.thicknessMm);
 
-      const product = productRepo.create({
+      const product = productRepo.build({
         companyId,
         productType: "rubber_offcut",
         sku: productSku,
@@ -245,7 +218,7 @@ export class ReturnsService {
       });
       const savedProduct = await productRepo.save(product);
 
-      const offcutStock = offcutStockRepo.create({
+      const offcutStock = offcutStockRepo.build({
         productId: savedProduct.id,
         offcutNumber,
         sourceRollId: input.sourceRubberRollId ?? null,
@@ -261,7 +234,7 @@ export class ReturnsService {
       });
       await offcutStockRepo.save(offcutStock);
 
-      const offcutReturn = offcutReturnRepo.create({
+      const offcutReturn = offcutReturnRepo.build({
         returnSessionId: savedSession.id,
         companyId,
         sourceIssuanceRowId: input.targetIssuanceRowId ?? null,
@@ -280,10 +253,7 @@ export class ReturnsService {
       });
       await offcutReturnRepo.save(offcutReturn);
 
-      const fullSession = await sessionRepo.findOne({
-        where: { id: savedSession.id },
-        relations: { offcutReturns: true },
-      });
+      const fullSession = await sessionRepo.findByIdWithOffcutReturns(savedSession.id);
       if (!fullSession) {
         throw new NotFoundException(`Return session ${savedSession.id} disappeared after creation`);
       }
@@ -296,7 +266,7 @@ export class ReturnsService {
     sessionId: number,
     confirmedByStaffId: number,
   ): Promise<ReturnSession> {
-    const session = await this.sessionRepo.findOne({ where: { id: sessionId, companyId } });
+    const session = await this.sessionRepo.findByIdForCompany(companyId, sessionId);
     if (!session) {
       throw new NotFoundException(`Return session ${sessionId} not found`);
     }
@@ -309,7 +279,7 @@ export class ReturnsService {
   }
 
   async reject(companyId: number, sessionId: number, reason: string): Promise<ReturnSession> {
-    const session = await this.sessionRepo.findOne({ where: { id: sessionId, companyId } });
+    const session = await this.sessionRepo.findByIdForCompany(companyId, sessionId);
     if (!session) {
       throw new NotFoundException(`Return session ${sessionId} not found`);
     }
@@ -322,18 +292,15 @@ export class ReturnsService {
   }
 
   async listWastageBins(companyId: number): Promise<RubberWastageBin[]> {
-    return this.binRepo.find({
-      where: { companyId, active: true },
-      order: { colour: "ASC" },
-    });
+    return this.binRepo.findActiveForCompany(companyId);
   }
 
   async ensureWastageBin(companyId: number, colour: string): Promise<RubberWastageBin> {
-    const existing = await this.binRepo.findOne({ where: { companyId, colour } });
+    const existing = await this.binRepo.findByColour(companyId, colour);
     if (existing) {
       return existing;
     }
-    const created = this.binRepo.create({
+    const created = this.binRepo.build({
       companyId,
       colour,
       currentWeightKg: 0,
@@ -350,12 +317,12 @@ export class ReturnsService {
     if (input.weightKgAdded <= 0) {
       throw new BadRequestException("weightKgAdded must be greater than zero");
     }
-    return this.dataSource.transaction(async (manager) => {
-      const binRepo = manager.getRepository(RubberWastageBin);
-      const entryRepo = manager.getRepository(RubberWastageEntry);
-      let bin = await binRepo.findOne({ where: { companyId, colour: input.colour } });
+    return this.txRunner.run(async (context) => {
+      const binRepo = this.binRepo.withTransaction(context);
+      const entryRepo = this.wastageEntryRepo.withTransaction(context);
+      let bin = await binRepo.findByColour(companyId, input.colour);
       if (!bin) {
-        bin = binRepo.create({
+        bin = binRepo.build({
           companyId,
           colour: input.colour,
           currentWeightKg: 0,
@@ -369,7 +336,7 @@ export class ReturnsService {
       bin.currentValueR += totalCostR;
       await binRepo.save(bin);
 
-      const entry = entryRepo.create({
+      const entry = entryRepo.build({
         wastageBinId: bin.id,
         companyId,
         weightKgAdded: input.weightKgAdded,
@@ -386,7 +353,7 @@ export class ReturnsService {
   }
 
   async emptyWastageBin(companyId: number, binId: number): Promise<RubberWastageBin> {
-    const bin = await this.binRepo.findOne({ where: { id: binId, companyId } });
+    const bin = await this.binRepo.findByIdForCompany(companyId, binId);
     if (!bin) {
       throw new NotFoundException(`Wastage bin ${binId} not found`);
     }

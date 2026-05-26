@@ -467,6 +467,19 @@ export function NixChatPanel(props: NixChatPanelProps) {
     }
   }, [historyQuery.data?.messages]);
 
+  useEffect(() => {
+    const historyError = historyQuery.error;
+    if (!historyError) {
+      return;
+    }
+    const message = historyError instanceof Error ? historyError.message : String(historyError);
+    if (message.toLowerCase().includes("not found")) {
+      persistSessionId(null);
+      setMessages([]);
+      setSessionId(null);
+    }
+  }, [historyQuery.error]);
+
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
     const geo = loadSavedGeometry(savedGeometry);
     return geo ? { x: geo.x, y: geo.y } : defaultPosition();

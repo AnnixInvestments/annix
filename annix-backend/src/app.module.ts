@@ -23,9 +23,13 @@ import { HdpeModule } from "./hdpe/hdpe.module";
 import { HeavyFeaturesModule } from "./heavy-features";
 import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { InsightsModule } from "./insights/insights.module";
+import { isMongoDriver } from "./lib/persistence/database-driver";
+import { MongoConnectionModule } from "./lib/persistence/mongo-connection.module";
+import { TransactionModule } from "./lib/persistence/transaction.module";
 import { LicensingModule } from "./licensing/licensing.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MetricsModule } from "./metrics/metrics.module";
+import { NbNpsLookupModule } from "./nb-nps-lookup/nb-nps-lookup.module";
 import { NominalOutsideDiameterMmModule } from "./nominal-outside-diameter-mm/nominal-outside-diameter-mm.module";
 import { NotificationsModule } from "./notifications/notifications.module";
 import { PasskeyModule } from "./passkey/passkey.module";
@@ -69,11 +73,16 @@ import { WorkflowModule } from "./workflow/workflow.module";
         },
       ],
     }),
-    TypeOrmModule.forRoot({
-      ...typeormConfig(),
-      retryAttempts: 5,
-      retryDelay: 3000,
-    }),
+    ...(isMongoDriver()
+      ? [MongoConnectionModule]
+      : [
+          TypeOrmModule.forRoot({
+            ...typeormConfig(),
+            retryAttempts: 5,
+            retryDelay: 3000,
+          }),
+        ]),
+    TransactionModule,
 
     AiUsageModule,
 
@@ -95,6 +104,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
 
     SteelSpecificationModule,
     NominalOutsideDiameterMmModule,
+    NbNpsLookupModule,
 
     RfqModule,
     BoqModule,
@@ -106,7 +116,11 @@ import { WorkflowModule } from "./workflow/workflow.module";
     PublicModule,
     FeatureFlagsModule,
     LicensingModule,
-    DataValidationModule,
+    // DataValidationModule is a raw-SQL rule engine: it loads rule_sql strings
+    // from the validation_rules table and executes them against the database.
+    // The rules ARE SQL, so it cannot run on Mongo without rewriting the entire
+    // rule corpus as aggregation pipelines — a separate effort. Postgres-only.
+    ...(isMongoDriver() ? [] : [DataValidationModule]),
     UnifiedApiModule,
     RemoteAccessModule,
     FeedbackModule,
@@ -128,7 +142,13 @@ import { WorkflowModule } from "./workflow/workflow.module";
     BrandingModule,
     SsoModule,
 
-    ...(process.env.DISABLE_ANNIX_SENTINEL === "true" ? [] : [AnnixSentinelModule]),
+    // AnnixSentinelModule (formerly Comply-SA) is still TypeORM-only — origin
+    // renamed the module after the Mongo migration branched, so its services
+    // inject Repository<Entity> directly. Excluded on Mongo until it's ported
+    // to the repository pattern (tracked follow-up). Postgres unaffected.
+    ...(isMongoDriver() || process.env.DISABLE_ANNIX_SENTINEL === "true"
+      ? []
+      : [AnnixSentinelModule]),
   ],
   controllers: [AppController, BendDimensionController],
   providers: [BendDimensionService],

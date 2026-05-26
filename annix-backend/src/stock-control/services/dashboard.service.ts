@@ -1,20 +1,24 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { CoatingAnalysisStatus, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
-import { CalloffStatus, CpoCalloffRecord } from "../entities/cpo-calloff-record.entity";
+import { CoatingAnalysisStatus } from "../entities/coating-analysis.entity";
 import { DashboardPreference } from "../entities/dashboard-preference.entity";
-import { DeliveryNote } from "../entities/delivery-note.entity";
-import { JobCard, JobCardStatus, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
-import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
-import { Requisition, RequisitionStatus } from "../entities/requisition.entity";
-import { StockAllocation } from "../entities/stock-allocation.entity";
-import { StockControlLocation } from "../entities/stock-control-location.entity";
-import { StockControlUser } from "../entities/stock-control-user.entity";
+import { JobCardStatus, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
+import { ApprovalStatus } from "../entities/job-card-approval.entity";
+import { RequisitionStatus } from "../entities/requisition.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { StockMovement } from "../entities/stock-movement.entity";
-import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { InvoiceExtractionStatus } from "../entities/supplier-invoice.entity";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { CpoCalloffRecordRepository } from "../repositories/cpo-calloff-record.repository";
+import { DashboardPreferenceRepository } from "../repositories/dashboard-preference.repository";
+import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardApprovalRepository } from "../repositories/job-card-approval.repository";
+import { RequisitionRepository } from "../repositories/requisition.repository";
+import { StockControlLocationRepository } from "../repositories/stock-control-location.repository";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
 
 export interface DashboardStats {
   totalItems: number;
@@ -94,57 +98,32 @@ export interface AdminDashboard {
 @Injectable()
 export class DashboardService {
   constructor(
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(StockAllocation)
-    private readonly allocationRepo: Repository<StockAllocation>,
-    @InjectRepository(StockControlLocation)
-    private readonly locationRepo: Repository<StockControlLocation>,
-    @InjectRepository(DeliveryNote)
-    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
-    @InjectRepository(SupplierInvoice)
-    private readonly invoiceRepo: Repository<SupplierInvoice>,
-    @InjectRepository(Requisition)
-    private readonly requisitionRepo: Repository<Requisition>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(JobCardApproval)
-    private readonly approvalRepo: Repository<JobCardApproval>,
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
-    @InjectRepository(CpoCalloffRecord)
-    private readonly calloffRepo: Repository<CpoCalloffRecord>,
-    @InjectRepository(DashboardPreference)
-    private readonly preferenceRepo: Repository<DashboardPreference>,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly movementRepo: StockMovementRepository,
+    private readonly locationRepo: StockControlLocationRepository,
+    private readonly deliveryNoteRepo: DeliveryNoteRepository,
+    private readonly invoiceRepo: SupplierInvoiceRepository,
+    private readonly requisitionRepo: RequisitionRepository,
+    private readonly coatingRepo: JobCardCoatingAnalysisRepository,
+    private readonly approvalRepo: JobCardApprovalRepository,
+    private readonly userRepo: StockControlUserRepository,
+    private readonly calloffRepo: CpoCalloffRecordRepository,
+    private readonly preferenceRepo: DashboardPreferenceRepository,
   ) {}
 
   async stats(companyId: number): Promise<DashboardStats> {
-    const totalItems = await this.stockItemRepo.count({ where: { companyId } });
+    const totalItems = await this.stockItemRepo.count({ companyId });
 
-    const valueResult = await this.stockItemRepo
-      .createQueryBuilder("item")
-      .select("COALESCE(SUM(item.quantity * item.cost_per_unit), 0)", "totalValue")
-      .where("item.company_id = :companyId", { companyId })
-      .getRawOne();
+    const totalValue = await this.stockItemRepo.totalValueForCompany(companyId);
 
-    const lowStockCount = await this.stockItemRepo
-      .createQueryBuilder("item")
-      .where("item.company_id = :companyId", { companyId })
-      .andWhere("item.min_stock_level > 0")
-      .andWhere("item.quantity <= item.min_stock_level")
-      .getCount();
+    const lowStockCount = await this.stockItemRepo.lowStockCountForCompany(companyId);
 
-    const activeJobs = await this.jobCardRepo.count({
-      where: { status: JobCardStatus.ACTIVE, companyId },
-    });
+    const activeJobs = await this.jobCardRepo.countByStatus(companyId, JobCardStatus.ACTIVE);
 
     return {
       totalItems,
-      totalValue: Number(valueResult?.totalValue || 0),
+      totalValue,
       lowStockCount,
       activeJobs,
     };
@@ -153,51 +132,17 @@ export class DashboardService {
   async sohSummary(
     companyId: number,
   ): Promise<{ category: string; totalQuantity: number; totalValue: number }[]> {
-    const result = await this.stockItemRepo
-      .createQueryBuilder("item")
-      .select("COALESCE(item.category, 'Uncategorized')", "category")
-      .addSelect("SUM(item.quantity)", "totalQuantity")
-      .addSelect("SUM(item.quantity * item.cost_per_unit)", "totalValue")
-      .where("item.company_id = :companyId", { companyId })
-      .groupBy("COALESCE(item.category, 'Uncategorized')")
-      .orderBy("category", "ASC")
-      .getRawMany();
-
-    return result.map((r) => ({
-      category: r.category,
-      totalQuantity: Number(r.totalQuantity),
-      totalValue: Number(r.totalValue),
-    }));
+    return this.stockItemRepo.sohSummaryForCompany(companyId);
   }
 
   async sohByLocation(
     companyId: number,
   ): Promise<{ location: string; totalQuantity: number; totalValue: number }[]> {
-    const result = await this.stockItemRepo
-      .createQueryBuilder("item")
-      .leftJoin("item.locationEntity", "loc")
-      .select("COALESCE(loc.name, item.location, 'Unassigned')", "location")
-      .addSelect("SUM(item.quantity)", "totalQuantity")
-      .addSelect("SUM(item.quantity * item.cost_per_unit)", "totalValue")
-      .where("item.company_id = :companyId", { companyId })
-      .groupBy("COALESCE(loc.name, item.location, 'Unassigned')")
-      .orderBy("location", "ASC")
-      .getRawMany();
-
-    return result.map((r) => ({
-      location: r.location,
-      totalQuantity: Number(r.totalQuantity),
-      totalValue: Number(r.totalValue),
-    }));
+    return this.stockItemRepo.sohByLocationForCompany(companyId);
   }
 
   async recentActivity(companyId: number, limit = 10): Promise<RecentActivity[]> {
-    const movements = await this.movementRepo.find({
-      where: { companyId },
-      relations: ["stockItem"],
-      order: { createdAt: "DESC" },
-      take: limit,
-    });
+    const movements = await this.movementRepo.recentActivityForCompany(companyId, limit);
 
     return movements.map((m) => ({
       id: m.id,
@@ -212,24 +157,15 @@ export class DashboardService {
   }
 
   async reorderAlerts(companyId: number): Promise<StockItem[]> {
-    return this.stockItemRepo
-      .createQueryBuilder("item")
-      .where("item.company_id = :companyId", { companyId })
-      .andWhere("item.min_stock_level > 0")
-      .andWhere("item.quantity <= item.min_stock_level")
-      .orderBy("item.quantity", "ASC")
-      .getMany();
+    return this.stockItemRepo.reorderAlertsForCompany(companyId);
   }
 
   async workflowLaneCounts(companyId: number): Promise<WorkflowLaneCounts> {
     const jcCountByStatus = async (status: string) =>
-      this.jobCardRepo.count({
-        where: {
-          companyId,
-          workflowStatus: status,
-          status: In([JobCardStatus.ACTIVE, JobCardStatus.DRAFT]),
-        },
-      });
+      this.jobCardRepo.countByWorkflowStatusAndStatuses(companyId, status, [
+        JobCardStatus.ACTIVE,
+        JobCardStatus.DRAFT,
+      ]);
 
     const [
       deliveriesPending,
@@ -250,54 +186,32 @@ export class DashboardService {
       jobCardsFileClosed,
       lowStockAlerts,
     ] = await Promise.all([
-      this.deliveryNoteRepo.count({
-        where: { companyId, extractionStatus: IsNull() },
-      }),
-      this.deliveryNoteRepo.count({
-        where: { companyId, extractionStatus: "completed" },
-      }),
-      this.invoiceRepo.count({
-        where: {
-          companyId,
-          extractionStatus: In([
-            InvoiceExtractionStatus.PENDING,
-            InvoiceExtractionStatus.PROCESSING,
-          ]),
-        },
-      }),
-      this.invoiceRepo.count({
-        where: { companyId, extractionStatus: InvoiceExtractionStatus.NEEDS_CLARIFICATION },
-      }),
-      this.invoiceRepo.count({
-        where: { companyId, extractionStatus: InvoiceExtractionStatus.AWAITING_APPROVAL },
-      }),
+      this.deliveryNoteRepo.countPendingExtraction(companyId),
+      this.deliveryNoteRepo.countCompletedExtraction(companyId),
+      this.invoiceRepo.countByExtractionStatusesForCompany(companyId, [
+        InvoiceExtractionStatus.PENDING,
+        InvoiceExtractionStatus.PROCESSING,
+      ]),
+      this.invoiceRepo.countByExtractionStatusForCompany(
+        companyId,
+        InvoiceExtractionStatus.NEEDS_CLARIFICATION,
+      ),
+      this.invoiceRepo.countByExtractionStatusForCompany(
+        companyId,
+        InvoiceExtractionStatus.AWAITING_APPROVAL,
+      ),
       jcCountByStatus(WORKFLOW_STATUS_DRAFT),
       jcCountByStatus("admin_approval"),
       jcCountByStatus("manager_approval"),
       jcCountByStatus("quality_check"),
-      this.coatingRepo.count({
-        where: { companyId, status: CoatingAnalysisStatus.PENDING },
-      }),
-      this.coatingRepo.count({
-        where: { companyId, status: CoatingAnalysisStatus.ANALYSED },
-      }),
-      this.requisitionRepo.count({
-        where: { companyId, status: RequisitionStatus.PENDING },
-      }),
-      this.requisitionRepo.count({
-        where: { companyId, status: RequisitionStatus.APPROVED },
-      }),
-      this.requisitionRepo.count({
-        where: { companyId, status: RequisitionStatus.ORDERED },
-      }),
+      this.coatingRepo.countByStatus(companyId, CoatingAnalysisStatus.PENDING),
+      this.coatingRepo.countByStatus(companyId, CoatingAnalysisStatus.ANALYSED),
+      this.requisitionRepo.count({ companyId, status: RequisitionStatus.PENDING }),
+      this.requisitionRepo.count({ companyId, status: RequisitionStatus.APPROVED }),
+      this.requisitionRepo.count({ companyId, status: RequisitionStatus.ORDERED }),
       jcCountByStatus("dispatched"),
       jcCountByStatus("file_closed"),
-      this.stockItemRepo
-        .createQueryBuilder("item")
-        .where("item.company_id = :companyId", { companyId })
-        .andWhere("item.min_stock_level > 0")
-        .andWhere("item.quantity <= item.min_stock_level")
-        .getCount(),
+      this.stockItemRepo.lowStockCountForCompany(companyId),
     ]);
 
     return {
@@ -333,19 +247,12 @@ export class DashboardService {
 
     const [incomingDeliveries, dispatchReadyJobs, todayMovements, reorderAlerts] =
       await Promise.all([
-        this.deliveryNoteRepo.count({
-          where: { companyId, createdAt: MoreThanOrEqual(sevenDaysAgo) },
-        }),
-        this.jobCardRepo.count({
-          where: {
-            companyId,
-            workflowStatus: "ready",
-            status: In([JobCardStatus.ACTIVE, JobCardStatus.DRAFT]),
-          },
-        }),
-        this.movementRepo.count({
-          where: { companyId, createdAt: MoreThanOrEqual(startOfToday) },
-        }),
+        this.deliveryNoteRepo.countCreatedSince(companyId, sevenDaysAgo),
+        this.jobCardRepo.countByWorkflowStatusAndStatuses(companyId, "ready", [
+          JobCardStatus.ACTIVE,
+          JobCardStatus.DRAFT,
+        ]),
+        this.movementRepo.countCreatedSinceForCompany(companyId, startOfToday),
         this.reorderAlertCount(companyId),
       ]);
 
@@ -364,32 +271,24 @@ export class DashboardService {
       completedThisMonth,
       overdueInvoices,
     ] = await Promise.all([
-      this.invoiceRepo.count({
-        where: { companyId, extractionStatus: InvoiceExtractionStatus.PENDING },
-      }),
-      this.invoiceRepo.count({
-        where: { companyId, extractionStatus: InvoiceExtractionStatus.PROCESSING },
-      }),
-      this.invoiceRepo.count({
-        where: { companyId, extractionStatus: InvoiceExtractionStatus.NEEDS_CLARIFICATION },
-      }),
-      this.invoiceRepo.count({
-        where: { companyId, extractionStatus: InvoiceExtractionStatus.AWAITING_APPROVAL },
-      }),
-      this.invoiceRepo.count({
-        where: {
-          companyId,
-          extractionStatus: InvoiceExtractionStatus.COMPLETED,
-          createdAt: MoreThanOrEqual(startOfMonth),
-        },
-      }),
-      this.calloffRepo.count({
-        where: {
-          companyId,
-          status: CalloffStatus.DELIVERED,
-          deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
-        },
-      }),
+      this.invoiceRepo.countByExtractionStatusForCompany(
+        companyId,
+        InvoiceExtractionStatus.PENDING,
+      ),
+      this.invoiceRepo.countByExtractionStatusForCompany(
+        companyId,
+        InvoiceExtractionStatus.PROCESSING,
+      ),
+      this.invoiceRepo.countByExtractionStatusForCompany(
+        companyId,
+        InvoiceExtractionStatus.NEEDS_CLARIFICATION,
+      ),
+      this.invoiceRepo.countByExtractionStatusForCompany(
+        companyId,
+        InvoiceExtractionStatus.AWAITING_APPROVAL,
+      ),
+      this.invoiceRepo.countCompletedSinceForCompany(companyId, startOfMonth),
+      this.calloffRepo.countOverdueDelivered(companyId, twentyOneDaysAgo),
     ]);
 
     return {
@@ -405,35 +304,13 @@ export class DashboardService {
   async managerSummary(companyId: number): Promise<ManagerDashboard> {
     const [pendingApprovals, activeJobs, overAllocations, dispatchReady, reorderAlerts] =
       await Promise.all([
-        this.approvalRepo.count({
-          where: { companyId, status: ApprovalStatus.PENDING },
-        }),
-        this.jobCardRepo.count({
-          where: { companyId, status: JobCardStatus.ACTIVE },
-        }),
-        this.stockItemRepo
-          .createQueryBuilder("item")
-          .innerJoin(
-            (qb) =>
-              qb
-                .select("sa.stock_item_id", "stockItemId")
-                .addSelect("SUM(sa.quantity_used)", "totalAllocated")
-                .from(StockAllocation, "sa")
-                .where("sa.company_id = :companyId", { companyId })
-                .groupBy("sa.stock_item_id"),
-            "alloc",
-            'alloc."stockItemId" = item.id',
-          )
-          .where("item.company_id = :companyId", { companyId })
-          .andWhere('alloc."totalAllocated" > item.quantity')
-          .getCount(),
-        this.jobCardRepo.count({
-          where: {
-            companyId,
-            workflowStatus: "ready",
-            status: In([JobCardStatus.ACTIVE, JobCardStatus.DRAFT]),
-          },
-        }),
+        this.approvalRepo.countByStatus(companyId, ApprovalStatus.PENDING),
+        this.jobCardRepo.countByStatus(companyId, JobCardStatus.ACTIVE),
+        this.stockItemRepo.overAllocationCountForCompany(companyId),
+        this.jobCardRepo.countByWorkflowStatusAndStatuses(companyId, "ready", [
+          JobCardStatus.ACTIVE,
+          JobCardStatus.DRAFT,
+        ]),
         this.reorderAlertCount(companyId),
       ]);
 
@@ -445,14 +322,14 @@ export class DashboardService {
       this.storemanSummary(companyId),
       this.accountsSummary(companyId),
       this.managerSummary(companyId),
-      this.userRepo.count({ where: { companyId } }),
+      this.userRepo.countForCompany(companyId),
     ]);
 
     return { storeman, accounts, manager, totalUsers };
   }
 
   async preferencesForUser(companyId: number, userId: number): Promise<DashboardPreference | null> {
-    return this.preferenceRepo.findOne({ where: { companyId, userId } }) ?? null;
+    return (await this.preferenceRepo.findOneForUser(companyId, userId)) ?? null;
   }
 
   async updatePreferences(
@@ -462,23 +339,17 @@ export class DashboardService {
       Pick<DashboardPreference, "pinnedWidgets" | "hiddenWidgets" | "viewOverride" | "widgetOrder">
     >,
   ): Promise<DashboardPreference> {
-    const existing = await this.preferenceRepo.findOne({ where: { companyId, userId } });
+    const existing = await this.preferenceRepo.findOneForUser(companyId, userId);
 
     if (existing) {
-      const merged = this.preferenceRepo.merge(existing, data);
+      const merged = Object.assign(existing, data);
       return this.preferenceRepo.save(merged);
     }
 
-    const created = this.preferenceRepo.create({ companyId, userId, ...data });
-    return this.preferenceRepo.save(created);
+    return this.preferenceRepo.create({ companyId, userId, ...data });
   }
 
   private async reorderAlertCount(companyId: number): Promise<number> {
-    return this.stockItemRepo
-      .createQueryBuilder("item")
-      .where("item.company_id = :companyId", { companyId })
-      .andWhere("item.min_stock_level > 0")
-      .andWhere("item.quantity <= item.min_stock_level")
-      .getCount();
+    return this.stockItemRepo.reorderAlertCountForCompany(companyId);
   }
 }

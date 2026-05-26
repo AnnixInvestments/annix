@@ -1,15 +1,16 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
-import { LearningSource, LearningType, NixLearning } from "../../nix/entities/nix-learning.entity";
-import { RubberProductCoding } from "../../rubber-lining/entities/rubber-product-coding.entity";
-import { RubberRollStock } from "../../rubber-lining/entities/rubber-roll-stock.entity";
+import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
+import { NixLearningRepository } from "../../nix/nix-learning.repository";
+import { RubberRollStockRepository } from "../../rubber-lining/repositories/rubber-roll-stock.repository";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote, SdnStatus } from "../entities/delivery-note.entity";
-import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
+import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
+import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { DeliverySupplierService } from "./delivery-supplier.service";
 import { validPositiveNumber } from "./extraction-validation";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
@@ -41,20 +42,12 @@ export class DeliveryExtractionService {
   private overrideMap: Map<string, number | null> | null = null;
 
   constructor(
-    @InjectRepository(DeliveryNote)
-    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
-    @InjectRepository(DeliveryNoteItem)
-    private readonly deliveryNoteItemRepo: Repository<DeliveryNoteItem>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(RubberRollStock)
-    private readonly rubberRollStockRepo: Repository<RubberRollStock>,
-    @InjectRepository(RubberProductCoding)
-    private readonly rubberProductCodingRepo: Repository<RubberProductCoding>,
-    @InjectRepository(NixLearning)
-    private readonly nixLearningRepo: Repository<NixLearning>,
+    private readonly deliveryNoteRepo: DeliveryNoteRepository,
+    private readonly deliveryNoteItemRepo: DeliveryNoteItemRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly movementRepo: StockMovementRepository,
+    private readonly rubberRollStockRepo: RubberRollStockRepository,
+    private readonly nixLearningRepo: NixLearningRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
@@ -166,9 +159,7 @@ export class DeliveryExtractionService {
         continue;
       }
 
-      const existingBySku = await this.stockItemRepo.findOne({
-        where: { sku, companyId },
-      });
+      const existingBySku = await this.stockItemRepo.findOneBySkuForCompany(sku, companyId);
       if (existingBySku) {
         results.push({
           description: item.description,
@@ -330,8 +321,8 @@ export class DeliveryExtractionService {
         stockItem.rollNumbers = mergedRolls;
         await this.stockItemRepo.save(stockItem);
 
-        const rollNoteItems = item.rollDetails.map((roll) =>
-          this.deliveryNoteItemRepo.create({
+        await this.deliveryNoteItemRepo.createMany(
+          item.rollDetails.map((roll) => ({
             deliveryNote,
             stockItem,
             quantityReceived: 1,
@@ -339,12 +330,11 @@ export class DeliveryExtractionService {
             weightKg: roll.weightKg,
             photoUrl: null,
             companyId,
-          }),
+          })),
         );
-        await this.deliveryNoteItemRepo.save(rollNoteItems);
 
         const rollListStr = allRollNumbers.join(", ");
-        const movement = this.movementRepo.create({
+        const movement = this.movementRepo.build({
           stockItem,
           movementType: MovementType.IN,
           quantity,
@@ -367,7 +357,7 @@ export class DeliveryExtractionService {
           }
         }
 
-        const noteItem = this.deliveryNoteItemRepo.create({
+        await this.deliveryNoteItemRepo.create({
           deliveryNote,
           stockItem,
           quantityReceived: quantity,
@@ -376,12 +366,11 @@ export class DeliveryExtractionService {
           photoUrl: null,
           companyId,
         });
-        await this.deliveryNoteItemRepo.save(noteItem);
 
         const movementNotes = itemRollNumber
           ? `Received via delivery ${deliveryNote.deliveryNumber} (Roll #${itemRollNumber})`
           : `Received via delivery ${deliveryNote.deliveryNumber}`;
-        const movement = this.movementRepo.create({
+        const movement = this.movementRepo.build({
           stockItem,
           movementType: MovementType.IN,
           quantity,
@@ -493,9 +482,7 @@ export class DeliveryExtractionService {
     if (this.overrideMap && item.description) {
       const overrideItemId = this.overrideMap.get(item.description);
       if (overrideItemId !== undefined && overrideItemId !== null) {
-        const overrideItem = await this.stockItemRepo.findOne({
-          where: { id: overrideItemId, companyId },
-        });
+        const overrideItem = await this.stockItemRepo.findOneForCompany(overrideItemId, companyId);
         if (overrideItem) {
           overrideItem.quantity = overrideItem.quantity + quantity;
           if (Number.isFinite(costPerUnit) && costPerUnit > 0) {
@@ -532,9 +519,7 @@ export class DeliveryExtractionService {
       return learnedMatch;
     }
 
-    const existingBySku = await this.stockItemRepo.findOne({
-      where: { sku, companyId },
-    });
+    const existingBySku = await this.stockItemRepo.findOneBySkuForCompany(sku, companyId);
 
     if (existingBySku) {
       existingBySku.quantity = existingBySku.quantity + quantity;
@@ -611,7 +596,7 @@ export class DeliveryExtractionService {
     const finalSku = rubberData?.sku || sku;
 
     const existingByEnrichedSku = rubberData
-      ? await this.stockItemRepo.findOne({ where: { sku: finalSku, companyId } })
+      ? await this.stockItemRepo.findOneBySkuForCompany(finalSku, companyId)
       : null;
     if (existingByEnrichedSku) {
       existingByEnrichedSku.quantity = existingByEnrichedSku.quantity + quantity;
@@ -633,7 +618,7 @@ export class DeliveryExtractionService {
     const packSizeLitres =
       item.isPaint && item.volumeLitersPerPack ? item.volumeLitersPerPack : null;
 
-    const created = this.stockItemRepo.create({
+    const created = this.stockItemRepo.build({
       sku: finalSku,
       name: itemName.slice(0, 255),
       description: itemDescription,
@@ -681,22 +666,7 @@ export class DeliveryExtractionService {
     companyId: number,
     category: string,
   ): Promise<number | null> {
-    const rows: Array<{ location_id: number; cnt: string }> = await this.stockItemRepo.query(
-      `SELECT location_id, COUNT(*) AS cnt
-       FROM stock_items
-       WHERE company_id = $1
-         AND category = $2
-         AND location_id IS NOT NULL
-       GROUP BY location_id
-       ORDER BY cnt DESC
-       LIMIT 1`,
-      [companyId, category],
-    );
-
-    if (rows.length > 0) {
-      return rows[0].location_id;
-    }
-    return null;
+    return this.stockItemRepo.mostCommonLocationIdForCategory(companyId, category);
   }
 
   private extractRollNumber(item: ExtractedLineItem, sku: string): string | null {
@@ -746,14 +716,8 @@ export class DeliveryExtractionService {
     }
 
     const roll =
-      (await this.rubberRollStockRepo.findOne({
-        where: { rollNumber },
-        relations: ["compoundCoding"],
-      })) ||
-      (await this.rubberRollStockRepo.findOne({
-        where: { rollNumber: ILike(`%-${rollNumber}`) },
-        relations: ["compoundCoding"],
-      }));
+      (await this.rubberRollStockRepo.findOneByRollNumberWithCoding(rollNumber)) ||
+      (await this.rubberRollStockRepo.findOneByRollNumberSuffixWithCoding(rollNumber));
 
     if (!roll) {
       this.logger.log(`Roll #${rollNumber} not found in AU Rubber roll stock`);
@@ -806,40 +770,32 @@ export class DeliveryExtractionService {
     const normalisedSupplier = this.supplierService.normaliseSupplierName(supplierName);
     const patternKey = `delivery_sku_map:${normalisedSupplier}:${sku.toLowerCase().trim()}`;
 
-    const learning = await this.nixLearningRepo.findOne({
-      where: {
+    const learning =
+      await this.nixLearningRepo.findActiveCorrectionByPatternKeyAndCategoryByConfidence(
         patternKey,
-        learningType: LearningType.CORRECTION,
-        category: "delivery_stock_matching",
-        isActive: true,
-      },
-      order: { confidence: "DESC" },
-    });
+        "delivery_stock_matching",
+      );
 
     if (!learning) {
       const descKey = `delivery_desc_map:${normalisedSupplier}:${this.supplierService.normalizeForComparison(description)}`;
-      const descLearning = await this.nixLearningRepo.findOne({
-        where: {
-          patternKey: descKey,
-          learningType: LearningType.CORRECTION,
-          category: "delivery_stock_matching",
-          isActive: true,
-        },
-        order: { confidence: "DESC" },
-      });
+      const descLearning =
+        await this.nixLearningRepo.findActiveCorrectionByPatternKeyAndCategoryByConfidence(
+          descKey,
+          "delivery_stock_matching",
+        );
 
       if (!descLearning) return null;
 
       const itemId = Number(descLearning.learnedValue);
       if (Number.isNaN(itemId)) return null;
 
-      return this.stockItemRepo.findOne({ where: { id: itemId, companyId } });
+      return this.stockItemRepo.findOneForCompany(itemId, companyId);
     }
 
     const itemId = Number(learning.learnedValue);
     if (Number.isNaN(itemId)) return null;
 
-    return this.stockItemRepo.findOne({ where: { id: itemId, companyId } });
+    return this.stockItemRepo.findOneForCompany(itemId, companyId);
   }
 
   private async recordDeliveryMatch(
@@ -851,13 +807,10 @@ export class DeliveryExtractionService {
     const normalisedSupplier = this.supplierService.normaliseSupplierName(supplierName);
     const patternKey = `delivery_sku_map:${normalisedSupplier}:${sku.toLowerCase().trim()}`;
 
-    const existing = await this.nixLearningRepo.findOne({
-      where: {
-        patternKey,
-        learningType: LearningType.CORRECTION,
-        category: "delivery_stock_matching",
-      },
-    });
+    const existing = await this.nixLearningRepo.findCorrectionByPatternKeyAndCategory(
+      patternKey,
+      "delivery_stock_matching",
+    );
 
     if (existing) {
       existing.learnedValue = String(matchedItemId);
@@ -866,7 +819,7 @@ export class DeliveryExtractionService {
       existing.isActive = true;
       await this.nixLearningRepo.save(existing);
     } else {
-      const learning = this.nixLearningRepo.create({
+      const learning = this.nixLearningRepo.build({
         learningType: LearningType.CORRECTION,
         source: LearningSource.AGGREGATED,
         category: "delivery_stock_matching",
@@ -883,13 +836,10 @@ export class DeliveryExtractionService {
     }
 
     const descKey = `delivery_desc_map:${normalisedSupplier}:${this.supplierService.normalizeForComparison(description)}`;
-    const existingDesc = await this.nixLearningRepo.findOne({
-      where: {
-        patternKey: descKey,
-        learningType: LearningType.CORRECTION,
-        category: "delivery_stock_matching",
-      },
-    });
+    const existingDesc = await this.nixLearningRepo.findCorrectionByPatternKeyAndCategory(
+      descKey,
+      "delivery_stock_matching",
+    );
 
     if (existingDesc) {
       existingDesc.learnedValue = String(matchedItemId);
@@ -898,7 +848,7 @@ export class DeliveryExtractionService {
       existingDesc.isActive = true;
       await this.nixLearningRepo.save(existingDesc);
     } else {
-      const descLearning = this.nixLearningRepo.create({
+      const descLearning = this.nixLearningRepo.build({
         learningType: LearningType.CORRECTION,
         source: LearningSource.AGGREGATED,
         category: "delivery_stock_matching",
@@ -992,7 +942,7 @@ export class DeliveryExtractionService {
     const sku = this.generateSku(item);
 
     const stockItem =
-      (await this.stockItemRepo.findOne({ where: { sku, companyId } })) ||
+      (await this.stockItemRepo.findOneBySkuForCompany(sku, companyId)) ||
       (await this.supplierService.findByNormalisedSku(companyId, sku));
 
     if (!stockItem) {
@@ -1015,7 +965,7 @@ export class DeliveryExtractionService {
       `Reduced stock for returned item ${sku}: -${quantity} (new qty: ${stockItem.quantity})`,
     );
 
-    const movement = this.movementRepo.create({
+    const movement = this.movementRepo.build({
       stockItem,
       movementType: MovementType.OUT,
       quantity,

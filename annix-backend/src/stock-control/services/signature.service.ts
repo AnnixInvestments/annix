@@ -1,24 +1,20 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StaffSignature } from "../entities/staff-signature.entity";
+import { StaffSignatureRepository } from "../repositories/staff-signature.repository";
 
 @Injectable()
 export class SignatureService {
   private readonly logger = new Logger(SignatureService.name);
 
   constructor(
-    @InjectRepository(StaffSignature)
-    private readonly signatureRepo: Repository<StaffSignature>,
+    private readonly signatureRepo: StaffSignatureRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
 
   async findByUser(userId: number): Promise<StaffSignature | null> {
-    return this.signatureRepo.findOne({
-      where: { userId },
-    });
+    return this.signatureRepo.findByUser(userId);
   }
 
   async uploadSignature(
@@ -55,13 +51,11 @@ export class SignatureService {
       return this.signatureRepo.save(existing);
     }
 
-    const signature = this.signatureRepo.create({
+    return this.signatureRepo.create({
       companyId,
       userId,
       signatureUrl: result.path,
     });
-
-    return this.signatureRepo.save(signature);
   }
 
   async signatureUrl(userId: number): Promise<string | null> {

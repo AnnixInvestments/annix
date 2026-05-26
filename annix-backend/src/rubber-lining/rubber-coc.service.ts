@@ -1,8 +1,6 @@
 import { createHash } from "node:crypto";
 import { BadRequestException, forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
-import { IsNull, Repository } from "typeorm";
 import { fromISO, generateUniqueId, now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import {
@@ -16,18 +14,21 @@ import {
   DOCUMENT_VERSION_STATUS_LABELS,
   DocumentVersionStatus,
 } from "./entities/document-version.types";
-import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
-import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
-import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
+import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import {
   CocProcessingStatus,
   ExtractedCocData,
   RubberSupplierCoc,
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
+import { RubberCocBatchCorrectionRepository } from "./repositories/rubber-coc-batch-correction.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberCompoundBatchRepository } from "./repositories/rubber-compound-batch.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberRollRejectionRepository } from "./repositories/rubber-roll-rejection.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 import { RubberAuCocReadinessService } from "./rubber-au-coc-readiness.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
@@ -58,20 +59,12 @@ export class RubberCocService {
   private readonly logger = new Logger(RubberCocService.name);
 
   constructor(
-    @InjectRepository(RubberSupplierCoc)
-    private supplierCocRepository: Repository<RubberSupplierCoc>,
-    @InjectRepository(RubberCompoundBatch)
-    private compoundBatchRepository: Repository<RubberCompoundBatch>,
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberCompoundStock)
-    private compoundStockRepository: Repository<RubberCompoundStock>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
-    @InjectRepository(RubberCocBatchCorrection)
-    private batchCorrectionRepository: Repository<RubberCocBatchCorrection>,
-    @InjectRepository(RubberRollRejection)
-    private rollRejectionRepository: Repository<RubberRollRejection>,
+    private supplierCocRepository: RubberSupplierCocRepository,
+    private compoundBatchRepository: RubberCompoundBatchRepository,
+    private companyRepository: RubberCompanyRepository,
+    private productCodingRepository: RubberProductCodingRepository,
+    private batchCorrectionRepository: RubberCocBatchCorrectionRepository,
+    private rollRejectionRepository: RubberRollRejectionRepository,
     @Inject(forwardRef(() => RubberQualityTrackingService))
     private qualityTrackingService: RubberQualityTrackingService,
     private auCocReadinessService: RubberAuCocReadinessService,
@@ -86,9 +79,7 @@ export class RubberCocService {
   }
 
   async nonCanonicalCompounderCocIds(): Promise<number[]> {
-    const codings = await this.productCodingRepository.find({
-      where: { codingType: ProductCodingType.COMPOUND },
-    });
+    const codings = await this.productCodingRepository.findByType(ProductCodingType.COMPOUND);
     const knownCodes = new Set<string>();
     codings.forEach((c) => {
       if (!c.needsReview) {
@@ -96,10 +87,9 @@ export class RubberCocService {
         c.aliases.forEach((a) => knownCodes.add(a));
       }
     });
-    const cocs = await this.supplierCocRepository.find({
-      where: { cocType: SupplierCocType.COMPOUNDER },
-      select: ["id", "compoundCode", "documentPath"],
-    });
+    const cocs = await this.supplierCocRepository.findByCocTypeSelectingIdentity(
+      SupplierCocType.COMPOUNDER,
+    );
     return cocs
       .filter((c) => !!c.documentPath)
       .filter((c) => !c.compoundCode || !knownCodes.has(c.compoundCode))
@@ -107,27 +97,15 @@ export class RubberCocService {
   }
 
   async supplierCocIdsMissingCocNumber(): Promise<number[]> {
-    const cocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .select(["coc.id"])
-      .where("(coc.coc_number IS NULL OR coc.coc_number = '')")
-      .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
-      .andWhere("coc.document_path IS NOT NULL")
-      .orderBy("coc.id", "DESC")
-      .getMany();
-    return cocs.map((c) => c.id);
+    return this.supplierCocRepository.findIdsMissingCocNumber();
   }
 
   private async equivalentCompoundCodes(compoundCode: string | null): Promise<string[]> {
     if (!compoundCode) return [];
-    const coding = await this.productCodingRepository
-      .createQueryBuilder("pc")
-      .where("pc.coding_type = :type", { type: ProductCodingType.COMPOUND })
-      .andWhere("(pc.code = :code OR pc.aliases @> :codeJson::jsonb)", {
-        code: compoundCode,
-        codeJson: JSON.stringify([compoundCode]),
-      })
-      .getOne();
+    const coding = await this.productCodingRepository.findOneByCodeOrAliasAndType(
+      compoundCode,
+      ProductCodingType.COMPOUND,
+    );
     if (!coding) return [compoundCode];
     return [coding.code, ...coding.aliases];
   }
@@ -139,41 +117,7 @@ export class RubberCocService {
     includeAllVersions?: boolean;
     versionStatus?: DocumentVersionStatus;
   }): Promise<RubberSupplierCocDto[]> {
-    const cocColumns = this.supplierCocRepository.metadata.columns
-      .map((c) => c.propertyName)
-      .filter((p) => p !== "extractedData" && p !== "reviewNotes")
-      .map((p) => `coc.${p}`);
-
-    const query = this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .select(cocColumns)
-      .leftJoin("coc.supplierCompany", "company")
-      .addSelect(["company.id", "company.name"])
-      .orderBy("coc.created_at", "DESC");
-
-    if (filters?.versionStatus) {
-      query.andWhere("coc.version_status = :versionStatus", {
-        versionStatus: filters.versionStatus,
-      });
-    } else if (!filters?.includeAllVersions) {
-      query.andWhere("coc.version_status = :versionStatus", {
-        versionStatus: DocumentVersionStatus.ACTIVE,
-      });
-    }
-
-    if (filters?.cocType) {
-      query.andWhere("coc.coc_type = :cocType", { cocType: filters.cocType });
-    }
-    if (filters?.processingStatus) {
-      query.andWhere("coc.processing_status = :status", { status: filters.processingStatus });
-    }
-    if (filters?.supplierCompanyId) {
-      query.andWhere("coc.supplier_company_id = :companyId", {
-        companyId: filters.supplierCompanyId,
-      });
-    }
-
-    const cocs = await query.getMany();
+    const cocs = await this.supplierCocRepository.findForListing(filters);
     const rejectionMap = await this.rejectedRollNumbersByCocIds(cocs.map((c) => c.id));
     return cocs.map((coc) => this.mapSupplierCocToDto(coc, rejectionMap.get(coc.id) || []));
   }
@@ -181,14 +125,7 @@ export class RubberCocService {
   async pendingAuthorizationSupplierCocs(): Promise<
     Array<RubberSupplierCocDto & { previousVersionCocNumber: string | null }>
   > {
-    const pending = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
-      .where("coc.version_status = :status", {
-        status: DocumentVersionStatus.PENDING_AUTHORIZATION,
-      })
-      .orderBy("coc.created_at", "DESC")
-      .getMany();
+    const pending = await this.supplierCocRepository.findPendingAuthorizationWithCompany();
 
     if (pending.length === 0) return [];
 
@@ -198,11 +135,7 @@ export class RubberCocService {
 
     const previousVersions =
       previousVersionIds.length > 0
-        ? await this.supplierCocRepository
-            .createQueryBuilder("coc")
-            .select(["coc.id", "coc.cocNumber"])
-            .whereInIds(previousVersionIds)
-            .getMany()
+        ? await this.supplierCocRepository.findIdAndCocNumberByIds(previousVersionIds)
         : [];
 
     const previousByid = previousVersions.reduce<Record<number, string | null>>((acc, prev) => {
@@ -220,26 +153,20 @@ export class RubberCocService {
   }
 
   async supplierCocById(id: number): Promise<RubberSupplierCocDto | null> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const coc = await this.supplierCocRepository.findByIdWithCompany(id);
     if (!coc) return null;
     const rejectionMap = await this.rejectedRollNumbersByCocIds([id]);
     return this.mapSupplierCocToDto(coc, rejectionMap.get(id) || []);
   }
 
   async siblingSupplierCocs(id: number): Promise<RubberSupplierCocDto[]> {
-    const coc = await this.supplierCocRepository.findOne({ where: { id } });
+    const coc = await this.supplierCocRepository.findById(id);
     if (!coc?.documentPath) return [];
 
-    const siblings = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
-      .where("coc.document_path = :documentPath", { documentPath: coc.documentPath })
-      .andWhere("coc.id <> :id", { id })
-      .orderBy("coc.id", "ASC")
-      .getMany();
+    const siblings = await this.supplierCocRepository.findSiblingsByDocumentPathExcludingId(
+      coc.documentPath,
+      id,
+    );
 
     if (siblings.length === 0) return [];
     const rejectionMap = await this.rejectedRollNumbersByCocIds(siblings.map((s) => s.id));
@@ -249,16 +176,13 @@ export class RubberCocService {
   // Looks up an existing CoC by the SHA-256 of its source document, so the
   // same PDF ingested twice (re-forwarded email, re-run backfill) is detected.
   async findSupplierCocByDocumentHash(documentHash: string): Promise<RubberSupplierCoc | null> {
-    return this.supplierCocRepository.findOne({ where: { documentHash } });
+    return this.supplierCocRepository.findOneByDocumentHash(documentHash);
   }
 
   // One-off: compute and store the SHA-256 of the source PDF for every CoC
   // that lacks one, so the content-hash dedup also recognises pre-existing CoCs.
   async backfillDocumentHashes(): Promise<{ updated: number; total: number; errors: string[] }> {
-    const cocs = await this.supplierCocRepository.find({
-      where: { documentHash: IsNull() },
-      select: ["id", "documentPath"],
-    });
+    const cocs = await this.supplierCocRepository.findMissingDocumentHash();
     const errors: string[] = [];
     let updated = 0;
     for (const coc of cocs) {
@@ -269,7 +193,7 @@ export class RubberCocService {
         }
         const buffer = await this.storageService.download(coc.documentPath);
         const hash = createHash("sha256").update(buffer).digest("hex");
-        await this.supplierCocRepository.update(coc.id, { documentHash: hash });
+        await this.supplierCocRepository.updateById(coc.id, { documentHash: hash });
         updated += 1;
       } catch (err) {
         errors.push(`CoC ${coc.id}: ${err instanceof Error ? err.message : String(err)}`);
@@ -289,9 +213,7 @@ export class RubberCocService {
         const company = await this.resolveOrCreateSupplierForType(dto.cocType);
         return company.id;
       } else {
-        const company = await this.companyRepository.findOne({
-          where: { id: dto.supplierCompanyId },
-        });
+        const company = await this.companyRepository.findById(dto.supplierCompanyId);
         if (!company) {
           throw new BadRequestException("Supplier company not found");
         }
@@ -299,7 +221,7 @@ export class RubberCocService {
       }
     })();
 
-    const coc = this.supplierCocRepository.create({
+    const coc = this.supplierCocRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       cocType: dto.cocType,
       supplierCompanyId,
@@ -316,10 +238,7 @@ export class RubberCocService {
     });
 
     const saved = await this.supplierCocRepository.save(coc);
-    const result = await this.supplierCocRepository.findOne({
-      where: { id: saved.id },
-      relations: ["supplierCompany"],
-    });
+    const result = await this.supplierCocRepository.findByIdWithCompany(saved.id);
     if (!result) {
       throw new BadRequestException("Failed to retrieve created supplier CoC");
     }
@@ -330,10 +249,7 @@ export class RubberCocService {
     id: number,
     dto: UpdateSupplierCocDto,
   ): Promise<RubberSupplierCocDto | null> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const coc = await this.supplierCocRepository.findByIdWithCompany(id);
     if (!coc) return null;
 
     if (dto.cocType !== undefined) coc.cocType = dto.cocType;
@@ -359,10 +275,7 @@ export class RubberCocService {
     coc.extractedData = extracted as any;
 
     await this.supplierCocRepository.save(coc);
-    const refreshed = await this.supplierCocRepository.findOne({
-      where: { id: coc.id },
-      relations: ["supplierCompany"],
-    });
+    const refreshed = await this.supplierCocRepository.findByIdWithCompany(coc.id);
     return this.mapSupplierCocToDto(refreshed ?? coc);
   }
 
@@ -370,10 +283,7 @@ export class RubberCocService {
     id: number,
     extractedData: ExtractedCocData,
   ): Promise<RubberSupplierCocDto | null> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const coc = await this.supplierCocRepository.findByIdWithCompany(id);
     if (!coc) return null;
 
     coc.extractedData = extractedData;
@@ -408,20 +318,14 @@ export class RubberCocService {
   }
 
   async markExtractionFailed(id: number): Promise<void> {
-    await this.supplierCocRepository.update(
-      { id, processingStatus: CocProcessingStatus.PENDING },
-      { processingStatus: CocProcessingStatus.FAILED },
-    );
+    await this.supplierCocRepository.markExtractionFailedIfPending(id);
   }
 
   async splitCalenderRollExtraction(
     parentId: number,
     pages: ExtractedCocData[],
   ): Promise<{ supplierCocIds: number[] }> {
-    const parent = await this.supplierCocRepository.findOne({
-      where: { id: parentId },
-      relations: ["supplierCompany"],
-    });
+    const parent = await this.supplierCocRepository.findByIdWithCompany(parentId);
     if (!parent) {
       throw new BadRequestException("Supplier CoC not found");
     }
@@ -432,12 +336,9 @@ export class RubberCocService {
 
     const slicedPaths = await this.slicePdfPerCalenderRollPage(parent, pages.length);
 
-    const siblings = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.document_path = :documentPath", { documentPath: parent.documentPath })
-      .andWhere("coc.coc_type = :cocType", { cocType: SupplierCocType.CALENDER_ROLL })
-      .orderBy("coc.id", "ASC")
-      .getMany();
+    const siblings = await this.supplierCocRepository.findCalenderRollSiblingsByDocumentPath(
+      parent.documentPath,
+    );
 
     if (siblings.length >= pages.length) {
       const ordered = siblings.slice(0, pages.length);
@@ -555,10 +456,7 @@ export class RubberCocService {
     );
     if (!result.merged) return coc;
 
-    const refreshed = await this.supplierCocRepository.findOne({
-      where: { id: coc.id },
-      relations: ["supplierCompany"],
-    });
+    const refreshed = await this.supplierCocRepository.findByIdWithCompany(coc.id);
     return refreshed ?? coc;
   }
 
@@ -566,10 +464,7 @@ export class RubberCocService {
     id: number,
     dto: ReviewExtractionDto,
   ): Promise<RubberSupplierCocDto | null> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const coc = await this.supplierCocRepository.findByIdWithCompany(id);
     if (!coc) return null;
 
     if (dto.extractedData) {
@@ -591,10 +486,7 @@ export class RubberCocService {
   }
 
   async approveCoc(id: number, approvedBy?: string): Promise<RubberSupplierCocDto | null> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const coc = await this.supplierCocRepository.findByIdWithCompany(id);
     if (!coc) return null;
 
     if (coc.versionStatus === DocumentVersionStatus.PENDING_AUTHORIZATION) {
@@ -611,9 +503,7 @@ export class RubberCocService {
     await this.captureCalendererEmbeddedGraph(coc);
 
     if (coc.extractedData?.batches) {
-      const existingCount = await this.compoundBatchRepository.count({
-        where: { supplierCocId: id },
-      });
+      const existingCount = await this.compoundBatchRepository.countBySupplierCocId(id);
       if (existingCount === 0) {
         await this.createBatchesFromExtractedData(coc);
       } else {
@@ -691,13 +581,10 @@ export class RubberCocService {
     id: number,
     extractedData: ExtractedCocData,
   ): Promise<RubberSupplierCocDto | null> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id },
-      relations: ["supplierCompany"],
-    });
+    const coc = await this.supplierCocRepository.findByIdWithCompany(id);
     if (!coc) return null;
 
-    await this.compoundBatchRepository.delete({ supplierCocId: id });
+    await this.compoundBatchRepository.deleteBySupplierCocId(id);
     this.logger.log(`Deleted existing batches for CoC ${id} before re-extraction`);
 
     const merged = this.mergeExtractedData(coc.extractedData, extractedData);
@@ -978,14 +865,13 @@ export class RubberCocService {
   }
 
   async deleteSupplierCoc(id: number): Promise<boolean> {
-    const result = await this.supplierCocRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.supplierCocRepository.deleteById(id);
   }
 
   async countPendingAuthorization(): Promise<{ count: number }> {
-    const count = await this.supplierCocRepository.count({
-      where: { versionStatus: DocumentVersionStatus.PENDING_AUTHORIZATION },
-    });
+    const count = await this.supplierCocRepository.countByVersionStatus(
+      DocumentVersionStatus.PENDING_AUTHORIZATION,
+    );
     return { count };
   }
 
@@ -1007,7 +893,7 @@ export class RubberCocService {
 
     const isDuplicate = existingActive !== null;
 
-    const newCoc = this.supplierCocRepository.create({
+    const newCoc = this.supplierCocRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       cocType,
       supplierCompanyId,
@@ -1036,10 +922,7 @@ export class RubberCocService {
     }
 
     const saved = await this.supplierCocRepository.save(newCoc);
-    const result = await this.supplierCocRepository.findOne({
-      where: { id: saved.id },
-      relations: ["supplierCompany"],
-    });
+    const result = await this.supplierCocRepository.findByIdWithCompany(saved.id);
 
     if (!result) {
       throw new BadRequestException("Failed to retrieve created supplier CoC");
@@ -1066,13 +949,7 @@ export class RubberCocService {
     totalKept: number;
     totalSuperseded: number;
   }> {
-    const activeCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
-      .andWhere("coc.coc_number IS NOT NULL")
-      .andWhere("coc.coc_number <> ''")
-      .orderBy("coc.id", "ASC")
-      .getMany();
+    const activeCocs = await this.supplierCocRepository.findActiveWithCocNumber();
 
     const buckets: Record<string, RubberSupplierCoc[]> = {};
     activeCocs.forEach((coc) => {
@@ -1138,28 +1015,18 @@ export class RubberCocService {
   }
 
   async clearAllSupplierCocs(): Promise<{ deletedBatches: number; deletedCocs: number }> {
-    const batchResult = await this.compoundBatchRepository
-      .createQueryBuilder()
-      .delete()
-      .where("supplier_coc_id IS NOT NULL")
-      .execute();
+    const deletedBatches = await this.compoundBatchRepository.deleteAllWithSupplierCoc();
 
-    const cocResult = await this.supplierCocRepository.createQueryBuilder().delete().execute();
-
-    await this.supplierCocRepository.query(
-      "ALTER SEQUENCE rubber_supplier_cocs_id_seq RESTART WITH 1",
-    );
+    const deletedCocs = await this.supplierCocRepository.deleteAllAndResetSequence();
 
     return {
-      deletedBatches: batchResult.affected || 0,
-      deletedCocs: cocResult.affected || 0,
+      deletedBatches,
+      deletedCocs,
     };
   }
 
   async batchesByCocId(supplierCocId: number): Promise<RubberCompoundBatchDto[]> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id: supplierCocId },
-    });
+    const coc = await this.supplierCocRepository.findById(supplierCocId);
 
     if (!coc) {
       return [];
@@ -1173,28 +1040,10 @@ export class RubberCocService {
 
       const equivalentCompoundCodes = await this.equivalentCompoundCodes(coc.compoundCode);
 
-      const qb = this.compoundBatchRepository
-        .createQueryBuilder("batch")
-        .leftJoinAndSelect("batch.supplierCoc", "supplierCoc")
-        .leftJoinAndSelect("batch.compoundStock", "compoundStock")
-        .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
-        .where("batch.batchNumber IN (:...batchNumbers)", { batchNumbers })
-        .andWhere("supplierCoc.version_status = :activeVersionStatus", {
-          activeVersionStatus: DocumentVersionStatus.ACTIVE,
-        });
-
-      if (equivalentCompoundCodes.length > 0) {
-        qb.andWhere("supplierCoc.compoundCode IN (:...equivalentCompoundCodes)", {
-          equivalentCompoundCodes,
-        });
-      }
-
-      qb.orderBy(
-        "CASE WHEN batch.batch_number ~ '^[0-9]+$' THEN CAST(batch.batch_number AS INTEGER) ELSE 0 END",
-        "ASC",
-      ).addOrderBy("batch.batchNumber", "ASC");
-
-      const batches = await qb.getMany();
+      const batches = await this.compoundBatchRepository.findByBatchNumbersForActiveCocOrdered(
+        batchNumbers,
+        equivalentCompoundCodes,
+      );
       const dedupedByBatchNumber = batches.reduce<Map<string, RubberCompoundBatch>>(
         (acc, batch) => {
           const key = batch.batchNumber;
@@ -1219,18 +1068,8 @@ export class RubberCocService {
       return orderedBatches.map((batch) => this.mapCompoundBatchToDto(batch));
     }
 
-    const batches = await this.compoundBatchRepository
-      .createQueryBuilder("batch")
-      .leftJoinAndSelect("batch.supplierCoc", "supplierCoc")
-      .leftJoinAndSelect("batch.compoundStock", "compoundStock")
-      .leftJoinAndSelect("compoundStock.compoundCoding", "compoundCoding")
-      .where("batch.supplier_coc_id = :supplierCocId", { supplierCocId })
-      .orderBy(
-        "CASE WHEN batch.batch_number ~ '^[0-9]+$' THEN CAST(batch.batch_number AS INTEGER) ELSE 0 END",
-        "ASC",
-      )
-      .addOrderBy("batch.batchNumber", "ASC")
-      .getMany();
+    const batches =
+      await this.compoundBatchRepository.findBySupplierCocIdWithRelationsOrdered(supplierCocId);
     return batches.map((batch) => this.mapCompoundBatchToDto(batch));
   }
 
@@ -1238,10 +1077,10 @@ export class RubberCocService {
     id: number,
     dto: import("./dto/rubber-coc.dto").UpdateCompoundBatchDto,
   ): Promise<RubberCompoundBatchDto> {
-    const batch = await this.compoundBatchRepository.findOne({
-      where: { id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const batch = await this.compoundBatchRepository.findOneByIdWithRelations(id, [
+      "compoundStock",
+      "compoundStock.compoundCoding",
+    ]);
     if (!batch) {
       throw new BadRequestException("Compound batch not found");
     }
@@ -1317,16 +1156,13 @@ export class RubberCocService {
     corrections: Array<{ fieldName: string; originalValue: string | null; correctedValue: string }>,
   ): void {
     this.supplierCocRepository
-      .findOne({
-        where: { id: batch.supplierCocId },
-        relations: ["supplierCompany"],
-      })
+      .findByIdWithCompany(batch.supplierCocId)
       .then((coc) => {
         const supplierName = coc?.supplierCompany?.name ?? null;
         const compoundCode = coc?.compoundCode ?? null;
 
         const entities = corrections.map((c) =>
-          this.batchCorrectionRepository.create({
+          this.batchCorrectionRepository.build({
             supplierCocId: batch.supplierCocId,
             compoundBatchId: batch.id,
             supplierName,
@@ -1338,7 +1174,7 @@ export class RubberCocService {
           }),
         );
 
-        return this.batchCorrectionRepository.save(entities);
+        return this.batchCorrectionRepository.saveMany(entities);
       })
       .then((saved) => {
         this.logger.log(
@@ -1354,19 +1190,10 @@ export class RubberCocService {
     supplierName: string | null,
     compoundCode: string | null,
   ): Promise<string | null> {
-    const query = this.batchCorrectionRepository
-      .createQueryBuilder("c")
-      .orderBy("c.created_at", "DESC")
-      .take(30);
-
-    if (supplierName) {
-      query.andWhere("c.supplier_name = :supplierName", { supplierName });
-    }
-    if (compoundCode) {
-      query.andWhere("c.compound_code = :compoundCode", { compoundCode });
-    }
-
-    const corrections = await query.getMany();
+    const corrections = await this.batchCorrectionRepository.findRecentForHints({
+      supplierName,
+      compoundCode,
+    });
     if (corrections.length === 0) return null;
 
     const hints = corrections.map(
@@ -1383,10 +1210,7 @@ export class RubberCocService {
   }
 
   async correctionHintsForCoc(cocId: number): Promise<string | null> {
-    const coc = await this.supplierCocRepository.findOne({
-      where: { id: cocId },
-      relations: ["supplierCompany"],
-    });
+    const coc = await this.supplierCocRepository.findByIdWithCompany(cocId);
     if (!coc) return null;
 
     return this.correctionHintsForSupplier(
@@ -1396,7 +1220,7 @@ export class RubberCocService {
   }
 
   async deleteCompoundBatch(id: number): Promise<void> {
-    const batch = await this.compoundBatchRepository.findOne({ where: { id } });
+    const batch = await this.compoundBatchRepository.findById(id);
     if (!batch) {
       throw new BadRequestException("Compound batch not found");
     }
@@ -1406,16 +1230,13 @@ export class RubberCocService {
   private async resolveOrCreateSupplierForType(cocType: SupplierCocType): Promise<RubberCompany> {
     const supplierName = DEFAULT_SUPPLIER_NAMES[cocType];
 
-    const existing = await this.companyRepository
-      .createQueryBuilder("company")
-      .where("LOWER(company.name) LIKE LOWER(:name)", { name: `%${supplierName}%` })
-      .getOne();
+    const existing = await this.companyRepository.findOneByNameLike(`%${supplierName}%`);
 
     if (existing) {
       return existing;
     }
 
-    const company = this.companyRepository.create({
+    const company = this.companyRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       name: supplierName,
     });
@@ -1443,7 +1264,7 @@ export class RubberCocService {
     }
 
     const batchesToCreate = dedupedByBatchNumber.map((batchData) =>
-      this.compoundBatchRepository.create({
+      this.compoundBatchRepository.build({
         firebaseUid: `pg_${generateUniqueId()}`,
         supplierCocId: coc.id,
         batchNumber: batchData.batchNumber,
@@ -1466,7 +1287,7 @@ export class RubberCocService {
       }),
     );
 
-    await this.compoundBatchRepository.save(batchesToCreate);
+    await this.compoundBatchRepository.saveMany(batchesToCreate);
   }
 
   async mergeIfDuplicateCocNumber(
@@ -1496,7 +1317,7 @@ export class RubberCocService {
       `Duplicate detected during post-extraction: CoC ${cocId} has same cocNumber ${normalizedCocNumber} as CoC ${existingActive.id} - creating version`,
     );
 
-    const newCoc = await this.supplierCocRepository.findOne({ where: { id: cocId } });
+    const newCoc = await this.supplierCocRepository.findById(cocId);
     if (newCoc) {
       newCoc.version = existingActive.version + 1;
       newCoc.previousVersionId = existingActive.id;
@@ -1510,9 +1331,7 @@ export class RubberCocService {
   async linkCalendererToCompounderCocs(
     calendererCocId: number,
   ): Promise<{ linkedCocIds: number[]; linkedBatches: string[] }> {
-    const calendererCoc = await this.supplierCocRepository.findOne({
-      where: { id: calendererCocId },
-    });
+    const calendererCoc = await this.supplierCocRepository.findById(calendererCocId);
 
     if (!calendererCoc || calendererCoc.cocType !== SupplierCocType.CALENDARER) {
       return { linkedCocIds: [], linkedBatches: [] };
@@ -1523,10 +1342,9 @@ export class RubberCocService {
       return { linkedCocIds: [], linkedBatches: [] };
     }
 
-    const compounderCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
-      .getMany();
+    const compounderCocs = await this.supplierCocRepository.findByCocType(
+      SupplierCocType.COMPOUNDER,
+    );
 
     const matches = compounderCocs.reduce(
       (acc, compCoc) => {
@@ -1593,7 +1411,7 @@ export class RubberCocService {
           ...(calendererCoc.extractedData ?? {}),
           linkedCompounderCocIds: [compounderCoc.id],
         };
-        await this.supplierCocRepository.update(calendererCoc.id, {
+        await this.supplierCocRepository.updateById(calendererCoc.id, {
           extractedData: updatedExtractedData,
         });
 
@@ -1601,9 +1419,7 @@ export class RubberCocService {
           `Auto-linked calenderer ${calendererCoc.id} to compounder ${compounderCoc.id} via compound code ${compoundCode}`,
         );
 
-        const refreshed = await this.supplierCocRepository.findOne({
-          where: { id: calendererCoc.id },
-        });
+        const refreshed = await this.supplierCocRepository.findById(calendererCoc.id);
         if (refreshed) {
           this.triggerReadinessCheckForLinkedCalenderer(refreshed);
         }
@@ -1618,9 +1434,7 @@ export class RubberCocService {
   async linkCompounderToCalendererCocs(
     compounderCocId: number,
   ): Promise<{ updatedCalendererIds: number[]; linkedBatches: string[] }> {
-    const compounderCoc = await this.supplierCocRepository.findOne({
-      where: { id: compounderCocId },
-    });
+    const compounderCoc = await this.supplierCocRepository.findById(compounderCocId);
 
     if (!compounderCoc || compounderCoc.cocType !== SupplierCocType.COMPOUNDER) {
       return { updatedCalendererIds: [], linkedBatches: [] };
@@ -1636,11 +1450,9 @@ export class RubberCocService {
       return { updatedCalendererIds: [], linkedBatches: [] };
     }
 
-    const calendererCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .andWhere("coc.version_status = :status", { status: DocumentVersionStatus.ACTIVE })
-      .getMany();
+    const calendererCocs = await this.supplierCocRepository.findActiveByCocType(
+      SupplierCocType.CALENDARER,
+    );
 
     const updatedCalendererIds: number[] = [];
     const linkedBatches: string[] = [];
@@ -1697,14 +1509,10 @@ export class RubberCocService {
     if (!orderNumber) return;
 
     this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .andWhere("coc.order_number = :orderNumber", { orderNumber })
-      .orderBy("coc.id", "DESC")
-      .getOne()
+      .findOneByCocTypeAndOrderNumberLatest(SupplierCocType.CALENDARER, orderNumber)
       .then(async (calendererCoc) => {
         if (calendererCoc) {
-          await this.supplierCocRepository.update(calenderRollCoc.id, {
+          await this.supplierCocRepository.updateById(calenderRollCoc.id, {
             linkedCalenderRollCocId: calendererCoc.id,
           });
           this.logger.log(
@@ -1728,12 +1536,9 @@ export class RubberCocService {
     const [, baseCode, hardness] = match;
     const compounderPattern = `AUA${hardness}${baseCode}`;
 
-    const compounderCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
-      .andWhere("coc.compound_code = :code", { code: compounderPattern })
-      .orderBy("coc.id", "DESC")
-      .getMany();
+    const compounderCocs = await this.supplierCocRepository.findCompoundersByCompoundCodes([
+      compounderPattern,
+    ]);
 
     if (compounderCocs.length === 0) return null;
 
@@ -1753,11 +1558,9 @@ export class RubberCocService {
     compounderCocs: RubberSupplierCocDto[];
     batches: RubberCompoundBatchDto[];
   }> {
-    const calendererCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .getMany();
+    const calendererCocs = await this.supplierCocRepository.findByCocTypeWithCompany(
+      SupplierCocType.CALENDARER,
+    );
 
     const matchingCalendererCoc = calendererCocs.find((coc) => {
       const rollNumbers = coc.extractedData?.rollNumbers || [];
@@ -1778,25 +1581,12 @@ export class RubberCocService {
 
     const compounderCocs =
       linkedCocIds.length > 0
-        ? await this.supplierCocRepository
-            .createQueryBuilder("coc")
-            .leftJoinAndSelect("coc.supplierCompany", "company")
-            .whereInIds(linkedCocIds)
-            .getMany()
+        ? await this.supplierCocRepository.findByIdsWithCompany(linkedCocIds)
         : [];
 
     const batches =
       batchNumbers.length > 0
-        ? await this.compoundBatchRepository
-            .createQueryBuilder("batch")
-            .leftJoinAndSelect("batch.compoundStock", "stock")
-            .leftJoinAndSelect("stock.compoundCoding", "coding")
-            .leftJoin("batch.supplierCoc", "supplierCoc")
-            .where("batch.batch_number IN (:...batchNumbers)", { batchNumbers })
-            .andWhere("supplierCoc.version_status = :activeVersionStatus", {
-              activeVersionStatus: DocumentVersionStatus.ACTIVE,
-            })
-            .getMany()
+        ? await this.compoundBatchRepository.findByBatchNumbersWithStockForActiveCoc(batchNumbers)
         : [];
 
     return {
@@ -1809,11 +1599,7 @@ export class RubberCocService {
 
   private async rejectedRollNumbersByCocIds(cocIds: number[]): Promise<Map<number, string[]>> {
     if (cocIds.length === 0) return new Map();
-    const rejections = await this.rollRejectionRepository
-      .createQueryBuilder("r")
-      .select(["r.originalSupplierCocId", "r.rollNumber"])
-      .where("r.original_supplier_coc_id IN (:...cocIds)", { cocIds })
-      .getMany();
+    const rejections = await this.rollRejectionRepository.findRefsByCocIds(cocIds);
     const map = new Map<number, string[]>();
     rejections.forEach((r) => {
       const existing = map.get(r.originalSupplierCocId) || [];
@@ -1896,11 +1682,9 @@ export class RubberCocService {
   ): Promise<RubberSupplierCocDto[]> {
     const normalizedOrder = orderNumber.trim().toUpperCase();
 
-    const cocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .getMany();
+    const cocs = await this.supplierCocRepository.findByCocTypeWithCompany(
+      SupplierCocType.CALENDARER,
+    );
 
     const matchingCocs = cocs.filter((coc) => {
       const cocOrderNumber = coc.orderNumber?.trim().toUpperCase() || "";

@@ -1,18 +1,16 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import {
-  RubberAdhesionRequirement,
-  RubberApplicationRating,
-  RubberThicknessRecommendation,
-} from "./entities/rubber-application.entity";
-import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberOrder, RubberOrderStatus } from "./entities/rubber-order.entity";
-import { RubberOrderItem } from "./entities/rubber-order-item.entity";
-import { RubberPricingTier } from "./entities/rubber-pricing-tier.entity";
-import { RubberProduct } from "./entities/rubber-product.entity";
-import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { RubberSpecification } from "./entities/rubber-specification.entity";
-import { RubberType } from "./entities/rubber-type.entity";
+import { RubberAdhesionRequirementRepository } from "./repositories/rubber-adhesion-requirement.repository";
+import { RubberApplicationRatingRepository } from "./repositories/rubber-application-rating.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberOrderRepository } from "./repositories/rubber-order.repository";
+import { RubberOrderItemRepository } from "./repositories/rubber-order-item.repository";
+import { RubberPricingTierRepository } from "./repositories/rubber-pricing-tier.repository";
+import { RubberProductRepository } from "./repositories/rubber-product.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberSpecificationRepository } from "./repositories/rubber-specification.repository";
+import { RubberThicknessRecommendationRepository } from "./repositories/rubber-thickness-recommendation.repository";
+import { RubberTypeRepository } from "./repositories/rubber-type.repository";
 import { RubberLiningService } from "./rubber-lining.service";
 
 describe("RubberLiningService", () => {
@@ -25,6 +23,37 @@ describe("RubberLiningService", () => {
     findOne: jest.fn(),
     delete: jest.fn(),
     createQueryBuilder: jest.fn(),
+    build: jest.fn((data: unknown) => data),
+    saveMany: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
+    count: jest.fn(),
+    findFilteredOrdered: jest.fn(),
+    findByChemicalCategoriesAndRatings: jest.fn(),
+    findAllOrderedByThickness: jest.fn(),
+    findByTypeNumberOrdered: jest.fn(),
+    deleteByOrderId: jest.fn(),
+    findAllOrderedByTypeNumber: jest.fn(),
+    findOneByTypeNumber: jest.fn(),
+    findAllWithTypeOrdered: jest.fn(),
+    findByTypeIdOrdered: jest.fn(),
+    findByTypeIdsOrdered: jest.fn(),
+    findOneByCallout: jest.fn(),
+    findOrderedByType: jest.fn(),
+    findByType: jest.fn(),
+    findOneById: jest.fn(),
+    findManyByFirebaseUids: jest.fn(),
+    countNeedingReview: jest.fn(),
+    deleteById: jest.fn(),
+    findAllOrderedByPricingFactor: jest.fn(),
+    findAllOrderedByTitle: jest.fn(),
+    findOneByCompoundFirebaseUid: jest.fn(),
+    findFilteredWithRelations: jest.fn(),
+    findOneByIdWithRelations: jest.fn(),
+    findLatest: jest.fn(),
+    findAllWithPricingTierOrderedByName: jest.fn(),
   });
 
   const mockRubberTypeRepo = mockRepo();
@@ -44,44 +73,44 @@ describe("RubberLiningService", () => {
       providers: [
         RubberLiningService,
         {
-          provide: getRepositoryToken(RubberType),
+          provide: RubberTypeRepository,
           useValue: mockRubberTypeRepo,
         },
         {
-          provide: getRepositoryToken(RubberSpecification),
+          provide: RubberSpecificationRepository,
           useValue: mockRubberSpecRepo,
         },
         {
-          provide: getRepositoryToken(RubberApplicationRating),
+          provide: RubberApplicationRatingRepository,
           useValue: mockApplicationRatingRepo,
         },
         {
-          provide: getRepositoryToken(RubberThicknessRecommendation),
+          provide: RubberThicknessRecommendationRepository,
           useValue: mockThicknessRepo,
         },
         {
-          provide: getRepositoryToken(RubberAdhesionRequirement),
+          provide: RubberAdhesionRequirementRepository,
           useValue: mockAdhesionRepo,
         },
         {
-          provide: getRepositoryToken(RubberProductCoding),
+          provide: RubberProductCodingRepository,
           useValue: mockProductCodingRepo,
         },
         {
-          provide: getRepositoryToken(RubberPricingTier),
+          provide: RubberPricingTierRepository,
           useValue: mockPricingTierRepo,
         },
         {
-          provide: getRepositoryToken(RubberCompany),
+          provide: RubberCompanyRepository,
           useValue: mockCompanyRepo,
         },
         {
-          provide: getRepositoryToken(RubberProduct),
+          provide: RubberProductRepository,
           useValue: mockProductRepo,
         },
-        { provide: getRepositoryToken(RubberOrder), useValue: mockOrderRepo },
+        { provide: RubberOrderRepository, useValue: mockOrderRepo },
         {
-          provide: getRepositoryToken(RubberOrderItem),
+          provide: RubberOrderItemRepository,
           useValue: mockOrderItemRepo,
         },
       ],
@@ -98,8 +127,8 @@ describe("RubberLiningService", () => {
 
   describe("calculatePrice", () => {
     it("should return null when product not found", async () => {
-      mockProductRepo.findOne.mockResolvedValue(null);
-      mockCompanyRepo.findOne.mockResolvedValue({ id: 1, name: "Test Co" });
+      mockProductRepo.findById.mockResolvedValue(null);
+      mockCompanyRepo.findById.mockResolvedValue({ id: 1, name: "Test Co" });
 
       const result = await service.calculatePrice({
         productId: 999,
@@ -114,11 +143,11 @@ describe("RubberLiningService", () => {
     });
 
     it("should return null when company not found", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "Test Product",
       });
-      mockCompanyRepo.findOne.mockResolvedValue(null);
+      mockCompanyRepo.findById.mockResolvedValue(null);
 
       const result = await service.calculatePrice({
         productId: 1,
@@ -133,14 +162,14 @@ describe("RubberLiningService", () => {
     });
 
     it("should calculate correctly with concrete values", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "NR Compound",
         specificGravity: "1.15",
         costPerKg: "45.00",
         markup: "120",
       });
-      mockCompanyRepo.findOne.mockResolvedValue({
+      mockCompanyRepo.findById.mockResolvedValue({
         id: 1,
         name: "Acme Mining",
         pricingTier: { id: 1, name: "Standard", pricingFactor: "95" },
@@ -170,14 +199,14 @@ describe("RubberLiningService", () => {
     });
 
     it("should default specificGravity to 1 when null", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "Test",
         specificGravity: null,
         costPerKg: "50.00",
         markup: "100",
       });
-      mockCompanyRepo.findOne.mockResolvedValue({
+      mockCompanyRepo.findById.mockResolvedValue({
         id: 1,
         name: "Co",
         pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
@@ -197,14 +226,14 @@ describe("RubberLiningService", () => {
     });
 
     it("should default specificGravity to 1 when zero", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "Test",
         specificGravity: "0",
         costPerKg: "50.00",
         markup: "100",
       });
-      mockCompanyRepo.findOne.mockResolvedValue({
+      mockCompanyRepo.findById.mockResolvedValue({
         id: 1,
         name: "Co",
         pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
@@ -223,14 +252,14 @@ describe("RubberLiningService", () => {
     });
 
     it("should default costPerKg to 0 when null", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "Test",
         specificGravity: "1.2",
         costPerKg: null,
         markup: "100",
       });
-      mockCompanyRepo.findOne.mockResolvedValue({
+      mockCompanyRepo.findById.mockResolvedValue({
         id: 1,
         name: "Co",
         pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
@@ -251,14 +280,14 @@ describe("RubberLiningService", () => {
     });
 
     it("should default markup to 100 when null", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "Test",
         specificGravity: "1.0",
         costPerKg: "50.00",
         markup: null,
       });
-      mockCompanyRepo.findOne.mockResolvedValue({
+      mockCompanyRepo.findById.mockResolvedValue({
         id: 1,
         name: "Co",
         pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
@@ -278,14 +307,14 @@ describe("RubberLiningService", () => {
     });
 
     it("should default pricingFactor to 100 when company has no pricing tier", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "Test",
         specificGravity: "1.0",
         costPerKg: "40.00",
         markup: "150",
       });
-      mockCompanyRepo.findOne.mockResolvedValue({
+      mockCompanyRepo.findById.mockResolvedValue({
         id: 1,
         name: "No Tier Co",
         pricingTier: null,
@@ -306,14 +335,14 @@ describe("RubberLiningService", () => {
     });
 
     it("should return 0 totals when dimensions are zero", async () => {
-      mockProductRepo.findOne.mockResolvedValue({
+      mockProductRepo.findById.mockResolvedValue({
         id: 1,
         title: "Test",
         specificGravity: "1.5",
         costPerKg: "30.00",
         markup: "100",
       });
-      mockCompanyRepo.findOne.mockResolvedValue({
+      mockCompanyRepo.findById.mockResolvedValue({
         id: 1,
         name: "Co",
         pricingTier: { id: 1, name: "Tier", pricingFactor: "100" },
@@ -336,7 +365,7 @@ describe("RubberLiningService", () => {
 
   describe("orderById (mapOrderItemToDto)", () => {
     it("should calculate kgPerRoll and totalKg for order items with product loaded", async () => {
-      mockOrderRepo.findOne.mockResolvedValue({
+      mockOrderRepo.findOneByIdWithRelations.mockResolvedValue({
         id: 1,
         orderNumber: "ORD-00001",
         companyOrderNumber: null,
@@ -368,7 +397,7 @@ describe("RubberLiningService", () => {
     });
 
     it("should return null kgPerRoll when dimensions are missing", async () => {
-      mockOrderRepo.findOne.mockResolvedValue({
+      mockOrderRepo.findOneByIdWithRelations.mockResolvedValue({
         id: 1,
         orderNumber: "ORD-00001",
         companyOrderNumber: null,
@@ -398,7 +427,7 @@ describe("RubberLiningService", () => {
     });
 
     it("should default specificGravity to 1 when product has null specificGravity", async () => {
-      mockOrderRepo.findOne.mockResolvedValue({
+      mockOrderRepo.findOneByIdWithRelations.mockResolvedValue({
         id: 1,
         orderNumber: "ORD-00001",
         companyOrderNumber: null,

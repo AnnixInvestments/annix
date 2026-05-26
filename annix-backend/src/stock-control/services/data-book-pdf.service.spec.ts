@@ -1,29 +1,38 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard } from "../entities/job-card.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
-import { QcBatchAssignment } from "../qc/entities/qc-batch-assignment.entity";
-import { QcBlastProfile } from "../qc/entities/qc-blast-profile.entity";
-import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
-import { DftCoatType, QcDftReading } from "../qc/entities/qc-dft-reading.entity";
-import { QcDustDebrisTest } from "../qc/entities/qc-dust-debris-test.entity";
-import { ItemReleaseResult, QcItemsRelease } from "../qc/entities/qc-items-release.entity";
-import { QcPullTest } from "../qc/entities/qc-pull-test.entity";
-import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
-import { QcShoreHardness } from "../qc/entities/qc-shore-hardness.entity";
+import { DftCoatType } from "../qc/entities/qc-dft-reading.entity";
+import { ItemReleaseResult } from "../qc/entities/qc-items-release.entity";
+import { QcBatchAssignmentRepository } from "../qc/repositories/qc-batch-assignment.repository";
+import { QcBlastProfileRepository } from "../qc/repositories/qc-blast-profile.repository";
+import { QcControlPlanRepository } from "../qc/repositories/qc-control-plan.repository";
+import { QcDftReadingRepository } from "../qc/repositories/qc-dft-reading.repository";
+import { QcDustDebrisTestRepository } from "../qc/repositories/qc-dust-debris-test.repository";
+import { QcItemsReleaseRepository } from "../qc/repositories/qc-items-release.repository";
+import { QcPullTestRepository } from "../qc/repositories/qc-pull-test.repository";
+import { QcReleaseCertificateRepository } from "../qc/repositories/qc-release-certificate.repository";
+import { QcShoreHardnessRepository } from "../qc/repositories/qc-shore-hardness.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
 import { DataBookPdfService } from "./data-book-pdf.service";
 
 const COMPANY_ID = 1;
 const JOB_CARD_ID = 10;
 
 function mockRepo() {
+  const find = jest.fn().mockResolvedValue([]);
+  const findOne = jest.fn().mockResolvedValue(null);
   return {
-    find: jest.fn().mockResolvedValue([]),
-    findOne: jest.fn().mockResolvedValue(null),
+    find,
+    findOne,
     create: jest.fn().mockImplementation((data: any) => ({ ...data })),
     save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
+    findForJobCardOrderedByReadingDateAsc: find,
+    findForJobCardOrderedByCreatedAsc: find,
+    findForJobCardUnordered: find,
+    findForJobCardOrderedByLineItemAndFieldKey: find,
+    findByIdForCompany: findOne,
+    findOneByIdForJobCard: findOne,
   };
 }
 
@@ -264,24 +273,27 @@ describe("DataBookPdfService", () => {
   const controlPlanRepo = mockRepo();
   const releaseCertRepo = mockRepo();
   const itemsReleaseRepo = mockRepo();
-  const jobCardRepo = mockRepo();
-  const companyRepo = mockRepo();
+  const jobCardRepo = (() => {
+    const base = mockRepo();
+    return { ...base, findOneForCompanyWithLineItems: base.findOne };
+  })();
+  const companyRepo = { findById: jest.fn().mockResolvedValue(null) };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DataBookPdfService,
-        { provide: getRepositoryToken(QcBatchAssignment), useValue: batchAssignmentRepo },
-        { provide: getRepositoryToken(QcShoreHardness), useValue: shoreHardnessRepo },
-        { provide: getRepositoryToken(QcDftReading), useValue: dftReadingRepo },
-        { provide: getRepositoryToken(QcBlastProfile), useValue: blastProfileRepo },
-        { provide: getRepositoryToken(QcDustDebrisTest), useValue: dustDebrisRepo },
-        { provide: getRepositoryToken(QcPullTest), useValue: pullTestRepo },
-        { provide: getRepositoryToken(QcControlPlan), useValue: controlPlanRepo },
-        { provide: getRepositoryToken(QcReleaseCertificate), useValue: releaseCertRepo },
-        { provide: getRepositoryToken(QcItemsRelease), useValue: itemsReleaseRepo },
-        { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
-        { provide: getRepositoryToken(StockControlCompany), useValue: companyRepo },
+        { provide: QcBatchAssignmentRepository, useValue: batchAssignmentRepo },
+        { provide: QcShoreHardnessRepository, useValue: shoreHardnessRepo },
+        { provide: QcDftReadingRepository, useValue: dftReadingRepo },
+        { provide: QcBlastProfileRepository, useValue: blastProfileRepo },
+        { provide: QcDustDebrisTestRepository, useValue: dustDebrisRepo },
+        { provide: QcPullTestRepository, useValue: pullTestRepo },
+        { provide: QcControlPlanRepository, useValue: controlPlanRepo },
+        { provide: QcReleaseCertificateRepository, useValue: releaseCertRepo },
+        { provide: QcItemsReleaseRepository, useValue: itemsReleaseRepo },
+        { provide: JobCardRepository, useValue: jobCardRepo },
+        { provide: StockControlCompanyRepository, useValue: companyRepo },
         {
           provide: STORAGE_SERVICE,
           useValue: {
@@ -307,7 +319,7 @@ describe("DataBookPdfService", () => {
 
     it("returns null when job card exists but has no QC data", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany());
+      companyRepo.findById.mockResolvedValue(makeCompany());
 
       const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
 
@@ -316,7 +328,7 @@ describe("DataBookPdfService", () => {
 
     it("produces a valid PDF buffer when shore hardness data exists", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany());
+      companyRepo.findById.mockResolvedValue(makeCompany());
       shoreHardnessRepo.find.mockResolvedValue([makeShoreHardness()]);
 
       const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
@@ -328,7 +340,7 @@ describe("DataBookPdfService", () => {
 
     it("produces a valid PDF with all QC section types populated", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany());
+      companyRepo.findById.mockResolvedValue(makeCompany());
       shoreHardnessRepo.find.mockResolvedValue([makeShoreHardness()]);
       dftReadingRepo.find.mockResolvedValue([
         makeDftReading(DftCoatType.PRIMER),
@@ -351,7 +363,7 @@ describe("DataBookPdfService", () => {
 
     it("returns null when company is null (QC disabled)", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(null);
+      companyRepo.findById.mockResolvedValue(null);
       shoreHardnessRepo.find.mockResolvedValue([makeShoreHardness()]);
 
       const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
@@ -361,7 +373,7 @@ describe("DataBookPdfService", () => {
 
     it("returns null when QC is disabled for company", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany({ qcEnabled: false }));
+      companyRepo.findById.mockResolvedValue(makeCompany({ qcEnabled: false }));
       shoreHardnessRepo.find.mockResolvedValue([makeShoreHardness()]);
 
       const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
@@ -371,7 +383,7 @@ describe("DataBookPdfService", () => {
 
     it("generates TOC entries matching rendered sections", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany());
+      companyRepo.findById.mockResolvedValue(makeCompany());
       controlPlanRepo.find.mockResolvedValue([
         makeControlPlan({ planType: "rubber" }),
         makeControlPlan({ id: 2, planType: "paint_external", qcpNumber: "QCP-002" }),
@@ -388,7 +400,7 @@ describe("DataBookPdfService", () => {
 
     it("only DFT readings present still produces valid PDF", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany());
+      companyRepo.findById.mockResolvedValue(makeCompany());
       dftReadingRepo.find.mockResolvedValue([makeDftReading(DftCoatType.PRIMER)]);
 
       const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
@@ -399,7 +411,7 @@ describe("DataBookPdfService", () => {
 
     it("only items release present still produces valid PDF", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany());
+      companyRepo.findById.mockResolvedValue(makeCompany());
       itemsReleaseRepo.find.mockResolvedValue([makeItemsRelease()]);
 
       const result = await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
@@ -410,24 +422,22 @@ describe("DataBookPdfService", () => {
 
     it("queries all repositories with correct company and job card IDs", async () => {
       jobCardRepo.findOne.mockResolvedValue(makeJobCard());
-      companyRepo.findOne.mockResolvedValue(makeCompany());
+      companyRepo.findById.mockResolvedValue(makeCompany());
 
       await service.generateStructuredSections(COMPANY_ID, JOB_CARD_ID);
 
-      expect(jobCardRepo.findOne).toHaveBeenCalledWith({
-        where: { id: JOB_CARD_ID, companyId: COMPANY_ID },
-        relations: ["lineItems"],
-      });
-      expect(companyRepo.findOne).toHaveBeenCalledWith({ where: { id: COMPANY_ID } });
-      expect(shoreHardnessRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { companyId: COMPANY_ID, jobCardId: JOB_CARD_ID },
-        }),
+      expect(jobCardRepo.findOneForCompanyWithLineItems).toHaveBeenCalledWith(
+        JOB_CARD_ID,
+        COMPANY_ID,
       );
-      expect(dftReadingRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { companyId: COMPANY_ID, jobCardId: JOB_CARD_ID },
-        }),
+      expect(companyRepo.findById).toHaveBeenCalledWith(COMPANY_ID);
+      expect(shoreHardnessRepo.findForJobCardOrderedByReadingDateAsc).toHaveBeenCalledWith(
+        COMPANY_ID,
+        JOB_CARD_ID,
+      );
+      expect(dftReadingRepo.findForJobCardOrderedByReadingDateAsc).toHaveBeenCalledWith(
+        COMPANY_ID,
+        JOB_CARD_ID,
       );
     });
   });

@@ -7,9 +7,7 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
-import { In, IsNull, Not, Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import {
   type IStorageService,
@@ -18,20 +16,24 @@ import {
 } from "../../storage/storage.interface";
 import { type CoatRole, JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { IssuanceBatchRecord } from "../entities/issuance-batch-record.entity";
-import { JobCard } from "../entities/job-card.entity";
 import { JobCardDataBook } from "../entities/job-card-data-book.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
-import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
-import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
-import { CalibrationCertificate } from "../qc/entities/calibration-certificate.entity";
-import { QcControlPlan } from "../qc/entities/qc-control-plan.entity";
-import { QcDefelskoBatch } from "../qc/entities/qc-defelsko-batch.entity";
-import { QcReleaseCertificate } from "../qc/entities/qc-release-certificate.entity";
+import { CalibrationCertificateRepository } from "../qc/repositories/calibration-certificate.repository";
+import { QcControlPlanRepository } from "../qc/repositories/qc-control-plan.repository";
+import { QcDefelskoBatchRepository } from "../qc/repositories/qc-defelsko-batch.repository";
+import { QcReleaseCertificateRepository } from "../qc/repositories/qc-release-certificate.repository";
 import { PositectorUploadService } from "../qc/services/positector-upload.service";
 import { QcBatchAssignmentService } from "../qc/services/qc-batch-assignment.service";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { IssuanceBatchRecordRepository } from "../repositories/issuance-batch-record.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardDataBookRepository } from "../repositories/job-card-data-book.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockControlSupplierRepository } from "../repositories/stock-control-supplier.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { SupplierCertificateRepository } from "../repositories/supplier-certificate.repository";
 import { generateBrandedCoverPage } from "./branded-cover-page";
 import { CoatingAnalysisService } from "./coating-analysis.service";
 import { DataBookPdfService } from "./data-book-pdf.service";
@@ -127,30 +129,18 @@ export class CertificateService {
   }
 
   constructor(
-    @InjectRepository(SupplierCertificate)
-    private readonly certRepo: Repository<SupplierCertificate>,
-    @InjectRepository(IssuanceBatchRecord)
-    private readonly batchRecordRepo: Repository<IssuanceBatchRecord>,
-    @InjectRepository(JobCardDataBook)
-    private readonly dataBookRepo: Repository<JobCardDataBook>,
-    @InjectRepository(StockControlSupplier)
-    private readonly supplierRepo: Repository<StockControlSupplier>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(CalibrationCertificate)
-    private readonly calCertRepo: Repository<CalibrationCertificate>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(QcControlPlan)
-    private readonly controlPlanRepo: Repository<QcControlPlan>,
-    @InjectRepository(QcReleaseCertificate)
-    private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
-    @InjectRepository(QcDefelskoBatch)
-    private readonly defelskoBatchRepo: Repository<QcDefelskoBatch>,
+    private readonly certRepo: SupplierCertificateRepository,
+    private readonly batchRecordRepo: IssuanceBatchRecordRepository,
+    private readonly dataBookRepo: JobCardDataBookRepository,
+    private readonly supplierRepo: StockControlSupplierRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly calCertRepo: CalibrationCertificateRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
+    private readonly coatingRepo: JobCardCoatingAnalysisRepository,
+    private readonly controlPlanRepo: QcControlPlanRepository,
+    private readonly releaseCertRepo: QcReleaseCertificateRepository,
+    private readonly defelskoBatchRepo: QcDefelskoBatchRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly dataBookPdfService: DataBookPdfService,
@@ -166,9 +156,7 @@ export class CertificateService {
     file: Express.Multer.File,
     user: UserContext,
   ): Promise<SupplierCertificate> {
-    const supplier = await this.supplierRepo.findOne({
-      where: { id: dto.supplierId, companyId },
-    });
+    const supplier = await this.supplierRepo.findOneForCompany(dto.supplierId, companyId);
 
     if (!supplier) {
       throw new NotFoundException("Supplier not found");
@@ -183,23 +171,19 @@ export class CertificateService {
     }
 
     if (dto.stockItemId) {
-      const stockItem = await this.stockItemRepo.findOne({
-        where: { id: dto.stockItemId, companyId },
-      });
+      const stockItem = await this.stockItemRepo.findOneForCompany(dto.stockItemId, companyId);
 
       if (!stockItem) {
         throw new NotFoundException("Stock item not found");
       }
     }
 
-    const existing = await this.certRepo.findOne({
-      where: {
-        companyId,
-        supplierId: dto.supplierId,
-        batchNumber: dto.batchNumber.trim(),
-        certificateType: dto.certificateType.toUpperCase(),
-      },
-    });
+    const existing = await this.certRepo.findOneForCompanyByBatchAndType(
+      companyId,
+      dto.supplierId,
+      dto.batchNumber.trim(),
+      dto.certificateType.toUpperCase(),
+    );
 
     if (existing) {
       throw new BadRequestException(
@@ -215,7 +199,7 @@ export class CertificateService {
     const subPath = `${StorageArea.STOCK_CONTROL}/certificates/${companyId}/${dto.supplierId}/${dto.batchNumber.trim()}`;
     const storageResult = await this.storageService.upload(uploadFile, subPath);
 
-    const certificate = this.certRepo.create({
+    const saved = await this.certRepo.create({
       companyId,
       supplierId: dto.supplierId,
       stockItemId: dto.stockItemId ?? null,
@@ -231,8 +215,6 @@ export class CertificateService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-
-    const saved = await this.certRepo.save(certificate);
     this.logger.log(
       `Certificate uploaded: ${dto.certificateType} batch=${dto.batchNumber} supplier=${supplier.name} by ${user.name}`,
     );
@@ -254,7 +236,7 @@ export class CertificateService {
     certificateType: string,
     batchNumber: string,
   ): Promise<SupplierCertificate> {
-    const certificate = this.certRepo.create({
+    const saved = await this.certRepo.create({
       companyId,
       supplierId,
       stockItemId: null,
@@ -270,8 +252,6 @@ export class CertificateService {
       uploadedById: null,
       uploadedByName: "Email Import",
     });
-
-    const saved = await this.certRepo.save(certificate);
     this.logger.log(
       `Certificate created from email: ${certificateType} batch=${batchNumber} supplier=${supplierId}`,
     );
@@ -302,57 +282,26 @@ export class CertificateService {
     if (Object.keys(updates).length === 0) {
       return;
     }
-    await this.certRepo.update(certId, updates);
+    await this.certRepo.updateById(certId, updates);
     this.logger.log(
       `Updated cert ${certId}: product="${productDescription}" batch="${batchNumber}"${stockItemId ? ` stockItemId=${stockItemId}` : ""}`,
     );
   }
 
   async stockItemsForCompany(companyId: number): Promise<StockItem[]> {
-    return this.stockItemRepo.find({ where: { companyId }, select: STOCK_ITEM_MATCH_SELECT });
+    return this.stockItemRepo.findForCompanySelectMatch(companyId);
   }
 
   async findAll(companyId: number, filters?: CertificateFilters): Promise<SupplierCertificate[]> {
-    const qb = this.certRepo
-      .createQueryBuilder("cert")
-      .leftJoinAndSelect("cert.supplier", "supplier")
-      .leftJoinAndSelect("cert.stockItem", "stockItem")
-      .leftJoinAndSelect("cert.jobCard", "jobCard")
-      .where("cert.companyId = :companyId", { companyId })
-      .orderBy("cert.createdAt", "DESC");
-
-    if (filters?.supplierId) {
-      qb.andWhere("cert.supplierId = :supplierId", { supplierId: filters.supplierId });
-    }
-
-    if (filters?.stockItemId) {
-      qb.andWhere("cert.stockItemId = :stockItemId", { stockItemId: filters.stockItemId });
-    }
-
-    if (filters?.jobCardId) {
-      qb.andWhere("cert.jobCardId = :jobCardId", { jobCardId: filters.jobCardId });
-    }
-
-    if (filters?.batchNumber) {
-      qb.andWhere("LOWER(cert.batchNumber) LIKE LOWER(:batchNumber)", {
-        batchNumber: `%${filters.batchNumber}%`,
-      });
-    }
-
-    if (filters?.certificateType) {
-      qb.andWhere("cert.certificateType = :certificateType", {
-        certificateType: filters.certificateType.toUpperCase(),
-      });
-    }
-
-    return qb.getMany();
+    return this.certRepo.findAllFilteredForCompany(companyId, filters);
   }
 
   async findById(companyId: number, id: number): Promise<SupplierCertificate> {
-    const cert = await this.certRepo.findOne({
-      where: { id, companyId },
-      relations: ["supplier", "stockItem", "jobCard"],
-    });
+    const cert = await this.certRepo.findOneForCompanyWithRelations(id, companyId, [
+      "supplier",
+      "stockItem",
+      "jobCard",
+    ]);
 
     if (!cert) {
       throw new NotFoundException("Certificate not found");
@@ -376,47 +325,28 @@ export class CertificateService {
   }
 
   async findByBatchNumber(companyId: number, batchNumber: string): Promise<SupplierCertificate[]> {
-    return this.certRepo.find({
-      where: { companyId, batchNumber: batchNumber.trim() },
-      relations: ["supplier", "stockItem"],
-      order: { createdAt: "DESC" },
-    });
+    return this.certRepo.findByBatchForCompany(companyId, batchNumber);
   }
 
   async certificatesForJobCard(
     companyId: number,
     jobCardId: number,
   ): Promise<SupplierCertificate[]> {
-    const directCerts = await this.certRepo.find({
-      where: { companyId, jobCardId },
-      relations: ["supplier", "stockItem"],
-    });
+    const directCerts = await this.certRepo.findForJobCardForCompany(companyId, jobCardId);
 
-    const batchRecords = await this.batchRecordRepo.find({
-      where: { companyId, jobCardId },
-      relations: [
-        "supplierCertificate",
-        "supplierCertificate.supplier",
-        "supplierCertificate.stockItem",
-      ],
-    });
+    const batchRecords = await this.batchRecordRepo.findForJobCardWithCertificate(
+      companyId,
+      jobCardId,
+    );
 
     const linkedCerts = batchRecords
       .filter((br) => br.supplierCertificate !== null)
       .map((br) => br.supplierCertificate as SupplierCertificate);
 
-    const materialBatches = await this.defelskoBatchRepo.find({
-      where: {
-        companyId,
-        jobCardId,
-        supplierCertificateId: Not(IsNull()) as any,
-      },
-      relations: [
-        "supplierCertificate",
-        "supplierCertificate.supplier",
-        "supplierCertificate.stockItem",
-      ],
-    });
+    const materialBatches = await this.defelskoBatchRepo.findForJobCardWithCertLinked(
+      companyId,
+      jobCardId,
+    );
 
     const materialCerts = materialBatches
       .filter((b) => b.supplierCertificate !== null)
@@ -434,18 +364,11 @@ export class CertificateService {
     companyId: number,
     jobCardId: number,
   ): Promise<IssuanceBatchRecord[]> {
-    return this.batchRecordRepo.find({
-      where: { companyId, jobCardId },
-      relations: ["stockItem", "supplierCertificate", "supplierCertificate.supplier"],
-      order: { createdAt: "DESC" },
-    });
+    return this.batchRecordRepo.findForJobCardWithDetails(companyId, jobCardId);
   }
 
   async dataBookStatus(companyId: number, jobCardId: number): Promise<DataBookStatus> {
-    const dataBook = await this.dataBookRepo.findOne({
-      where: { companyId, jobCardId },
-      order: { generatedAt: "DESC" },
-    });
+    const dataBook = await this.dataBookRepo.findLatestForJobCard(companyId, jobCardId);
 
     const certs = await this.certificatesForJobCard(companyId, jobCardId);
 
@@ -487,13 +410,10 @@ export class CertificateService {
 
     const [certs, calCerts, jobCard, company, coatingAnalysis] = await Promise.all([
       this.certificatesForJobCard(companyId, jobCardId),
-      this.calCertRepo.find({
-        where: { companyId, isActive: true },
-        order: { equipmentName: "ASC" },
-      }),
-      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
-      this.companyRepo.findOne({ where: { id: companyId } }),
-      this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
+      this.calCertRepo.findActiveForCompany(companyId),
+      this.jobCardRepo.findOneForCompany(jobCardId, companyId),
+      this.companyRepo.findById(companyId),
+      this.coatingRepo.findOneForJobCard(companyId, jobCardId),
     ]);
 
     this.logger.log(
@@ -504,14 +424,8 @@ export class CertificateService {
 
     const [controlPlans, releaseCerts] = qcEnabled
       ? await Promise.all([
-          this.controlPlanRepo.find({
-            where: { companyId, jobCardId },
-            order: { createdAt: "ASC" },
-          }),
-          this.releaseCertRepo.find({
-            where: { companyId, jobCardId },
-            order: { createdAt: "ASC" },
-          }),
+          this.controlPlanRepo.findForJobCardOrderedByCreatedAsc(companyId, jobCardId),
+          this.releaseCertRepo.findForJobCardOrderedByCreatedAsc(companyId, jobCardId),
         ])
       : [[], []];
 
@@ -685,10 +599,7 @@ export class CertificateService {
 
     const storageResult = await this.storageService.upload(multerFile, subPath);
 
-    const existing = await this.dataBookRepo.findOne({
-      where: { companyId, jobCardId },
-      order: { generatedAt: "DESC" },
-    });
+    const existing = await this.dataBookRepo.findLatestForJobCard(companyId, jobCardId);
 
     if (existing) {
       try {
@@ -699,7 +610,8 @@ export class CertificateService {
       await this.dataBookRepo.remove(existing);
     }
 
-    const dataBook = this.dataBookRepo.create({
+    this.logger.log(`[compileDataBook] JC ${jobCardId}: S3 upload complete, saving DB record...`);
+    const saved = await this.dataBookRepo.create({
       companyId,
       jobCardId,
       filePath: storageResult.path,
@@ -710,9 +622,6 @@ export class CertificateService {
       certificateCount: totalCertCount,
       isStale: false,
     });
-
-    this.logger.log(`[compileDataBook] JC ${jobCardId}: S3 upload complete, saving DB record...`);
-    const saved = await this.dataBookRepo.save(dataBook);
     this.logger.log(
       `[compileDataBook] JC ${jobCardId}: SUCCESS — ${totalCertCount} certificates (${certs.length} supplier + ${calCerts.length} calibration), ${mergedBuffer.length} bytes, id=${saved.id}`,
     );
@@ -726,16 +635,13 @@ export class CertificateService {
     user: UserContext,
     force = false,
   ): Promise<{ buffer: Buffer; filename: string }> {
-    const childJcs = await this.jobCardRepo.find({
-      where: { cpoId, companyId },
-      order: { createdAt: "ASC" },
-    });
+    const childJcs = await this.jobCardRepo.findChildJobCardsByCpoCreatedAsc(cpoId, companyId);
 
     if (childJcs.length === 0) {
       throw new NotFoundException("No child job cards found for this CPO");
     }
 
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     const qcEnabled = company?.qcEnabled ?? false;
     const { default: pdfLib } = await import("pdf-lib");
     const PDFKit = (await import("pdfkit")).default;
@@ -753,23 +659,14 @@ export class CertificateService {
     for (const jc of childJcs) {
       const [certs, calCerts, coatingAnalysis] = await Promise.all([
         this.certificatesForJobCard(companyId, jc.id),
-        this.calCertRepo.find({
-          where: { companyId, isActive: true },
-          order: { equipmentName: "ASC" },
-        }),
-        this.coatingRepo.findOne({ where: { companyId, jobCardId: jc.id } }),
+        this.calCertRepo.findActiveForCompany(companyId),
+        this.coatingRepo.findOneForJobCard(companyId, jc.id),
       ]);
 
       const [controlPlans, releaseCerts] = qcEnabled
         ? await Promise.all([
-            this.controlPlanRepo.find({
-              where: { companyId, jobCardId: jc.id },
-              order: { createdAt: "ASC" },
-            }),
-            this.releaseCertRepo.find({
-              where: { companyId, jobCardId: jc.id },
-              order: { createdAt: "ASC" },
-            }),
+            this.controlPlanRepo.findForJobCardOrderedByCreatedAsc(companyId, jc.id),
+            this.releaseCertRepo.findForJobCardOrderedByCreatedAsc(companyId, jc.id),
           ])
         : [[], []];
 
@@ -900,10 +797,7 @@ export class CertificateService {
     companyId: number,
     jobCardId: number,
   ): Promise<{ buffer: Buffer; filename: string }> {
-    const dataBook = await this.dataBookRepo.findOne({
-      where: { companyId, jobCardId },
-      order: { generatedAt: "DESC" },
-    });
+    const dataBook = await this.dataBookRepo.findLatestForJobCard(companyId, jobCardId);
 
     if (!dataBook) {
       throw new NotFoundException("No data book has been compiled for this job card");
@@ -914,10 +808,7 @@ export class CertificateService {
   }
 
   async markDataBookStale(companyId: number, jobCardId: number): Promise<void> {
-    const dataBook = await this.dataBookRepo.findOne({
-      where: { companyId, jobCardId },
-      order: { generatedAt: "DESC" },
-    });
+    const dataBook = await this.dataBookRepo.findLatestForJobCard(companyId, jobCardId);
 
     if (dataBook && !dataBook.isStale) {
       dataBook.isStale = true;
@@ -931,21 +822,9 @@ export class CertificateService {
   ): Promise<Record<number, { exists: boolean; isStale: boolean; certificateCount: number }>> {
     if (jobCardIds.length === 0) return {};
 
-    const dataBooks = await this.dataBookRepo
-      .createQueryBuilder("db")
-      .where("db.companyId = :companyId", { companyId })
-      .andWhere("db.jobCardId IN (:...jobCardIds)", { jobCardIds })
-      .getMany();
+    const dataBooks = await this.dataBookRepo.findForJobCardIds(companyId, jobCardIds);
 
-    const certCounts = await this.batchRecordRepo
-      .createQueryBuilder("br")
-      .select("br.job_card_id", "jobCardId")
-      .addSelect("COUNT(DISTINCT br.supplier_certificate_id)", "certCount")
-      .where("br.company_id = :companyId", { companyId })
-      .andWhere("br.job_card_id IN (:...jobCardIds)", { jobCardIds })
-      .andWhere("br.supplier_certificate_id IS NOT NULL")
-      .groupBy("br.job_card_id")
-      .getRawMany<{ jobCardId: number; certCount: string }>();
+    const certCounts = await this.batchRecordRepo.certificateCountsByJobCard(companyId, jobCardIds);
 
     const certCountMap = new Map(certCounts.map((r) => [r.jobCardId, parseInt(r.certCount, 10)]));
     const dataBookMap = new Map(dataBooks.map((db) => [db.jobCardId, db]));
@@ -968,33 +847,19 @@ export class CertificateService {
     companyId: number,
     batchNumber: string,
   ): Promise<IssuanceBatchRecord[]> {
-    return this.batchRecordRepo.find({
-      where: { companyId, batchNumber: batchNumber.trim() },
-      relations: ["stockItem", "supplierCertificate", "supplierCertificate.supplier"],
-      order: { createdAt: "DESC" },
-    });
+    return this.batchRecordRepo.findByBatchNumberWithDetails(companyId, batchNumber);
   }
 
   async recentBatches(companyId: number, stockItemId: number, limit = 10): Promise<string[]> {
-    const records = await this.batchRecordRepo
-      .createQueryBuilder("br")
-      .select("DISTINCT br.batch_number", "batchNumber")
-      .where("br.company_id = :companyId", { companyId })
-      .andWhere("br.stock_item_id = :stockItemId", { stockItemId })
-      .orderBy("br.batch_number", "ASC")
-      .limit(limit)
-      .getRawMany<{ batchNumber: string }>();
-
-    return records.map((r) => r.batchNumber);
+    return this.batchRecordRepo.recentBatchNumbers(companyId, stockItemId, limit);
   }
 
   async activeCalibrationCertsCached(companyId: number) {
-    const cached = this.cacheGet<Awaited<ReturnType<typeof this.calCertRepo.find>>>(
-      this.calCertCache,
-      companyId,
-    );
+    const cached = this.cacheGet<
+      Awaited<ReturnType<typeof this.calCertRepo.findActiveForCompanyUnordered>>
+    >(this.calCertCache, companyId);
     if (cached) return cached;
-    const fresh = await this.calCertRepo.find({ where: { companyId, isActive: true } });
+    const fresh = await this.calCertRepo.findActiveForCompanyUnordered(companyId);
     this.cacheSet(this.calCertCache, companyId, fresh, CertificateService.CAL_CERT_TTL_MS);
     return fresh;
   }
@@ -1058,15 +923,15 @@ export class CertificateService {
 
   async dataBookCompleteness(companyId: number, jobCardId: number): Promise<DataBookCompleteness> {
     const perfStart = Date.now();
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     const qcEnabled = company?.qcEnabled ?? false;
 
     const t1 = Date.now();
     const [certs, calCerts, batchRecords, coatingAnalysis] = await Promise.all([
       this.certificatesForJobCard(companyId, jobCardId),
-      this.calCertRepo.find({ where: { companyId, isActive: true } }),
+      this.calCertRepo.findActiveForCompanyUnordered(companyId),
       this.batchRecordsForJobCard(companyId, jobCardId),
-      this.coatingRepo.findOne({ where: { companyId, jobCardId } }),
+      this.coatingRepo.findOneForJobCard(companyId, jobCardId),
     ]);
     const tAfterMain = Date.now();
 
@@ -1486,9 +1351,7 @@ export class CertificateService {
     companyId: number,
     batchNumber: string,
   ): Promise<SupplierCertificate | null> {
-    const exactMatch = await this.certRepo.findOne({
-      where: { companyId, batchNumber },
-    });
+    const exactMatch = await this.certRepo.findOneForCompanyByBatch(companyId, batchNumber);
 
     if (exactMatch) {
       return exactMatch;
@@ -1496,9 +1359,7 @@ export class CertificateService {
 
     const baseBatch = this.baseBatchNumber(batchNumber);
     if (baseBatch !== batchNumber) {
-      const baseMatch = await this.certRepo.findOne({
-        where: { companyId, batchNumber: baseBatch },
-      });
+      const baseMatch = await this.certRepo.findOneForCompanyByBatch(companyId, baseBatch);
       if (baseMatch) return baseMatch;
     }
 
@@ -1507,10 +1368,7 @@ export class CertificateService {
       return null;
     }
 
-    const candidates = await this.certRepo.find({
-      where: { companyId },
-      select: { id: true, batchNumber: true },
-    });
+    const candidates = await this.certRepo.findBatchSummaryForCompany(companyId);
     const match = candidates.find((cert) => this.batchesMatch(cert.batchNumber, batchNumber));
 
     if (match) {
@@ -1523,12 +1381,10 @@ export class CertificateService {
   }
 
   async linkUnlinkedBatchRecords(companyId: number, certificateId: number): Promise<void> {
-    const cert = await this.certRepo.findOne({ where: { id: certificateId, companyId } });
+    const cert = await this.certRepo.findOneForCompany(certificateId, companyId);
     if (!cert) return;
 
-    const unlinkedIssuanceBatches = await this.batchRecordRepo.find({
-      where: { companyId, supplierCertificateId: IsNull() as any },
-    });
+    const unlinkedIssuanceBatches = await this.batchRecordRepo.findUnlinkedToCertificate(companyId);
 
     const matchedIssuanceBatches = unlinkedIssuanceBatches.filter((br) =>
       this.batchesMatch(br.batchNumber, cert.batchNumber),
@@ -1537,7 +1393,7 @@ export class CertificateService {
     const issuanceJobCardIds = new Set<number>();
     await matchedIssuanceBatches.reduce(async (prev, br) => {
       await prev;
-      await this.batchRecordRepo.update(br.id, { supplierCertificateId: cert.id });
+      await this.batchRecordRepo.updateById(br.id, { supplierCertificateId: cert.id });
       if (br.jobCardId) issuanceJobCardIds.add(br.jobCardId);
       this.logger.log(
         `Linked issuance batch record ${br.id} (batch="${br.batchNumber}") to cert ${cert.id}`,
@@ -1545,13 +1401,10 @@ export class CertificateService {
     }, Promise.resolve());
 
     const materialCategories = ["material_paint", "material_rubber"];
-    const unlinkedDefelskoBatches = await this.defelskoBatchRepo.find({
-      where: {
-        companyId,
-        supplierCertificateId: IsNull() as any,
-        category: In(materialCategories),
-      },
-    });
+    const unlinkedDefelskoBatches = await this.defelskoBatchRepo.findUnlinkedByCategories(
+      companyId,
+      materialCategories,
+    );
 
     const matchedDefelsko = unlinkedDefelskoBatches.filter(
       (db) => db.batchNumber !== null && this.batchesMatch(db.batchNumber, cert.batchNumber),
@@ -1560,7 +1413,7 @@ export class CertificateService {
     const defelskJobCardIds = new Set<number>();
     await matchedDefelsko.reduce(async (prev, db) => {
       await prev;
-      await this.defelskoBatchRepo.update(db.id, { supplierCertificateId: cert.id });
+      await this.defelskoBatchRepo.updateSupplierCertificateId(db.id, cert.id);
       defelskJobCardIds.add(db.jobCardId);
       this.logger.log(
         `Linked defelsko batch ${db.id} (batch="${db.batchNumber}") to cert ${cert.id}`,
@@ -1571,7 +1424,7 @@ export class CertificateService {
 
     if (!cert.jobCardId && allJobCardIds.size > 0) {
       const firstJobCardId = allJobCardIds.values().next().value;
-      await this.certRepo.update(cert.id, { jobCardId: firstJobCardId });
+      await this.certRepo.updateById(cert.id, { jobCardId: firstJobCardId });
       this.logger.log(`Linked certificate ${cert.id} to job card ${firstJobCardId}`);
     }
 
@@ -1597,19 +1450,21 @@ export class CertificateService {
     const cert = await this.findMatchingCertificate(companyId, batchNumber);
     if (!cert) return;
 
-    const batch = await this.defelskoBatchRepo.findOne({
-      where: { companyId, jobCardId, fieldKey },
-    });
+    const batch = await this.defelskoBatchRepo.findByJobCardAndFieldKey(
+      companyId,
+      jobCardId,
+      fieldKey,
+    );
 
     if (!batch) return;
 
-    await this.defelskoBatchRepo.update(batch.id, { supplierCertificateId: cert.id });
+    await this.defelskoBatchRepo.updateSupplierCertificateId(batch.id, cert.id);
     this.logger.log(
       `Linked defelsko batch ${batch.id} (field="${fieldKey}", batch="${batchNumber}") to cert ${cert.id}`,
     );
 
     if (!cert.jobCardId) {
-      await this.certRepo.update(cert.id, { jobCardId });
+      await this.certRepo.updateById(cert.id, { jobCardId });
       this.logger.log(`Linked certificate ${cert.id} to job card ${jobCardId}`);
     }
 
@@ -1617,15 +1472,7 @@ export class CertificateService {
   }
 
   async certsNeedingProductExtraction(companyId: number): Promise<SupplierCertificate[]> {
-    return this.certRepo
-      .createQueryBuilder("cert")
-      .where("cert.companyId = :companyId", { companyId })
-      .andWhere(
-        "(cert.description IS NULL OR LENGTH(cert.description) > 60 OR cert.uploadedByName = :emailImport)",
-        { emailImport: "Email Import" },
-      )
-      .select(["cert.id", "cert.filePath", "cert.mimeType", "cert.companyId"])
-      .getMany();
+    return this.certRepo.findNeedingProductExtractionForCompany(companyId);
   }
 
   async downloadCertFile(cert: SupplierCertificate): Promise<Buffer> {

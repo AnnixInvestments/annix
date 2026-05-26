@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { PipeEndConfiguration } from "./entities/pipe-end-configuration.entity";
+import { PipeEndConfigurationRepository } from "./pipe-end-configuration.repository";
 
 export type FlangeType = "fixed" | "loose" | "rotating" | null;
 export type ItemType = "pipe" | "bend" | "fitting";
@@ -31,22 +30,14 @@ export interface StubFlangeConfig {
 
 @Injectable()
 export class PipeEndConfigurationService {
-  constructor(
-    @InjectRepository(PipeEndConfiguration)
-    private pipeEndConfigurationRepository: Repository<PipeEndConfiguration>,
-  ) {}
+  constructor(private readonly pipeEndConfigurationRepository: PipeEndConfigurationRepository) {}
 
-  async findAll(): Promise<PipeEndConfiguration[]> {
-    return this.pipeEndConfigurationRepository.find({
-      relations: ["weldType"],
-    });
+  findAll(): Promise<PipeEndConfiguration[]> {
+    return this.pipeEndConfigurationRepository.findAllWithWeldType();
   }
 
-  async findByCode(configCode: string): Promise<PipeEndConfiguration | null> {
-    return this.pipeEndConfigurationRepository.findOne({
-      where: { config_code: configCode },
-      relations: ["weldType"],
-    });
+  findByCode(configCode: string): Promise<PipeEndConfiguration | null> {
+    return this.pipeEndConfigurationRepository.findByCode(configCode);
   }
 
   async findByItemType(itemType: ItemType): Promise<PipeEndConfiguration[]> {
@@ -60,17 +51,13 @@ export class PipeEndConfigurationService {
       whereClause.applies_to_fitting = true;
     }
 
-    return this.pipeEndConfigurationRepository.find({
-      where: whereClause,
-      relations: ["weldType"],
-    });
+    return this.pipeEndConfigurationRepository.findByItemTypeFilter(whereClause);
   }
 
   async getWeldCountForConfig(configCode: string, itemType?: ItemType): Promise<number> {
     const config = await this.findByCode(configCode);
     if (!config) return 0;
 
-    // Verify the config applies to the item type
     if (itemType) {
       if (itemType === "pipe" && !config.applies_to_pipe) return 0;
       if (itemType === "bend" && !config.applies_to_bend) return 0;
@@ -98,7 +85,6 @@ export class PipeEndConfigurationService {
       };
     }
 
-    // Determine flange types for each end
     const inletType: FlangeType = config.has_fixed_flange_end1
       ? "fixed"
       : config.has_loose_flange_end1
@@ -144,7 +130,6 @@ export class PipeEndConfigurationService {
       return { mainBoltSets: 0, branchBoltSets: 0 };
     }
 
-    // For fittings with unequal branches
     if (config.applies_to_fitting && !hasEqualBranch) {
       const mainFlangeCount =
         (config.has_fixed_flange_end1 ||
@@ -171,7 +156,6 @@ export class PipeEndConfigurationService {
       };
     }
 
-    // For pipes, bends, and fittings with equal branches
     return {
       mainBoltSets: config.bolt_sets_per_config,
       branchBoltSets: 0,

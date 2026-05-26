@@ -1,9 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { Repository } from "typeorm";
+import type { PersistedEntity } from "../../lib/persistence/crud-repository";
 import { AUTH_CONSTANTS } from "./auth.constants";
+import type { AuthSessionRepository } from "./auth-session.repository";
 import { SessionService } from "./session.service";
 
-interface MockSession {
+interface MockSession extends PersistedEntity {
   id: number;
   profileId: number;
   sessionToken: string;
@@ -20,7 +21,7 @@ interface MockSession {
 
 describe("SessionService", () => {
   let service: SessionService;
-  let mockRepository: jest.Mocked<Repository<MockSession>>;
+  let mockRepository: jest.Mocked<AuthSessionRepository<MockSession>>;
 
   const mockSessionData = {
     profileId: 100,
@@ -33,10 +34,16 @@ describe("SessionService", () => {
   beforeEach(async () => {
     mockRepository = {
       create: jest.fn(),
-      findOne: jest.fn(),
+      findById: jest.fn(),
+      findAll: jest.fn(),
+      findOneWhere: jest.fn(),
+      findManyWhere: jest.fn(),
       save: jest.fn(),
-      update: jest.fn(),
-    } as unknown as jest.Mocked<Repository<MockSession>>;
+      remove: jest.fn(),
+      count: jest.fn(),
+      findActiveByToken: jest.fn(),
+      updateActiveByProfile: jest.fn(),
+    } as unknown as jest.Mocked<AuthSessionRepository<MockSession>>;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [SessionService],
@@ -50,13 +57,10 @@ describe("SessionService", () => {
   });
 
   describe("createSession", () => {
-    it("should create session with tokens", () => {
-      const createdSession = { id: 1 } as MockSession;
-      mockRepository.create.mockReturnValue(createdSession);
+    it("should create session data with tokens", () => {
+      const result = service.createSession<MockSession, "profileId">(mockSessionData);
 
-      const result = service.createSession(mockRepository, mockSessionData);
-
-      expect(result.session).toBe(createdSession);
+      expect(result.sessionData).toBeTruthy();
       expect(result.sessionToken).toBeTruthy();
       expect(result.refreshToken).toBeTruthy();
       expect(result.sessionToken).toMatch(
@@ -68,54 +72,39 @@ describe("SessionService", () => {
     });
 
     it("should generate unique tokens for each call", () => {
-      mockRepository.create.mockReturnValue({} as MockSession);
-
-      const result1 = service.createSession(mockRepository, mockSessionData);
-      const result2 = service.createSession(mockRepository, mockSessionData);
+      const result1 = service.createSession<MockSession, "profileId">(mockSessionData);
+      const result2 = service.createSession<MockSession, "profileId">(mockSessionData);
 
       expect(result1.sessionToken).not.toBe(result2.sessionToken);
       expect(result1.refreshToken).not.toBe(result2.refreshToken);
     });
 
-    it("should create session with correct profile ID field", () => {
-      mockRepository.create.mockImplementation((data) => data as MockSession);
+    it("should create session data with correct profile ID field", () => {
+      const result = service.createSession<MockSession, "profileId">(mockSessionData);
 
-      const result = service.createSession(mockRepository, mockSessionData);
-
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          profileId: 100,
-        }),
-      );
-      expect(result.session).toHaveProperty("profileId", 100);
+      expect(result.sessionData).toHaveProperty("profileId", 100);
     });
 
-    it("should create session with device info", () => {
-      mockRepository.create.mockImplementation((data) => data as MockSession);
+    it("should create session data with device info", () => {
+      const result = service.createSession<MockSession, "profileId">(mockSessionData);
 
-      const result = service.createSession(mockRepository, mockSessionData);
-
-      expect(result.session).toHaveProperty("deviceFingerprint", "fp-abc123");
-      expect(result.session).toHaveProperty("ipAddress", "192.168.1.1");
-      expect(result.session).toHaveProperty("userAgent", "Mozilla/5.0 Test Browser");
+      expect(result.sessionData).toHaveProperty("deviceFingerprint", "fp-abc123");
+      expect(result.sessionData).toHaveProperty("ipAddress", "192.168.1.1");
+      expect(result.sessionData).toHaveProperty("userAgent", "Mozilla/5.0 Test Browser");
     });
 
-    it("should create session with isActive true", () => {
-      mockRepository.create.mockImplementation((data) => data as MockSession);
+    it("should create session data with isActive true", () => {
+      const result = service.createSession<MockSession, "profileId">(mockSessionData);
 
-      const result = service.createSession(mockRepository, mockSessionData);
-
-      expect(result.session).toHaveProperty("isActive", true);
+      expect(result.sessionData).toHaveProperty("isActive", true);
     });
 
     it("should set expiry time based on AUTH_CONSTANTS", () => {
-      mockRepository.create.mockImplementation((data) => data as MockSession);
-
       const beforeCreate = new Date();
-      const result = service.createSession(mockRepository, mockSessionData);
+      const result = service.createSession<MockSession, "profileId">(mockSessionData);
       const afterCreate = new Date();
 
-      const expiresAt = (result.session as any).expiresAt;
+      const expiresAt = (result.sessionData as Record<string, Date>).expiresAt;
       const minExpiry = new Date(
         beforeCreate.getTime() + AUTH_CONSTANTS.SESSION_EXPIRY_HOURS * 60 * 60 * 1000 - 1000,
       );
@@ -128,20 +117,16 @@ describe("SessionService", () => {
     });
 
     it("should set lastActivity to current time", () => {
-      mockRepository.create.mockImplementation((data) => data as MockSession);
-
       const beforeCreate = new Date();
-      const result = service.createSession(mockRepository, mockSessionData);
+      const result = service.createSession<MockSession, "profileId">(mockSessionData);
       const afterCreate = new Date();
 
-      const lastActivity = (result.session as any).lastActivity;
+      const lastActivity = (result.sessionData as Record<string, Date>).lastActivity;
       expect(lastActivity.getTime()).toBeGreaterThanOrEqual(beforeCreate.getTime() - 1000);
       expect(lastActivity.getTime()).toBeLessThanOrEqual(afterCreate.getTime() + 1000);
     });
 
     it("should work with different profile ID field names", () => {
-      mockRepository.create.mockImplementation((data) => data as MockSession);
-
       const data = {
         profileId: 50,
         profileIdField: "customerId" as const,
@@ -150,13 +135,9 @@ describe("SessionService", () => {
         userAgent: "Test",
       };
 
-      service.createSession(mockRepository, data);
+      const result = service.createSession<MockSession, "customerId">(data);
 
-      expect(mockRepository.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          customerId: 50,
-        }),
-      );
+      expect(result.sessionData).toHaveProperty("customerId", 50);
     });
   });
 
@@ -177,20 +158,17 @@ describe("SessionService", () => {
 
     it("should return session when valid and not expired", async () => {
       const mockSession = createMockSession();
-      mockRepository.findOne.mockResolvedValue(mockSession);
+      mockRepository.findActiveByToken.mockResolvedValue(mockSession);
       mockRepository.save.mockResolvedValue(mockSession);
 
       const result = await service.validateSession(mockRepository, "test-token");
 
       expect(result).toBe(mockSession);
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { sessionToken: "test-token", isActive: true },
-        relations: undefined,
-      });
+      expect(mockRepository.findActiveByToken).toHaveBeenCalledWith("test-token", undefined);
     });
 
     it("should return null when session not found", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findActiveByToken.mockResolvedValue(null);
 
       const result = await service.validateSession(mockRepository, "invalid-token");
 
@@ -201,7 +179,7 @@ describe("SessionService", () => {
       const expiredSession = createMockSession({
         expiresAt: new Date(Date.now() - 1000),
       });
-      mockRepository.findOne.mockResolvedValue(expiredSession);
+      mockRepository.findActiveByToken.mockResolvedValue(expiredSession);
       mockRepository.save.mockResolvedValue(expiredSession);
 
       const result = await service.validateSession(mockRepository, "expired-token");
@@ -217,7 +195,7 @@ describe("SessionService", () => {
         lastActivity: new Date(Date.now() - 60000),
       });
       const originalLastActivity = mockSession.lastActivity;
-      mockRepository.findOne.mockResolvedValue(mockSession);
+      mockRepository.findActiveByToken.mockResolvedValue(mockSession);
       mockRepository.save.mockResolvedValue(mockSession);
 
       await service.validateSession(mockRepository, "test-token");
@@ -226,26 +204,27 @@ describe("SessionService", () => {
       expect(mockRepository.save).toHaveBeenCalled();
     });
 
-    it("should pass relations to findOne when provided", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+    it("should pass relations to findActiveByToken when provided", async () => {
+      mockRepository.findActiveByToken.mockResolvedValue(null);
 
       await service.validateSession(mockRepository, "token", ["profile", "profile.user"]);
 
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { sessionToken: "token", isActive: true },
-        relations: ["profile", "profile.user"],
-      });
+      expect(mockRepository.findActiveByToken).toHaveBeenCalledWith("token", [
+        "profile",
+        "profile.user",
+      ]);
     });
   });
 
   describe("invalidateAllSessions", () => {
     it("should update all active sessions for profile", async () => {
-      mockRepository.update.mockResolvedValue({ affected: 3 } as any);
+      mockRepository.updateActiveByProfile.mockResolvedValue(undefined);
 
       await service.invalidateAllSessions(mockRepository, 100, "profileId", "LOGOUT_ALL");
 
-      expect(mockRepository.update).toHaveBeenCalledWith(
-        { profileId: 100, isActive: true },
+      expect(mockRepository.updateActiveByProfile).toHaveBeenCalledWith(
+        "profileId",
+        100,
         expect.objectContaining({
           isActive: false,
           invalidationReason: "LOGOUT_ALL",
@@ -255,12 +234,13 @@ describe("SessionService", () => {
     });
 
     it("should work with different profile ID field", async () => {
-      mockRepository.update.mockResolvedValue({ affected: 1 } as any);
+      mockRepository.updateActiveByProfile.mockResolvedValue(undefined);
 
       await service.invalidateAllSessions(mockRepository, 50, "customerId", "PASSWORD_CHANGE");
 
-      expect(mockRepository.update).toHaveBeenCalledWith(
-        { customerId: 50, isActive: true },
+      expect(mockRepository.updateActiveByProfile).toHaveBeenCalledWith(
+        "customerId",
+        50,
         expect.objectContaining({
           isActive: false,
           invalidationReason: "PASSWORD_CHANGE",
@@ -286,7 +266,7 @@ describe("SessionService", () => {
 
     it("should invalidate session and return it", async () => {
       const mockSession = createMockSession();
-      mockRepository.findOne.mockResolvedValue(mockSession);
+      mockRepository.findActiveByToken.mockResolvedValue(mockSession);
       mockRepository.save.mockResolvedValue(mockSession);
 
       const result = await service.invalidateSession(mockRepository, "test-token", "USER_LOGOUT");
@@ -299,7 +279,7 @@ describe("SessionService", () => {
     });
 
     it("should return null when session not found", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findActiveByToken.mockResolvedValue(null);
 
       const result = await service.invalidateSession(
         mockRepository,
@@ -312,26 +292,25 @@ describe("SessionService", () => {
     });
 
     it("should search for active sessions only", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findActiveByToken.mockResolvedValue(null);
 
       await service.invalidateSession(mockRepository, "test-token", "LOGOUT");
 
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { sessionToken: "test-token", isActive: true },
-      });
+      expect(mockRepository.findActiveByToken).toHaveBeenCalledWith("test-token");
     });
   });
 
   describe("updateSessionToken", () => {
     it("should update session token and extend expiry", async () => {
-      mockRepository.update.mockResolvedValue({ affected: 1 } as any);
+      mockRepository.updateActiveByProfile.mockResolvedValue(undefined);
 
       const beforeUpdate = new Date();
       await service.updateSessionToken(mockRepository, 100, "profileId", "new-token");
       const afterUpdate = new Date();
 
-      expect(mockRepository.update).toHaveBeenCalledWith(
-        { profileId: 100, isActive: true },
+      expect(mockRepository.updateActiveByProfile).toHaveBeenCalledWith(
+        "profileId",
+        100,
         expect.objectContaining({
           sessionToken: "new-token",
           lastActivity: expect.any(Date),
@@ -339,7 +318,10 @@ describe("SessionService", () => {
         }),
       );
 
-      const updateCall = mockRepository.update.mock.calls[0][1] as any;
+      const updateCall = mockRepository.updateActiveByProfile.mock.calls[0][2] as Record<
+        string,
+        Date
+      >;
       const expiresAt = updateCall.expiresAt;
       const minExpiry = new Date(
         beforeUpdate.getTime() + AUTH_CONSTANTS.SESSION_EXPIRY_HOURS * 60 * 60 * 1000 - 1000,
@@ -353,12 +335,13 @@ describe("SessionService", () => {
     });
 
     it("should work with different profile ID field", async () => {
-      mockRepository.update.mockResolvedValue({ affected: 1 } as any);
+      mockRepository.updateActiveByProfile.mockResolvedValue(undefined);
 
       await service.updateSessionToken(mockRepository, 50, "customerId", "new-token");
 
-      expect(mockRepository.update).toHaveBeenCalledWith(
-        { customerId: 50, isActive: true },
+      expect(mockRepository.updateActiveByProfile).toHaveBeenCalledWith(
+        "customerId",
+        50,
         expect.anything(),
       );
     });

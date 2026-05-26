@@ -1,13 +1,14 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { now } from "../lib/datetime";
-import { Rfq } from "../rfq/entities/rfq.entity";
 import { RfqItem } from "../rfq/entities/rfq-item.entity";
+import { RfqRepository } from "../rfq/rfq.repository";
+import { RfqItemRepository } from "../rfq/rfq-item.repository";
 import { PaginatedResponse } from "../shared/dto";
 import { User } from "../user/entities/user.entity";
+import { BoqRepository } from "./boq.repository";
+import { BoqLineItemRepository } from "./boq-line-item.repository";
 import { BoqQueryDto } from "./dto/boq-query.dto";
 import { CreateBoqDto } from "./dto/create-boq.dto";
 import { CreateBoqLineItemDto } from "./dto/create-boq-line-item.dto";
@@ -22,15 +23,11 @@ export type PaginatedResult<T> = PaginatedResponse<T>;
 @Injectable()
 export class BoqService {
   constructor(
-    @InjectRepository(Boq)
-    private boqRepository: Repository<Boq>,
-    @InjectRepository(BoqLineItem)
-    private lineItemRepository: Repository<BoqLineItem>,
-    @InjectRepository(Rfq)
-    private rfqRepository: Repository<Rfq>,
-    @InjectRepository(RfqItem)
-    private rfqItemRepository: Repository<RfqItem>,
-    private auditService: AuditService,
+    private readonly boqRepository: BoqRepository,
+    private readonly lineItemRepository: BoqLineItemRepository,
+    private readonly rfqRepository: RfqRepository,
+    private readonly rfqItemRepository: RfqItemRepository,
+    private readonly auditService: AuditService,
   ) {}
 
   private async generateBoqNumber(rfqNumber?: string | null): Promise<string> {
@@ -41,11 +38,7 @@ export class BoqService {
     const year = now().year;
     const prefix = `BOQ-${year}-`;
 
-    const lastBoq = await this.boqRepository
-      .createQueryBuilder("boq")
-      .where("boq.boq_number LIKE :prefix", { prefix: `${prefix}%` })
-      .orderBy("boq.boq_number", "DESC")
-      .getOne();
+    const lastBoq = await this.boqRepository.findLastByNumberPrefix(prefix);
 
     let nextNumber = 1;
     if (lastBoq) {
@@ -61,21 +54,16 @@ export class BoqService {
     let rfqItems: RfqItem[] = [];
 
     if (dto.rfqId) {
-      const rfq = await this.rfqRepository.findOne({
-        where: { id: dto.rfqId },
-      });
+      const rfq = await this.rfqRepository.findById(dto.rfqId);
       if (rfq) {
         rfqNumber = rfq.rfqNumber;
       }
-      rfqItems = await this.rfqItemRepository.find({
-        where: { rfq: { id: dto.rfqId } },
-        order: { lineNumber: "ASC" },
-      });
+      rfqItems = await this.rfqItemRepository.findByRfqIdOrderedByLineNumber(dto.rfqId);
     }
 
     const boqNumber = await this.generateBoqNumber(rfqNumber);
 
-    const boq = this.boqRepository.create({
+    const savedBoq = await this.boqRepository.create({
       boqNumber,
       title: dto.title,
       description: dto.description,
@@ -85,26 +73,23 @@ export class BoqService {
       rfq: dto.rfqId ? ({ id: dto.rfqId } as any) : null,
     });
 
-    const savedBoq = await this.boqRepository.save(boq);
-
     if (rfqItems.length > 0) {
-      const lineItems = rfqItems.map((rfqItem, index) => {
-        const lineItem = new BoqLineItem();
-        lineItem.boq = savedBoq;
-        lineItem.lineNumber = rfqItem.lineNumber || index + 1;
-        lineItem.itemCode = this.generateItemCode(rfqItem.itemType, index + 1);
-        lineItem.description = rfqItem.description;
-        lineItem.itemType = this.mapRfqItemTypeToBoqItemType(rfqItem.itemType);
-        lineItem.unitOfMeasure = "EA";
-        lineItem.quantity = rfqItem.quantity || 1;
-        lineItem.unitWeightKg = rfqItem.weightPerUnitKg ? Number(rfqItem.weightPerUnitKg) : null;
-        lineItem.totalWeightKg = rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : null;
-        lineItem.notes = rfqItem.notes;
-        return lineItem;
-      });
-
-      await this.lineItemRepository.save(lineItems);
-      await this.recalculateTotals(savedBoq.id);
+      const lineItems = rfqItems.map((rfqItem, index) =>
+        this.lineItemRepository.create({
+          boq: savedBoq,
+          lineNumber: rfqItem.lineNumber || index + 1,
+          itemCode: this.generateItemCode(rfqItem.itemType, index + 1),
+          description: rfqItem.description,
+          itemType: this.mapRfqItemTypeToBoqItemType(rfqItem.itemType),
+          unitOfMeasure: "EA",
+          quantity: rfqItem.quantity || 1,
+          unitWeightKg: rfqItem.weightPerUnitKg ? Number(rfqItem.weightPerUnitKg) : null,
+          totalWeightKg: rfqItem.totalWeightKg ? Number(rfqItem.totalWeightKg) : null,
+          notes: rfqItem.notes,
+        }),
+      );
+      await Promise.all(lineItems);
+      await this.boqRepository.recalculateTotals(savedBoq.id);
     }
 
     await this.auditService.log({
@@ -124,14 +109,16 @@ export class BoqService {
 
   private generateItemCode(itemType: string, lineNumber: number): string {
     const typePrefix =
-      {
-        straight_pipe: "PIPE",
-        bend: "BEND",
-        fitting: "FIT",
-        flange: "FLG",
-        fastener: "FST",
-        custom: "CUST",
-      }[itemType] || "ITEM";
+      (
+        {
+          straight_pipe: "PIPE",
+          bend: "BEND",
+          fitting: "FIT",
+          flange: "FLG",
+          fastener: "FST",
+          custom: "CUST",
+        } as Record<string, string>
+      )[itemType] || "ITEM";
     return `${typePrefix}-${String(lineNumber).padStart(3, "0")}`;
   }
 
@@ -152,48 +139,15 @@ export class BoqService {
     const limit = query.limit || 20;
     const skip = (page - 1) * limit;
 
-    let queryBuilder = this.boqRepository
-      .createQueryBuilder("boq")
-      .leftJoinAndSelect("boq.createdBy", "createdBy")
-      .leftJoinAndSelect("boq.drawing", "drawing")
-      .leftJoinAndSelect("boq.rfq", "rfq");
-
-    if (query.status) {
-      queryBuilder = queryBuilder.andWhere("boq.status = :status", {
-        status: query.status,
-      });
-    }
-
-    if (query.drawingId) {
-      queryBuilder = queryBuilder.andWhere("boq.drawing_id = :drawingId", {
-        drawingId: query.drawingId,
-      });
-    }
-
-    if (query.rfqId) {
-      queryBuilder = queryBuilder.andWhere("boq.rfq_id = :rfqId", {
-        rfqId: query.rfqId,
-      });
-    }
-
-    if (query.createdByUserId) {
-      queryBuilder = queryBuilder.andWhere("boq.created_by_user_id = :userId", {
-        userId: query.createdByUserId,
-      });
-    }
-
-    if (query.search) {
-      queryBuilder = queryBuilder.andWhere(
-        "(boq.title ILIKE :search OR boq.description ILIKE :search OR boq.boq_number ILIKE :search)",
-        { search: `%${query.search}%` },
-      );
-    }
-
-    const [data, total] = await queryBuilder
-      .orderBy("boq.updated_at", "DESC")
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
+    const [data, total] = await this.boqRepository.findAllPaginated({
+      status: query.status ?? null,
+      drawingId: query.drawingId ?? null,
+      rfqId: query.rfqId ?? null,
+      createdByUserId: query.createdByUserId ?? null,
+      search: query.search ?? null,
+      skip,
+      limit,
+    });
 
     return {
       data,
@@ -205,13 +159,7 @@ export class BoqService {
   }
 
   async findOne(id: number): Promise<Boq> {
-    const boq = await this.boqRepository.findOne({
-      where: { id },
-      relations: ["createdBy", "drawing", "rfq", "lineItems"],
-      order: {
-        lineItems: { lineNumber: "ASC" },
-      },
-    });
+    const boq = await this.boqRepository.findOneWithRelations(id);
 
     if (!boq) {
       throw new NotFoundException(`BOQ with ID ${id} not found`);
@@ -276,7 +224,6 @@ export class BoqService {
     await this.boqRepository.remove(boq);
   }
 
-  // Line Items
   async addLineItem(boqId: number, dto: CreateBoqLineItemDto, user: User): Promise<BoqLineItem> {
     const boq = await this.findOne(boqId);
 
@@ -284,34 +231,27 @@ export class BoqService {
       throw new BadRequestException("Cannot modify approved BOQ");
     }
 
-    // Get next line number
-    const maxLineNumber = await this.lineItemRepository
-      .createQueryBuilder("item")
-      .where("item.boq_id = :boqId", { boqId })
-      .select("MAX(item.line_number)", "max")
-      .getRawOne();
+    const maxLine = await this.lineItemRepository.maxLineNumber(boqId);
+    const lineNumber = maxLine + 1;
 
-    const lineNumber = (maxLineNumber?.max || 0) + 1;
+    const savedItem = await this.lineItemRepository.create({
+      boq,
+      lineNumber,
+      itemCode: dto.itemCode,
+      description: dto.description,
+      itemType: dto.itemType,
+      unitOfMeasure: dto.unitOfMeasure,
+      quantity: dto.quantity,
+      unitWeightKg: dto.unitWeightKg,
+      totalWeightKg: dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : null,
+      unitPrice: dto.unitPrice,
+      totalPrice: dto.unitPrice ? dto.quantity * dto.unitPrice : null,
+      notes: dto.notes,
+      drawingReference: dto.drawingReference,
+      specifications: dto.specifications,
+    });
 
-    const lineItem = new BoqLineItem();
-    lineItem.boq = boq;
-    lineItem.lineNumber = lineNumber;
-    lineItem.itemCode = dto.itemCode;
-    lineItem.description = dto.description;
-    lineItem.itemType = dto.itemType;
-    lineItem.unitOfMeasure = dto.unitOfMeasure;
-    lineItem.quantity = dto.quantity;
-    lineItem.unitWeightKg = dto.unitWeightKg;
-    lineItem.totalWeightKg = dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : null;
-    lineItem.unitPrice = dto.unitPrice;
-    lineItem.totalPrice = dto.unitPrice ? dto.quantity * dto.unitPrice : null;
-    lineItem.notes = dto.notes;
-    lineItem.drawingReference = dto.drawingReference;
-    lineItem.specifications = dto.specifications;
-
-    const savedItem = await this.lineItemRepository.save(lineItem);
-
-    await this.recalculateTotals(boqId);
+    await this.boqRepository.recalculateTotals(boqId);
 
     await this.auditService.log({
       entityType: "boq",
@@ -335,38 +275,31 @@ export class BoqService {
       throw new BadRequestException("Cannot modify approved BOQ");
     }
 
-    // Get next line number
-    const maxLineNumber = await this.lineItemRepository
-      .createQueryBuilder("item")
-      .where("item.boq_id = :boqId", { boqId })
-      .select("MAX(item.line_number)", "max")
-      .getRawOne();
+    const maxLine = await this.lineItemRepository.maxLineNumber(boqId);
+    let lineNumber = maxLine + 1;
 
-    let lineNumber = (maxLineNumber?.max || 0) + 1;
+    const savedItems = await Promise.all(
+      items.map((dto) =>
+        this.lineItemRepository.create({
+          boq,
+          lineNumber: lineNumber++,
+          itemCode: dto.itemCode,
+          description: dto.description,
+          itemType: dto.itemType,
+          unitOfMeasure: dto.unitOfMeasure,
+          quantity: dto.quantity,
+          unitWeightKg: dto.unitWeightKg,
+          totalWeightKg: dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : null,
+          unitPrice: dto.unitPrice,
+          totalPrice: dto.unitPrice ? dto.quantity * dto.unitPrice : null,
+          notes: dto.notes,
+          drawingReference: dto.drawingReference,
+          specifications: dto.specifications,
+        }),
+      ),
+    );
 
-    const lineItems = items.map((dto) => {
-      const item = this.lineItemRepository.create({
-        boq,
-        lineNumber: lineNumber++,
-        itemCode: dto.itemCode,
-        description: dto.description,
-        itemType: dto.itemType,
-        unitOfMeasure: dto.unitOfMeasure,
-        quantity: dto.quantity,
-        unitWeightKg: dto.unitWeightKg,
-        totalWeightKg: dto.unitWeightKg ? dto.quantity * dto.unitWeightKg : null,
-        unitPrice: dto.unitPrice,
-        totalPrice: dto.unitPrice ? dto.quantity * dto.unitPrice : null,
-        notes: dto.notes,
-        drawingReference: dto.drawingReference,
-        specifications: dto.specifications,
-      });
-      return item;
-    });
-
-    const savedItems = await this.lineItemRepository.save(lineItems);
-
-    await this.recalculateTotals(boqId);
+    await this.boqRepository.recalculateTotals(boqId);
 
     await this.auditService.log({
       entityType: "boq",
@@ -391,9 +324,7 @@ export class BoqService {
       throw new BadRequestException("Cannot modify approved BOQ");
     }
 
-    const lineItem = await this.lineItemRepository.findOne({
-      where: { id: lineItemId, boq: { id: boqId } },
-    });
+    const lineItem = await this.lineItemRepository.findOneByBoq(lineItemId, boqId);
 
     if (!lineItem) {
       throw new NotFoundException("Line item not found");
@@ -401,7 +332,6 @@ export class BoqService {
 
     const oldValues = { ...lineItem };
 
-    // Update fields
     if (dto.itemCode !== undefined) lineItem.itemCode = dto.itemCode;
     if (dto.description) lineItem.description = dto.description;
     if (dto.itemType) lineItem.itemType = dto.itemType;
@@ -413,14 +343,13 @@ export class BoqService {
     if (dto.drawingReference !== undefined) lineItem.drawingReference = dto.drawingReference;
     if (dto.specifications !== undefined) lineItem.specifications = dto.specifications;
 
-    // Recalculate totals
     lineItem.totalWeightKg = lineItem.unitWeightKg
       ? lineItem.quantity * lineItem.unitWeightKg
       : null;
     lineItem.totalPrice = lineItem.unitPrice ? lineItem.quantity * lineItem.unitPrice : null;
 
     const updated = await this.lineItemRepository.save(lineItem);
-    await this.recalculateTotals(boqId);
+    await this.boqRepository.recalculateTotals(boqId);
 
     await this.auditService.log({
       entityType: "boq",
@@ -441,9 +370,7 @@ export class BoqService {
       throw new BadRequestException("Cannot modify approved BOQ");
     }
 
-    const lineItem = await this.lineItemRepository.findOne({
-      where: { id: lineItemId, boq: { id: boqId } },
-    });
+    const lineItem = await this.lineItemRepository.findOneByBoq(lineItemId, boqId);
 
     if (!lineItem) {
       throw new NotFoundException("Line item not found");
@@ -451,7 +378,7 @@ export class BoqService {
 
     await this.lineItemRepository.remove(lineItem);
     await this.reorderLineNumbers(boqId);
-    await this.recalculateTotals(boqId);
+    await this.boqRepository.recalculateTotals(boqId);
 
     await this.auditService.log({
       entityType: "boq",
@@ -473,25 +400,14 @@ export class BoqService {
       throw new BadRequestException("Cannot modify approved BOQ");
     }
 
-    // Validate all IDs belong to this BOQ
-    const existingItems = await this.lineItemRepository.find({
-      where: { boq: { id: boqId } },
-    });
-
+    const existingItems = await this.lineItemRepository.findByBoq(boqId);
     const existingIds = new Set(existingItems.map((i) => i.id));
     const invalidId = dto.itemIds.find((id) => !existingIds.has(id));
     if (invalidId) {
       throw new BadRequestException(`Line item ${invalidId} does not belong to this BOQ`);
     }
 
-    const lineNumberCases = dto.itemIds.map((id, i) => `WHEN id = ${id} THEN ${i + 1}`).join(" ");
-
-    await this.lineItemRepository
-      .createQueryBuilder()
-      .update(BoqLineItem)
-      .set({ lineNumber: () => `CASE ${lineNumberCases} END` })
-      .whereInIds(dto.itemIds)
-      .execute();
+    await this.lineItemRepository.reorderByIds(dto.itemIds);
 
     await this.auditService.log({
       entityType: "boq",
@@ -526,51 +442,18 @@ export class BoqService {
     return this.findOne(boqId);
   }
 
-  // Status update
   async updateStatus(id: number, status: BoqStatus): Promise<Boq> {
     const boq = await this.findOne(id);
     boq.status = status;
     return this.boqRepository.save(boq);
   }
 
-  // Private helpers
-  private async recalculateTotals(boqId: number): Promise<void> {
-    const result = await this.lineItemRepository
-      .createQueryBuilder("item")
-      .where("item.boq_id = :boqId", { boqId })
-      .select([
-        "SUM(item.quantity) as totalQuantity",
-        "SUM(item.total_weight_kg) as totalWeightKg",
-        "SUM(item.total_price) as totalEstimatedCost",
-      ])
-      .getRawOne();
-
-    await this.boqRepository.update(boqId, {
-      totalQuantity: result.totalQuantity || 0,
-      totalWeightKg: result.totalWeightKg || 0,
-      totalEstimatedCost: result.totalEstimatedCost || 0,
-    });
-  }
-
   private async reorderLineNumbers(boqId: number): Promise<void> {
-    const items = await this.lineItemRepository.find({
-      where: { boq: { id: boqId } },
-      order: { lineNumber: "ASC" },
-    });
-
+    const items = await this.lineItemRepository.findByBoq(boqId);
     const itemsNeedingUpdate = items.filter((item, i) => item.lineNumber !== i + 1);
 
     if (itemsNeedingUpdate.length > 0) {
-      const lineNumberCases = items
-        .map((item, i) => `WHEN id = ${item.id} THEN ${i + 1}`)
-        .join(" ");
-
-      await this.lineItemRepository
-        .createQueryBuilder()
-        .update(BoqLineItem)
-        .set({ lineNumber: () => `CASE ${lineNumberCases} END` })
-        .whereInIds(itemsNeedingUpdate.map((item) => item.id))
-        .execute();
+      await this.lineItemRepository.reorderByIds(items.map((item) => item.id));
     }
   }
 }

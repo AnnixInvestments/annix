@@ -1,7 +1,8 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { ObjectLiteral, Repository } from "typeorm";
+import type { DeepPartial, PersistedEntity } from "../../lib/persistence/crud-repository";
 import { DeviceBindingEntity, DeviceVerificationResult } from "./auth.interfaces";
+import type { AuthDeviceBindingRepository } from "./auth-device-binding.repository";
 
 export interface CreateDeviceBindingData<TProfileId extends string> {
   profileId: number;
@@ -59,11 +60,11 @@ export class DeviceBindingService {
     };
   }
 
-  async createBinding<T extends ObjectLiteral, TProfileId extends string>(
-    repo: Repository<T>,
+  async createBinding<T extends PersistedEntity, TProfileId extends string>(
+    repo: AuthDeviceBindingRepository<T>,
     data: CreateDeviceBindingData<TProfileId>,
   ): Promise<T> {
-    const bindingData: Record<string, any> = {
+    const bindingData: Record<string, unknown> = {
       [data.profileIdField]: data.profileId,
       deviceFingerprint: data.deviceFingerprint,
       registeredIp: data.registeredIp,
@@ -72,23 +73,15 @@ export class DeviceBindingService {
       isActive: true,
     };
 
-    const binding = repo.create(bindingData as T);
-    return repo.save(binding);
+    return repo.create(bindingData as DeepPartial<T>);
   }
 
-  async findBinding<T extends ObjectLiteral>(
-    repo: Repository<T>,
+  async findBinding<T extends PersistedEntity>(
+    repo: AuthDeviceBindingRepository<T>,
     profileId: number,
     profileIdField: string,
     deviceFingerprint: string,
   ): Promise<T | null> {
-    return repo.findOne({
-      where: {
-        [profileIdField]: profileId,
-        deviceFingerprint,
-        isActive: true,
-        isPrimary: true,
-      } as any,
-    });
+    return repo.findActivePrimary(profileIdField, profileId, deviceFingerprint);
   }
 }

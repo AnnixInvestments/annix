@@ -1,13 +1,12 @@
 import { createHash } from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { MACRO_ARTICLES_PER_QUERY, MACRO_QUERIES } from "../config/macro-queries";
-import { Asset } from "../entities/asset.entity";
-import { type NewsFeedType, type NewsImpactLevel, NewsItem } from "../entities/news-item.entity";
+import { type NewsFeedType, type NewsImpactLevel } from "../entities/news-item.entity";
+import { AssetRepository } from "../repositories/asset.repository";
+import { NewsItemRepository } from "../repositories/news-item.repository";
 import { YahooMarketDataService, type YahooNewsArticle } from "./yahoo-market-data.service";
 
 const METRIC_CATEGORY = "insights-news";
@@ -43,8 +42,8 @@ export class NewsIngestionService {
   private readonly logger = new Logger(NewsIngestionService.name);
 
   constructor(
-    @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
-    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
+    private readonly assetRepo: AssetRepository,
+    private readonly newsRepo: NewsItemRepository,
     private readonly yahoo: YahooMarketDataService,
     private readonly ai: AiChatService,
     private readonly metrics: ExtractionMetricService,
@@ -55,7 +54,7 @@ export class NewsIngestionService {
       METRIC_CATEGORY,
       "daily-pull",
       async () => {
-        const assets = await this.assetRepo.find({ where: { isActive: true } });
+        const assets = await this.assetRepo.findActive();
         const watchlist = new Set(assets.map((a) => a.symbol));
         let articlesFound = 0;
         let articlesPersisted = 0;
@@ -132,7 +131,7 @@ export class NewsIngestionService {
     },
   ): Promise<"skipped" | "extracted" | "failed"> {
     const urlHash = hashArticle(article.link, article.title);
-    const existing = await this.newsRepo.findOne({ where: { urlHash } });
+    const existing = await this.newsRepo.findByUrlHash(urlHash);
     if (existing) return "skipped";
 
     const isMacro = options.feedType === "macro";
@@ -151,7 +150,7 @@ export class NewsIngestionService {
       return "skipped";
     }
 
-    const created = this.newsRepo.create({
+    const saved = await this.newsRepo.create({
       urlHash,
       url: article.link,
       title: article.title,
@@ -162,7 +161,6 @@ export class NewsIngestionService {
       feedType: options.feedType,
       macroQuery: options.macroQuery,
     });
-    const saved = await this.newsRepo.save(created);
 
     try {
       const extraction = await this.extractWithGemini(article);
@@ -173,10 +171,10 @@ export class NewsIngestionService {
       // Macro pulls keep these rows — affectedSectors / affectedCommodities
       // is the whole point of the macro feed.
       if (!isMacro && !hasOverlap(symbolUnion, options.watchlist)) {
-        await this.newsRepo.delete(saved.id);
+        await this.newsRepo.deleteById(saved.id);
         return "skipped";
       }
-      await this.newsRepo.update(saved.id, {
+      await this.newsRepo.updateById(saved.id, {
         summary: extraction.event,
         relatedSymbols: symbolUnion,
         relatedThemes: themes,
@@ -191,7 +189,7 @@ export class NewsIngestionService {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Gemini extraction failed for "${article.title}": ${message}`);
-      await this.newsRepo.update(saved.id, {
+      await this.newsRepo.updateById(saved.id, {
         extractionStatus: "failed",
         extractionError: message,
       });

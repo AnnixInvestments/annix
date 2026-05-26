@@ -1,21 +1,20 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
+import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
 import { BendDimensionService } from "./bend-dimension.service";
 
 describe("BendDimensionService", () => {
   let service: BendDimensionService;
 
   const mockLookupRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BendDimensionService,
-        { provide: getRepositoryToken(NbNpsLookup), useValue: mockLookupRepo },
+        { provide: NbNpsLookupRepository, useValue: mockLookupRepo },
       ],
     }).compile();
 
@@ -31,27 +30,23 @@ describe("BendDimensionService", () => {
   describe("calculate", () => {
     it("should calculate bend center-to-face dimension", async () => {
       const lookup = { id: 1, nb_mm: 50, nps_inch: 2 };
-      mockLookupRepo.findOne.mockResolvedValue(lookup);
+      mockLookupRepo.findOneWhere.mockResolvedValue(lookup);
 
       const result = await service.calculate(50, 90, 1.5);
 
-      // Expected calculation: radius = 1.5 * 2 * 25.4 = 76.2mm
-      // tan(45°) = 1, so result = 76.2
       expect(result).toBe(76.2);
-      expect(mockLookupRepo.findOne).toHaveBeenCalledWith({
-        where: { nb_mm: 50 },
-      });
+      expect(mockLookupRepo.findOneWhere).toHaveBeenCalledWith({ nb_mm: 50 });
     });
 
     it("should throw NotFoundException if NB not found", async () => {
-      mockLookupRepo.findOne.mockResolvedValue(undefined);
+      mockLookupRepo.findOneWhere.mockResolvedValue(null);
 
       await expect(service.calculate(999, 90, 1.5)).rejects.toThrow(NotFoundException);
     });
 
     it("should round result to 1 decimal place", async () => {
       const lookup = { id: 1, nb_mm: 50, nps_inch: 2 };
-      mockLookupRepo.findOne.mockResolvedValue(lookup);
+      mockLookupRepo.findOneWhere.mockResolvedValue(lookup);
 
       const result = await service.calculate(50, 45, 1.5);
 

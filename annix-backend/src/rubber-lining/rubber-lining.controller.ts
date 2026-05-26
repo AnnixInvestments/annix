@@ -31,9 +31,7 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
 import { Response } from "express";
-import { Repository } from "typeorm";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { Public } from "../auth/public.decorator";
 import { nowISO, nowMillis } from "../lib/datetime";
@@ -164,6 +162,7 @@ import {
   AuRubberPartyType,
   auRubberDocumentPath,
 } from "./lib/au-rubber-document-paths";
+import { RubberAppProfileRepository } from "./repositories/rubber-app-profile.repository";
 import {
   type MonthlyAccountDataDto,
   type MonthlyAccountDto,
@@ -279,8 +278,7 @@ export class RubberLiningController {
     private readonly extractionOrchestratorService: RubberExtractionOrchestratorService,
     private readonly pdfPageCacheService: PdfPageCacheService,
     private readonly documentFilerService: AuRubberDocumentFilerService,
-    @InjectRepository(RubberAppProfile)
-    private readonly appProfileRepository: Repository<RubberAppProfile>,
+    private readonly appProfileRepository: RubberAppProfileRepository,
   ) {}
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
@@ -686,9 +684,9 @@ export class RubberLiningController {
   @Get("portal/app-profile")
   @ApiOperation({ summary: "Get app owner company profile" })
   async appProfile(): Promise<RubberAppProfile> {
-    const profile = await this.appProfileRepository.findOne({ where: { id: 1 } });
+    const profile = await this.appProfileRepository.findById(1);
     if (!profile) {
-      const newProfile = this.appProfileRepository.create({ id: 1 });
+      const newProfile = this.appProfileRepository.build({ id: 1 });
       return this.appProfileRepository.save(newProfile);
     }
     return profile;
@@ -699,12 +697,12 @@ export class RubberLiningController {
   @Put("portal/app-profile")
   @ApiOperation({ summary: "Update app owner company profile" })
   async updateAppProfile(@Body() body: Partial<RubberAppProfile>): Promise<RubberAppProfile> {
-    const existing = await this.appProfileRepository.findOne({ where: { id: 1 } });
+    const existing = await this.appProfileRepository.findById(1);
     if (!existing) {
-      const newProfile = this.appProfileRepository.create({ id: 1, ...body });
+      const newProfile = this.appProfileRepository.build({ id: 1, ...body });
       return this.appProfileRepository.save(newProfile);
     }
-    const merged = this.appProfileRepository.merge(existing, body);
+    const merged = this.appProfileRepository.mergeInto(existing, body);
     return this.appProfileRepository.save(merged);
   }
 

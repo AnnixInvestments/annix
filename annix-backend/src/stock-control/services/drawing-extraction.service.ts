@@ -1,7 +1,5 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { pdfToPng } from "pdf-to-png-converter";
-import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import {
@@ -10,9 +8,11 @@ import {
   TextContent,
 } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCard } from "../entities/job-card.entity";
 import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardAttachmentRepository } from "../repositories/job-card-attachment.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 
 interface ExtractedDimension {
   description: string;
@@ -204,12 +204,9 @@ export class DrawingExtractionService {
   private readonly logger = new Logger(DrawingExtractionService.name);
 
   constructor(
-    @InjectRepository(JobCardAttachment)
-    private readonly attachmentRepo: Repository<JobCardAttachment>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
+    private readonly attachmentRepo: JobCardAttachmentRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
@@ -269,9 +266,7 @@ export class DrawingExtractionService {
     uploadedBy: string | null,
     notes: string | null,
   ): Promise<JobCardAttachment> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
@@ -279,7 +274,7 @@ export class DrawingExtractionService {
 
     const uploadResult = await this.storageService.upload(file, "stock-control/job-card-drawings");
 
-    const attachment = this.attachmentRepo.create({
+    const saved = await this.attachmentRepo.create({
       jobCardId,
       companyId,
       filePath: uploadResult.path,
@@ -291,8 +286,6 @@ export class DrawingExtractionService {
       extractionStatus: ExtractionStatus.PENDING,
       extractedData: {},
     });
-
-    const saved = await this.attachmentRepo.save(attachment);
     this.logger.log(`Uploaded attachment ${saved.id} for job card ${jobCardId}`);
 
     const signedUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
@@ -300,18 +293,13 @@ export class DrawingExtractionService {
   }
 
   async attachments(companyId: number, jobCardId: number): Promise<JobCardAttachment[]> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
 
-    const attachmentRecords = await this.attachmentRepo.find({
-      where: { jobCardId, companyId },
-      order: { createdAt: "DESC" },
-    });
+    const attachmentRecords = await this.attachmentRepo.findForJobCard(jobCardId, companyId);
 
     const attachmentsWithUrls = await Promise.all(
       attachmentRecords.map(async (attachment) => {
@@ -329,9 +317,11 @@ export class DrawingExtractionService {
     jobCardId: number,
     attachmentId: number,
   ): Promise<JobCardAttachment> {
-    const attachment = await this.attachmentRepo.findOne({
-      where: { id: attachmentId, jobCardId, companyId },
-    });
+    const attachment = await this.attachmentRepo.findOneForJobCard(
+      attachmentId,
+      jobCardId,
+      companyId,
+    );
 
     if (!attachment) {
       throw new NotFoundException("Attachment not found");
@@ -391,32 +381,24 @@ export class DrawingExtractionService {
     companyId: number,
     jobCardId: number,
   ): Promise<DrawingExtractionResult> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
 
-    const allAttachments = await this.attachmentRepo.find({
-      where: {
-        jobCardId,
-        companyId,
-        extractionStatus: In([
-          ExtractionStatus.PENDING,
-          ExtractionStatus.ANALYSED,
-          ExtractionStatus.FAILED,
-        ]),
-      },
-    });
+    const allAttachments = await this.attachmentRepo.findExtractableForJobCard(
+      jobCardId,
+      companyId,
+      [ExtractionStatus.PENDING, ExtractionStatus.ANALYSED, ExtractionStatus.FAILED],
+    );
 
     if (allAttachments.length === 0) {
       this.logger.log(`No extractable attachments for job card ${jobCardId}`);
       return this.emptyResult();
     }
 
-    await this.attachmentRepo.update(
+    await this.attachmentRepo.updateMany(
       allAttachments.map((a) => a.id),
       { extractionStatus: ExtractionStatus.PROCESSING },
     );
@@ -471,7 +453,7 @@ export class DrawingExtractionService {
       contentParts.push(...attachmentParts);
 
       if (contentParts.length === 0) {
-        await this.attachmentRepo.update(
+        await this.attachmentRepo.updateMany(
           allAttachments.map((a) => a.id),
           { extractionStatus: ExtractionStatus.PENDING },
         );
@@ -499,7 +481,7 @@ export class DrawingExtractionService {
         extractedAt: updateTime,
         extractionError: null,
       }));
-      await this.attachmentRepo.save(updatedAttachments);
+      await this.attachmentRepo.saveMany(updatedAttachments);
 
       await this.updateLineItemsFromExtraction(companyId, jobCardId, result);
 
@@ -510,7 +492,7 @@ export class DrawingExtractionService {
       return result;
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
-      await this.attachmentRepo.update(
+      await this.attachmentRepo.updateMany(
         allAttachments.map((a) => a.id),
         {
           extractionStatus: ExtractionStatus.FAILED,
@@ -852,10 +834,7 @@ export class DrawingExtractionService {
       return;
     }
 
-    const lineItems = await this.lineItemRepo.find({
-      where: { jobCardId, companyId },
-      order: { sortOrder: "ASC" },
-    });
+    const lineItems = await this.lineItemRepo.findForJobCardOrderedBySort(jobCardId, companyId);
 
     if (lineItems.length === 0) {
       return;
@@ -874,7 +853,7 @@ export class DrawingExtractionService {
     });
 
     if (updatedItems.length > 0) {
-      await this.lineItemRepo.save(updatedItems);
+      await this.lineItemRepo.saveMany(updatedItems);
       this.logger.log(
         `Updated ${updatedItems.length} line items with m² from extraction for job card ${jobCardId}`,
       );
@@ -889,10 +868,7 @@ export class DrawingExtractionService {
     const tankData = result.tankData;
     if (!tankData) return;
 
-    const existingItems = await this.lineItemRepo.find({
-      where: { jobCardId, companyId },
-      order: { sortOrder: "ASC" },
-    });
+    const existingItems = await this.lineItemRepo.findForJobCardOrderedBySort(jobCardId, companyId);
 
     const maxSortOrder = existingItems.reduce((max, item) => Math.max(max, item.sortOrder), 0);
 
@@ -1007,8 +983,8 @@ export class DrawingExtractionService {
           ];
 
     if (newItems.length > 0) {
-      const created = this.lineItemRepo.create(newItems);
-      await this.lineItemRepo.save(created);
+      const created = this.lineItemRepo.buildMany(newItems);
+      await this.lineItemRepo.saveMany(created);
       this.logger.log(
         `Created ${newItems.length} tank line items for job card ${jobCardId} (lining: ${tankData.liningAreaM2 ?? 0} m², coating: ${tankData.coatingAreaM2 ?? 0} m²)`,
       );

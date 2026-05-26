@@ -1,17 +1,12 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { NbNpsLookup } from "src/nb-nps-lookup/entities/nb-nps-lookup.entity";
-import { Repository } from "typeorm";
+import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
 
 @Injectable()
 export class BendDimensionService {
-  constructor(
-    @InjectRepository(NbNpsLookup)
-    private readonly lookupRepo: Repository<NbNpsLookup>,
-  ) {}
+  constructor(private readonly lookupRepo: NbNpsLookupRepository) {}
 
   async calculate(nbMm: number, degree: number, multiplier: number): Promise<number> {
-    const lookup = await this.lookupRepo.findOne({ where: { nb_mm: nbMm } });
+    const lookup = await this.lookupRepo.findOneWhere({ nb_mm: nbMm });
     if (!lookup) {
       throw new NotFoundException(`NB ${nbMm} mm not found`);
     }

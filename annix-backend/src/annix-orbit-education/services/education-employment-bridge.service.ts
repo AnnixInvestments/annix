@@ -1,15 +1,14 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import {
-  AnnixOrbitProfile,
-  AnnixOrbitUserType,
-} from "../../annix-orbit/entities/annix-orbit-profile.entity";
+import { AnnixOrbitUserType } from "../../annix-orbit/entities/annix-orbit-profile.entity";
 import type { ExtractedCvData } from "../../annix-orbit/entities/candidate.entity";
+import { AnnixOrbitProfileRepository } from "../../annix-orbit/repositories/annix-orbit-profile.repository";
 import { now } from "../../lib/datetime";
-import { User } from "../../user/entities/user.entity";
-import { AcademicResult } from "../entities/academic-result.entity";
-import { EducationProfile } from "../entities/education-profile.entity";
+import type { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
+import type { AcademicResult } from "../entities/academic-result.entity";
+import type { EducationProfile } from "../entities/education-profile.entity";
+import { AcademicResultRepository } from "../repositories/academic-result.repository";
+import { EducationProfileRepository } from "../repositories/education-profile.repository";
 
 export interface PromotionResult {
   profileId: number;
@@ -22,31 +21,25 @@ export class EducationEmploymentBridgeService {
   private readonly logger = new Logger(EducationEmploymentBridgeService.name);
 
   constructor(
-    @InjectRepository(EducationProfile)
-    private readonly profileRepo: Repository<EducationProfile>,
-    @InjectRepository(AcademicResult)
-    private readonly resultRepo: Repository<AcademicResult>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(AnnixOrbitProfile)
-    private readonly orbitProfileRepo: Repository<AnnixOrbitProfile>,
+    private readonly profileRepo: EducationProfileRepository,
+    private readonly resultRepo: AcademicResultRepository,
+    private readonly userRepo: UserRepository,
+    private readonly orbitProfileRepo: AnnixOrbitProfileRepository,
   ) {}
 
   async promoteToJobMarket(userId: number): Promise<PromotionResult> {
-    const educationProfile = await this.profileRepo.findOne({ where: { userId } });
+    const educationProfile = await this.profileRepo.findByUserId(userId);
     if (!educationProfile) {
       throw new NotFoundException("No FuturePath education profile found for this account.");
     }
-    const existing = await this.orbitProfileRepo.findOne({ where: { userId } });
+    const existing = await this.orbitProfileRepo.findByUserId(userId);
     if (existing && existing.userType === AnnixOrbitUserType.COMPANY) {
       throw new BadRequestException(
         "This is an employer account — it cannot join the job market as a seeker.",
       );
     }
-    const results = await this.resultRepo.find({
-      where: { educationProfileId: educationProfile.id },
-    });
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const results = await this.resultRepo.forProfile(educationProfile.id);
+    const user = await this.userRepo.findById(userId);
     const cvData = this.toCvData(educationProfile, results, user);
 
     if (existing) {
@@ -58,13 +51,12 @@ export class EducationEmploymentBridgeService {
       return { profileId: saved.id, created: false, userType: saved.userType };
     }
 
-    const created = this.orbitProfileRepo.create({
+    const saved = await this.orbitProfileRepo.create({
       userId,
       userType: AnnixOrbitUserType.INDIVIDUAL,
       extractedCvData: cvData,
       cvUploadedAt: now().toJSDate(),
     });
-    const saved = await this.orbitProfileRepo.save(created);
     this.logger.log(
       `Created Orbit seeker profile ${saved.id} from education profile ${educationProfile.id}`,
     );

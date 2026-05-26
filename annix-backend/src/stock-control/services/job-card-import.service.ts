@@ -1,13 +1,9 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
-import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
 import { JobCard, JobCardStatus, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
-import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
 import {
   FieldMapping,
   ImportMappingConfig,
@@ -16,6 +12,11 @@ import {
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { isValidLineItem } from "../lib/line-item-validation";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
+import { CustomerPurchaseOrderItemRepository } from "../repositories/customer-purchase-order-item.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardExtractionCorrectionRepository } from "../repositories/job-card-extraction-correction.repository";
+import { JobCardImportMappingRepository } from "../repositories/job-card-import-mapping.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 import { JobCardVersionService } from "./job-card-version.service";
@@ -497,16 +498,11 @@ export class JobCardImportService {
   private readonly logger = new Logger(JobCardImportService.name);
 
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
-    @InjectRepository(JobCardImportMapping)
-    private readonly mappingRepo: Repository<JobCardImportMapping>,
-    @InjectRepository(CustomerPurchaseOrderItem)
-    private readonly cpoItemRepo: Repository<CustomerPurchaseOrderItem>,
-    @InjectRepository(JobCardExtractionCorrection)
-    private readonly correctionRepo: Repository<JobCardExtractionCorrection>,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly mappingRepo: JobCardImportMappingRepository,
+    private readonly cpoItemRepo: CustomerPurchaseOrderItemRepository,
+    private readonly correctionRepo: JobCardExtractionCorrectionRepository,
     private readonly aiChatService: AiChatService,
     private readonly drawingExtractionService: DrawingExtractionService,
     @Inject(forwardRef(() => CpoService))
@@ -518,11 +514,7 @@ export class JobCardImportService {
   ) {}
 
   private async correctionHintsForCompany(companyId: number): Promise<string> {
-    const corrections = await this.correctionRepo.find({
-      where: { companyId },
-      order: { createdAt: "DESC" },
-      take: 50,
-    });
+    const corrections = await this.correctionRepo.findRecentForCompany(companyId, 50);
 
     if (corrections.length === 0) return "";
 
@@ -886,22 +878,21 @@ export class JobCardImportService {
   }
 
   async mapping(companyId: number): Promise<JobCardImportMapping | null> {
-    return this.mappingRepo.findOne({ where: { companyId } });
+    return this.mappingRepo.findForCompany(companyId);
   }
 
   async saveMapping(companyId: number, config: ImportMappingConfig): Promise<JobCardImportMapping> {
-    const existing = await this.mappingRepo.findOne({ where: { companyId } });
+    const existing = await this.mappingRepo.findForCompany(companyId);
 
     if (existing) {
       existing.mappingConfig = config;
       return this.mappingRepo.save(existing);
     }
 
-    const mapping = this.mappingRepo.create({
+    return this.mappingRepo.create({
       companyId,
       mappingConfig: config,
     });
-    return this.mappingRepo.save(mapping);
   }
 
   async autoDetectMapping(grid: string[][], companyId?: number): Promise<ImportMappingConfig> {
@@ -1040,8 +1031,8 @@ export class JobCardImportService {
   ): JobCardLineItem[] {
     const merged = mergeNoteRowsIntoItems(lineItems);
     const valid = merged.filter(isValidLineItem);
-    return valid.map((li, idx) =>
-      this.lineItemRepo.create({
+    return this.lineItemRepo.buildMany(
+      valid.map((li, idx) => ({
         jobCardId,
         itemCode: li.itemCode || null,
         itemDescription: li.itemDescription || null,
@@ -1052,7 +1043,7 @@ export class JobCardImportService {
         notes: li.notes || null,
         sortOrder: idx,
         companyId,
-      }),
+      })),
     );
   }
 
@@ -1137,9 +1128,7 @@ export class JobCardImportService {
     companyId: number,
     jobCardId: number,
   ): Promise<{ replaced: number; newCount: number }> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
@@ -1160,9 +1149,9 @@ export class JobCardImportService {
     const mapping = await this.autoDetectMapping(grid, companyId);
 
     const rawLineItems = this.extractLineItemsFromGrid(grid, mapping);
-    const oldCount = await this.lineItemRepo.count({ where: { jobCardId } });
+    const oldCount = await this.lineItemRepo.countForJobCard(jobCardId);
 
-    await this.lineItemRepo.delete({ jobCardId });
+    await this.lineItemRepo.deleteForJobCard(jobCardId);
 
     const entities = this.buildLineItemEntities(rawLineItems, jobCardId, companyId);
 
@@ -1175,7 +1164,7 @@ export class JobCardImportService {
     });
 
     if (entitiesWithNotes.length > 0) {
-      await this.lineItemRepo.save(entitiesWithNotes);
+      await this.lineItemRepo.saveMany(entitiesWithNotes);
     }
 
     const combinedNotes = entitiesWithNotes
@@ -1230,11 +1219,11 @@ export class JobCardImportService {
 
     const saved = await this.jobCardRepo.save(existing);
 
-    await this.lineItemRepo.delete({ jobCardId: saved.id });
+    await this.lineItemRepo.deleteForJobCard(saved.id);
 
     if (row.lineItems && row.lineItems.length > 0) {
       const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
-      await this.lineItemRepo.save(entities);
+      await this.lineItemRepo.saveMany(entities);
     }
 
     await this.versionService.resetWorkflow(companyId, saved.id);
@@ -1257,7 +1246,7 @@ export class JobCardImportService {
     const customFields =
       row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
-    const deliveryJc = this.jobCardRepo.create({
+    const saved = await this.jobCardRepo.create({
       jobNumber: parentJobCard.jobNumber,
       jcNumber: parentJobCard.jcNumber || null,
       pageNumber: row.pageNumber || null,
@@ -1284,11 +1273,9 @@ export class JobCardImportService {
       sourceFileName,
     });
 
-    const saved = await this.jobCardRepo.save(deliveryJc);
-
     if (row.lineItems && row.lineItems.length > 0) {
       const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
-      await this.lineItemRepo.save(entities);
+      await this.lineItemRepo.saveMany(entities);
     }
 
     this.logger.log(
@@ -1315,27 +1302,22 @@ export class JobCardImportService {
     parentJobCard: JobCard,
     companyId: number,
   ): Promise<DeliveryMatchResult | null> {
-    const deliveryLineItems = await this.lineItemRepo.find({
-      where: { jobCardId: deliveryJobCardId, companyId },
-      order: { sortOrder: "ASC" },
-    });
+    const deliveryLineItems = await this.lineItemRepo.findForJobCardOrderedBySort(
+      deliveryJobCardId,
+      companyId,
+    );
 
     if (deliveryLineItems.length === 0 || !parentJobCard.cpoId) {
       return null;
     }
 
-    const cpoItems = await this.cpoItemRepo.find({
-      where: { cpoId: parentJobCard.cpoId, companyId },
-      order: { sortOrder: "ASC" },
-    });
+    const cpoItems = await this.cpoItemRepo.findForCpoOrdered(parentJobCard.cpoId, companyId);
 
     if (cpoItems.length === 0) {
       return null;
     }
 
-    const deliveryJc = await this.jobCardRepo.findOne({
-      where: { id: deliveryJobCardId },
-    });
+    const deliveryJc = await this.jobCardRepo.findById(deliveryJobCardId);
 
     const matches: DeliveryLineMatch[] = deliveryLineItems.flatMap((dli) => {
       const scored = cpoItems.map((cpoItem) => {
@@ -1402,9 +1384,7 @@ export class JobCardImportService {
     deliveryJobCardId: number,
     confirmedMatches: { deliveryItemId: number; cpoItemId: number }[],
   ): Promise<void> {
-    const deliveryJc = await this.jobCardRepo.findOne({
-      where: { id: deliveryJobCardId, companyId },
-    });
+    const deliveryJc = await this.jobCardRepo.findOneForCompany(deliveryJobCardId, companyId);
 
     if (!deliveryJc?.cpoId) {
       return;
@@ -1412,12 +1392,11 @@ export class JobCardImportService {
 
     await Promise.all(
       confirmedMatches.map(async ({ deliveryItemId, cpoItemId }) => {
-        const deliveryItem = await this.lineItemRepo.findOne({
-          where: { id: deliveryItemId, jobCardId: deliveryJobCardId },
-        });
-        const cpoItem = await this.cpoItemRepo.findOne({
-          where: { id: cpoItemId, cpoId: deliveryJc.cpoId! },
-        });
+        const deliveryItem = await this.lineItemRepo.findOneByIdAndJobCard(
+          deliveryItemId,
+          deliveryJobCardId,
+        );
+        const cpoItem = await this.cpoItemRepo.findOneForCpo(cpoItemId, deliveryJc.cpoId!);
 
         if (!deliveryItem || !cpoItem) return;
 
@@ -1427,7 +1406,7 @@ export class JobCardImportService {
           Number(cpoItem.quantityOrdered),
         );
 
-        await this.cpoItemRepo.update(cpoItemId, { quantityFulfilled: newFulfilled });
+        await this.cpoItemRepo.updateById(cpoItemId, { quantityFulfilled: newFulfilled });
       }),
     );
 
@@ -1487,7 +1466,7 @@ export class JobCardImportService {
         const customFields =
           row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
-        const jobCard = this.jobCardRepo.create({
+        const saved = await this.jobCardRepo.create({
           jobNumber: row.jobNumber,
           jcNumber: row.jcNumber || null,
           pageNumber: row.pageNumber || null,
@@ -1506,7 +1485,6 @@ export class JobCardImportService {
           sourceFilePath,
           sourceFileName,
         });
-        const saved = await this.jobCardRepo.save(jobCard);
 
         const jtSplitNew = splitRowByJtNumber(row);
 
@@ -1514,7 +1492,7 @@ export class JobCardImportService {
           const noJtLineItems = (row.lineItems || []).filter((li) => !(li.jtNo || "").trim());
           if (noJtLineItems.length > 0) {
             const parentEntities = this.buildLineItemEntities(noJtLineItems, saved.id, companyId);
-            await this.lineItemRepo.save(parentEntities);
+            await this.lineItemRepo.saveMany(parentEntities);
           }
 
           const deliveryResults = await [...jtSplitNew.entries()].reduce(
@@ -1561,7 +1539,7 @@ export class JobCardImportService {
 
         if (row.lineItems && row.lineItems.length > 0) {
           const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
-          await this.lineItemRepo.save(entities);
+          await this.lineItemRepo.saveMany(entities);
         }
 
         await this.cpoService.matchJobCardToCpo(companyId, saved.id).catch((err) => {

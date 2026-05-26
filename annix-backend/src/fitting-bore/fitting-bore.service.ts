@@ -1,13 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { FittingVariant } from "src/fitting-variant/entities/fitting-variant.entity";
-import { NominalOutsideDiameterMm } from "src/nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
-import { Repository } from "typeorm";
+import { FittingVariantRepository } from "../fitting-variant/fitting-variant.repository";
 import { BaseCrudService } from "../lib/base-crud.service";
-import { findOneOrFail } from "../lib/entity-helpers";
+import { findByIdOrFail } from "../lib/entity-helpers";
+import { NominalOutsideDiameterMmRepository } from "../nominal-outside-diameter-mm/nominal-outside-diameter-mm.repository";
 import { CreateFittingBoreDto } from "./dto/create-fitting-bore.dto";
 import { UpdateFittingBoreDto } from "./dto/update-fitting-bore.dto";
 import { FittingBore } from "./entities/fitting-bore.entity";
+import { FittingBoreRepository } from "./fitting-bore.repository";
 
 @Injectable()
 export class FittingBoreService extends BaseCrudService<
@@ -16,31 +15,20 @@ export class FittingBoreService extends BaseCrudService<
   UpdateFittingBoreDto
 > {
   constructor(
-    @InjectRepository(FittingBore)
-    boreRepo: Repository<FittingBore>,
-    @InjectRepository(FittingVariant)
-    private readonly variantRepo: Repository<FittingVariant>,
-    @InjectRepository(NominalOutsideDiameterMm)
-    private readonly nominalRepo: Repository<NominalOutsideDiameterMm>,
+    repository: FittingBoreRepository,
+    private readonly variantRepo: FittingVariantRepository,
+    private readonly nominalRepo: NominalOutsideDiameterMmRepository,
   ) {
-    super(boreRepo, {
+    super(repository, {
       entityName: "FittingBore",
       defaultRelations: ["variant", "nominalOutsideDiameter"],
     });
   }
 
   async create(dto: CreateFittingBoreDto): Promise<FittingBore> {
-    const variant = await findOneOrFail(
-      this.variantRepo,
-      { where: { id: dto.variantId } },
-      "FittingVariant",
-    );
+    const variant = await findByIdOrFail(this.variantRepo, dto.variantId, "FittingVariant");
 
-    const nominal = await findOneOrFail(
-      this.nominalRepo,
-      { where: { id: dto.nominalId } },
-      "NominalOutsideDiameter",
-    );
+    const nominal = await findByIdOrFail(this.nominalRepo, dto.nominalId, "NominalOutsideDiameter");
 
     await this.checkUnique(
       {
@@ -50,11 +38,10 @@ export class FittingBoreService extends BaseCrudService<
       `Bore position "${dto.borePosition}" already exists for this variant`,
     );
 
-    const bore = this.repo.create({
+    return this.repository.create({
       variant,
       nominalOutsideDiameter: nominal,
       borePositionName: dto.borePosition,
     });
-    return this.repo.save(bore);
   }
 }

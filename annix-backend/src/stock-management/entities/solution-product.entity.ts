@@ -53,4 +53,12 @@ export class SolutionProduct {
 
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
+
+  get id(): number {
+    return this.productId;
+  }
+
+  set id(value: number) {
+    this.productId = value;
+  }
 }

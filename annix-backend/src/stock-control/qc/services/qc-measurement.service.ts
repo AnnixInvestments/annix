@@ -6,14 +6,13 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
-import { CustomerPurchaseOrder } from "../../entities/customer-purchase-order.entity";
-import { JobCard } from "../../entities/job-card.entity";
-import { JobCardLineItem } from "../../entities/job-card-line-item.entity";
-import { StockControlCompany } from "../../entities/stock-control-company.entity";
 import { INVALID_LINE_ITEM_PATTERNS, stripJunkSuffixes } from "../../lib/line-item-validation";
+import { JobCardCoatingAnalysisRepository } from "../../repositories/coating-analysis.repository";
+import { CustomerPurchaseOrderRepository } from "../../repositories/customer-purchase-order.repository";
+import { JobCardRepository } from "../../repositories/job-card.repository";
+import { JobCardLineItemRepository } from "../../repositories/job-card-line-item.repository";
+import { StockControlCompanyRepository } from "../../repositories/stock-control-company.repository";
 import { CertificateService } from "../../services/certificate.service";
 import { sanitizeNotes } from "../../services/job-card-import.service";
 import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
@@ -43,7 +42,21 @@ import {
   QcReleaseCertificate,
 } from "../entities/qc-release-certificate.entity";
 import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
+import { QcBlastProfileRepository } from "../repositories/qc-blast-profile.repository";
+import { QcControlPlanRepository } from "../repositories/qc-control-plan.repository";
+import { QcDefelskoBatchRepository } from "../repositories/qc-defelsko-batch.repository";
+import { QcDftReadingRepository } from "../repositories/qc-dft-reading.repository";
+import { QcDustDebrisTestRepository } from "../repositories/qc-dust-debris-test.repository";
+import { QcEnvironmentalRecordRepository } from "../repositories/qc-environmental-record.repository";
+import { QcItemsReleaseRepository } from "../repositories/qc-items-release.repository";
+import { QcPullTestRepository } from "../repositories/qc-pull-test.repository";
+import { QcReleaseCertificateRepository } from "../repositories/qc-release-certificate.repository";
+import { QcShoreHardnessRepository } from "../repositories/qc-shore-hardness.repository";
 import { type IWorkItemProvider, WORK_ITEM_PROVIDER } from "../work-item-provider.interface";
+
+interface CompanyScopedRepository<T> {
+  findByIdForCompany(companyId: number, id: number): Promise<T | null>;
+}
 
 type QcEntity =
   | QcShoreHardness
@@ -67,36 +80,21 @@ export class QcMeasurementService {
   private readonly logger = new Logger(QcMeasurementService.name);
 
   constructor(
-    @InjectRepository(QcShoreHardness)
-    private readonly shoreHardnessRepo: Repository<QcShoreHardness>,
-    @InjectRepository(QcDftReading)
-    private readonly dftReadingRepo: Repository<QcDftReading>,
-    @InjectRepository(QcBlastProfile)
-    private readonly blastProfileRepo: Repository<QcBlastProfile>,
-    @InjectRepository(QcDustDebrisTest)
-    private readonly dustDebrisRepo: Repository<QcDustDebrisTest>,
-    @InjectRepository(QcPullTest)
-    private readonly pullTestRepo: Repository<QcPullTest>,
-    @InjectRepository(QcControlPlan)
-    private readonly controlPlanRepo: Repository<QcControlPlan>,
-    @InjectRepository(QcReleaseCertificate)
-    private readonly releaseCertRepo: Repository<QcReleaseCertificate>,
-    @InjectRepository(QcItemsRelease)
-    private readonly itemsReleaseRepo: Repository<QcItemsRelease>,
-    @InjectRepository(QcDefelskoBatch)
-    private readonly defelskoBatchRepo: Repository<QcDefelskoBatch>,
-    @InjectRepository(QcEnvironmentalRecord)
-    private readonly envRecordRepo: Repository<QcEnvironmentalRecord>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
-    @InjectRepository(CustomerPurchaseOrder)
-    private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
+    private readonly shoreHardnessRepo: QcShoreHardnessRepository,
+    private readonly dftReadingRepo: QcDftReadingRepository,
+    private readonly blastProfileRepo: QcBlastProfileRepository,
+    private readonly dustDebrisRepo: QcDustDebrisTestRepository,
+    private readonly pullTestRepo: QcPullTestRepository,
+    private readonly controlPlanRepo: QcControlPlanRepository,
+    private readonly releaseCertRepo: QcReleaseCertificateRepository,
+    private readonly itemsReleaseRepo: QcItemsReleaseRepository,
+    private readonly defelskoBatchRepo: QcDefelskoBatchRepository,
+    private readonly envRecordRepo: QcEnvironmentalRecordRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly coatingRepo: JobCardCoatingAnalysisRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
+    private readonly cpoRepo: CustomerPurchaseOrderRepository,
     @Inject(WORK_ITEM_PROVIDER)
     private readonly workItemProvider: IWorkItemProvider,
     @Inject(forwardRef(() => CertificateService))
@@ -106,10 +104,7 @@ export class QcMeasurementService {
   // ── Shore Hardness ──────────────────────────────────────────────────
 
   async shoreHardnessForJobCard(companyId: number, jobCardId: number): Promise<QcShoreHardness[]> {
-    return this.shoreHardnessRepo.find({
-      where: { companyId, jobCardId },
-      order: { readingDate: "DESC", createdAt: "DESC" },
-    });
+    return this.shoreHardnessRepo.findForJobCard(companyId, jobCardId);
   }
 
   async shoreHardnessById(companyId: number, id: number): Promise<QcShoreHardness> {
@@ -122,14 +117,13 @@ export class QcMeasurementService {
     data: Partial<QcShoreHardness>,
     user: UserContext,
   ): Promise<QcShoreHardness> {
-    const record = this.shoreHardnessRepo.create({
+    return this.shoreHardnessRepo.create({
       ...data,
       companyId,
       jobCardId,
       capturedByName: user.name,
       capturedById: user.id,
     });
-    return this.shoreHardnessRepo.save(record);
   }
 
   async updateShoreHardness(
@@ -160,10 +154,7 @@ export class QcMeasurementService {
   // ── DFT Readings ───────────────────────────────────────────────────
 
   async dftReadingsForJobCard(companyId: number, jobCardId: number): Promise<QcDftReading[]> {
-    return this.dftReadingRepo.find({
-      where: { companyId, jobCardId },
-      order: { readingDate: "DESC", createdAt: "DESC" },
-    });
+    return this.dftReadingRepo.findForJobCard(companyId, jobCardId);
   }
 
   async dftReadingById(companyId: number, id: number): Promise<QcDftReading> {
@@ -176,14 +167,13 @@ export class QcMeasurementService {
     data: Partial<QcDftReading>,
     user: UserContext,
   ): Promise<QcDftReading> {
-    const record = this.dftReadingRepo.create({
+    return this.dftReadingRepo.create({
       ...data,
       companyId,
       jobCardId,
       capturedByName: user.name,
       capturedById: user.id,
     });
-    return this.dftReadingRepo.save(record);
   }
 
   async updateDftReading(
@@ -204,10 +194,7 @@ export class QcMeasurementService {
   // ── Blast Profiles ─────────────────────────────────────────────────
 
   async blastProfilesForJobCard(companyId: number, jobCardId: number): Promise<QcBlastProfile[]> {
-    return this.blastProfileRepo.find({
-      where: { companyId, jobCardId },
-      order: { readingDate: "DESC", createdAt: "DESC" },
-    });
+    return this.blastProfileRepo.findForJobCard(companyId, jobCardId);
   }
 
   async blastProfileById(companyId: number, id: number): Promise<QcBlastProfile> {
@@ -220,14 +207,13 @@ export class QcMeasurementService {
     data: Partial<QcBlastProfile>,
     user: UserContext,
   ): Promise<QcBlastProfile> {
-    const record = this.blastProfileRepo.create({
+    return this.blastProfileRepo.create({
       ...data,
       companyId,
       jobCardId,
       capturedByName: user.name,
       capturedById: user.id,
     });
-    return this.blastProfileRepo.save(record);
   }
 
   async updateBlastProfile(
@@ -251,10 +237,7 @@ export class QcMeasurementService {
     companyId: number,
     jobCardId: number,
   ): Promise<QcDustDebrisTest[]> {
-    return this.dustDebrisRepo.find({
-      where: { companyId, jobCardId },
-      order: { readingDate: "DESC", createdAt: "DESC" },
-    });
+    return this.dustDebrisRepo.findForJobCard(companyId, jobCardId);
   }
 
   async dustDebrisTestById(companyId: number, id: number): Promise<QcDustDebrisTest> {
@@ -267,14 +250,13 @@ export class QcMeasurementService {
     data: Partial<QcDustDebrisTest>,
     user: UserContext,
   ): Promise<QcDustDebrisTest> {
-    const record = this.dustDebrisRepo.create({
+    return this.dustDebrisRepo.create({
       ...data,
       companyId,
       jobCardId,
       capturedByName: user.name,
       capturedById: user.id,
     });
-    return this.dustDebrisRepo.save(record);
   }
 
   async updateDustDebrisTest(
@@ -295,10 +277,7 @@ export class QcMeasurementService {
   // ── Pull Tests ─────────────────────────────────────────────────────
 
   async pullTestsForJobCard(companyId: number, jobCardId: number): Promise<QcPullTest[]> {
-    return this.pullTestRepo.find({
-      where: { companyId, jobCardId },
-      order: { readingDate: "DESC", createdAt: "DESC" },
-    });
+    return this.pullTestRepo.findForJobCard(companyId, jobCardId);
   }
 
   async pullTestById(companyId: number, id: number): Promise<QcPullTest> {
@@ -311,14 +290,13 @@ export class QcMeasurementService {
     data: Partial<QcPullTest>,
     user: UserContext,
   ): Promise<QcPullTest> {
-    const record = this.pullTestRepo.create({
+    return this.pullTestRepo.create({
       ...data,
       companyId,
       jobCardId,
       capturedByName: user.name,
       capturedById: user.id,
     });
-    return this.pullTestRepo.save(record);
   }
 
   async updatePullTest(
@@ -339,10 +317,7 @@ export class QcMeasurementService {
   // ── Control Plans ──────────────────────────────────────────────────
 
   async controlPlansForJobCard(companyId: number, jobCardId: number): Promise<QcControlPlan[]> {
-    const plans = await this.controlPlanRepo.find({
-      where: { companyId, jobCardId },
-      order: { createdAt: "DESC" },
-    });
+    const plans = await this.controlPlanRepo.findForJobCard(companyId, jobCardId);
 
     const missingSpec = plans.filter(
       (p) => !p.specification || p.specification.trim().length === 0,
@@ -352,8 +327,8 @@ export class QcMeasurementService {
     }
 
     const [jobCard, coating] = await Promise.all([
-      this.jobCardRepo.findOne({ where: { id: jobCardId, companyId } }),
-      this.coatingRepo.findOne({ where: { jobCardId, companyId } }),
+      this.jobCardRepo.findOneForCompany(jobCardId, companyId),
+      this.coatingRepo.findOneForJobCard(companyId, jobCardId),
     ]);
 
     const effectiveRawNotes = coating?.rawNotes || sanitizeNotes(jobCard?.notes) || null;
@@ -398,18 +373,7 @@ export class QcMeasurementService {
   }
 
   async allControlPlans(companyId: number, search: string | null): Promise<QcControlPlan[]> {
-    const qb = this.controlPlanRepo
-      .createQueryBuilder("qcp")
-      .where("qcp.company_id = :companyId", { companyId })
-      .orderBy("qcp.created_at", "DESC");
-
-    if (search) {
-      qb.andWhere("(qcp.qcp_number ILIKE :search OR qcp.job_number ILIKE :search)", {
-        search: `%${search}%`,
-      });
-    }
-
-    return qb.getMany();
+    return this.controlPlanRepo.search(companyId, search);
   }
 
   async controlPlanById(companyId: number, id: number): Promise<QcControlPlan> {
@@ -422,17 +386,10 @@ export class QcMeasurementService {
     const prefix = isPaint ? "QCP-P" : "QCP-R";
     const startNumber = 10001;
 
-    const result = await this.controlPlanRepo
-      .createQueryBuilder("qcp")
-      .select("qcp.qcp_number", "qcpNumber")
-      .where("qcp.company_id = :companyId", { companyId })
-      .andWhere("qcp.qcp_number LIKE :prefix", { prefix: `${prefix}%` })
-      .orderBy("qcp.qcp_number", "DESC")
-      .limit(1)
-      .getRawOne();
+    const latestQcpNumber = await this.controlPlanRepo.latestQcpNumberWithPrefix(companyId, prefix);
 
-    if (result?.qcpNumber) {
-      const numPart = parseInt(result.qcpNumber.replace(prefix, ""), 10);
+    if (latestQcpNumber) {
+      const numPart = parseInt(latestQcpNumber.replace(prefix, ""), 10);
       if (!Number.isNaN(numPart)) {
         return `${prefix}${numPart + 1}`;
       }
@@ -455,7 +412,7 @@ export class QcMeasurementService {
       [QcpPlanType.RUBBER]: "QD_PLS_07",
       [QcpPlanType.HDPE]: "QD_PLS_07",
     };
-    const record = this.controlPlanRepo.create({
+    return this.controlPlanRepo.create({
       ...data,
       companyId,
       jobCardId,
@@ -464,7 +421,6 @@ export class QcMeasurementService {
       createdByName: user.name,
       createdById: user.id,
     });
-    return this.controlPlanRepo.save(record);
   }
 
   async updateControlPlan(
@@ -488,21 +444,16 @@ export class QcMeasurementService {
     user: UserContext,
   ): Promise<QcControlPlan[]> {
     const [jobCard, coating, company] = await Promise.all([
-      this.jobCardRepo.findOne({
-        where: { id: jobCardId, companyId },
-        relations: ["lineItems"],
-      }),
-      this.coatingRepo.findOne({ where: { jobCardId, companyId } }),
-      this.companyRepo.findOne({ where: { id: companyId } }),
+      this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId),
+      this.coatingRepo.findOneForJobCard(companyId, jobCardId),
+      this.companyRepo.findById(companyId),
     ]);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
     }
 
-    const existing = await this.controlPlanRepo.find({
-      where: { companyId, jobCardId },
-    });
+    const existing = await this.controlPlanRepo.findForJobCard(companyId, jobCardId);
 
     const coats = Array.isArray(coating?.coats) ? coating.coats : [];
     const effectiveRawNotes = coating?.rawNotes || sanitizeNotes(jobCard.notes) || null;
@@ -753,25 +704,26 @@ export class QcMeasurementService {
         created.push(await this.controlPlanRepo.save(existingPlan));
       } else {
         const qcpNumber = await this.nextQcpNumber(companyId, planType);
-        const record = this.controlPlanRepo.create({
-          companyId,
-          jobCardId,
-          planType,
-          qcpNumber,
-          documentRef,
-          revision,
-          customerName,
-          orderNumber,
-          jobNumber,
-          jobName,
-          specification: specificationForType(planType),
-          itemDescription: itemDescriptions || null,
-          activities: activitiesForType(planType),
-          approvalSignatures: defaultApprovals(),
-          createdByName: user.name,
-          createdById: user.id,
-        });
-        created.push(await this.controlPlanRepo.save(record));
+        created.push(
+          await this.controlPlanRepo.create({
+            companyId,
+            jobCardId,
+            planType,
+            qcpNumber,
+            documentRef,
+            revision,
+            customerName,
+            orderNumber,
+            jobNumber,
+            jobName,
+            specification: specificationForType(planType),
+            itemDescription: itemDescriptions || null,
+            activities: activitiesForType(planType),
+            approvalSignatures: defaultApprovals(),
+            createdByName: user.name,
+            createdById: user.id,
+          }),
+        );
       }
     }
 
@@ -788,10 +740,7 @@ export class QcMeasurementService {
     companyId: number,
     jobCardId: number,
   ): Promise<QcReleaseCertificate[]> {
-    return this.releaseCertRepo.find({
-      where: { companyId, jobCardId },
-      order: { createdAt: "DESC" },
-    });
+    return this.releaseCertRepo.findForJobCard(companyId, jobCardId);
   }
 
   async releaseCertificateById(companyId: number, id: number): Promise<QcReleaseCertificate> {
@@ -804,14 +753,13 @@ export class QcMeasurementService {
     data: Partial<QcReleaseCertificate>,
     user: UserContext,
   ): Promise<QcReleaseCertificate> {
-    const record = this.releaseCertRepo.create({
+    return this.releaseCertRepo.create({
       ...data,
       companyId,
       jobCardId,
       capturedByName: user.name,
       capturedById: user.id,
     });
-    return this.releaseCertRepo.save(record);
   }
 
   async updateReleaseCertificate(
@@ -842,10 +790,7 @@ export class QcMeasurementService {
   // ── Items Release ──────────────────────────────────────────────────
 
   async itemsReleasesForJobCard(companyId: number, jobCardId: number): Promise<QcItemsRelease[]> {
-    return this.itemsReleaseRepo.find({
-      where: { companyId, jobCardId },
-      order: { createdAt: "DESC" },
-    });
+    return this.itemsReleaseRepo.findForJobCard(companyId, jobCardId);
   }
 
   async itemsReleaseById(companyId: number, id: number): Promise<QcItemsRelease> {
@@ -858,8 +803,8 @@ export class QcMeasurementService {
     newItems: Array<{ itemCode: string; quantity: number }>,
     excludeReleaseId?: number,
   ): Promise<void> {
-    const lineItems = await this.lineItemRepo.find({ where: { jobCardId, companyId } });
-    const existingReleases = await this.itemsReleaseRepo.find({ where: { jobCardId, companyId } });
+    const lineItems = await this.lineItemRepo.findForJobCardAndCompany(jobCardId, companyId);
+    const existingReleases = await this.itemsReleaseRepo.findAllForJobCard(jobCardId, companyId);
 
     const alreadyReleased: Record<string, number> = {};
     for (const release of existingReleases) {
@@ -900,14 +845,13 @@ export class QcMeasurementService {
         data.items as Array<{ itemCode: string; quantity: number }>,
       );
     }
-    const record = this.itemsReleaseRepo.create({
+    return this.itemsReleaseRepo.create({
       ...data,
       companyId,
       jobCardId,
       createdByName: user.name,
       createdById: user.id,
     });
-    return this.itemsReleaseRepo.save(record);
   }
 
   async updateItemsRelease(
@@ -957,17 +901,15 @@ export class QcMeasurementService {
     const windowStart = new Date(createdAt.getTime() - 5000);
     const windowEnd = new Date(createdAt.getTime() + 5000);
 
-    const childReleases = await this.itemsReleaseRepo
-      .createQueryBuilder("r")
-      .where("r.companyId = :companyId", { companyId })
-      .andWhere("r.cpoId IS NULL")
-      .andWhere("r.jobCardId IS NOT NULL")
-      .andWhere("r.createdAt BETWEEN :start AND :end", { start: windowStart, end: windowEnd })
-      .andWhere("r.createdById = :createdById", { createdById: cpoRelease.createdById })
-      .getMany();
+    const childReleases = await this.itemsReleaseRepo.findChildReleasesInWindow(
+      companyId,
+      windowStart,
+      windowEnd,
+      cpoRelease.createdById,
+    );
 
     if (childReleases.length > 0) {
-      await this.itemsReleaseRepo.remove(childReleases);
+      await this.itemsReleaseRepo.removeMany(childReleases);
     }
     await this.itemsReleaseRepo.remove(cpoRelease);
   }
@@ -976,7 +918,7 @@ export class QcMeasurementService {
     companyId: number,
     jobCardId: number,
   ): Promise<{ rubberSpec: string | null; paintingSpec: string | null }> {
-    const coating = await this.coatingRepo.findOne({ where: { companyId, jobCardId } });
+    const coating = await this.coatingRepo.findOneForJobCard(companyId, jobCardId);
     if (!coating) {
       return { rubberSpec: null, paintingSpec: null };
     }
@@ -1044,7 +986,7 @@ export class QcMeasurementService {
 
     const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
 
-    const record = this.itemsReleaseRepo.create({
+    return this.itemsReleaseRepo.create({
       companyId,
       jobCardId,
       items,
@@ -1055,8 +997,6 @@ export class QcMeasurementService {
       mpsSignOff: { name: null, date: null, signatureUrl: null },
       clientSignOff: { name: null, date: null, signatureUrl: null },
     });
-
-    return this.itemsReleaseRepo.save(record);
   }
 
   async autoGenerateReleaseDocuments(
@@ -1120,19 +1060,17 @@ export class QcMeasurementService {
 
     const totalQuantity = selectedItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    const itemsRelease = await this.itemsReleaseRepo.save(
-      this.itemsReleaseRepo.create({
-        companyId,
-        jobCardId,
-        items: selectedItems,
-        totalQuantity,
-        createdByName: user.name,
-        createdById: user.id,
-        plsSignOff: { name: null, date: null, signatureUrl: null },
-        mpsSignOff: { name: null, date: null, signatureUrl: null },
-        clientSignOff: { name: null, date: null, signatureUrl: null },
-      }),
-    );
+    const itemsRelease = await this.itemsReleaseRepo.create({
+      companyId,
+      jobCardId,
+      items: selectedItems,
+      totalQuantity,
+      createdByName: user.name,
+      createdById: user.id,
+      plsSignOff: { name: null, date: null, signatureUrl: null },
+      mpsSignOff: { name: null, date: null, signatureUrl: null },
+      clientSignOff: { name: null, date: null, signatureUrl: null },
+    });
 
     const qcData = await this.allMeasurementsForJobCard(companyId, jobCardId);
 
@@ -1174,19 +1112,17 @@ export class QcMeasurementService {
         shoreHardnessRecord?.capturedByName || dustDebrisRecord?.capturedByName || null,
     };
 
-    const releaseCertificate = await this.releaseCertRepo.save(
-      this.releaseCertRepo.create({
-        companyId,
-        jobCardId,
-        blastingCheck,
-        paintingChecks,
-        finalInspection,
-        solutionsUsed: [],
-        cureCycles: [],
-        capturedByName: user.name,
-        capturedById: user.id,
-      }),
-    );
+    const releaseCertificate = await this.releaseCertRepo.create({
+      companyId,
+      jobCardId,
+      blastingCheck,
+      paintingChecks,
+      finalInspection,
+      solutionsUsed: [],
+      cureCycles: [],
+      capturedByName: user.name,
+      capturedById: user.id,
+    });
 
     return { itemsRelease, releaseCertificate };
   }
@@ -1264,22 +1200,11 @@ export class QcMeasurementService {
   } | null> {
     if (!batchName) return null;
 
-    const match = await this.defelskoBatchRepo
-      .createQueryBuilder("db")
-      .leftJoin(JobCard, "jc", "jc.id = db.jobCardId")
-      .addSelect("jc.jobNumber", "jobNumber")
-      .addSelect("jc.jcNumber", "jcNumber")
-      .where("db.companyId = :companyId", { companyId })
-      .andWhere("LOWER(TRIM(db.batchNumber)) = LOWER(TRIM(:batchName))", {
-        batchName: batchName.trim(),
-      })
-      .andWhere("db.notApplicable = false")
-      .getRawAndEntities();
+    const match = await this.defelskoBatchRepo.matchActiveByBatchNumber(companyId, batchName);
 
-    if (match.entities.length === 0) return null;
+    if (!match) return null;
 
-    const entity = match.entities[0];
-    const raw = match.raw[0];
+    const entity = match.batch;
 
     let coatDetail: {
       product: string;
@@ -1290,10 +1215,7 @@ export class QcMeasurementService {
 
     if (entity.fieldKey.startsWith("paint_dft_")) {
       const coatIndex = Number.parseInt(entity.fieldKey.replace("paint_dft_", ""), 10);
-      const analysis = await this.coatingRepo.findOne({
-        where: { companyId, jobCardId: entity.jobCardId },
-        order: { createdAt: "DESC" },
-      });
+      const analysis = await this.coatingRepo.findLatestForJobCard(companyId, entity.jobCardId);
 
       if (analysis?.coats?.[coatIndex]) {
         const coat = analysis.coats[coatIndex];
@@ -1308,8 +1230,8 @@ export class QcMeasurementService {
 
     return {
       jobCardId: entity.jobCardId,
-      jobNumber: raw?.jc_job_number || null,
-      jcNumber: raw?.jc_jc_number || null,
+      jobNumber: match.jobNumber,
+      jcNumber: match.jcNumber,
       fieldKey: entity.fieldKey,
       category: entity.category,
       coatDetail,
@@ -1322,10 +1244,7 @@ export class QcMeasurementService {
     companyId: number,
     jobCardId: number,
   ): Promise<QcDefelskoBatch[]> {
-    return this.defelskoBatchRepo.find({
-      where: { companyId, jobCardId },
-      order: { category: "ASC", fieldKey: "ASC" },
-    });
+    return this.defelskoBatchRepo.findForJobCard(companyId, jobCardId);
   }
 
   async saveDefelskoBatches(
@@ -1344,9 +1263,11 @@ export class QcMeasurementService {
   ): Promise<QcDefelskoBatch[]> {
     const results = await Promise.all(
       data.batches.map(async (entry) => {
-        const existing = await this.defelskoBatchRepo.findOne({
-          where: { companyId, jobCardId, fieldKey: entry.fieldKey },
-        });
+        const existing = await this.defelskoBatchRepo.findByJobCardAndFieldKey(
+          companyId,
+          jobCardId,
+          entry.fieldKey,
+        );
 
         if (existing) {
           existing.batchNumber = entry.batchNumber;
@@ -1356,19 +1277,17 @@ export class QcMeasurementService {
           return this.defelskoBatchRepo.save(existing);
         }
 
-        return this.defelskoBatchRepo.save(
-          this.defelskoBatchRepo.create({
-            companyId,
-            jobCardId,
-            fieldKey: entry.fieldKey,
-            category: entry.category,
-            label: entry.label,
-            batchNumber: entry.batchNumber,
-            notApplicable: entry.notApplicable,
-            capturedByName: user.name,
-            capturedById: user.id,
-          }),
-        );
+        return this.defelskoBatchRepo.create({
+          companyId,
+          jobCardId,
+          fieldKey: entry.fieldKey,
+          category: entry.category,
+          label: entry.label,
+          batchNumber: entry.batchNumber,
+          notApplicable: entry.notApplicable,
+          capturedByName: user.name,
+          capturedById: user.id,
+        });
       }),
     );
 
@@ -1393,61 +1312,19 @@ export class QcMeasurementService {
   async allDftReadings(
     companyId: number,
   ): Promise<(QcDftReading & { jobNumber: string | null; jcNumber: string | null })[]> {
-    const records = await this.dftReadingRepo
-      .createQueryBuilder("dft")
-      .leftJoin(JobCard, "jc", "jc.id = dft.jobCardId")
-      .addSelect("jc.jobNumber", "jobNumber")
-      .addSelect("jc.jcNumber", "jcNumber")
-      .where("dft.companyId = :companyId", { companyId })
-      .orderBy("dft.readingDate", "DESC")
-      .addOrderBy("dft.createdAt", "DESC")
-      .getRawAndEntities();
-
-    return records.entities.map((entity, idx) => ({
-      ...entity,
-      jobNumber: records.raw[idx]?.jc_job_number || null,
-      jcNumber: records.raw[idx]?.jc_jc_number || null,
-    }));
+    return this.dftReadingRepo.findAllWithJobInfo(companyId);
   }
 
   async allBlastProfiles(
     companyId: number,
   ): Promise<(QcBlastProfile & { jobNumber: string | null; jcNumber: string | null })[]> {
-    const records = await this.blastProfileRepo
-      .createQueryBuilder("bp")
-      .leftJoin(JobCard, "jc", "jc.id = bp.jobCardId")
-      .addSelect("jc.jobNumber", "jobNumber")
-      .addSelect("jc.jcNumber", "jcNumber")
-      .where("bp.companyId = :companyId", { companyId })
-      .orderBy("bp.readingDate", "DESC")
-      .addOrderBy("bp.createdAt", "DESC")
-      .getRawAndEntities();
-
-    return records.entities.map((entity, idx) => ({
-      ...entity,
-      jobNumber: records.raw[idx]?.jc_job_number || null,
-      jcNumber: records.raw[idx]?.jc_jc_number || null,
-    }));
+    return this.blastProfileRepo.findAllWithJobInfo(companyId);
   }
 
   async allShoreHardnessRecords(
     companyId: number,
   ): Promise<(QcShoreHardness & { jobNumber: string | null; jcNumber: string | null })[]> {
-    const records = await this.shoreHardnessRepo
-      .createQueryBuilder("sh")
-      .leftJoin(JobCard, "jc", "jc.id = sh.jobCardId")
-      .addSelect("jc.jobNumber", "jobNumber")
-      .addSelect("jc.jcNumber", "jcNumber")
-      .where("sh.companyId = :companyId", { companyId })
-      .orderBy("sh.readingDate", "DESC")
-      .addOrderBy("sh.createdAt", "DESC")
-      .getRawAndEntities();
-
-    return records.entities.map((entity, idx) => ({
-      ...entity,
-      jobNumber: records.raw[idx]?.jc_job_number || null,
-      jcNumber: records.raw[idx]?.jc_jc_number || null,
-    }));
+    return this.shoreHardnessRepo.findAllWithJobInfo(companyId);
   }
 
   // ── Environmental Records ─────────────────────────────────────────
@@ -1455,31 +1332,14 @@ export class QcMeasurementService {
   async allEnvironmentalRecords(
     companyId: number,
   ): Promise<(QcEnvironmentalRecord & { jobNumber: string | null; jcNumber: string | null })[]> {
-    const records = await this.envRecordRepo
-      .createQueryBuilder("env")
-      .leftJoin(JobCard, "jc", "jc.id = env.jobCardId")
-      .addSelect("jc.jobNumber", "jobNumber")
-      .addSelect("jc.jcNumber", "jcNumber")
-      .where("env.companyId = :companyId", { companyId })
-      .orderBy("env.recordDate", "DESC")
-      .addOrderBy("env.createdAt", "DESC")
-      .getRawAndEntities();
-
-    return records.entities.map((entity, idx) => ({
-      ...entity,
-      jobNumber: records.raw[idx]?.jc_job_number || null,
-      jcNumber: records.raw[idx]?.jc_jc_number || null,
-    }));
+    return this.envRecordRepo.findAllWithJobInfo(companyId);
   }
 
   async environmentalRecordsForJobCard(
     companyId: number,
     jobCardId: number,
   ): Promise<QcEnvironmentalRecord[]> {
-    return this.envRecordRepo.find({
-      where: { companyId, jobCardId },
-      order: { recordDate: "DESC", createdAt: "DESC" },
-    });
+    return this.envRecordRepo.findForJobCardOrdered(companyId, jobCardId);
   }
 
   async environmentalRecordByDate(
@@ -1487,9 +1347,7 @@ export class QcMeasurementService {
     jobCardId: number,
     date: string,
   ): Promise<QcEnvironmentalRecord | null> {
-    return this.envRecordRepo.findOne({
-      where: { companyId, jobCardId, recordDate: date },
-    });
+    return this.envRecordRepo.findByJobCardAndDate(companyId, jobCardId, date);
   }
 
   async createEnvironmentalRecord(
@@ -1498,14 +1356,13 @@ export class QcMeasurementService {
     data: Partial<QcEnvironmentalRecord>,
     user: UserContext,
   ): Promise<QcEnvironmentalRecord> {
-    const record = this.envRecordRepo.create({
+    return this.envRecordRepo.create({
       ...data,
       companyId,
       jobCardId,
       recordedByName: user.name,
       recordedById: user.id,
     });
-    return this.envRecordRepo.save(record);
   }
 
   async updateEnvironmentalRecord(
@@ -1531,9 +1388,11 @@ export class QcMeasurementService {
   ): Promise<QcEnvironmentalRecord[]> {
     const results: QcEnvironmentalRecord[] = [];
     for (const data of records) {
-      const existing = await this.envRecordRepo.findOne({
-        where: { companyId, jobCardId, recordDate: data.recordDate },
-      });
+      const existing = await this.envRecordRepo.findByJobCardAndDate(
+        companyId,
+        jobCardId,
+        data.recordDate,
+      );
 
       if (existing) {
         Object.assign(existing, {
@@ -1544,14 +1403,15 @@ export class QcMeasurementService {
         });
         results.push(await this.envRecordRepo.save(existing));
       } else {
-        const record = this.envRecordRepo.create({
-          ...data,
-          companyId,
-          jobCardId,
-          recordedByName: user.name,
-          recordedById: user.id,
-        });
-        results.push(await this.envRecordRepo.save(record));
+        results.push(
+          await this.envRecordRepo.create({
+            ...data,
+            companyId,
+            jobCardId,
+            recordedByName: user.name,
+            recordedById: user.id,
+          }),
+        );
       }
     }
     return results;
@@ -1560,10 +1420,7 @@ export class QcMeasurementService {
   // ── CPO-Level Control Plans ──────────────────────────────────────
 
   async controlPlansForCpo(companyId: number, cpoId: number): Promise<QcControlPlan[]> {
-    const allPlans = await this.controlPlanRepo.find({
-      where: { companyId, cpoId },
-      order: { createdAt: "DESC" },
-    });
+    const allPlans = await this.controlPlanRepo.findForCpo(companyId, cpoId);
     const seenTypes = new Set<string>();
     return allPlans.filter((plan) => {
       if (seenTypes.has(plan.planType)) return false;
@@ -1577,29 +1434,20 @@ export class QcMeasurementService {
     cpoId: number,
     user: UserContext,
   ): Promise<QcControlPlan[]> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
 
     if (!cpo) {
       throw new NotFoundException(`CPO ${cpoId} not found`);
     }
 
-    const childJobCards = await this.jobCardRepo.find({
-      where: { cpoId, companyId },
-      relations: ["lineItems"],
-      order: { createdAt: "ASC" },
-    });
+    const childJobCards = await this.jobCardRepo.findForCpoWithLineItemsOrdered(cpoId, companyId);
 
     const firstJcId = childJobCards[0]?.id || null;
     const coating = firstJcId
-      ? await this.coatingRepo.findOne({ where: { jobCardId: firstJcId, companyId } })
+      ? await this.coatingRepo.findOneForJobCard(companyId, firstJcId)
       : null;
 
-    const existing = await this.controlPlanRepo.find({
-      where: { companyId, cpoId },
-    });
+    const existing = await this.controlPlanRepo.findForCpo(companyId, cpoId);
 
     const coats = Array.isArray(coating?.coats) ? coating.coats : [];
     const effectiveRawNotes =
@@ -1853,26 +1701,27 @@ export class QcMeasurementService {
         created.push(await this.controlPlanRepo.save(existingPlan));
       } else {
         const qcpNumber = await this.nextQcpNumber(companyId, planType);
-        const record = this.controlPlanRepo.create({
-          companyId,
-          cpoId,
-          jobCardId: null,
-          planType,
-          qcpNumber,
-          documentRef,
-          revision,
-          customerName,
-          orderNumber,
-          jobNumber,
-          jobName,
-          specification: specificationForType(planType),
-          itemDescription: itemDescriptions || null,
-          activities: activitiesForType(planType),
-          approvalSignatures: defaultApprovals(),
-          createdByName: user.name,
-          createdById: user.id,
-        });
-        created.push(await this.controlPlanRepo.save(record));
+        created.push(
+          await this.controlPlanRepo.create({
+            companyId,
+            cpoId,
+            jobCardId: null,
+            planType,
+            qcpNumber,
+            documentRef,
+            revision,
+            customerName,
+            orderNumber,
+            jobNumber,
+            jobName,
+            specification: specificationForType(planType),
+            itemDescription: itemDescriptions || null,
+            activities: activitiesForType(planType),
+            approvalSignatures: defaultApprovals(),
+            createdByName: user.name,
+            createdById: user.id,
+          }),
+        );
       }
     }
 
@@ -1892,17 +1741,13 @@ export class QcMeasurementService {
     cpoId: number,
     jobCardId: number,
   ): Promise<void> {
-    const cpoQcps = await this.controlPlanRepo.find({
-      where: { companyId, cpoId, jobCardId: IsNull() },
-    });
+    const cpoQcps = await this.controlPlanRepo.findCpoLevelForCpo(companyId, cpoId);
 
     if (cpoQcps.length === 0) {
       return;
     }
 
-    const existingJcQcps = await this.controlPlanRepo.find({
-      where: { companyId, jobCardId },
-    });
+    const existingJcQcps = await this.controlPlanRepo.findForJobCard(companyId, jobCardId);
 
     const existingByTypeAndSource = existingJcQcps.reduce(
       (acc, plan) => {
@@ -1918,7 +1763,7 @@ export class QcMeasurementService {
         continue;
       }
 
-      const cloned = this.controlPlanRepo.create({
+      await this.controlPlanRepo.create({
         companyId,
         jobCardId,
         cpoId,
@@ -1941,8 +1786,6 @@ export class QcMeasurementService {
         createdByName: cpoQcp.createdByName,
         createdById: cpoQcp.createdById,
       });
-
-      await this.controlPlanRepo.save(cloned);
     }
 
     this.logger.log(`Propagated ${cpoQcps.length} CPO QCP(s) to job card ${jobCardId}`);
@@ -1951,10 +1794,7 @@ export class QcMeasurementService {
   // ── CPO-Level Items Release ─────────────────────────────────────
 
   async itemsReleasesForCpo(companyId: number, cpoId: number): Promise<QcItemsRelease[]> {
-    return this.itemsReleaseRepo.find({
-      where: { companyId, cpoId },
-      order: { createdAt: "DESC" },
-    });
+    return this.itemsReleaseRepo.findForCpo(companyId, cpoId);
   }
 
   async releasableItemsForCpo(
@@ -1972,20 +1812,13 @@ export class QcMeasurementService {
       deliveries: { jobCardId: number; jtNumber: string | null; quantity: number }[];
     }[];
   }> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
 
     if (!cpo) {
       throw new NotFoundException(`CPO ${cpoId} not found`);
     }
 
-    const childJobCards = await this.jobCardRepo.find({
-      where: { cpoId, companyId },
-      relations: ["lineItems"],
-      order: { createdAt: "ASC" },
-    });
+    const childJobCards = await this.jobCardRepo.findForCpoWithLineItemsOrdered(cpoId, companyId);
 
     const matchesCpoItem = (
       liCode: string,
@@ -2001,9 +1834,7 @@ export class QcMeasurementService {
       return false;
     };
 
-    const existingCpoReleases = await this.itemsReleaseRepo.find({
-      where: { companyId, cpoId },
-    });
+    const existingCpoReleases = await this.itemsReleaseRepo.findForCpo(companyId, cpoId);
 
     const alreadyReleasedByKey = existingCpoReleases.reduce(
       (acc, release) =>
@@ -2109,10 +1940,7 @@ export class QcMeasurementService {
     const firstChildJcId = selectedItems[0].jobCardId;
     const specs = await this.coatingSpecsForJobCard(companyId, firstChildJcId);
 
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
     const cpoItemNoLookup = new Map<string, string>();
     if (cpo) {
       cpo.items.forEach((ci) => {
@@ -2156,26 +1984,24 @@ export class QcMeasurementService {
 
     const totalQuantity = cpoReleaseItems.reduce((sum, item) => sum + item.quantity, 0);
 
-    const cpoRelease = await this.itemsReleaseRepo.save(
-      this.itemsReleaseRepo.create({
-        companyId,
-        cpoId,
-        jobCardId: null,
-        items: cpoReleaseItems,
-        totalQuantity,
-        createdByName: user.name,
-        createdById: user.id,
-        checkedByName: checkedBy?.name ?? null,
-        checkedByDate: checkedBy?.date ?? null,
-        checkedBySignature: checkedBy?.signature ?? null,
-        plsSignOff: checkedBy
-          ? { name: checkedBy.name, date: checkedBy.date, signatureUrl: checkedBy.signature }
-          : { name: null, date: null, signatureUrl: null },
-        mpsSignOff: { name: null, date: null, signatureUrl: null },
-        clientSignOff: { name: null, date: null, signatureUrl: null },
-        thirdPartySignOff: { name: null, date: null, signatureUrl: null },
-      }),
-    );
+    const cpoRelease = await this.itemsReleaseRepo.create({
+      companyId,
+      cpoId,
+      jobCardId: null,
+      items: cpoReleaseItems,
+      totalQuantity,
+      createdByName: user.name,
+      createdById: user.id,
+      checkedByName: checkedBy?.name ?? null,
+      checkedByDate: checkedBy?.date ?? null,
+      checkedBySignature: checkedBy?.signature ?? null,
+      plsSignOff: checkedBy
+        ? { name: checkedBy.name, date: checkedBy.date, signatureUrl: checkedBy.signature }
+        : { name: null, date: null, signatureUrl: null },
+      mpsSignOff: { name: null, date: null, signatureUrl: null },
+      clientSignOff: { name: null, date: null, signatureUrl: null },
+      thirdPartySignOff: { name: null, date: null, signatureUrl: null },
+    });
 
     const itemsByJobCard = selectedItems.reduce(
       (acc, si) => {
@@ -2192,10 +2018,7 @@ export class QcMeasurementService {
       const jcSpecs = await this.coatingSpecsForJobCard(companyId, jcId);
       const cleanJcPaintingSpec = stripBanding(jcSpecs.paintingSpec);
 
-      const jcCard = await this.jobCardRepo.findOne({
-        where: { id: jcId, companyId },
-        relations: ["lineItems"],
-      });
+      const jcCard = await this.jobCardRepo.findOneForCompanyWithLineItems(jcId, companyId);
       const jcItemNoLookup = new Map<string, string>();
       if (jcCard) {
         (jcCard.lineItems || []).forEach((li) => {
@@ -2226,26 +2049,24 @@ export class QcMeasurementService {
 
       const jcTotal = jcReleaseItems.reduce((sum, item) => sum + item.quantity, 0);
 
-      const childRelease = await this.itemsReleaseRepo.save(
-        this.itemsReleaseRepo.create({
-          companyId,
-          jobCardId: jcId,
-          cpoId: null,
-          items: jcReleaseItems,
-          totalQuantity: jcTotal,
-          createdByName: user.name,
-          createdById: user.id,
-          checkedByName: checkedBy?.name ?? null,
-          checkedByDate: checkedBy?.date ?? null,
-          checkedBySignature: checkedBy?.signature ?? null,
-          plsSignOff: checkedBy
-            ? { name: checkedBy.name, date: checkedBy.date, signatureUrl: checkedBy.signature }
-            : { name: null, date: null, signatureUrl: null },
-          mpsSignOff: { name: null, date: null, signatureUrl: null },
-          clientSignOff: { name: null, date: null, signatureUrl: null },
-          thirdPartySignOff: { name: null, date: null, signatureUrl: null },
-        }),
-      );
+      const childRelease = await this.itemsReleaseRepo.create({
+        companyId,
+        jobCardId: jcId,
+        cpoId: null,
+        items: jcReleaseItems,
+        totalQuantity: jcTotal,
+        createdByName: user.name,
+        createdById: user.id,
+        checkedByName: checkedBy?.name ?? null,
+        checkedByDate: checkedBy?.date ?? null,
+        checkedBySignature: checkedBy?.signature ?? null,
+        plsSignOff: checkedBy
+          ? { name: checkedBy.name, date: checkedBy.date, signatureUrl: checkedBy.signature }
+          : { name: null, date: null, signatureUrl: null },
+        mpsSignOff: { name: null, date: null, signatureUrl: null },
+        clientSignOff: { name: null, date: null, signatureUrl: null },
+        thirdPartySignOff: { name: null, date: null, signatureUrl: null },
+      });
 
       childReleases.push(childRelease);
     }
@@ -2263,21 +2084,18 @@ export class QcMeasurementService {
     companyId: number,
     cpoId: number,
   ): Promise<QcReleaseCertificate[]> {
-    return this.releaseCertRepo.find({
-      where: { companyId, cpoId },
-      order: { createdAt: "DESC" },
-    });
+    return this.releaseCertRepo.findForCpo(companyId, cpoId);
   }
 
   // ── Helpers ────────────────────────────────────────────────────────
 
   private async findOrFail<T extends QcEntity>(
-    repo: Repository<T>,
+    repo: CompanyScopedRepository<T>,
     companyId: number,
     id: number,
     label: string,
   ): Promise<T> {
-    const record = await repo.findOne({ where: { id, companyId } as any });
+    const record = await repo.findByIdForCompany(companyId, id);
 
     if (!record) {
       throw new NotFoundException(`${label} #${id} not found`);

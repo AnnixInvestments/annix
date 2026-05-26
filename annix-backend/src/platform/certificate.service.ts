@@ -1,6 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { CertificateRepository } from "./certificate.repository";
 import type { CertificateFilterDto } from "./dto/certificate.dto";
 import { CertificateProcessingStatus, PlatformCertificate } from "./entities/certificate.entity";
 
@@ -15,16 +14,10 @@ export interface CertificatePage {
 export class CertificateService {
   private readonly logger = new Logger(CertificateService.name);
 
-  constructor(
-    @InjectRepository(PlatformCertificate)
-    private readonly certRepo: Repository<PlatformCertificate>,
-  ) {}
+  constructor(private readonly certRepo: CertificateRepository) {}
 
   async findById(companyId: number, id: number): Promise<PlatformCertificate> {
-    const cert = await this.certRepo.findOne({
-      where: { id, companyId },
-      relations: ["supplierContact"],
-    });
+    const cert = await this.certRepo.findByCompanyAndId(companyId, id, ["supplierContact"]);
 
     if (!cert) {
       throw new NotFoundException(`Certificate ${id} not found`);
@@ -33,65 +26,12 @@ export class CertificateService {
     return cert;
   }
 
-  async search(companyId: number, filters: CertificateFilterDto): Promise<CertificatePage> {
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 20;
-    const skip = (page - 1) * limit;
-
-    const qb = this.certRepo
-      .createQueryBuilder("cert")
-      .leftJoinAndSelect("cert.supplierContact", "supplier")
-      .where("cert.company_id = :companyId", { companyId })
-      .andWhere("cert.version_status = :versionStatus", { versionStatus: "ACTIVE" });
-
-    if (filters.sourceModule) {
-      qb.andWhere("cert.source_module = :sourceModule", {
-        sourceModule: filters.sourceModule,
-      });
-    }
-
-    if (filters.certificateCategory) {
-      qb.andWhere("cert.certificate_category = :category", {
-        category: filters.certificateCategory,
-      });
-    }
-
-    if (filters.processingStatus) {
-      qb.andWhere("cert.processing_status = :processingStatus", {
-        processingStatus: filters.processingStatus,
-      });
-    }
-
-    if (filters.supplierContactId) {
-      qb.andWhere("cert.supplier_contact_id = :supplierId", {
-        supplierId: filters.supplierContactId,
-      });
-    }
-
-    if (filters.compoundCode) {
-      qb.andWhere("cert.compound_code = :compoundCode", { compoundCode: filters.compoundCode });
-    }
-
-    if (filters.jobCardId) {
-      qb.andWhere("cert.job_card_id = :jobCardId", { jobCardId: filters.jobCardId });
-    }
-
-    if (filters.search) {
-      qb.andWhere(
-        "(cert.certificate_number ILIKE :search OR cert.batch_number ILIKE :search OR cert.supplier_name ILIKE :search OR cert.compound_code ILIKE :search)",
-        { search: `%${filters.search}%` },
-      );
-    }
-
-    qb.orderBy("cert.created_at", "DESC");
-
-    const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
-
-    return { data, total, page, limit };
+  search(companyId: number, filters: CertificateFilterDto): Promise<CertificatePage> {
+    return this.certRepo.search(companyId, filters);
   }
 
   async create(data: Partial<PlatformCertificate>): Promise<PlatformCertificate> {
-    return this.certRepo.save(this.certRepo.create(data));
+    return this.certRepo.create(data);
   }
 
   async update(
@@ -108,7 +48,7 @@ export class CertificateService {
     id: number,
     extractedData: Record<string, unknown>,
   ): Promise<PlatformCertificate> {
-    const cert = await this.certRepo.findOneBy({ id });
+    const cert = await this.certRepo.findById(id);
     if (!cert) {
       throw new NotFoundException(`Certificate ${id} not found`);
     }
@@ -132,38 +72,23 @@ export class CertificateService {
     await this.certRepo.remove(cert);
   }
 
-  async findByBatchNumber(companyId: number, batchNumber: string): Promise<PlatformCertificate[]> {
-    return this.certRepo.find({
-      where: { companyId, batchNumber },
-      order: { createdAt: "DESC" },
-    });
+  findByBatchNumber(companyId: number, batchNumber: string): Promise<PlatformCertificate[]> {
+    return this.certRepo.findByBatchNumber(companyId, batchNumber);
   }
 
-  async findByCompoundCode(
-    companyId: number,
-    compoundCode: string,
-  ): Promise<PlatformCertificate[]> {
-    return this.certRepo.find({
-      where: { companyId, compoundCode },
-      order: { createdAt: "DESC" },
-    });
+  findByCompoundCode(companyId: number, compoundCode: string): Promise<PlatformCertificate[]> {
+    return this.certRepo.findByCompoundCode(companyId, compoundCode);
   }
 
-  async findByLegacyScCertificateId(scCertificateId: number): Promise<PlatformCertificate | null> {
-    return this.certRepo.findOne({
-      where: { legacyScCertificateId: scCertificateId },
-    });
+  findByLegacyScCertificateId(scCertificateId: number): Promise<PlatformCertificate | null> {
+    return this.certRepo.findByLegacyScCertificateId(scCertificateId);
   }
 
-  async findByLegacyScCalibrationId(scCalibrationId: number): Promise<PlatformCertificate | null> {
-    return this.certRepo.findOne({
-      where: { legacyScCalibrationId: scCalibrationId },
-    });
+  findByLegacyScCalibrationId(scCalibrationId: number): Promise<PlatformCertificate | null> {
+    return this.certRepo.findByLegacyScCalibrationId(scCalibrationId);
   }
 
-  async findByLegacyRubberCocId(rubberCocId: number): Promise<PlatformCertificate | null> {
-    return this.certRepo.findOne({
-      where: { legacyRubberCocId: rubberCocId },
-    });
+  findByLegacyRubberCocId(rubberCocId: number): Promise<PlatformCertificate | null> {
+    return this.certRepo.findByLegacyRubberCocId(rubberCocId);
   }
 }

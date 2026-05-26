@@ -1,11 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { LearningSource, LearningType, NixLearning } from "../../nix/entities/nix-learning.entity";
+import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
+import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 
 export interface ImportRow {
   sku?: string;
@@ -122,12 +123,9 @@ export class ImportService {
   private readonly logger = new Logger(ImportService.name);
 
   constructor(
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(NixLearning)
-    private readonly nixLearningRepo: Repository<NixLearning>,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly movementRepo: StockMovementRepository,
+    private readonly nixLearningRepo: NixLearningRepository,
     private readonly aiChatService: AiChatService,
   ) {}
 
@@ -526,13 +524,7 @@ export class ImportService {
       errors: [],
     };
 
-    const existingCategories = await this.stockItemRepo
-      .createQueryBuilder("item")
-      .select("DISTINCT item.category", "category")
-      .where("item.company_id = :companyId", { companyId })
-      .andWhere("item.category IS NOT NULL")
-      .getRawMany()
-      .then((cats) => cats.map((c) => c.category as string));
+    const existingCategories = await this.stockItemRepo.categoriesForCompany(companyId);
 
     const rowsNeedingCategory = rows.filter((r) => !r.category && r.name);
     const categoryMap = await this.inferCategories(rowsNeedingCategory, existingCategories);
@@ -569,9 +561,7 @@ export class ImportService {
       const acc = await accPromise;
 
       try {
-        const existing = await this.stockItemRepo.findOne({
-          where: { sku: row.sku, companyId },
-        });
+        const existing = await this.stockItemRepo.findOneBySkuForCompany(row.sku, companyId);
 
         if (existing) {
           if (!isStockTake) {
@@ -600,7 +590,7 @@ export class ImportService {
               const delta = finalSoh - existing.quantity;
               existing.quantity = finalSoh;
 
-              const movement = this.movementRepo.create({
+              const movement = this.movementRepo.build({
                 stockItem: existing,
                 movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
                 quantity: Math.abs(delta),
@@ -617,7 +607,7 @@ export class ImportService {
           return { ...acc, updated: acc.updated + 1 };
         }
 
-        const item = this.stockItemRepo.create({
+        const item = this.stockItemRepo.build({
           sku: row.sku,
           name: row.name,
           description: row.description || null,
@@ -633,7 +623,7 @@ export class ImportService {
         const saved = await this.stockItemRepo.save(item);
 
         if (row.quantity && row.quantity > 0) {
-          const movement = this.movementRepo.create({
+          const movement = this.movementRepo.build({
             stockItem: saved,
             movementType: MovementType.IN,
             quantity: row.quantity,
@@ -671,13 +661,11 @@ export class ImportService {
     }
 
     const cutoff = fromISO(stockTakeDate).endOf("day").toJSDate();
-    const postMovements = await this.movementRepo
-      .createQueryBuilder("m")
-      .where("m.stock_item_id = :itemId", { itemId: existing.id })
-      .andWhere("m.company_id = :companyId", { companyId })
-      .andWhere("m.created_at > :cutoff", { cutoff })
-      .andWhere("m.reference_type != :stockTake", { stockTake: ReferenceType.STOCK_TAKE })
-      .getMany();
+    const postMovements = await this.movementRepo.findForItemSinceExcludingStockTake(
+      companyId,
+      existing.id,
+      cutoff,
+    );
 
     const netDelta = postMovements.reduce((acc, m) => {
       if (m.movementType === MovementType.IN) {
@@ -754,14 +742,8 @@ export class ImportService {
   }
 
   async matchRowsToInventory(companyId: number, rows: ImportRow[]): Promise<ImportMatchRow[]> {
-    const allItems = await this.stockItemRepo.find({ where: { companyId } });
-    const learned = await this.nixLearningRepo.find({
-      where: {
-        learningType: LearningType.CORRECTION,
-        category: "stock_import",
-        isActive: true,
-      },
-    });
+    const allItems = await this.stockItemRepo.findAllForCompany(companyId);
+    const learned = await this.nixLearningRepo.findActiveCorrectionsByCategory("stock_import");
 
     const skuCorrections = learned
       .filter((l) => l.patternKey.startsWith("sku_rename:"))
@@ -939,9 +921,7 @@ export class ImportService {
         result.learned += learningCount;
 
         if (row.action === "update" && row.matchedItemId) {
-          const existing = await this.stockItemRepo.findOne({
-            where: { id: row.matchedItemId, companyId },
-          });
+          const existing = await this.stockItemRepo.findOneForCompany(row.matchedItemId, companyId);
           if (!existing) {
             result.errors = [
               ...result.errors,
@@ -977,7 +957,7 @@ export class ImportService {
               const delta = finalSoh - existing.quantity;
               existing.quantity = finalSoh;
 
-              const movement = this.movementRepo.create({
+              const movement = this.movementRepo.build({
                 stockItem: existing,
                 movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
                 quantity: Math.abs(delta),
@@ -999,7 +979,7 @@ export class ImportService {
             );
           }
         } else if (row.action === "create") {
-          const item = this.stockItemRepo.create({
+          const item = this.stockItemRepo.build({
             sku: row.sku,
             name: row.name,
             description: row.description || null,
@@ -1016,7 +996,7 @@ export class ImportService {
           countedItemIds.add(saved.id);
 
           if (row.quantity && row.quantity > 0) {
-            const movement = this.movementRepo.create({
+            const movement = this.movementRepo.build({
               stockItem: saved,
               movementType: MovementType.IN,
               quantity: row.quantity,
@@ -1043,7 +1023,7 @@ export class ImportService {
     // Full stock take: anything in the system but absent from the count no longer exists,
     // so zero it (rolling forward any movements since the count date) and log the variance.
     if (isStockTake && zeroMissing) {
-      const allItems = await this.stockItemRepo.find({ where: { companyId } });
+      const allItems = await this.stockItemRepo.findAllForCompany(companyId);
       for (const item of allItems) {
         if (countedItemIds.has(item.id)) continue;
         const systemQtyBefore = Number(item.quantity) || 0;
@@ -1059,7 +1039,7 @@ export class ImportService {
           if (finalSoh !== item.quantity) {
             const delta = finalSoh - item.quantity;
             item.quantity = finalSoh;
-            const movement = this.movementRepo.create({
+            await this.movementRepo.create({
               stockItem: item,
               movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
               quantity: Math.abs(delta),
@@ -1068,7 +1048,6 @@ export class ImportService {
               createdBy,
               companyId,
             });
-            await this.movementRepo.save(movement);
             await this.stockItemRepo.save(item);
           }
           result.zeroed += 1;
@@ -1161,21 +1140,18 @@ export class ImportService {
 
       const patternKey = `${correction.field}_correction:${(correction.originalValue || "").slice(0, 100)}`;
 
-      const existing = await this.nixLearningRepo.findOne({
-        where: {
-          patternKey,
-          learningType: LearningType.CORRECTION,
-          category: "stock_import",
-          learnedValue: correction.correctedValue || "",
-        },
-      });
+      const existing = await this.nixLearningRepo.findOneCorrectionByPatternKeyCategoryAndValue(
+        patternKey,
+        "stock_import",
+        correction.correctedValue || "",
+      );
 
       if (existing) {
         existing.confirmationCount += 1;
         existing.confidence = Math.min(1, existing.confidence + 0.1);
         await this.nixLearningRepo.save(existing);
       } else {
-        const learning = this.nixLearningRepo.create({
+        const learning = this.nixLearningRepo.build({
           learningType: LearningType.CORRECTION,
           source: LearningSource.USER_CORRECTION,
           category: "stock_import",

@@ -1,48 +1,46 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { Candidate } from "../entities/candidate.entity";
 import { CvCredential } from "../entities/cv-credential.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CvCredentialRepository } from "../repositories/cv-credential.repository";
 import { CredentialService } from "./credential.service";
 
 describe("CredentialService", () => {
   let service: CredentialService;
   let credentialRepo: {
-    find: jest.Mock;
-    findOne: jest.Mock;
+    findById: jest.Mock;
+    findByCandidate: jest.Mock;
+    listForCandidates: jest.Mock;
+    expiringBetween: jest.Mock;
     save: jest.Mock;
     create: jest.Mock;
-    delete: jest.Mock;
-    createQueryBuilder: jest.Mock;
+    deleteById: jest.Mock;
   };
-  let candidateRepo: { find: jest.Mock };
+  let candidateRepo: { findByEmail: jest.Mock; findById: jest.Mock };
   let emailService: { sendEmail: jest.Mock };
   let aiChat: { chat: jest.Mock };
 
   beforeEach(async () => {
     credentialRepo = {
-      find: jest.fn(),
-      findOne: jest.fn(),
+      findById: jest.fn(),
+      findByCandidate: jest.fn().mockResolvedValue([]),
+      listForCandidates: jest.fn().mockResolvedValue([]),
+      expiringBetween: jest.fn().mockResolvedValue([]),
       save: jest.fn(async (entity) => ({ id: 1, ...entity })),
-      create: jest.fn((dto) => dto),
-      delete: jest.fn(),
-      createQueryBuilder: jest.fn(() => ({
-        where: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([]),
-      })),
+      create: jest.fn(async (dto) => ({ id: 1, ...dto })),
+      deleteById: jest.fn(),
     };
-    candidateRepo = { find: jest.fn() };
+    candidateRepo = { findByEmail: jest.fn(), findById: jest.fn() };
     emailService = { sendEmail: jest.fn().mockResolvedValue(true) };
     aiChat = { chat: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CredentialService,
-        { provide: getRepositoryToken(CvCredential), useValue: credentialRepo },
-        { provide: getRepositoryToken(Candidate), useValue: candidateRepo },
+        { provide: CvCredentialRepository, useValue: credentialRepo },
+        { provide: CandidateRepository, useValue: candidateRepo },
         { provide: EmailService, useValue: emailService },
         { provide: AiChatService, useValue: aiChat },
       ],
@@ -52,7 +50,7 @@ describe("CredentialService", () => {
 
   describe("createForSeeker", () => {
     it("returns null when seeker has no candidate row", async () => {
-      candidateRepo.find.mockResolvedValue([]);
+      candidateRepo.findByEmail.mockResolvedValue([]);
       const result = await service.createForSeeker("nobody@example.com", {
         credentialType: "medical",
         issuedAt: "2025-01-01",
@@ -62,11 +60,11 @@ describe("CredentialService", () => {
         notes: null,
       });
       expect(result).toBeNull();
-      expect(credentialRepo.save).not.toHaveBeenCalled();
+      expect(credentialRepo.create).not.toHaveBeenCalled();
     });
 
     it("rejects an unknown credential type", async () => {
-      candidateRepo.find.mockResolvedValue([{ id: 1, email: "a@example.com" }]);
+      candidateRepo.findByEmail.mockResolvedValue([{ id: 1, email: "a@example.com" }]);
       const result = await service.createForSeeker("a@example.com", {
         credentialType: "definitely-not-a-cred" as unknown as "medical",
         issuedAt: null,
@@ -79,7 +77,7 @@ describe("CredentialService", () => {
     });
 
     it("trims issuingAuthority + notes before save", async () => {
-      candidateRepo.find.mockResolvedValue([{ id: 1, email: "a@example.com" }]);
+      candidateRepo.findByEmail.mockResolvedValue([{ id: 1, email: "a@example.com" }]);
       await service.createForSeeker("a@example.com", {
         credentialType: "mine_induction",
         issuedAt: "2025-03-01",
@@ -96,14 +94,14 @@ describe("CredentialService", () => {
 
   describe("updateForSeeker", () => {
     it("returns null when the credential is not owned by the seeker", async () => {
-      candidateRepo.find.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
-      credentialRepo.findOne.mockResolvedValue({ id: 7, candidateId: 99 });
+      candidateRepo.findByEmail.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
+      credentialRepo.findById.mockResolvedValue({ id: 7, candidateId: 99 });
       const result = await service.updateForSeeker("a@example.com", 7, { expiresAt: "2027-01-01" });
       expect(result).toBeNull();
     });
 
     it("updates only provided fields", async () => {
-      candidateRepo.find.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
+      candidateRepo.findByEmail.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
       const existing = {
         id: 7,
         candidateId: 5,
@@ -114,7 +112,7 @@ describe("CredentialService", () => {
         documentPath: null,
         notes: null,
       };
-      credentialRepo.findOne.mockResolvedValue(existing);
+      credentialRepo.findById.mockResolvedValue(existing);
 
       await service.updateForSeeker("a@example.com", 7, {
         expiresAt: "2027-01-01",
@@ -134,30 +132,30 @@ describe("CredentialService", () => {
 
   describe("deleteForSeeker", () => {
     it("returns false for credentials not owned by the seeker", async () => {
-      candidateRepo.find.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
-      credentialRepo.findOne.mockResolvedValue({ id: 7, candidateId: 99 });
+      candidateRepo.findByEmail.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
+      credentialRepo.findById.mockResolvedValue({ id: 7, candidateId: 99 });
       expect(await service.deleteForSeeker("a@example.com", 7)).toBe(false);
-      expect(credentialRepo.delete).not.toHaveBeenCalled();
+      expect(credentialRepo.deleteById).not.toHaveBeenCalled();
     });
 
     it("deletes when owned", async () => {
-      candidateRepo.find.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
-      credentialRepo.findOne.mockResolvedValue({ id: 7, candidateId: 5 });
+      candidateRepo.findByEmail.mockResolvedValue([{ id: 5, email: "a@example.com" }]);
+      credentialRepo.findById.mockResolvedValue({ id: 7, candidateId: 5 });
       expect(await service.deleteForSeeker("a@example.com", 7)).toBe(true);
-      expect(credentialRepo.delete).toHaveBeenCalledWith(7);
+      expect(credentialRepo.deleteById).toHaveBeenCalledWith(7);
     });
   });
 
   describe("dispatchExpiryReminders", () => {
     it("sends an email when a credential is expiring in 30 days", async () => {
       const target = DateTime.now().startOf("day").plus({ days: 30 }).toISODate();
-      candidateRepo.find.mockResolvedValue([
-        { id: 1, email: "boilie@example.com", name: "Boilie" },
-      ]);
-      credentialRepo.find.mockImplementation(async (opts: { where: { expiresAt: unknown } }) => {
-        const where = opts.where.expiresAt as { _value?: unknown[] };
-        const isMatch = JSON.stringify(where).includes(target ?? "");
-        if (isMatch) {
+      candidateRepo.findById.mockResolvedValue({
+        id: 1,
+        email: "boilie@example.com",
+        name: "Boilie",
+      });
+      credentialRepo.expiringBetween.mockImplementation(async (dayStart: string) => {
+        if (dayStart === target) {
           return [
             { id: 9, candidateId: 1, credentialType: "medical", expiresAt: target } as CvCredential,
           ];
@@ -174,8 +172,7 @@ describe("CredentialService", () => {
     });
 
     it("returns sent=0 when no credentials expire in the reminder windows", async () => {
-      credentialRepo.find.mockResolvedValue([]);
-      candidateRepo.find.mockResolvedValue([]);
+      credentialRepo.expiringBetween.mockResolvedValue([]);
       const result = await service.dispatchExpiryReminders();
       expect(result.sent).toBe(0);
       expect(emailService.sendEmail).not.toHaveBeenCalled();
@@ -184,7 +181,7 @@ describe("CredentialService", () => {
 
   describe("autofillFromCvForSeeker", () => {
     it("returns reason=no-candidate when seeker has no candidate row", async () => {
-      candidateRepo.find.mockResolvedValue([]);
+      candidateRepo.findByEmail.mockResolvedValue([]);
       const result = await service.autofillFromCvForSeeker("nobody@example.com");
       expect(result.created).toBe(0);
       expect(result.reason).toBe("no-candidate");
@@ -192,7 +189,9 @@ describe("CredentialService", () => {
     });
 
     it("returns reason=no-cv-text when candidate has no rawCvText", async () => {
-      candidateRepo.find.mockResolvedValue([{ id: 1, email: "a@example.com", rawCvText: null }]);
+      candidateRepo.findByEmail.mockResolvedValue([
+        { id: 1, email: "a@example.com", rawCvText: null },
+      ]);
       const result = await service.autofillFromCvForSeeker("a@example.com");
       expect(result.created).toBe(0);
       expect(result.reason).toBe("no-cv-text");
@@ -200,7 +199,7 @@ describe("CredentialService", () => {
     });
 
     it("returns reason=no-credential-keywords when CV has no relevant terms", async () => {
-      candidateRepo.find.mockResolvedValue([
+      candidateRepo.findByEmail.mockResolvedValue([
         {
           id: 1,
           email: "a@example.com",
@@ -214,7 +213,7 @@ describe("CredentialService", () => {
     });
 
     it("calls Gemini, parses credentials, and saves new ones (skipping duplicates)", async () => {
-      candidateRepo.find.mockResolvedValue([
+      candidateRepo.findByEmail.mockResolvedValue([
         {
           id: 1,
           email: "boilie@example.com",
@@ -222,7 +221,7 @@ describe("CredentialService", () => {
             "Boilermaker with valid mine induction (2026-01-15) at Kathu Mine HSE and current medical",
         },
       ]);
-      credentialRepo.find.mockResolvedValue([
+      credentialRepo.findByCandidate.mockResolvedValue([
         {
           id: 99,
           candidateId: 1,
@@ -254,14 +253,14 @@ describe("CredentialService", () => {
       const result = await service.autofillFromCvForSeeker("boilie@example.com");
 
       expect(result.created).toBe(1);
-      expect(credentialRepo.save).toHaveBeenCalledTimes(1);
-      const saved = credentialRepo.save.mock.calls[0][0];
+      expect(credentialRepo.create).toHaveBeenCalledTimes(1);
+      const saved = credentialRepo.create.mock.calls[0][0];
       expect(saved.credentialType).toBe("medical");
       expect(saved.issuingAuthority).toBe("Dr Bones");
     });
 
     it("returns reason=ai-failed when Gemini returns non-JSON", async () => {
-      candidateRepo.find.mockResolvedValue([
+      candidateRepo.findByEmail.mockResolvedValue([
         {
           id: 1,
           email: "boilie@example.com",
@@ -277,7 +276,7 @@ describe("CredentialService", () => {
       const result = await service.autofillFromCvForSeeker("boilie@example.com");
       expect(result.created).toBe(0);
       expect(result.reason).toBe("ai-failed");
-      expect(credentialRepo.save).not.toHaveBeenCalled();
+      expect(credentialRepo.create).not.toHaveBeenCalled();
     });
   });
 });

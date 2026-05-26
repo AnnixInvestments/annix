@@ -1,6 +1,5 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { CustomFieldDefinitionRepository } from "../custom-field-definition.repository";
 import { CreateCustomFieldDto, UpdateCustomFieldDto } from "../dto";
 import { CustomFieldDefinition, CustomFieldType } from "../entities";
 
@@ -8,21 +7,16 @@ import { CustomFieldDefinition, CustomFieldType } from "../entities";
 export class CustomFieldService {
   private readonly logger = new Logger(CustomFieldService.name);
 
-  constructor(
-    @InjectRepository(CustomFieldDefinition)
-    private readonly customFieldRepo: Repository<CustomFieldDefinition>,
-  ) {}
+  constructor(private readonly customFieldRepo: CustomFieldDefinitionRepository) {}
 
   async create(userId: number, dto: CreateCustomFieldDto): Promise<CustomFieldDefinition> {
-    const existing = await this.customFieldRepo.findOne({
-      where: { userId, fieldKey: dto.fieldKey },
-    });
+    const existing = await this.customFieldRepo.findByUserAndKey(userId, dto.fieldKey);
 
     if (existing) {
       throw new ConflictException(`Field with key "${dto.fieldKey}" already exists`);
     }
 
-    const field = this.customFieldRepo.create({
+    const saved = await this.customFieldRepo.create({
       userId,
       name: dto.name,
       fieldKey: dto.fieldKey,
@@ -32,24 +26,16 @@ export class CustomFieldService {
       displayOrder: dto.displayOrder ?? 0,
       isActive: true,
     });
-
-    const saved = await this.customFieldRepo.save(field);
     this.logger.log(`Custom field created: ${saved.id} (${dto.fieldKey}) by user ${userId}`);
     return saved;
   }
 
   async findAll(userId: number, includeInactive = false): Promise<CustomFieldDefinition[]> {
-    const where = includeInactive ? { userId } : { userId, isActive: true };
-    return this.customFieldRepo.find({
-      where,
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.customFieldRepo.findForUser(userId, includeInactive);
   }
 
   async findOne(userId: number, id: number): Promise<CustomFieldDefinition> {
-    const field = await this.customFieldRepo.findOne({
-      where: { id, userId },
-    });
+    const field = await this.customFieldRepo.findByIdAndUser(id, userId);
 
     if (!field) {
       throw new NotFoundException(`Custom field ${id} not found`);
@@ -66,9 +52,7 @@ export class CustomFieldService {
     const field = await this.findOne(userId, id);
 
     if (dto.fieldKey && dto.fieldKey !== field.fieldKey) {
-      const existing = await this.customFieldRepo.findOne({
-        where: { userId, fieldKey: dto.fieldKey },
-      });
+      const existing = await this.customFieldRepo.findByUserAndKey(userId, dto.fieldKey);
 
       if (existing && existing.id !== id) {
         throw new ConflictException(`Field with key "${dto.fieldKey}" already exists`);
@@ -107,7 +91,7 @@ export class CustomFieldService {
       })
       .filter((f): f is CustomFieldDefinition => f !== null);
 
-    await this.customFieldRepo.save(updatedFields);
+    await this.customFieldRepo.saveMany(updatedFields);
     return this.findAll(userId, true);
   }
 }

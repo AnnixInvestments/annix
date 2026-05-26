@@ -1,47 +1,40 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
-import { Company } from "../platform/entities/company.entity";
-import { Rfq, RfqStatus } from "../rfq/entities/rfq.entity";
-import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
-import { User } from "../user/entities/user.entity";
+import { CompanyRepository } from "../platform/company.repository";
+import { RfqStatus } from "../rfq/entities/rfq.entity";
+import { RfqRepository } from "../rfq/rfq.repository";
+import { RfqDraftRepository } from "../rfq/rfq-draft.repository";
+import { UserRepository } from "../user/user.repository";
+import { CustomerProfileRepository } from "./customer-profile.repository";
 import {
   ChangePasswordDto,
   CustomerProfileResponseDto,
   UpdateCompanyAddressDto,
   UpdateCustomerProfileDto,
 } from "./dto";
-import { CustomerDeviceBinding, CustomerProfile } from "./entities";
 
 @Injectable()
 export class CustomerService {
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CustomerProfile)
-    private readonly profileRepo: Repository<CustomerProfile>,
-    @InjectRepository(CustomerDeviceBinding)
-    private readonly deviceBindingRepo: Repository<CustomerDeviceBinding>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly companyRepo: CompanyRepository,
+    private readonly profileRepository: CustomerProfileRepository,
+    private readonly userRepo: UserRepository,
     private readonly auditService: AuditService,
-    @InjectRepository(Rfq)
-    private readonly rfqRepo: Repository<Rfq>,
-    @InjectRepository(RfqDraft)
-    private readonly rfqDraftRepo: Repository<RfqDraft>,
+    private readonly rfqRepo: RfqRepository,
+    private readonly rfqDraftRepo: RfqDraftRepository,
   ) {}
 
   /**
    * Get customer profile with company and security info
    */
   async getProfile(customerId: number): Promise<CustomerProfileResponseDto> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company", "deviceBindings", "user"],
-    });
+    const profile = await this.profileRepository.findById(customerId, [
+      "company",
+      "deviceBindings",
+      "user",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -82,10 +75,7 @@ export class CustomerService {
    * Get company details
    */
   async getCompany(customerId: number) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -102,9 +92,7 @@ export class CustomerService {
     dto: UpdateCustomerProfileDto,
     clientIp: string,
   ): Promise<CustomerProfileResponseDto> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -121,7 +109,7 @@ export class CustomerService {
     if (dto.directPhone !== undefined) profile.directPhone = dto.directPhone;
     if (dto.mobilePhone !== undefined) profile.mobilePhone = dto.mobilePhone;
 
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     await this.auditService.log({
       entityType: "customer_profile",
@@ -139,10 +127,7 @@ export class CustomerService {
    * Update company address (limited fields)
    */
   async updateCompanyAddress(customerId: number, dto: UpdateCompanyAddressDto, clientIp: string) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -186,16 +171,13 @@ export class CustomerService {
     dto: ChangePasswordDto,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["user"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["user"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
     }
 
-    const user = await this.userRepo.findOne({ where: { id: profile.userId } });
+    const user = await this.userRepo.findById(profile.userId);
     if (!user) {
       throw new NotFoundException("User not found");
     }
@@ -234,10 +216,12 @@ export class CustomerService {
    * Get dashboard data for customer
    */
   async getDashboard(customerId: number) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company", "deviceBindings", "sessions", "user"],
-    });
+    const profile = await this.profileRepository.findById(customerId, [
+      "company",
+      "deviceBindings",
+      "sessions",
+      "user",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
@@ -283,10 +267,7 @@ export class CustomerService {
     quoted: number;
     accepted: number;
   }> {
-    const rfqs = await this.rfqRepo.find({
-      where: { createdBy: { id: userId } },
-      select: ["id", "status"],
-    });
+    const rfqs = await this.rfqRepo.findStatusesByCreator(userId);
 
     const statusCounts = rfqs.reduce(
       (acc, rfq) => {
@@ -316,10 +297,7 @@ export class CustomerService {
     currentStep: number;
     lastUpdated: Date | null;
   } | null> {
-    const draft = await this.rfqDraftRepo.findOne({
-      where: { createdBy: { id: userId }, isConverted: false },
-      order: { updatedAt: "DESC" },
-    });
+    const draft = await this.rfqDraftRepo.findLatestUnconvertedForCreator(userId);
 
     if (!draft) {
       return null;

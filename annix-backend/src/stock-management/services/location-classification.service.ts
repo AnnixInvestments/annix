@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, In, IsNull, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IssuableProduct } from "../entities/issuable-product.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
 
 const UNASSIGNED_LOCATION_NAME = "Unassigned";
 
@@ -31,34 +30,25 @@ export class LocationClassificationService {
   private readonly logger = new Logger(LocationClassificationService.name);
 
   constructor(
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
+    private readonly productRepo: IssuableProductRepository,
     private readonly aiChatService: AiChatService,
-    private readonly dataSource: DataSource,
   ) {}
 
   async ensureUnassignedLocation(companyId: number): Promise<{ id: number; name: string }> {
-    const existing = await this.dataSource.query(
-      "SELECT id, name FROM stock_control_locations WHERE company_id = $1 AND name = $2 LIMIT 1",
-      [companyId, UNASSIGNED_LOCATION_NAME],
+    const existing = await this.productRepo.findStockControlLocationByName(
+      companyId,
+      UNASSIGNED_LOCATION_NAME,
     );
-    if (existing.length > 0) {
-      return { id: Number(existing[0].id), name: existing[0].name };
+    if (existing) {
+      return existing;
     }
-    const inserted = await this.dataSource.query(
-      `INSERT INTO stock_control_locations (company_id, name, description, active, created_at, updated_at)
-       VALUES ($1, $2, $3, true, now(), now())
-       RETURNING id, name`,
-      [
-        companyId,
-        UNASSIGNED_LOCATION_NAME,
-        "Auto-generated fallback for products with no confident classification",
-      ],
+    const inserted = await this.productRepo.insertStockControlLocation(
+      companyId,
+      UNASSIGNED_LOCATION_NAME,
+      "Auto-generated fallback for products with no confident classification",
     );
-    this.logger.log(
-      `Created Unassigned fallback location ${inserted[0].id} for company ${companyId}`,
-    );
-    return { id: Number(inserted[0].id), name: inserted[0].name };
+    this.logger.log(`Created Unassigned fallback location ${inserted.id} for company ${companyId}`);
+    return inserted;
   }
 
   async assignToUnassigned(companyId: number, productIds: number[]): Promise<{ updated: number }> {
@@ -66,12 +56,8 @@ export class LocationClassificationService {
       return { updated: 0 };
     }
     const fallback = await this.ensureUnassignedLocation(companyId);
-    const result = await this.productRepo.update(
-      { id: In(productIds), companyId },
-      { locationId: fallback.id },
-    );
-    const affected = result.affected;
-    return { updated: affected == null ? 0 : affected };
+    const updated = await this.productRepo.updateLocationForIds(companyId, productIds, fallback.id);
+    return { updated };
   }
 
   async classifyUnassignedProducts(
@@ -81,9 +67,7 @@ export class LocationClassificationService {
     if (locations.length === 0) {
       return [];
     }
-    const unassigned = await this.productRepo.find({
-      where: { companyId, locationId: IsNull(), active: true },
-    });
+    const unassigned = await this.productRepo.findUnassignedActive(companyId);
     if (unassigned.length === 0) {
       return [];
     }
@@ -220,10 +204,7 @@ ${ambiguousProducts
     let updated = 0;
     for (const decision of decisions) {
       if (decision.locationId === null) continue;
-      await this.productRepo.update(
-        { id: decision.productId, companyId },
-        { locationId: decision.locationId },
-      );
+      await this.productRepo.updateLocation(companyId, decision.productId, decision.locationId);
       updated += 1;
     }
     return { updated };

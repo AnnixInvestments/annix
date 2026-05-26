@@ -3,8 +3,6 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import {
@@ -15,12 +13,9 @@ import {
   RecordingWithSegmentsDto,
   UpdateSpeakerLabelsDto,
 } from "../dto";
-import {
-  Meeting,
-  MeetingRecording,
-  RecordingProcessingStatus,
-  type SpeakerSegment,
-} from "../entities";
+import { MeetingRecording, RecordingProcessingStatus, type SpeakerSegment } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
 
 const PRESIGNED_URL_EXPIRY_SECONDS = 3600;
 const STALE_SESSION_THRESHOLD_HOURS = 1;
@@ -40,10 +35,8 @@ export class RecordingService {
   private readonly uploadSessions: Map<number, ChunkUploadSession> = new Map();
 
   constructor(
-    @InjectRepository(MeetingRecording)
-    private readonly recordingRepo: Repository<MeetingRecording>,
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
+    private readonly recordingRepo: MeetingRecordingRepository,
+    private readonly meetingRepo: MeetingRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly configService: ConfigService,
@@ -59,17 +52,13 @@ export class RecordingService {
   }
 
   async initiateUpload(userId: number, dto: InitiateUploadDto): Promise<InitiateUploadResponseDto> {
-    const meeting = await this.meetingRepo.findOne({
-      where: { id: dto.meetingId, salesRepId: userId },
-    });
+    const meeting = await this.meetingRepo.findOneForSalesRep(userId, dto.meetingId);
 
     if (!meeting) {
       throw new NotFoundException("Meeting not found");
     }
 
-    const existingRecording = await this.recordingRepo.findOne({
-      where: { meetingId: dto.meetingId },
-    });
+    const existingRecording = await this.recordingRepo.findByMeetingId(dto.meetingId);
 
     if (existingRecording) {
       throw new BadRequestException("Recording already exists for this meeting");
@@ -79,7 +68,7 @@ export class RecordingService {
     const sanitizedFilename = dto.filename.replace(/[^a-zA-Z0-9.-]/g, "_");
     const storagePath = `${StorageArea.ANNIX_REP}/recordings/${meeting.id}/${timestamp}-${sanitizedFilename}`;
 
-    const recording = this.recordingRepo.create({
+    const saved = await this.recordingRepo.create({
       meetingId: dto.meetingId,
       storagePath,
       storageBucket: "s3",
@@ -90,8 +79,6 @@ export class RecordingService {
       channels: dto.channels ?? 1,
       processingStatus: RecordingProcessingStatus.UPLOADING,
     });
-
-    const saved = await this.recordingRepo.save(recording);
 
     const tempPath = path.join(this.tempDir, `recording-${saved.id}`);
     if (!fs.existsSync(tempPath)) {
@@ -127,10 +114,7 @@ export class RecordingService {
     chunkIndex: number,
     data: Buffer,
   ): Promise<{ chunkIndex: number; bytesReceived: number }> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-      relations: ["meeting"],
-    });
+    const recording = await this.recordingRepo.findWithMeeting(recordingId);
 
     if (!recording) {
       throw new NotFoundException("Recording not found");
@@ -181,10 +165,7 @@ export class RecordingService {
     recordingId: number,
     dto: CompleteUploadDto,
   ): Promise<RecordingResponseDto> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-      relations: ["meeting"],
-    });
+    const recording = await this.recordingRepo.findWithMeeting(recordingId);
 
     if (!recording) {
       throw new NotFoundException("Recording not found");
@@ -259,10 +240,7 @@ export class RecordingService {
   }
 
   async recording(userId: number, recordingId: number): Promise<RecordingWithSegmentsDto> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-      relations: ["meeting"],
-    });
+    const recording = await this.recordingRepo.findWithMeeting(recordingId);
 
     if (!recording) {
       throw new NotFoundException("Recording not found");
@@ -279,10 +257,7 @@ export class RecordingService {
     userId: number,
     meetingId: number,
   ): Promise<RecordingWithSegmentsDto | null> {
-    const recording = await this.recordingRepo.findOne({
-      where: { meetingId },
-      relations: ["meeting"],
-    });
+    const recording = await this.recordingRepo.findByMeetingIdWithMeeting(meetingId);
 
     if (!recording) {
       return null;
@@ -300,10 +275,7 @@ export class RecordingService {
     recordingId: number,
     dto: UpdateSpeakerLabelsDto,
   ): Promise<RecordingResponseDto> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-      relations: ["meeting"],
-    });
+    const recording = await this.recordingRepo.findWithMeeting(recordingId);
 
     if (!recording) {
       throw new NotFoundException("Recording not found");
@@ -323,10 +295,7 @@ export class RecordingService {
   }
 
   async deleteRecording(userId: number, recordingId: number): Promise<void> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-      relations: ["meeting"],
-    });
+    const recording = await this.recordingRepo.findWithMeeting(recordingId);
 
     if (!recording) {
       throw new NotFoundException("Recording not found");
@@ -348,9 +317,7 @@ export class RecordingService {
   }
 
   async storeSpeakerSegments(recordingId: number, segments: SpeakerSegment[]): Promise<void> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-    });
+    const recording = await this.recordingRepo.findById(recordingId);
 
     if (!recording) {
       throw new NotFoundException("Recording not found");
@@ -370,9 +337,7 @@ export class RecordingService {
   }
 
   async markProcessingFailed(recordingId: number, error: string): Promise<void> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-    });
+    const recording = await this.recordingRepo.findById(recordingId);
 
     if (!recording) return;
 
@@ -399,9 +364,7 @@ export class RecordingService {
 
         this.uploadSessions.delete(recordingId);
 
-        const recording = await this.recordingRepo.findOne({
-          where: { id: recordingId },
-        });
+        const recording = await this.recordingRepo.findById(recordingId);
 
         if (recording && recording.processingStatus === RecordingProcessingStatus.UPLOADING) {
           recording.processingStatus = RecordingProcessingStatus.FAILED;
@@ -443,10 +406,7 @@ export class RecordingService {
     userId: number,
     recordingId: number,
   ): Promise<{ presignedUrl: string; mimeType: string; fileSize: number } | null> {
-    const recording = await this.recordingRepo.findOne({
-      where: { id: recordingId },
-      relations: ["meeting"],
-    });
+    const recording = await this.recordingRepo.findWithMeeting(recordingId);
 
     if (!recording) {
       return null;

@@ -16,11 +16,37 @@ export function encrypt(plaintext: string, keyHex: string): Buffer {
   return Buffer.concat([iv, authTag, encrypted]);
 }
 
-export function decrypt(encryptedData: Buffer, keyHex: string): string {
+type BinaryLike = Buffer | Uint8Array | { buffer: Buffer | Uint8Array } | { value: () => Buffer };
+
+function toBuffer(input: BinaryLike): Buffer {
+  if (Buffer.isBuffer(input)) {
+    return input;
+  }
+  if (input instanceof Uint8Array) {
+    return Buffer.from(input);
+  }
+  const candidate = input as { buffer?: unknown; value?: () => unknown };
+  if (
+    candidate.buffer &&
+    (Buffer.isBuffer(candidate.buffer) || candidate.buffer instanceof Uint8Array)
+  ) {
+    return Buffer.from(candidate.buffer as Buffer | Uint8Array);
+  }
+  if (typeof candidate.value === "function") {
+    const value = candidate.value();
+    if (Buffer.isBuffer(value) || value instanceof Uint8Array) {
+      return Buffer.from(value as Buffer | Uint8Array);
+    }
+  }
+  throw new TypeError("decrypt: encryptedData must be a Buffer-like value");
+}
+
+export function decrypt(encryptedData: BinaryLike, keyHex: string): string {
+  const buffer = toBuffer(encryptedData);
   const key = Buffer.from(keyHex, "hex");
-  const iv = encryptedData.subarray(0, IV_LENGTH);
-  const authTag = encryptedData.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
-  const encrypted = encryptedData.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
+  const iv = buffer.subarray(0, IV_LENGTH);
+  const authTag = buffer.subarray(IV_LENGTH, IV_LENGTH + AUTH_TAG_LENGTH);
+  const encrypted = buffer.subarray(IV_LENGTH + AUTH_TAG_LENGTH);
 
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
   decipher.setAuthTag(authTag);

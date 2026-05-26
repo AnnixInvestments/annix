@@ -6,16 +6,12 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { JobCard } from "../entities/job-card.entity";
-import { JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
-import {
-  NotificationActionType,
-  WorkflowNotification,
-} from "../entities/workflow-notification.entity";
+import { NotificationActionType } from "../entities/workflow-notification.entity";
+import { JobCardApprovalRepository } from "../repositories/job-card-approval.repository";
+import { JobCardBackgroundCompletionRepository } from "../repositories/job-card-background-completion.repository";
+import { WorkflowNotificationRepository } from "../repositories/workflow-notification.repository";
 import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { JobFileService } from "./job-file.service";
 import { QaProcessService } from "./qa-process.service";
@@ -34,14 +30,9 @@ export class BackgroundStepService {
   private readonly logger = new Logger(BackgroundStepService.name);
 
   constructor(
-    @InjectRepository(JobCardBackgroundCompletion)
-    private readonly completionRepo: Repository<JobCardBackgroundCompletion>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardApproval)
-    private readonly approvalRepo: Repository<JobCardApproval>,
-    @InjectRepository(WorkflowNotification)
-    private readonly notificationRepo: Repository<WorkflowNotification>,
+    private readonly completionRepo: JobCardBackgroundCompletionRepository,
+    private readonly approvalRepo: JobCardApprovalRepository,
+    private readonly notificationRepo: WorkflowNotificationRepository,
     private readonly stepConfigService: WorkflowStepConfigService,
     private readonly notificationService: WorkflowNotificationService,
     @Inject(forwardRef(() => JobCardWorkflowService))
@@ -67,9 +58,7 @@ export class BackgroundStepService {
       throw new NotFoundException(`Background step "${stepKey}" not found`);
     }
 
-    const existing = await this.completionRepo.findOne({
-      where: { jobCardId, stepKey },
-    });
+    const existing = await this.completionRepo.findOneByJobCardAndStep(jobCardId, stepKey);
 
     if (existing) {
       throw new BadRequestException(
@@ -97,9 +86,10 @@ export class BackgroundStepService {
       const currentIdx = sameBranchSiblings.findIndex((s) => s.key === stepKey);
       if (currentIdx > 0) {
         const previousStep = sameBranchSiblings[currentIdx - 1];
-        const previousCompletion = await this.completionRepo.findOne({
-          where: { jobCardId, stepKey: previousStep.key },
-        });
+        const previousCompletion = await this.completionRepo.findOneByJobCardAndStep(
+          jobCardId,
+          previousStep.key,
+        );
         if (!previousCompletion) {
           throw new BadRequestException(
             `Cannot complete "${stepConfig.label}" — previous step "${previousStep.label}" must be completed first`,
@@ -126,7 +116,7 @@ export class BackgroundStepService {
       }
     }
 
-    const completion = this.completionRepo.create({
+    const saved = await this.completionRepo.create({
       companyId,
       jobCardId,
       stepKey,
@@ -136,8 +126,6 @@ export class BackgroundStepService {
       notes: notes ?? null,
       completionType: chosenOutcome ? chosenOutcome.key : "manual",
     });
-
-    const saved = await this.completionRepo.save(completion);
 
     await this.notificationService.notifyBackgroundStepCompleted(
       companyId,
@@ -206,7 +194,10 @@ export class BackgroundStepService {
         }
       }
 
-      const allCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
+      const allCompletions = await this.completionRepo.findForJobCardAndCompany(
+        jobCardId,
+        companyId,
+      );
       const completedKeys = new Set(allCompletions.map((c) => c.stepKey));
       const allSiblingsComplete = allSiblingsPost.every((s) => completedKeys.has(s.key));
 
@@ -233,10 +224,11 @@ export class BackgroundStepService {
     jobCardId: number,
     user: UserContext,
   ): Promise<void> {
-    const pmApproval = await this.approvalRepo.findOne({
-      where: { companyId, jobCardId, step: "manager_approval" },
-      order: { approvedAt: "DESC" },
-    });
+    const pmApproval = await this.approvalRepo.findLatestForStep(
+      companyId,
+      jobCardId,
+      "manager_approval",
+    );
 
     if (pmApproval?.outcomeKey !== "soh") {
       return;
@@ -246,9 +238,10 @@ export class BackgroundStepService {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
     const validKeys = requisitionChainKeys.filter((key) => bgSteps.some((s) => s.key === key));
 
-    const existingCompletions = await this.completionRepo.find({
-      where: { jobCardId, companyId },
-    });
+    const existingCompletions = await this.completionRepo.findForJobCardAndCompany(
+      jobCardId,
+      companyId,
+    );
     const completedKeys = new Set(existingCompletions.map((c) => c.stepKey));
 
     const toSkip = validKeys.filter((key) => !completedKeys.has(key));
@@ -257,8 +250,8 @@ export class BackgroundStepService {
       return;
     }
 
-    const skippedCompletions = toSkip.map((key) =>
-      this.completionRepo.create({
+    const skippedCompletions = this.completionRepo.buildMany(
+      toSkip.map((key) => ({
         companyId,
         jobCardId,
         stepKey: key,
@@ -267,10 +260,10 @@ export class BackgroundStepService {
         completedAt: now().toJSDate(),
         notes: "Auto-skipped: PM approved with SOH (Stock on Hand)",
         completionType: "skipped",
-      }),
+      })),
     );
 
-    await this.completionRepo.save(skippedCompletions);
+    await this.completionRepo.saveMany(skippedCompletions);
 
     this.logger.log(
       `Auto-skipped requisition chain [${toSkip.join(", ")}] for job card ${jobCardId} (PM outcome: SOH)`,
@@ -285,14 +278,17 @@ export class BackgroundStepService {
     notes?: string,
   ): Promise<void> {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
-    const existingCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
+    const existingCompletions = await this.completionRepo.findForJobCardAndCompany(
+      jobCardId,
+      companyId,
+    );
     const completedKeys = new Set(existingCompletions.map((c) => c.stepKey));
 
-    const newCompletions = stepKeys
-      .filter((key) => !completedKeys.has(key))
-      .filter((key) => bgSteps.some((s) => s.key === key))
-      .map((key) =>
-        this.completionRepo.create({
+    const newCompletions = this.completionRepo.buildMany(
+      stepKeys
+        .filter((key) => !completedKeys.has(key))
+        .filter((key) => bgSteps.some((s) => s.key === key))
+        .map((key) => ({
           companyId,
           jobCardId,
           stepKey: key,
@@ -300,17 +296,17 @@ export class BackgroundStepService {
           completedByName: user.name,
           completedAt: now().toJSDate(),
           notes: notes ?? null,
-        }),
-      );
+        })),
+    );
 
     if (newCompletions.length > 0) {
-      await this.completionRepo.save(newCompletions);
+      await this.completionRepo.saveMany(newCompletions);
       this.logger.log(
         `Auto-completed ${newCompletions.length} background step(s) [${stepKeys.join(", ")}] for job card ${jobCardId} by ${user.name}`,
       );
     }
 
-    const allCompletions = await this.completionRepo.find({ where: { jobCardId, companyId } });
+    const allCompletions = await this.completionRepo.findForJobCardAndCompany(jobCardId, companyId);
     const allCompletedKeys = new Set(allCompletions.map((c) => c.stepKey));
 
     const triggerGroups = bgSteps.reduce<Record<string, string[]>>((acc, s) => {
@@ -355,9 +351,7 @@ export class BackgroundStepService {
     }>
   > {
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
-    const completions = await this.completionRepo.find({
-      where: { jobCardId },
-    });
+    const completions = await this.completionRepo.findForJobCard(jobCardId);
 
     const completionsByKey = completions.reduce<Record<string, JobCardBackgroundCompletion>>(
       (acc, c) => ({ ...acc, [c.stepKey]: c }),
@@ -394,16 +388,11 @@ export class BackgroundStepService {
       triggeredAt: string;
     }>
   > {
-    const notifications = await this.notificationRepo.find({
-      where: {
-        userId,
-        companyId,
-        actionType: NotificationActionType.BACKGROUND_STEP_REQUIRED,
-        readAt: IsNull(),
-      },
-      relations: ["jobCard"],
-      order: { createdAt: "DESC" },
-    });
+    const notifications = await this.notificationRepo.findUnreadByActionTypeForUser(
+      userId,
+      companyId,
+      NotificationActionType.BACKGROUND_STEP_REQUIRED,
+    );
 
     const bgSteps = await this.stepConfigService.backgroundSteps(companyId);
     const stepsByKey = bgSteps.reduce<Record<string, string>>(
@@ -411,9 +400,7 @@ export class BackgroundStepService {
       {},
     );
 
-    const completions = await this.completionRepo.find({
-      where: { companyId },
-    });
+    const completions = await this.completionRepo.findForCompany(companyId);
     const completedSet = new Set(completions.map((c) => `${c.jobCardId}:${c.stepKey}`));
 
     return notifications

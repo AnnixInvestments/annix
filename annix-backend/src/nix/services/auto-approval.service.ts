@@ -1,8 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
+import { CustomerDocumentRepository } from "../../customer/customer-document.repository";
+import { CustomerOnboardingRepository } from "../../customer/customer-onboarding.repository";
+import { CustomerProfileRepository } from "../../customer/customer-profile.repository";
 import {
   CustomerDocument,
   CustomerDocumentType,
@@ -12,10 +13,7 @@ import {
   CustomerOnboarding,
   CustomerOnboardingStatus,
 } from "../../customer/entities/customer-onboarding.entity";
-import {
-  CustomerAccountStatus,
-  CustomerProfile,
-} from "../../customer/entities/customer-profile.entity";
+import { CustomerAccountStatus } from "../../customer/entities/customer-profile.entity";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import {
@@ -27,10 +25,10 @@ import {
   SupplierOnboarding,
   SupplierOnboardingStatus,
 } from "../../supplier/entities/supplier-onboarding.entity";
-import {
-  SupplierAccountStatus,
-  SupplierProfile,
-} from "../../supplier/entities/supplier-profile.entity";
+import { SupplierAccountStatus } from "../../supplier/entities/supplier-profile.entity";
+import { SupplierDocumentRepository } from "../../supplier/supplier-document.repository";
+import { SupplierOnboardingRepository } from "../../supplier/supplier-onboarding.repository";
+import { SupplierProfileRepository } from "../../supplier/supplier-profile.repository";
 
 const REQUIRED_CUSTOMER_DOCUMENT_TYPES = [
   CustomerDocumentType.REGISTRATION_CERT,
@@ -60,18 +58,12 @@ export class AutoApprovalService {
   private readonly logger = new Logger(AutoApprovalService.name);
 
   constructor(
-    @InjectRepository(CustomerDocument)
-    private readonly customerDocumentRepo: Repository<CustomerDocument>,
-    @InjectRepository(CustomerOnboarding)
-    private readonly customerOnboardingRepo: Repository<CustomerOnboarding>,
-    @InjectRepository(CustomerProfile)
-    private readonly customerProfileRepo: Repository<CustomerProfile>,
-    @InjectRepository(SupplierDocument)
-    private readonly supplierDocumentRepo: Repository<SupplierDocument>,
-    @InjectRepository(SupplierOnboarding)
-    private readonly supplierOnboardingRepo: Repository<SupplierOnboarding>,
-    @InjectRepository(SupplierProfile)
-    private readonly supplierProfileRepo: Repository<SupplierProfile>,
+    private readonly customerDocumentRepo: CustomerDocumentRepository,
+    private readonly customerOnboardingRepo: CustomerOnboardingRepository,
+    private readonly customerProfileRepo: CustomerProfileRepository,
+    private readonly supplierDocumentRepo: SupplierDocumentRepository,
+    private readonly supplierOnboardingRepo: SupplierOnboardingRepository,
+    private readonly supplierProfileRepo: SupplierProfileRepository,
     private readonly emailService: EmailService,
     private readonly auditService: AuditService,
   ) {}
@@ -88,10 +80,11 @@ export class AutoApprovalService {
   }
 
   private async checkAndAutoApproveCustomer(customerId: number): Promise<AutoApprovalResult> {
-    const onboarding = await this.customerOnboardingRepo.findOne({
-      where: { customerId },
-      relations: ["customer", "customer.company", "customer.user"],
-    });
+    const onboarding = await this.customerOnboardingRepo.findByCustomerId(customerId, [
+      "customer",
+      "customer.company",
+      "customer.user",
+    ]);
 
     if (!onboarding) {
       return {
@@ -121,9 +114,7 @@ export class AutoApprovalService {
       };
     }
 
-    const documents = await this.customerDocumentRepo.find({
-      where: { customerId },
-    });
+    const documents = await this.customerDocumentRepo.findManyWhere({ customerId });
 
     const validationResult = this.validateCustomerDocuments(documents);
 
@@ -159,10 +150,11 @@ export class AutoApprovalService {
   }
 
   private async checkAndAutoApproveSupplier(supplierId: number): Promise<AutoApprovalResult> {
-    const onboarding = await this.supplierOnboardingRepo.findOne({
-      where: { supplierId },
-      relations: ["supplier", "supplier.company", "supplier.user"],
-    });
+    const onboarding = await this.supplierOnboardingRepo.findBySupplierIdWithRelations(supplierId, [
+      "supplier",
+      "supplier.company",
+      "supplier.user",
+    ]);
 
     if (!onboarding) {
       return {
@@ -192,9 +184,7 @@ export class AutoApprovalService {
       };
     }
 
-    const documents = await this.supplierDocumentRepo.find({
-      where: { supplierId },
-    });
+    const documents = await this.supplierDocumentRepo.findManyWhere({ supplierId });
 
     const validationResult = this.validateSupplierDocuments(documents);
 
@@ -341,13 +331,7 @@ export class AutoApprovalService {
     profile.accountStatus = CustomerAccountStatus.ACTIVE;
     await this.customerProfileRepo.save(profile);
 
-    await this.customerDocumentRepo.update(
-      {
-        customerId: onboarding.customerId,
-        validationStatus: CustomerDocumentValidationStatus.VALID,
-      },
-      { reviewedAt: now().toJSDate() },
-    );
+    await this.customerDocumentRepo.markValidAsReviewed(onboarding.customerId, now().toJSDate());
 
     await this.emailService.sendCustomerOnboardingApprovalEmail(
       profile.user.email,
@@ -377,13 +361,7 @@ export class AutoApprovalService {
     profile.accountStatus = SupplierAccountStatus.ACTIVE;
     await this.supplierProfileRepo.save(profile);
 
-    await this.supplierDocumentRepo.update(
-      {
-        supplierId: onboarding.supplierId,
-        validationStatus: SupplierDocumentValidationStatus.VALID,
-      },
-      { reviewedAt: now().toJSDate() },
-    );
+    await this.supplierDocumentRepo.markValidAsReviewed(onboarding.supplierId, now().toJSDate());
 
     await this.emailService.sendSupplierApprovalEmail(
       profile.user.email,

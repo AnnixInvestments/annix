@@ -1,34 +1,36 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { ConsumableProduct } from "../entities/consumable-product.entity";
-import { IssuableProduct } from "../entities/issuable-product.entity";
-import { PaintProduct } from "../entities/paint-product.entity";
-import { RubberOffcutStock } from "../entities/rubber-offcut-stock.entity";
-import { RubberRoll } from "../entities/rubber-roll.entity";
-import { SolutionProduct } from "../entities/solution-product.entity";
+import { ConsumableProductRepository } from "../repositories/consumable-product.repository";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { PaintProductRepository } from "../repositories/paint-product.repository";
+import { RubberRollRepository } from "../repositories/rubber-roll.repository";
+import { SolutionProductRepository } from "../repositories/solution-product.repository";
 import { IssuableProductService } from "./issuable-product.service";
 
 describe("IssuableProductService", () => {
   let service: IssuableProductService;
 
   const mockProductRepo = {
-    findAndCount: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findPaginatedForCompany: jest.fn(),
+    findByIdForCompany: jest.fn(),
+    findByIdForCompanyWithDetail: jest.fn(),
+    findBySkuForCompany: jest.fn(),
+    findByLegacyStockItemId: jest.fn(),
+    findAllOfTypeWithPaint: jest.fn(),
+    countByType: jest.fn().mockResolvedValue({
+      consumable: 0,
+      paint: 0,
+      rubber_roll: 0,
+      rubber_offcut: 0,
+      solution: 0,
+    }),
+    build: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    createQueryBuilder: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      groupBy: jest.fn().mockReturnThis(),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    })),
   };
 
   const childRepoMock = () => ({
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findByProductId: jest.fn(),
+    build: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
   });
 
@@ -36,17 +38,25 @@ describe("IssuableProductService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         IssuableProductService,
-        { provide: getRepositoryToken(IssuableProduct), useValue: mockProductRepo },
-        { provide: getRepositoryToken(ConsumableProduct), useValue: childRepoMock() },
-        { provide: getRepositoryToken(PaintProduct), useValue: childRepoMock() },
-        { provide: getRepositoryToken(RubberRoll), useValue: childRepoMock() },
-        { provide: getRepositoryToken(RubberOffcutStock), useValue: childRepoMock() },
-        { provide: getRepositoryToken(SolutionProduct), useValue: childRepoMock() },
+        { provide: IssuableProductRepository, useValue: mockProductRepo },
+        { provide: ConsumableProductRepository, useValue: childRepoMock() },
+        { provide: PaintProductRepository, useValue: childRepoMock() },
+        { provide: RubberRollRepository, useValue: childRepoMock() },
+        { provide: SolutionProductRepository, useValue: childRepoMock() },
       ],
     }).compile();
 
     service = module.get<IssuableProductService>(IssuableProductService);
     jest.clearAllMocks();
+    mockProductRepo.build.mockImplementation((data) => ({ ...data }));
+    mockProductRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockProductRepo.countByType.mockResolvedValue({
+      consumable: 0,
+      paint: 0,
+      rubber_roll: 0,
+      rubber_offcut: 0,
+      solution: 0,
+    });
   });
 
   it("should be defined", () => {
@@ -55,7 +65,7 @@ describe("IssuableProductService", () => {
 
   describe("create", () => {
     it("throws ConflictException when SKU already exists", async () => {
-      mockProductRepo.findOne.mockResolvedValueOnce({ id: 1, sku: "DUP" });
+      mockProductRepo.findBySkuForCompany.mockResolvedValueOnce({ id: 1, sku: "DUP" });
       await expect(
         service.create(1, {
           productType: "consumable",
@@ -68,7 +78,7 @@ describe("IssuableProductService", () => {
 
   describe("byId", () => {
     it("throws NotFoundException for missing product", async () => {
-      mockProductRepo.findOne.mockResolvedValueOnce(null);
+      mockProductRepo.findByIdForCompanyWithDetail.mockResolvedValueOnce(null);
       await expect(service.byId(1, 999)).rejects.toThrow(NotFoundException);
     });
   });

@@ -1,10 +1,11 @@
 import { Logger } from "@nestjs/common";
-import type { DataSource } from "typeorm";
-import { PaperHolding } from "../entities/paper-holding.entity";
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import { PaperPortfolio } from "../entities/paper-portfolio.entity";
-import { PaperTrade } from "../entities/paper-trade.entity";
 import type { SellDecision } from "./allocation-rules-engine.service";
-import { applyTradeDecisions } from "./paper-trade-execution.service";
+import {
+  applyTradeDecisions,
+  type TradeDecisionRepositories,
+} from "./paper-trade-execution.service";
 
 describe("applyTradeDecisions — applySell", () => {
   const portfolio = {
@@ -38,65 +39,72 @@ describe("applyTradeDecisions — applySell", () => {
 
   function mockSetup(holdingQuantity: string) {
     const portfolioRepo = {
-      findOneOrFail: jest.fn().mockResolvedValue({ ...portfolio }),
-      update: jest.fn().mockResolvedValue(undefined),
+      findByIdOrFail: jest.fn().mockResolvedValue({ ...portfolio }),
+      updateById: jest.fn().mockResolvedValue(undefined),
+      withTransaction: jest.fn(),
     };
+    portfolioRepo.withTransaction.mockReturnValue(portfolioRepo);
     const holdingRepo = {
-      findOne: jest.fn().mockResolvedValue({
+      findById: jest.fn().mockResolvedValue({
         id: "h1",
         quantity: holdingQuantity,
         averageBuyPrice: "90.000000",
       }),
-      update: jest.fn().mockResolvedValue(undefined),
-      delete: jest.fn().mockResolvedValue(undefined),
+      updateById: jest.fn().mockResolvedValue(undefined),
+      deleteById: jest.fn().mockResolvedValue(undefined),
+      findByPortfolioAndAsset: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockResolvedValue(undefined),
+      withTransaction: jest.fn(),
     };
+    holdingRepo.withTransaction.mockReturnValue(holdingRepo);
     const tradeRepo = {
-      create: jest.fn((value: unknown) => value),
-      save: jest.fn().mockResolvedValue(undefined),
+      create: jest.fn().mockResolvedValue(undefined),
+      withTransaction: jest.fn(),
     };
-    const manager = {
-      getRepository: jest.fn((entity: unknown) => {
-        if (entity === PaperPortfolio) return portfolioRepo;
-        if (entity === PaperHolding) return holdingRepo;
-        if (entity === PaperTrade) return tradeRepo;
-        throw new Error("unexpected entity");
-      }),
+    tradeRepo.withTransaction.mockReturnValue(tradeRepo);
+    const transactionContext = {} as TransactionContext;
+    const txRunner = {
+      run: jest.fn(async (work: (ctx: TransactionContext) => Promise<unknown>) =>
+        work(transactionContext),
+      ),
     };
-    const dataSource = {
-      transaction: jest.fn(async (cb: (m: typeof manager) => Promise<void>) => cb(manager)),
-    } as unknown as DataSource;
-    return { dataSource, portfolioRepo, holdingRepo, tradeRepo };
+    const repositories = {
+      txRunner,
+      portfolioRepo,
+      holdingRepo,
+      tradeRepo,
+    } as unknown as TradeDecisionRepositories;
+    return { repositories, portfolioRepo, holdingRepo, tradeRepo };
   }
 
   it("partial sell decrements the holding instead of deleting it", async () => {
-    const { dataSource, portfolioRepo, holdingRepo } = mockSetup("100");
+    const { repositories, portfolioRepo, holdingRepo } = mockSetup("100");
 
     const result = await applyTradeDecisions(
-      dataSource,
+      repositories,
       portfolio,
       [buildSell(2)],
       new Logger("test"),
     );
 
-    expect(holdingRepo.delete).not.toHaveBeenCalled();
-    expect(holdingRepo.update).toHaveBeenCalledWith(
-      { id: "h1" },
+    expect(holdingRepo.deleteById).not.toHaveBeenCalled();
+    expect(holdingRepo.updateById).toHaveBeenCalledWith(
+      "h1",
       expect.objectContaining({ quantity: "98" }),
     );
     expect(result.sellsExecuted).toBe(1);
     expect(result.cashRaised).toBe(190);
-    expect(portfolioRepo.update).toHaveBeenCalledWith(
-      { id: "p1" },
-      { currentCashBalance: "1190.00" },
-    );
+    expect(portfolioRepo.updateById).toHaveBeenCalledWith("p1", {
+      currentCashBalance: "1190.00",
+    });
   });
 
   it("full sell deletes the holding row", async () => {
-    const { dataSource, holdingRepo } = mockSetup("2");
+    const { repositories, holdingRepo } = mockSetup("2");
 
-    await applyTradeDecisions(dataSource, portfolio, [buildSell(2)], new Logger("test"));
+    await applyTradeDecisions(repositories, portfolio, [buildSell(2)], new Logger("test"));
 
-    expect(holdingRepo.delete).toHaveBeenCalledWith({ id: "h1" });
-    expect(holdingRepo.update).not.toHaveBeenCalled();
+    expect(holdingRepo.deleteById).toHaveBeenCalledWith("h1");
+    expect(holdingRepo.updateById).not.toHaveBeenCalled();
   });
 });

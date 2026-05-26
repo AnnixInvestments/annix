@@ -1,14 +1,13 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, IsNull, Repository } from "typeorm";
 import { nowISO } from "../../../lib/datetime";
 import type { IStorageService } from "../../../storage/storage.interface";
 import { STORAGE_SERVICE, StorageArea } from "../../../storage/storage.interface";
-import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
-import { JobCard } from "../../entities/job-card.entity";
+import { JobCardCoatingAnalysisRepository } from "../../repositories/coating-analysis.repository";
 import { PositectorUpload } from "../entities/positector-upload.entity";
 import { DftCoatType } from "../entities/qc-dft-reading.entity";
+import { PositectorUploadRepository } from "../repositories/positector-upload.repository";
+import { QcBatchAssignmentRepository } from "../repositories/qc-batch-assignment.repository";
 import type { PositectorBatch } from "./positector.service";
 import type { ImportResult } from "./positector-import.service";
 import { PositectorImportService } from "./positector-import.service";
@@ -24,12 +23,9 @@ export class PositectorUploadService implements OnModuleInit {
   private readonly logger = new Logger(PositectorUploadService.name);
 
   constructor(
-    @InjectRepository(PositectorUpload)
-    private readonly uploadRepo: Repository<PositectorUpload>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
+    private readonly uploadRepo: PositectorUploadRepository,
+    private readonly batchAssignmentRepo: QcBatchAssignmentRepository,
+    private readonly coatingRepo: JobCardCoatingAnalysisRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly importService: PositectorImportService,
@@ -49,10 +45,7 @@ export class PositectorUploadService implements OnModuleInit {
   }
 
   private async backfillMissingMeasurementDates(): Promise<void> {
-    const pending = await this.uploadRepo
-      .createQueryBuilder("u")
-      .where("u.measurementDate IS NULL")
-      .getMany();
+    const pending = await this.uploadRepo.findMissingMeasurementDate();
 
     if (pending.length === 0) return;
 
@@ -64,7 +57,7 @@ export class PositectorUploadService implements OnModuleInit {
       try {
         const fromHeader = this.extractMeasurementDate(upload.headerData);
         if (fromHeader) {
-          await this.uploadRepo.update(upload.id, { measurementDate: fromHeader });
+          await this.uploadRepo.updateById(upload.id, { measurementDate: fromHeader });
           updated++;
           continue;
         }
@@ -75,7 +68,7 @@ export class PositectorUploadService implements OnModuleInit {
         const text: string = pdfData.text;
         const match = text.match(datePattern);
         if (match) {
-          await this.uploadRepo.update(upload.id, { measurementDate: match[1] });
+          await this.uploadRepo.updateById(upload.id, { measurementDate: match[1] });
           updated++;
         }
       } catch (err) {
@@ -88,10 +81,7 @@ export class PositectorUploadService implements OnModuleInit {
   }
 
   private async fixAllBundleBatchNames(): Promise<void> {
-    const bundleUploads = await this.uploadRepo
-      .createQueryBuilder("u")
-      .where("u.batchName LIKE :prefix", { prefix: "bundle_%" })
-      .getMany();
+    const bundleUploads = await this.uploadRepo.findBundleNamed();
 
     if (bundleUploads.length === 0) return;
 
@@ -108,7 +98,7 @@ export class PositectorUploadService implements OnModuleInit {
         const text: string = pdfData.text;
         const match = text.match(batchPattern);
         if (match) {
-          await this.uploadRepo.update(upload.id, { batchName: match[1] });
+          await this.uploadRepo.updateById(upload.id, { batchName: match[1] });
           updated++;
         }
       } catch {
@@ -120,10 +110,7 @@ export class PositectorUploadService implements OnModuleInit {
   }
 
   async uploadsForJobCard(companyId: number, jobCardId: number): Promise<PositectorUpload[]> {
-    return this.uploadRepo.find({
-      where: { companyId, linkedJobCardId: jobCardId },
-      order: { createdAt: "DESC" },
-    });
+    return this.uploadRepo.findForJobCard(companyId, jobCardId);
   }
 
   async storeUpload(
@@ -155,9 +142,7 @@ export class PositectorUploadService implements OnModuleInit {
       batch.header.raw,
     );
 
-    const existing = await this.uploadRepo.findOne({
-      where: { companyId, fingerprint },
-    });
+    const existing = await this.uploadRepo.findByFingerprint(companyId, fingerprint);
 
     if (existing) {
       this.logger.log(
@@ -170,7 +155,7 @@ export class PositectorUploadService implements OnModuleInit {
       return this.uploadRepo.save(existing);
     }
 
-    const upload = this.uploadRepo.create({
+    return this.uploadRepo.create({
       companyId,
       originalFilename: file.originalname,
       s3FilePath: storageResult.path,
@@ -190,27 +175,18 @@ export class PositectorUploadService implements OnModuleInit {
       uploadedById: user.id ?? null,
       fingerprint,
     });
-
-    return this.uploadRepo.save(upload);
   }
 
   async allUploads(companyId: number): Promise<PositectorUpload[]> {
-    return this.uploadRepo.find({
-      where: { companyId },
-      order: { createdAt: "DESC" },
-    });
+    return this.uploadRepo.findAllForCompany(companyId);
   }
 
   async uploadById(companyId: number, id: number): Promise<PositectorUpload | null> {
-    return this.uploadRepo.findOne({ where: { companyId, id } });
+    return this.uploadRepo.findByIdForCompany(companyId, id);
   }
 
   async fixBundleBatchNames(companyId: number): Promise<{ updated: number; total: number }> {
-    const bundleUploads = await this.uploadRepo
-      .createQueryBuilder("u")
-      .where("u.companyId = :companyId", { companyId })
-      .andWhere("u.batchName LIKE :prefix", { prefix: "bundle_%" })
-      .getMany();
+    const bundleUploads = await this.uploadRepo.findBundleNamedForCompany(companyId);
 
     const BATCH_PATTERN = /\b(B\d+)\b/;
     let updated = 0;
@@ -225,7 +201,7 @@ export class PositectorUploadService implements OnModuleInit {
         const match = text.match(BATCH_PATTERN);
         if (match) {
           const batchName = match[1];
-          await this.uploadRepo.update(upload.id, { batchName });
+          await this.uploadRepo.updateById(upload.id, { batchName });
           this.logger.log(`Fixed upload ${upload.id}: "${upload.batchName}" → "${batchName}"`);
           updated++;
         }
@@ -239,17 +215,7 @@ export class PositectorUploadService implements OnModuleInit {
   }
 
   async unlinkedUploads(companyId: number, entityType?: string): Promise<PositectorUpload[]> {
-    const qb = this.uploadRepo
-      .createQueryBuilder("u")
-      .where("u.companyId = :companyId", { companyId })
-      .andWhere("u.linkedJobCardId IS NULL")
-      .orderBy("u.createdAt", "DESC");
-
-    if (entityType) {
-      qb.andWhere("u.entityType = :entityType", { entityType });
-    }
-
-    return qb.getMany();
+    return this.uploadRepo.findUnlinkedForCompany(companyId, entityType);
   }
 
   async presignedDownloadUrl(upload: PositectorUpload): Promise<string> {
@@ -272,7 +238,7 @@ export class PositectorUploadService implements OnModuleInit {
     },
     user: UserContext,
   ): Promise<ImportResult & { uploadId: number }> {
-    const upload = await this.uploadRepo.findOne({ where: { companyId, id: uploadId } });
+    const upload = await this.uploadRepo.findByIdForCompany(companyId, uploadId);
     if (!upload) {
       throw new Error(`PosiTector upload ${uploadId} not found`);
     }
@@ -340,20 +306,12 @@ export class PositectorUploadService implements OnModuleInit {
   ): Promise<void> {
     if (!upload.linkedJobCardId || !upload.batchName) return;
 
-    const { QcBatchAssignment } = await import("../entities/qc-batch-assignment.entity");
-    const assignmentRepo = this.uploadRepo.manager.getRepository(QcBatchAssignment);
-
-    await assignmentRepo
-      .createQueryBuilder()
-      .update(QcBatchAssignment)
-      .set({ positectorUploadId: upload.id })
-      .where("companyId = :companyId", { companyId })
-      .andWhere("jobCardId = :jobCardId", { jobCardId: upload.linkedJobCardId })
-      .andWhere("LOWER(TRIM(batchNumber)) = LOWER(TRIM(:batchNumber))", {
-        batchNumber: upload.batchName.trim(),
-      })
-      .andWhere("positectorUploadId IS NULL")
-      .execute();
+    await this.batchAssignmentRepo.linkPositectorUpload(
+      companyId,
+      upload.linkedJobCardId,
+      upload.batchName,
+      upload.id,
+    );
   }
 
   async retroactiveMatch(
@@ -363,14 +321,7 @@ export class PositectorUploadService implements OnModuleInit {
     fieldKey: string,
     user: UserContext,
   ): Promise<Array<ImportResult & { uploadId: number }>> {
-    const unlinked = await this.uploadRepo
-      .createQueryBuilder("u")
-      .where("u.companyId = :companyId", { companyId })
-      .andWhere("u.linkedJobCardId IS NULL")
-      .andWhere("LOWER(TRIM(u.batchName)) = LOWER(TRIM(:batchNumber))", {
-        batchNumber: batchNumber.trim(),
-      })
-      .getMany();
+    const unlinked = await this.uploadRepo.findUnlinkedByBatchName(companyId, batchNumber);
 
     if (unlinked.length === 0) return [];
 
@@ -417,14 +368,11 @@ export class PositectorUploadService implements OnModuleInit {
     latestDate: string,
     user: UserContext,
   ): Promise<number> {
-    const candidates = await this.uploadRepo.find({
-      where: {
-        companyId,
-        entityType: "environmental",
-        linkedJobCardId: IsNull(),
-        measurementDate: Between(earliestDate, latestDate),
-      },
-    });
+    const candidates = await this.uploadRepo.findUnlinkedEnvironmentalInRange(
+      companyId,
+      earliestDate,
+      latestDate,
+    );
 
     if (candidates.length === 0) return 0;
 
@@ -527,9 +475,7 @@ export class PositectorUploadService implements OnModuleInit {
     const coatIndex = parseInt(coatIndexStr, 10);
     if (Number.isNaN(coatIndex)) return null;
 
-    const analysis = await this.coatingRepo.findOne({
-      where: { companyId, jobCardId },
-    });
+    const analysis = await this.coatingRepo.findOneForJobCard(companyId, jobCardId);
     if (!analysis) return null;
 
     const coats = (analysis as any).coats || [];

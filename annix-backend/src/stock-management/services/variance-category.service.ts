@@ -1,10 +1,9 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import {
   StockTakeVarianceCategory,
   type VarianceCategorySeverity,
 } from "../entities/stock-take-variance-category.entity";
+import { StockTakeVarianceCategoryRepository } from "../repositories/stock-take-variance-category.repository";
 
 export interface CreateVarianceCategoryDto {
   slug: string;
@@ -128,21 +127,14 @@ const SEED_CATEGORIES: ReadonlyArray<SeedCategory> = [
 export class VarianceCategoryService {
   private readonly logger = new Logger(VarianceCategoryService.name);
 
-  constructor(
-    @InjectRepository(StockTakeVarianceCategory)
-    private readonly categoryRepo: Repository<StockTakeVarianceCategory>,
-  ) {}
+  constructor(private readonly categoryRepo: StockTakeVarianceCategoryRepository) {}
 
   async list(companyId: number, includeInactive = false): Promise<StockTakeVarianceCategory[]> {
-    const where: { companyId: number; active?: boolean } = { companyId };
-    if (!includeInactive) {
-      where.active = true;
-    }
-    return this.categoryRepo.find({ where, order: { sortOrder: "ASC", name: "ASC" } });
+    return this.categoryRepo.findForCompany(companyId, includeInactive);
   }
 
   async byId(companyId: number, id: number): Promise<StockTakeVarianceCategory> {
-    const category = await this.categoryRepo.findOne({ where: { id, companyId } });
+    const category = await this.categoryRepo.findOneForCompany(companyId, id);
     if (!category) {
       throw new NotFoundException(`Variance category ${id} not found`);
     }
@@ -153,13 +145,11 @@ export class VarianceCategoryService {
     companyId: number,
     dto: CreateVarianceCategoryDto,
   ): Promise<StockTakeVarianceCategory> {
-    const existing = await this.categoryRepo.findOne({
-      where: { companyId, slug: dto.slug },
-    });
+    const existing = await this.categoryRepo.findOneByCompanySlug(companyId, dto.slug);
     if (existing) {
       throw new ConflictException(`Variance category with slug "${dto.slug}" already exists`);
     }
-    const created = this.categoryRepo.create({
+    const created = this.categoryRepo.build({
       companyId,
       slug: dto.slug,
       name: dto.name,
@@ -194,14 +184,14 @@ export class VarianceCategoryService {
   }
 
   async ensureSeedDataForCompany(companyId: number): Promise<number> {
-    const existing = await this.categoryRepo.find({ where: { companyId } });
+    const existing = await this.categoryRepo.findAllForCompany(companyId);
     const existingSlugs = new Set(existing.map((c) => c.slug));
     const toCreate = SEED_CATEGORIES.filter((seed) => !existingSlugs.has(seed.slug));
     if (toCreate.length === 0) {
       return 0;
     }
     const records = toCreate.map((seed) =>
-      this.categoryRepo.create({
+      this.categoryRepo.build({
         companyId,
         slug: seed.slug,
         name: seed.name,
@@ -214,7 +204,7 @@ export class VarianceCategoryService {
         active: true,
       }),
     );
-    await this.categoryRepo.save(records);
+    await this.categoryRepo.saveMany(records);
     this.logger.log(
       `Seeded ${records.length} default variance categories for company ${companyId}`,
     );

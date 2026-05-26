@@ -30,4 +30,12 @@ export class ConsumableIssuanceRow {
 
   @Column({ name: "batch_number", type: "varchar", length: 100, nullable: true })
   batchNumber: string | null;
+
+  get id(): number {
+    return this.rowId;
+  }
+
+  set id(value: number) {
+    this.rowId = value;
+  }
 }

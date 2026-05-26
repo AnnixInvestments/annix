@@ -1,24 +1,23 @@
 import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { DateTime, formatDateZA, now } from "../../lib/datetime";
 import { createPdfDocument } from "../../lib/pdf-builder";
 import { renderHeader } from "../../lib/pdf-templates/render-header";
 import { renderTable } from "../../lib/pdf-templates/render-table";
 import {
-  AnnixOrbitCandidateEeAttributes,
   EeDisabilityStatus,
   EeGender,
   EePopulationGroup,
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import {
   AnnixOrbitEeSectoralTarget,
   EeTargetMetric,
   type EeTargetOccupationalLevel,
 } from "../entities/annix-orbit-ee-sectoral-target.entity";
-import { Candidate, CandidateStatus } from "../entities/candidate.entity";
-import { JobPosting, OccupationalLevel } from "../entities/job-posting.entity";
+import { CandidateStatus } from "../entities/candidate.entity";
+import { OccupationalLevel } from "../entities/job-posting.entity";
+import { AnnixOrbitCandidateEeAttributesRepository } from "../repositories/annix-orbit-candidate-ee-attributes.repository";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { AnnixOrbitEeSectoralTargetRepository } from "../repositories/annix-orbit-ee-sectoral-target.repository";
 import { CvAuditService } from "./cv-audit.service";
 
 const DISABILITY_WORKFORCE_TARGET_PERCENT = 3.0;
@@ -111,23 +110,14 @@ export interface EeReport {
 @Injectable()
 export class EeReportService {
   constructor(
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly companyRepo: Repository<AnnixOrbitCompany>,
-    @InjectRepository(AnnixOrbitCandidateEeAttributes)
-    private readonly eeAttributesRepo: Repository<AnnixOrbitCandidateEeAttributes>,
-    @InjectRepository(AnnixOrbitEeSectoralTarget)
-    private readonly sectoralTargetRepo: Repository<AnnixOrbitEeSectoralTarget>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
+    private readonly eeAttributesRepo: AnnixOrbitCandidateEeAttributesRepository,
+    private readonly sectoralTargetRepo: AnnixOrbitEeSectoralTargetRepository,
     private readonly cvAuditService: CvAuditService,
   ) {}
 
   async listSectoralTargets(): Promise<AnnixOrbitEeSectoralTarget[]> {
-    return this.sectoralTargetRepo.find({
-      order: { sectorCode: "ASC", occupationalLevel: "ASC", targetMetric: "ASC" },
-    });
+    return this.sectoralTargetRepo.listOrdered();
   }
 
   async upsertSectoralTarget(input: {
@@ -140,7 +130,7 @@ export class EeReportService {
     gazetteReference: string | null;
   }): Promise<AnnixOrbitEeSectoralTarget> {
     if (input.id) {
-      const existing = await this.sectoralTargetRepo.findOne({ where: { id: input.id } });
+      const existing = await this.sectoralTargetRepo.findById(input.id);
       if (!existing) throw new NotFoundException("Sectoral target not found");
       existing.sectorCode = input.sectorCode;
       existing.occupationalLevel = input.occupationalLevel;
@@ -151,7 +141,7 @@ export class EeReportService {
       return this.sectoralTargetRepo.save(existing);
     }
 
-    const created = this.sectoralTargetRepo.create({
+    return this.sectoralTargetRepo.create({
       sectorCode: input.sectorCode,
       occupationalLevel: input.occupationalLevel,
       targetYear: input.targetYear,
@@ -159,12 +149,11 @@ export class EeReportService {
       targetPercent: input.targetPercent.toFixed(2),
       gazetteReference: input.gazetteReference,
     });
-    return this.sectoralTargetRepo.save(created) as Promise<AnnixOrbitEeSectoralTarget>;
   }
 
   async deleteSectoralTarget(id: number): Promise<{ deleted: boolean }> {
-    const result = await this.sectoralTargetRepo.delete(id);
-    return { deleted: (result.affected ?? 0) > 0 };
+    const deleted = await this.sectoralTargetRepo.deleteById(id);
+    return { deleted: deleted > 0 };
   }
 
   async buildReport(
@@ -173,7 +162,7 @@ export class EeReportService {
     dateTo: Date,
     actorId: number | null,
   ): Promise<EeReport> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) throw new NotFoundException("Company not found");
     if (!company.isDesignatedEmployer) {
       throw new ForbiddenException(
@@ -235,27 +224,15 @@ export class EeReportService {
     dateFrom: Date,
     dateTo: Date,
   ): Promise<RawRow[]> {
-    return this.eeAttributesRepo
-      .createQueryBuilder("ee")
-      .innerJoin("cv_assistant_candidates", "candidate", "candidate.id = ee.candidate_id")
-      .innerJoin(
-        "cv_assistant_job_postings",
-        "job_posting",
-        "job_posting.id = candidate.job_posting_id",
-      )
-      .where("job_posting.company_id = :companyId", { companyId })
-      .andWhere("ee.deleted_at IS NULL")
-      .andWhere("ee.consent_granted_at >= :dateFrom", { dateFrom })
-      .andWhere("ee.consent_granted_at < :dateTo", { dateTo })
-      .select([
-        "candidate.id AS candidate_id",
-        "candidate.status AS candidate_status",
-        "job_posting.occupational_level AS occupational_level",
-        "ee.population_group AS population_group",
-        "ee.gender AS gender",
-        "ee.disability_status AS disability_status",
-      ])
-      .getRawMany<RawRow>();
+    const rows = await this.eeAttributesRepo.reportRows(companyId, dateFrom, dateTo);
+    return rows.map((row) => ({
+      candidate_id: row.candidate_id,
+      candidate_status: row.candidate_status as CandidateStatus,
+      occupational_level: row.occupational_level as OccupationalLevel | null,
+      population_group: row.population_group as EePopulationGroup,
+      gender: row.gender as EeGender,
+      disability_status: row.disability_status as EeDisabilityStatus,
+    }));
   }
 
   private groupByOccupationalLevel(rows: RawRow[]): OccupationalLevelBreakdown[] {
@@ -277,7 +254,7 @@ export class EeReportService {
     byLevel: OccupationalLevelBreakdown[],
     totalApplicants: number,
   ): Promise<SectorTargetComparison[]> {
-    const targets = await this.sectoralTargetRepo.find({ where: { sectorCode } });
+    const targets = await this.sectoralTargetRepo.findBySectorCode(sectorCode);
     return targets.map((target) => {
       const actualPercent = computeActualPercent(target, byLevel, totalApplicants);
       const targetPercent = parseFloat(target.targetPercent);
@@ -528,7 +505,7 @@ export class EeReportService {
       .fontSize(8)
       .fillColor("#6b7280")
       .text(
-        "This report is source data for EEA2 / EEA4 statutory submissions; the official forms remain the customer's responsibility. Generated by Annix Annix Orbit.",
+        "This report is source data for EEA2 / EEA4 statutory submissions; the official forms remain the customer's responsibility. Generated by Annix CV Assistant.",
         36,
         cursorY,
         { width: 525 },

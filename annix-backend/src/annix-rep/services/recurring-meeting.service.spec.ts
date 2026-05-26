@@ -1,19 +1,26 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Meeting, MeetingType } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
 import { RecurringMeetingService } from "./recurring-meeting.service";
 
 describe("RecurringMeetingService", () => {
   let service: RecurringMeetingService;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
 
   beforeEach(async () => {
     mockMeetingRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn(),
-      create: jest.fn().mockImplementation((data) => ({ id: 1, ...data })),
+      findRecurringParents: jest.fn().mockResolvedValue([]),
+      findRecurringChildren: jest.fn().mockResolvedValue([]),
+      findScheduledChildren: jest.fn().mockResolvedValue([]),
+      findChildrenOrdered: jest.fn().mockResolvedValue([]),
+      findRecurringSeriesParent: jest.fn(),
+      findOneForSalesRep: jest.fn(),
+      findById: jest.fn(),
+      deleteFutureChildren: jest.fn(),
+      deleteAllChildren: jest.fn(),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
       save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+      saveMany: jest.fn(),
       remove: jest.fn(),
     };
 
@@ -21,7 +28,7 @@ describe("RecurringMeetingService", () => {
       providers: [
         RecurringMeetingService,
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
         },
       ],
@@ -174,7 +181,7 @@ describe("RecurringMeetingService", () => {
         },
       };
 
-      (mockMeetingRepo.create as jest.Mock).mockReturnValue({
+      (mockMeetingRepo.create as jest.Mock).mockResolvedValue({
         id: 1,
         ...dto,
         salesRepId: 100,
@@ -185,13 +192,12 @@ describe("RecurringMeetingService", () => {
 
       expect(result).toBeDefined();
       expect(mockMeetingRepo.create).toHaveBeenCalled();
-      expect(mockMeetingRepo.save).toHaveBeenCalled();
     });
   });
 
   describe("deleteFromSeries", () => {
     it("should throw when meeting is not found", async () => {
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findOneForSalesRep as jest.Mock).mockResolvedValue(null);
 
       await expect(service.deleteFromSeries(100, 999, "this")).rejects.toThrow();
     });

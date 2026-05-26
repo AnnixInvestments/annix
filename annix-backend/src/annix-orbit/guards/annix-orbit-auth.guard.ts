@@ -1,10 +1,8 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
-import { User } from "../../user/entities/user.entity";
+import { UserAppAccessRepository } from "../../rbac/rbac.repository";
+import { UserRepository } from "../../user/user.repository";
 import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 
@@ -13,10 +11,8 @@ export class AnnixOrbitAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(UserAppAccess)
-    private readonly userAppAccessRepo: Repository<UserAppAccess>,
+    private readonly userRepo: UserRepository,
+    private readonly userAppAccessRepo: UserAppAccessRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -28,9 +24,10 @@ export class AnnixOrbitAuthGuard implements CanActivate {
     }
 
     const token = authHeader.substring(7);
-    const secret =
-      this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
-      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT);
+    const secret = this.configService.get<string>(
+      "ANNIX_ORBIT_JWT_SECRET",
+      ANNIX_ORBIT_JWT_SECRET_DEFAULT,
+    );
 
     try {
       const payload = this.jwtService.verify(token, { secret });
@@ -39,7 +36,7 @@ export class AnnixOrbitAuthGuard implements CanActivate {
         throw new UnauthorizedException("Invalid token type");
       }
 
-      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+      const user = await this.userRepo.findById(payload.sub);
       if (!user) {
         throw new UnauthorizedException("User not found");
       }
@@ -66,10 +63,7 @@ export class AnnixOrbitAuthGuard implements CanActivate {
   }
 
   private async resolveRole(userId: number, fallbackRole: string): Promise<string> {
-    const access = await this.userAppAccessRepo.findOne({
-      where: { userId, app: { code: "annix-orbit" } },
-      relations: ["role"],
-    });
+    const access = await this.userAppAccessRepo.findByUserAndAppCodeWithRole(userId, "annix-orbit");
 
     if (access?.role) {
       const roleMap: Record<string, string> = {

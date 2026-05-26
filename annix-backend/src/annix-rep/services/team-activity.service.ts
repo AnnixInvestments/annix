@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { TeamActivity, TeamActivityType } from "../entities/team-activity.entity";
+import { TeamActivityRepository } from "../team-activity.repository";
 import { TeamService } from "./team.service";
 
 export interface LogActivityParams {
@@ -27,13 +26,12 @@ export class TeamActivityService {
   private readonly logger = new Logger(TeamActivityService.name);
 
   constructor(
-    @InjectRepository(TeamActivity)
-    private readonly activityRepo: Repository<TeamActivity>,
+    private readonly activityRepo: TeamActivityRepository,
     private readonly teamService: TeamService,
   ) {}
 
   async log(params: LogActivityParams): Promise<TeamActivity> {
-    const activity = this.activityRepo.create({
+    return this.activityRepo.create({
       organizationId: params.organizationId,
       userId: params.userId,
       activityType: params.activityType,
@@ -43,8 +41,6 @@ export class TeamActivityService {
       description: params.description ?? null,
       isVisibleToTeam: params.isVisibleToTeam ?? true,
     });
-
-    return this.activityRepo.save(activity);
   }
 
   async feed(orgId: number, options: ActivityFeedOptions = {}): Promise<TeamActivity[]> {
@@ -52,21 +48,7 @@ export class TeamActivityService {
     const offset = options.offset ?? 0;
     const { activityTypes, userId } = options;
 
-    const qb = this.activityRepo
-      .createQueryBuilder("activity")
-      .leftJoinAndSelect("activity.user", "user")
-      .where("activity.organization_id = :orgId", { orgId })
-      .andWhere("activity.is_visible_to_team = true");
-
-    if (activityTypes?.length) {
-      qb.andWhere("activity.activity_type IN (:...types)", { types: activityTypes });
-    }
-
-    if (userId) {
-      qb.andWhere("activity.user_id = :userId", { userId });
-    }
-
-    return qb.orderBy("activity.created_at", "DESC").take(limit).skip(offset).getMany();
+    return this.activityRepo.findFeed(orgId, limit, offset, activityTypes ?? null, userId ?? null);
   }
 
   async feedForManager(orgId: number, managerId: number, limit = 50): Promise<TeamActivity[]> {
@@ -77,24 +59,11 @@ export class TeamActivityService {
       return [];
     }
 
-    return this.activityRepo
-      .createQueryBuilder("activity")
-      .leftJoinAndSelect("activity.user", "user")
-      .where("activity.organization_id = :orgId", { orgId })
-      .andWhere("activity.user_id IN (:...userIds)", { userIds: reportUserIds })
-      .andWhere("activity.is_visible_to_team = true")
-      .orderBy("activity.created_at", "DESC")
-      .take(limit)
-      .getMany();
+    return this.activityRepo.findFeedForUsers(orgId, reportUserIds, limit);
   }
 
   async userActivity(orgId: number, userId: number, limit = 50): Promise<TeamActivity[]> {
-    return this.activityRepo.find({
-      where: { organizationId: orgId, userId },
-      relations: ["user"],
-      order: { createdAt: "DESC" },
-      take: limit,
-    });
+    return this.activityRepo.findUserActivity(orgId, userId, limit);
   }
 
   async logMemberJoined(orgId: number, userId: number, userName: string): Promise<void> {

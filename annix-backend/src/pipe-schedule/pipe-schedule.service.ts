@@ -1,10 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { NB_MM_TO_NPS } from "../lib/pipe-constants";
 import { CalculatePipeThicknessDto, PipeThicknessResultDto } from "./dto/pipe-schedule.dto";
-import { MaterialAllowableStress } from "./entities/material-allowable-stress.entity";
 import { PipeSchedule } from "./entities/pipe-schedule.entity";
+import { PipeScheduleRepository } from "./pipe-schedule.repository";
 
 const NPS_OD_INCH: Record<string, number> = {
   "1/8": 0.405,
@@ -43,36 +41,24 @@ const NPS_OD_INCH: Record<string, number> = {
 
 @Injectable()
 export class PipeScheduleService {
-  constructor(
-    @InjectRepository(PipeSchedule)
-    private readonly scheduleRepo: Repository<PipeSchedule>,
-    @InjectRepository(MaterialAllowableStress)
-    private readonly stressRepo: Repository<MaterialAllowableStress>,
-  ) {}
+  constructor(private readonly pipeScheduleRepository: PipeScheduleRepository) {}
 
-  // Convert bar to psi
   private barToPsi(bar: number): number {
     return bar * 14.5038;
   }
 
-  // Convert Celsius to Fahrenheit
   private celsiusToFahrenheit(celsius: number): number {
     return (celsius * 9) / 5 + 32;
   }
 
-  // Get allowable stress at temperature with interpolation
   async getAllowableStress(
     materialCode: string,
     temperatureCelsius: number,
   ): Promise<number | null> {
-    const stresses = await this.stressRepo.find({
-      where: { materialCode },
-      order: { temperatureCelsius: "ASC" },
-    });
+    const stresses = await this.pipeScheduleRepository.findStressesByMaterialOrdered(materialCode);
 
     if (stresses.length === 0) return null;
 
-    // Find surrounding temperature points
     let lower = stresses[0];
     let upper = stresses[stresses.length - 1];
 
@@ -86,12 +72,10 @@ export class PipeScheduleService {
       }
     }
 
-    // Exact match or extrapolation
     if (Number(lower.temperatureCelsius) === temperatureCelsius) {
       return Number(lower.allowableStressKsi);
     }
 
-    // Linear interpolation
     const tempRange = Number(upper.temperatureCelsius) - Number(lower.temperatureCelsius);
     if (tempRange === 0) return Number(lower.allowableStressKsi);
 
@@ -103,34 +87,18 @@ export class PipeScheduleService {
     return Math.round(interpolatedStress * 100) / 100;
   }
 
-  // Get schedules for a given NPS
-  async getSchedulesByNps(nps: string): Promise<PipeSchedule[]> {
-    return this.scheduleRepo.find({
-      where: { nps },
-      order: { wallThicknessInch: "ASC" },
-    });
+  getSchedulesByNps(nps: string): Promise<PipeSchedule[]> {
+    return this.pipeScheduleRepository.findSchedulesByNps(nps);
   }
 
-  // Get schedules by NB (mm)
-  async getSchedulesByNbMm(nbMm: number): Promise<PipeSchedule[]> {
-    return this.scheduleRepo.find({
-      where: { nbMm },
-      order: { wallThicknessInch: "ASC" },
-    });
+  getSchedulesByNbMm(nbMm: number): Promise<PipeSchedule[]> {
+    return this.pipeScheduleRepository.findSchedulesByNbMm(nbMm);
   }
 
-  // Every schedule row — used by the ASCA quote m² calculator to resolve
-  // a real wall thickness for schedule-only pipes (e.g. "100NB x HVY",
-  // SABS 62 Heavy) instead of a linear approximation. is_stainless is
-  // returned so the consumer can prefer carbon-steel rows when a
-  // schedule designation collides across standards (40S, XS, 5S).
-  async getAllSchedules(): Promise<PipeSchedule[]> {
-    return this.scheduleRepo.find({
-      order: { nbMm: "ASC", wallThicknessInch: "ASC" },
-    });
+  getAllSchedules(): Promise<PipeSchedule[]> {
+    return this.pipeScheduleRepository.findAllSchedulesOrdered();
   }
 
-  // Find next suitable schedule that meets minimum thickness
   async getRecommendedSchedule(
     nps: string,
     minThicknessInch: number,
@@ -146,7 +114,6 @@ export class PipeScheduleService {
 
     const requiredThickness = minThicknessInch + marginInch;
 
-    // Find the smallest schedule that meets the requirement
     for (const sch of schedules) {
       if (Number(sch.wallThicknessInch) >= requiredThickness) {
         return {
@@ -157,7 +124,6 @@ export class PipeScheduleService {
       }
     }
 
-    // If none sufficient, return the thickest with warning
     const maxSchedule = schedules[schedules.length - 1];
     return {
       schedule: maxSchedule.schedule,
@@ -168,13 +134,9 @@ export class PipeScheduleService {
     };
   }
 
-  // Main calculation: ASME B31.3 formula
-  // t = P*D / (2*(S*E*W + P*Y))
-  // t_m = t + corrosion allowance
   async calculatePipeThickness(dto: CalculatePipeThicknessDto): Promise<PipeThicknessResultDto> {
     const warnings: string[] = [];
 
-    // Determine NPS from input
     let nps = dto.nps;
     if (!nps && dto.nbMm) {
       nps = NB_MM_TO_NPS[dto.nbMm];
@@ -183,13 +145,11 @@ export class PipeScheduleService {
       }
     }
 
-    // Get OD
     const odInch = NPS_OD_INCH[nps];
     if (!odInch) {
       throw new Error(`No OD data for NPS ${nps}`);
     }
 
-    // Get allowable stress
     const stressKsi = await this.getAllowableStress(dto.materialCode, dto.temperatureCelsius);
     if (!stressKsi) {
       throw new Error(
@@ -197,20 +157,16 @@ export class PipeScheduleService {
       );
     }
 
-    // Default parameters
-    const E = dto.jointEfficiencyE ?? 1.0; // Seamless = 1.0
+    const E = dto.jointEfficiencyE ?? 1.0;
     const W = dto.weldStrengthReductionW ?? 1.0;
-    const Y = dto.coefficientY ?? 0.4; // Ferritic steel below 900°F
+    const Y = dto.coefficientY ?? 0.4;
     const corrosionInch = (dto.corrosionAllowanceMm ?? 0) / 25.4;
 
-    // Convert pressure to psi
     const pressurePsi = this.barToPsi(dto.pressureBar);
 
-    // Calculate design thickness (ASME B31.3)
     const t = (pressurePsi * odInch) / (2 * (stressKsi * 1000 * E * W + pressurePsi * Y));
     const tMinInch = t + corrosionInch;
 
-    // Temperature warnings
     const tempF = this.celsiusToFahrenheit(dto.temperatureCelsius);
     if (tempF > 700) {
       warnings.push("Temperature exceeds 700°F (371°C). Creep considerations may apply.");
@@ -235,7 +191,6 @@ export class PipeScheduleService {
       notes: `Calculated per ASME B31.3. E=${E} (${E === 1 ? "seamless" : "welded"}), W=${W}, Y=${Y}. Corrosion allowance: ${dto.corrosionAllowanceMm ?? 0}mm.`,
     };
 
-    // Check selected schedule if provided
     if (dto.selectedSchedule) {
       const schedules = await this.getSchedulesByNps(nps);
       const selected = schedules.find((s) => s.schedule === dto.selectedSchedule);
@@ -256,7 +211,6 @@ export class PipeScheduleService {
       }
     }
 
-    // Get recommended schedule
     const recommended = await this.getRecommendedSchedule(nps, tMinInch);
     if (recommended) {
       result.recommendedSchedule = recommended.schedule;
@@ -273,26 +227,13 @@ export class PipeScheduleService {
     return result;
   }
 
-  // Get all available materials
-  async getMaterials(): Promise<string[]> {
-    const materials = await this.stressRepo
-      .createQueryBuilder("stress")
-      .select("DISTINCT stress.material_code", "materialCode")
-      .addSelect("stress.material_name", "materialName")
-      .getRawMany();
-
-    return materials;
+  getMaterials(): Promise<{ materialCode: string; materialName: string }[]> {
+    return this.pipeScheduleRepository.distinctMaterials();
   }
 
-  // Get all NPS values with schedule data
   async getAvailableNpsSizes(): Promise<string[]> {
-    const sizes = await this.scheduleRepo
-      .createQueryBuilder("schedule")
-      .select("DISTINCT schedule.nps", "nps")
-      .orderBy("schedule.nps", "ASC")
-      .getRawMany();
+    const sizes = await this.pipeScheduleRepository.distinctNpsSizes();
 
-    // Sort by actual numeric value
     return sizes
       .map((s) => s.nps)
       .sort((a, b) => {

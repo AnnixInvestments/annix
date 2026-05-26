@@ -1,64 +1,32 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { StockMovement } from "../entities/stock-movement.entity";
+import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockIssuanceRepository } from "../repositories/stock-issuance.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { ReportsService } from "./reports.service";
 
 describe("ReportsService", () => {
   let service: ReportsService;
 
-  const mockAllocationQueryBuilder = {
-    innerJoin: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    addSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    groupBy: jest.fn().mockReturnThis(),
-    addGroupBy: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn().mockResolvedValue([]),
-  };
-
   const mockAllocationRepo = {
-    createQueryBuilder: jest.fn().mockReturnValue(mockAllocationQueryBuilder),
+    costByJob: jest.fn().mockResolvedValue([]),
   };
 
   const mockStockItemRepo = {
-    find: jest.fn().mockResolvedValue([]),
-  };
-
-  const mockMovementQueryBuilder = {
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    take: jest.fn().mockReturnThis(),
-    getMany: jest.fn().mockResolvedValue([]),
+    findAllForCompanyOrderedByName: jest.fn().mockResolvedValue([]),
   };
 
   const mockMovementRepo = {
-    createQueryBuilder: jest.fn().mockReturnValue(mockMovementQueryBuilder),
-  };
-
-  const mockIssuanceQueryBuilder = {
-    innerJoin: jest.fn().mockReturnThis(),
-    leftJoin: jest.fn().mockReturnThis(),
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    addSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    groupBy: jest.fn().mockReturnThis(),
-    addGroupBy: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn().mockResolvedValue([]),
-    getMany: jest.fn().mockResolvedValue([]),
+    movementHistoryForCompany: jest.fn().mockResolvedValue([]),
   };
 
   const mockIssuanceRepo = {
-    createQueryBuilder: jest.fn().mockReturnValue(mockIssuanceQueryBuilder),
+    staffStockReportRows: jest.fn().mockResolvedValue([]),
+    staffItemBreakdownRows: jest.fn().mockResolvedValue([]),
+    staffStockDetail: jest.fn().mockResolvedValue([]),
   };
 
   const createStockItem = (overrides: Partial<StockItem> = {}): StockItem =>
@@ -132,17 +100,15 @@ describe("ReportsService", () => {
   beforeEach(async () => {
     jest.clearAllMocks();
 
-    mockAllocationRepo.createQueryBuilder.mockReturnValue(mockAllocationQueryBuilder);
-    mockMovementRepo.createQueryBuilder.mockReturnValue(mockMovementQueryBuilder);
-    mockIssuanceRepo.createQueryBuilder.mockReturnValue(mockIssuanceQueryBuilder);
+    mockAllocationRepo.costByJob.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReportsService,
-        { provide: getRepositoryToken(StockAllocation), useValue: mockAllocationRepo },
-        { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
-        { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
-        { provide: getRepositoryToken(StockIssuance), useValue: mockIssuanceRepo },
+        { provide: StockAllocationRepository, useValue: mockAllocationRepo },
+        { provide: StockItemRepository, useValue: mockStockItemRepo },
+        { provide: StockMovementRepository, useValue: mockMovementRepo },
+        { provide: StockIssuanceRepository, useValue: mockIssuanceRepo },
       ],
     }).compile();
 
@@ -154,29 +120,8 @@ describe("ReportsService", () => {
   });
 
   describe("costByJob", () => {
-    it("should return cost aggregation by job", async () => {
-      mockAllocationQueryBuilder.getRawMany.mockResolvedValue([
-        {
-          jobCardId: "1",
-          jobNumber: "JC-001",
-          jobName: "Widget Assembly",
-          customerName: "Example Corp",
-          totalCost: "2500.00",
-          totalItemsAllocated: "50",
-        },
-        {
-          jobCardId: "2",
-          jobNumber: "JC-002",
-          jobName: "Pipe Fabrication",
-          customerName: null,
-          totalCost: "1200.50",
-          totalItemsAllocated: "25",
-        },
-      ]);
-
-      const result = await service.costByJob(1);
-
-      expect(result).toEqual([
+    it("should return cost aggregation by job from the repository", async () => {
+      const rows = [
         {
           jobCardId: 1,
           jobNumber: "JC-001",
@@ -193,51 +138,27 @@ describe("ReportsService", () => {
           totalCost: 1200.5,
           totalItemsAllocated: 25,
         },
-      ]);
-      expect(mockAllocationRepo.createQueryBuilder).toHaveBeenCalledWith("a");
-      expect(mockAllocationQueryBuilder.where).toHaveBeenCalledWith("a.company_id = :companyId", {
-        companyId: 1,
-      });
+      ];
+      mockAllocationRepo.costByJob.mockResolvedValue(rows);
+
+      const result = await service.costByJob(1);
+
+      expect(result).toEqual(rows);
+      expect(mockAllocationRepo.costByJob).toHaveBeenCalledWith(1);
     });
 
     it("should return an empty array when no allocations exist", async () => {
-      mockAllocationQueryBuilder.getRawMany.mockResolvedValue([]);
+      mockAllocationRepo.costByJob.mockResolvedValue([]);
 
       const result = await service.costByJob(1);
 
       expect(result).toEqual([]);
     });
-
-    it("should handle null totalCost and totalItemsAllocated gracefully", async () => {
-      mockAllocationQueryBuilder.getRawMany.mockResolvedValue([
-        {
-          jobCardId: "5",
-          jobNumber: "JC-005",
-          jobName: "Empty Job",
-          customerName: null,
-          totalCost: null,
-          totalItemsAllocated: null,
-        },
-      ]);
-
-      const result = await service.costByJob(1);
-
-      expect(result).toEqual([
-        {
-          jobCardId: 5,
-          jobNumber: "JC-005",
-          jobName: "Empty Job",
-          customerName: null,
-          totalCost: 0,
-          totalItemsAllocated: 0,
-        },
-      ]);
-    });
   });
 
   describe("stockValuation", () => {
     it("should return items with calculated total value", async () => {
-      mockStockItemRepo.find.mockResolvedValue([
+      mockStockItemRepo.findAllForCompanyOrderedByName.mockResolvedValue([
         createStockItem({ id: 1, sku: "SKU-001", name: "Bolts", quantity: 200, costPerUnit: 5.5 }),
         createStockItem({
           id: 2,
@@ -271,14 +192,11 @@ describe("ReportsService", () => {
         },
       ]);
       expect(result.totalValue).toBe(1325);
-      expect(mockStockItemRepo.find).toHaveBeenCalledWith({
-        where: { companyId: 1 },
-        order: { name: "ASC" },
-      });
+      expect(mockStockItemRepo.findAllForCompanyOrderedByName).toHaveBeenCalledWith(1);
     });
 
     it("should return zero total when no items exist", async () => {
-      mockStockItemRepo.find.mockResolvedValue([]);
+      mockStockItemRepo.findAllForCompanyOrderedByName.mockResolvedValue([]);
 
       const result = await service.stockValuation(1);
 
@@ -287,7 +205,7 @@ describe("ReportsService", () => {
     });
 
     it("should handle items with zero quantity", async () => {
-      mockStockItemRepo.find.mockResolvedValue([
+      mockStockItemRepo.findAllForCompanyOrderedByName.mockResolvedValue([
         createStockItem({ id: 1, quantity: 0, costPerUnit: 100 }),
       ]);
 
@@ -298,7 +216,7 @@ describe("ReportsService", () => {
     });
 
     it("should handle items with zero cost", async () => {
-      mockStockItemRepo.find.mockResolvedValue([
+      mockStockItemRepo.findAllForCompanyOrderedByName.mockResolvedValue([
         createStockItem({ id: 1, quantity: 50, costPerUnit: 0 }),
       ]);
 
@@ -309,7 +227,7 @@ describe("ReportsService", () => {
     });
 
     it("should handle null category", async () => {
-      mockStockItemRepo.find.mockResolvedValue([
+      mockStockItemRepo.findAllForCompanyOrderedByName.mockResolvedValue([
         createStockItem({ id: 1, category: null, quantity: 10, costPerUnit: 5 }),
       ]);
 
@@ -325,76 +243,60 @@ describe("ReportsService", () => {
         createMovement({ id: 1, movementType: "in" as any, quantity: 10 }),
         createMovement({ id: 2, movementType: "out" as any, quantity: 5 }),
       ];
-      mockMovementQueryBuilder.getMany.mockResolvedValue(movements);
+      mockMovementRepo.movementHistoryForCompany.mockResolvedValue(movements);
 
       const result = await service.movementHistory(1);
 
       expect(result).toEqual(movements);
-      expect(mockMovementRepo.createQueryBuilder).toHaveBeenCalledWith("m");
-      expect(mockMovementQueryBuilder.where).toHaveBeenCalledWith("m.company_id = :companyId", {
-        companyId: 1,
-      });
-      expect(mockMovementQueryBuilder.take).toHaveBeenCalledWith(500);
-      expect(mockMovementQueryBuilder.andWhere).not.toHaveBeenCalled();
+      expect(mockMovementRepo.movementHistoryForCompany).toHaveBeenCalledWith(1, undefined);
     });
 
-    it("should apply startDate filter", async () => {
-      mockMovementQueryBuilder.getMany.mockResolvedValue([]);
-
+    it("should pass startDate filter to the repository", async () => {
       await service.movementHistory(1, { startDate: "2026-01-01" });
 
-      expect(mockMovementQueryBuilder.andWhere).toHaveBeenCalledWith("m.created_at >= :startDate", {
+      expect(mockMovementRepo.movementHistoryForCompany).toHaveBeenCalledWith(1, {
         startDate: "2026-01-01",
       });
     });
 
-    it("should apply endDate filter", async () => {
-      mockMovementQueryBuilder.getMany.mockResolvedValue([]);
-
+    it("should pass endDate filter to the repository", async () => {
       await service.movementHistory(1, { endDate: "2026-12-31" });
 
-      expect(mockMovementQueryBuilder.andWhere).toHaveBeenCalledWith("m.created_at <= :endDate", {
+      expect(mockMovementRepo.movementHistoryForCompany).toHaveBeenCalledWith(1, {
         endDate: "2026-12-31",
       });
     });
 
-    it("should apply movementType filter", async () => {
-      mockMovementQueryBuilder.getMany.mockResolvedValue([]);
-
+    it("should pass movementType filter to the repository", async () => {
       await service.movementHistory(1, { movementType: "in" });
 
-      expect(mockMovementQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "m.movement_type = :movementType",
-        { movementType: "in" },
-      );
+      expect(mockMovementRepo.movementHistoryForCompany).toHaveBeenCalledWith(1, {
+        movementType: "in",
+      });
     });
 
-    it("should apply stockItemId filter", async () => {
-      mockMovementQueryBuilder.getMany.mockResolvedValue([]);
-
+    it("should pass stockItemId filter to the repository", async () => {
       await service.movementHistory(1, { stockItemId: 42 });
 
-      expect(mockMovementQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "m.stock_item_id = :stockItemId",
-        { stockItemId: 42 },
-      );
+      expect(mockMovementRepo.movementHistoryForCompany).toHaveBeenCalledWith(1, {
+        stockItemId: 42,
+      });
     });
 
-    it("should apply all filters simultaneously", async () => {
-      mockMovementQueryBuilder.getMany.mockResolvedValue([]);
-
-      await service.movementHistory(1, {
+    it("should pass all filters simultaneously to the repository", async () => {
+      const filters = {
         startDate: "2026-01-01",
         endDate: "2026-06-30",
         movementType: "out",
         stockItemId: 10,
-      });
+      };
+      await service.movementHistory(1, filters);
 
-      expect(mockMovementQueryBuilder.andWhere).toHaveBeenCalledTimes(4);
+      expect(mockMovementRepo.movementHistoryForCompany).toHaveBeenCalledWith(1, filters);
     });
 
     it("should return empty array when no movements match", async () => {
-      mockMovementQueryBuilder.getMany.mockResolvedValue([]);
+      mockMovementRepo.movementHistoryForCompany.mockResolvedValue([]);
 
       const result = await service.movementHistory(1, { movementType: "adjustment" });
 
@@ -416,40 +318,39 @@ describe("ReportsService", () => {
     });
 
     it("should return a report with summaries and totals", async () => {
-      mockIssuanceQueryBuilder.getRawMany
-        .mockResolvedValueOnce([
-          createStaffRawRow(),
-          createStaffRawRow({
-            staffMemberId: "2",
-            staffName: "Jane Smith",
-            employeeNumber: "EMP-002",
-            department: "Production",
-            departmentId: "20",
-            totalQuantityReceived: "30",
-            totalValue: "300.00",
-            issuanceCount: "2",
-          }),
-        ])
-        .mockResolvedValueOnce([
-          {
-            staffMemberId: "1",
-            stockItemId: "100",
-            stockItemName: "Bolts",
-            sku: "SKU-100",
-            category: "Fasteners",
-            totalQuantity: "50",
-            totalValue: "500.00",
-          },
-          {
-            staffMemberId: "2",
-            stockItemId: "101",
-            stockItemName: "Nuts",
-            sku: "SKU-101",
-            category: "Fasteners",
-            totalQuantity: "30",
-            totalValue: "300.00",
-          },
-        ]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([
+        createStaffRawRow(),
+        createStaffRawRow({
+          staffMemberId: "2",
+          staffName: "Jane Smith",
+          employeeNumber: "EMP-002",
+          department: "Production",
+          departmentId: "20",
+          totalQuantityReceived: "30",
+          totalValue: "300.00",
+          issuanceCount: "2",
+        }),
+      ]);
+      mockIssuanceRepo.staffItemBreakdownRows.mockResolvedValue([
+        {
+          staffMemberId: "1",
+          stockItemId: "100",
+          stockItemName: "Bolts",
+          sku: "SKU-100",
+          category: "Fasteners",
+          totalQuantity: "50",
+          totalValue: "500.00",
+        },
+        {
+          staffMemberId: "2",
+          stockItemId: "101",
+          stockItemName: "Nuts",
+          sku: "SKU-101",
+          category: "Fasteners",
+          totalQuantity: "30",
+          totalValue: "300.00",
+        },
+      ]);
 
       const result = await service.staffStockReport(1);
 
@@ -469,7 +370,7 @@ describe("ReportsService", () => {
     });
 
     it("should use custom anomaly threshold from filters", async () => {
-      mockIssuanceQueryBuilder.getRawMany.mockResolvedValue([]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([]);
 
       const result = await service.staffStockReport(1, { anomalyThreshold: 1.5 });
 
@@ -477,14 +378,13 @@ describe("ReportsService", () => {
     });
 
     it("should detect anomalies based on z-score", async () => {
-      mockIssuanceQueryBuilder.getRawMany
-        .mockResolvedValueOnce([
-          createStaffRawRow({ staffMemberId: "1", totalQuantityReceived: "10" }),
-          createStaffRawRow({ staffMemberId: "2", totalQuantityReceived: "12" }),
-          createStaffRawRow({ staffMemberId: "3", totalQuantityReceived: "11" }),
-          createStaffRawRow({ staffMemberId: "4", totalQuantityReceived: "100" }),
-        ])
-        .mockResolvedValueOnce([]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([
+        createStaffRawRow({ staffMemberId: "1", totalQuantityReceived: "10" }),
+        createStaffRawRow({ staffMemberId: "2", totalQuantityReceived: "12" }),
+        createStaffRawRow({ staffMemberId: "3", totalQuantityReceived: "11" }),
+        createStaffRawRow({ staffMemberId: "4", totalQuantityReceived: "100" }),
+      ]);
+      mockIssuanceRepo.staffItemBreakdownRows.mockResolvedValue([]);
 
       const result = await service.staffStockReport(1, { anomalyThreshold: 1.5 });
 
@@ -497,11 +397,10 @@ describe("ReportsService", () => {
     });
 
     it("should return zero anomaly score when standard deviation is zero", async () => {
-      mockIssuanceQueryBuilder.getRawMany
-        .mockResolvedValueOnce([
-          createStaffRawRow({ staffMemberId: "1", totalQuantityReceived: "50" }),
-        ])
-        .mockResolvedValueOnce([]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([
+        createStaffRawRow({ staffMemberId: "1", totalQuantityReceived: "50" }),
+      ]);
+      mockIssuanceRepo.staffItemBreakdownRows.mockResolvedValue([]);
 
       const result = await service.staffStockReport(1);
 
@@ -511,7 +410,7 @@ describe("ReportsService", () => {
     });
 
     it("should return empty report when no issuances exist", async () => {
-      mockIssuanceQueryBuilder.getRawMany.mockResolvedValue([]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([]);
 
       const result = await service.staffStockReport(1);
 
@@ -526,63 +425,26 @@ describe("ReportsService", () => {
       expect(result.standardDeviation).toBe(0);
     });
 
-    it("should apply startDate filter", async () => {
-      mockIssuanceQueryBuilder.getRawMany.mockResolvedValue([]);
+    it("should pass filters to the repository", async () => {
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([]);
 
-      await service.staffStockReport(1, { startDate: "2026-01-01" });
-
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith("i.issued_at >= :startDate", {
+      const filters = {
         startDate: "2026-01-01",
-      });
-    });
-
-    it("should apply endDate filter", async () => {
-      mockIssuanceQueryBuilder.getRawMany.mockResolvedValue([]);
-
-      await service.staffStockReport(1, { endDate: "2026-06-30" });
-
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith("i.issued_at <= :endDate", {
         endDate: "2026-06-30",
-      });
-    });
+        staffMemberId: 5,
+        departmentId: 10,
+        stockItemId: 42,
+      };
+      await service.staffStockReport(1, filters);
 
-    it("should apply staffMemberId filter", async () => {
-      mockIssuanceQueryBuilder.getRawMany.mockResolvedValue([]);
-
-      await service.staffStockReport(1, { staffMemberId: 5 });
-
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "i.recipient_staff_id = :staffMemberId",
-        { staffMemberId: 5 },
-      );
-    });
-
-    it("should apply departmentId filter", async () => {
-      mockIssuanceQueryBuilder.getRawMany.mockResolvedValue([]);
-
-      await service.staffStockReport(1, { departmentId: 10 });
-
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "staff.department_id = :departmentId",
-        { departmentId: 10 },
-      );
-    });
-
-    it("should apply stockItemId filter", async () => {
-      mockIssuanceQueryBuilder.getRawMany.mockResolvedValue([]);
-
-      await service.staffStockReport(1, { stockItemId: 42 });
-
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "i.stock_item_id = :stockItemId",
-        { stockItemId: 42 },
-      );
+      expect(mockIssuanceRepo.staffStockReportRows).toHaveBeenCalledWith(1, filters);
     });
 
     it("should handle null departmentId in raw results", async () => {
-      mockIssuanceQueryBuilder.getRawMany
-        .mockResolvedValueOnce([createStaffRawRow({ departmentId: null, department: null })])
-        .mockResolvedValueOnce([]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([
+        createStaffRawRow({ departmentId: null, department: null }),
+      ]);
+      mockIssuanceRepo.staffItemBreakdownRows.mockResolvedValue([]);
 
       const result = await service.staffStockReport(1);
 
@@ -591,11 +453,10 @@ describe("ReportsService", () => {
     });
 
     it("should handle null totalValue and totalQuantityReceived in raw results", async () => {
-      mockIssuanceQueryBuilder.getRawMany
-        .mockResolvedValueOnce([
-          createStaffRawRow({ totalQuantityReceived: null, totalValue: null, issuanceCount: null }),
-        ])
-        .mockResolvedValueOnce([]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([
+        createStaffRawRow({ totalQuantityReceived: null, totalValue: null, issuanceCount: null }),
+      ]);
+      mockIssuanceRepo.staffItemBreakdownRows.mockResolvedValue([]);
 
       const result = await service.staffStockReport(1);
 
@@ -605,22 +466,21 @@ describe("ReportsService", () => {
     });
 
     it("should assign item breakdowns to correct staff members", async () => {
-      mockIssuanceQueryBuilder.getRawMany
-        .mockResolvedValueOnce([
-          createStaffRawRow({ staffMemberId: "1", staffName: "Alice" }),
-          createStaffRawRow({ staffMemberId: "2", staffName: "Bob" }),
-        ])
-        .mockResolvedValueOnce([
-          {
-            staffMemberId: "2",
-            stockItemId: "200",
-            stockItemName: "Pipe",
-            sku: "PIPE-001",
-            category: "Piping",
-            totalQuantity: "20",
-            totalValue: "400.00",
-          },
-        ]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([
+        createStaffRawRow({ staffMemberId: "1", staffName: "Alice" }),
+        createStaffRawRow({ staffMemberId: "2", staffName: "Bob" }),
+      ]);
+      mockIssuanceRepo.staffItemBreakdownRows.mockResolvedValue([
+        {
+          staffMemberId: "2",
+          stockItemId: "200",
+          stockItemName: "Pipe",
+          sku: "PIPE-001",
+          category: "Piping",
+          totalQuantity: "20",
+          totalValue: "400.00",
+        },
+      ]);
 
       const result = await service.staffStockReport(1);
 
@@ -632,13 +492,12 @@ describe("ReportsService", () => {
     });
 
     it("should calculate correct mean and standard deviation", async () => {
-      mockIssuanceQueryBuilder.getRawMany
-        .mockResolvedValueOnce([
-          createStaffRawRow({ staffMemberId: "1", totalQuantityReceived: "10" }),
-          createStaffRawRow({ staffMemberId: "2", totalQuantityReceived: "20" }),
-          createStaffRawRow({ staffMemberId: "3", totalQuantityReceived: "30" }),
-        ])
-        .mockResolvedValueOnce([]);
+      mockIssuanceRepo.staffStockReportRows.mockResolvedValue([
+        createStaffRawRow({ staffMemberId: "1", totalQuantityReceived: "10" }),
+        createStaffRawRow({ staffMemberId: "2", totalQuantityReceived: "20" }),
+        createStaffRawRow({ staffMemberId: "3", totalQuantityReceived: "30" }),
+      ]);
+      mockIssuanceRepo.staffItemBreakdownRows.mockResolvedValue([]);
 
       const result = await service.staffStockReport(1);
 
@@ -654,95 +513,43 @@ describe("ReportsService", () => {
         createIssuance({ id: 1, recipientStaffId: 5, quantity: 10 }),
         createIssuance({ id: 2, recipientStaffId: 5, quantity: 3 }),
       ];
-      mockIssuanceQueryBuilder.getMany.mockResolvedValue(issuances);
+      mockIssuanceRepo.staffStockDetail.mockResolvedValue(issuances);
 
       const result = await service.staffStockDetail(1, 5);
 
       expect(result).toEqual(issuances);
-      expect(mockIssuanceRepo.createQueryBuilder).toHaveBeenCalledWith("i");
-      expect(mockIssuanceQueryBuilder.where).toHaveBeenCalledWith("i.company_id = :companyId", {
-        companyId: 1,
-      });
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith(
-        "i.recipient_staff_id = :staffMemberId",
-        { staffMemberId: 5 },
-      );
+      expect(mockIssuanceRepo.staffStockDetail).toHaveBeenCalledWith(1, 5, undefined);
     });
 
-    it("should apply startDate filter", async () => {
-      mockIssuanceQueryBuilder.getMany.mockResolvedValue([]);
-
+    it("should pass startDate filter to the repository", async () => {
       await service.staffStockDetail(1, 5, { startDate: "2026-01-01" });
 
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith("i.issued_at >= :startDate", {
+      expect(mockIssuanceRepo.staffStockDetail).toHaveBeenCalledWith(1, 5, {
         startDate: "2026-01-01",
       });
     });
 
-    it("should apply endDate filter", async () => {
-      mockIssuanceQueryBuilder.getMany.mockResolvedValue([]);
-
+    it("should pass endDate filter to the repository", async () => {
       await service.staffStockDetail(1, 5, { endDate: "2026-12-31" });
 
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith("i.issued_at <= :endDate", {
+      expect(mockIssuanceRepo.staffStockDetail).toHaveBeenCalledWith(1, 5, {
         endDate: "2026-12-31",
       });
     });
 
-    it("should apply both date filters simultaneously", async () => {
-      mockIssuanceQueryBuilder.getMany.mockResolvedValue([]);
+    it("should pass both date filters simultaneously to the repository", async () => {
+      const filters = { startDate: "2026-01-01", endDate: "2026-12-31" };
+      await service.staffStockDetail(1, 5, filters);
 
-      await service.staffStockDetail(1, 5, {
-        startDate: "2026-01-01",
-        endDate: "2026-12-31",
-      });
-
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith("i.issued_at >= :startDate", {
-        startDate: "2026-01-01",
-      });
-      expect(mockIssuanceQueryBuilder.andWhere).toHaveBeenCalledWith("i.issued_at <= :endDate", {
-        endDate: "2026-12-31",
-      });
+      expect(mockIssuanceRepo.staffStockDetail).toHaveBeenCalledWith(1, 5, filters);
     });
 
     it("should return empty array when no issuances match", async () => {
-      mockIssuanceQueryBuilder.getMany.mockResolvedValue([]);
+      mockIssuanceRepo.staffStockDetail.mockResolvedValue([]);
 
       const result = await service.staffStockDetail(1, 999);
 
       expect(result).toEqual([]);
-    });
-
-    it("should not apply date filters when none provided", async () => {
-      mockIssuanceQueryBuilder.getMany.mockResolvedValue([]);
-
-      await service.staffStockDetail(1, 5);
-
-      const andWhereCalls = mockIssuanceQueryBuilder.andWhere.mock.calls;
-      const dateFilterCalls = andWhereCalls.filter(
-        (call: string[]) =>
-          call[0].includes("issued_at >= :startDate") || call[0].includes("issued_at <= :endDate"),
-      );
-      expect(dateFilterCalls).toHaveLength(0);
-    });
-
-    it("should join stockItem, jobCard, and issuerStaff relations", async () => {
-      mockIssuanceQueryBuilder.getMany.mockResolvedValue([]);
-
-      await service.staffStockDetail(1, 5);
-
-      expect(mockIssuanceQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
-        "i.stockItem",
-        "item",
-      );
-      expect(mockIssuanceQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
-        "i.jobCard",
-        "jobCard",
-      );
-      expect(mockIssuanceQueryBuilder.leftJoinAndSelect).toHaveBeenCalledWith(
-        "i.issuerStaff",
-        "issuer",
-      );
     });
   });
 });

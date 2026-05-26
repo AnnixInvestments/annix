@@ -1,8 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { nowISO } from "../lib/datetime";
 import {
@@ -11,8 +9,10 @@ import {
   type ReadinessDetails,
   RubberAuCoc,
 } from "./entities/rubber-au-coc.entity";
-import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
 import { CocProcessingStatus, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
+import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 
 export interface ReadinessResult {
@@ -30,32 +30,21 @@ export class RubberAuCocReadinessService {
   private readonly logger = new Logger(RubberAuCocReadinessService.name);
 
   constructor(
-    @InjectRepository(RubberAuCoc)
-    private auCocRepository: Repository<RubberAuCoc>,
-    @InjectRepository(RubberSupplierCoc)
-    private supplierCocRepository: Repository<RubberSupplierCoc>,
-    @InjectRepository(RubberDeliveryNote)
-    private deliveryNoteRepository: Repository<RubberDeliveryNote>,
+    private auCocRepository: RubberAuCocRepository,
+    private supplierCocRepository: RubberSupplierCocRepository,
+    private deliveryNoteRepository: RubberDeliveryNoteRepository,
     private auCocService: RubberAuCocService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {}
 
   async checkReadiness(auCocId: number): Promise<ReadinessResult> {
-    const auCoc = await this.auCocRepository.findOne({
-      where: { id: auCocId },
-    });
+    const auCoc = await this.auCocRepository.findById(auCocId);
 
     if (!auCoc) {
       return this.notReady("AU CoC not found", AuCocReadinessStatus.NOT_TRACKED);
     }
 
-    // Delegate source resolution to the generator itself, so readiness can
-    // never disagree with what generatePdf would actually produce. The old
-    // order-prefix lookup only matched CALENDARER-type CoCs by exact order
-    // number, so it missed S&N calender-roll CoCs and bare-ticket Impilo rolls
-    // — wrongly reporting "Waiting" and blocking auto-generation for sheeting
-    // the generator could in fact complete.
     const probe = await this.auCocService.generationReadiness(auCocId);
 
     const buildDetails = (missing: string[]): ReadinessDetails => ({
@@ -96,16 +85,8 @@ export class RubberAuCocReadinessService {
     } else if (
       !(await this.batchSourceApproved(probe.resolvedCompounderCocId, probe.resolvedSupplierCocId))
     ) {
-      // Lab data + graph present, but auto-send must wait for the supplier CoC
-      // that provides the batches to be APPROVED (QC sign-off) — never email a
-      // customer a certificate built from raw, unapproved extracted data.
       result = make(false, AuCocReadinessStatus.WAITING_FOR_APPROVAL, ["Supplier CoC approval"]);
     } else if (auCoc.status !== AuCocStatus.DRAFT) {
-      // Sources are all present AND the cert has already been produced/sent — it
-      // is done, not "ready to generate". Keep the terminal AUTO_GENERATED badge
-      // so a delivered cert never reads "Ready": a readiness re-check used to
-      // downgrade already-sent certs back to READY_FOR_GENERATION, leaving a
-      // confusing "Sent / Ready" pair on the list.
       result = make(true, AuCocReadinessStatus.AUTO_GENERATED, []);
     } else {
       result = make(true, AuCocReadinessStatus.READY_FOR_GENERATION, []);
@@ -118,23 +99,19 @@ export class RubberAuCocReadinessService {
     return result;
   }
 
-  // The CoC that actually supplies the lab batches (compounder if resolved,
-  // else the calenderer/calender-roll itself) must be APPROVED before we
-  // auto-send. Permissive when the source can't be identified (e.g. roll-stock
-  // / items path) so we never falsely block a manual generation.
   private async batchSourceApproved(
     compounderCocId: number | null,
     supplierCocId: number | null,
   ): Promise<boolean> {
     const batchSourceId = compounderCocId ?? supplierCocId;
     if (!batchSourceId) return true;
-    const coc = await this.supplierCocRepository.findOne({ where: { id: batchSourceId } });
+    const coc = await this.supplierCocRepository.findById(batchSourceId);
     return !coc || coc.processingStatus === CocProcessingStatus.APPROVED;
   }
 
   async checkAndAutoGenerateForDeliveryNote(customerDeliveryNoteId: number): Promise<void> {
-    const auCoc = await this.auCocRepository.findOne({
-      where: { sourceDeliveryNoteId: customerDeliveryNoteId },
+    const auCoc = await this.auCocRepository.findOneWhere({
+      sourceDeliveryNoteId: customerDeliveryNoteId,
     });
 
     if (!auCoc) {
@@ -160,9 +137,7 @@ export class RubberAuCocReadinessService {
   }
 
   async checkAndAutoGenerateForCoc(supplierCocId: number): Promise<void> {
-    const supplierCoc = await this.supplierCocRepository.findOne({
-      where: { id: supplierCocId },
-    });
+    const supplierCoc = await this.supplierCocRepository.findById(supplierCocId);
 
     if (!supplierCoc) return;
 
@@ -178,10 +153,7 @@ export class RubberAuCocReadinessService {
   async autoGenerateAuCoc(
     auCocId: number,
   ): Promise<{ generated: boolean; auCocId: number; reason: string }> {
-    const auCoc = await this.auCocRepository.findOne({
-      where: { id: auCocId },
-      relations: ["customerCompany"],
-    });
+    const auCoc = await this.auCocRepository.findById(auCocId, ["customerCompany"]);
 
     if (!auCoc) {
       return { generated: false, auCocId, reason: "AU CoC not found" };
@@ -195,11 +167,6 @@ export class RubberAuCocReadinessService {
       };
     }
 
-    // Hard gate: only generate when readiness passes. The whole point of
-    // the readiness pipeline is to refuse generation when the source data
-    // (rolls, calenderer CoC, compounder CoC, rheometer graph) isn't all
-    // reachable — letting through partial-data CoCs is what produces the
-    // empty-table / no-graph PDFs the operator has to chase down later.
     const readiness = await this.checkReadiness(auCocId);
     if (!readiness.ready) {
       const missing = (readiness.missingDocuments || []).join(", ") || "source data";
@@ -213,7 +180,7 @@ export class RubberAuCocReadinessService {
     try {
       const { buffer, filename } = await this.auCocService.generatePdf(auCocId);
 
-      await this.auCocRepository.update(auCocId, {
+      await this.auCocRepository.updateById(auCocId, {
         readinessStatus: AuCocReadinessStatus.AUTO_GENERATED,
       });
 
@@ -224,8 +191,6 @@ export class RubberAuCocReadinessService {
       this.notifyAdminForVerification(auCoc);
 
       const customer = auCoc.customerCompany;
-      // Same recipient fallback as the manual send: AU-CoC recipient, then the
-      // general Outgoing COC Email.
       const autoSendEmail =
         customer?.auCocRecipientEmail || customer?.emailConfig?.outgoingCocEmail;
       if (customer?.autoApproveAuCocs && autoSendEmail) {
@@ -271,9 +236,7 @@ export class RubberAuCocReadinessService {
     generated: number;
     details: string[];
   }> {
-    const draftCocs = await this.auCocRepository.find({
-      where: { status: "DRAFT" as never },
-    });
+    const draftCocs = await this.auCocRepository.findByStatus(AuCocStatus.DRAFT);
 
     if (draftCocs.length === 0) {
       return { checked: 0, generated: 0, details: ["No draft AU CoCs found"] };
@@ -305,9 +268,7 @@ export class RubberAuCocReadinessService {
   }
 
   async recheckStuckAuCocs(): Promise<{ rechecked: number; nowReady: number }> {
-    const stuckCocs = await this.auCocRepository.find({
-      where: { status: "DRAFT" as never },
-    });
+    const stuckCocs = await this.auCocRepository.findByStatus(AuCocStatus.DRAFT);
     let nowReady = 0;
     for (const coc of stuckCocs) {
       const result = await this.checkReadiness(coc.id);
@@ -347,9 +308,7 @@ export class RubberAuCocReadinessService {
   }
 
   async findPendingAuCocsByOrderNumber(orderNumber: string): Promise<RubberAuCoc[]> {
-    const allDraftCocs = await this.auCocRepository.find({
-      where: { status: "DRAFT" as never },
-    });
+    const allDraftCocs = await this.auCocRepository.findByStatus(AuCocStatus.DRAFT);
 
     return allDraftCocs.filter((coc) => {
       const rollNumbers = (coc.extractedRollData || [])
@@ -361,7 +320,7 @@ export class RubberAuCocReadinessService {
   }
 
   private async updateReadinessStatus(auCoc: RubberAuCoc, result: ReadinessResult): Promise<void> {
-    await this.auCocRepository.update(auCoc.id, {
+    await this.auCocRepository.updateById(auCoc.id, {
       readinessStatus: result.readinessStatus,
       readinessDetails: result.details,
     });

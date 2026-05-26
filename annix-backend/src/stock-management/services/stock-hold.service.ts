@@ -1,13 +1,12 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
-import { IssuableProduct } from "../entities/issuable-product.entity";
 import {
   type StockHoldDispositionStatus,
   StockHoldItem,
   type StockHoldReason,
 } from "../entities/stock-hold-item.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { StockHoldItemRepository } from "../repositories/stock-hold-item.repository";
 import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
 export interface FlagStockHoldInput {
@@ -35,17 +34,13 @@ export class StockHoldService {
   private readonly logger = new Logger(StockHoldService.name);
 
   constructor(
-    @InjectRepository(StockHoldItem)
-    private readonly holdRepo: Repository<StockHoldItem>,
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
+    private readonly holdRepo: StockHoldItemRepository,
+    private readonly productRepo: IssuableProductRepository,
     private readonly notifications: StockManagementNotificationsService,
   ) {}
 
   async flagStock(companyId: number, input: FlagStockHoldInput): Promise<StockHoldItem> {
-    const product = await this.productRepo.findOne({
-      where: { id: input.productId, companyId },
-    });
+    const product = await this.productRepo.findByIdForCompany(companyId, input.productId);
     if (!product) {
       throw new NotFoundException(`Product ${input.productId} not found`);
     }
@@ -59,7 +54,7 @@ export class StockHoldService {
       }
     }
     const writeOffValueR = (input.quantity ?? 0) * product.costPerUnit;
-    const hold = this.holdRepo.create({
+    const hold = this.holdRepo.build({
       companyId,
       stockTakeId: input.stockTakeId ?? null,
       productId: input.productId,
@@ -92,32 +87,15 @@ export class StockHoldService {
   }
 
   async listPending(companyId: number): Promise<StockHoldItem[]> {
-    return this.holdRepo.find({
-      where: { companyId, dispositionStatus: "pending" },
-      relations: { product: true, stockTake: true },
-      order: { flaggedAt: "ASC" },
-    });
+    return this.holdRepo.findPendingForCompany(companyId);
   }
 
   async listAll(companyId: number, status?: StockHoldDispositionStatus): Promise<StockHoldItem[]> {
-    const where: { companyId: number; dispositionStatus?: StockHoldDispositionStatus } = {
-      companyId,
-    };
-    if (status) {
-      where.dispositionStatus = status;
-    }
-    return this.holdRepo.find({
-      where,
-      relations: { product: true, stockTake: true },
-      order: { flaggedAt: "DESC" },
-    });
+    return this.holdRepo.findAllForCompany(companyId, status);
   }
 
   async byId(companyId: number, id: number): Promise<StockHoldItem> {
-    const hold = await this.holdRepo.findOne({
-      where: { id, companyId },
-      relations: { product: true, stockTake: true },
-    });
+    const hold = await this.holdRepo.findByIdForCompanyWithDetail(companyId, id);
     if (!hold) {
       throw new NotFoundException(`Stock hold item ${id} not found`);
     }

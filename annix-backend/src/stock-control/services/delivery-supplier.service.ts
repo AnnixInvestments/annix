@@ -1,10 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
+import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
+import { StockControlSupplierRepository } from "../repositories/stock-control-supplier.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 
 const LEGAL_SUFFIXES =
   /\b(pty|proprietary|ltd|limited|inc|incorporated|company|co|corp|corporation|cc|close\s*corporation|trading|t\/a|ta|group|holdings|enterprises|services|supplies|supply)\b/gi;
@@ -20,12 +19,9 @@ export class DeliverySupplierService {
   private readonly logger = new Logger(DeliverySupplierService.name);
 
   constructor(
-    @InjectRepository(StockControlSupplier)
-    private readonly supplierRepo: Repository<StockControlSupplier>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(DeliveryNoteItem)
-    private readonly deliveryNoteItemRepo: Repository<DeliveryNoteItem>,
+    private readonly supplierRepo: StockControlSupplierRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly deliveryNoteItemRepo: DeliveryNoteItemRepository,
   ) {}
 
   async resolveOrCreateSupplier(
@@ -40,11 +36,10 @@ export class DeliverySupplierService {
     },
   ): Promise<StockControlSupplier> {
     const normalised = this.normaliseSupplierName(supplierName);
-    const existing = await this.supplierRepo
-      .createQueryBuilder("supplier")
-      .where("supplier.companyId = :companyId", { companyId })
-      .andWhere("LOWER(supplier.name) = LOWER(:name)", { name: supplierName })
-      .getOne();
+    const existing = await this.supplierRepo.findOneForCompanyByNameCaseInsensitive(
+      companyId,
+      supplierName,
+    );
 
     if (existing) {
       return existing;
@@ -52,18 +47,14 @@ export class DeliverySupplierService {
 
     const fuzzyMatch =
       normalised.length >= 3
-        ? await this.supplierRepo
-            .createQueryBuilder("supplier")
-            .where("supplier.companyId = :companyId", { companyId })
-            .getMany()
-            .then((all) =>
-              all.find((s) => {
-                const normS = this.normaliseSupplierName(s.name);
-                return (
-                  normS === normalised || normS.includes(normalised) || normalised.includes(normS)
-                );
-              }),
-            )
+        ? await this.supplierRepo.findAllForCompany(companyId).then((all) =>
+            all.find((s) => {
+              const normS = this.normaliseSupplierName(s.name);
+              return (
+                normS === normalised || normS.includes(normalised) || normalised.includes(normS)
+              );
+            }),
+          )
         : null;
 
     if (fuzzyMatch) {
@@ -73,7 +64,7 @@ export class DeliverySupplierService {
       return fuzzyMatch;
     }
 
-    const supplier = this.supplierRepo.create({
+    const saved = await this.supplierRepo.create({
       companyId,
       name: supplierName,
       vatNumber: details?.vatNumber || null,
@@ -82,8 +73,6 @@ export class DeliverySupplierService {
       phone: details?.phone || null,
       email: details?.email || null,
     });
-
-    const saved = await this.supplierRepo.save(supplier);
     this.logger.log(
       `Auto-created supplier "${supplierName}" (id=${saved.id}) for company ${companyId}`,
     );
@@ -94,10 +83,7 @@ export class DeliverySupplierService {
     const normalised = this.normaliseSku(sku);
     if (normalised.length < 2) return null;
 
-    const allItems = await this.stockItemRepo.find({
-      where: { companyId },
-      select: STOCK_ITEM_MATCH_SELECT,
-    });
+    const allItems = await this.stockItemRepo.findForCompanySelectMatch(companyId);
 
     return allItems.find((item) => this.normaliseSku(item.sku) === normalised) ?? null;
   }
@@ -109,10 +95,7 @@ export class DeliverySupplierService {
     newSku: string,
     category?: string | null,
   ): Promise<{ existingItem: StockItem | null; sameSupplier: boolean; score: number }> {
-    const allItems = await this.stockItemRepo.find({
-      where: { companyId },
-      select: STOCK_ITEM_MATCH_SELECT,
-    });
+    const allItems = await this.stockItemRepo.findForCompanySelectMatch(companyId);
 
     const candidates = this.scoreCandidates(allItems, description, newSku, category);
 
@@ -328,14 +311,7 @@ export class DeliverySupplierService {
     if (itemIds.length === 0) return {};
 
     const supplierRows: { stockItemId: number; supplierName: string }[] =
-      await this.deliveryNoteItemRepo
-        .createQueryBuilder("dni")
-        .innerJoin("dni.deliveryNote", "dn")
-        .where("dni.stock_item_id IN (:...itemIds)", { itemIds })
-        .andWhere("dni.company_id = :companyId", { companyId })
-        .select("DISTINCT dni.stock_item_id", "stockItemId")
-        .addSelect("dn.supplierName", "supplierName")
-        .getRawMany();
+      await this.deliveryNoteItemRepo.supplierNamesForStockItems(companyId, itemIds);
 
     return supplierRows.reduce<Record<number, string[]>>((acc, row) => {
       const id = Number(row.stockItemId);

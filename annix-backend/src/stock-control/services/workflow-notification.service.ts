@@ -1,18 +1,19 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { DateTime, now } from "../../lib/datetime";
 import { StaffLeaveService } from "../../staff-leave/services/staff-leave.service";
 import { CpoCalloffRecord } from "../entities/cpo-calloff-record.entity";
 import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
+import { WorkflowNotificationRepository } from "../repositories/workflow-notification.repository";
 import { CompanyEmailService } from "./company-email.service";
 import { WebPushService } from "./web-push.service";
 import { WorkflowAssignmentService } from "./workflow-assignment.service";
@@ -27,14 +28,10 @@ export class WorkflowNotificationService {
   private readonly logger = new Logger(WorkflowNotificationService.name);
 
   constructor(
-    @InjectRepository(WorkflowNotification)
-    private readonly notificationRepo: Repository<WorkflowNotification>,
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
+    private readonly notificationRepo: WorkflowNotificationRepository,
+    private readonly userRepo: StockControlUserRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
     private readonly companyEmailService: CompanyEmailService,
     private readonly configService: ConfigService,
     private readonly assignmentService: WorkflowAssignmentService,
@@ -48,9 +45,7 @@ export class WorkflowNotificationService {
     step: string,
     sender?: SenderInfo,
   ): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       this.logger.warn(`Job card ${jobCardId} not found for notification`);
@@ -73,8 +68,8 @@ export class WorkflowNotificationService {
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
 
     const senderContext = sender ? ` (from ${sender.name})` : "";
-    const notifications = users.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      users.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId,
@@ -84,10 +79,10 @@ export class WorkflowNotificationService {
         actionUrl,
         senderId: sender?.id ?? null,
         senderName: sender?.name ?? null,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     const pushUsers = users.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
@@ -137,9 +132,7 @@ export class WorkflowNotificationService {
     reason: string,
     resetToStep?: string,
   ): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       return;
@@ -153,12 +146,10 @@ export class WorkflowNotificationService {
           (u) => u.id !== sender.id,
         )
       : (
-          await this.userRepo.find({
-            where: [
-              { companyId, role: StockControlRole.ACCOUNTS },
-              { companyId, role: StockControlRole.ADMIN },
-            ],
-          })
+          await this.userRepo.findForCompanyByRoles(companyId, [
+            StockControlRole.ACCOUNTS,
+            StockControlRole.ADMIN,
+          ])
         ).filter((u) => u.id !== sender.id);
 
     if (users.length === 0) {
@@ -166,8 +157,8 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const notifications = users.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      users.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId,
@@ -177,10 +168,10 @@ export class WorkflowNotificationService {
         actionUrl,
         senderId: sender.id,
         senderName: sender.name,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     const pushUsers = users.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
@@ -221,18 +212,16 @@ export class WorkflowNotificationService {
     alreadyAllocated: number,
     sender?: SenderInfo,
   ): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       this.logger.warn(`Job card ${jobCardId} not found for over-allocation notification`);
       return;
     }
 
-    const allManagers = await this.userRepo.find({
-      where: { companyId, role: StockControlRole.MANAGER },
-    });
+    const allManagers = await this.userRepo.findForCompanyByRoles(companyId, [
+      StockControlRole.MANAGER,
+    ]);
 
     const managers = allManagers.filter((u) => !sender || u.id !== sender.id);
 
@@ -247,8 +236,8 @@ export class WorkflowNotificationService {
     const totalAfter = alreadyAllocated + quantityRequested;
     const overBy = (totalAfter - allowedLitres).toFixed(1);
 
-    const notifications = managers.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      managers.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId,
@@ -258,10 +247,10 @@ export class WorkflowNotificationService {
         actionUrl,
         senderId: sender?.id ?? null,
         senderName: sender?.name ?? null,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     const pushManagers = managers.filter((u) => u.pushNotificationsEnabled !== false);
     this.webPushService
       .sendToUsers(
@@ -306,9 +295,7 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const jobCards = await this.jobCardRepo.find({
-      where: jobCardIds.map((id) => ({ id, companyId })),
-    });
+    const jobCards = await this.jobCardRepo.findByIdsForCompany(jobCardIds, companyId);
 
     if (jobCards.length === 0) {
       return;
@@ -324,7 +311,7 @@ export class WorkflowNotificationService {
       return;
     }
 
-    const allUsers = await this.userRepo.find({ where: { companyId } });
+    const allUsers = await this.userRepo.findAllForCompany(companyId);
     const recipientSet = new Set(recipientEmails.map((e) => e.toLowerCase()));
     const recipientUsers = allUsers.filter((u) => recipientSet.has(u.email.toLowerCase()));
 
@@ -347,8 +334,8 @@ export class WorkflowNotificationService {
         ? `${frontendUrl}/stock-control/portal/job-cards/${jobCards[0].id}`
         : actionUrl;
 
-    const notifications = recipientUsers.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      recipientUsers.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId: jobCards.length === 1 ? jobCards[0].id : null,
@@ -358,10 +345,10 @@ export class WorkflowNotificationService {
         actionUrl: detailUrl,
         senderId: sender?.id ?? null,
         senderName: sender?.name ?? null,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     if (recipientUsers.length > 0) {
       this.webPushService
         .sendToUsers(
@@ -395,44 +382,27 @@ export class WorkflowNotificationService {
   }
 
   async unreadNotifications(userId: number): Promise<WorkflowNotification[]> {
-    return this.notificationRepo.find({
-      where: { userId, readAt: IsNull() },
-      relations: ["jobCard"],
-      order: { createdAt: "DESC" },
-    });
+    return this.notificationRepo.findUnreadForUser(userId);
   }
 
   async allNotifications(userId: number, limit = 50): Promise<WorkflowNotification[]> {
-    return this.notificationRepo.find({
-      where: { userId },
-      relations: ["jobCard"],
-      order: { createdAt: "DESC" },
-      take: limit,
-    });
+    return this.notificationRepo.findAllForUser(userId, limit);
   }
 
   async unreadCount(userId: number): Promise<number> {
-    return this.notificationRepo.count({
-      where: { userId, readAt: IsNull() },
-    });
+    return this.notificationRepo.countUnreadForUser(userId);
   }
 
   async markAsRead(notificationId: number, userId: number): Promise<void> {
-    await this.notificationRepo.update(
-      { id: notificationId, userId },
-      { readAt: now().toJSDate() },
-    );
+    await this.notificationRepo.markReadByIdForUser(notificationId, userId, now().toJSDate());
   }
 
   async markAllAsRead(userId: number): Promise<void> {
-    await this.notificationRepo.update({ userId, readAt: IsNull() }, { readAt: now().toJSDate() });
+    await this.notificationRepo.markAllReadForUser(userId, now().toJSDate());
   }
 
   async markJobCardNotificationsAsRead(userId: number, jobCardId: number): Promise<void> {
-    await this.notificationRepo.update(
-      { userId, jobCardId, readAt: IsNull() },
-      { readAt: now().toJSDate() },
-    );
+    await this.notificationRepo.markReadForUserAndJobCard(userId, jobCardId, now().toJSDate());
   }
 
   async notifyCpoCalloffNeeded(
@@ -443,18 +413,16 @@ export class WorkflowNotificationService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/purchase-orders/${cpo.id}`;
 
-    const managers = await this.userRepo.find({
-      where: [
-        { companyId, role: StockControlRole.MANAGER },
-        { companyId, role: StockControlRole.ADMIN },
-      ],
-    });
+    const managers = await this.userRepo.findForCompanyByRoles(companyId, [
+      StockControlRole.MANAGER,
+      StockControlRole.ADMIN,
+    ]);
 
     const title = `CPO Call-Off Needed: ${jobCard.jobNumber}`;
     const message = `JC ${jobCard.jobNumber} (${jobCard.jobName}) arrived for CPO ${cpo.cpoNumber} — call-off needed for rubber, paint, and solution.`;
 
-    const notifications = managers.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      managers.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId: jobCard.id,
@@ -462,10 +430,10 @@ export class WorkflowNotificationService {
         message,
         actionType: NotificationActionType.CPO_CALLOFF_NEEDED,
         actionUrl,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     this.webPushService
       .sendToUsers(
         managers.map((u) => u.id),
@@ -498,13 +466,11 @@ export class WorkflowNotificationService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/purchase-orders/${cpo.id}`;
 
-    const recipients = await this.userRepo.find({
-      where: [
-        { companyId, role: StockControlRole.MANAGER },
-        { companyId, role: StockControlRole.ADMIN },
-        { companyId, role: StockControlRole.ACCOUNTS },
-      ],
-    });
+    const recipients = await this.userRepo.findForCompanyByRoles(companyId, [
+      StockControlRole.MANAGER,
+      StockControlRole.ADMIN,
+      StockControlRole.ACCOUNTS,
+    ]);
 
     const recordSummary = overdueRecords
       .map((r) => `${r.calloffType}${r.jobCard ? ` (JC ${r.jobCard.jobNumber})` : ""}`)
@@ -513,8 +479,8 @@ export class WorkflowNotificationService {
     const title = `Overdue Invoice: ${cpo.cpoNumber}`;
     const message = `${overdueRecords.length} call-off item(s) for CPO ${cpo.cpoNumber} were delivered 21+ days ago but not yet invoiced: ${recordSummary}`;
 
-    const notifications = recipients.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      recipients.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId: null,
@@ -522,10 +488,10 @@ export class WorkflowNotificationService {
         message,
         actionType: NotificationActionType.CPO_INVOICE_OVERDUE,
         actionUrl,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     this.webPushService
       .sendToUsers(
         recipients.map((u) => u.id),
@@ -572,7 +538,7 @@ export class WorkflowNotificationService {
 
     const primaryUser = users.find((u) => u.id === primaryAssignment.userId);
 
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company?.staffLeaveEnabled) {
       return primaryUser ? [primaryUser] : users;
     }
@@ -997,9 +963,7 @@ export class WorkflowNotificationService {
     stepLabel: string,
     sender: SenderInfo,
   ): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       this.logger.warn(`Job card ${jobCardId} not found for background step notification`);
@@ -1019,8 +983,8 @@ export class WorkflowNotificationService {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const actionUrl = `${frontendUrl}/stock-control/portal/job-cards/${jobCardId}`;
 
-    const notifications = users.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      users.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId,
@@ -1030,10 +994,10 @@ export class WorkflowNotificationService {
         actionUrl,
         senderId: sender.id,
         senderName: sender.name,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     this.webPushService
       .sendToUsers(
         users.map((u) => u.id),
@@ -1072,12 +1036,10 @@ export class WorkflowNotificationService {
     const fallbackUsers =
       users.length > 0
         ? users
-        : await this.userRepo.find({
-            where: [
-              { companyId, role: StockControlRole.ACCOUNTS },
-              { companyId, role: StockControlRole.ADMIN },
-            ],
-          });
+        : await this.userRepo.findForCompanyByRoles(companyId, [
+            StockControlRole.ACCOUNTS,
+            StockControlRole.ADMIN,
+          ]);
 
     if (fallbackUsers.length === 0) {
       this.logger.warn(`No document upload users found for company ${companyId}`);
@@ -1094,8 +1056,8 @@ export class WorkflowNotificationService {
         ? `${frontendUrl}/stock-control/portal/invoices`
         : `${frontendUrl}/stock-control/portal/deliveries`;
 
-    const notifications = fallbackUsers.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      fallbackUsers.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId: null,
@@ -1103,10 +1065,10 @@ export class WorkflowNotificationService {
         message,
         actionType: NotificationActionType.DOCUMENT_ARRIVED,
         actionUrl,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     this.webPushService
       .sendToUsers(
         fallbackUsers.map((u) => u.id),
@@ -1200,21 +1162,17 @@ export class WorkflowNotificationService {
     notes: string | null,
     sender?: SenderInfo,
   ): Promise<void> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       this.logger.warn(`Job card ${jobCardId} not found for QA rejection escalation`);
       return;
     }
 
-    const allManagers = await this.userRepo.find({
-      where: [
-        { companyId, role: StockControlRole.MANAGER },
-        { companyId, role: StockControlRole.ADMIN },
-      ],
-    });
+    const allManagers = await this.userRepo.findForCompanyByRoles(companyId, [
+      StockControlRole.MANAGER,
+      StockControlRole.ADMIN,
+    ]);
 
     const managers = allManagers.filter((u) => !sender || u.id !== sender.id);
 
@@ -1228,8 +1186,8 @@ export class WorkflowNotificationService {
     const title = `QA Rejection Escalation: ${jobCard.jobNumber} — ${jobCard.jobName}`;
     const message = `QA review has been rejected ${cycleNumber} time(s) for ${jobCard.jobNumber} (${jobCard.jobName}).${notes ? ` Latest reason: ${notes}` : ""}`;
 
-    const notifications = managers.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      managers.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId,
@@ -1239,10 +1197,10 @@ export class WorkflowNotificationService {
         actionUrl,
         senderId: sender?.id ?? null,
         senderName: sender?.name ?? null,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
     this.webPushService
       .sendToUsers(
         managers.map((u) => u.id),

@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { generateUniqueId, nowMillis } from "../lib/datetime";
 import {
   LineCalloutDto,
@@ -48,72 +46,59 @@ import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RubberSpecification } from "./entities/rubber-specification.entity";
 import { RubberType } from "./entities/rubber-type.entity";
+import { RubberAdhesionRequirementRepository } from "./repositories/rubber-adhesion-requirement.repository";
+import { RubberApplicationRatingRepository } from "./repositories/rubber-application-rating.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberOrderRepository } from "./repositories/rubber-order.repository";
+import { RubberOrderItemRepository } from "./repositories/rubber-order-item.repository";
+import { RubberPricingTierRepository } from "./repositories/rubber-pricing-tier.repository";
+import { RubberProductRepository } from "./repositories/rubber-product.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberSpecificationRepository } from "./repositories/rubber-specification.repository";
+import { RubberThicknessRecommendationRepository } from "./repositories/rubber-thickness-recommendation.repository";
+import { RubberTypeRepository } from "./repositories/rubber-type.repository";
 
 @Injectable()
 export class RubberLiningService {
   constructor(
-    @InjectRepository(RubberType)
-    private rubberTypeRepository: Repository<RubberType>,
-    @InjectRepository(RubberSpecification)
-    private rubberSpecRepository: Repository<RubberSpecification>,
-    @InjectRepository(RubberApplicationRating)
-    private applicationRatingRepository: Repository<RubberApplicationRating>,
-    @InjectRepository(RubberThicknessRecommendation)
-    private thicknessRepository: Repository<RubberThicknessRecommendation>,
-    @InjectRepository(RubberAdhesionRequirement)
-    private adhesionRepository: Repository<RubberAdhesionRequirement>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
-    @InjectRepository(RubberPricingTier)
-    private pricingTierRepository: Repository<RubberPricingTier>,
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberProduct)
-    private productRepository: Repository<RubberProduct>,
-    @InjectRepository(RubberOrder)
-    private orderRepository: Repository<RubberOrder>,
-    @InjectRepository(RubberOrderItem)
-    private orderItemRepository: Repository<RubberOrderItem>,
+    private rubberTypeRepository: RubberTypeRepository,
+    private rubberSpecRepository: RubberSpecificationRepository,
+    private applicationRatingRepository: RubberApplicationRatingRepository,
+    private thicknessRepository: RubberThicknessRecommendationRepository,
+    private adhesionRepository: RubberAdhesionRequirementRepository,
+    private productCodingRepository: RubberProductCodingRepository,
+    private pricingTierRepository: RubberPricingTierRepository,
+    private companyRepository: RubberCompanyRepository,
+    private productRepository: RubberProductRepository,
+    private orderRepository: RubberOrderRepository,
+    private orderItemRepository: RubberOrderItemRepository,
   ) {}
 
   async allRubberTypes(): Promise<RubberTypeDto[]> {
-    const types = await this.rubberTypeRepository.find({
-      order: { typeNumber: "ASC" },
-    });
+    const types = await this.rubberTypeRepository.findAllOrderedByTypeNumber();
     return types.map(this.mapTypeToDto);
   }
 
   async rubberTypeById(id: number): Promise<RubberTypeDto | null> {
-    const type = await this.rubberTypeRepository.findOne({ where: { id } });
+    const type = await this.rubberTypeRepository.findById(id);
     return type ? this.mapTypeToDto(type) : null;
   }
 
   async rubberTypeByNumber(typeNumber: number): Promise<RubberTypeDto | null> {
-    const type = await this.rubberTypeRepository.findOne({
-      where: { typeNumber },
-    });
+    const type = await this.rubberTypeRepository.findOneByTypeNumber(typeNumber);
     return type ? this.mapTypeToDto(type) : null;
   }
 
   async allSpecifications(): Promise<RubberSpecificationDto[]> {
-    const specs = await this.rubberSpecRepository.find({
-      relations: ["rubberType"],
-      order: { rubberTypeId: "ASC", grade: "ASC", hardnessClassIrhd: "ASC" },
-    });
+    const specs = await this.rubberSpecRepository.findAllWithTypeOrdered();
     return specs.map(this.mapSpecToDto);
   }
 
   async specificationsByType(typeNumber: number): Promise<RubberSpecificationDto[]> {
-    const type = await this.rubberTypeRepository.findOne({
-      where: { typeNumber },
-    });
+    const type = await this.rubberTypeRepository.findOneByTypeNumber(typeNumber);
     if (!type) return [];
 
-    const specs = await this.rubberSpecRepository.find({
-      where: { rubberTypeId: type.id },
-      relations: ["rubberType"],
-      order: { grade: "ASC", hardnessClassIrhd: "ASC" },
-    });
+    const specs = await this.rubberSpecRepository.findByTypeIdOrdered(type.id);
     return specs.map(this.mapSpecToDto);
   }
 
@@ -122,19 +107,14 @@ export class RubberLiningService {
     grade: string,
     hardnessClass: number,
   ): Promise<RubberSpecificationDto | null> {
-    const type = await this.rubberTypeRepository.findOne({
-      where: { typeNumber },
-    });
+    const type = await this.rubberTypeRepository.findOneByTypeNumber(typeNumber);
     if (!type) return null;
 
-    const spec = await this.rubberSpecRepository.findOne({
-      where: {
-        rubberTypeId: type.id,
-        grade: grade.toUpperCase(),
-        hardnessClassIrhd: hardnessClass,
-      },
-      relations: ["rubberType"],
-    });
+    const spec = await this.rubberSpecRepository.findOneByCallout(
+      type.id,
+      grade.toUpperCase(),
+      hardnessClass,
+    );
     return spec ? this.mapSpecToDto(spec) : null;
   }
 
@@ -142,48 +122,21 @@ export class RubberLiningService {
     typeNumber?: number,
     chemicalCategory?: string,
   ): Promise<RubberApplicationRatingDto[]> {
-    const query = this.applicationRatingRepository
-      .createQueryBuilder("rating")
-      .leftJoinAndSelect("rating.rubberType", "rubberType");
-
-    if (typeNumber) {
-      query.andWhere("rubberType.typeNumber = :typeNumber", { typeNumber });
-    }
-
-    if (chemicalCategory) {
-      query.andWhere("rating.chemicalCategory = :chemicalCategory", {
-        chemicalCategory,
-      });
-    }
-
-    const ratings = await query
-      .orderBy("rubberType.typeNumber", "ASC")
-      .addOrderBy("rating.chemicalCategory", "ASC")
-      .getMany();
+    const ratings = await this.applicationRatingRepository.findFilteredOrdered({
+      typeNumber,
+      chemicalCategory,
+    });
 
     return ratings.map(this.mapApplicationRatingToDto);
   }
 
   async thicknessRecommendations(): Promise<RubberThicknessRecommendationDto[]> {
-    const recs = await this.thicknessRepository.find({
-      order: { nominalThicknessMm: "ASC" },
-    });
+    const recs = await this.thicknessRepository.findAllOrderedByThickness();
     return recs.map(this.mapThicknessToDto);
   }
 
   async adhesionRequirements(typeNumber?: number): Promise<RubberAdhesionRequirementDto[]> {
-    const query = this.adhesionRepository
-      .createQueryBuilder("adhesion")
-      .leftJoinAndSelect("adhesion.rubberType", "rubberType");
-
-    if (typeNumber) {
-      query.andWhere("rubberType.typeNumber = :typeNumber", { typeNumber });
-    }
-
-    const reqs = await query
-      .orderBy("rubberType.typeNumber", "ASC")
-      .addOrderBy("adhesion.vulcanizationMethod", "ASC")
-      .getMany();
+    const reqs = await this.adhesionRepository.findByTypeNumberOrdered(typeNumber);
 
     return reqs.map(this.mapAdhesionToDto);
   }
@@ -191,7 +144,7 @@ export class RubberLiningService {
   async recommendRubberLining(
     request: RubberRecommendationRequestDto,
   ): Promise<RubberRecommendationDto> {
-    const allTypes = await this.rubberTypeRepository.find();
+    const allTypes = await this.rubberTypeRepository.findAll();
     const reasoning: string[] = [];
     const warnings: string[] = [];
     let suitableTypeIds: number[] = allTypes.map((t) => t.id);
@@ -243,13 +196,10 @@ export class RubberLiningService {
     }
 
     if (request.chemicalExposure && request.chemicalExposure.length > 0) {
-      const ratings = await this.applicationRatingRepository.find({
-        where: {
-          chemicalCategory: In(request.chemicalExposure),
-          resistanceRating: In(["excellent", "good"]),
-        },
-        relations: ["rubberType"],
-      });
+      const ratings = await this.applicationRatingRepository.findByChemicalCategoriesAndRatings(
+        request.chemicalExposure,
+        ["excellent", "good"],
+      );
 
       const chemicalSuitableIds = [...new Set(ratings.map((r) => r.rubberTypeId))];
       suitableTypeIds = suitableTypeIds.filter((id) => chemicalSuitableIds.includes(id));
@@ -279,11 +229,7 @@ export class RubberLiningService {
 
     let recommendedSpecs: RubberSpecification[] = [];
     if (suitableTypeIds.length > 0) {
-      recommendedSpecs = await this.rubberSpecRepository.find({
-        where: { rubberTypeId: In(suitableTypeIds) },
-        relations: ["rubberType"],
-        order: { grade: "ASC", hardnessClassIrhd: "ASC" },
-      });
+      recommendedSpecs = await this.rubberSpecRepository.findByTypeIdsOrdered(suitableTypeIds);
     }
 
     if (request.abrasionLevel === "high" || request.abrasionLevel === "very_high") {
@@ -430,23 +376,17 @@ export class RubberLiningService {
   }
 
   async allProductCodings(codingType?: ProductCodingType): Promise<RubberProductCodingDto[]> {
-    const where = codingType ? { codingType } : {};
-    const codings = await this.productCodingRepository.find({
-      where,
-      order: { codingType: "ASC", code: "ASC" },
-    });
+    const codings = await this.productCodingRepository.findOrderedByType(codingType);
     return codings.map(this.mapProductCodingToDto);
   }
 
   async productCodingById(id: number): Promise<RubberProductCodingDto | null> {
-    const coding = await this.productCodingRepository.findOne({
-      where: { id },
-    });
+    const coding = await this.productCodingRepository.findOneById(id);
     return coding ? this.mapProductCodingToDto(coding) : null;
   }
 
   async createProductCoding(dto: CreateRubberProductCodingDto): Promise<RubberProductCodingDto> {
-    const coding = this.productCodingRepository.create({
+    const coding = this.productCodingRepository.build({
       ...dto,
       firebaseUid: `pg_${generateUniqueId()}`,
     });
@@ -458,9 +398,7 @@ export class RubberLiningService {
     id: number,
     dto: UpdateRubberProductCodingDto,
   ): Promise<RubberProductCodingDto | null> {
-    const coding = await this.productCodingRepository.findOne({
-      where: { id },
-    });
+    const coding = await this.productCodingRepository.findOneById(id);
     if (!coding) return null;
     Object.assign(coding, dto);
     if (dto.needsReview === undefined) {
@@ -471,31 +409,26 @@ export class RubberLiningService {
   }
 
   async deleteProductCoding(id: number): Promise<boolean> {
-    const result = await this.productCodingRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.productCodingRepository.deleteById(id);
   }
 
   async countProductCodingsNeedingReview(): Promise<{ count: number }> {
-    const count = await this.productCodingRepository.count({
-      where: { needsReview: true },
-    });
+    const count = await this.productCodingRepository.countNeedingReview();
     return { count };
   }
 
   async allPricingTiers(): Promise<RubberPricingTierDto[]> {
-    const tiers = await this.pricingTierRepository.find({
-      order: { pricingFactor: "ASC" },
-    });
+    const tiers = await this.pricingTierRepository.findAllOrderedByPricingFactor();
     return tiers.map(this.mapPricingTierToDto);
   }
 
   async pricingTierById(id: number): Promise<RubberPricingTierDto | null> {
-    const tier = await this.pricingTierRepository.findOne({ where: { id } });
+    const tier = await this.pricingTierRepository.findById(id);
     return tier ? this.mapPricingTierToDto(tier) : null;
   }
 
   async createPricingTier(dto: CreateRubberPricingTierDto): Promise<RubberPricingTierDto> {
-    const tier = this.pricingTierRepository.create({
+    const tier = this.pricingTierRepository.build({
       ...dto,
       firebaseUid: `pg_${generateUniqueId()}`,
     });
@@ -507,7 +440,7 @@ export class RubberLiningService {
     id: number,
     dto: UpdateRubberPricingTierDto,
   ): Promise<RubberPricingTierDto | null> {
-    const tier = await this.pricingTierRepository.findOne({ where: { id } });
+    const tier = await this.pricingTierRepository.findById(id);
     if (!tier) return null;
     Object.assign(tier, dto);
     const saved = await this.pricingTierRepository.save(tier);
@@ -515,23 +448,16 @@ export class RubberLiningService {
   }
 
   async deletePricingTier(id: number): Promise<boolean> {
-    const result = await this.pricingTierRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.pricingTierRepository.deleteById(id);
   }
 
   async allCompanies(): Promise<RubberCompanyDto[]> {
-    const companies = await this.companyRepository.find({
-      relations: ["pricingTier"],
-      order: { name: "ASC" },
-    });
+    const companies = await this.companyRepository.findAllWithPricingTierOrderedByName();
     return companies.map((c) => this.mapCompanyToDto(c));
   }
 
   async companyById(id: number): Promise<RubberCompanyDto | null> {
-    const company = await this.companyRepository.findOne({
-      where: { id },
-      relations: ["pricingTier"],
-    });
+    const company = await this.companyRepository.findById(id, ["pricingTier"]);
     return company ? this.mapCompanyToDto(company) : null;
   }
 
@@ -555,15 +481,12 @@ export class RubberLiningService {
     company.autoApproveAuCocs = dto.autoApproveAuCocs || false;
 
     const saved = await this.companyRepository.save(company);
-    const result = await this.companyRepository.findOne({
-      where: { id: saved.id },
-      relations: ["pricingTier"],
-    });
+    const result = await this.companyRepository.findById(saved.id, ["pricingTier"]);
     return this.mapCompanyToDto(result!);
   }
 
   async updateCompany(id: number, dto: UpdateRubberCompanyDto): Promise<RubberCompanyDto | null> {
-    const company = await this.companyRepository.findOne({ where: { id } });
+    const company = await this.companyRepository.findById(id);
     if (!company) return null;
 
     if (dto.name !== undefined) company.name = dto.name;
@@ -585,32 +508,26 @@ export class RubberLiningService {
     if (dto.autoApproveAuCocs !== undefined) company.autoApproveAuCocs = dto.autoApproveAuCocs;
 
     await this.companyRepository.save(company);
-    const result = await this.companyRepository.findOne({
-      where: { id },
-      relations: ["pricingTier"],
-    });
+    const result = await this.companyRepository.findById(id, ["pricingTier"]);
     return this.mapCompanyToDto(result!);
   }
 
   async deleteCompany(id: number): Promise<boolean> {
-    const result = await this.companyRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.companyRepository.deleteById(id);
   }
 
   async allProducts(): Promise<RubberProductDto[]> {
-    const products = await this.productRepository.find({
-      order: { title: "ASC" },
-    });
-    const codings = await this.productCodingRepository.find();
-    const companies = await this.companyRepository.find();
+    const products = await this.productRepository.findAllOrderedByTitle();
+    const codings = await this.productCodingRepository.findAll();
+    const companies = await this.companyRepository.findAll();
     return products.map((p) => this.mapProductToDto(p, codings, companies));
   }
 
   async productById(id: number): Promise<RubberProductDto | null> {
-    const product = await this.productRepository.findOne({ where: { id } });
+    const product = await this.productRepository.findById(id);
     if (!product) return null;
-    const codings = await this.productCodingRepository.find();
-    const companies = await this.companyRepository.find();
+    const codings = await this.productCodingRepository.findAll();
+    const companies = await this.companyRepository.findAll();
     return this.mapProductToDto(product, codings, companies);
   }
 
@@ -659,9 +576,8 @@ export class RubberLiningService {
     const codingUidsToValidate = codingValidations.filter((v) => v.uid).map((v) => v.uid!);
 
     if (codingUidsToValidate.length > 0) {
-      const codings = await this.productCodingRepository.find({
-        where: { firebaseUid: In(codingUidsToValidate) },
-      });
+      const codings =
+        await this.productCodingRepository.findManyByFirebaseUids(codingUidsToValidate);
 
       codingValidations.forEach((validation) => {
         if (validation.uid) {
@@ -680,8 +596,8 @@ export class RubberLiningService {
     }
 
     if (dto.compoundOwnerFirebaseUid) {
-      const company = await this.companyRepository.findOne({
-        where: { firebaseUid: dto.compoundOwnerFirebaseUid },
+      const company = await this.companyRepository.findOneWhere({
+        firebaseUid: dto.compoundOwnerFirebaseUid,
       });
       if (!company) {
         errors.push(
@@ -701,7 +617,7 @@ export class RubberLiningService {
 
   async createProduct(dto: CreateRubberProductDto): Promise<RubberProductDto> {
     await this.validateProductCodingRelationships(dto);
-    const product = this.productRepository.create({
+    const product = this.productRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       title: dto.title || null,
       description: dto.description || null,
@@ -719,13 +635,13 @@ export class RubberLiningService {
       markup: dto.markup || null,
     });
     const saved = await this.productRepository.save(product);
-    const codings = await this.productCodingRepository.find();
-    const companies = await this.companyRepository.find();
+    const codings = await this.productCodingRepository.findAll();
+    const companies = await this.companyRepository.findAll();
     return this.mapProductToDto(saved, codings, companies);
   }
 
   async updateProduct(id: number, dto: UpdateRubberProductDto): Promise<RubberProductDto | null> {
-    const product = await this.productRepository.findOne({ where: { id } });
+    const product = await this.productRepository.findById(id);
     if (!product) return null;
 
     await this.validateProductCodingRelationships(dto);
@@ -753,23 +669,22 @@ export class RubberLiningService {
     if (dto.markup !== undefined) product.markup = dto.markup || null;
 
     const saved = await this.productRepository.save(product);
-    const codings = await this.productCodingRepository.find();
-    const companies = await this.companyRepository.find();
+    const codings = await this.productCodingRepository.findAll();
+    const companies = await this.companyRepository.findAll();
     return this.mapProductToDto(saved, codings, companies);
   }
 
   async deleteProduct(id: number): Promise<boolean> {
-    const result = await this.productRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.productRepository.deleteById(id);
   }
 
   async importProducts(
     rows: ImportProductRowDto[],
     updateExisting: boolean = false,
   ): Promise<ImportProductsResultDto> {
-    const codings = await this.productCodingRepository.find();
-    const companies = await this.companyRepository.find();
-    const existingProducts = await this.productRepository.find();
+    const codings = await this.productCodingRepository.findAll();
+    const companies = await this.companyRepository.findAll();
+    const existingProducts = await this.productRepository.findAll();
 
     const codingLookup = (name: string | undefined, type: ProductCodingType): string | null => {
       if (!name) return null;
@@ -883,7 +798,7 @@ export class RubberLiningService {
             };
           }
 
-          const product = this.productRepository.create({
+          const product = this.productRepository.build({
             firebaseUid: `pg_${generateUniqueId()}`,
             title: row.title || null,
             description: row.description || null,
@@ -950,32 +865,21 @@ export class RubberLiningService {
   }
 
   async allOrders(status?: RubberOrderStatus): Promise<RubberOrderDto[]> {
-    const where = status !== undefined ? { status } : {};
-    const orders = await this.orderRepository.find({
-      where,
-      relations: ["company", "items", "items.product"],
-      order: { createdAt: "DESC" },
-    });
+    const orders = await this.orderRepository.findFilteredWithRelations(status);
     return orders.map((o) => this.mapOrderToDto(o));
   }
 
   async orderById(id: number): Promise<RubberOrderDto | null> {
-    const order = await this.orderRepository.findOne({
-      where: { id },
-      relations: ["company", "items", "items.product"],
-    });
+    const order = await this.orderRepository.findOneByIdWithRelations(id);
     return order ? this.mapOrderToDto(order) : null;
   }
 
   async createOrder(dto: CreateRubberOrderDto): Promise<RubberOrderDto> {
-    const lastOrder = await this.orderRepository
-      .createQueryBuilder("order")
-      .orderBy("order.id", "DESC")
-      .getOne();
+    const lastOrder = await this.orderRepository.findLatest();
     const nextNumber = (lastOrder?.id || 0) + 1;
     const orderNumber = dto.orderNumber || `ORD-${String(nextNumber).padStart(5, "0")}`;
 
-    const order = this.orderRepository.create({
+    const order = this.orderRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       orderNumber,
       companyOrderNumber: dto.companyOrderNumber || null,
@@ -986,7 +890,7 @@ export class RubberLiningService {
 
     if (dto.items && dto.items.length > 0) {
       const items = dto.items.map((item) =>
-        this.orderItemRepository.create({
+        this.orderItemRepository.build({
           orderId: savedOrder.id,
           productId: item.productId || null,
           thickness: item.thickness || null,
@@ -998,18 +902,15 @@ export class RubberLiningService {
           callOffs: item.callOffs || [],
         }),
       );
-      await this.orderItemRepository.save(items);
+      await this.orderItemRepository.saveMany(items);
     }
 
-    const result = await this.orderRepository.findOne({
-      where: { id: savedOrder.id },
-      relations: ["company", "items", "items.product"],
-    });
+    const result = await this.orderRepository.findOneByIdWithRelations(savedOrder.id);
     return this.mapOrderToDto(result!);
   }
 
   async updateOrder(id: number, dto: UpdateRubberOrderDto): Promise<RubberOrderDto | null> {
-    const order = await this.orderRepository.findOne({ where: { id } });
+    const order = await this.orderRepository.findById(id);
     if (!order) return null;
 
     if (dto.companyOrderNumber !== undefined)
@@ -1028,9 +929,9 @@ export class RubberLiningService {
     await this.orderRepository.save(order);
 
     if (dto.items !== undefined) {
-      await this.orderItemRepository.delete({ orderId: id });
+      await this.orderItemRepository.deleteByOrderId(id);
       const items = dto.items.map((item) =>
-        this.orderItemRepository.create({
+        this.orderItemRepository.build({
           orderId: id,
           productId: item.productId || null,
           thickness: item.thickness || null,
@@ -1042,19 +943,15 @@ export class RubberLiningService {
           callOffs: item.callOffs || [],
         }),
       );
-      await this.orderItemRepository.save(items);
+      await this.orderItemRepository.saveMany(items);
     }
 
-    const result = await this.orderRepository.findOne({
-      where: { id },
-      relations: ["company", "items", "items.product"],
-    });
+    const result = await this.orderRepository.findOneByIdWithRelations(id);
     return this.mapOrderToDto(result!);
   }
 
   async deleteOrder(id: number): Promise<boolean> {
-    const result = await this.orderRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.orderRepository.deleteById(id);
   }
 
   /**
@@ -1082,13 +979,8 @@ export class RubberLiningService {
   async calculatePrice(
     request: RubberPriceCalculationRequestDto,
   ): Promise<RubberPriceCalculationDto | null> {
-    const product = await this.productRepository.findOne({
-      where: { id: request.productId },
-    });
-    const company = await this.companyRepository.findOne({
-      where: { id: request.companyId },
-      relations: ["pricingTier"],
-    });
+    const product = await this.productRepository.findById(request.productId);
+    const company = await this.companyRepository.findById(request.companyId, ["pricingTier"]);
 
     if (!product || !company) return null;
 

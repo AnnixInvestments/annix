@@ -1,8 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { MaterialLimitResponseDto } from "./dto/material-limit-response.dto";
 import { MaterialLimit } from "./entities/material-limit.entity";
+import { MaterialValidationRepository } from "./material-validation.repository";
 
 export interface MaterialSuitabilityResult {
   isSuitable: boolean;
@@ -31,17 +30,14 @@ export class MaterialValidationService {
   private cacheLoadedAt = 0;
   private static readonly CACHE_TTL_MS = 60 * 60 * 1000;
 
-  constructor(
-    @InjectRepository(MaterialLimit)
-    private materialLimitRepository: Repository<MaterialLimit>,
-  ) {}
+  constructor(private readonly materialValidationRepository: MaterialValidationRepository) {}
 
   private async loadLimits(): Promise<MaterialLimit[]> {
     const now = Date.now();
     if (this.cachedLimits && now - this.cacheLoadedAt < MaterialValidationService.CACHE_TTL_MS) {
       return this.cachedLimits;
     }
-    this.cachedLimits = await this.materialLimitRepository.find();
+    this.cachedLimits = await this.materialValidationRepository.findAllLimits();
     this.cacheLoadedAt = now;
     return this.cachedLimits;
   }
@@ -56,7 +52,6 @@ export class MaterialValidationService {
 
     const specNameLower = steelSpecName.toLowerCase();
 
-    // Try pattern matching - specification_pattern is used as a regex-like pattern
     const patternMatch = allLimits.find((l) => {
       const pattern = l.specification_pattern.toLowerCase();
       return (
@@ -70,10 +65,7 @@ export class MaterialValidationService {
   }
 
   async findBySpecId(steelSpecificationId: number): Promise<MaterialLimit | null> {
-    return this.materialLimitRepository.findOne({
-      where: { steel_specification_id: steelSpecificationId },
-      relations: ["steelSpecification"],
-    });
+    return this.materialValidationRepository.findBySpecId(steelSpecificationId);
   }
 
   async checkMaterialSuitability(
@@ -95,7 +87,6 @@ export class MaterialValidationService {
     const warnings: string[] = [];
     let isSuitable = true;
 
-    // Check temperature limits
     if (temperatureC !== undefined) {
       if (temperatureC < limits.min_temp_c) {
         isSuitable = false;
@@ -111,7 +102,6 @@ export class MaterialValidationService {
       }
     }
 
-    // Check pressure limits
     if (pressureBar !== undefined) {
       const maxPressure = Number(limits.max_pressure_bar);
       if (pressureBar > maxPressure) {
@@ -121,7 +111,6 @@ export class MaterialValidationService {
       }
     }
 
-    // Generate recommendation if unsuitable
     let recommendation: string | undefined;
     if (!isSuitable) {
       recommendation = await this.generateRecommendation(temperatureC, pressureBar);
@@ -182,7 +171,6 @@ export class MaterialValidationService {
       return "Consider ASTM A333 Grade 6 (down to -100°C) or ASTM A312 stainless (down to -196°C)";
     }
 
-    // Get suitable materials
     const suitable = await this.getSuitableMaterials(temperatureC, pressureBar);
     if (suitable.length > 0) {
       return `Consider: ${suitable.slice(0, 3).join(", ")}`;

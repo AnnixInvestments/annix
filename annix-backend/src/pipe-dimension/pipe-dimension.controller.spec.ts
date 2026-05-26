@@ -1,31 +1,11 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
-import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
-import { PipeDimension } from "./entities/pipe-dimension.entity";
 import { PipeDimensionController } from "./pipe-dimension.controller";
+import { PipeDimensionRepository } from "./pipe-dimension.repository";
 import { PipeDimensionService } from "./pipe-dimension.service";
 
 describe("PipeDimensionController", () => {
   let controller: PipeDimensionController;
   let service: PipeDimensionService;
-
-  const mockPipeRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-    createQueryBuilder: jest.fn(),
-  };
-
-  const mockNominalRepo = {
-    findOne: jest.fn(),
-  };
-
-  const mockSteelRepo = {
-    findOne: jest.fn(),
-  };
 
   const mockPipeDimensionService = {
     create: jest.fn(),
@@ -38,20 +18,36 @@ describe("PipeDimensionController", () => {
     findAllBySpecAndNominal: jest.fn(),
   };
 
+  const mockPipeDimensionRepository: jest.Mocked<PipeDimensionRepository> = {
+    findAllWithRelations: jest.fn(),
+    findAllWithDiameterAndSpec: jest.fn(),
+    findOneWithRelations: jest.fn(),
+    findNominalByDiameter: jest.fn(),
+    findNominalById: jest.fn(),
+    findSteelById: jest.fn(),
+    createPipe: jest.fn(),
+    savePipe: jest.fn(),
+    removePipe: jest.fn(),
+    findBySpecAndNominal: jest.fn(),
+    recommendedSpecs: jest.fn(),
+    higherSchedules: jest.fn(),
+    findByNominalDiameterScheduleAndSteel: jest.fn(),
+    create: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
+    save: jest.fn(),
+    remove: jest.fn(),
+    count: jest.fn(),
+  } as jest.Mocked<PipeDimensionRepository>;
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PipeDimensionController],
       providers: [
         { provide: PipeDimensionService, useValue: mockPipeDimensionService },
-        { provide: getRepositoryToken(PipeDimension), useValue: mockPipeRepo },
-        {
-          provide: getRepositoryToken(NominalOutsideDiameterMm),
-          useValue: mockNominalRepo,
-        },
-        {
-          provide: getRepositoryToken(SteelSpecification),
-          useValue: mockSteelRepo,
-        },
+        { provide: PipeDimensionRepository, useValue: mockPipeDimensionRepository },
       ],
     }).compile();
 
@@ -63,5 +59,9 @@ describe("PipeDimensionController", () => {
 
   it("should be defined", () => {
     expect(controller).toBeDefined();
+  });
+
+  it("should have service defined", () => {
+    expect(service).toBeDefined();
   });
 });

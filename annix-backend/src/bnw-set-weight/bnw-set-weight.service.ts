@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { BnwSetWeightRepository } from "./bnw-set-weight.repository";
 import { BnwSetWeight } from "./entities/bnw-set-weight.entity";
 
 export interface BnwSetInfoResult {
@@ -16,21 +15,16 @@ export interface BnwSetInfoResult {
 
 @Injectable()
 export class BnwSetWeightService {
-  constructor(
-    @InjectRepository(BnwSetWeight)
-    private bnwSetWeightRepository: Repository<BnwSetWeight>,
-  ) {}
+  constructor(private readonly bnwSetWeightRepository: BnwSetWeightRepository) {}
 
   async findAll(): Promise<BnwSetWeight[]> {
-    return this.bnwSetWeightRepository.find();
+    return this.bnwSetWeightRepository.findAll();
   }
 
   async bnwSetInfo(nominalBoreMm: number, pressureClass: string): Promise<BnwSetInfoResult> {
-    const result = await this.bnwSetWeightRepository.findOne({
-      where: {
-        nominal_bore_mm: nominalBoreMm,
-        pressure_class: pressureClass,
-      },
+    const result = await this.bnwSetWeightRepository.findOneWhere({
+      nominal_bore_mm: nominalBoreMm,
+      pressure_class: pressureClass,
     });
 
     if (!result) {
@@ -61,12 +55,6 @@ export class BnwSetWeightService {
   }
 
   async availablePressureClasses(): Promise<string[]> {
-    const result = await this.bnwSetWeightRepository
-      .createQueryBuilder("bnw")
-      .select("DISTINCT bnw.pressure_class", "pressureClass")
-      .orderBy("bnw.pressure_class", "ASC")
-      .getRawMany<{ pressureClass: string }>();
-
-    return result.map((r) => r.pressureClass);
+    return this.bnwSetWeightRepository.availablePressureClasses();
   }
 }

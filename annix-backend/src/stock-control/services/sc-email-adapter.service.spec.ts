@@ -1,8 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
+import { StockControlSupplierRepository } from "../repositories/stock-control-supplier.repository";
 import { CertificateService } from "./certificate.service";
 import { DeliveryService } from "./delivery.service";
 import { InvoiceService } from "./invoice.service";
@@ -38,7 +37,7 @@ describe("ScEmailAdapterService (classification)", () => {
         { provide: InvoiceExtractionService, useValue: noopExtractionService },
         { provide: WorkflowNotificationService, useValue: noopNotificationService },
         { provide: CertificateService, useValue: noopCertificateService },
-        { provide: getRepositoryToken(StockControlSupplier), useValue: noopSupplierRepo },
+        { provide: StockControlSupplierRepository, useValue: noopSupplierRepo },
       ],
     }).compile();
 

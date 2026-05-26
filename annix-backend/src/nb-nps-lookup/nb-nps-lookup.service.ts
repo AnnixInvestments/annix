@@ -1,10 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { BaseCrudService } from "../lib/base-crud.service";
 import { CreateNbNpsLookupDto } from "./dto/create-nb-nps-lookup.dto";
 import { UpdateNbNpsLookupDto } from "./dto/update-nb-nps-lookup.dto";
 import { NbNpsLookup } from "./entities/nb-nps-lookup.entity";
+import { NbNpsLookupRepository } from "./nb-nps-lookup.repository";
 
 @Injectable()
 export class NbNpsLookupService extends BaseCrudService<
@@ -12,11 +11,8 @@ export class NbNpsLookupService extends BaseCrudService<
   CreateNbNpsLookupDto,
   UpdateNbNpsLookupDto
 > {
-  constructor(
-    @InjectRepository(NbNpsLookup)
-    repo: Repository<NbNpsLookup>,
-  ) {
-    super(repo, { entityName: "NbNpsLookup" });
+  constructor(repository: NbNpsLookupRepository) {
+    super(repository, { entityName: "NbNpsLookup" });
   }
 
   async create(dto: CreateNbNpsLookupDto): Promise<NbNpsLookup> {

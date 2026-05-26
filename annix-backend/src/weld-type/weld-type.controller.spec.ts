@@ -1,20 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { WeldType } from "./entities/weld-type.entity";
 import { WeldTypeController } from "./weld-type.controller";
 import { WeldTypeService } from "./weld-type.service";
 
 describe("WeldTypeController", () => {
   let controller: WeldTypeController;
   let service: WeldTypeService;
-
-  const mockWeldTypeRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
 
   const mockWeldTypeService = {
     create: jest.fn(),
@@ -28,10 +18,7 @@ describe("WeldTypeController", () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [WeldTypeController],
-      providers: [
-        { provide: WeldTypeService, useValue: mockWeldTypeService },
-        { provide: getRepositoryToken(WeldType), useValue: mockWeldTypeRepo },
-      ],
+      providers: [{ provide: WeldTypeService, useValue: mockWeldTypeService }],
     }).compile();
 
     controller = module.get<WeldTypeController>(WeldTypeController);
@@ -42,5 +29,6 @@ describe("WeldTypeController", () => {
 
   it("should be defined", () => {
     expect(controller).toBeDefined();
+    expect(service).toBeDefined();
   });
 });

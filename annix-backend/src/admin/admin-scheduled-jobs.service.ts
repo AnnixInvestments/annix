@@ -1,13 +1,11 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression, SchedulerRegistry } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
 import { CronTime } from "cron";
 import { DateTime } from "luxon";
-import { Repository } from "typeorm";
 import { isSAPublicHoliday } from "../lib/sa-public-holidays";
-import { ScheduledJobOverride } from "./entities/scheduled-job-override.entity";
-import { ScheduledJobsGlobalSettings } from "./entities/scheduled-jobs-global-settings.entity";
+import { ScheduledJobOverrideRepository } from "./repositories/scheduled-job-override.repository";
+import { ScheduledJobsGlobalSettingsRepository } from "./repositories/scheduled-jobs-global-settings.repository";
 
 export type NightSuspensionHours = 6 | 8 | 12 | null;
 
@@ -271,10 +269,8 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
 
   constructor(
     private readonly schedulerRegistry: SchedulerRegistry,
-    @InjectRepository(ScheduledJobOverride)
-    private readonly overrideRepo: Repository<ScheduledJobOverride>,
-    @InjectRepository(ScheduledJobsGlobalSettings)
-    private readonly globalSettingsRepo: Repository<ScheduledJobsGlobalSettings>,
+    private readonly overrideRepo: ScheduledJobOverrideRepository,
+    private readonly globalSettingsRepo: ScheduledJobsGlobalSettingsRepository,
     private readonly configService: ConfigService,
   ) {
     this.syncSource = this.configService.get<string>("SCHEDULED_JOBS_SYNC_SOURCE") || null;
@@ -282,9 +278,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   }
 
   async onApplicationBootstrap(): Promise<void> {
-    const globalSettings = await this.globalSettingsRepo.findOne({
-      where: { settingsKey: "default" },
-    });
+    const globalSettings = await this.globalSettingsRepo.findByKey("default");
     if (globalSettings) {
       this.suspendOnWeekendsAndHolidays = globalSettings.suspendOnWeekendsAndHolidays;
     }
@@ -302,7 +296,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       }
     }
 
-    const overrides = await this.overrideRepo.find();
+    const overrides = await this.overrideRepo.findAll();
     const overridesByName = new Map(overrides.map((o) => [o.jobName, o]));
 
     Object.entries(JOB_METADATA).forEach(([name, meta]) => {
@@ -373,7 +367,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     const job = this.schedulerRegistry.getCronJob(name);
     this.nightSuspensionByJob.set(name, nightSuspensionHours);
 
-    const existing = await this.overrideRepo.findOne({ where: { jobName: name } });
+    const existing = await this.overrideRepo.findByJobName(name);
     await this.overrideRepo.save({
       jobName: name,
       active: existing?.active ?? job.isActive,
@@ -504,7 +498,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       job.start();
     }
 
-    const existing = await this.overrideRepo.findOne({ where: { jobName: name } });
+    const existing = await this.overrideRepo.findByJobName(name);
     await this.overrideRepo.save({
       jobName: name,
       active: existing?.active ?? job.isActive,

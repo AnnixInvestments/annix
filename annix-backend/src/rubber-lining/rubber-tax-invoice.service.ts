@@ -1,7 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
-import { In, Repository } from "typeorm";
 import { formatISODate, fromISO, generateUniqueId } from "../lib/datetime";
 import { PaginatedResult } from "../lib/dto/pagination-query.dto";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
@@ -9,26 +7,31 @@ import {
   DOCUMENT_VERSION_STATUS_LABELS,
   DocumentVersionStatus,
 } from "./entities/document-version.types";
-import { RubberCompany } from "./entities/rubber-company.entity";
 import { CompoundMovementReferenceType } from "./entities/rubber-compound-movement.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
-import { RubberProduct } from "./entities/rubber-product.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
-import { RubberSupplierCoc, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { RollStockStatus } from "./entities/rubber-roll-stock.entity";
+import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
   TaxInvoiceStatus,
   TaxInvoiceType,
 } from "./entities/rubber-tax-invoice.entity";
-import { RubberTaxInvoiceCorrection } from "./entities/rubber-tax-invoice-correction.entity";
 import {
   AuRubberDocumentType,
   AuRubberPartyType,
   auRubberDocumentPath,
   sanitizeAuRubberDocNumber,
 } from "./lib/au-rubber-document-paths";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
+import { RubberProductRepository } from "./repositories/rubber-product.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberRollStockRepository } from "./repositories/rubber-roll-stock.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
+import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
+import { RubberTaxInvoiceCorrectionRepository } from "./repositories/rubber-tax-invoice-correction.repository";
 import { RubberDocumentVersioningService } from "./rubber-document-versioning.service";
 import { RubberRollStockService } from "./rubber-roll-stock.service";
 import { RubberStockService } from "./rubber-stock.service";
@@ -124,22 +127,14 @@ export class RubberTaxInvoiceService {
   private readonly logger = new Logger(RubberTaxInvoiceService.name);
 
   constructor(
-    @InjectRepository(RubberTaxInvoice)
-    private taxInvoiceRepository: Repository<RubberTaxInvoice>,
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
-    @InjectRepository(RubberTaxInvoiceCorrection)
-    private correctionRepository: Repository<RubberTaxInvoiceCorrection>,
-    @InjectRepository(RubberProduct)
-    private productRepository: Repository<RubberProduct>,
-    @InjectRepository(RubberDeliveryNote)
-    private deliveryNoteRepository: Repository<RubberDeliveryNote>,
-    @InjectRepository(RubberRollStock)
-    private rollStockRepository: Repository<RubberRollStock>,
-    @InjectRepository(RubberSupplierCoc)
-    private supplierCocRepository: Repository<RubberSupplierCoc>,
+    private taxInvoiceRepository: RubberTaxInvoiceRepository,
+    private companyRepository: RubberCompanyRepository,
+    private productCodingRepository: RubberProductCodingRepository,
+    private correctionRepository: RubberTaxInvoiceCorrectionRepository,
+    private productRepository: RubberProductRepository,
+    private deliveryNoteRepository: RubberDeliveryNoteRepository,
+    private rollStockRepository: RubberRollStockRepository,
+    private supplierCocRepository: RubberSupplierCocRepository,
     private rubberStockService: RubberStockService,
     private versioningService: RubberDocumentVersioningService,
     private rollStockService: RubberRollStockService,
@@ -154,34 +149,7 @@ export class RubberTaxInvoiceService {
     includeAllVersions?: boolean;
     isCreditNote?: boolean;
   }): Promise<RubberTaxInvoiceDto[]> {
-    const query = this.taxInvoiceRepository
-      .createQueryBuilder("ti")
-      .leftJoinAndSelect("ti.company", "company")
-      .leftJoinAndSelect("ti.originalInvoice", "originalInvoice")
-      .orderBy("ti.created_at", "DESC");
-
-    if (!filters?.includeAllVersions) {
-      query.andWhere("ti.version_status = :versionStatus", {
-        versionStatus: DocumentVersionStatus.ACTIVE,
-      });
-    }
-
-    if (filters?.invoiceType) {
-      query.andWhere("ti.invoice_type = :type", { type: filters.invoiceType });
-    }
-    if (filters?.status) {
-      query.andWhere("ti.status = :status", { status: filters.status });
-    }
-    if (filters?.companyId) {
-      query.andWhere("ti.company_id = :companyId", { companyId: filters.companyId });
-    }
-    if (filters?.isCreditNote !== undefined) {
-      query.andWhere("ti.is_credit_note = :isCreditNote", {
-        isCreditNote: filters.isCreditNote,
-      });
-    }
-
-    const invoices = await query.getMany();
+    const invoices = await this.taxInvoiceRepository.findFilteredWithRelations(filters);
     return this.mapManyToDto(invoices);
   }
 
@@ -197,59 +165,13 @@ export class RubberTaxInvoiceService {
     page?: number;
     pageSize?: number;
   }): Promise<PaginatedResult<RubberTaxInvoiceDto>> {
-    const page = Math.max(1, filters?.page ?? 1);
-    const pageSize = Math.max(1, Math.min(200, filters?.pageSize ?? 25));
-    const skip = (page - 1) * pageSize;
-
-    // ti.* is kept (the list derives its product summary from extracted_data),
-    // but the joined company/originalInvoice rows are slimmed to the two fields
-    // the DTO actually reads — leftJoinAndSelect was dragging a full duplicate
-    // invoice (including its own extracted_data) into every polled row.
-    const query = this.taxInvoiceRepository
-      .createQueryBuilder("ti")
-      .leftJoin("ti.company", "company")
-      .addSelect(["company.id", "company.name"])
-      .leftJoin("ti.originalInvoice", "originalInvoice")
-      .addSelect(["originalInvoice.id", "originalInvoice.invoiceNumber"]);
-
-    if (!filters?.includeAllVersions) {
-      query.andWhere("ti.version_status = :versionStatus", {
-        versionStatus: DocumentVersionStatus.ACTIVE,
-      });
-    }
-    if (filters?.invoiceType) {
-      query.andWhere("ti.invoice_type = :type", { type: filters.invoiceType });
-    }
-    if (filters?.status) {
-      query.andWhere("ti.status = :status", { status: filters.status });
-    }
-    if (filters?.companyId) {
-      query.andWhere("ti.company_id = :companyId", { companyId: filters.companyId });
-    }
-    if (filters?.isCreditNote !== undefined) {
-      query.andWhere("ti.is_credit_note = :isCreditNote", {
-        isCreditNote: filters.isCreditNote,
-      });
-    }
-    if (filters?.search) {
-      query.andWhere("(ti.invoice_number ILIKE :search OR company.name ILIKE :search)", {
-        search: `%${filters.search}%`,
-      });
-    }
-
-    const sortKey = filters?.sortColumn ?? "createdAt";
-    const sortColumn = TAX_INVOICE_SORT_MAP[sortKey] ?? "ti.created_at";
-    const sortDirection = filters?.sortDirection === "asc" ? "ASC" : "DESC";
-    query.orderBy(sortColumn, sortDirection, "NULLS LAST");
-    query.addOrderBy("ti.id", "DESC");
-
-    const total = await query.clone().getCount();
-
-    query.offset(skip).limit(pageSize);
-    const invoices = await query.getMany();
+    const { items, total, page, pageSize } = await this.taxInvoiceRepository.findPaginated(
+      filters ?? {},
+      TAX_INVOICE_SORT_MAP,
+    );
 
     return {
-      items: await this.mapManyToDto(invoices),
+      items: await this.mapManyToDto(items),
       total,
       page,
       limit: pageSize,
@@ -268,37 +190,7 @@ export class RubberTaxInvoiceService {
       vatTotal: number;
     }[]
   > {
-    const rows = await this.taxInvoiceRepository
-      .createQueryBuilder("ti")
-      .leftJoin("ti.company", "company")
-      .select("ti.company_id", "companyId")
-      .addSelect("company.name", "companyName")
-      .addSelect("company.code", "companyCode")
-      .addSelect("company.email_config", "emailConfig")
-      .addSelect("COUNT(*)", "invoiceCount")
-      .addSelect("COALESCE(SUM(ti.total_amount), 0)", "total")
-      .addSelect("COALESCE(SUM(ti.vat_amount), 0)", "vatTotal")
-      .where("ti.invoice_type = :type", { type: filters.invoiceType })
-      .andWhere("ti.version_status = :versionStatus", {
-        versionStatus: DocumentVersionStatus.ACTIVE,
-      })
-      .andWhere("ti.is_credit_note = false")
-      .groupBy("ti.company_id")
-      .addGroupBy("company.name")
-      .addGroupBy("company.code")
-      .addGroupBy("company.email_config")
-      .orderBy('"total"', "DESC")
-      .getRawMany();
-
-    return rows.map((r) => ({
-      companyId: Number(r.companyId),
-      companyName: r.companyName,
-      companyCode: r.companyCode,
-      emailConfig: r.emailConfig,
-      invoiceCount: Number(r.invoiceCount),
-      total: Number(r.total),
-      vatTotal: Number(r.vatTotal),
-    }));
+    return this.taxInvoiceRepository.companyStatementRows(filters.invoiceType);
   }
 
   async eligibleSageInvoiceIds(filters: {
@@ -306,52 +198,23 @@ export class RubberTaxInvoiceService {
     search?: string;
     includeAllVersions?: boolean;
   }): Promise<number[]> {
-    const query = this.taxInvoiceRepository
-      .createQueryBuilder("ti")
-      .leftJoin("ti.company", "company")
-      .select("ti.id", "id")
-      .where("ti.invoice_type = :type", { type: filters.invoiceType })
-      .andWhere("ti.status = 'APPROVED'")
-      .andWhere("ti.sage_invoice_id IS NULL")
-      .andWhere("ti.is_credit_note = false");
-
-    if (!filters.includeAllVersions) {
-      query.andWhere("ti.version_status = :versionStatus", {
-        versionStatus: DocumentVersionStatus.ACTIVE,
-      });
-    }
-    if (filters.search) {
-      query.andWhere("(ti.invoice_number ILIKE :search OR company.name ILIKE :search)", {
-        search: `%${filters.search}%`,
-      });
-    }
-
-    const rows = await query.getRawMany();
-    return rows.map((r) => Number(r.id));
+    return this.taxInvoiceRepository.eligibleSageInvoiceIds(filters);
   }
 
   async taxInvoiceById(id: number): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company", "originalInvoice"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompanyAndOriginal(id);
     return invoice ? this.mapSingleToDto(invoice) : null;
   }
 
   async taxInvoiceEntityById(id: number): Promise<RubberTaxInvoice | null> {
-    return this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    return this.taxInvoiceRepository.findOneByIdWithCompany(id);
   }
 
   async createTaxInvoice(
     dto: CreateTaxInvoiceDto,
     createdBy?: string,
   ): Promise<RubberTaxInvoiceDto> {
-    const company = await this.companyRepository.findOne({
-      where: { id: dto.companyId },
-    });
+    const company = await this.companyRepository.findById(dto.companyId);
     if (!company) {
       throw new BadRequestException("Company not found");
     }
@@ -366,7 +229,7 @@ export class RubberTaxInvoiceService {
 
     const isDuplicate = existingActive !== null;
 
-    const invoice = this.taxInvoiceRepository.create({
+    const invoice = this.taxInvoiceRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       invoiceNumber: dto.invoiceNumber,
       invoiceDate: dto.invoiceDate ? fromISO(dto.invoiceDate).toJSDate() : null,
@@ -391,11 +254,8 @@ export class RubberTaxInvoiceService {
       );
     }
 
-    const saved = await this.taxInvoiceRepository.save(invoice);
-    const result = await this.taxInvoiceRepository.findOne({
-      where: { id: saved.id },
-      relations: ["company"],
-    });
+    const saved = await this.taxInvoiceRepository.create(invoice);
+    const result = await this.taxInvoiceRepository.findOneByIdWithCompany(saved.id);
     return this.mapSingleToDto(result!);
   }
 
@@ -403,10 +263,7 @@ export class RubberTaxInvoiceService {
     id: number,
     dto: UpdateTaxInvoiceDto,
   ): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     if (!invoice) return null;
 
     const existing = invoice.extractedData ?? {
@@ -512,7 +369,7 @@ export class RubberTaxInvoiceService {
 
     if (corrections.length > 0 && supplierName) {
       const correctionEntities = corrections.map((c) =>
-        this.correctionRepository.create({
+        this.correctionRepository.build({
           taxInvoiceId: id,
           supplierName,
           fieldName: c.field,
@@ -521,21 +378,15 @@ export class RubberTaxInvoiceService {
           correctedBy: dto.correctedBy ?? null,
         }),
       );
-      await this.correctionRepository.save(correctionEntities);
+      await this.correctionRepository.saveMany(correctionEntities);
     }
 
-    const result = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const result = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     return this.mapSingleToDto(result!);
   }
 
   async approveTaxInvoice(id: number): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     if (!invoice) return null;
 
     if (invoice.versionStatus === DocumentVersionStatus.PENDING_AUTHORIZATION) {
@@ -565,18 +416,12 @@ export class RubberTaxInvoiceService {
       await this.processCustomerPerRollShipment(invoice);
     }
 
-    const result = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const result = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     return this.mapSingleToDto(result!);
   }
 
   async reprocessCompoundStock(id: number): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     if (!invoice) return null;
     if (invoice.status !== TaxInvoiceStatus.APPROVED) return this.mapSingleToDto(invoice);
     if (invoice.invoiceType !== TaxInvoiceType.SUPPLIER) return this.mapSingleToDto(invoice);
@@ -597,18 +442,12 @@ export class RubberTaxInvoiceService {
       await this.processCompoundStockIn(invoice);
     }
 
-    const result = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const result = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     return this.mapSingleToDto(result!);
   }
 
   async refileStock(id: number): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     if (!invoice) return null;
 
     if (invoice.invoiceType === TaxInvoiceType.SUPPLIER) {
@@ -688,19 +527,19 @@ export class RubberTaxInvoiceService {
     code: string,
     invoiceNumber: string,
   ): Promise<RubberProductCoding> {
-    const existing = await this.productCodingRepository.findOne({
-      where: { code, codingType: ProductCodingType.COMPOUND },
-    });
+    const existing = await this.productCodingRepository.findOneByCodeAndType(
+      code,
+      ProductCodingType.COMPOUND,
+    );
     if (existing) return existing;
 
     const humanName = this.humanReadableCompoundName(code);
-    const newCoding = this.productCodingRepository.create({
+    const saved = await this.productCodingRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       code,
       name: humanName,
       codingType: ProductCodingType.COMPOUND,
     });
-    const saved = await this.productCodingRepository.save(newCoding);
     this.logger.log(
       `Tax invoice ${invoiceNumber}: auto-created compound coding ${code} (${humanName})`,
     );
@@ -708,7 +547,7 @@ export class RubberTaxInvoiceService {
   }
 
   private async isCalendarerCompany(companyId: number): Promise<boolean> {
-    const company = await this.companyRepository.findOne({ where: { id: companyId } });
+    const company = await this.companyRepository.findById(companyId);
     if (!company) return false;
     return company.name?.toLowerCase().includes("impilo") || false;
   }
@@ -718,10 +557,7 @@ export class RubberTaxInvoiceService {
     lineIdx: number,
     rolls: Array<{ rollNumber: string; weightKg: number | null }>,
   ): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id: invoiceId },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(invoiceId);
     if (!invoice) return null;
     const data = invoice.extractedData;
     if (!data?.lineItems || lineIdx < 0 || lineIdx >= data.lineItems.length) {
@@ -890,8 +726,8 @@ export class RubberTaxInvoiceService {
     deliveryNoteRef: string | null | undefined,
   ): Promise<RubberDeliveryNote | null> {
     if (!deliveryNoteRef) return null;
-    const dn = await this.deliveryNoteRepository.findOne({
-      where: { deliveryNoteNumber: deliveryNoteRef },
+    const dn = await this.deliveryNoteRepository.findOneWhere({
+      deliveryNoteNumber: deliveryNoteRef,
     });
     return dn || null;
   }
@@ -958,14 +794,10 @@ export class RubberTaxInvoiceService {
   private async specificGravityForCoding(compoundCodingId: number): Promise<number> {
     const DEFAULT_SG = 1.5;
 
-    const coding = await this.productCodingRepository.findOne({
-      where: { id: compoundCodingId },
-    });
+    const coding = await this.productCodingRepository.findOneById(compoundCodingId);
     if (!coding) return DEFAULT_SG;
 
-    const product = await this.productRepository.findOne({
-      where: { compoundFirebaseUid: coding.firebaseUid },
-    });
+    const product = await this.productRepository.findOneByCompoundFirebaseUid(coding.firebaseUid);
     if (product?.specificGravity) {
       return Number(product.specificGravity);
     }
@@ -1035,15 +867,11 @@ export class RubberTaxInvoiceService {
   }
 
   async deleteTaxInvoice(id: number): Promise<boolean> {
-    const result = await this.taxInvoiceRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.taxInvoiceRepository.deleteById(id);
   }
 
   async updateDocumentPath(id: number, documentPath: string): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     if (!invoice) return null;
 
     invoice.documentPath = documentPath;
@@ -1052,14 +880,11 @@ export class RubberTaxInvoiceService {
   }
 
   async linkCalenderRollCoc(id: number, cocId: number | null): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company", "originalInvoice"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompanyAndOriginal(id);
     if (!invoice) return null;
 
     if (cocId != null) {
-      const coc = await this.supplierCocRepository.findOne({ where: { id: cocId } });
+      const coc = await this.supplierCocRepository.findById(cocId);
       if (!coc) {
         throw new BadRequestException("Calender Roll CoC not found");
       }
@@ -1077,20 +902,14 @@ export class RubberTaxInvoiceService {
   }
 
   async markExtractionFailed(id: number): Promise<void> {
-    await this.taxInvoiceRepository.update(
-      { id, status: TaxInvoiceStatus.PENDING },
-      { status: TaxInvoiceStatus.FAILED },
-    );
+    await this.taxInvoiceRepository.updatePendingToFailed(id);
   }
 
   async setExtractedData(
     id: number,
     data: ExtractedTaxInvoiceData,
   ): Promise<RubberTaxInvoiceDto | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(id);
     if (!invoice) return null;
 
     invoice.extractedData = data;
@@ -1110,11 +929,10 @@ export class RubberTaxInvoiceService {
 
     if (data.companyName) {
       const targetType = invoice.invoiceType === TaxInvoiceType.CUSTOMER ? "CUSTOMER" : "SUPPLIER";
-      const matched = await this.companyRepository
-        .createQueryBuilder("c")
-        .where("LOWER(TRIM(c.name)) = LOWER(TRIM(:name))", { name: data.companyName })
-        .andWhere("c.company_type = :type", { type: targetType })
-        .getOne();
+      const matched = await this.companyRepository.findOneByTrimmedNameAndType(
+        data.companyName,
+        targetType,
+      );
       if (matched && matched.id !== invoice.companyId) {
         this.logger.log(
           `Reassigning tax invoice ${invoice.id} from company ${invoice.companyId} to ${matched.id} (${matched.name}) based on extracted companyName`,
@@ -1146,14 +964,10 @@ export class RubberTaxInvoiceService {
     if (invoice.isCreditNote) {
       if (data.originalInvoiceRef) {
         const normalizedRef = data.originalInvoiceRef.replace(/[-\s]/g, "");
-        const originalInvoice = await this.taxInvoiceRepository
-          .createQueryBuilder("ti")
-          .where("REPLACE(REPLACE(ti.invoice_number, '-', ''), ' ', '') = :ref", {
-            ref: normalizedRef,
-          })
-          .andWhere("ti.company_id = :companyId", { companyId: invoice.companyId })
-          .andWhere("ti.is_credit_note = false")
-          .getOne();
+        const originalInvoice = await this.taxInvoiceRepository.findOneByNormalizedRefAndCompany(
+          normalizedRef,
+          invoice.companyId,
+        );
 
         if (originalInvoice) {
           invoice.originalInvoiceId = originalInvoice.id;
@@ -1204,10 +1018,7 @@ export class RubberTaxInvoiceService {
     invoices: ExtractedTaxInvoiceData[],
     sourceBuffer?: Buffer,
   ): Promise<{ taxInvoiceIds: number[] }> {
-    const parent = await this.taxInvoiceRepository.findOne({
-      where: { id: parentId },
-      relations: ["company"],
-    });
+    const parent = await this.taxInvoiceRepository.findOneByIdWithCompany(parentId);
     if (!parent) {
       throw new BadRequestException("Tax invoice not found");
     }
@@ -1452,9 +1263,7 @@ export class RubberTaxInvoiceService {
       return;
     }
 
-    const rolls = await this.rollStockRepository.find({
-      where: { rollNumber: In(rollNumbers) },
-    });
+    const rolls = await this.rollStockRepository.findManyByRollNumbers(rollNumbers);
 
     const rejectedCount = await rolls.reduce(async (prevPromise, roll) => {
       const count = await prevPromise;
@@ -1490,10 +1299,7 @@ export class RubberTaxInvoiceService {
     );
     const cocNumberById = new Map<number, string | null>();
     if (cocIds.length > 0) {
-      const cocs = await this.supplierCocRepository.find({
-        where: { id: In(cocIds) },
-        select: ["id", "cocNumber"],
-      });
+      const cocs = await this.supplierCocRepository.findIdAndCocNumberByIds(cocIds);
       for (const coc of cocs) {
         cocNumberById.set(coc.id, coc.cocNumber);
       }
@@ -1558,11 +1364,10 @@ export class RubberTaxInvoiceService {
   async correctionHintsForSupplier(supplierName: string | null): Promise<string | null> {
     if (!supplierName) return null;
 
-    const recentCorrections = await this.correctionRepository.find({
-      where: { supplierName },
-      order: { createdAt: "DESC" },
-      take: 30,
-    });
+    const recentCorrections = await this.correctionRepository.findRecentBySupplierName(
+      supplierName,
+      30,
+    );
 
     if (recentCorrections.length === 0) return null;
 

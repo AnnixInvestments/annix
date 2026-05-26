@@ -1,12 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { JobPosting } from "../entities/job-posting.entity";
 import {
   JobPostingPortalPosting,
   JobPostingPortalStatus,
 } from "../entities/job-posting-portal-posting.entity";
+import { JobPostingPortalPostingRepository } from "../repositories/job-posting-portal-posting.repository";
 import { PortalAdapter, PortalPostingResult } from "./portal-adapter.interface";
 import { PortalAdapterRegistry } from "./portal-adapter-registry.service";
 
@@ -31,8 +30,7 @@ export class PortalPostingOrchestrator {
 
   constructor(
     private readonly registry: PortalAdapterRegistry,
-    @InjectRepository(JobPostingPortalPosting)
-    private readonly portalPostingRepo: Repository<JobPostingPortalPosting>,
+    private readonly portalPostingRepo: JobPostingPortalPostingRepository,
   ) {}
 
   async postToFreeAdapters(jobPosting: JobPosting): Promise<PortalOrchestratorRunSummary> {
@@ -79,16 +77,17 @@ export class PortalPostingOrchestrator {
     jobPosting: JobPosting,
     adapter: PortalAdapter,
   ): Promise<PortalPostingResult> {
-    const existing = await this.portalPostingRepo.findOne({
-      where: { jobPostingId: jobPosting.id, portalCode: adapter.portalCode },
-    });
+    const existing = await this.portalPostingRepo.findByJobAndPortal(
+      jobPosting.id,
+      adapter.portalCode,
+    );
     const record =
       existing ??
-      this.portalPostingRepo.create({
+      (await this.portalPostingRepo.create({
         jobPostingId: jobPosting.id,
         portalCode: adapter.portalCode,
         status: JobPostingPortalStatus.PENDING,
-      });
+      }));
 
     try {
       const result = await adapter.post(jobPosting);

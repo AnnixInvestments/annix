@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { FlangeTypeWeight } from "./entities/flange-type-weight.entity";
+import { FlangeTypeWeightRepository } from "./flange-type-weight.repository";
 
 export interface FlangeTypeWeightResult {
   found: boolean;
@@ -15,15 +14,10 @@ export interface FlangeTypeWeightResult {
 
 @Injectable()
 export class FlangeTypeWeightService {
-  constructor(
-    @InjectRepository(FlangeTypeWeight)
-    private flangeTypeWeightRepository: Repository<FlangeTypeWeight>,
-  ) {}
+  constructor(private readonly flangeTypeWeightRepository: FlangeTypeWeightRepository) {}
 
   async findAll(): Promise<FlangeTypeWeight[]> {
-    return this.flangeTypeWeightRepository.find({
-      relations: ["flangeStandard"],
-    });
+    return this.flangeTypeWeightRepository.findAllWithStandard();
   }
 
   async flangeTypeWeight(
@@ -32,20 +26,12 @@ export class FlangeTypeWeightService {
     flangeStandardCode: string | null,
     flangeTypeCode: string,
   ): Promise<FlangeTypeWeightResult> {
-    const query = this.flangeTypeWeightRepository
-      .createQueryBuilder("ftw")
-      .leftJoinAndSelect("ftw.flangeStandard", "fs")
-      .where("ftw.nominal_bore_mm = :nominalBoreMm", { nominalBoreMm })
-      .andWhere("ftw.pressure_class = :pressureClass", { pressureClass })
-      .andWhere("ftw.flange_type_code = :flangeTypeCode", { flangeTypeCode });
-
-    if (flangeStandardCode) {
-      query.andWhere("fs.code = :flangeStandardCode", { flangeStandardCode });
-    } else {
-      query.andWhere("ftw.flange_standard_id IS NULL");
-    }
-
-    const result = await query.getOne();
+    const result = await this.flangeTypeWeightRepository.findFlangeTypeWeight(
+      nominalBoreMm,
+      pressureClass,
+      flangeTypeCode,
+      flangeStandardCode,
+    );
 
     if (!result) {
       const estimatedWeight = nominalBoreMm * 0.15;
@@ -74,16 +60,10 @@ export class FlangeTypeWeightService {
     nominalBoreMm: number,
     pressureClass: string,
   ): Promise<FlangeTypeWeightResult> {
-    const query = this.flangeTypeWeightRepository
-      .createQueryBuilder("ftw")
-      .where("ftw.nominal_bore_mm = :nominalBoreMm", { nominalBoreMm })
-      .andWhere("ftw.pressure_class = :pressureClass", { pressureClass })
-      .andWhere("ftw.flange_type_code = :flangeTypeCode", {
-        flangeTypeCode: "BLANK",
-      })
-      .andWhere("ftw.flange_standard_id IS NULL");
-
-    const result = await query.getOne();
+    const result = await this.flangeTypeWeightRepository.findBlankFlangeWeight(
+      nominalBoreMm,
+      pressureClass,
+    );
 
     if (!result) {
       const estimatedWeight = nominalBoreMm * 0.2;
@@ -109,22 +89,12 @@ export class FlangeTypeWeightService {
   }
 
   async availablePressureClasses(): Promise<string[]> {
-    const result = await this.flangeTypeWeightRepository
-      .createQueryBuilder("ftw")
-      .select("DISTINCT ftw.pressure_class", "pressureClass")
-      .orderBy("ftw.pressure_class", "ASC")
-      .getRawMany<{ pressureClass: string }>();
-
+    const result = await this.flangeTypeWeightRepository.distinctPressureClasses();
     return result.map((r) => r.pressureClass);
   }
 
   async availableFlangeTypes(): Promise<string[]> {
-    const result = await this.flangeTypeWeightRepository
-      .createQueryBuilder("ftw")
-      .select("DISTINCT ftw.flange_type_code", "flangeTypeCode")
-      .orderBy("ftw.flange_type_code", "ASC")
-      .getRawMany<{ flangeTypeCode: string }>();
-
+    const result = await this.flangeTypeWeightRepository.distinctFlangeTypeCodes();
     return result.map((r) => r.flangeTypeCode);
   }
 }

@@ -1,10 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
-import { UserLocationAssignment } from "../entities/user-location-assignment.entity";
-import { WorkflowNotificationRecipient } from "../entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "../entities/workflow-step-assignment.entity";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
+import { UserLocationAssignmentRepository } from "../repositories/user-location-assignment.repository";
+import { WorkflowNotificationRecipientRepository } from "../repositories/workflow-notification-recipient.repository";
+import { WorkflowStepAssignmentRepository } from "../repositories/workflow-step-assignment.repository";
 
 export interface StepAssignment {
   step: string;
@@ -38,22 +43,22 @@ export class WorkflowAssignmentService {
   private readonly logger = new Logger(WorkflowAssignmentService.name);
 
   constructor(
-    @InjectRepository(WorkflowStepAssignment)
-    private readonly assignmentRepo: Repository<WorkflowStepAssignment>,
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
-    @InjectRepository(WorkflowNotificationRecipient)
-    private readonly recipientRepo: Repository<WorkflowNotificationRecipient>,
-    @InjectRepository(UserLocationAssignment)
-    private readonly userLocationRepo: Repository<UserLocationAssignment>,
+    private readonly assignmentRepo: WorkflowStepAssignmentRepository,
+    private readonly userRepo: StockControlUserRepository,
+    private readonly recipientRepo: WorkflowNotificationRecipientRepository,
+    private readonly userLocationRepo: UserLocationAssignmentRepository,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("WorkflowAssignmentService transactions require a TypeOrmTransactionContext");
+    }
+    return context.manager;
+  }
+
   async allAssignments(companyId: number): Promise<StepAssignment[]> {
-    const assignments = await this.assignmentRepo.find({
-      where: { companyId },
-      relations: ["user"],
-      order: { workflowStep: "ASC", isPrimary: "DESC" },
-    });
+    const assignments = await this.assignmentRepo.findForCompanyWithUser(companyId);
 
     const stepGroups = assignments.reduce(
       (acc, assignment) => {
@@ -103,11 +108,7 @@ export class WorkflowAssignmentService {
   }
 
   async assignmentsForStep(companyId: number, step: string): Promise<WorkflowStepAssignment[]> {
-    return this.assignmentRepo.find({
-      where: { companyId, workflowStep: step },
-      relations: ["user"],
-      order: { isPrimary: "DESC" },
-    });
+    return this.assignmentRepo.findForStepWithUser(companyId, step);
   }
 
   async updateAssignments(
@@ -122,10 +123,7 @@ export class WorkflowAssignmentService {
       ...(primaryUserId !== undefined ? [primaryUserId] : []),
       ...(secondaryUserId !== null && secondaryUserId !== undefined ? [secondaryUserId] : []),
     ];
-    const validUsers = await this.userRepo.find({
-      where: { id: In(candidateIds.length > 0 ? candidateIds : [0]), companyId },
-      select: ["id"],
-    });
+    const validUsers = await this.userRepo.findIdsByIdsForCompany(candidateIds, companyId);
     const validIds = new Set(validUsers.map((u) => u.id));
     const cleanedIds = userIds.filter((id) => validIds.has(id));
     const cleanedPrimary =
@@ -135,7 +133,8 @@ export class WorkflowAssignmentService {
         ? secondaryUserId
         : null;
 
-    await this.assignmentRepo.manager.transaction(async (manager) => {
+    await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
       await manager.delete(WorkflowStepAssignment, { companyId, workflowStep: step });
 
       if (cleanedIds.length === 0) {
@@ -160,10 +159,10 @@ export class WorkflowAssignmentService {
   }
 
   async secondaryUserForStep(companyId: number, step: string): Promise<StockControlUser | null> {
-    const primaryAssignment = await this.assignmentRepo.findOne({
-      where: { companyId, workflowStep: step, isPrimary: true },
-      relations: ["secondaryUser"],
-    });
+    const primaryAssignment = await this.assignmentRepo.findOnePrimaryForStepWithSecondaryUser(
+      companyId,
+      step,
+    );
 
     if (!primaryAssignment?.secondaryUserId) {
       return null;
@@ -180,33 +179,23 @@ export class WorkflowAssignmentService {
     }
 
     const fallbackRoles = this.rolesForStep(step);
-    return this.userRepo.find({
-      where: fallbackRoles.map((role) => ({ companyId, role })),
-    });
+    return this.userRepo.findForCompanyByRoles(companyId, fallbackRoles);
   }
 
   async assignedUserIdsForStep(companyId: number, step: string): Promise<number[]> {
-    const assignments = await this.assignmentRepo.find({
-      where: { companyId, workflowStep: step },
-      select: ["userId"],
-    });
+    const assignments = await this.assignmentRepo.findUserIdsForStep(companyId, step);
     return assignments.map((a) => a.userId);
   }
 
   async assignedUnifiedUserIdsForStep(companyId: number, step: string): Promise<number[]> {
-    const assignments = await this.assignmentRepo.find({
-      where: { companyId, workflowStep: step },
-      relations: ["user"],
-    });
+    const assignments = await this.assignmentRepo.findForStepWithUserRelation(companyId, step);
     return assignments
       .map((a) => a.user?.unifiedUserId ?? null)
       .filter((id): id is number => id !== null);
   }
 
   async hasExplicitAssignments(companyId: number, step: string): Promise<boolean> {
-    const count = await this.assignmentRepo.count({
-      where: { companyId, workflowStep: step },
-    });
+    const count = await this.assignmentRepo.countForStep(companyId, step);
     return count > 0;
   }
 
@@ -216,10 +205,7 @@ export class WorkflowAssignmentService {
   ): Promise<{ id: number; name: string; email: string; role: string }[]> {
     const compatibleRoles = this.compatibleRolesForStep(step);
 
-    const users = await this.userRepo.find({
-      where: { companyId, role: In(compatibleRoles) },
-      order: { name: "ASC" },
-    });
+    const users = await this.userRepo.findForCompanyByRolesOrdered(companyId, compatibleRoles);
 
     return users.map((u) => ({
       id: u.id,
@@ -238,10 +224,7 @@ export class WorkflowAssignmentService {
   }
 
   async allNotificationRecipients(companyId: number): Promise<StepNotificationRecipients[]> {
-    const recipients = await this.recipientRepo.find({
-      where: { companyId },
-      order: { workflowStep: "ASC", email: "ASC" },
-    });
+    const recipients = await this.recipientRepo.findForCompanyOrdered(companyId);
 
     const grouped = recipients.reduce(
       (acc, r) => {
@@ -261,10 +244,7 @@ export class WorkflowAssignmentService {
   }
 
   async notificationRecipientsForStep(companyId: number, step: string): Promise<string[]> {
-    const recipients = await this.recipientRepo.find({
-      where: { companyId, workflowStep: step },
-      order: { email: "ASC" },
-    });
+    const recipients = await this.recipientRepo.findForStepOrdered(companyId, step);
     return recipients.map((r) => r.email);
   }
 
@@ -273,29 +253,25 @@ export class WorkflowAssignmentService {
     step: string,
     emails: string[],
   ): Promise<void> {
-    await this.recipientRepo.delete({ companyId, workflowStep: step });
+    await this.recipientRepo.deleteForStep(companyId, step);
 
     if (emails.length === 0) {
       return;
     }
 
     const uniqueEmails = [...new Set(emails.map((e) => e.trim().toLowerCase()))];
-    const entities = uniqueEmails.map((email) =>
-      this.recipientRepo.create({ companyId, workflowStep: step, email }),
+    const entities = this.recipientRepo.buildMany(
+      uniqueEmails.map((email) => ({ companyId, workflowStep: step, email })),
     );
 
-    await this.recipientRepo.save(entities);
+    await this.recipientRepo.saveMany(entities);
     this.logger.log(
       `Updated ${step} notification recipients for company ${companyId}: ${uniqueEmails.join(", ")}`,
     );
   }
 
   async allUserLocationAssignments(companyId: number): Promise<UserLocationSummary[]> {
-    const assignments = await this.userLocationRepo.find({
-      where: { companyId },
-      relations: ["user", "location"],
-      order: { userId: "ASC" },
-    });
+    const assignments = await this.userLocationRepo.findForCompanyWithRelations(companyId);
 
     const grouped = assignments.reduce(
       (acc, a) => {
@@ -323,28 +299,25 @@ export class WorkflowAssignmentService {
     userId: number,
     locationIds: number[],
   ): Promise<void> {
-    await this.userLocationRepo.delete({ companyId, userId });
+    await this.userLocationRepo.deleteForUser(companyId, userId);
 
     if (locationIds.length === 0) {
       return;
     }
 
     const uniqueIds = [...new Set(locationIds)];
-    const entities = uniqueIds.map((locationId) =>
-      this.userLocationRepo.create({ companyId, userId, locationId }),
+    const entities = this.userLocationRepo.buildMany(
+      uniqueIds.map((locationId) => ({ companyId, userId, locationId })),
     );
 
-    await this.userLocationRepo.save(entities);
+    await this.userLocationRepo.saveMany(entities);
     this.logger.log(
       `Updated location assignments for user ${userId} in company ${companyId}: ${uniqueIds.join(", ")}`,
     );
   }
 
   async locationIdsForUser(companyId: number, userId: number): Promise<number[]> {
-    const assignments = await this.userLocationRepo.find({
-      where: { companyId, userId },
-      select: ["locationId"],
-    });
+    const assignments = await this.userLocationRepo.findForUser(companyId, userId);
     return assignments.map((a) => a.locationId);
   }
 }

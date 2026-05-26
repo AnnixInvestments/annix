@@ -1,35 +1,46 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { now } from "../lib/datetime";
 import { CreatePumpOrderDto } from "./dto/create-pump-order.dto";
 import { PumpOrder, PumpOrderStatus, PumpOrderType } from "./entities/pump-order.entity";
 import { PumpOrderItem, PumpOrderItemType } from "./entities/pump-order-item.entity";
+import { PumpOrderRepository } from "./pump-order.repository";
 import { PumpOrderService } from "./pump-order.service";
+import { PumpOrderItemRepository } from "./pump-order-item.repository";
 
 describe("PumpOrderService", () => {
   let service: PumpOrderService;
 
-  const mockOrder = {
+  const mockOrder: PumpOrder = {
     id: 1,
     orderNumber: "PO-2026-00001",
     customerReference: "CUST-REF-001",
     status: PumpOrderStatus.DRAFT,
     orderType: PumpOrderType.NEW_PUMP,
+    rfqId: null,
     customerCompany: "Mining Corp SA",
     customerContact: "John Smith",
     customerEmail: "john@example.com",
+    customerPhone: null,
+    deliveryAddress: null,
+    requestedDeliveryDate: null,
+    confirmedDeliveryDate: null,
+    supplierId: null,
     subtotal: 100000,
     vatAmount: 15000,
     totalAmount: 115000,
     currency: "ZAR",
-    items: [],
+    specialInstructions: null,
+    internalNotes: null,
     statusHistory: [],
+    createdBy: null,
+    updatedBy: null,
+    items: [],
     createdAt: now().toJSDate(),
     updatedAt: now().toJSDate(),
-  };
+  } as unknown as PumpOrder;
 
-  const mockOrderItem = {
+  const mockOrderItem: PumpOrderItem = {
     id: 1,
     orderId: 1,
     itemType: PumpOrderItemType.NEW_PUMP,
@@ -40,40 +51,25 @@ describe("PumpOrderService", () => {
     lineTotal: 50000,
     createdAt: now().toJSDate(),
     updatedAt: now().toJSDate(),
-  };
-
-  const mockQueryBuilder = {
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    take: jest.fn().mockReturnThis(),
-    getManyAndCount: jest.fn().mockResolvedValue([[mockOrder], 1]),
-    getCount: jest.fn().mockResolvedValue(1),
-    select: jest.fn().mockReturnThis(),
-    addSelect: jest.fn().mockReturnThis(),
-    getRawOne: jest.fn().mockResolvedValue({ total: "100000" }),
-    getMany: jest.fn().mockResolvedValue([mockOrder]),
-  };
+  } as unknown as PumpOrderItem;
 
   const mockPumpOrderRepo = {
-    create: jest.fn().mockReturnValue(mockOrder),
+    create: jest.fn().mockResolvedValue(mockOrder),
     save: jest.fn().mockResolvedValue(mockOrder),
-    find: jest.fn().mockResolvedValue([mockOrder]),
-    findOne: jest.fn(),
+    findById: jest.fn(),
+    findAllPaged: jest.fn(),
+    findByOrderNumber: jest.fn(),
+    summary: jest.fn(),
+    updateTotals: jest.fn().mockResolvedValue(undefined),
     remove: jest.fn().mockResolvedValue(undefined),
-    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
-    count: jest.fn().mockResolvedValue(1),
-    update: jest.fn().mockResolvedValue({ affected: 1 }),
+    findOneWhere: jest.fn(),
   };
 
   const mockPumpOrderItemRepo = {
-    create: jest.fn().mockReturnValue(mockOrderItem),
-    save: jest.fn().mockResolvedValue([mockOrderItem]),
-    find: jest.fn().mockResolvedValue([mockOrderItem]),
-    remove: jest.fn(),
-    delete: jest.fn().mockResolvedValue({ affected: 1 }),
+    saveMany: jest.fn().mockResolvedValue([mockOrderItem]),
+    deleteByOrderId: jest.fn().mockResolvedValue(undefined),
+    create: jest.fn().mockResolvedValue(mockOrderItem),
+    findOneWhere: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -81,11 +77,11 @@ describe("PumpOrderService", () => {
       providers: [
         PumpOrderService,
         {
-          provide: getRepositoryToken(PumpOrder),
+          provide: PumpOrderRepository,
           useValue: mockPumpOrderRepo,
         },
         {
-          provide: getRepositoryToken(PumpOrderItem),
+          provide: PumpOrderItemRepository,
           useValue: mockPumpOrderItemRepo,
         },
       ],
@@ -102,7 +98,9 @@ describe("PumpOrderService", () => {
 
   describe("create", () => {
     it("should create a new order with items", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.create.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.findById.mockResolvedValue({ ...mockOrder, items: [mockOrderItem] });
+      mockPumpOrderItemRepo.saveMany.mockResolvedValue([mockOrderItem]);
 
       const createDto: CreatePumpOrderDto = {
         orderType: PumpOrderType.NEW_PUMP,
@@ -123,12 +121,14 @@ describe("PumpOrderService", () => {
 
       expect(result).toBeDefined();
       expect(mockPumpOrderRepo.create).toHaveBeenCalled();
-      expect(mockPumpOrderRepo.save).toHaveBeenCalled();
-      expect(mockPumpOrderItemRepo.save).toHaveBeenCalled();
+      expect(mockPumpOrderItemRepo.saveMany).toHaveBeenCalled();
+      expect(mockPumpOrderRepo.updateTotals).toHaveBeenCalled();
     });
 
     it("should generate unique order number with timestamp", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.create.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.findById.mockResolvedValue({ ...mockOrder, items: [mockOrderItem] });
+      mockPumpOrderItemRepo.saveMany.mockResolvedValue([mockOrderItem]);
 
       const createDto: CreatePumpOrderDto = {
         orderType: PumpOrderType.NEW_PUMP,
@@ -153,9 +153,13 @@ describe("PumpOrderService", () => {
     });
 
     it("should calculate line totals for items", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(mockOrder);
       const savedItemWithLineTotal = { ...mockOrderItem, lineTotal: 100000 };
-      mockPumpOrderItemRepo.save.mockResolvedValue([savedItemWithLineTotal]);
+      mockPumpOrderRepo.create.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.findById.mockResolvedValue({
+        ...mockOrder,
+        items: [savedItemWithLineTotal],
+      });
+      mockPumpOrderItemRepo.saveMany.mockResolvedValue([savedItemWithLineTotal]);
 
       const createDto: CreatePumpOrderDto = {
         orderType: PumpOrderType.NEW_PUMP,
@@ -172,7 +176,7 @@ describe("PumpOrderService", () => {
 
       await service.create(createDto);
 
-      expect(mockPumpOrderRepo.update).toHaveBeenCalledWith(
+      expect(mockPumpOrderRepo.updateTotals).toHaveBeenCalledWith(
         mockOrder.id,
         expect.objectContaining({
           subtotal: expect.any(Number) as number,
@@ -185,39 +189,74 @@ describe("PumpOrderService", () => {
 
   describe("findAll", () => {
     it("should return paginated orders", async () => {
+      mockPumpOrderRepo.findAllPaged.mockResolvedValue({
+        data: [mockOrder],
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+      });
+
       const result = await service.findAll({ page: 1, limit: 10 });
 
       expect(result).toBeDefined();
       expect(result.data).toHaveLength(1);
       expect(result.total).toBe(1);
-      expect(mockPumpOrderRepo.createQueryBuilder).toHaveBeenCalled();
+      expect(mockPumpOrderRepo.findAllPaged).toHaveBeenCalled();
     });
 
     it("should apply status filter", async () => {
+      mockPumpOrderRepo.findAllPaged.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+
       await service.findAll({ status: PumpOrderStatus.DRAFT });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
+      expect(mockPumpOrderRepo.findAllPaged).toHaveBeenCalledWith(
+        expect.objectContaining({ status: PumpOrderStatus.DRAFT }),
+      );
     });
 
     it("should apply order type filter", async () => {
+      mockPumpOrderRepo.findAllPaged.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
+      });
+
       await service.findAll({ orderType: PumpOrderType.NEW_PUMP });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
+      expect(mockPumpOrderRepo.findAllPaged).toHaveBeenCalledWith(
+        expect.objectContaining({ orderType: PumpOrderType.NEW_PUMP }),
+      );
     });
 
     it("should apply date range filters", async () => {
-      await service.findAll({
-        fromDate: "2026-01-01",
-        toDate: "2026-12-31",
+      mockPumpOrderRepo.findAllPaged.mockResolvedValue({
+        data: [],
+        total: 0,
+        page: 1,
+        limit: 10,
+        totalPages: 0,
       });
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalled();
+      await service.findAll({ fromDate: "2026-01-01", toDate: "2026-12-31" });
+
+      expect(mockPumpOrderRepo.findAllPaged).toHaveBeenCalledWith(
+        expect.objectContaining({ fromDate: "2026-01-01", toDate: "2026-12-31" }),
+      );
     });
   });
 
   describe("findOne", () => {
     it("should return an order by id", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.findById.mockResolvedValue({ ...mockOrder, items: [] });
 
       const result = await service.findOne(1);
 
@@ -226,7 +265,7 @@ describe("PumpOrderService", () => {
     });
 
     it("should throw NotFoundException for non-existent order", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(null);
+      mockPumpOrderRepo.findById.mockResolvedValue(null);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
     });
@@ -234,7 +273,8 @@ describe("PumpOrderService", () => {
 
   describe("findByOrderNumber", () => {
     it("should return an order by order number", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.findByOrderNumber.mockResolvedValue({ ...mockOrder, items: [] });
+      mockPumpOrderRepo.findById.mockResolvedValue({ ...mockOrder, items: [] });
 
       const result = await service.findByOrderNumber("PO-2026-00001");
 
@@ -243,7 +283,7 @@ describe("PumpOrderService", () => {
     });
 
     it("should throw NotFoundException for non-existent order number", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(null);
+      mockPumpOrderRepo.findByOrderNumber.mockResolvedValue(null);
 
       await expect(service.findByOrderNumber("INVALID")).rejects.toThrow(NotFoundException);
     });
@@ -251,7 +291,9 @@ describe("PumpOrderService", () => {
 
   describe("update", () => {
     it("should update an order", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue({ ...mockOrder });
+      const orderWithItems = { ...mockOrder, items: [], statusHistory: [] };
+      mockPumpOrderRepo.findById.mockResolvedValue(orderWithItems);
+      mockPumpOrderRepo.save.mockResolvedValue(orderWithItems);
 
       const updateDto = { customerReference: "UPDATED-REF" };
       const result = await service.update(1, updateDto);
@@ -261,7 +303,7 @@ describe("PumpOrderService", () => {
     });
 
     it("should throw NotFoundException for non-existent order", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(null);
+      mockPumpOrderRepo.findById.mockResolvedValue(null);
 
       await expect(service.update(999, { customerReference: "Test" })).rejects.toThrow(
         NotFoundException,
@@ -271,10 +313,9 @@ describe("PumpOrderService", () => {
 
   describe("updateStatus", () => {
     it("should update order status", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue({
-        ...mockOrder,
-        statusHistory: [],
-      });
+      const orderWithHistory = { ...mockOrder, statusHistory: [], items: [] };
+      mockPumpOrderRepo.findById.mockResolvedValue(orderWithHistory);
+      mockPumpOrderRepo.save.mockResolvedValue(orderWithHistory);
 
       const result = await service.updateStatus(1, PumpOrderStatus.SUBMITTED);
 
@@ -283,8 +324,9 @@ describe("PumpOrderService", () => {
     });
 
     it("should add status history entry when status changes", async () => {
-      const orderWithHistory = { ...mockOrder, statusHistory: [] };
-      mockPumpOrderRepo.findOne.mockResolvedValue(orderWithHistory);
+      const orderWithHistory = { ...mockOrder, statusHistory: [], items: [] };
+      mockPumpOrderRepo.findById.mockResolvedValue(orderWithHistory);
+      mockPumpOrderRepo.save.mockResolvedValue(orderWithHistory);
 
       await service.updateStatus(1, PumpOrderStatus.SUBMITTED);
 
@@ -302,10 +344,9 @@ describe("PumpOrderService", () => {
     });
 
     it("should pass updatedBy and notes to update", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue({
-        ...mockOrder,
-        statusHistory: [],
-      });
+      const orderWithHistory = { ...mockOrder, statusHistory: [], items: [] };
+      mockPumpOrderRepo.findById.mockResolvedValue(orderWithHistory);
+      mockPumpOrderRepo.save.mockResolvedValue(orderWithHistory);
 
       await service.updateStatus(1, PumpOrderStatus.CONFIRMED, "admin", "Approved by manager");
 
@@ -315,7 +356,7 @@ describe("PumpOrderService", () => {
 
   describe("remove", () => {
     it("should delete an order", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(mockOrder);
+      mockPumpOrderRepo.findById.mockResolvedValue(mockOrder);
 
       await service.remove(1);
 
@@ -323,7 +364,7 @@ describe("PumpOrderService", () => {
     });
 
     it("should throw NotFoundException for non-existent order", async () => {
-      mockPumpOrderRepo.findOne.mockResolvedValue(null);
+      mockPumpOrderRepo.findById.mockResolvedValue(null);
 
       await expect(service.remove(999)).rejects.toThrow(NotFoundException);
     });
@@ -331,36 +372,22 @@ describe("PumpOrderService", () => {
 
   describe("summary", () => {
     it("should return order summary", async () => {
-      const summaryQueryBuilder = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn(),
-        getRawOne: jest.fn(),
+      const mockSummary = {
+        totalOrders: 3,
+        byStatus: {
+          [PumpOrderStatus.DRAFT]: 1,
+          [PumpOrderStatus.SUBMITTED]: 1,
+          [PumpOrderStatus.CONFIRMED]: 1,
+        },
+        byType: {
+          [PumpOrderType.NEW_PUMP]: 2,
+          [PumpOrderType.SPARE_PARTS]: 1,
+        },
+        totalRevenue: 175000,
+        averageOrderValue: 58333.33,
       };
 
-      let callCount = 0;
-      mockPumpOrderRepo.createQueryBuilder.mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) {
-          summaryQueryBuilder.getRawMany.mockResolvedValueOnce([
-            { status: PumpOrderStatus.DRAFT, count: "1" },
-            { status: PumpOrderStatus.SUBMITTED, count: "1" },
-            { status: PumpOrderStatus.CONFIRMED, count: "1" },
-          ]);
-        } else if (callCount === 2) {
-          summaryQueryBuilder.getRawMany.mockResolvedValueOnce([
-            { orderType: PumpOrderType.NEW_PUMP, count: "2" },
-            { orderType: PumpOrderType.SPARE_PARTS, count: "1" },
-          ]);
-        } else if (callCount === 3) {
-          summaryQueryBuilder.getRawOne.mockResolvedValueOnce({
-            total: "3",
-            revenue: "175000",
-          });
-        }
-        return summaryQueryBuilder;
-      });
+      mockPumpOrderRepo.summary.mockResolvedValue(mockSummary);
 
       const result = await service.summary();
 
@@ -373,19 +400,17 @@ describe("PumpOrderService", () => {
       expect(result.byType[PumpOrderType.SPARE_PARTS]).toBe(1);
       expect(result.totalRevenue).toBe(175000);
       expect(result.averageOrderValue).toBeCloseTo(58333.33, 0);
-      expect(mockPumpOrderRepo.createQueryBuilder).toHaveBeenCalledTimes(3);
+      expect(mockPumpOrderRepo.summary).toHaveBeenCalledTimes(1);
     });
 
     it("should handle empty orders", async () => {
-      const summaryQueryBuilder = {
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        groupBy: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([]),
-        getRawOne: jest.fn().mockResolvedValue({ total: "0", revenue: "0" }),
-      };
-
-      mockPumpOrderRepo.createQueryBuilder.mockReturnValue(summaryQueryBuilder);
+      mockPumpOrderRepo.summary.mockResolvedValue({
+        totalOrders: 0,
+        byStatus: {},
+        byType: {},
+        totalRevenue: 0,
+        averageOrderValue: 0,
+      });
 
       const result = await service.summary();
 

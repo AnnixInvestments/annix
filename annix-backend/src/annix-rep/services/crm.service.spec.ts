@@ -1,17 +1,13 @@
 import { NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
-import {
-  CrmConfig,
-  CrmType,
-  Meeting,
-  MeetingRecording,
-  MeetingTranscript,
-  Prospect,
-} from "../entities";
+import { CrmConfigRepository } from "../crm-config.repository";
+import { CrmConfig, CrmType, Prospect } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { MeetingTranscriptRepository } from "../meeting-transcript.repository";
+import { ProspectRepository } from "../prospect.repository";
 import {
   HubSpotOAuthProvider,
   PipedriveOAuthProvider,
@@ -26,11 +22,11 @@ jest.mock("../../secure-documents/crypto.util", () => ({
 
 describe("CrmService", () => {
   let service: CrmService;
-  let mockCrmConfigRepo: Partial<Repository<CrmConfig>>;
-  let mockProspectRepo: Partial<Repository<Prospect>>;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
-  let mockRecordingRepo: Partial<Repository<MeetingRecording>>;
-  let mockTranscriptRepo: Partial<Repository<MeetingTranscript>>;
+  let mockCrmConfigRepo: Partial<CrmConfigRepository>;
+  let mockProspectRepo: Partial<ProspectRepository>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
+  let mockRecordingRepo: Partial<MeetingRecordingRepository>;
+  let mockTranscriptRepo: Partial<MeetingTranscriptRepository>;
   let mockConfigService: Partial<ConfigService>;
   let mockSalesforceProvider: Partial<SalesforceOAuthProvider>;
   let mockHubspotProvider: Partial<HubSpotOAuthProvider>;
@@ -85,33 +81,37 @@ describe("CrmService", () => {
 
   beforeEach(async () => {
     mockCrmConfigRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockImplementation((data) => ({ id: 1, ...data })),
+      findByUser: jest.fn().mockResolvedValue([]),
+      findByUserAndType: jest.fn().mockResolvedValue(null),
+      findByIdAndUser: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
       remove: jest.fn().mockResolvedValue(undefined),
     };
 
     mockProspectRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn().mockResolvedValue(null),
+      findAllByOwner: jest.fn().mockResolvedValue([]),
+      findByOwnerOrderedByCreated: jest.fn().mockResolvedValue([]),
+      findByOwnerAndId: jest.fn().mockResolvedValue(null),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-      count: jest.fn().mockResolvedValue(0),
+      countByOwner: jest.fn().mockResolvedValue(0),
+      countByOwnerCrmSynced: jest.fn().mockResolvedValue(0),
     };
 
     mockMeetingRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn().mockResolvedValue(null),
+      findAllWithProspectOrdered: jest.fn().mockResolvedValue([]),
+      findOneForSalesRep: jest.fn().mockResolvedValue(null),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-      count: jest.fn().mockResolvedValue(0),
+      countBySalesRep: jest.fn().mockResolvedValue(0),
+      countBySalesRepCrmSynced: jest.fn().mockResolvedValue(0),
     };
 
     mockRecordingRepo = {
-      findOne: jest.fn().mockResolvedValue(null),
+      findByMeetingId: jest.fn().mockResolvedValue(null),
     };
 
     mockTranscriptRepo = {
-      findOne: jest.fn().mockResolvedValue(null),
+      findByRecordingId: jest.fn().mockResolvedValue(null),
     };
 
     mockConfigService = {
@@ -171,11 +171,11 @@ describe("CrmService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CrmService,
-        { provide: getRepositoryToken(CrmConfig), useValue: mockCrmConfigRepo },
-        { provide: getRepositoryToken(Prospect), useValue: mockProspectRepo },
-        { provide: getRepositoryToken(Meeting), useValue: mockMeetingRepo },
-        { provide: getRepositoryToken(MeetingRecording), useValue: mockRecordingRepo },
-        { provide: getRepositoryToken(MeetingTranscript), useValue: mockTranscriptRepo },
+        { provide: CrmConfigRepository, useValue: mockCrmConfigRepo },
+        { provide: ProspectRepository, useValue: mockProspectRepo },
+        { provide: MeetingRepository, useValue: mockMeetingRepo },
+        { provide: MeetingRecordingRepository, useValue: mockRecordingRepo },
+        { provide: MeetingTranscriptRepository, useValue: mockTranscriptRepo },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: SalesforceOAuthProvider, useValue: mockSalesforceProvider },
         { provide: HubSpotOAuthProvider, useValue: mockHubspotProvider },
@@ -239,13 +239,12 @@ describe("CrmService", () => {
         "http://localhost/callback",
       );
       expect(mockCrmConfigRepo.create).toHaveBeenCalled();
-      expect(mockCrmConfigRepo.save).toHaveBeenCalled();
       expect(result).toHaveProperty("id");
     });
 
     it("should update existing config when one exists for user and provider", async () => {
       const existingConfig = { ...mockCrmConfig, crmType: CrmType.SALESFORCE };
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(existingConfig);
+      (mockCrmConfigRepo.findByUserAndType as jest.Mock).mockResolvedValue(existingConfig);
 
       await service.handleOAuthCallback(
         100,
@@ -268,7 +267,7 @@ describe("CrmService", () => {
         crmType: CrmType.SALESFORCE,
         apiKeyEncrypted: "encrypted-token",
       };
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(config);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(config);
 
       await service.disconnectOAuth(100, 1);
 
@@ -285,7 +284,7 @@ describe("CrmService", () => {
 
     it("should not revoke token when no access token exists", async () => {
       const config = { ...mockCrmConfig, apiKeyEncrypted: null };
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(config);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(config);
 
       await service.disconnectOAuth(100, 1);
 
@@ -300,15 +299,12 @@ describe("CrmService", () => {
 
   describe("listConfigs", () => {
     it("should return configs for user", async () => {
-      (mockCrmConfigRepo.find as jest.Mock).mockResolvedValue([mockCrmConfig]);
+      (mockCrmConfigRepo.findByUser as jest.Mock).mockResolvedValue([mockCrmConfig]);
 
       const result = await service.listConfigs(100);
 
       expect(result).toHaveLength(1);
-      expect(mockCrmConfigRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { createdAt: "DESC" },
-      });
+      expect(mockCrmConfigRepo.findByUser).toHaveBeenCalledWith(100);
     });
 
     it("should return empty array when no configs exist", async () => {
@@ -320,7 +316,7 @@ describe("CrmService", () => {
 
   describe("configById", () => {
     it("should return config when found", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockCrmConfig);
 
       const result = await service.configById(100, 1);
 
@@ -357,7 +353,6 @@ describe("CrmService", () => {
           isActive: true,
         }),
       );
-      expect(mockCrmConfigRepo.save).toHaveBeenCalled();
       expect(result).toHaveProperty("id");
     });
 
@@ -380,7 +375,7 @@ describe("CrmService", () => {
 
   describe("updateConfig", () => {
     it("should update config fields", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue({ ...mockCrmConfig });
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue({ ...mockCrmConfig });
 
       const dto = { name: "Updated CRM", isActive: false };
       const result = await service.updateConfig(100, 1, dto);
@@ -397,7 +392,7 @@ describe("CrmService", () => {
 
     it("should only update provided fields", async () => {
       const config = { ...mockCrmConfig };
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(config);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(config);
 
       await service.updateConfig(100, 1, { name: "New Name" });
 
@@ -412,7 +407,7 @@ describe("CrmService", () => {
 
   describe("deleteConfig", () => {
     it("should delete config", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockCrmConfig);
 
       await service.deleteConfig(100, 1);
 
@@ -426,7 +421,7 @@ describe("CrmService", () => {
 
   describe("syncProspect", () => {
     it("should throw NotFoundException when prospect does not exist", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockCrmConfig);
 
       await expect(service.syncProspect(100, 1, 999)).rejects.toThrow(NotFoundException);
     });
@@ -434,14 +429,14 @@ describe("CrmService", () => {
 
   describe("syncMeeting", () => {
     it("should throw NotFoundException when meeting does not exist", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockCrmConfig);
 
       await expect(service.syncMeeting(100, 1, 999)).rejects.toThrow(NotFoundException);
     });
 
     it("should throw NotFoundException when meeting has no prospect", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue({
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockCrmConfig);
+      (mockMeetingRepo.findOneForSalesRep as jest.Mock).mockResolvedValue({
         id: 1,
         salesRepId: 100,
         prospect: null,
@@ -453,9 +448,11 @@ describe("CrmService", () => {
 
   describe("syncStatus", () => {
     it("should return sync status for config", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
-      (mockProspectRepo.count as jest.Mock).mockResolvedValueOnce(5).mockResolvedValueOnce(10);
-      (mockMeetingRepo.count as jest.Mock).mockResolvedValueOnce(3).mockResolvedValueOnce(8);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockCrmConfig);
+      (mockProspectRepo.countByOwnerCrmSynced as jest.Mock).mockResolvedValue(5);
+      (mockProspectRepo.countByOwner as jest.Mock).mockResolvedValue(10);
+      (mockMeetingRepo.countBySalesRepCrmSynced as jest.Mock).mockResolvedValue(3);
+      (mockMeetingRepo.countBySalesRep as jest.Mock).mockResolvedValue(8);
 
       const result = await service.syncStatus(100, 1);
 
@@ -472,9 +469,11 @@ describe("CrmService", () => {
 
     it("should report failed sync when lastSyncError is set", async () => {
       const configWithError = { ...mockCrmConfig, lastSyncError: "Connection timed out" };
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(configWithError);
-      (mockProspectRepo.count as jest.Mock).mockResolvedValue(0);
-      (mockMeetingRepo.count as jest.Mock).mockResolvedValue(0);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(configWithError);
+      (mockProspectRepo.countByOwnerCrmSynced as jest.Mock).mockResolvedValue(0);
+      (mockProspectRepo.countByOwner as jest.Mock).mockResolvedValue(0);
+      (mockMeetingRepo.countBySalesRepCrmSynced as jest.Mock).mockResolvedValue(0);
+      (mockMeetingRepo.countBySalesRep as jest.Mock).mockResolvedValue(0);
 
       const result = await service.syncStatus(100, 1);
 
@@ -488,20 +487,17 @@ describe("CrmService", () => {
 
   describe("exportProspectsCsv", () => {
     it("should export prospects without config", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerOrderedByCreated as jest.Mock).mockResolvedValue([]);
 
       const result = await service.exportProspectsCsv(100, null);
 
       expect(typeof result).toBe("string");
-      expect(mockProspectRepo.find).toHaveBeenCalledWith({
-        where: { ownerId: 100 },
-        order: { createdAt: "DESC" },
-      });
+      expect(mockProspectRepo.findByOwnerOrderedByCreated).toHaveBeenCalledWith(100);
     });
 
     it("should export prospects with config field mappings", async () => {
-      (mockCrmConfigRepo.findOne as jest.Mock).mockResolvedValue(mockCrmConfig);
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockCrmConfigRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockCrmConfig);
+      (mockProspectRepo.findByOwnerOrderedByCreated as jest.Mock).mockResolvedValue([]);
 
       const result = await service.exportProspectsCsv(100, 1);
 
@@ -511,7 +507,7 @@ describe("CrmService", () => {
 
   describe("exportMeetingsCsv", () => {
     it("should export meetings without config", async () => {
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findAllWithProspectOrdered as jest.Mock).mockResolvedValue([]);
 
       const result = await service.exportMeetingsCsv(100, null);
 

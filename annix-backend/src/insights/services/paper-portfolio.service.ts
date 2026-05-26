@@ -1,7 +1,4 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { PaperHolding } from "../entities/paper-holding.entity";
 import {
   type AllocationRules,
   type ExecutorStrategy,
@@ -9,8 +6,11 @@ import {
   type PaperPortfolioSlug,
   type RiskProfile,
 } from "../entities/paper-portfolio.entity";
-import { PaperPortfolioSnapshot } from "../entities/paper-portfolio-snapshot.entity";
-import { type NewsProvenance, PaperTrade } from "../entities/paper-trade.entity";
+import type { NewsProvenance } from "../entities/paper-trade.entity";
+import { PaperHoldingRepository } from "../repositories/paper-holding.repository";
+import { PaperPortfolioRepository } from "../repositories/paper-portfolio.repository";
+import { PaperPortfolioSnapshotRepository } from "../repositories/paper-portfolio-snapshot.repository";
+import { PaperTradeRepository } from "../repositories/paper-trade.repository";
 
 export interface PaperPortfolioSummary {
   id: string;
@@ -80,20 +80,14 @@ export class PaperPortfolioService {
   private readonly logger = new Logger(PaperPortfolioService.name);
 
   constructor(
-    @InjectRepository(PaperPortfolio)
-    private readonly portfolioRepo: Repository<PaperPortfolio>,
-    @InjectRepository(PaperHolding)
-    private readonly holdingRepo: Repository<PaperHolding>,
-    @InjectRepository(PaperTrade)
-    private readonly tradeRepo: Repository<PaperTrade>,
-    @InjectRepository(PaperPortfolioSnapshot)
-    private readonly snapshotRepo: Repository<PaperPortfolioSnapshot>,
+    private readonly portfolioRepo: PaperPortfolioRepository,
+    private readonly holdingRepo: PaperHoldingRepository,
+    private readonly tradeRepo: PaperTradeRepository,
+    private readonly snapshotRepo: PaperPortfolioSnapshotRepository,
   ) {}
 
   async listAll(): Promise<PaperPortfolioSummary[]> {
-    const portfolios = await this.portfolioRepo.find({
-      order: { createdAt: "ASC" },
-    });
+    const portfolios = await this.portfolioRepo.findAllOrderedByCreatedAt();
     return Promise.all(portfolios.map((p) => this.summariseInternal(p)));
   }
 
@@ -103,9 +97,7 @@ export class PaperPortfolioService {
   }
 
   async portfolioBySlugRaw(slug: string): Promise<PaperPortfolio> {
-    const portfolio = await this.portfolioRepo.findOne({
-      where: { slug: slug as PaperPortfolioSlug },
-    });
+    const portfolio = await this.portfolioRepo.findBySlug(slug);
     if (!portfolio) {
       throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
     }
@@ -113,14 +105,9 @@ export class PaperPortfolioService {
   }
 
   async latestSnapshot(slug: string): Promise<PaperPortfolioSnapshotDto | null> {
-    const portfolio = await this.portfolioRepo.findOne({
-      where: { slug: slug as PaperPortfolioSlug },
-    });
+    const portfolio = await this.portfolioRepo.findBySlug(slug);
     if (!portfolio) return null;
-    const row = await this.snapshotRepo.findOne({
-      where: { portfolioId: portfolio.id },
-      order: { snapshotDate: "DESC" },
-    });
+    const row = await this.snapshotRepo.latestForPortfolio(portfolio.id);
     if (!row) return null;
     return {
       snapshotDate:
@@ -136,17 +123,11 @@ export class PaperPortfolioService {
   }
 
   async holdings(slug: string): Promise<PaperHoldingDto[]> {
-    const portfolio = await this.portfolioRepo.findOne({
-      where: { slug: slug as PaperPortfolioSlug },
-    });
+    const portfolio = await this.portfolioRepo.findBySlug(slug);
     if (!portfolio) {
       throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
     }
-    const holdings = await this.holdingRepo.find({
-      where: { portfolioId: portfolio.id },
-      relations: { asset: true },
-      order: { firstAcquiredAt: "ASC" },
-    });
+    const holdings = await this.holdingRepo.findByPortfolioWithAssetOrdered(portfolio.id);
     return holdings.map((h) => ({
       id: h.id,
       symbol: h.asset.symbol,
@@ -162,17 +143,11 @@ export class PaperPortfolioService {
   }
 
   async snapshots(slug: string, limit = 365): Promise<PaperPortfolioSnapshotDto[]> {
-    const portfolio = await this.portfolioRepo.findOne({
-      where: { slug: slug as PaperPortfolioSlug },
-    });
+    const portfolio = await this.portfolioRepo.findBySlug(slug);
     if (!portfolio) {
       throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
     }
-    const rows = await this.snapshotRepo.find({
-      where: { portfolioId: portfolio.id },
-      order: { snapshotDate: "DESC" },
-      take: limit,
-    });
+    const rows = await this.snapshotRepo.recentForPortfolio(portfolio.id, limit);
     return rows
       .map((s) => ({
         snapshotDate:
@@ -189,18 +164,11 @@ export class PaperPortfolioService {
   }
 
   async trades(slug: string, limit = 250): Promise<PaperTradeDto[]> {
-    const portfolio = await this.portfolioRepo.findOne({
-      where: { slug: slug as PaperPortfolioSlug },
-    });
+    const portfolio = await this.portfolioRepo.findBySlug(slug);
     if (!portfolio) {
       throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
     }
-    const trades = await this.tradeRepo.find({
-      where: { portfolioId: portfolio.id },
-      relations: { asset: true },
-      order: { executedAt: "DESC" },
-      take: limit,
-    });
+    const trades = await this.tradeRepo.findByPortfolioWithAsset(portfolio.id, limit);
     return trades.map((t) => ({
       id: t.id,
       symbol: t.asset ? t.asset.symbol : null,
@@ -220,19 +188,17 @@ export class PaperPortfolioService {
   }
 
   async setPaused(slug: string, paused: boolean): Promise<PaperPortfolioSummary> {
-    const portfolio = await this.portfolioRepo.findOne({
-      where: { slug: slug as PaperPortfolioSlug },
-    });
+    const portfolio = await this.portfolioRepo.findBySlug(slug);
     if (!portfolio) {
       throw new NotFoundException(`Paper portfolio "${slug}" not found.`);
     }
-    await this.portfolioRepo.update({ id: portfolio.id }, { isPaused: paused });
-    const reloaded = await this.portfolioRepo.findOneOrFail({ where: { id: portfolio.id } });
+    await this.portfolioRepo.updateById(portfolio.id, { isPaused: paused });
+    const reloaded = await this.portfolioRepo.findByIdOrFail(portfolio.id);
     return this.summariseInternal(reloaded);
   }
 
   async addMonthlyContributionToAll(): Promise<{ credited: number; portfolios: string[] }> {
-    const portfolios = await this.portfolioRepo.find({ where: { isActive: true } });
+    const portfolios = await this.portfolioRepo.findActive();
     let credited = 0;
     const updated: string[] = [];
     for (const portfolio of portfolios) {
@@ -253,12 +219,11 @@ export class PaperPortfolioService {
     if (amount <= 0) return;
 
     const newCash = Number(portfolio.currentCashBalance) + amount;
-    await this.portfolioRepo.update(
-      { id: portfolio.id },
-      { currentCashBalance: newCash.toFixed(2) },
-    );
+    await this.portfolioRepo.updateById(portfolio.id, {
+      currentCashBalance: newCash.toFixed(2),
+    });
 
-    const trade = this.tradeRepo.create({
+    await this.tradeRepo.create({
       portfolioId: portfolio.id,
       assetId: null,
       action: "contribution",
@@ -276,27 +241,17 @@ export class PaperPortfolioService {
       signalSnapshot: null,
       relatedNewsIds: null,
     });
-    await this.tradeRepo.save(trade);
   }
 
   private async summariseInternal(portfolio: PaperPortfolio): Promise<PaperPortfolioSummary> {
-    const holdingsCount = await this.holdingRepo.count({ where: { portfolioId: portfolio.id } });
+    const holdingsCount = await this.holdingRepo.countByPortfolio(portfolio.id);
     const cash = Number(portfolio.currentCashBalance);
     const invested = Number(portfolio.currentPortfolioValue);
 
-    const sparklineRows = await this.snapshotRepo
-      .createQueryBuilder("s")
-      .select(["s.total_value AS total_value"])
-      .where("s.portfolio_id = :portfolioId", { portfolioId: portfolio.id })
-      .orderBy("s.snapshot_date", "DESC")
-      .limit(SPARKLINE_DAYS)
-      .getRawMany<{ total_value: string }>();
+    const sparklineRows = await this.snapshotRepo.totalValueSparkline(portfolio.id, SPARKLINE_DAYS);
     const valueSparkline = sparklineRows.map((r) => Number(r.total_value)).reverse();
 
-    const latestSnapshot = await this.snapshotRepo.findOne({
-      where: { portfolioId: portfolio.id },
-      order: { snapshotDate: "DESC" },
-    });
+    const latestSnapshot = await this.snapshotRepo.latestForPortfolio(portfolio.id);
     const maxDrawdownPercent = latestSnapshot ? Number(latestSnapshot.maxDrawdownPercent) : 0;
     const volatilityScore = latestSnapshot ? Number(latestSnapshot.volatilityScore) : 0;
 

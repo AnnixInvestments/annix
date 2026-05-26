@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { MineRegistryService } from "../mines/mine-registry.service";
-import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
+import { NixExtraction } from "./entities/nix-extraction.entity";
+import { NixExtractionRepository } from "./nix-extraction.repository";
 
 /**
  * Result of inferring which mine a Nix extraction belongs to. Null when no
@@ -48,8 +47,7 @@ export class MineInferenceService {
 
   constructor(
     private readonly mineRegistry: MineRegistryService,
-    @InjectRepository(NixExtraction)
-    private readonly extractionRepo: Repository<NixExtraction>,
+    private readonly extractionRepo: NixExtractionRepository,
   ) {}
 
   /**
@@ -255,7 +253,7 @@ export class MineInferenceService {
     if (!documentNumber) return null;
     const lookup = await this.findExistingForMine(mineId, documentNumber);
     if (!lookup) return null;
-    const source = await this.extractionRepo.findOne({ where: { id: lookup.extractionId } });
+    const source = await this.extractionRepo.findById(lookup.extractionId);
     if (!source) return null;
     return {
       source,
@@ -286,20 +284,7 @@ export class MineInferenceService {
   } | null> {
     if (!documentNumber) return null;
 
-    const qb = this.extractionRepo
-      .createQueryBuilder("e")
-      .where("e.documentNumber = :documentNumber", { documentNumber })
-      .andWhere("e.status = :status", { status: ExtractionStatus.COMPLETED })
-      .andWhere("e.isLatestRevision = :latest", { latest: true })
-      .orderBy("e.documentRevision", "DESC", "NULLS LAST")
-      .addOrderBy("e.createdAt", "DESC")
-      .limit(1);
-
-    if (mineId && mineId > 0) {
-      qb.andWhere("e.mineId = :mineId", { mineId });
-    }
-
-    const found = await qb.getOne();
+    const found = await this.extractionRepo.findLatestCompletedByDocNumber(documentNumber, mineId);
     if (!found) return null;
 
     this.logger.log(

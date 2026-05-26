@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IssuableProduct } from "../entities/issuable-product.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
 
 export type PhotoIdentificationKind = "paint" | "consumable" | "rubber_roll" | "other";
 
@@ -36,8 +35,7 @@ export class PhotoIdentificationService {
   private readonly logger = new Logger(PhotoIdentificationService.name);
 
   constructor(
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
+    private readonly productRepo: IssuableProductRepository,
     private readonly aiChatService: AiChatService,
   ) {}
 
@@ -167,14 +165,8 @@ Output only the JSON object. No prose. No markdown fences.`;
     ].filter((t): t is string => typeof t === "string" && t.length > 0);
 
     for (const term of searchTerms) {
-      const bySku = await this.productRepo.find({
-        where: { companyId, sku: ILike(`%${term}%`) },
-        take: 5,
-      });
-      const byName = await this.productRepo.find({
-        where: { companyId, name: ILike(`%${term}%`) },
-        take: 5,
-      });
+      const bySku = await this.productRepo.searchBySkuLike(companyId, term, 5);
+      const byName = await this.productRepo.searchByNameLike(companyId, term, 5);
       candidates.push(...bySku, ...byName);
     }
 

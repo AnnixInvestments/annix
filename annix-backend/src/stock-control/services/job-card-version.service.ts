@@ -1,25 +1,19 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
-import { JobCardApproval } from "../entities/job-card-approval.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { JobCardVersion } from "../entities/job-card-version.entity";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardApprovalRepository } from "../repositories/job-card-approval.repository";
+import { JobCardVersionRepository } from "../repositories/job-card-version.repository";
 
 @Injectable()
 export class JobCardVersionService {
   private readonly logger = new Logger(JobCardVersionService.name);
 
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardVersion)
-    private readonly versionRepo: Repository<JobCardVersion>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
-    @InjectRepository(JobCardApproval)
-    private readonly approvalRepo: Repository<JobCardApproval>,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly versionRepo: JobCardVersionRepository,
+    private readonly approvalRepo: JobCardApprovalRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -30,10 +24,7 @@ export class JobCardVersionService {
     amendmentNotes: string | null,
     createdBy: string | null,
   ): Promise<JobCardVersion> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-      relations: ["lineItems"],
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
@@ -52,10 +43,7 @@ export class JobCardVersionService {
         m2: li.m2,
       })) ?? [];
 
-    const approvals = await this.approvalRepo.find({
-      where: { jobCardId, companyId },
-      order: { createdAt: "ASC" },
-    });
+    const approvals = await this.approvalRepo.findForJobCardOrdered(companyId, jobCardId);
 
     const approvalsSnapshot = approvals.map((a) => ({
       step: a.step,
@@ -66,7 +54,7 @@ export class JobCardVersionService {
       rejectedReason: a.rejectedReason,
     }));
 
-    const version = this.versionRepo.create({
+    const saved = await this.versionRepo.create({
       jobCardId: jobCard.id,
       companyId,
       versionNumber: jobCard.versionNumber,
@@ -82,20 +70,17 @@ export class JobCardVersionService {
       createdBy,
     });
 
-    const saved = await this.versionRepo.save(version);
-
     this.logger.log(`Archived v${jobCard.versionNumber} for job card ${jobCard.jobNumber}`);
 
     return saved;
   }
 
   async resetWorkflow(companyId: number, jobCardId: number): Promise<void> {
-    await this.approvalRepo.delete({ jobCardId, companyId });
+    await this.approvalRepo.deleteForJobCard(companyId, jobCardId);
 
-    await this.jobCardRepo.update(
-      { id: jobCardId, companyId },
-      { workflowStatus: WORKFLOW_STATUS_DRAFT },
-    );
+    await this.jobCardRepo.updateForCompany(jobCardId, companyId, {
+      workflowStatus: WORKFLOW_STATUS_DRAFT,
+    });
 
     this.logger.log(`Reset workflow for job card ${jobCardId}`);
   }
@@ -107,9 +92,7 @@ export class JobCardVersionService {
     notes: string | null,
     createdBy: string | null,
   ): Promise<JobCard> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
@@ -138,18 +121,13 @@ export class JobCardVersionService {
   }
 
   async versionHistory(companyId: number, jobCardId: number): Promise<JobCardVersion[]> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
 
-    return this.versionRepo.find({
-      where: { jobCardId, companyId },
-      order: { versionNumber: "DESC" },
-    });
+    return this.versionRepo.findForJobCardOrdered(jobCardId, companyId);
   }
 
   async versionById(
@@ -157,9 +135,7 @@ export class JobCardVersionService {
     jobCardId: number,
     versionId: number,
   ): Promise<JobCardVersion> {
-    const version = await this.versionRepo.findOne({
-      where: { id: versionId, jobCardId, companyId },
-    });
+    const version = await this.versionRepo.findOneForJobCard(versionId, jobCardId, companyId);
 
     if (!version) {
       throw new NotFoundException("Version not found");

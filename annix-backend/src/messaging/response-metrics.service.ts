@@ -1,8 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Not, Repository } from "typeorm";
-import { fromISO, fromJSDate } from "../lib/datetime";
-import { User } from "../user/entities/user.entity";
+import { fromJSDate } from "../lib/datetime";
+import { UserRepository } from "../user/user.repository";
+import { ConversationResponseMetricRepository } from "./conversation-response-metric.repository";
 import {
   MetricsFilterDto,
   RatingBreakdownDto,
@@ -12,48 +11,38 @@ import {
   UserResponseStatsDto,
 } from "./dto";
 import { ConversationResponseMetric, Message, ResponseRating, SlaConfig } from "./entities";
+import { MessageRepository } from "./message.repository";
+import { SlaConfigRepository } from "./sla-config.repository";
 
 @Injectable()
 export class ResponseMetricsService {
   constructor(
-    @InjectRepository(ConversationResponseMetric)
-    private readonly metricRepo: Repository<ConversationResponseMetric>,
-    @InjectRepository(Message)
-    private readonly messageRepo: Repository<Message>,
-    @InjectRepository(SlaConfig)
-    private readonly slaConfigRepo: Repository<SlaConfig>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly metricRepo: ConversationResponseMetricRepository,
+    private readonly messageRepo: MessageRepository,
+    private readonly slaConfigRepo: SlaConfigRepository,
+    private readonly userRepo: UserRepository,
   ) {}
 
   async recordResponse(responseMessage: Message): Promise<void> {
-    const previousMessages = await this.messageRepo.find({
-      where: {
-        conversationId: responseMessage.conversationId,
-        senderId: Not(responseMessage.senderId),
-      },
-      order: { sentAt: "DESC" },
-      take: 1,
-    });
+    const previousMessage = await this.messageRepo.findPreviousFromOtherSender(
+      responseMessage.conversationId,
+      responseMessage.senderId,
+    );
 
-    if (previousMessages.length === 0) {
+    if (!previousMessage) {
       return;
     }
 
-    const originalMessage = previousMessages[0];
+    const alreadyExists = await this.metricRepo.existsByMessageAndResponder(
+      previousMessage.id,
+      responseMessage.senderId,
+    );
 
-    const existingMetric = await this.metricRepo.findOne({
-      where: {
-        messageId: originalMessage.id,
-        responderId: responseMessage.senderId,
-      },
-    });
-
-    if (existingMetric) {
+    if (alreadyExists) {
       return;
     }
 
-    const originalSentAt = fromJSDate(originalMessage.sentAt);
+    const originalSentAt = fromJSDate(previousMessage.sentAt);
     const responseSentAt = fromJSDate(responseMessage.sentAt);
     const responseTimeMinutes = Math.floor(responseSentAt.diff(originalSentAt, "minutes").minutes);
 
@@ -61,46 +50,28 @@ export class ResponseMetricsService {
     const rating = this.ratingForResponseTime(responseTimeMinutes, slaConfig);
     const withinSla = responseTimeMinutes <= slaConfig.responseTimeHours * 60;
 
-    const metric = this.metricRepo.create({
+    await this.metricRepo.create({
       conversationId: responseMessage.conversationId,
-      messageId: originalMessage.id,
+      messageId: previousMessage.id,
       responseMessageId: responseMessage.id,
       responderId: responseMessage.senderId,
       responseTimeMinutes,
       withinSla,
       rating,
     });
-
-    await this.metricRepo.save(metric);
   }
 
   async userResponseStats(
     userId: number,
     filters?: MetricsFilterDto,
   ): Promise<UserResponseStatsDto> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
 
     if (!user) {
       throw new NotFoundException("User not found");
     }
 
-    const queryBuilder = this.metricRepo
-      .createQueryBuilder("m")
-      .where("m.responderId = :userId", { userId });
-
-    if (filters?.startDate) {
-      queryBuilder.andWhere("m.createdAt >= :startDate", {
-        startDate: fromISO(filters.startDate).toJSDate(),
-      });
-    }
-
-    if (filters?.endDate) {
-      queryBuilder.andWhere("m.createdAt <= :endDate", {
-        endDate: fromISO(filters.endDate).toJSDate(),
-      });
-    }
-
-    const metrics = await queryBuilder.getMany();
+    const metrics = await this.metricRepo.findByResponder(userId, filters);
 
     if (metrics.length === 0) {
       return {
@@ -137,27 +108,7 @@ export class ResponseMetricsService {
   }
 
   async responseMetricsSummary(filters?: MetricsFilterDto): Promise<ResponseMetricsSummaryDto> {
-    const queryBuilder = this.metricRepo.createQueryBuilder("m");
-
-    if (filters?.startDate) {
-      queryBuilder.andWhere("m.createdAt >= :startDate", {
-        startDate: fromISO(filters.startDate).toJSDate(),
-      });
-    }
-
-    if (filters?.endDate) {
-      queryBuilder.andWhere("m.createdAt <= :endDate", {
-        endDate: fromISO(filters.endDate).toJSDate(),
-      });
-    }
-
-    if (filters?.userId) {
-      queryBuilder.andWhere("m.responderId = :userId", {
-        userId: filters.userId,
-      });
-    }
-
-    const metrics = await queryBuilder.getMany();
+    const metrics = await this.metricRepo.findFiltered(filters);
 
     if (metrics.length === 0) {
       return {
@@ -209,17 +160,16 @@ export class ResponseMetricsService {
   }
 
   async slaConfig(): Promise<SlaConfig> {
-    const config = await this.slaConfigRepo.findOne({ where: {} });
+    const config = await this.slaConfigRepo.findFirst();
 
     if (!config) {
-      const defaultConfig = this.slaConfigRepo.create({
+      return this.slaConfigRepo.create({
         responseTimeHours: 24,
         excellentThresholdHours: 4,
         goodThresholdHours: 12,
         acceptableThresholdHours: 24,
         poorThresholdHours: 48,
       });
-      return this.slaConfigRepo.save(defaultConfig);
     }
 
     return config;

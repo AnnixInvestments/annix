@@ -4,13 +4,14 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { now } from "../lib/datetime";
+import { CompanyRepository } from "../platform/company.repository";
 import { Company } from "../platform/entities/company.entity";
-import { CustomerDocument, CustomerOnboarding, CustomerProfile } from "./entities";
+import { CustomerDocumentRepository } from "./customer-document.repository";
+import { CustomerOnboardingRepository } from "./customer-onboarding.repository";
+import { CustomerProfileRepository } from "./customer-profile.repository";
 import { CustomerDocumentType } from "./entities/customer-document.entity";
 import { CustomerOnboardingStatus } from "./entities/customer-onboarding.entity";
 
@@ -23,30 +24,22 @@ const REQUIRED_DOCUMENT_TYPES = [
 @Injectable()
 export class CustomerOnboardingService {
   constructor(
-    @InjectRepository(CustomerOnboarding)
-    private readonly onboardingRepo: Repository<CustomerOnboarding>,
-    @InjectRepository(CustomerProfile)
-    private readonly profileRepo: Repository<CustomerProfile>,
-    @InjectRepository(CustomerDocument)
-    private readonly documentRepo: Repository<CustomerDocument>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
+    private readonly onboardingRepository: CustomerOnboardingRepository,
+    private readonly profileRepository: CustomerProfileRepository,
+    private readonly documentRepository: CustomerDocumentRepository,
+    private readonly companyRepo: CompanyRepository,
     private readonly auditService: AuditService,
   ) {}
 
   async getOnboardingStatus(customerId: number) {
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { customerId },
-    });
+    const onboarding = await this.onboardingRepository.findByCustomerId(customerId);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding record not found");
     }
 
     // Get documents
-    const documents = await this.documentRepo.find({
-      where: { customerId },
-    });
+    const documents = await this.documentRepository.findManyWhere({ customerId });
 
     // Check document completeness
     const uploadedTypes = documents.map((d) => d.documentType);
@@ -55,10 +48,7 @@ export class CustomerOnboardingService {
     );
 
     // Get profile and company
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     return {
       id: onboarding.id,
@@ -121,18 +111,13 @@ export class CustomerOnboardingService {
   }
 
   async updateCompanyDetails(customerId: number, data: Partial<Company>, clientIp: string) {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["company"]);
 
     if (!profile) {
       throw new NotFoundException("Customer profile not found");
     }
 
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { customerId },
-    });
+    const onboarding = await this.onboardingRepository.findByCustomerId(customerId);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding record not found");
@@ -162,7 +147,7 @@ export class CustomerOnboardingService {
     );
 
     onboarding.companyDetailsComplete = isComplete;
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     await this.auditService.log({
       entityType: "customer_company",
@@ -176,9 +161,7 @@ export class CustomerOnboardingService {
   }
 
   async submitOnboarding(customerId: number, clientIp: string) {
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { customerId },
-    });
+    const onboarding = await this.onboardingRepository.findByCustomerId(customerId);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding record not found");
@@ -199,9 +182,7 @@ export class CustomerOnboardingService {
     }
 
     // Check documents complete
-    const documents = await this.documentRepo.find({
-      where: { customerId },
-    });
+    const documents = await this.documentRepository.findManyWhere({ customerId });
     const uploadedTypes = documents.map((d) => d.documentType);
     const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(
       (type) => !uploadedTypes.includes(type),
@@ -223,7 +204,7 @@ export class CustomerOnboardingService {
       onboarding.remediationSteps = null;
     }
 
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     await this.auditService.log({
       entityType: "customer_onboarding",

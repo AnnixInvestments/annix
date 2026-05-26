@@ -1,9 +1,8 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO, nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
 import { DeliverySupplierService } from "./delivery-supplier.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
@@ -14,8 +13,7 @@ export class DeliveryInvoiceService {
   private readonly logger = new Logger(DeliveryInvoiceService.name);
 
   constructor(
-    @InjectRepository(SupplierInvoice)
-    private readonly invoiceRepo: Repository<SupplierInvoice>,
+    private readonly invoiceRepo: SupplierInvoiceRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
@@ -74,7 +72,7 @@ export class DeliveryInvoiceService {
       invoiceSupplierId = supplier.id;
     }
 
-    const invoice = this.invoiceRepo.create({
+    const saved = await this.invoiceRepo.create({
       companyId,
       invoiceNumber,
       supplierName: invoiceSupplierName,
@@ -86,8 +84,6 @@ export class DeliveryInvoiceService {
       extractionStatus: InvoiceExtractionStatus.PENDING,
       extractedData: analyzedData,
     });
-
-    const saved = await this.invoiceRepo.save(invoice);
     this.logger.log(`Created invoice ${saved.id} (${invoiceNumber}) from scan`);
 
     const imageBase64 = file.buffer.toString("base64");

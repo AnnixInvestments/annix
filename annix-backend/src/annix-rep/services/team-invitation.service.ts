@@ -1,11 +1,10 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { now } from "../../lib/datetime";
-import { Organization } from "../entities/organization.entity";
 import { TeamInvitation, TeamInvitationStatus } from "../entities/team-invitation.entity";
 import { TeamMember, TeamRole } from "../entities/team-member.entity";
+import { TeamInvitationRepository } from "../team-invitation.repository";
+import { TeamMemberRepository } from "../team-member.repository";
 import { OrganizationService } from "./organization.service";
 import { TeamService } from "./team.service";
 
@@ -24,12 +23,8 @@ export class TeamInvitationService {
   private readonly logger = new Logger(TeamInvitationService.name);
 
   constructor(
-    @InjectRepository(TeamInvitation)
-    private readonly invitationRepo: Repository<TeamInvitation>,
-    @InjectRepository(Organization)
-    private readonly organizationRepo: Repository<Organization>,
-    @InjectRepository(TeamMember)
-    private readonly teamMemberRepo: Repository<TeamMember>,
+    private readonly invitationRepo: TeamInvitationRepository,
+    private readonly teamMemberRepo: TeamMemberRepository,
     private readonly organizationService: OrganizationService,
     private readonly teamService: TeamService,
   ) {}
@@ -44,21 +39,15 @@ export class TeamInvitationService {
       throw new ConflictException("Organization has reached maximum member limit");
     }
 
-    const existingMember = await this.teamMemberRepo.findOne({
-      where: { organizationId: orgId },
-      relations: ["user"],
-    });
+    const existingMember = await this.teamMemberRepo.findFirstByOrganizationWithUser(orgId);
     if (existingMember?.user?.email === dto.email) {
       throw new ConflictException("User is already a member of this organization");
     }
 
-    const existingPending = await this.invitationRepo.findOne({
-      where: {
-        organizationId: orgId,
-        email: dto.email,
-        status: TeamInvitationStatus.PENDING,
-      },
-    });
+    const existingPending = await this.invitationRepo.findPendingByOrganizationAndEmail(
+      orgId,
+      dto.email,
+    );
     if (existingPending) {
       throw new ConflictException("An invitation is already pending for this email");
     }
@@ -66,7 +55,7 @@ export class TeamInvitationService {
     const token = uuidv4();
     const expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
 
-    const invitation = this.invitationRepo.create({
+    const saved = await this.invitationRepo.create({
       organizationId: orgId,
       invitedById,
       email: dto.email,
@@ -78,33 +67,21 @@ export class TeamInvitationService {
       message: dto.message ?? null,
       expiresAt,
     });
-
-    const saved = await this.invitationRepo.save(invitation);
     this.logger.log(`Invitation created for ${dto.email} to org ${orgId}`);
 
     return saved;
   }
 
   async findPending(orgId: number): Promise<TeamInvitation[]> {
-    return this.invitationRepo.find({
-      where: { organizationId: orgId, status: TeamInvitationStatus.PENDING },
-      relations: ["invitedBy", "territory"],
-      order: { createdAt: "DESC" },
-    });
+    return this.invitationRepo.findPendingByOrganization(orgId);
   }
 
   async findByToken(token: string): Promise<TeamInvitation | null> {
-    return this.invitationRepo.findOne({
-      where: { token },
-      relations: ["organization", "invitedBy", "territory"],
-    });
+    return this.invitationRepo.findByToken(token);
   }
 
   async findById(id: number): Promise<TeamInvitation | null> {
-    return this.invitationRepo.findOne({
-      where: { id },
-      relations: ["organization", "invitedBy", "territory"],
-    });
+    return this.invitationRepo.findByIdWithRelations(id);
   }
 
   async accept(token: string, userId: number): Promise<TeamMember> {
@@ -194,15 +171,8 @@ export class TeamInvitationService {
   }
 
   async expireOldInvitations(): Promise<number> {
-    const result = await this.invitationRepo.update(
-      {
-        status: TeamInvitationStatus.PENDING,
-        expiresAt: LessThan(now().toJSDate()),
-      },
-      { status: TeamInvitationStatus.EXPIRED },
-    );
+    const affected = await this.invitationRepo.expireOldPending(now().toJSDate());
 
-    const affected = result.affected ?? 0;
     if (affected > 0) {
       this.logger.log(`Expired ${affected} old invitations`);
     }

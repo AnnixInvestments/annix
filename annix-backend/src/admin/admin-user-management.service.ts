@@ -7,15 +7,14 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
 import { User } from "../user/entities/user.entity";
-import { UserRole } from "../user-roles/entities/user-role.entity";
+import { UserRepository } from "../user/user.repository";
+import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { UserSyncService } from "../user-sync/user-sync.service";
 import {
   AdminAuditItemDto,
@@ -28,19 +27,16 @@ import {
   DeactivateAdminUserDto,
   UpdateAdminRoleDto,
 } from "./dto/admin-user-management.dto";
-import { AdminSession } from "./entities/admin-session.entity";
+import { AdminSessionRepository } from "./repositories/admin-session.repository";
 
 @Injectable()
 export class AdminUserManagementService {
   private readonly logger = new Logger(AdminUserManagementService.name);
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(UserRole)
-    private readonly userRoleRepo: Repository<UserRole>,
-    @InjectRepository(AdminSession)
-    private readonly adminSessionRepo: Repository<AdminSession>,
+    private readonly userRepo: UserRepository,
+    private readonly userRoleRepo: UserRoleRepository,
+    private readonly adminSessionRepo: AdminSessionRepository,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
     private readonly userSyncService: UserSyncService,
@@ -52,43 +48,18 @@ export class AdminUserManagementService {
   async listAdminUsers(queryDto: AdminUserQueryDto): Promise<AdminUserListResponseDto> {
     const { search, role, page = 1, limit = 20 } = queryDto;
 
-    const queryBuilder = this.userRepo
-      .createQueryBuilder("user")
-      .leftJoinAndSelect("user.roles", "roles")
-      .where("(roles.name = :admin OR roles.name = :employee)", {
-        admin: "admin",
-        employee: "employee",
-      });
-
-    // Apply search filter
-    if (search) {
-      queryBuilder.andWhere("(user.email LIKE :search OR user.username LIKE :search)", {
-        search: `%${search}%`,
-      });
-    }
-
-    // Apply role filter
-    if (role) {
-      queryBuilder.andWhere("roles.name = :role", { role });
-    }
-
-    // Get total count
-    const total = await queryBuilder.getCount();
-
-    // Apply pagination
     const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit).orderBy("user.id", "DESC");
-
-    // Execute query
-    const users = await queryBuilder.getMany();
+    const { users, total } = await this.userRepo.findAdminOrEmployeesPaginated({
+      search,
+      role,
+      skip,
+      take: limit,
+    });
 
     // Get last login for each user
     const lastLogins = await Promise.all(
       users.map(async (user) => {
-        const session = await this.adminSessionRepo.findOne({
-          where: { userId: user.id },
-          order: { createdAt: "DESC" },
-        });
+        const session = await this.adminSessionRepo.findLatestByUser(user.id);
         return { userId: user.id, lastLogin: session?.createdAt };
       }),
     );
@@ -119,9 +90,7 @@ export class AdminUserManagementService {
    */
   async createAdminUser(dto: CreateAdminUserDto, createdBy: number): Promise<User> {
     // Check if user already exists
-    const existingUser = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const existingUser = await this.userRepo.findOneByEmail(dto.email);
 
     if (existingUser) {
       throw new ConflictException("A user with this email already exists");
@@ -131,27 +100,20 @@ export class AdminUserManagementService {
 
     const hashedPassword = await bcrypt.hash(temporaryPassword, 10);
 
-    let userRole = await this.userRoleRepo.findOne({
-      where: { name: dto.role },
-    });
+    let userRole = await this.userRoleRepo.findByName(dto.role);
     if (!userRole) {
-      userRole = this.userRoleRepo.create({ name: dto.role });
-      userRole = await this.userRoleRepo.save(userRole);
+      userRole = await this.userRoleRepo.create({ name: dto.role });
     }
 
-    const user = this.userRepo.create({
+    const savedUser = await this.userRepo.create({
       email: dto.email,
       username: `${dto.firstName} ${dto.lastName}`,
       passwordHash: hashedPassword,
       roles: [userRole],
     });
 
-    const savedUser = await this.userRepo.save(user);
-
     // Log audit
-    const createdByUser = await this.userRepo.findOne({
-      where: { id: createdBy },
-    });
+    const createdByUser = await this.userRepo.findById(createdBy);
     await this.auditService.log({
       entityType: "user",
       entityId: savedUser.id,
@@ -194,10 +156,7 @@ export class AdminUserManagementService {
    * Update admin user role
    */
   async updateAdminRole(userId: number, dto: UpdateAdminRoleDto, updatedBy: number): Promise<User> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByIdWithRoles(userId);
 
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
@@ -210,12 +169,9 @@ export class AdminUserManagementService {
     }
 
     // Get the new role
-    let newRole = await this.userRoleRepo.findOne({
-      where: { name: dto.role },
-    });
+    let newRole = await this.userRoleRepo.findByName(dto.role);
     if (!newRole) {
-      newRole = this.userRoleRepo.create({ name: dto.role });
-      newRole = await this.userRoleRepo.save(newRole);
+      newRole = await this.userRoleRepo.create({ name: dto.role });
     }
 
     const oldRoles = user.roles.map((r) => r.name);
@@ -225,15 +181,10 @@ export class AdminUserManagementService {
     const updatedUser = await this.userRepo.save(user);
 
     // Revoke all sessions since role changed
-    await this.adminSessionRepo.update(
-      { userId, isRevoked: false },
-      { isRevoked: true, revokedAt: now().toJSDate() },
-    );
+    await this.adminSessionRepo.revokeAllForUser(userId, now().toJSDate());
 
     // Log audit
-    const updatedByUser = await this.userRepo.findOne({
-      where: { id: updatedBy },
-    });
+    const updatedByUser = await this.userRepo.findById(updatedBy);
     await this.auditService.log({
       entityType: "user",
       entityId: userId,
@@ -257,10 +208,7 @@ export class AdminUserManagementService {
     dto: DeactivateAdminUserDto,
     deactivatedBy: number,
   ): Promise<void> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByIdWithRoles(userId);
 
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
@@ -272,15 +220,10 @@ export class AdminUserManagementService {
     }
 
     // Revoke all sessions
-    await this.adminSessionRepo.update(
-      { userId, isRevoked: false },
-      { isRevoked: true, revokedAt: now().toJSDate() },
-    );
+    await this.adminSessionRepo.revokeAllForUser(userId, now().toJSDate());
 
     // Log audit
-    const deactivatedByUser = await this.userRepo.findOne({
-      where: { id: deactivatedBy },
-    });
+    const deactivatedByUser = await this.userRepo.findById(deactivatedBy);
     await this.auditService.log({
       entityType: "user",
       entityId: userId,
@@ -301,19 +244,14 @@ export class AdminUserManagementService {
    * Reactivate admin user
    */
   async reactivateAdminUser(userId: number, reactivatedBy: number): Promise<User> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByIdWithRoles(userId);
 
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
     // Log audit
-    const reactivatedByUser = await this.userRepo.findOne({
-      where: { id: reactivatedBy },
-    });
+    const reactivatedByUser = await this.userRepo.findById(reactivatedBy);
     await this.auditService.log({
       entityType: "user",
       entityId: userId,
@@ -333,21 +271,14 @@ export class AdminUserManagementService {
    * Get admin user detail with login history and audit trail
    */
   async getAdminUserDetail(userId: number): Promise<AdminUserDetailDto> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByIdWithRoles(userId);
 
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
     // Get login history (last 20 sessions)
-    const sessions = await this.adminSessionRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-      take: 20,
-    });
+    const sessions = await this.adminSessionRepo.findRecentByUser(userId, 20);
 
     const loginHistory: AdminLoginHistoryItemDto[] = sessions.map((session) => ({
       id: session.id,

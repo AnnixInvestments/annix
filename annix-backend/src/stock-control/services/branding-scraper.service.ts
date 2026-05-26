@@ -66,7 +66,7 @@ export class BrandingScraperService {
         return { logoCandidates: [], heroCandidates: [], primaryColor: null };
       }
 
-      const html = await response.text();
+      const html: string = await response.text();
       const baseUrl = new URL(websiteUrl);
 
       const resolveUrl = (raw: string): string | null => {

@@ -1,11 +1,9 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
-import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { isAcceptedDocumentMime } from "../config/individual-documents.config";
 import {
   EeConsentSource,
@@ -15,12 +13,12 @@ import {
   type EePopulationGroup,
   type EePurpose,
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
-import {
-  AnnixOrbitIndividualDocument,
-  IndividualDocumentKind,
-} from "../entities/annix-orbit-individual-document.entity";
+import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
@@ -111,14 +109,10 @@ export class IndividualProfileService {
   private readonly logger = new Logger(IndividualProfileService.name);
 
   constructor(
-    @InjectRepository(AnnixOrbitProfile)
-    private readonly profileRepo: Repository<AnnixOrbitProfile>,
-    @InjectRepository(AnnixOrbitIndividualDocument)
-    private readonly documentRepo: Repository<AnnixOrbitIndividualDocument>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
+    private readonly profileRepo: AnnixOrbitProfileRepository,
+    private readonly documentRepo: AnnixOrbitIndividualDocumentRepository,
+    private readonly userRepo: UserRepository,
+    private readonly candidateRepo: CandidateRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly cvExtractionService: CvExtractionService,
@@ -138,7 +132,7 @@ export class IndividualProfileService {
     if (!profile.extractedCvData) {
       return null;
     }
-    const user = await this.userRepo.findOne({ where: { id: profile.userId } });
+    const user = await this.userRepo.findById(profile.userId);
     const email = user?.email ?? null;
     if (!email) {
       return null;
@@ -147,14 +141,14 @@ export class IndividualProfileService {
       .filter((part): part is string => Boolean(part && part.trim().length > 0))
       .join(" ");
 
-    const existing = await this.candidateRepo.findOne({ where: { email } });
+    const existing = await this.candidateRepo.findOneWhere({ email });
     const candidate =
       existing ??
-      this.candidateRepo.create({
+      (await this.candidateRepo.create({
         email,
         jobPostingId: null,
         status: CandidateStatus.NEW,
-      });
+      }));
     candidate.name =
       profile.extractedCvData.candidateName ?? (fullName.length > 0 ? fullName : null);
     candidate.rawCvText = profile.rawCvText;
@@ -195,8 +189,9 @@ export class IndividualProfileService {
     const subPath = `${StorageArea.ANNIX_ORBIT}/individuals/${profile.userId}/${IndividualDocumentKind.CV}`;
     const stored = await this.storageService.upload(pseudoFile, subPath);
 
-    const previousCv = await this.documentRepo.findOne({
-      where: { profileId: profile.id, kind: IndividualDocumentKind.CV },
+    const previousCv = await this.documentRepo.findOneWhere({
+      profileId: profile.id,
+      kind: IndividualDocumentKind.CV,
     });
     if (previousCv) {
       try {
@@ -204,20 +199,18 @@ export class IndividualProfileService {
       } catch (err) {
         this.logger.warn(`Failed to delete previous CV file ${previousCv.filePath}: ${err}`);
       }
-      await this.documentRepo.delete(previousCv.id);
+      await this.documentRepo.remove(previousCv);
     }
 
-    await this.documentRepo.save(
-      this.documentRepo.create({
-        profileId: profile.id,
-        kind: IndividualDocumentKind.CV,
-        filePath: stored.path,
-        originalFilename: stored.originalFilename,
-        mimeType: stored.mimeType,
-        sizeBytes: stored.size,
-        label: "Built by Nix",
-      }),
-    );
+    await this.documentRepo.create({
+      profileId: profile.id,
+      kind: IndividualDocumentKind.CV,
+      filePath: stored.path,
+      originalFilename: stored.originalFilename,
+      mimeType: stored.mimeType,
+      sizeBytes: stored.size,
+      label: "Built by Nix",
+    });
 
     profile.cvFilePath = stored.path;
     profile.cvUploadedAt = now().toJSDate();
@@ -231,9 +224,9 @@ export class IndividualProfileService {
   }
 
   async profileForUser(userId: number): Promise<AnnixOrbitProfile> {
-    const profile = await this.profileRepo.findOne({ where: { userId } });
+    const profile = await this.profileRepo.findByUserId(userId);
     if (!profile) {
-      throw new NotFoundException("Annix Orbit profile not found");
+      throw new NotFoundException("CV Assistant profile not found");
     }
     if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("This endpoint is only available to individual job seekers.");
@@ -243,7 +236,7 @@ export class IndividualProfileService {
 
   async status(userId: number): Promise<IndividualProfileStatus> {
     const profile = await this.profileForUser(userId);
-    const docs = await this.documentRepo.find({ where: { profileId: profile.id } });
+    const docs = await this.documentRepo.findByProfile(profile.id);
 
     const cvDoc = docs.find((d) => d.kind === IndividualDocumentKind.CV) ?? null;
     const qualificationsCount = docs.filter(
@@ -265,10 +258,7 @@ export class IndividualProfileService {
 
   async listDocuments(userId: number): Promise<IndividualDocumentSummary[]> {
     const profile = await this.profileForUser(userId);
-    const docs = await this.documentRepo.find({
-      where: { profileId: profile.id },
-      order: { uploadedAt: "DESC" },
-    });
+    const docs = await this.documentRepo.findByProfileOrdered(profile.id);
 
     const summaries = await Promise.all(
       docs.map(async (doc) => {
@@ -309,9 +299,10 @@ export class IndividualProfileService {
     const stored = await this.storageService.upload(file, subPath);
 
     if (kind === IndividualDocumentKind.CV) {
-      const previousCv = await this.documentRepo.findOne({
-        where: { profileId: profile.id, kind: IndividualDocumentKind.CV },
-      });
+      const previousCv = await this.documentRepo.findByProfileAndKind(
+        profile.id,
+        IndividualDocumentKind.CV,
+      );
       if (previousCv) {
         try {
           await this.storageService.delete(previousCv.filePath);
@@ -320,11 +311,11 @@ export class IndividualProfileService {
             `Failed to delete previous CV file ${previousCv.filePath} for profile ${profile.id}: ${err}`,
           );
         }
-        await this.documentRepo.delete(previousCv.id);
+        await this.documentRepo.deleteById(previousCv.id);
       }
     }
 
-    const document = this.documentRepo.create({
+    const saved = await this.documentRepo.create({
       profileId: profile.id,
       kind,
       filePath: stored.path,
@@ -333,7 +324,6 @@ export class IndividualProfileService {
       sizeBytes: stored.size,
       label: label ?? null,
     });
-    const saved = await this.documentRepo.save(document);
 
     if (kind === IndividualDocumentKind.CV) {
       await this.refreshCvExtraction(profile, stored.path);
@@ -355,9 +345,7 @@ export class IndividualProfileService {
 
   async deleteDocument(userId: number, documentId: number): Promise<void> {
     const profile = await this.profileForUser(userId);
-    const doc = await this.documentRepo.findOne({
-      where: { id: documentId, profileId: profile.id },
-    });
+    const doc = await this.documentRepo.findByIdForProfile(documentId, profile.id);
     if (!doc) {
       throw new NotFoundException("Document not found");
     }
@@ -368,7 +356,7 @@ export class IndividualProfileService {
       this.logger.warn(`Failed to delete file ${doc.filePath} from storage: ${err}`);
     }
 
-    await this.documentRepo.delete(doc.id);
+    await this.documentRepo.deleteById(doc.id);
 
     if (doc.kind === IndividualDocumentKind.CV) {
       profile.cvFilePath = null;
@@ -449,14 +437,11 @@ export class IndividualProfileService {
 
   async dataExport(userId: number): Promise<IndividualDataExport> {
     const profile = await this.profileForUser(userId);
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundException("User not found");
     }
-    const docs = await this.documentRepo.find({
-      where: { profileId: profile.id },
-      order: { uploadedAt: "DESC" },
-    });
+    const docs = await this.documentRepo.findByProfileOrdered(profile.id);
 
     return {
       exportedAt: now().toISO() ?? "",
@@ -503,10 +488,7 @@ export class IndividualProfileService {
     }>
   > {
     if (!email) return [];
-    const linkedCandidates = await this.candidateRepo.find({
-      where: { email },
-      relations: ["jobPosting"],
-    });
+    const linkedCandidates = await this.candidateRepo.findByEmailWithJobPosting(email);
     const rowsAcrossCandidates = await Promise.all(
       linkedCandidates.map(async (candidate) => {
         const view = await this.popiaService.eeAttributesForCandidate(
@@ -533,10 +515,10 @@ export class IndividualProfileService {
   }
 
   async eeAttributesForUser(userId: number): Promise<EeAttributesView | null> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user?.email) return null;
 
-    const candidates = await this.candidateRepo.find({ where: { email: user.email } });
+    const candidates = await this.candidateRepo.findByEmail(user.email);
     const views = await Promise.all(
       candidates.map((c) =>
         this.popiaService.eeAttributesForCandidate(c.id, "candidate_self", userId),
@@ -553,10 +535,10 @@ export class IndividualProfileService {
     userId: number,
     input: SeekerEeUpdateInput,
   ): Promise<{ updated: number; consentTextVersionId: number }> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user?.email) throw new NotFoundException("User not found");
 
-    const candidates = await this.candidateRepo.find({ where: { email: user.email } });
+    const candidates = await this.candidateRepo.findByEmail(user.email);
     if (candidates.length === 0) {
       throw new BadRequestException(
         "No candidacies found for your account; apply to a job first before disclosing.",
@@ -598,10 +580,10 @@ export class IndividualProfileService {
   }
 
   async deleteEeAttributesForUser(userId: number): Promise<{ tombstoned: number }> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user?.email) throw new NotFoundException("User not found");
 
-    const candidates = await this.candidateRepo.find({ where: { email: user.email } });
+    const candidates = await this.candidateRepo.findByEmail(user.email);
     await Promise.all(candidates.map((c) => this.popiaService.tombstoneEeAttributes(c.id, userId)));
 
     return { tombstoned: candidates.length };
@@ -609,7 +591,7 @@ export class IndividualProfileService {
 
   async requestAccountDeletion(userId: number): Promise<{ message: string; email: string }> {
     const profile = await this.profileForUser(userId);
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundException("User not found");
     }
@@ -629,12 +611,7 @@ export class IndividualProfileService {
   }
 
   async confirmAccountDeletion(token: string): Promise<{ message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: {
-        deletionToken: token,
-        deletionTokenExpires: MoreThan(now().toJSDate()),
-      },
-    });
+    const profile = await this.profileRepo.findByValidDeletionToken(token, now().toJSDate());
 
     if (!profile) {
       throw new BadRequestException(
@@ -653,15 +630,12 @@ export class IndividualProfileService {
 
   async withdrawConsent(userId: number): Promise<{ message: string; erasedCandidates: number }> {
     const profile = await this.profileForUser(userId);
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundException("User not found");
     }
 
-    const linkedCandidates = await this.candidateRepo.find({
-      where: { email: user.email },
-      relations: ["jobPosting", "references"],
-    });
+    const linkedCandidates = await this.candidateRepo.findByEmailWithJobAndReferences(user.email);
 
     const erased = await linkedCandidates.reduce(async (accPromise, candidate) => {
       const acc = await accPromise;
@@ -695,8 +669,8 @@ export class IndividualProfileService {
 
   private async performErasure(profile: AnnixOrbitProfile): Promise<{ message: string }> {
     const userId = profile.userId;
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    const docs = await this.documentRepo.find({ where: { profileId: profile.id } });
+    const user = await this.userRepo.findById(userId);
+    const docs = await this.documentRepo.findByProfile(profile.id);
 
     await Promise.all(
       docs.map(async (doc) => {
@@ -709,10 +683,7 @@ export class IndividualProfileService {
     );
 
     if (user?.email) {
-      const linkedCandidates = await this.candidateRepo.find({
-        where: { email: user.email },
-        relations: ["jobPosting", "references"],
-      });
+      const linkedCandidates = await this.candidateRepo.findByEmailWithJobAndReferences(user.email);
       await Promise.all(
         linkedCandidates.map(async (candidate) => {
           try {
@@ -726,9 +697,9 @@ export class IndividualProfileService {
       );
     }
 
-    await this.documentRepo.delete({ profileId: profile.id });
-    await this.profileRepo.delete(profile.id);
-    await this.userRepo.delete(userId);
+    await this.documentRepo.deleteByProfile(profile.id);
+    await this.profileRepo.remove(profile);
+    await this.userRepo.deleteById(userId);
 
     await this.cvAuditService.logConsentChange(null, false, "email", userId);
 

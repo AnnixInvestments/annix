@@ -1,9 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
-import { IssuableProduct } from "../entities/issuable-product.entity";
-import { StockPurchaseBatch } from "../entities/stock-purchase-batch.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { StockPurchaseBatchRepository } from "../repositories/stock-purchase-batch.repository";
 import { FifoBatchService } from "./fifo-batch.service";
 
 const LEGACY_BATCH_RECEIVED_AT = "2000-01-01T00:00:00.000Z";
@@ -19,24 +17,18 @@ export class FifoBootstrapService {
   private readonly logger = new Logger(FifoBootstrapService.name);
 
   constructor(
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
-    @InjectRepository(StockPurchaseBatch)
-    private readonly batchRepo: Repository<StockPurchaseBatch>,
+    private readonly productRepo: IssuableProductRepository,
+    private readonly batchRepo: StockPurchaseBatchRepository,
     private readonly fifoBatchService: FifoBatchService,
   ) {}
 
   async bootstrapCompany(companyId: number, dryRun = false): Promise<FifoBootstrapResult> {
-    const products = await this.productRepo.find({
-      where: { companyId, active: true },
-    });
+    const products = await this.productRepo.findActiveForCompany(companyId);
     let created = 0;
     let skipped = 0;
 
     for (const product of products) {
-      const existingLegacy = await this.batchRepo.findOne({
-        where: { companyId, productId: product.id, isLegacyBatch: true },
-      });
+      const existingLegacy = await this.batchRepo.findLegacyForProduct(companyId, product.id);
       if (existingLegacy) {
         skipped += 1;
         continue;

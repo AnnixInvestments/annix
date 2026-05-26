@@ -1,7 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { CvEscoSkill } from "../entities/cv-esco-skill.entity";
+import { CvEscoSkillRepository } from "../repositories/cv-esco-skill.repository";
 
 export interface NormalisedSkill {
   raw: string;
@@ -17,10 +15,7 @@ export class EscoNormalisationService implements OnModuleInit {
   private cachePopulatedAt = 0;
   private readonly CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-  constructor(
-    @InjectRepository(CvEscoSkill)
-    private readonly repo: Repository<CvEscoSkill>,
-  ) {}
+  constructor(private readonly repo: CvEscoSkillRepository) {}
 
   async onModuleInit(): Promise<void> {
     void this.populateCache().catch((err) => {
@@ -85,7 +80,7 @@ export class EscoNormalisationService implements OnModuleInit {
   }
 
   private async populateCache(): Promise<Map<string, { canonical: string; alts: string[] }>> {
-    const rows = await this.repo.find();
+    const rows = await this.repo.findAll();
     const map = new Map<string, { canonical: string; alts: string[] }>();
     for (const row of rows) {
       const canonical = row.preferredLabel;

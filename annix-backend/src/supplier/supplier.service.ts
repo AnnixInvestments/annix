@@ -5,14 +5,20 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
+import { DataSource, type Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { BoqDistributionService } from "../boq/boq-distribution.service";
 import { fromISO, now } from "../lib/datetime";
+import {
+  TransactionContext,
+  TypeOrmTransactionContext,
+} from "../lib/persistence/transaction-context";
+import { TransactionRunner } from "../lib/persistence/transaction-runner";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
+import { CompanyRepository } from "../platform/company.repository";
 import { Company, CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
@@ -24,14 +30,15 @@ import {
   UploadSupplierDocumentDto,
 } from "./dto";
 import {
-  SupplierCapability,
   SupplierDocument,
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
-  SupplierOnboarding,
   SupplierOnboardingStatus,
   SupplierProfile,
 } from "./entities";
+import { SupplierDocumentRepository } from "./supplier-document.repository";
+import { SupplierOnboardingRepository } from "./supplier-onboarding.repository";
+import { SupplierProfileRepository } from "./supplier-profile.repository";
 
 // Required documents for onboarding
 const REQUIRED_DOCUMENT_TYPES = [
@@ -45,19 +52,14 @@ export class SupplierService {
   private readonly logger = new Logger(SupplierService.name);
 
   constructor(
-    @InjectRepository(SupplierProfile)
-    private readonly profileRepo: Repository<SupplierProfile>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(SupplierOnboarding)
-    private readonly onboardingRepo: Repository<SupplierOnboarding>,
-    @InjectRepository(SupplierDocument)
-    private readonly documentRepo: Repository<SupplierDocument>,
-    @InjectRepository(SupplierCapability)
-    private readonly capabilityRepo: Repository<SupplierCapability>,
+    private readonly profileRepository: SupplierProfileRepository,
+    private readonly companyRepo: CompanyRepository,
+    private readonly onboardingRepository: SupplierOnboardingRepository,
+    private readonly documentRepository: SupplierDocumentRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
-    private readonly dataSource: DataSource,
+    @Optional() private readonly dataSource: DataSource,
+    private readonly txRunner: TransactionRunner,
     private readonly auditService: AuditService,
     @Inject(forwardRef(() => BoqDistributionService))
     private readonly boqDistributionService: BoqDistributionService,
@@ -70,10 +72,12 @@ export class SupplierService {
    * Get supplier profile by ID
    */
   async getProfile(supplierId: number): Promise<SupplierProfile> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["company", "onboarding", "documents", "user"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "company",
+      "onboarding",
+      "documents",
+      "user",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");
@@ -90,9 +94,7 @@ export class SupplierService {
     dto: UpdateSupplierProfileDto,
     clientIp: string,
   ): Promise<SupplierProfile> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-    });
+    const profile = await this.profileRepository.findById(supplierId);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");
@@ -113,7 +115,7 @@ export class SupplierService {
       profile.securityPolicyAcceptedAt = now().toJSDate();
     }
 
-    const savedProfile = await this.profileRepo.save(profile);
+    const savedProfile = await this.profileRepository.save(profile);
 
     await this.auditService.log({
       entityType: "supplier_profile",
@@ -143,10 +145,11 @@ export class SupplierService {
     remediationSteps?: string;
     canSubmit: boolean;
   }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["onboarding", "documents", "company"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "onboarding",
+      "documents",
+      "company",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");
@@ -174,7 +177,7 @@ export class SupplierService {
     ) {
       onboarding.companyDetailsComplete = companyDetailsComplete;
       onboarding.documentsComplete = documentsComplete;
-      await this.onboardingRepo.save(onboarding);
+      await this.onboardingRepository.save(onboarding);
     }
 
     const canSubmit =
@@ -202,10 +205,10 @@ export class SupplierService {
     dto: SupplierCompanyDto,
     clientIp: string,
   ): Promise<Company> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["company", "onboarding"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "company",
+      "onboarding",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");
@@ -216,11 +219,11 @@ export class SupplierService {
       throw new BadRequestException("Cannot modify company details after approval");
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    return this.txRunner.run(async (ctx) => {
+      const profileRepo = this.profileRepository.withTransaction(ctx);
+      const onboardingRepo = this.onboardingRepository.withTransaction(ctx);
+      const companyRepo = this.transactionalCompanyRepo(ctx);
 
-    try {
       let company: Company;
 
       if (profile.company) {
@@ -247,7 +250,7 @@ export class SupplierService {
           beeVerificationAgency: dto.beeVerificationAgency,
           isExemptMicroEnterprise: dto.isExemptMicroEnterprise,
         });
-        company = await queryRunner.manager.save(profile.company);
+        company = await companyRepo.save(profile.company);
 
         await this.auditService.log({
           entityType: "supplier_company",
@@ -258,34 +261,35 @@ export class SupplierService {
           ipAddress: clientIp,
         });
       } else {
-        company = this.companyRepo.create({
-          name: dto.legalName,
-          companyType: CompanyType.SUPPLIER,
-          legalName: dto.legalName,
-          tradingName: dto.tradingName,
-          registrationNumber: dto.registrationNumber,
-          vatNumber: dto.vatNumber,
-          streetAddress: dto.streetAddress,
-          city: dto.city,
-          province: dto.provinceState,
-          postalCode: dto.postalCode,
-          country: dto.country || "South Africa",
-          phone: dto.primaryPhone || dto.primaryContactPhone,
-          contactPerson: dto.primaryContactName,
-          email: dto.generalEmail || dto.primaryContactEmail,
-          websiteUrl: dto.website,
-          industry: dto.industryType,
-          companySize: dto.companySize,
-          beeLevel: dto.beeLevel,
-          beeCertificateExpiry: dto.beeCertificateExpiry,
-          beeVerificationAgency: dto.beeVerificationAgency,
-          isExemptMicroEnterprise: dto.isExemptMicroEnterprise || false,
-        });
-        company = await queryRunner.manager.save(company);
+        company = await companyRepo.save(
+          companyRepo.create({
+            name: dto.legalName,
+            companyType: CompanyType.SUPPLIER,
+            legalName: dto.legalName,
+            tradingName: dto.tradingName,
+            registrationNumber: dto.registrationNumber,
+            vatNumber: dto.vatNumber,
+            streetAddress: dto.streetAddress,
+            city: dto.city,
+            province: dto.provinceState,
+            postalCode: dto.postalCode,
+            country: dto.country || "South Africa",
+            phone: dto.primaryPhone || dto.primaryContactPhone,
+            contactPerson: dto.primaryContactName,
+            email: dto.generalEmail || dto.primaryContactEmail,
+            websiteUrl: dto.website,
+            industry: dto.industryType,
+            companySize: dto.companySize,
+            beeLevel: dto.beeLevel,
+            beeCertificateExpiry: dto.beeCertificateExpiry,
+            beeVerificationAgency: dto.beeVerificationAgency,
+            isExemptMicroEnterprise: dto.isExemptMicroEnterprise || false,
+          }),
+        );
 
         // Link to profile
         profile.companyId = company.id;
-        await queryRunner.manager.save(profile);
+        await profileRepo.save(profile);
 
         await this.auditService.log({
           entityType: "supplier_company",
@@ -302,17 +306,18 @@ export class SupplierService {
       // Update onboarding company details status
       if (profile.onboarding) {
         profile.onboarding.companyDetailsComplete = this.isCompanyComplete(company);
-        await queryRunner.manager.save(profile.onboarding);
+        await onboardingRepo.save(profile.onboarding);
       }
 
-      await queryRunner.commitTransaction();
       return company;
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
+    });
+  }
+
+  private transactionalCompanyRepo(ctx: TransactionContext): Repository<Company> {
+    if (!(ctx instanceof TypeOrmTransactionContext)) {
+      throw new Error("Supplier company writes require a TypeOrmTransactionContext");
     }
+    return ctx.manager.getRepository(Company);
   }
 
   /**
@@ -324,10 +329,7 @@ export class SupplierService {
     dto: UploadSupplierDocumentDto,
     clientIp: string,
   ): Promise<SupplierDocumentResponseDto> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["onboarding"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, ["onboarding"]);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");
@@ -338,9 +340,10 @@ export class SupplierService {
     }
 
     // Check if document of this type already exists
-    const existingDoc = await this.documentRepo.findOne({
-      where: { supplierId, documentType: dto.documentType },
-    });
+    const existingDoc = await this.documentRepository.findBySupplierIdAndType(
+      supplierId,
+      dto.documentType,
+    );
 
     if (existingDoc) {
       // Delete old file
@@ -349,7 +352,7 @@ export class SupplierService {
       } catch (error) {
         this.logger.warn(`Failed to delete old document: ${existingDoc.filePath}`);
       }
-      await this.documentRepo.remove(existingDoc);
+      await this.documentRepository.remove(existingDoc);
     }
 
     // Upload new file
@@ -412,7 +415,7 @@ export class SupplierService {
     }
 
     // Create document record
-    const document = this.documentRepo.create({
+    const savedDocument = await this.documentRepository.create({
       supplierId,
       documentType: dto.documentType,
       fileName: file.originalname,
@@ -429,8 +432,6 @@ export class SupplierService {
       validationNotes,
       ocrProcessedAt,
     });
-
-    const savedDocument = await this.documentRepo.save(document);
 
     // Update onboarding documents status
     await this.updateDocumentsStatus(supplierId);
@@ -493,10 +494,7 @@ export class SupplierService {
   ): void {
     setImmediate(async () => {
       try {
-        const profile = await this.profileRepo.findOne({
-          where: { id: supplierId },
-          relations: ["user"],
-        });
+        const profile = await this.profileRepository.findByIdWithRelations(supplierId, ["user"]);
         if (!profile) {
           this.logger.warn(`Profile not found for supplier ${supplierId} - skipping secure copy`);
           return;
@@ -524,10 +522,7 @@ export class SupplierService {
    * Get documents for supplier
    */
   async getDocuments(supplierId: number): Promise<SupplierDocumentResponseDto[]> {
-    const documents = await this.documentRepo.find({
-      where: { supplierId },
-      order: { uploadedAt: "DESC" },
-    });
+    const documents = await this.documentRepository.findBySupplierIdOrdered(supplierId);
 
     return documents.map((doc) => ({
       id: doc.id,
@@ -547,18 +542,13 @@ export class SupplierService {
    * Delete document
    */
   async deleteDocument(supplierId: number, documentId: number, clientIp: string): Promise<void> {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId, supplierId },
-    });
+    const document = await this.documentRepository.findByIdAndSupplierId(documentId, supplierId);
 
     if (!document) {
       throw new NotFoundException("Document not found");
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["onboarding"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, ["onboarding"]);
 
     if (profile?.onboarding?.status === SupplierOnboardingStatus.APPROVED) {
       throw new BadRequestException("Cannot delete documents after approval");
@@ -571,7 +561,7 @@ export class SupplierService {
       this.logger.warn(`Failed to delete file: ${document.filePath}`);
     }
 
-    await this.documentRepo.remove(document);
+    await this.documentRepository.remove(document);
 
     // Update onboarding documents status
     await this.updateDocumentsStatus(supplierId);
@@ -595,10 +585,11 @@ export class SupplierService {
     supplierId: number,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["onboarding", "company", "documents"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "onboarding",
+      "company",
+      "documents",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");
@@ -644,7 +635,7 @@ export class SupplierService {
       onboarding.remediationSteps = null;
     }
 
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     await this.auditService.log({
       entityType: "supplier_onboarding",
@@ -686,10 +677,12 @@ export class SupplierService {
       invalid: number;
     };
   }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["user", "company", "onboarding", "documents"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "user",
+      "company",
+      "onboarding",
+      "documents",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");
@@ -744,14 +737,14 @@ export class SupplierService {
   }
 
   private async updateDocumentsStatus(supplierId: number): Promise<void> {
-    const documents = await this.documentRepo.find({ where: { supplierId } });
+    const documents = await this.documentRepository.findBySupplierId(supplierId);
     const uploadedTypes = documents.map((d) => d.documentType);
     const missingDocuments = REQUIRED_DOCUMENT_TYPES.filter(
       (type) => !uploadedTypes.includes(type),
     );
     const documentsComplete = missingDocuments.length === 0;
 
-    await this.onboardingRepo.update({ supplierId }, { documentsComplete });
+    await this.onboardingRepository.updateDocumentsStatus(supplierId, documentsComplete);
   }
 
   /**
@@ -777,10 +770,7 @@ export class SupplierService {
     dto: SaveSupplierCapabilitiesDto,
     clientIp: string,
   ): Promise<{ capabilities: string[]; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["onboarding"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, ["onboarding"]);
 
     if (!profile) {
       throw new NotFoundException("Supplier profile not found");

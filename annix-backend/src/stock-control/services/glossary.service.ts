@@ -1,9 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { GlossaryTerm } from "../entities/glossary-term.entity";
 import { StockControlCompany } from "../entities/stock-control-company.entity";
+import { GlossaryTermRepository } from "../repositories/glossary-term.repository";
 
 const DEFAULT_TERMS: Array<{
   abbreviation: string;
@@ -169,16 +168,10 @@ const DEFAULT_TERMS: Array<{
 
 @Injectable()
 export class GlossaryService {
-  constructor(
-    @InjectRepository(GlossaryTerm)
-    private readonly termRepo: Repository<GlossaryTerm>,
-  ) {}
+  constructor(private readonly termRepo: GlossaryTermRepository) {}
 
   async termsForCompany(companyId: number): Promise<GlossaryTerm[]> {
-    const customTerms = await this.termRepo.find({
-      where: { companyId },
-      order: { abbreviation: "ASC" },
-    });
+    const customTerms = await this.termRepo.findForCompanyOrdered(companyId);
 
     const customAbbreviations = new Set(customTerms.map((t) => t.abbreviation.toUpperCase()));
 
@@ -211,9 +204,10 @@ export class GlossaryService {
       category?: string | null;
     },
   ): Promise<GlossaryTerm> {
-    const existing = await this.termRepo.findOne({
-      where: { companyId, abbreviation: dto.abbreviation },
-    });
+    const existing = await this.termRepo.findOneForCompanyByAbbreviation(
+      companyId,
+      dto.abbreviation,
+    );
 
     if (existing) {
       existing.term = dto.term;
@@ -222,23 +216,21 @@ export class GlossaryService {
       return this.termRepo.save(existing);
     }
 
-    return this.termRepo.save(
-      this.termRepo.create({
-        companyId,
-        abbreviation: dto.abbreviation,
-        term: dto.term,
-        definition: dto.definition,
-        category: dto.category ?? null,
-        isCustom: true,
-      }),
-    );
+    return this.termRepo.create({
+      companyId,
+      abbreviation: dto.abbreviation,
+      term: dto.term,
+      definition: dto.definition,
+      category: dto.category ?? null,
+      isCustom: true,
+    });
   }
 
   async removeTerm(companyId: number, abbreviation: string): Promise<void> {
-    await this.termRepo.delete({ companyId, abbreviation });
+    await this.termRepo.deleteForCompanyByAbbreviation(companyId, abbreviation);
   }
 
   async resetToDefaults(companyId: number): Promise<void> {
-    await this.termRepo.delete({ companyId });
+    await this.termRepo.deleteAllForCompany(companyId);
   }
 }

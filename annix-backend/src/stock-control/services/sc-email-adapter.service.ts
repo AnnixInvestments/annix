@@ -1,6 +1,4 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { InboundEmailAttachment } from "../../inbound-email/entities/inbound-email-attachment.entity";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { ClassificationResult } from "../../inbound-email/interfaces/document-classifier.interface";
@@ -18,6 +16,7 @@ import {
 } from "../../lib/document-classification";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
+import { StockControlSupplierRepository } from "../repositories/stock-control-supplier.repository";
 import { CertificateService } from "./certificate.service";
 import { DeliveryService } from "./delivery.service";
 import { InvoiceService } from "./invoice.service";
@@ -97,8 +96,7 @@ export class ScEmailAdapterService implements EmailAppAdapter, OnModuleInit {
     private readonly extractionService: InvoiceExtractionService,
     private readonly notificationService: WorkflowNotificationService,
     private readonly certificateService: CertificateService,
-    @InjectRepository(StockControlSupplier)
-    private readonly supplierRepo: Repository<StockControlSupplier>,
+    private readonly supplierRepo: StockControlSupplierRepository,
   ) {}
 
   onModuleInit() {
@@ -488,7 +486,7 @@ Respond ONLY with a JSON object:
     supplierName: string | null,
   ): Promise<StockControlSupplier | null> {
     const domain = fromEmail.split("@")[1] ?? "";
-    const suppliers = await this.supplierRepo.find({ where: { companyId } });
+    const suppliers = await this.supplierRepo.findAllForCompany(companyId);
 
     const emailMatch = suppliers.find((s) => s.email?.toLowerCase() === fromEmail.toLowerCase());
     if (emailMatch) {
@@ -517,7 +515,7 @@ Respond ONLY with a JSON object:
   private async resolveSupplierName(companyId: number, fromEmail: string): Promise<string> {
     const domain = fromEmail.split("@")[1] ?? "";
 
-    const suppliers = await this.supplierRepo.find({ where: { companyId } });
+    const suppliers = await this.supplierRepo.findAllForCompany(companyId);
 
     const emailMatch = suppliers.find((s) => s.email?.toLowerCase() === fromEmail.toLowerCase());
     if (emailMatch) {

@@ -1,22 +1,24 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { StockTakeVarianceCategory } from "../entities/stock-take-variance-category.entity";
+import { StockTakeVarianceCategoryRepository } from "../repositories/stock-take-variance-category.repository";
 import { VarianceCategoryService } from "./variance-category.service";
 
 describe("VarianceCategoryService", () => {
   let service: VarianceCategoryService;
 
   const mockCategoryRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => {
-      if (Array.isArray(entity)) {
-        return Promise.resolve(entity.map((e, i) => ({ id: i + 1, ...e })));
-      }
-      return Promise.resolve({ id: 1, ...entity });
-    }),
+    findForCompany: jest.fn(),
+    findOneForCompany: jest.fn(),
+    findOneByCompanySlug: jest.fn(),
+    findAllForCompany: jest.fn(),
+    build: jest.fn().mockImplementation((data) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveMany: jest
+      .fn()
+      .mockImplementation((entities) =>
+        Promise.resolve(entities.map((e: object, i: number) => ({ id: i + 1, ...e }))),
+      ),
   };
 
   beforeEach(async () => {
@@ -24,7 +26,7 @@ describe("VarianceCategoryService", () => {
       providers: [
         VarianceCategoryService,
         {
-          provide: getRepositoryToken(StockTakeVarianceCategory),
+          provide: StockTakeVarianceCategoryRepository,
           useValue: mockCategoryRepo,
         },
       ],
@@ -32,6 +34,11 @@ describe("VarianceCategoryService", () => {
 
     service = module.get<VarianceCategoryService>(VarianceCategoryService);
     jest.clearAllMocks();
+    mockCategoryRepo.build.mockImplementation((data) => ({ ...data }));
+    mockCategoryRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockCategoryRepo.saveMany.mockImplementation((entities) =>
+      Promise.resolve(entities.map((e: object, i: number) => ({ id: i + 1, ...e }))),
+    );
   });
 
   it("should be defined", () => {
@@ -40,7 +47,7 @@ describe("VarianceCategoryService", () => {
 
   describe("create", () => {
     it("creates a new variance category", async () => {
-      mockCategoryRepo.findOne.mockResolvedValueOnce(null);
+      mockCategoryRepo.findOneByCompanySlug.mockResolvedValueOnce(null);
 
       const result = await service.create(1, {
         slug: "damaged",
@@ -53,7 +60,7 @@ describe("VarianceCategoryService", () => {
     });
 
     it("throws ConflictException for duplicate slug", async () => {
-      mockCategoryRepo.findOne.mockResolvedValueOnce({ id: 1, slug: "damaged" });
+      mockCategoryRepo.findOneByCompanySlug.mockResolvedValueOnce({ id: 1, slug: "damaged" });
       await expect(service.create(1, { slug: "damaged", name: "Damaged" })).rejects.toThrow(
         ConflictException,
       );
@@ -62,14 +69,14 @@ describe("VarianceCategoryService", () => {
 
   describe("byId", () => {
     it("throws NotFoundException for missing category", async () => {
-      mockCategoryRepo.findOne.mockResolvedValueOnce(null);
+      mockCategoryRepo.findOneForCompany.mockResolvedValueOnce(null);
       await expect(service.byId(1, 999)).rejects.toThrow(NotFoundException);
     });
   });
 
   describe("ensureSeedDataForCompany", () => {
     it("creates 10 default categories on first run", async () => {
-      mockCategoryRepo.find.mockResolvedValueOnce([]);
+      mockCategoryRepo.findAllForCompany.mockResolvedValueOnce([]);
       const created = await service.ensureSeedDataForCompany(1);
       expect(created).toBe(10);
     });
@@ -80,7 +87,7 @@ describe("VarianceCategoryService", () => {
         { slug: "miscounted" },
         { slug: "shrinkage" },
       ] as StockTakeVarianceCategory[];
-      mockCategoryRepo.find.mockResolvedValueOnce(existing);
+      mockCategoryRepo.findAllForCompany.mockResolvedValueOnce(existing);
       const created = await service.ensureSeedDataForCompany(1);
       expect(created).toBe(7);
     });

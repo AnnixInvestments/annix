@@ -1,72 +1,52 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
-import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
-import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
-import { NutMass } from "../nut-mass/entities/nut-mass.entity";
-import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
-import { Sabs62FittingDimension } from "../sabs62-fitting-dimension/entities/sabs62-fitting-dimension.entity";
-import { Sabs719FittingDimension } from "../sabs719-fitting-dimension/entities/sabs719-fitting-dimension.entity";
-import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { BoltMassRepository } from "../bolt-mass/bolt-mass.repository";
+import { FlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository";
+import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
+import { NutMassRepository } from "../nut-mass/nut-mass.repository";
+import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository";
+import { Sabs62FittingDimensionRepository } from "../sabs62-fitting-dimension/sabs62-fitting-dimension.repository";
+import { Sabs719FittingDimensionRepository } from "../sabs719-fitting-dimension/sabs719-fitting-dimension.repository";
+import { SteelSpecificationRepository } from "../steel-specification/steel-specification.repository";
 import { FittingService } from "./fitting.service";
 
 describe("FittingService", () => {
   let service: FittingService;
 
   const mockSabs62Repository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findByTypeAndDiameter: jest.fn(),
+    distinctFittingTypes: jest.fn(),
+    distinctSizes: jest.fn(),
+    distinctAngleRanges: jest.fn(),
   };
 
   const mockSabs719Repository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findByTypeAndDiameter: jest.fn(),
+    distinctFittingTypes: jest.fn(),
+    distinctSizes: jest.fn(),
   };
 
   const mockPipeDimensionRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findByNominalDiameterScheduleAndSteel: jest.fn(),
   };
 
   const mockNbNpsLookupRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findByNbMm: jest.fn(),
   };
 
   const mockFlangeDimensionRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findByNominalDiameterStandardAndPressureClassWithBolt: jest.fn(),
   };
 
   const mockBoltMassRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findClosestByBoltAndMinLength: jest.fn(),
   };
 
   const mockNutMassRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findByBoltId: jest.fn(),
   };
 
   const mockSteelSpecRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn(),
-    save: jest.fn(),
+    findById: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -74,37 +54,19 @@ describe("FittingService", () => {
       providers: [
         FittingService,
         {
-          provide: getRepositoryToken(Sabs62FittingDimension),
+          provide: Sabs62FittingDimensionRepository,
           useValue: mockSabs62Repository,
         },
         {
-          provide: getRepositoryToken(Sabs719FittingDimension),
+          provide: Sabs719FittingDimensionRepository,
           useValue: mockSabs719Repository,
         },
-        {
-          provide: getRepositoryToken(PipeDimension),
-          useValue: mockPipeDimensionRepository,
-        },
-        {
-          provide: getRepositoryToken(NbNpsLookup),
-          useValue: mockNbNpsLookupRepository,
-        },
-        {
-          provide: getRepositoryToken(FlangeDimension),
-          useValue: mockFlangeDimensionRepository,
-        },
-        {
-          provide: getRepositoryToken(BoltMass),
-          useValue: mockBoltMassRepository,
-        },
-        {
-          provide: getRepositoryToken(NutMass),
-          useValue: mockNutMassRepository,
-        },
-        {
-          provide: getRepositoryToken(SteelSpecification),
-          useValue: mockSteelSpecRepository,
-        },
+        { provide: PipeDimensionRepository, useValue: mockPipeDimensionRepository },
+        { provide: NbNpsLookupRepository, useValue: mockNbNpsLookupRepository },
+        { provide: FlangeDimensionRepository, useValue: mockFlangeDimensionRepository },
+        { provide: BoltMassRepository, useValue: mockBoltMassRepository },
+        { provide: NutMassRepository, useValue: mockNutMassRepository },
+        { provide: SteelSpecificationRepository, useValue: mockSteelSpecRepository },
       ],
     }).compile();
 

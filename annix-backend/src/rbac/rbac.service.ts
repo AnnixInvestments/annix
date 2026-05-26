@@ -1,12 +1,8 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
-import {
-  StockControlRole,
-  StockControlUser,
-} from "../stock-control/entities/stock-control-user.entity";
-import { User } from "../user/entities/user.entity";
+import { StockControlRole } from "../stock-control/entities/stock-control-user.entity";
+import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
+import { UserRepository } from "../user/user.repository";
 import { UserSyncService } from "../user-sync/user-sync.service";
 import {
   AssignUserAccessDto,
@@ -21,16 +17,17 @@ import {
   UpdateRoleDto,
 } from "./dto/role-management.dto";
 import { UserWithAccessSummaryDto } from "./dto/user-with-access-summary.dto";
+import { App, AppPermission, AppRole } from "./entities";
 import {
-  App,
-  AppPermission,
-  AppRole,
-  AppRolePermission,
-  AppRoleProduct,
-  UserAccessProduct,
-  UserAppAccess,
-  UserAppPermission,
-} from "./entities";
+  AppPermissionRepository,
+  AppRepository,
+  AppRolePermissionRepository,
+  AppRoleProductRepository,
+  AppRoleRepository,
+  UserAccessProductRepository,
+  UserAppAccessRepository,
+  UserAppPermissionRepository,
+} from "./rbac.repository";
 
 export const STOCK_CONTROL_ROLE_NAMES: Record<string, string> = {
   storeman: "Storeman",
@@ -48,26 +45,16 @@ export class RbacService {
   private appByCodeCache = new Map<string, App | null>();
 
   constructor(
-    @InjectRepository(App)
-    private readonly appRepo: Repository<App>,
-    @InjectRepository(AppPermission)
-    private readonly permissionRepo: Repository<AppPermission>,
-    @InjectRepository(AppRole)
-    private readonly roleRepo: Repository<AppRole>,
-    @InjectRepository(AppRolePermission)
-    private readonly rolePermissionRepo: Repository<AppRolePermission>,
-    @InjectRepository(AppRoleProduct)
-    private readonly roleProductRepo: Repository<AppRoleProduct>,
-    @InjectRepository(UserAppAccess)
-    private readonly accessRepo: Repository<UserAppAccess>,
-    @InjectRepository(UserAppPermission)
-    private readonly userPermissionRepo: Repository<UserAppPermission>,
-    @InjectRepository(UserAccessProduct)
-    private readonly userProductRepo: Repository<UserAccessProduct>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(StockControlUser)
-    private readonly stockControlUserRepo: Repository<StockControlUser>,
+    private readonly appRepo: AppRepository,
+    private readonly permissionRepo: AppPermissionRepository,
+    private readonly roleRepo: AppRoleRepository,
+    private readonly rolePermissionRepo: AppRolePermissionRepository,
+    private readonly roleProductRepo: AppRoleProductRepository,
+    private readonly accessRepo: UserAppAccessRepository,
+    private readonly userPermissionRepo: UserAppPermissionRepository,
+    private readonly userProductRepo: UserAccessProductRepository,
+    private readonly userRepo: UserRepository,
+    private readonly stockControlUserRepo: StockControlUserRepository,
     private readonly userSyncService: UserSyncService,
     private readonly emailService: EmailService,
   ) {}
@@ -81,7 +68,7 @@ export class RbacService {
     if (this.appByCodeCache.has(code)) {
       return this.appByCodeCache.get(code) ?? null;
     }
-    const app = await this.appRepo.findOne({ where: { code } });
+    const app = await this.appRepo.findByCode(code);
     this.appByCodeCache.set(code, app);
     return app;
   }
@@ -90,10 +77,7 @@ export class RbacService {
     if (this.allActiveAppsCache) {
       return this.allActiveAppsCache;
     }
-    const apps = await this.appRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC" },
-    });
+    const apps = await this.appRepo.findAllActive();
     this.allActiveAppsCache = apps;
     return apps;
   }
@@ -101,24 +85,11 @@ export class RbacService {
   async appWithDetails(
     code: string,
   ): Promise<App & { permissions: AppPermission[]; roles: AppRole[] }> {
-    const app = await this.appRepo.findOne({
-      where: { code, isActive: true },
-      relations: [
-        "permissions",
-        "roles",
-        "roles.rolePermissions",
-        "roles.rolePermissions.permission",
-      ],
-    });
-
+    const app = await this.appRepo.findWithDetails(code);
     if (!app) {
       throw new NotFoundException(`App '${code}' not found`);
     }
-
-    app.permissions.sort((a, b) => a.displayOrder - b.displayOrder);
-    app.roles.sort((a, b) => a.displayOrder - b.displayOrder);
-
-    return app as App & { permissions: AppPermission[]; roles: AppRole[] };
+    return app;
   }
 
   async usersWithAccess(appCode: string): Promise<UserAccessResponseDto[]> {
@@ -127,17 +98,7 @@ export class RbacService {
       throw new NotFoundException(`App '${appCode}' not found`);
     }
 
-    const accessRecords = await this.accessRepo.find({
-      where: { appId: app.id },
-      relations: [
-        "user",
-        "role",
-        "customPermissions",
-        "customPermissions.permission",
-        "userProducts",
-      ],
-      order: { grantedAt: "DESC" },
-    });
+    const accessRecords = await this.accessRepo.findManyWithRelationsForApp(app.id);
 
     return accessRecords.map((access) => ({
       id: access.id,
@@ -163,24 +124,9 @@ export class RbacService {
   }
 
   async allUsersWithAccessSummary(): Promise<UserWithAccessSummaryDto[]> {
-    const users = await this.userRepo.find({
-      order: { email: "ASC" },
-    });
-
-    const allApps = await this.appRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC" },
-    });
-
-    const allAccessRecords = await this.accessRepo.find({
-      relations: [
-        "app",
-        "role",
-        "customPermissions",
-        "customPermissions.permission",
-        "userProducts",
-      ],
-    });
+    const users = await this.userRepo.findAllOrderedByEmail();
+    const allApps = await this.appRepo.findAllActive();
+    const allAccessRecords = await this.accessRepo.findAllWithRelations();
 
     const accessByUserId = allAccessRecords.reduce(
       (acc, record) => {
@@ -197,10 +143,7 @@ export class RbacService {
       const userAccessRecords = accessByUserId[user.id] ?? [];
 
       const appAccess = userAccessRecords
-        .filter((access) => {
-          const app = allApps.find((a) => a.id === access.appId);
-          return app !== undefined;
-        })
+        .filter((access) => allApps.some((a) => a.id === access.appId))
         .map((access) => {
           const app = allApps.find((a) => a.id === access.appId)!;
           return {
@@ -233,10 +176,7 @@ export class RbacService {
       };
     });
 
-    const stockControlUsers = await this.stockControlUserRepo.find({
-      relations: ["company"],
-      order: { email: "ASC" },
-    });
+    const stockControlUsers = await this.stockControlUserRepo.findAllOrderedByEmailWithCompany();
 
     const stockControlApp = allApps.find((a) => a.code === "stock-control");
 
@@ -278,16 +218,7 @@ export class RbacService {
   async searchUsers(
     query: string,
   ): Promise<{ id: number; email: string; firstName: string | null; lastName: string | null }[]> {
-    const normalizedQuery = `%${query.toLowerCase()}%`;
-
-    const users = await this.userRepo
-      .createQueryBuilder("user")
-      .where("LOWER(user.email) LIKE :query", { query: normalizedQuery })
-      .orWhere("LOWER(user.firstName) LIKE :query", { query: normalizedQuery })
-      .orWhere("LOWER(user.lastName) LIKE :query", { query: normalizedQuery })
-      .orderBy("user.email", "ASC")
-      .limit(20)
-      .getMany();
+    const users = await this.userRepo.searchByEmailOrName(query, 20);
 
     return users.map((u) => ({
       id: u.id,
@@ -302,7 +233,7 @@ export class RbacService {
     dto: AssignUserAccessDto,
     grantedById: number,
   ): Promise<UserAccessResponseDto> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
@@ -312,9 +243,7 @@ export class RbacService {
       throw new NotFoundException(`App '${dto.appCode}' not found`);
     }
 
-    const existingAccess = await this.accessRepo.findOne({
-      where: { userId, appId: app.id },
-    });
+    const existingAccess = await this.accessRepo.findOneWhere({ userId, appId: app.id });
     if (existingAccess) {
       throw new ConflictException(
         `User already has access to '${dto.appCode}'. Use update endpoint instead.`,
@@ -323,15 +252,13 @@ export class RbacService {
 
     let role: AppRole | null = null;
     if (dto.roleCode && !dto.useCustomPermissions) {
-      role = await this.roleRepo.findOne({
-        where: { appId: app.id, code: dto.roleCode },
-      });
+      role = await this.roleRepo.findOneWhere({ appId: app.id, code: dto.roleCode });
       if (!role) {
         throw new NotFoundException(`Role '${dto.roleCode}' not found for app '${dto.appCode}'`);
       }
     }
 
-    const access = this.accessRepo.create({
+    const savedAccess = await this.accessRepo.create({
       userId,
       appId: app.id,
       roleId: role?.id ?? null,
@@ -339,8 +266,6 @@ export class RbacService {
       grantedById,
       expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
     });
-
-    const savedAccess = await this.accessRepo.save(access);
 
     if (dto.useCustomPermissions && dto.permissionCodes?.length) {
       await this.setCustomPermissions(savedAccess.id, app.id, dto.permissionCodes);
@@ -358,11 +283,7 @@ export class RbacService {
       return this.updateStockControlUserAccess(-accessId, dto);
     }
 
-    const access = await this.accessRepo.findOne({
-      where: { id: accessId },
-      relations: ["app", "user"],
-    });
-
+    const access = await this.accessRepo.findWithRelations(accessId);
     if (!access) {
       throw new NotFoundException(`Access record ${accessId} not found`);
     }
@@ -371,12 +292,10 @@ export class RbacService {
       if (dto.roleCode === null) {
         access.roleId = null;
       } else {
-        const role = await this.roleRepo.findOne({
-          where: { appId: access.appId, code: dto.roleCode },
-        });
+        const role = await this.roleRepo.findOneWhere({ appId: access.appId, code: dto.roleCode });
         if (!role) {
           throw new NotFoundException(
-            `Role '${dto.roleCode}' not found for app '${access.app.code}'`,
+            `Role '${dto.roleCode}' not found for app '${access.app?.code ?? access.appId}'`,
           );
         }
         access.roleId = role.id;
@@ -396,7 +315,7 @@ export class RbacService {
     if (dto.useCustomPermissions && dto.permissionCodes !== undefined) {
       await this.setCustomPermissions(accessId, access.appId, dto.permissionCodes ?? []);
     } else if (dto.useCustomPermissions === false) {
-      await this.userPermissionRepo.delete({ userAccessId: accessId });
+      await this.userPermissionRepo.deleteByUserAccessId(accessId);
     }
 
     if (dto.productKeys !== undefined) {
@@ -410,10 +329,7 @@ export class RbacService {
     scUserId: number,
     dto: UpdateUserAccessDto,
   ): Promise<UserAccessResponseDto> {
-    const scUser = await this.stockControlUserRepo.findOne({
-      where: { id: scUserId },
-      relations: ["company"],
-    });
+    const scUser = await this.stockControlUserRepo.findOneByIdWithCompany(scUserId);
 
     if (!scUser) {
       throw new NotFoundException(`Stock control user ${scUserId} not found`);
@@ -457,11 +373,10 @@ export class RbacService {
   }
 
   async revokeAccess(accessId: number): Promise<void> {
-    const access = await this.accessRepo.findOne({ where: { id: accessId } });
+    const access = await this.accessRepo.findById(accessId);
     if (!access) {
       throw new NotFoundException(`Access record ${accessId} not found`);
     }
-
     await this.accessRepo.remove(access);
   }
 
@@ -471,17 +386,16 @@ export class RbacService {
       throw new NotFoundException(`App '${dto.appCode}' not found`);
     }
 
-    let user = await this.userRepo.findOne({ where: { email: dto.email } });
+    let user = await this.userRepo.findOneByEmail(dto.email);
     const isNewUser = !user;
 
     if (!user) {
-      user = this.userRepo.create({
+      user = await this.userRepo.create({
         email: dto.email,
         firstName: dto.firstName,
         lastName: dto.lastName,
         status: "invited",
       });
-      user = await this.userRepo.save(user);
 
       this.userSyncService
         .syncUserToPeer({
@@ -494,9 +408,7 @@ export class RbacService {
         .catch((error) => this.logger.error(`Peer sync failed for ${dto.email}: ${error.message}`));
     }
 
-    const existingAccess = await this.accessRepo.findOne({
-      where: { userId: user.id, appId: app.id },
-    });
+    const existingAccess = await this.accessRepo.findOneWhere({ userId: user.id, appId: app.id });
     if (existingAccess) {
       throw new ConflictException(`User '${dto.email}' already has access to '${dto.appCode}'`);
     }
@@ -532,17 +444,7 @@ export class RbacService {
       return false;
     }
 
-    const access = await this.accessRepo.findOne({
-      where: { userId, appId: app.id },
-      relations: [
-        "role",
-        "role.rolePermissions",
-        "role.rolePermissions.permission",
-        "customPermissions",
-        "customPermissions.permission",
-      ],
-    });
-
+    const access = await this.accessRepo.findWithPermissionsAndRole(userId, app.id);
     if (!access) {
       return false;
     }
@@ -568,17 +470,7 @@ export class RbacService {
       return [];
     }
 
-    const access = await this.accessRepo.findOne({
-      where: { userId, appId: app.id },
-      relations: [
-        "role",
-        "role.rolePermissions",
-        "role.rolePermissions.permission",
-        "customPermissions",
-        "customPermissions.permission",
-      ],
-    });
-
+    const access = await this.accessRepo.findWithPermissionsAndRole(userId, app.id);
     if (!access) {
       return [];
     }
@@ -614,11 +506,7 @@ export class RbacService {
       return { roleCode: null, roleName: null, permissions: [], isAdmin: false };
     }
 
-    const access = await this.accessRepo.findOne({
-      where: { userId, appId: app.id },
-      relations: ["role"],
-    });
-
+    const access = await this.accessRepo.findWithPermissionsAndRole(userId, app.id);
     if (!access) {
       return { roleCode: null, roleName: null, permissions: [], isAdmin: false };
     }
@@ -635,50 +523,38 @@ export class RbacService {
     if (!app) {
       return [];
     }
-
-    return this.permissionRepo.find({
-      where: { appId: app.id },
-      order: { displayOrder: "ASC" },
-    });
+    const permissions = await this.permissionRepo.findManyWhere({ appId: app.id });
+    return permissions.sort((a, b) => a.displayOrder - b.displayOrder);
   }
 
   async setRolePermissions(roleId: number, permissionCodes: string[]): Promise<void> {
-    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    const role = await this.roleRepo.findById(roleId);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
 
-    await this.rolePermissionRepo.delete({ roleId });
+    await this.rolePermissionRepo.deleteByRoleId(roleId);
 
     if (permissionCodes.length === 0) {
       return;
     }
 
-    const permissions = await this.permissionRepo.find({
-      where: { appId: role.appId, code: In(permissionCodes) },
-    });
+    const permissions = await this.permissionRepo.findManyWhere({ appId: role.appId });
+    const matchedPermissions = permissions.filter((p) => permissionCodes.includes(p.code));
 
-    const foundCodes = permissions.map((p) => p.code);
+    const foundCodes = matchedPermissions.map((p) => p.code);
     const missingCodes = permissionCodes.filter((c) => !foundCodes.includes(c));
     if (missingCodes.length > 0) {
       throw new NotFoundException(`Permissions not found: ${missingCodes.join(", ")}`);
     }
 
-    const rolePermissions = permissions.map((p) =>
-      this.rolePermissionRepo.create({
-        roleId,
-        permissionId: p.id,
-      }),
+    await Promise.all(
+      matchedPermissions.map((p) => this.rolePermissionRepo.create({ roleId, permissionId: p.id })),
     );
-
-    await this.rolePermissionRepo.save(rolePermissions);
   }
 
   async roleWithPermissions(roleId: number): Promise<RoleResponseDto & { permissions: string[] }> {
-    const role = await this.roleRepo.findOne({
-      where: { id: roleId },
-      relations: ["rolePermissions", "rolePermissions.permission"],
-    });
+    const role = await this.roleRepo.findWithPermissions(roleId);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
@@ -706,15 +582,11 @@ export class RbacService {
       throw new NotFoundException(`App '${appCode}' not found`);
     }
 
-    const roles = await this.roleRepo.find({
-      where: { appId: app.id },
-      relations: ["rolePermissions", "rolePermissions.permission"],
-      order: { displayOrder: "ASC" },
-    });
+    const roles = await this.roleRepo.findAllWithPermissionsForApp(app.id);
 
     const userCounts = await Promise.all(
       roles.map(async (role) => {
-        const count = await this.accessRepo.count({ where: { roleId: role.id } });
+        const count = await this.accessRepo.count({ roleId: role.id });
         return { roleId: role.id, count };
       }),
     );
@@ -738,18 +610,13 @@ export class RbacService {
   }
 
   async sendAccessLink(userId: number): Promise<{ message: string }> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    const accessRecords = await this.accessRepo.find({
-      where: { userId },
-      relations: ["app"],
-    });
-
+    const accessRecords = await this.accessRepo.findWithApp(userId);
     const appNames = accessRecords.filter((a) => a.app.isActive).map((a) => a.app.name);
-
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 
     const sent = await this.emailService.sendPlatformAccessEmail(
@@ -770,59 +637,45 @@ export class RbacService {
     appId: number,
     permissionCodes: string[],
   ): Promise<void> {
-    await this.userPermissionRepo.delete({ userAccessId: accessId });
+    await this.userPermissionRepo.deleteByUserAccessId(accessId);
 
     if (permissionCodes.length === 0) {
       return;
     }
 
-    const permissions = await this.permissionRepo.find({
-      where: { appId, code: In(permissionCodes) },
-    });
+    const permissions = await this.permissionRepo.findManyWhere({ appId });
+    const matchedPermissions = permissions.filter((p) => permissionCodes.includes(p.code));
 
-    const foundCodes = permissions.map((p) => p.code);
+    const foundCodes = matchedPermissions.map((p) => p.code);
     const missingCodes = permissionCodes.filter((c) => !foundCodes.includes(c));
     if (missingCodes.length > 0) {
       throw new NotFoundException(`Permissions not found: ${missingCodes.join(", ")}`);
     }
 
-    const userPermissions = permissions.map((p) =>
-      this.userPermissionRepo.create({
-        userAccessId: accessId,
-        permissionId: p.id,
-      }),
+    await Promise.all(
+      matchedPermissions.map((p) =>
+        this.userPermissionRepo.create({ userAccessId: accessId, permissionId: p.id }),
+      ),
     );
-
-    await this.userPermissionRepo.save(userPermissions);
   }
 
   private async setUserProducts(accessId: number, productKeys: string[]): Promise<void> {
-    await this.userProductRepo.delete({ userAccessId: accessId });
+    await this.userProductRepo.deleteByUserAccessId(accessId);
 
     if (productKeys.length === 0) {
       return;
     }
 
     const uniqueKeys = [...new Set(productKeys)];
-    const newProducts = uniqueKeys.map((productKey) =>
-      this.userProductRepo.create({ userAccessId: accessId, productKey }),
+    await Promise.all(
+      uniqueKeys.map((productKey) =>
+        this.userProductRepo.create({ userAccessId: accessId, productKey }),
+      ),
     );
-    await this.userProductRepo.save(newProducts);
   }
 
   private async accessResponseDto(accessId: number): Promise<UserAccessResponseDto> {
-    const access = await this.accessRepo.findOne({
-      where: { id: accessId },
-      relations: [
-        "user",
-        "app",
-        "role",
-        "customPermissions",
-        "customPermissions.permission",
-        "userProducts",
-      ],
-    });
-
+    const access = await this.accessRepo.findWithRelations(accessId);
     if (!access) {
       throw new NotFoundException(`Access record ${accessId} not found`);
     }
@@ -833,7 +686,7 @@ export class RbacService {
       email: access.user.email,
       firstName: access.user.firstName ?? null,
       lastName: access.user.lastName ?? null,
-      appCode: access.app.code,
+      appCode: access.app?.code ?? String(access.appId),
       roleCode: access.role?.code ?? null,
       roleName: access.role?.name ?? null,
       useCustomPermissions: access.useCustomPermissions,
@@ -856,26 +709,28 @@ export class RbacService {
       throw new NotFoundException(`App '${appCode}' not found`);
     }
 
-    const existingRole = await this.roleRepo.findOne({
-      where: { appId: app.id, code: dto.code },
-    });
+    const existingRole = await this.roleRepo.findOneWhere({ appId: app.id, code: dto.code });
     if (existingRole) {
       throw new ConflictException(`Role with code '${dto.code}' already exists for this app`);
     }
 
-    const maxDisplayOrder = await this.roleRepo
-      .createQueryBuilder("role")
-      .select("MAX(role.displayOrder)", "max")
-      .where("role.appId = :appId", { appId: app.id })
-      .getRawOne();
-
-    const displayOrder = (maxDisplayOrder?.max ?? 0) + 1;
+    const maxDisplayOrder = await this.roleRepo.maxDisplayOrderForApp(app.id);
+    const displayOrder = maxDisplayOrder + 1;
 
     if (dto.isDefault) {
-      await this.roleRepo.update({ appId: app.id, isDefault: true }, { isDefault: false });
+      const existingDefaults = await this.roleRepo.findManyWhere({
+        appId: app.id,
+        isDefault: true,
+      });
+      await Promise.all(
+        existingDefaults.map((r) => {
+          r.isDefault = false;
+          return this.roleRepo.save(r);
+        }),
+      );
     }
 
-    const role = this.roleRepo.create({
+    const role = await this.roleRepo.create({
       appId: app.id,
       code: dto.code,
       name: dto.name,
@@ -885,12 +740,11 @@ export class RbacService {
       targetType: dto.targetType ?? null,
     });
 
-    const savedRole = await this.roleRepo.save(role);
-    return this.roleToResponseDto(savedRole);
+    return this.roleToResponseDto(role);
   }
 
   async updateRole(roleId: number, dto: UpdateRoleDto): Promise<RoleResponseDto> {
-    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    const role = await this.roleRepo.findById(roleId);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
@@ -906,7 +760,16 @@ export class RbacService {
     }
     if (dto.isDefault !== undefined) {
       if (dto.isDefault) {
-        await this.roleRepo.update({ appId: role.appId, isDefault: true }, { isDefault: false });
+        const existingDefaults = await this.roleRepo.findManyWhere({
+          appId: role.appId,
+          isDefault: true,
+        });
+        await Promise.all(
+          existingDefaults.map((r) => {
+            r.isDefault = false;
+            return this.roleRepo.save(r);
+          }),
+        );
       }
       role.isDefault = dto.isDefault;
     }
@@ -919,27 +782,34 @@ export class RbacService {
   }
 
   async deleteRole(roleId: number): Promise<{ message: string; reassignedUsers: number }> {
-    const role = await this.roleRepo.findOne({
-      where: { id: roleId },
-      relations: ["app"],
-    });
+    const role = await this.roleRepo.findWithPermissions(roleId);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
 
-    const defaultRole = await this.roleRepo.findOne({
-      where: { appId: role.appId, isDefault: true },
-    });
-
-    const usersWithRole = await this.accessRepo.count({ where: { roleId } });
+    const defaultRole = await this.roleRepo.findOneWhere({ appId: role.appId, isDefault: true });
+    const usersWithRole = await this.accessRepo.count({ roleId });
     let reassignedUsers = 0;
 
     if (usersWithRole > 0) {
       if (defaultRole && defaultRole.id !== roleId) {
-        await this.accessRepo.update({ roleId }, { roleId: defaultRole.id });
+        const accessRecords = await this.accessRepo.findManyWhere({ roleId });
+        await Promise.all(
+          accessRecords.map((a) => {
+            a.roleId = defaultRole.id;
+            return this.accessRepo.save(a);
+          }),
+        );
         reassignedUsers = usersWithRole;
       } else {
-        await this.accessRepo.update({ roleId }, { roleId: null, useCustomPermissions: true });
+        const accessRecords = await this.accessRepo.findManyWhere({ roleId });
+        await Promise.all(
+          accessRecords.map((a) => {
+            a.roleId = null;
+            a.useCustomPermissions = true;
+            return this.accessRepo.save(a);
+          }),
+        );
         reassignedUsers = usersWithRole;
       }
     }
@@ -953,15 +823,13 @@ export class RbacService {
   }
 
   async roleProducts(roleId: number): Promise<RoleProductsResponseDto> {
-    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    const role = await this.roleRepo.findById(roleId);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
 
-    const products = await this.roleProductRepo.find({
-      where: { roleId },
-      order: { productKey: "ASC" },
-    });
+    const products = await this.roleProductRepo.findManyWhere({ roleId });
+    products.sort((a, b) => a.productKey.localeCompare(b.productKey));
 
     return {
       roleId,
@@ -970,19 +838,18 @@ export class RbacService {
   }
 
   async setRoleProducts(roleId: number, productKeys: string[]): Promise<RoleProductsResponseDto> {
-    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    const role = await this.roleRepo.findById(roleId);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }
 
-    await this.roleProductRepo.delete({ roleId });
+    await this.roleProductRepo.deleteByRoleId(roleId);
 
     if (productKeys.length > 0) {
       const uniqueKeys = [...new Set(productKeys)];
-      const newProducts = uniqueKeys.map((productKey) =>
-        this.roleProductRepo.create({ roleId, productKey }),
+      await Promise.all(
+        uniqueKeys.map((productKey) => this.roleProductRepo.create({ roleId, productKey })),
       );
-      await this.roleProductRepo.save(newProducts);
     }
 
     return {
@@ -992,7 +859,7 @@ export class RbacService {
   }
 
   async roleById(roleId: number): Promise<RoleResponseDto> {
-    const role = await this.roleRepo.findOne({ where: { id: roleId } });
+    const role = await this.roleRepo.findById(roleId);
     if (!role) {
       throw new NotFoundException(`Role with ID ${roleId} not found`);
     }

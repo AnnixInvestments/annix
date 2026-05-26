@@ -1,9 +1,10 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { CostRateType, RubberCostRate } from "./entities/rubber-cost-rate.entity";
-import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import { RubberRollStock } from "./entities/rubber-roll-stock.entity";
+import { RubberCostRateRepository } from "./repositories/rubber-cost-rate.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberRollStockRepository } from "./repositories/rubber-roll-stock.repository";
 
 export interface CostRateDto {
   id: number;
@@ -57,35 +58,18 @@ export class RubberCostService {
   private readonly logger = new Logger(RubberCostService.name);
 
   constructor(
-    @InjectRepository(RubberCostRate)
-    private readonly costRateRepo: Repository<RubberCostRate>,
-    @InjectRepository(RubberRollStock)
-    private readonly rollStockRepo: Repository<RubberRollStock>,
-    @InjectRepository(RubberProductCoding)
-    private readonly productCodingRepo: Repository<RubberProductCoding>,
+    private readonly costRateRepo: RubberCostRateRepository,
+    private readonly rollStockRepo: RubberRollStockRepository,
+    private readonly productCodingRepo: RubberProductCodingRepository,
   ) {}
 
   async allCostRates(rateType?: CostRateType): Promise<CostRateDto[]> {
-    const qb = this.costRateRepo
-      .createQueryBuilder("cr")
-      .leftJoinAndSelect("cr.compoundCoding", "cc");
-
-    if (rateType) {
-      qb.andWhere("cr.rateType = :rateType", { rateType });
-    }
-
-    qb.orderBy("cr.rateType", "ASC").addOrderBy("cc.code", "ASC");
-
-    const rates = await qb.getMany();
+    const rates = await this.costRateRepo.findAllWithCodingOrdered(rateType);
     return rates.map((r) => this.mapCostRateToDto(r));
   }
 
   async costRateById(id: number): Promise<CostRateDto | null> {
-    const rate = await this.costRateRepo
-      .createQueryBuilder("cr")
-      .leftJoinAndSelect("cr.compoundCoding", "cc")
-      .where("cr.id = :id", { id })
-      .getOne();
+    const rate = await this.costRateRepo.findOneByIdWithCoding(id);
 
     if (!rate) return null;
     return this.mapCostRateToDto(rate);
@@ -103,7 +87,7 @@ export class RubberCostService {
     }
 
     if (dto.compoundCodingId) {
-      const coding = await this.productCodingRepo.findOneBy({ id: dto.compoundCodingId });
+      const coding = await this.productCodingRepo.findOneById(dto.compoundCodingId);
       if (!coding) {
         throw new BadRequestException("Compound coding not found");
       }
@@ -112,7 +96,7 @@ export class RubberCostService {
       }
     }
 
-    const rate = this.costRateRepo.create({
+    const rate = this.costRateRepo.build({
       rateType: dto.rateType,
       costPerKgZar: dto.costPerKgZar,
       compoundCodingId: dto.compoundCodingId || null,
@@ -130,7 +114,7 @@ export class RubberCostService {
     dto: UpdateCostRateDto,
     updatedBy?: string,
   ): Promise<CostRateDto | null> {
-    const rate = await this.costRateRepo.findOneBy({ id });
+    const rate = await this.costRateRepo.findById(id);
     if (!rate) return null;
 
     if (dto.costPerKgZar !== undefined) {
@@ -146,17 +130,14 @@ export class RubberCostService {
   }
 
   async deleteCostRate(id: number): Promise<boolean> {
-    const result = await this.costRateRepo.delete(id);
-    return (result.affected || 0) > 0;
+    return this.costRateRepo.deleteById(id);
   }
 
   async calendererConversionRates(): Promise<CalendererConversionRates> {
-    const uncured = await this.costRateRepo.findOneBy({
-      rateType: CostRateType.CALENDERER_UNCURED,
-    });
-    const curedBuffed = await this.costRateRepo.findOneBy({
-      rateType: CostRateType.CALENDERER_CURED_BUFFED,
-    });
+    const uncured = await this.costRateRepo.findOneByRateType(CostRateType.CALENDERER_UNCURED);
+    const curedBuffed = await this.costRateRepo.findOneByRateType(
+      CostRateType.CALENDERER_CURED_BUFFED,
+    );
     return {
       uncuredPerKg: uncured ? Number(uncured.costPerKgZar) : null,
       curedBuffedPerKg: curedBuffed ? Number(curedBuffed.costPerKgZar) : null,
@@ -164,40 +145,24 @@ export class RubberCostService {
   }
 
   async compoundCostPerKg(compoundCodingId: number): Promise<number | null> {
-    const rate = await this.costRateRepo.findOneBy({
-      rateType: CostRateType.COMPOUND,
+    const rate = await this.costRateRepo.findOneByRateTypeAndCoding(
+      CostRateType.COMPOUND,
       compoundCodingId,
-    });
+    );
     return rate ? Number(rate.costPerKgZar) : null;
   }
 
   async rollCos(rollId: number): Promise<RollCosDto | null> {
-    const roll = await this.rollStockRepo
-      .createQueryBuilder("r")
-      .leftJoinAndSelect("r.compoundCoding", "cc")
-      .where("r.id = :rollId", { rollId })
-      .getOne();
+    const roll = await this.rollStockRepo.findOneByIdWithCoding(rollId);
 
     if (!roll) return null;
     return this.calculateRollCos(roll);
   }
 
   async allRollCos(status?: string): Promise<RollCosDto[]> {
-    const qb = this.rollStockRepo
-      .createQueryBuilder("r")
-      .leftJoinAndSelect("r.compoundCoding", "cc");
+    const rolls = await this.rollStockRepo.findAllWithCodingByStatusOrdered(status);
 
-    if (status) {
-      qb.andWhere("r.status = :status", { status });
-    }
-
-    qb.orderBy("r.rollNumber", "ASC");
-
-    const rolls = await qb.getMany();
-
-    const compoundRates = await this.costRateRepo.find({
-      where: { rateType: CostRateType.COMPOUND },
-    });
+    const compoundRates = await this.costRateRepo.findByRateType(CostRateType.COMPOUND);
     const compoundRateMap = new Map(
       compoundRates.map((r) => [r.compoundCodingId, Number(r.costPerKgZar)]),
     );

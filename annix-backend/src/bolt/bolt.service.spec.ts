@@ -1,126 +1,70 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { NutMass } from "../nut-mass/entities/nut-mass.entity";
-import { Washer } from "../washer/entities/washer.entity";
+import { NutMassRepository } from "../nut-mass/nut-mass.repository";
+import { WasherRepository } from "../washer/washer.repository";
+import { BoltRepository } from "./bolt.repository";
 import { BoltService } from "./bolt.service";
 import { Bolt } from "./entities/bolt.entity";
-import { PipeClampEntity } from "./entities/pipe-clamp.entity";
-import { ThreadedInsert } from "./entities/threaded-insert.entity";
-import { UBoltEntity } from "./entities/u-bolt.entity";
+import { PipeClampRepository } from "./pipe-clamp.repository";
+import { ThreadedInsertRepository } from "./threaded-insert.repository";
+import { UBoltRepository } from "./u-bolt.repository";
 
 describe("BoltService", () => {
   let service: BoltService;
 
-  const mockRepo = {
+  const mockBoltRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     remove: jest.fn(),
-    createQueryBuilder: jest.fn(() => ({
-      andWhere: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      addOrderBy: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      distinct: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-      getOne: jest.fn().mockResolvedValue(null),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    })),
+    count: jest.fn(),
+    filteredBolts: jest.fn(),
+    boltCategoriesGrouped: jest.fn(),
+    fastenerSizesForBolt: jest.fn(),
+    fastenerGradesForBolt: jest.fn(),
   };
 
   const mockUBoltRepo = {
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(() => ({
-      andWhere: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-      getOne: jest.fn().mockResolvedValue(null),
-    })),
+    uBolts: jest.fn().mockResolvedValue([]),
+    uBolt: jest.fn().mockResolvedValue(null),
   };
 
   const mockPipeClampRepo = {
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(() => ({
-      andWhere: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      addOrderBy: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      distinct: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    })),
+    pipeClamps: jest.fn().mockResolvedValue([]),
+    pipeClamp: jest.fn().mockResolvedValue(null),
+    pipeClampTypes: jest.fn().mockResolvedValue([]),
   };
 
   const mockNutMassRepo = {
-    createQueryBuilder: jest.fn(() => ({
-      innerJoin: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      groupBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    })),
+    typesGrouped: jest.fn().mockResolvedValue([]),
+    boltDesignationsForType: jest.fn().mockResolvedValue([]),
+    gradesForTypeAndSize: jest.fn().mockResolvedValue([]),
   };
 
   const mockWasherRepo = {
-    createQueryBuilder: jest.fn(() => ({
-      innerJoin: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      groupBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    })),
+    typesGrouped: jest.fn().mockResolvedValue([]),
+    boltDesignationsForType: jest.fn().mockResolvedValue([]),
   };
 
   const mockThreadedInsertRepo = {
-    createQueryBuilder: jest.fn(() => ({
-      andWhere: jest.fn().mockReturnThis(),
-      where: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      select: jest.fn().mockReturnThis(),
-      addSelect: jest.fn().mockReturnThis(),
-      groupBy: jest.fn().mockReturnThis(),
-      getMany: jest.fn().mockResolvedValue([]),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    })),
+    insertTypesGrouped: jest.fn().mockResolvedValue([]),
+    insertSizesForType: jest.fn().mockResolvedValue([]),
+    insertGradesForTypeAndSize: jest.fn().mockResolvedValue([]),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BoltService,
-        { provide: getRepositoryToken(Bolt), useValue: mockRepo },
-        { provide: getRepositoryToken(UBoltEntity), useValue: mockUBoltRepo },
-        {
-          provide: getRepositoryToken(PipeClampEntity),
-          useValue: mockPipeClampRepo,
-        },
-        {
-          provide: getRepositoryToken(NutMass),
-          useValue: mockNutMassRepo,
-        },
-        {
-          provide: getRepositoryToken(Washer),
-          useValue: mockWasherRepo,
-        },
-        {
-          provide: getRepositoryToken(ThreadedInsert),
-          useValue: mockThreadedInsertRepo,
-        },
+        { provide: BoltRepository, useValue: mockBoltRepo },
+        { provide: UBoltRepository, useValue: mockUBoltRepo },
+        { provide: PipeClampRepository, useValue: mockPipeClampRepo },
+        { provide: NutMassRepository, useValue: mockNutMassRepo },
+        { provide: WasherRepository, useValue: mockWasherRepo },
+        { provide: ThreadedInsertRepository, useValue: mockThreadedInsertRepo },
       ],
     }).compile();
 
@@ -138,65 +82,45 @@ describe("BoltService", () => {
       const dto = { designation: "M20" };
       const entity = { id: 1, ...dto } as Bolt;
 
-      mockRepo.findOne.mockResolvedValue(undefined);
-      mockRepo.create.mockReturnValue(dto);
-      mockRepo.save.mockResolvedValue(entity);
+      mockBoltRepo.findOneWhere.mockResolvedValue(null);
+      mockBoltRepo.create.mockResolvedValue(entity);
 
       const result = await service.create(dto);
       expect(result).toEqual(entity);
-      expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { designation: dto.designation },
-      });
-      expect(mockRepo.create).toHaveBeenCalledWith(dto);
-      expect(mockRepo.save).toHaveBeenCalledWith(dto);
+      expect(mockBoltRepo.findOneWhere).toHaveBeenCalledWith({ designation: dto.designation });
+      expect(mockBoltRepo.create).toHaveBeenCalledWith(dto);
     });
 
     it("should throw BadRequestException if bolt already exists", async () => {
       const dto = { designation: "M20" };
-      mockRepo.findOne.mockResolvedValue({ id: 1, designation: "M20" });
+      mockBoltRepo.findOneWhere.mockResolvedValue({ id: 1, designation: "M20" });
 
       await expect(service.create(dto)).rejects.toThrow(BadRequestException);
-      expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { designation: dto.designation },
-      });
+      expect(mockBoltRepo.findOneWhere).toHaveBeenCalledWith({ designation: dto.designation });
     });
   });
 
   describe("findAll", () => {
-    it("should return array of bolts", async () => {
+    it("should return array of bolts via filteredBolts", async () => {
       const result = [{ id: 1, designation: "M20" }] as Bolt[];
-      const queryBuilder = {
-        andWhere: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        addOrderBy: jest.fn().mockReturnThis(),
-        select: jest.fn().mockReturnThis(),
-        addSelect: jest.fn().mockReturnThis(),
-        distinct: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue(result),
-        getOne: jest.fn().mockResolvedValue(null),
-        getRawMany: jest.fn().mockResolvedValue([]),
-      };
-      mockRepo.createQueryBuilder.mockReturnValue(queryBuilder);
+      mockBoltRepo.filteredBolts.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockRepo.createQueryBuilder).toHaveBeenCalledWith("bolt");
+      expect(mockBoltRepo.filteredBolts).toHaveBeenCalledWith({});
     });
   });
 
   describe("findOne", () => {
     it("should return a bolt by id", async () => {
       const result = { id: 1, designation: "M20" } as Bolt;
-      mockRepo.findOne.mockResolvedValue(result);
+      mockBoltRepo.findById.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
-      expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-      });
+      expect(mockBoltRepo.findById).toHaveBeenCalledWith(1, []);
     });
 
     it("should throw NotFoundException if bolt not found", async () => {
-      mockRepo.findOne.mockResolvedValue(undefined);
+      mockBoltRepo.findById.mockResolvedValue(null);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
@@ -208,12 +132,13 @@ describe("BoltService", () => {
       const existing = { id: 1, designation: "M20" } as Bolt;
       const updated = { id: 1, designation: "M24" } as Bolt;
 
-      mockRepo.findOne.mockResolvedValueOnce(existing).mockResolvedValueOnce(undefined);
-      mockRepo.save.mockResolvedValue(updated);
+      mockBoltRepo.findById.mockResolvedValue(existing);
+      mockBoltRepo.findOneWhere.mockResolvedValue(null);
+      mockBoltRepo.save.mockResolvedValue(updated);
 
       const result = await service.update(1, dto);
       expect(result).toEqual(updated);
-      expect(mockRepo.save).toHaveBeenCalledWith({ ...existing, ...dto });
+      expect(mockBoltRepo.save).toHaveBeenCalledWith({ ...existing, ...dto });
     });
 
     it("should throw BadRequestException if duplicate designation exists", async () => {
@@ -221,11 +146,8 @@ describe("BoltService", () => {
       const current = { id: 1, designation: "M20" } as Bolt;
       const existing = { id: 2, designation: "M24" } as Bolt;
 
-      mockRepo.findOne.mockImplementation(({ where }) => {
-        if (where.id === 1) return Promise.resolve(current);
-        if (where.designation === "M24") return Promise.resolve(existing);
-        return Promise.resolve(null);
-      });
+      mockBoltRepo.findById.mockResolvedValue(current);
+      mockBoltRepo.findOneWhere.mockResolvedValue(existing);
 
       await expect(service.update(1, dto)).rejects.toThrow(BadRequestException);
     });
@@ -234,11 +156,11 @@ describe("BoltService", () => {
   describe("remove", () => {
     it("should delete a bolt", async () => {
       const entity = { id: 1, designation: "M20" } as Bolt;
-      mockRepo.findOne.mockResolvedValue(entity);
-      mockRepo.remove.mockResolvedValue(undefined);
+      mockBoltRepo.findById.mockResolvedValue(entity);
+      mockBoltRepo.remove.mockResolvedValue(undefined);
 
       await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(mockRepo.remove).toHaveBeenCalledWith(entity);
+      expect(mockBoltRepo.remove).toHaveBeenCalledWith(entity);
     });
   });
 });

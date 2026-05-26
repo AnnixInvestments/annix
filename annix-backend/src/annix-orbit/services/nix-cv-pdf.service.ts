@@ -211,7 +211,7 @@ export class NixCvPdfService {
   private renderReferences(cv: NixGeneratedCv): string {
     const refs = cv.references || [];
     const items = refs
-      .filter((ref) => Boolean(ref && ref.name && ref.name.trim().length > 0))
+      .filter((ref) => Boolean(ref?.name && ref.name.trim().length > 0))
       .map((ref) => this.renderReferenceItem(ref))
       .join("");
     if (items.length === 0) {

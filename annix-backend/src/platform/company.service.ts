@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
+import { CompanyRepository } from "./company.repository";
+import { CompanyModuleSubscriptionRepository } from "./company-module-subscription.repository";
 import { Company, CompanyType } from "./entities/company.entity";
 import { CompanyModuleSubscription } from "./entities/company-module-subscription.entity";
 
@@ -34,17 +34,12 @@ export class CompanyService {
   private readonly logger = new Logger(CompanyService.name);
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CompanyModuleSubscription)
-    private readonly subscriptionRepo: Repository<CompanyModuleSubscription>,
+    private readonly companyRepo: CompanyRepository,
+    private readonly subscriptionRepo: CompanyModuleSubscriptionRepository,
   ) {}
 
   async findById(id: number): Promise<Company> {
-    const company = await this.companyRepo.findOne({
-      where: { id },
-      relations: ["moduleSubscriptions"],
-    });
+    const company = await this.companyRepo.findById(id, ["moduleSubscriptions"]);
 
     if (!company) {
       throw new NotFoundException(`Company ${id} not found`);
@@ -53,47 +48,12 @@ export class CompanyService {
     return company;
   }
 
-  async search(filters: CompanySearchFilters): Promise<CompanyPage> {
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 20;
-    const skip = (page - 1) * limit;
-
-    const qb = this.companyRepo
-      .createQueryBuilder("company")
-      .leftJoinAndSelect("company.moduleSubscriptions", "sub", "sub.disabled_at IS NULL");
-
-    if (filters.companyType) {
-      qb.andWhere("company.company_type = :companyType", { companyType: filters.companyType });
-    }
-
-    if (filters.search) {
-      qb.andWhere(
-        "(company.name ILIKE :search OR company.trading_name ILIKE :search OR company.legal_name ILIKE :search)",
-        { search: `%${filters.search}%` },
-      );
-    }
-
-    if (filters.hasModule) {
-      qb.andWhere(
-        `EXISTS (
-          SELECT 1 FROM company_module_subscriptions cms
-          WHERE cms.company_id = company.id
-            AND cms.module_code = :moduleCode
-            AND cms.disabled_at IS NULL
-        )`,
-        { moduleCode: filters.hasModule },
-      );
-    }
-
-    qb.orderBy("company.name", "ASC");
-
-    const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
-
-    return { data, total, page, limit };
+  search(filters: CompanySearchFilters): Promise<CompanyPage> {
+    return this.companyRepo.search(filters);
   }
 
   async create(data: Partial<Company>): Promise<Company> {
-    return this.companyRepo.save(this.companyRepo.create(data));
+    return this.companyRepo.create(data);
   }
 
   async update(id: number, data: Partial<Company>): Promise<Company> {
@@ -103,38 +63,28 @@ export class CompanyService {
   }
 
   async activeModules(companyId: number): Promise<string[]> {
-    const subscriptions = await this.subscriptionRepo.find({
-      where: { companyId, disabledAt: IsNull() },
-    });
-
+    const subscriptions = await this.subscriptionRepo.findActiveByCompany(companyId);
     return subscriptions.map((sub) => sub.moduleCode);
   }
 
   async hasModule(companyId: number, moduleCode: string): Promise<boolean> {
-    const subscription = await this.subscriptionRepo.findOne({
-      where: { companyId, moduleCode, disabledAt: IsNull() },
-    });
-
-    return subscription !== null;
+    const subscription = await this.subscriptionRepo.findByCompanyAndModule(companyId, moduleCode);
+    return subscription !== null && subscription.disabledAt === null;
   }
 
   async enableModule(companyId: number, moduleCode: string): Promise<CompanyModuleSubscription> {
-    const existing = await this.subscriptionRepo.findOne({
-      where: { companyId, moduleCode },
-    });
+    const existing = await this.subscriptionRepo.findByCompanyAndModule(companyId, moduleCode);
 
     if (existing) {
       existing.disabledAt = null;
       return this.subscriptionRepo.save(existing);
     }
 
-    return this.subscriptionRepo.save(this.subscriptionRepo.create({ companyId, moduleCode }));
+    return this.subscriptionRepo.create({ companyId, moduleCode });
   }
 
   async disableModule(companyId: number, moduleCode: string): Promise<void> {
-    const existing = await this.subscriptionRepo.findOne({
-      where: { companyId, moduleCode },
-    });
+    const existing = await this.subscriptionRepo.findByCompanyAndModule(companyId, moduleCode);
 
     if (existing) {
       existing.disabledAt = new Date();
@@ -142,23 +92,11 @@ export class CompanyService {
     }
   }
 
-  async moduleSubscriptions(companyId: number): Promise<CompanyModuleSubscription[]> {
-    return this.subscriptionRepo.find({
-      where: { companyId },
-      order: { moduleCode: "ASC" },
-    });
+  moduleSubscriptions(companyId: number): Promise<CompanyModuleSubscription[]> {
+    return this.subscriptionRepo.findAllByCompany(companyId);
   }
 
-  async companiesWithModule(moduleCode: string): Promise<Company[]> {
-    return this.companyRepo
-      .createQueryBuilder("company")
-      .innerJoin(
-        "company_module_subscriptions",
-        "sub",
-        "sub.company_id = company.id AND sub.module_code = :moduleCode AND sub.disabled_at IS NULL",
-        { moduleCode },
-      )
-      .orderBy("company.name", "ASC")
-      .getMany();
+  companiesWithModule(moduleCode: string): Promise<Company[]> {
+    return this.companyRepo.companiesWithModule(moduleCode);
   }
 }

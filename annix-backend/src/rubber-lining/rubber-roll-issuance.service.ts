@@ -1,12 +1,10 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, In, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { generateUniqueId, now } from "../lib/datetime";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
-import { JobCard } from "../stock-control/entities/job-card.entity";
-import { JobCardLineItem } from "../stock-control/entities/job-card-line-item.entity";
+import { JobCardRepository } from "../stock-control/repositories/job-card.repository";
+import { JobCardLineItemRepository } from "../stock-control/repositories/job-card-line-item.repository";
 import {
   type CreateRollFromPhotoDto,
   type CreateRollIssuanceDto,
@@ -17,15 +15,13 @@ import {
   type RubberRollIssuanceDto,
   type RubberRollIssuanceRollDto,
 } from "./dto/rubber-roll-issuance.dto";
-import { RubberCompany } from "./entities/rubber-company.entity";
-import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import {
-  RollIssuanceStatus,
-  RubberRollIssuance,
-  RubberRollIssuanceItem,
-  RubberRollIssuanceLineItem,
-} from "./entities/rubber-roll-issuance.entity";
+import { RollIssuanceStatus, RubberRollIssuance } from "./entities/rubber-roll-issuance.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberRollIssuanceRepository } from "./repositories/rubber-roll-issuance.repository";
+import { RubberRollIssuanceItemRepository } from "./repositories/rubber-roll-issuance-item.repository";
+import { RubberRollIssuanceLineItemRepository } from "./repositories/rubber-roll-issuance-line-item.repository";
+import { RubberRollStockRepository } from "./repositories/rubber-roll-stock.repository";
 
 const SUPPLIER_ALIASES: Record<string, string[]> = {
   Impilo: ["Polymer Liners", "Polymer Lining Systems", "Polymer Lining System"],
@@ -38,22 +34,13 @@ export class RubberRollIssuanceService {
   private readonly logger = new Logger(RubberRollIssuanceService.name);
 
   constructor(
-    @InjectRepository(RubberRollIssuance)
-    private readonly issuanceRepo: Repository<RubberRollIssuance>,
-    @InjectRepository(RubberRollIssuanceItem)
-    private readonly issuanceItemRepo: Repository<RubberRollIssuanceItem>,
-    @InjectRepository(RubberRollIssuanceLineItem)
-    private readonly issuanceLineItemRepo: Repository<RubberRollIssuanceLineItem>,
-    @InjectRepository(RubberRollStock)
-    private readonly rollStockRepo: Repository<RubberRollStock>,
-    @InjectRepository(RubberProductCoding)
-    private readonly codingRepo: Repository<RubberProductCoding>,
-    @InjectRepository(RubberCompany)
-    private readonly companyRepo: Repository<RubberCompany>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
+    private readonly issuanceRepo: RubberRollIssuanceRepository,
+    private readonly issuanceItemRepo: RubberRollIssuanceItemRepository,
+    private readonly issuanceLineItemRepo: RubberRollIssuanceLineItemRepository,
+    private readonly rollStockRepo: RubberRollStockRepository,
+    private readonly codingRepo: RubberProductCodingRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
     private readonly aiChatService: AiChatService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
@@ -132,32 +119,25 @@ Respond ONLY with valid JSON.`;
     extraction: RollPhotoExtractionDto,
   ): Promise<RubberRollIssuanceRollDto | null> {
     if (extraction.batchNumber) {
-      const byBatch = await this.rollStockRepo.findOne({
-        where: { rollNumber: extraction.batchNumber },
-        relations: ["compoundCoding"],
-      });
+      const byBatch = await this.rollStockRepo.findOneByRollNumberWithRelations(
+        extraction.batchNumber,
+      );
       if (byBatch) return this.mapRollToDto(byBatch);
 
-      const byBatchLike = await this.rollStockRepo.findOne({
-        where: { rollNumber: ILike(`%${extraction.batchNumber}%`) },
-        relations: ["compoundCoding"],
-      });
+      const byBatchLike = await this.rollStockRepo.findOneByRollNumberLikeWithCoding(
+        extraction.batchNumber,
+      );
       if (byBatchLike) return this.mapRollToDto(byBatchLike);
     }
 
     if (extraction.weightKg && extraction.compoundCode) {
-      const coding = await this.codingRepo.findOne({
-        where: { code: ILike(`%${extraction.compoundCode}%`) },
-      });
+      const coding = await this.codingRepo.findOneByCodeLike(extraction.compoundCode);
       if (coding) {
-        const byAttributes = await this.rollStockRepo.findOne({
-          where: {
-            compoundCodingId: coding.id,
-            weightKg: extraction.weightKg,
-            status: RollStockStatus.IN_STOCK,
-          },
-          relations: ["compoundCoding"],
-        });
+        const byAttributes = await this.rollStockRepo.findOneByAttributesWithCoding(
+          coding.id,
+          extraction.weightKg,
+          RollStockStatus.IN_STOCK,
+        );
         if (byAttributes) return this.mapRollToDto(byAttributes);
       }
     }
@@ -166,23 +146,18 @@ Respond ONLY with valid JSON.`;
   }
 
   async createRollFromPhoto(dto: CreateRollFromPhotoDto): Promise<RubberRollIssuanceRollDto> {
-    const existing = await this.rollStockRepo.findOne({
-      where: { rollNumber: dto.rollNumber },
-      relations: ["compoundCoding"],
-    });
+    const existing = await this.rollStockRepo.findOneByRollNumberWithRelations(dto.rollNumber);
     if (existing) return this.mapRollToDto(existing);
 
     let compoundCodingId: number | null = null;
     if (dto.compoundCode) {
-      const coding = await this.codingRepo.findOne({
-        where: { code: ILike(`%${dto.compoundCode}%`) },
-      });
+      const coding = await this.codingRepo.findOneByCodeLike(dto.compoundCode);
       if (coding) {
         compoundCodingId = coding.id;
       }
     }
 
-    const roll = this.rollStockRepo.create({
+    const roll = await this.rollStockRepo.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       rollNumber: dto.rollNumber,
       compoundCodingId,
@@ -195,11 +170,7 @@ Respond ONLY with valid JSON.`;
       notes: "Auto-created from photo identification",
     });
 
-    const saved = await this.rollStockRepo.save(roll);
-    const result = await this.rollStockRepo.findOne({
-      where: { id: saved.id },
-      relations: ["compoundCoding"],
-    });
+    const result = await this.rollStockRepo.findOneByIdWithRelations(roll.id);
 
     this.logger.log(`Created roll ${dto.rollNumber} from photo (weight: ${dto.weightKg} kg)`);
     return this.mapRollToDto(result!);
@@ -207,15 +178,11 @@ Respond ONLY with valid JSON.`;
 
   async searchJobCards(query: string): Promise<JcSearchResultDto[]> {
     const scCompanyIds = [1, 3, 4];
-    const results = await this.jobCardRepo.find({
-      where: [
-        { companyId: In(scCompanyIds), jcNumber: ILike(`%${query}%`) },
-        { companyId: In(scCompanyIds), jobNumber: ILike(`%${query}%`) },
-        { companyId: In(scCompanyIds), jobName: ILike(`%${query}%`) },
-      ],
-      order: { createdAt: "DESC" },
-      take: 20,
-    });
+    const results = await this.jobCardRepo.searchAcrossCompaniesByNumberOrName(
+      scCompanyIds,
+      query,
+      20,
+    );
 
     return results.map((jc) => ({
       id: jc.id,
@@ -228,10 +195,7 @@ Respond ONLY with valid JSON.`;
   }
 
   async jobCardLineItems(jobCardId: number): Promise<JcLineItemDto[]> {
-    const items = await this.lineItemRepo.find({
-      where: { jobCardId },
-      order: { sortOrder: "ASC" },
-    });
+    const items = await this.lineItemRepo.findForJobCardOrderedBySortAnyCompany(jobCardId);
 
     return items.map((li) => ({
       id: li.id,
@@ -244,10 +208,7 @@ Respond ONLY with valid JSON.`;
   }
 
   async createIssuance(dto: CreateRollIssuanceDto): Promise<RubberRollIssuanceDto> {
-    const roll = await this.rollStockRepo.findOne({
-      where: { id: dto.rollStockId },
-      relations: ["compoundCoding"],
-    });
+    const roll = await this.rollStockRepo.findOneByIdWithCoding(dto.rollStockId);
     if (!roll) {
       throw new BadRequestException("Roll not found");
     }
@@ -270,7 +231,7 @@ Respond ONLY with valid JSON.`;
     const rollWeight = Number(roll.weightKg);
     const expectedReturn = totalEstimatedUsageKg > 0 ? rollWeight - totalEstimatedUsageKg : null;
 
-    const issuance = this.issuanceRepo.create({
+    const savedIssuance = await this.issuanceRepo.create({
       rollStockId: dto.rollStockId,
       issuedBy: dto.issuedBy,
       issuedAt: now().toJSDate(),
@@ -283,16 +244,13 @@ Respond ONLY with valid JSON.`;
       status: RollIssuanceStatus.ACTIVE,
     });
 
-    const savedIssuance = await this.issuanceRepo.save(issuance);
-
     for (const jcDto of dto.jobCards) {
-      const item = this.issuanceItemRepo.create({
+      const savedItem = await this.issuanceItemRepo.create({
         issuanceId: savedIssuance.id,
         jobCardId: jcDto.jobCardId,
         jcNumber: jcDto.jcNumber,
         jobName: jcDto.jobName ?? null,
       });
-      const savedItem = await this.issuanceItemRepo.save(item);
 
       const lineItemEntities = jcDto.lineItems.map((li) => {
         const m2Val = li.m2 ? Number(li.m2) : null;
@@ -302,7 +260,7 @@ Respond ONLY with valid JSON.`;
           estimatedWeightKg = Math.round(volumeM3 * RUBBER_DENSITY_KG_PER_M3 * 1000) / 1000;
         }
 
-        return this.issuanceLineItemRepo.create({
+        return this.issuanceLineItemRepo.build({
           issuanceItemId: savedItem.id,
           lineItemId: li.lineItemId,
           itemDescription: li.itemDescription ?? null,
@@ -314,7 +272,7 @@ Respond ONLY with valid JSON.`;
       });
 
       if (lineItemEntities.length > 0) {
-        await this.issuanceLineItemRepo.save(lineItemEntities);
+        await this.issuanceLineItemRepo.saveMany(lineItemEntities);
       }
     }
 
@@ -335,19 +293,13 @@ Respond ONLY with valid JSON.`;
   }
 
   async allIssuances(): Promise<RubberRollIssuanceDto[]> {
-    const issuances = await this.issuanceRepo.find({
-      relations: ["rollStock", "rollStock.compoundCoding", "items", "items.lineItems"],
-      order: { createdAt: "DESC" },
-    });
+    const issuances = await this.issuanceRepo.findAllWithRelations();
 
     return issuances.map((i) => this.mapIssuanceToDto(i));
   }
 
   async issuanceById(id: number): Promise<RubberRollIssuanceDto> {
-    const issuance = await this.issuanceRepo.findOne({
-      where: { id },
-      relations: ["rollStock", "rollStock.compoundCoding", "items", "items.lineItems"],
-    });
+    const issuance = await this.issuanceRepo.findOneByIdWithRelations(id);
 
     if (!issuance) {
       throw new BadRequestException("Issuance not found");
@@ -357,10 +309,7 @@ Respond ONLY with valid JSON.`;
   }
 
   async cancelIssuance(id: number): Promise<RubberRollIssuanceDto> {
-    const issuance = await this.issuanceRepo.findOne({
-      where: { id },
-      relations: ["rollStock"],
-    });
+    const issuance = await this.issuanceRepo.findOneByIdWithRollStock(id);
 
     if (!issuance) {
       throw new BadRequestException("Issuance not found");
@@ -385,10 +334,7 @@ Respond ONLY with valid JSON.`;
   }
 
   private async sendReturnNotifications(issuanceId: number): Promise<void> {
-    const issuance = await this.issuanceRepo.findOne({
-      where: { id: issuanceId },
-      relations: ["rollStock", "rollStock.compoundCoding", "items"],
-    });
+    const issuance = await this.issuanceRepo.findOneByIdWithRollStockAndItems(issuanceId);
 
     if (!issuance || issuance.expectedReturnKg === null) return;
 

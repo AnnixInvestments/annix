@@ -1,8 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
+import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
 
 export const DEFAULT_ACTION_PERMISSIONS: Record<string, string[]> = {
   "job-cards.create": ["manager", "admin"],
@@ -72,9 +76,16 @@ export class ActionPermissionService {
   private cache = new Map<number, { data: Record<string, string[]>; expiresAt: number }>();
 
   constructor(
-    @InjectRepository(StockControlActionPermission)
-    private readonly repo: Repository<StockControlActionPermission>,
+    private readonly repo: StockControlActionPermissionRepository,
+    private readonly txRunner: TransactionRunner,
   ) {}
+
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("ActionPermissionService transactions require a TypeOrmTransactionContext");
+    }
+    return context.manager;
+  }
 
   async permissionsForCompany(companyId: number): Promise<Record<string, string[]>> {
     const cached = this.cache.get(companyId);
@@ -82,7 +93,7 @@ export class ActionPermissionService {
       return cached.data;
     }
 
-    const rows = await this.repo.find({ where: { companyId } });
+    const rows = await this.repo.findForCompany(companyId);
 
     if (rows.length === 0) {
       const defaults = { ...DEFAULT_ACTION_PERMISSIONS };
@@ -131,7 +142,8 @@ export class ActionPermissionService {
       }
     });
 
-    await this.repo.manager.transaction(async (manager) => {
+    await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
       await manager.delete(StockControlActionPermission, { companyId });
 
       const entities = Object.entries(mergedConfig).flatMap(([actionKey, roles]) =>

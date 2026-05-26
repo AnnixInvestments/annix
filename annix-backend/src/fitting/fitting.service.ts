@@ -1,15 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { BoltMass } from "../bolt-mass/entities/bolt-mass.entity";
-import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.entity";
+import { BoltMassRepository } from "../bolt-mass/bolt-mass.repository";
+import { FlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository";
 import { STEEL_DENSITY_KG_M3 } from "../lib/steel-constants";
-import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
-import { NutMass } from "../nut-mass/entities/nut-mass.entity";
+import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
+import { NutMassRepository } from "../nut-mass/nut-mass.repository";
 import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
-import { Sabs62FittingDimension } from "../sabs62-fitting-dimension/entities/sabs62-fitting-dimension.entity";
-import { Sabs719FittingDimension } from "../sabs719-fitting-dimension/entities/sabs719-fitting-dimension.entity";
+import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository";
+import { Sabs62FittingDimensionRepository } from "../sabs62-fitting-dimension/sabs62-fitting-dimension.repository";
+import { Sabs719FittingDimensionRepository } from "../sabs719-fitting-dimension/sabs719-fitting-dimension.repository";
 import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
+import { SteelSpecificationRepository } from "../steel-specification/steel-specification.repository";
 import { CalculateFittingDto, FittingCalculationResultDto } from "./dto/calculate-fitting.dto";
 import { FittingStandard, FittingType } from "./dto/get-fitting-dimensions.dto";
 
@@ -18,22 +18,14 @@ export class FittingService {
   private readonly logger = new Logger(FittingService.name);
 
   constructor(
-    @InjectRepository(Sabs62FittingDimension)
-    private sabs62Repository: Repository<Sabs62FittingDimension>,
-    @InjectRepository(Sabs719FittingDimension)
-    private sabs719Repository: Repository<Sabs719FittingDimension>,
-    @InjectRepository(PipeDimension)
-    private pipeDimensionRepository: Repository<PipeDimension>,
-    @InjectRepository(NbNpsLookup)
-    private nbNpsLookupRepository: Repository<NbNpsLookup>,
-    @InjectRepository(FlangeDimension)
-    private flangeDimensionRepository: Repository<FlangeDimension>,
-    @InjectRepository(BoltMass)
-    private boltMassRepository: Repository<BoltMass>,
-    @InjectRepository(NutMass)
-    private nutMassRepository: Repository<NutMass>,
-    @InjectRepository(SteelSpecification)
-    private steelSpecRepository: Repository<SteelSpecification>,
+    private readonly sabs62Repository: Sabs62FittingDimensionRepository,
+    private readonly sabs719Repository: Sabs719FittingDimensionRepository,
+    private pipeDimensionRepository: PipeDimensionRepository,
+    private nbNpsLookupRepository: NbNpsLookupRepository,
+    private flangeDimensionRepository: FlangeDimensionRepository,
+    private boltMassRepository: BoltMassRepository,
+    private nutMassRepository: NutMassRepository,
+    private steelSpecRepository: SteelSpecificationRepository,
   ) {}
 
   async getFittingDimensions(
@@ -54,18 +46,11 @@ export class FittingService {
     nominalDiameterMm: number,
     angleRange?: string,
   ) {
-    const queryBuilder = this.sabs62Repository
-      .createQueryBuilder("fitting")
-      .where("fitting.fittingType = :fittingType", { fittingType })
-      .andWhere("fitting.nominalDiameterMm = :nominalDiameterMm", {
-        nominalDiameterMm,
-      });
-
-    if (angleRange) {
-      queryBuilder.andWhere("fitting.angleRange = :angleRange", { angleRange });
-    }
-
-    const fitting = await queryBuilder.getOne();
+    const fitting = await this.sabs62Repository.findByTypeAndDiameter(
+      fittingType,
+      nominalDiameterMm,
+      angleRange,
+    );
 
     if (!fitting) {
       throw new NotFoundException(
@@ -81,18 +66,11 @@ export class FittingService {
     nominalDiameterMm: number,
     angleRange?: string,
   ) {
-    const queryBuilder = this.sabs719Repository
-      .createQueryBuilder("fitting")
-      .where("fitting.fittingType = :fittingType", { fittingType })
-      .andWhere("fitting.nominalDiameterMm = :nominalDiameterMm", {
-        nominalDiameterMm,
-      });
-
-    if (angleRange) {
-      queryBuilder.andWhere("fitting.angleRange = :angleRange", { angleRange });
-    }
-
-    const fitting = await queryBuilder.getOne();
+    const fitting = await this.sabs719Repository.findByTypeAndDiameter(
+      fittingType,
+      nominalDiameterMm,
+      angleRange,
+    );
 
     if (!fitting) {
       throw new NotFoundException(
@@ -105,51 +83,22 @@ export class FittingService {
 
   async getAvailableFittingTypes(standard: FittingStandard) {
     if (standard === FittingStandard.SABS62) {
-      const types = await this.sabs62Repository
-        .createQueryBuilder("fitting")
-        .select("DISTINCT fitting.fittingType", "fittingType")
-        .getRawMany();
-      return types.map((t) => t.fittingType);
+      return this.sabs62Repository.distinctFittingTypes();
     } else {
-      const types = await this.sabs719Repository
-        .createQueryBuilder("fitting")
-        .select("DISTINCT fitting.fittingType", "fittingType")
-        .getRawMany();
-      return types.map((t) => t.fittingType);
+      return this.sabs719Repository.distinctFittingTypes();
     }
   }
 
   async getAvailableSizes(standard: FittingStandard, fittingType: FittingType) {
     if (standard === FittingStandard.SABS62) {
-      const sizes = await this.sabs62Repository
-        .createQueryBuilder("fitting")
-        .select("DISTINCT fitting.nominalDiameterMm", "nominalDiameterMm")
-        .where("fitting.fittingType = :fittingType", { fittingType })
-        .orderBy("fitting.nominalDiameterMm", "ASC")
-        .getRawMany();
-      return sizes.map((s) => parseFloat(s.nominalDiameterMm));
+      return this.sabs62Repository.distinctSizes(fittingType);
     } else {
-      const sizes = await this.sabs719Repository
-        .createQueryBuilder("fitting")
-        .select("DISTINCT fitting.nominalDiameterMm", "nominalDiameterMm")
-        .where("fitting.fittingType = :fittingType", { fittingType })
-        .orderBy("fitting.nominalDiameterMm", "ASC")
-        .getRawMany();
-      return sizes.map((s) => parseFloat(s.nominalDiameterMm));
+      return this.sabs719Repository.distinctSizes(fittingType);
     }
   }
 
   async getAvailableAngleRanges(fittingType: FittingType, nominalDiameterMm: number) {
-    const angleRanges = await this.sabs62Repository
-      .createQueryBuilder("fitting")
-      .select("DISTINCT fitting.angleRange", "angleRange")
-      .where("fitting.fittingType = :fittingType", { fittingType })
-      .andWhere("fitting.nominalDiameterMm = :nominalDiameterMm", {
-        nominalDiameterMm,
-      })
-      .andWhere("fitting.angleRange IS NOT NULL")
-      .getRawMany();
-    return angleRanges.map((a) => a.angleRange).filter(Boolean);
+    return this.sabs62Repository.distinctAngleRanges(fittingType, nominalDiameterMm);
   }
 
   async calculateFitting(dto: CalculateFittingDto): Promise<FittingCalculationResultDto> {
@@ -182,9 +131,7 @@ export class FittingService {
     // Get steel specification
     let steelSpec: SteelSpecification | null = null;
     if (dto.steelSpecificationId) {
-      steelSpec = await this.steelSpecRepository.findOne({
-        where: { id: dto.steelSpecificationId },
-      });
+      steelSpec = await this.steelSpecRepository.findById(dto.steelSpecificationId);
       if (!steelSpec) {
         throw new NotFoundException(
           `Steel specification with ID ${dto.steelSpecificationId} not found`,
@@ -216,16 +163,11 @@ export class FittingService {
     // Find pipe dimension trying multiple schedule formats
     let pipeDimension: PipeDimension | null = null;
     for (const scheduleFormat of scheduleFormats) {
-      pipeDimension = await this.pipeDimensionRepository.findOne({
-        where: {
-          nominalOutsideDiameter: {
-            nominal_diameter_mm: dto.nominalDiameterMm,
-          },
-          schedule_designation: scheduleFormat,
-          ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
-        },
-        relations: ["nominalOutsideDiameter", "steelSpecification"],
-      });
+      pipeDimension = await this.pipeDimensionRepository.findByNominalDiameterScheduleAndSteel(
+        dto.nominalDiameterMm,
+        scheduleFormat,
+        steelSpec?.id,
+      );
       if (pipeDimension) break;
     }
 
@@ -236,9 +178,7 @@ export class FittingService {
     }
 
     // Get NB-NPS lookup for outside diameter
-    const nbNpsLookup = await this.nbNpsLookupRepository.findOne({
-      where: { nb_mm: dto.nominalDiameterMm },
-    });
+    const nbNpsLookup = await this.nbNpsLookupRepository.findByNbMm(dto.nominalDiameterMm);
 
     if (!nbNpsLookup) {
       throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`);
@@ -365,16 +305,12 @@ export class FittingService {
 
     if (dto.flangeStandardId && dto.flangePressureClassId) {
       try {
-        const flangeDimension = await this.flangeDimensionRepository.findOne({
-          where: {
-            nominalOutsideDiameter: {
-              nominal_diameter_mm: dto.nominalDiameterMm,
-            },
-            standard: { id: dto.flangeStandardId },
-            pressureClass: { id: dto.flangePressureClassId },
-          },
-          relations: ["bolt", "nominalOutsideDiameter"],
-        });
+        const flangeDimension =
+          await this.flangeDimensionRepository.findByNominalDiameterStandardAndPressureClassWithBolt(
+            dto.nominalDiameterMm,
+            dto.flangeStandardId,
+            dto.flangePressureClassId,
+          );
 
         if (flangeDimension) {
           totalFlangeWeight = numberOfFlanges * flangeDimension.mass_kg;
@@ -382,23 +318,17 @@ export class FittingService {
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
 
-            const boltMass = await this.boltMassRepository
-              .createQueryBuilder("bm")
-              .where("bm.bolt = :boltId", { boltId: flangeDimension.bolt.id })
-              .andWhere("bm.length_mm >= :minLength", {
-                minLength: estimatedBoltLengthMm,
-              })
-              .orderBy("bm.length_mm", "ASC")
-              .getOne();
+            const boltMass = await this.boltMassRepository.findClosestByBoltAndMinLength(
+              flangeDimension.bolt.id,
+              estimatedBoltLengthMm,
+            );
 
             if (boltMass) {
               const totalBolts = numberOfFlanges * flangeDimension.num_holes;
               totalBoltWeight = totalBolts * boltMass.mass_kg;
             }
 
-            const nutMass = await this.nutMassRepository.findOne({
-              where: { bolt: { id: flangeDimension.bolt.id } },
-            });
+            const nutMass = await this.nutMassRepository.findByBoltId(flangeDimension.bolt.id);
 
             if (nutMass) {
               const totalNuts = numberOfFlanges * flangeDimension.num_holes;
@@ -457,9 +387,7 @@ export class FittingService {
     );
 
     // Get NB-NPS lookup for outside diameter
-    const nbNpsLookup = await this.nbNpsLookupRepository.findOne({
-      where: { nb_mm: dto.nominalDiameterMm },
-    });
+    const nbNpsLookup = await this.nbNpsLookupRepository.findByNbMm(dto.nominalDiameterMm);
 
     if (!nbNpsLookup) {
       throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`);
@@ -521,20 +449,14 @@ export class FittingService {
 
       const normalizedSchedule = normalizeScheduleNumber(dto.scheduleNumber);
 
-      const steelSpec = await this.steelSpecRepository.findOne({
-        where: { id: dto.steelSpecificationId },
-      });
+      const steelSpec = await this.steelSpecRepository.findById(dto.steelSpecificationId);
 
-      const pipeDimension = await this.pipeDimensionRepository.findOne({
-        where: {
-          nominalOutsideDiameter: {
-            nominal_diameter_mm: dto.nominalDiameterMm,
-          },
-          schedule_designation: normalizedSchedule,
-          ...(steelSpec && { steelSpecification: { id: steelSpec.id } }),
-        },
-        relations: ["nominalOutsideDiameter", "steelSpecification"],
-      });
+      const pipeDimension =
+        await this.pipeDimensionRepository.findByNominalDiameterScheduleAndSteel(
+          dto.nominalDiameterMm,
+          normalizedSchedule,
+          steelSpec?.id,
+        );
 
       if (pipeDimension) {
         let pipeWeightPerMeter: number;
@@ -583,16 +505,12 @@ export class FittingService {
 
     if (dto.flangeStandardId && dto.flangePressureClassId) {
       try {
-        const flangeDimension = await this.flangeDimensionRepository.findOne({
-          where: {
-            nominalOutsideDiameter: {
-              nominal_diameter_mm: dto.nominalDiameterMm,
-            },
-            standard: { id: dto.flangeStandardId },
-            pressureClass: { id: dto.flangePressureClassId },
-          },
-          relations: ["bolt", "nominalOutsideDiameter"],
-        });
+        const flangeDimension =
+          await this.flangeDimensionRepository.findByNominalDiameterStandardAndPressureClassWithBolt(
+            dto.nominalDiameterMm,
+            dto.flangeStandardId,
+            dto.flangePressureClassId,
+          );
 
         if (flangeDimension) {
           totalFlangeWeight = numberOfFlanges * flangeDimension.mass_kg;
@@ -600,23 +518,17 @@ export class FittingService {
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
 
-            const boltMass = await this.boltMassRepository
-              .createQueryBuilder("bm")
-              .where("bm.bolt = :boltId", { boltId: flangeDimension.bolt.id })
-              .andWhere("bm.length_mm >= :minLength", {
-                minLength: estimatedBoltLengthMm,
-              })
-              .orderBy("bm.length_mm", "ASC")
-              .getOne();
+            const boltMass = await this.boltMassRepository.findClosestByBoltAndMinLength(
+              flangeDimension.bolt.id,
+              estimatedBoltLengthMm,
+            );
 
             if (boltMass) {
               const totalBolts = numberOfFlanges * flangeDimension.num_holes;
               totalBoltWeight = totalBolts * boltMass.mass_kg;
             }
 
-            const nutMass = await this.nutMassRepository.findOne({
-              where: { bolt: { id: flangeDimension.bolt.id } },
-            });
+            const nutMass = await this.nutMassRepository.findByBoltId(flangeDimension.bolt.id);
 
             if (nutMass) {
               const totalNuts = numberOfFlanges * flangeDimension.num_holes;

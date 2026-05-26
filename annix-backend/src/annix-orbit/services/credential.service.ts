@@ -5,14 +5,14 @@ import {
 } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, In, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { CvCredential } from "../entities/cv-credential.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CvCredentialRepository } from "../repositories/cv-credential.repository";
 
 export interface UpsertCredentialInput {
   credentialType: CredentialType;
@@ -30,10 +30,8 @@ export class CredentialService {
   private readonly logger = new Logger(CredentialService.name);
 
   constructor(
-    @InjectRepository(CvCredential)
-    private readonly credentialRepo: Repository<CvCredential>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
+    private readonly credentialRepo: CvCredentialRepository,
+    private readonly candidateRepo: CandidateRepository,
     private readonly emailService: EmailService,
     private readonly aiChatService: AiChatService,
   ) {}
@@ -41,11 +39,7 @@ export class CredentialService {
   async listForSeeker(email: string | null): Promise<CvCredential[]> {
     const candidates = await this.candidatesForEmail(email);
     if (candidates.length === 0) return [];
-    return this.credentialRepo
-      .createQueryBuilder("c")
-      .where("c.candidate_id IN (:...ids)", { ids: candidates.map((cand) => cand.id) })
-      .orderBy("c.expires_at", "ASC", "NULLS LAST")
-      .getMany();
+    return this.credentialRepo.listForCandidates(candidates.map((cand) => cand.id));
   }
 
   async createForSeeker(
@@ -56,7 +50,7 @@ export class CredentialService {
     const candidates = await this.candidatesForEmail(email);
     if (candidates.length === 0) return null;
     const target = candidates[0];
-    const created = this.credentialRepo.create({
+    return this.credentialRepo.create({
       candidateId: target.id,
       credentialType: input.credentialType,
       issuedAt: input.issuedAt,
@@ -65,7 +59,6 @@ export class CredentialService {
       documentPath: input.documentPath,
       notes: input.notes ? input.notes.trim() : null,
     });
-    return this.credentialRepo.save(created);
   }
 
   async updateForSeeker(
@@ -77,7 +70,7 @@ export class CredentialService {
     if (candidates.length === 0) return null;
     const candidateIds = new Set(candidates.map((c) => c.id));
 
-    const existing = await this.credentialRepo.findOne({ where: { id: credentialId } });
+    const existing = await this.credentialRepo.findById(credentialId);
     if (!existing || !candidateIds.has(existing.candidateId)) return null;
 
     if (input.credentialType && CREDENTIAL_TYPES.includes(input.credentialType)) {
@@ -98,9 +91,9 @@ export class CredentialService {
     const candidates = await this.candidatesForEmail(email);
     if (candidates.length === 0) return false;
     const candidateIds = new Set(candidates.map((c) => c.id));
-    const existing = await this.credentialRepo.findOne({ where: { id: credentialId } });
+    const existing = await this.credentialRepo.findById(credentialId);
     if (!existing || !candidateIds.has(existing.candidateId)) return false;
-    await this.credentialRepo.delete(existing.id);
+    await this.credentialRepo.deleteById(existing.id);
     return true;
   }
 
@@ -119,9 +112,7 @@ export class CredentialService {
       const dayEnd = target.toISODate();
       if (!dayStart || !dayEnd) continue;
 
-      const expiring = await this.credentialRepo.find({
-        where: { expiresAt: Between(dayStart, dayEnd) },
-      });
+      const expiring = await this.credentialRepo.expiringBetween(dayStart, dayEnd);
       if (expiring.length === 0) continue;
 
       const byCandidate = new Map<number, CvCredential[]>();
@@ -132,7 +123,9 @@ export class CredentialService {
       }
 
       const candidateIds = [...byCandidate.keys()];
-      const candidates = await this.candidateRepo.find({ where: { id: In(candidateIds) } });
+      const candidates = await Promise.all(
+        candidateIds.map((id) => this.candidateRepo.findById(id)),
+      ).then((rows) => rows.filter((c): c is Candidate => c !== null));
 
       for (const candidate of candidates) {
         if (!candidate.email) continue;
@@ -213,7 +206,7 @@ export class CredentialService {
       return { created: 0, credentials: [], reason: "ai-failed" };
     }
 
-    const existing = await this.credentialRepo.find({ where: { candidateId: target.id } });
+    const existing = await this.credentialRepo.findByCandidate(target.id);
     const fresh = extracted.filter(
       (e) =>
         !existing.some(
@@ -228,17 +221,15 @@ export class CredentialService {
 
     const saved = await Promise.all(
       fresh.map((entry) =>
-        this.credentialRepo.save(
-          this.credentialRepo.create({
-            candidateId: target.id,
-            credentialType: entry.credentialType,
-            issuedAt: entry.issuedAt,
-            expiresAt: entry.expiresAt,
-            issuingAuthority: entry.issuingAuthority,
-            documentPath: null,
-            notes: "Auto-filled from CV",
-          }),
-        ),
+        this.credentialRepo.create({
+          candidateId: target.id,
+          credentialType: entry.credentialType,
+          issuedAt: entry.issuedAt,
+          expiresAt: entry.expiresAt,
+          issuingAuthority: entry.issuingAuthority,
+          documentPath: null,
+          notes: "Auto-filled from CV",
+        }),
       ),
     );
 
@@ -294,7 +285,7 @@ export class CredentialService {
 
   private async candidatesForEmail(email: string | null): Promise<Candidate[]> {
     if (!email) return [];
-    return this.candidateRepo.find({ where: { email } });
+    return this.candidateRepo.findByEmail(email);
   }
 }
 

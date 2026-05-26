@@ -1,9 +1,8 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { isString } from "es-toolkit/compat";
-import { ILike, In, IsNull, Not, Repository } from "typeorm";
-import { SaMine } from "../../mines/entities/sa-mine.entity";
+import { SaMineRepository } from "../../mines/sa-mine.repository";
 import { NixExtraction } from "../entities/nix-extraction.entity";
+import { NixExtractionRepository } from "../nix-extraction.repository";
 import {
   type CreateMineDto,
   type CreateMineResponseDto,
@@ -17,25 +16,17 @@ export class MineLibraryService {
   private readonly logger = new Logger(MineLibraryService.name);
 
   constructor(
-    @InjectRepository(SaMine)
-    private readonly mineRepo: Repository<SaMine>,
-    @InjectRepository(NixExtraction)
-    private readonly extractionRepo: Repository<NixExtraction>,
+    private readonly mineRepo: SaMineRepository,
+    private readonly extractionRepo: NixExtractionRepository,
   ) {}
 
   async listMinesWithExtractions(): Promise<MineSummaryDto[]> {
-    const rows = await this.extractionRepo
-      .createQueryBuilder("e")
-      .select("e.mineId", "mineId")
-      .addSelect("COUNT(e.id)", "extractionCount")
-      .where("e.mineId IS NOT NULL")
-      .groupBy("e.mineId")
-      .getRawMany<{ mineId: number; extractionCount: string }>();
+    const rows = await this.extractionRepo.countExtractionsByMine();
 
     if (rows.length === 0) return [];
 
     const mineIds = rows.map((r) => Number(r.mineId));
-    const mines = await this.mineRepo.findBy({ id: In(mineIds) });
+    const mines = await this.mineRepo.findByIds(mineIds);
     const countById = new Map(rows.map((r) => [Number(r.mineId), Number(r.extractionCount)]));
 
     return mines
@@ -50,24 +41,11 @@ export class MineLibraryService {
   }
 
   async listMines(query: string | null): Promise<MineSummaryDto[]> {
-    const where = query
-      ? [{ mineName: ILike(`%${query}%`) }, { operatingCompany: ILike(`%${query}%`) }]
-      : undefined;
-    const mines = await this.mineRepo.find({
-      where,
-      order: { mineName: "ASC" },
-      take: 50,
-    });
+    const mines = await this.mineRepo.searchByName(query);
 
     if (mines.length === 0) return [];
 
-    const counts = await this.extractionRepo
-      .createQueryBuilder("e")
-      .select("e.mineId", "mineId")
-      .addSelect("COUNT(e.id)", "extractionCount")
-      .where("e.mineId IN (:...ids)", { ids: mines.map((m) => m.id) })
-      .groupBy("e.mineId")
-      .getRawMany<{ mineId: number; extractionCount: string }>();
+    const counts = await this.extractionRepo.countExtractionsForMines(mines.map((m) => m.id));
     const countById = new Map(counts.map((r) => [Number(r.mineId), Number(r.extractionCount)]));
 
     return mines.map((m) => ({
@@ -80,14 +58,10 @@ export class MineLibraryService {
   }
 
   async listExtractionsForMine(mineId: number): Promise<MineExtractionRowDto[]> {
-    const mine = await this.mineRepo.findOne({ where: { id: mineId } });
+    const mine = await this.mineRepo.findById(mineId);
     if (!mine) throw new NotFoundException(`Mine ${mineId} not found`);
 
-    const extractions = await this.extractionRepo.find({
-      where: { mineId },
-      order: { createdAt: "DESC" },
-      take: 200,
-    });
+    const extractions = await this.extractionRepo.findRecentForMine(mineId);
 
     return extractions.map((e) => this.toExtractionRow(e));
   }
@@ -97,36 +71,7 @@ export class MineLibraryService {
     mineId: number | null,
     limit: number,
   ): Promise<DocNumberSearchRowDto[]> {
-    const qb = this.extractionRepo
-      .createQueryBuilder("e")
-      .leftJoin(SaMine, "m", "m.id = e.mineId")
-      .where("e.documentNumber IS NOT NULL")
-      .andWhere("e.documentNumber ILIKE :q", { q: `${query}%` })
-      .orderBy("e.createdAt", "DESC")
-      .take(limit)
-      .select([
-        "e.id AS extraction_id",
-        'e."documentNumber" AS document_number',
-        'e."documentRevision" AS document_revision',
-        "e.extracted_data AS extracted_data",
-        "e.mine_id AS mine_id",
-        "m.mine_name AS mine_name",
-        "e.created_at AS created_at",
-      ]);
-
-    if (mineId !== null) {
-      qb.andWhere("e.mineId = :mineId", { mineId });
-    }
-
-    const rows = await qb.getRawMany<{
-      extraction_id: number;
-      document_number: string;
-      document_revision: string | null;
-      extracted_data: Record<string, unknown> | null;
-      mine_id: number | null;
-      mine_name: string | null;
-      created_at: Date;
-    }>();
+    const rows = await this.extractionRepo.searchByDocNumber(query, mineId, limit);
 
     return rows.map((r) => ({
       extractionId: Number(r.extraction_id),
@@ -140,28 +85,23 @@ export class MineLibraryService {
   }
 
   async createMine(dto: CreateMineDto): Promise<CreateMineResponseDto> {
-    const exists = await this.mineRepo.findOne({
-      where: { mineName: ILike(dto.mineName), operatingCompany: ILike(dto.operatingCompany) },
-    });
+    const exists = await this.mineRepo.findByNameAndCompany(dto.mineName, dto.operatingCompany);
     if (exists) {
       throw new BadRequestException(
         `Mine '${dto.mineName}' (${dto.operatingCompany}) already exists; use mine #${exists.id}.`,
       );
     }
 
-    const mine = this.mineRepo.create({
+    const saved = await this.mineRepo.createMine({
       mineName: dto.mineName,
       operatingCompany: dto.operatingCompany,
       commodityId: dto.commodityId ?? 1,
       province: dto.province ?? "Unknown",
     });
-    const saved = await this.mineRepo.save(mine);
 
     let retagged: number | null = null;
     if (dto.retagExtractionId) {
-      const extraction = await this.extractionRepo.findOne({
-        where: { id: dto.retagExtractionId },
-      });
+      const extraction = await this.extractionRepo.findById(dto.retagExtractionId);
       if (!extraction) {
         throw new NotFoundException(`Extraction ${dto.retagExtractionId} not found.`);
       }
@@ -189,10 +129,10 @@ export class MineLibraryService {
   }
 
   async retagExtraction(extractionId: number, mineId: number): Promise<MineExtractionRowDto> {
-    const extraction = await this.extractionRepo.findOne({ where: { id: extractionId } });
+    const extraction = await this.extractionRepo.findById(extractionId);
     if (!extraction) throw new NotFoundException(`Extraction ${extractionId} not found.`);
 
-    const mine = await this.mineRepo.findOne({ where: { id: mineId } });
+    const mine = await this.mineRepo.findById(mineId);
     if (!mine) throw new NotFoundException(`Mine ${mineId} not found.`);
 
     extraction.mineId = mineId;
@@ -214,25 +154,13 @@ export class MineLibraryService {
     documentNumber: string,
     mineId: number | null,
   ): Promise<MineExtractionRowDto[]> {
-    const where: Record<string, unknown> = { documentNumber };
-    if (mineId !== null) where.mineId = mineId;
-    const rows = await this.extractionRepo.find({
-      where,
-      order: { isLatestRevision: "DESC", createdAt: "DESC" },
-    });
+    const rows = await this.extractionRepo.findRevisionsForDocument(documentNumber, mineId);
     return rows.map((e) => this.toExtractionRow(e));
   }
 
   async clearMine(extractionId: number): Promise<void> {
-    const result = await this.extractionRepo.update(
-      { id: extractionId, mineId: Not(IsNull()) },
-      {
-        mineId: undefined,
-        mineInferenceConfidence: undefined,
-        mineInferenceReason: "manual_clear",
-      },
-    );
-    if ((result.affected ?? 0) === 0) {
+    const affected = await this.extractionRepo.clearMineAttachment(extractionId);
+    if (affected === 0) {
       throw new NotFoundException(`Extraction ${extractionId} not found or has no mine attached.`);
     }
   }

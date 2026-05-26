@@ -1,18 +1,19 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { EmailService } from "../email/email.service";
 import { STORAGE_SERVICE } from "../storage/storage.interface";
 import { AuCocReadinessStatus, AuCocStatus, RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
-import { RubberCompany } from "./entities/rubber-company.entity";
-import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
-import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
-import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
-import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
-import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
-import { RubberRollStock } from "./entities/rubber-roll-stock.entity";
-import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
+import { RubberAuCocItemRepository } from "./repositories/rubber-au-coc-item.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberCompoundBatchRepository } from "./repositories/rubber-compound-batch.repository";
+import { RubberCompoundQualityConfigRepository } from "./repositories/rubber-compound-quality-config.repository";
+import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
+import { RubberDeliveryNoteItemRepository } from "./repositories/rubber-delivery-note-item.repository";
+import { RubberRollRejectionRepository } from "./repositories/rubber-roll-rejection.repository";
+import { RubberRollStockRepository } from "./repositories/rubber-roll-stock.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 import { RubberAuCocService } from "./rubber-au-coc.service";
 
 describe("RubberAuCocService", () => {
@@ -21,11 +22,43 @@ describe("RubberAuCocService", () => {
   const mockRepo = () => ({
     find: jest.fn(),
     findOne: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     count: jest.fn(),
     save: jest.fn((entity) => Promise.resolve(entity)),
+    saveMany: jest.fn((entities) => Promise.resolve(entities)),
     update: jest.fn(),
+    updateById: jest.fn(),
     create: jest.fn((data: unknown) => data),
+    build: jest.fn((data: unknown) => data),
     createQueryBuilder: jest.fn(),
+    deleteById: jest.fn(),
+    findWithItemCounts: jest.fn(),
+    findByStatusesOrderedById: jest.fn(),
+    findByStatusWithCustomerOrderedByCocNumber: jest.fn(),
+    findByStatus: jest.fn(),
+    findRefsByDeliveryNoteIds: jest.fn(),
+    nextCocSequence: jest.fn(),
+    findByAuCocIdWithRolls: jest.fn(),
+    deleteByAuCocId: jest.fn(),
+    findByDeliveryNoteId: jest.fn(),
+    findSiblingLinkedDeliveryNote: jest.fn(),
+    findManyByIdsWithCoding: jest.fn(),
+    setAuCocIdForRollIds: jest.fn(),
+    clearAuCocId: jest.fn(),
+    findByIds: jest.fn(),
+    findByIdsWithSupplierCocOrdered: jest.fn(() => Promise.resolve([])),
+    countBySupplierCocId: jest.fn(() => Promise.resolve(0)),
+    findBySupplierCocIdOrdered: jest.fn(() => Promise.resolve([])),
+    findCompoundersByCompoundCodes: jest.fn(() => Promise.resolve([])),
+    findByCocType: jest.fn(() => Promise.resolve([])),
+    findByCocTypeWithCompany: jest.fn(() => Promise.resolve([])),
+    findOneByCompoundCode: jest.fn(),
+    findReplacementRefsByCocIds: jest.fn(() => Promise.resolve([])),
+    findOneByCocTypeAndOrderNumberLatest: jest.fn(),
+    findWithOrderNumberOrderedByIdDesc: jest.fn(() => Promise.resolve([])),
   });
 
   const auCocRepo = mockRepo();
@@ -53,19 +86,19 @@ describe("RubberAuCocService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberAuCocService,
-        { provide: getRepositoryToken(RubberAuCoc), useValue: auCocRepo },
-        { provide: getRepositoryToken(RubberAuCocItem), useValue: auCocItemRepo },
-        { provide: getRepositoryToken(RubberRollStock), useValue: rollStockRepo },
-        { provide: getRepositoryToken(RubberCompoundBatch), useValue: compoundBatchRepo },
-        { provide: getRepositoryToken(RubberCompany), useValue: companyRepo },
+        { provide: RubberAuCocRepository, useValue: auCocRepo },
+        { provide: RubberAuCocItemRepository, useValue: auCocItemRepo },
+        { provide: RubberRollStockRepository, useValue: rollStockRepo },
+        { provide: RubberCompoundBatchRepository, useValue: compoundBatchRepo },
+        { provide: RubberCompanyRepository, useValue: companyRepo },
         {
-          provide: getRepositoryToken(RubberCompoundQualityConfig),
+          provide: RubberCompoundQualityConfigRepository,
           useValue: qualityConfigRepo,
         },
-        { provide: getRepositoryToken(RubberSupplierCoc), useValue: supplierCocRepo },
-        { provide: getRepositoryToken(RubberDeliveryNote), useValue: deliveryNoteRepo },
-        { provide: getRepositoryToken(RubberDeliveryNoteItem), useValue: deliveryNoteItemRepo },
-        { provide: getRepositoryToken(RubberRollRejection), useValue: rollRejectionRepo },
+        { provide: RubberSupplierCocRepository, useValue: supplierCocRepo },
+        { provide: RubberDeliveryNoteRepository, useValue: deliveryNoteRepo },
+        { provide: RubberDeliveryNoteItemRepository, useValue: deliveryNoteItemRepo },
+        { provide: RubberRollRejectionRepository, useValue: rollRejectionRepo },
         { provide: STORAGE_SERVICE, useValue: storageService },
         { provide: ConfigService, useValue: configService },
         { provide: EmailService, useValue: emailService },
@@ -101,8 +134,8 @@ describe("RubberAuCocService", () => {
 
     it("does NOT save generatedPdfPath when storage upload throws (orphan path that produced #249)", async () => {
       const cocFixture = buildCocFixture();
-      auCocRepo.findOne.mockResolvedValue(cocFixture);
-      auCocItemRepo.find.mockResolvedValue([buildItemFixture()]);
+      auCocRepo.findById.mockResolvedValue(cocFixture);
+      auCocItemRepo.findByAuCocIdWithRolls.mockResolvedValue([buildItemFixture()]);
 
       const fakePreparedData = { batches: [], graphPdfPath: null };
       jest.spyOn<any, any>(service, "preparePdfData").mockResolvedValue(fakePreparedData);
@@ -123,8 +156,8 @@ describe("RubberAuCocService", () => {
 
     it("saves the storage upload's actual path on success — never assumes au-cocs/{filename} without confirming", async () => {
       const cocFixture = buildCocFixture();
-      auCocRepo.findOne.mockResolvedValue(cocFixture);
-      auCocItemRepo.find.mockResolvedValue([buildItemFixture()]);
+      auCocRepo.findById.mockResolvedValue(cocFixture);
+      auCocItemRepo.findByAuCocIdWithRolls.mockResolvedValue([buildItemFixture()]);
 
       const fakePreparedData = { batches: [], graphPdfPath: null };
       jest.spyOn<any, any>(service, "preparePdfData").mockResolvedValue(fakePreparedData);

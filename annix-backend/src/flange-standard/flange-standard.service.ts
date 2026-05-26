@@ -1,10 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { BaseCrudService } from "../lib/base-crud.service";
 import { CreateFlangeStandardDto } from "./dto/create-flange-standard.dto";
 import { UpdateFlangeStandardDto } from "./dto/update-flange-standard.dto";
 import { FlangeStandard } from "./entities/flange-standard.entity";
+import { FlangeStandardRepository } from "./flange-standard.repository";
 
 @Injectable()
 export class FlangeStandardService extends BaseCrudService<
@@ -12,11 +11,8 @@ export class FlangeStandardService extends BaseCrudService<
   CreateFlangeStandardDto,
   UpdateFlangeStandardDto
 > {
-  constructor(
-    @InjectRepository(FlangeStandard)
-    standardRepo: Repository<FlangeStandard>,
-  ) {
-    super(standardRepo, { entityName: "Flange standard" });
+  constructor(repository: FlangeStandardRepository) {
+    super(repository, { entityName: "Flange standard" });
   }
 
   async create(dto: CreateFlangeStandardDto): Promise<FlangeStandard> {

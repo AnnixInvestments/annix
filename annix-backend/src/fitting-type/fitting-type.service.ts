@@ -1,10 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { BaseCrudService } from "../lib/base-crud.service";
 import { CreateFittingTypeDto } from "./dto/create-fitting-type.dto";
 import { UpdateFittingTypeDto } from "./dto/update-fitting-type.dto";
 import { FittingType } from "./entities/fitting-type.entity";
+import { FittingTypeRepository } from "./fitting-type.repository";
 
 @Injectable()
 export class FittingTypeService extends BaseCrudService<
@@ -12,11 +11,8 @@ export class FittingTypeService extends BaseCrudService<
   CreateFittingTypeDto,
   UpdateFittingTypeDto
 > {
-  constructor(
-    @InjectRepository(FittingType)
-    fittingTypeRepo: Repository<FittingType>,
-  ) {
-    super(fittingTypeRepo, { entityName: "FittingType", defaultRelations: ["fittings"] });
+  constructor(repository: FittingTypeRepository) {
+    super(repository, { entityName: "FittingType", defaultRelations: ["fittings"] });
   }
 
   async create(dto: CreateFittingTypeDto): Promise<FittingType> {

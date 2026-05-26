@@ -4,10 +4,10 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, LessThan, Not, Repository } from "typeorm";
 import { now } from "../lib/datetime";
-import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
+import { ConversationRepository } from "./conversation.repository";
+import { ConversationParticipantRepository } from "./conversation-participant.repository";
 import {
   AttachmentDto,
   ConversationDetailDto,
@@ -30,24 +30,21 @@ import {
   ParticipantRole,
   RelatedEntityType,
 } from "./entities";
+import { MessageRepository } from "./message.repository";
+import { MessageAttachmentRepository } from "./message-attachment.repository";
 import { MessageNotificationService } from "./message-notification.service";
+import { MessageReadReceiptRepository } from "./message-read-receipt.repository";
 import { ResponseMetricsService } from "./response-metrics.service";
 
 @Injectable()
 export class MessagingService {
   constructor(
-    @InjectRepository(Conversation)
-    private readonly conversationRepo: Repository<Conversation>,
-    @InjectRepository(ConversationParticipant)
-    private readonly participantRepo: Repository<ConversationParticipant>,
-    @InjectRepository(Message)
-    private readonly messageRepo: Repository<Message>,
-    @InjectRepository(MessageAttachment)
-    private readonly attachmentRepo: Repository<MessageAttachment>,
-    @InjectRepository(MessageReadReceipt)
-    private readonly receiptRepo: Repository<MessageReadReceipt>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly conversationRepo: ConversationRepository,
+    private readonly participantRepo: ConversationParticipantRepository,
+    private readonly messageRepo: MessageRepository,
+    private readonly attachmentRepo: MessageAttachmentRepository,
+    private readonly receiptRepo: MessageReadReceiptRepository,
+    private readonly userRepo: UserRepository,
     private readonly metricsService: ResponseMetricsService,
     private readonly notificationService: MessageNotificationService,
   ) {}
@@ -58,15 +55,13 @@ export class MessagingService {
   ): Promise<ConversationDetailDto> {
     const allParticipantIds = [...new Set([creatorId, ...dto.participantIds])];
 
-    const users = await this.userRepo.find({
-      where: { id: In(allParticipantIds) },
-    });
+    const users = await this.userRepo.findByIds(allParticipantIds);
 
     if (users.length !== allParticipantIds.length) {
       throw new BadRequestException("One or more participant IDs are invalid");
     }
 
-    const conversation = this.conversationRepo.create({
+    const savedConversation = await this.conversationRepo.create({
       subject: dto.subject,
       conversationType: dto.conversationType || ConversationType.DIRECT,
       relatedEntityType: dto.relatedEntityType || RelatedEntityType.GENERAL,
@@ -75,8 +70,6 @@ export class MessagingService {
       lastMessageAt: null,
       isArchived: false,
     });
-
-    const savedConversation = await this.conversationRepo.save(conversation);
 
     const participants = allParticipantIds.map((userId) =>
       this.participantRepo.create({
@@ -88,7 +81,7 @@ export class MessagingService {
       }),
     );
 
-    await this.participantRepo.save(participants);
+    await Promise.all(participants);
 
     if (dto.initialMessage) {
       await this.sendMessage(savedConversation.id, creatorId, {
@@ -104,17 +97,16 @@ export class MessagingService {
     senderId: number,
     dto: SendMessageDto,
   ): Promise<MessageDto> {
-    const participant = await this.participantRepo.findOne({
-      where: { conversationId, userId: senderId, isActive: true },
-    });
+    const participant = await this.participantRepo.findActiveByConversationAndUser(
+      conversationId,
+      senderId,
+    );
 
     if (!participant) {
       throw new ForbiddenException("You are not a participant in this conversation");
     }
 
-    const conversation = await this.conversationRepo.findOne({
-      where: { id: conversationId },
-    });
+    const conversation = await this.conversationRepo.findById(conversationId);
 
     if (!conversation) {
       throw new NotFoundException("Conversation not found");
@@ -124,12 +116,12 @@ export class MessagingService {
       throw new BadRequestException("Cannot send messages to archived conversation");
     }
 
-    const sender = await this.userRepo.findOne({ where: { id: senderId } });
+    const sender = await this.userRepo.findById(senderId);
     if (!sender) {
       throw new NotFoundException("Sender not found");
     }
 
-    const message = this.messageRepo.create({
+    const savedMessage = await this.messageRepo.create({
       conversationId,
       senderId,
       content: dto.content,
@@ -139,27 +131,24 @@ export class MessagingService {
       isDeleted: false,
     });
 
-    const savedMessage = await this.messageRepo.save(message);
-
     conversation.lastMessageAt = savedMessage.sentAt;
     await this.conversationRepo.save(conversation);
 
     participant.lastReadAt = savedMessage.sentAt;
     await this.participantRepo.save(participant);
 
-    const selfReceipt = this.receiptRepo.create({
+    await this.receiptRepo.create({
       messageId: savedMessage.id,
       userId: senderId,
       readAt: now().toJSDate(),
     });
-    await this.receiptRepo.save(selfReceipt);
 
     await this.metricsService.recordResponse(savedMessage);
 
-    const otherParticipants = await this.participantRepo.find({
-      where: { conversationId, isActive: true, userId: Not(senderId) },
-      relations: ["user", "user.roles"],
-    });
+    const otherParticipants = await this.participantRepo.findActiveByConversationExcludingUser(
+      conversationId,
+      senderId,
+    );
 
     await this.notificationService.notifyNewMessage(
       savedMessage,
@@ -179,42 +168,19 @@ export class MessagingService {
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const participations = await this.participantRepo.find({
-      where: { userId, isActive: true },
-      select: ["conversationId"],
-    });
-
+    const participations = await this.participantRepo.findActiveByUser(userId);
     const conversationIds = participations.map((p) => p.conversationId);
 
     if (conversationIds.length === 0) {
       return { conversations: [], total: 0 };
     }
 
-    const queryBuilder = this.conversationRepo
-      .createQueryBuilder("c")
-      .where("c.id IN (:...ids)", { ids: conversationIds });
-
-    if (filters.isArchived !== undefined) {
-      queryBuilder.andWhere("c.isArchived = :isArchived", {
-        isArchived: filters.isArchived,
-      });
-    }
-
-    if (filters.relatedEntityType) {
-      queryBuilder.andWhere("c.relatedEntityType = :relatedEntityType", {
-        relatedEntityType: filters.relatedEntityType,
-      });
-    }
-
-    if (filters.relatedEntityId) {
-      queryBuilder.andWhere("c.relatedEntityId = :relatedEntityId", {
-        relatedEntityId: filters.relatedEntityId,
-      });
-    }
-
-    queryBuilder.orderBy("c.lastMessageAt", "DESC", "NULLS LAST").skip(skip).take(limit);
-
-    const [conversations, total] = await queryBuilder.getManyAndCount();
+    const { conversations, total } = await this.conversationRepo.findInIds(
+      conversationIds,
+      filters,
+      skip,
+      limit,
+    );
 
     const summaries = await Promise.all(
       conversations.map((c) => this.conversationToSummary(c, userId)),
@@ -230,29 +196,7 @@ export class MessagingService {
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.conversationRepo.createQueryBuilder("c");
-
-    if (filters.isArchived !== undefined) {
-      queryBuilder.andWhere("c.isArchived = :isArchived", {
-        isArchived: filters.isArchived,
-      });
-    }
-
-    if (filters.relatedEntityType) {
-      queryBuilder.andWhere("c.relatedEntityType = :relatedEntityType", {
-        relatedEntityType: filters.relatedEntityType,
-      });
-    }
-
-    if (filters.relatedEntityId) {
-      queryBuilder.andWhere("c.relatedEntityId = :relatedEntityId", {
-        relatedEntityId: filters.relatedEntityId,
-      });
-    }
-
-    queryBuilder.orderBy("c.lastMessageAt", "DESC", "NULLS LAST").skip(skip).take(limit);
-
-    const [conversations, total] = await queryBuilder.getManyAndCount();
+    const { conversations, total } = await this.conversationRepo.findFiltered(filters, skip, limit);
 
     const summaries = await Promise.all(
       conversations.map((c) => this.conversationToSummaryAdmin(c)),
@@ -262,10 +206,10 @@ export class MessagingService {
   }
 
   async conversationDetailForAdmin(conversationId: number): Promise<ConversationDetailDto> {
-    const conversation = await this.conversationRepo.findOne({
-      where: { id: conversationId },
-      relations: ["participants", "participants.user"],
-    });
+    const conversation = await this.conversationRepo.findById(conversationId, [
+      "participants",
+      "participants.user",
+    ]);
 
     if (!conversation) {
       throw new NotFoundException("Conversation not found");
@@ -290,42 +234,18 @@ export class MessagingService {
     conversationId: number,
     pagination: MessagePaginationDto,
   ): Promise<{ messages: MessageDto[]; hasMore: boolean }> {
-    const conversation = await this.conversationRepo.findOne({
-      where: { id: conversationId },
-    });
+    const conversation = await this.conversationRepo.findById(conversationId);
 
     if (!conversation) {
       throw new NotFoundException("Conversation not found");
     }
 
-    const limit = pagination.limit || 50;
+    const { messages, hasMore } = await this.messageRepo.findPageForConversation(
+      conversationId,
+      pagination,
+    );
 
-    const queryBuilder = this.messageRepo
-      .createQueryBuilder("m")
-      .leftJoinAndSelect("m.sender", "sender")
-      .leftJoinAndSelect("m.attachments", "attachments")
-      .leftJoinAndSelect("m.readReceipts", "receipts")
-      .where("m.conversationId = :conversationId", { conversationId })
-      .andWhere("m.isDeleted = false");
-
-    if (pagination.beforeId) {
-      queryBuilder.andWhere("m.id < :beforeId", {
-        beforeId: pagination.beforeId,
-      });
-    }
-
-    if (pagination.afterId) {
-      queryBuilder.andWhere("m.id > :afterId", { afterId: pagination.afterId });
-    }
-
-    queryBuilder.orderBy("m.sentAt", "DESC").take(limit + 1);
-
-    const messages = await queryBuilder.getMany();
-
-    const hasMore = messages.length > limit;
-    const resultMessages = hasMore ? messages.slice(0, limit) : messages;
-
-    const messageDtos = resultMessages
+    const messageDtos = messages
       .map((m) =>
         this.messageToDto(
           m,
@@ -343,16 +263,13 @@ export class MessagingService {
   private async conversationToSummaryAdmin(
     conversation: Conversation,
   ): Promise<ConversationSummaryDto> {
-    const participants = await this.participantRepo.find({
-      where: { conversationId: conversation.id, isActive: true },
-      relations: ["user"],
-    });
+    const participants = await this.participantRepo.findActiveByConversation(conversation.id);
 
     const unreadCount = 0;
 
-    const lastMessage = await this.messageRepo.findOne({
-      where: { conversationId: conversation.id, isDeleted: false },
-      order: { sentAt: "DESC" },
+    const lastMessage = await this.messageRepo.findOneWhere({
+      conversationId: conversation.id,
+      isDeleted: false,
     });
 
     return {
@@ -373,18 +290,19 @@ export class MessagingService {
   }
 
   async conversationDetail(conversationId: number, userId: number): Promise<ConversationDetailDto> {
-    const participant = await this.participantRepo.findOne({
-      where: { conversationId, userId, isActive: true },
-    });
+    const participant = await this.participantRepo.findActiveByConversationAndUser(
+      conversationId,
+      userId,
+    );
 
     if (!participant) {
       throw new ForbiddenException("You are not a participant in this conversation");
     }
 
-    const conversation = await this.conversationRepo.findOne({
-      where: { id: conversationId },
-      relations: ["participants", "participants.user"],
-    });
+    const conversation = await this.conversationRepo.findById(conversationId, [
+      "participants",
+      "participants.user",
+    ]);
 
     if (!conversation) {
       throw new NotFoundException("Conversation not found");
@@ -410,42 +328,21 @@ export class MessagingService {
     userId: number,
     pagination: MessagePaginationDto,
   ): Promise<{ messages: MessageDto[]; hasMore: boolean }> {
-    const participant = await this.participantRepo.findOne({
-      where: { conversationId, userId, isActive: true },
-    });
+    const participant = await this.participantRepo.findActiveByConversationAndUser(
+      conversationId,
+      userId,
+    );
 
     if (!participant) {
       throw new ForbiddenException("You are not a participant in this conversation");
     }
 
-    const limit = pagination.limit || 50;
+    const { messages, hasMore } = await this.messageRepo.findPageForConversation(
+      conversationId,
+      pagination,
+    );
 
-    const queryBuilder = this.messageRepo
-      .createQueryBuilder("m")
-      .leftJoinAndSelect("m.sender", "sender")
-      .leftJoinAndSelect("m.attachments", "attachments")
-      .leftJoinAndSelect("m.readReceipts", "receipts")
-      .where("m.conversationId = :conversationId", { conversationId })
-      .andWhere("m.isDeleted = false");
-
-    if (pagination.beforeId) {
-      queryBuilder.andWhere("m.id < :beforeId", {
-        beforeId: pagination.beforeId,
-      });
-    }
-
-    if (pagination.afterId) {
-      queryBuilder.andWhere("m.id > :afterId", { afterId: pagination.afterId });
-    }
-
-    queryBuilder.orderBy("m.sentAt", "DESC").take(limit + 1);
-
-    const messages = await queryBuilder.getMany();
-
-    const hasMore = messages.length > limit;
-    const resultMessages = hasMore ? messages.slice(0, limit) : messages;
-
-    const messageDtos = resultMessages
+    const messageDtos = messages
       .map((m) =>
         this.messageToDto(
           m,
@@ -461,53 +358,48 @@ export class MessagingService {
   }
 
   async markAsRead(conversationId: number, userId: number): Promise<void> {
-    const participant = await this.participantRepo.findOne({
-      where: { conversationId, userId, isActive: true },
-    });
+    const participant = await this.participantRepo.findActiveByConversationAndUser(
+      conversationId,
+      userId,
+    );
 
     if (!participant) {
       throw new ForbiddenException("You are not a participant in this conversation");
     }
 
-    const unreadMessages = await this.messageRepo.find({
-      where: {
-        conversationId,
-        senderId: Not(userId),
-        sentAt: participant.lastReadAt ? LessThan(participant.lastReadAt) : undefined,
-      },
+    const unreadMessages = await this.messageRepo.findManyWhere({
+      conversationId,
+      senderId: userId,
     });
 
-    const existingReceipts = await this.receiptRepo.find({
-      where: {
-        messageId: In(unreadMessages.map((m) => m.id)),
-        userId,
-      },
-    });
+    const existingReceipts = await this.receiptRepo.findByMessageIdsAndUser(
+      unreadMessages.map((m) => m.id),
+      userId,
+    );
 
     const existingMessageIds = new Set(existingReceipts.map((r) => r.messageId));
 
-    const newReceipts = unreadMessages
-      .filter((m) => !existingMessageIds.has(m.id))
-      .map((m) =>
+    const newReceipts = unreadMessages.filter((m) => !existingMessageIds.has(m.id));
+
+    await Promise.all(
+      newReceipts.map((m) =>
         this.receiptRepo.create({
           messageId: m.id,
           userId,
           readAt: now().toJSDate(),
         }),
-      );
-
-    if (newReceipts.length > 0) {
-      await this.receiptRepo.save(newReceipts);
-    }
+      ),
+    );
 
     participant.lastReadAt = now().toJSDate();
     await this.participantRepo.save(participant);
   }
 
   async archiveConversation(conversationId: number, userId: number): Promise<void> {
-    const participant = await this.participantRepo.findOne({
-      where: { conversationId, userId, isActive: true },
-    });
+    const participant = await this.participantRepo.findActiveByConversationAndUser(
+      conversationId,
+      userId,
+    );
 
     if (!participant) {
       throw new ForbiddenException("You are not a participant in this conversation");
@@ -517,13 +409,14 @@ export class MessagingService {
       throw new ForbiddenException("Only the conversation owner can archive it");
     }
 
-    await this.conversationRepo.update(conversationId, { isArchived: true });
+    await this.conversationRepo.updateArchived(conversationId, true);
   }
 
   async unarchiveConversation(conversationId: number, userId: number): Promise<void> {
-    const participant = await this.participantRepo.findOne({
-      where: { conversationId, userId, isActive: true },
-    });
+    const participant = await this.participantRepo.findActiveByConversationAndUser(
+      conversationId,
+      userId,
+    );
 
     if (!participant) {
       throw new ForbiddenException("You are not a participant in this conversation");
@@ -533,7 +426,7 @@ export class MessagingService {
       throw new ForbiddenException("Only the conversation owner can unarchive it");
     }
 
-    await this.conversationRepo.update(conversationId, { isArchived: false });
+    await this.conversationRepo.updateArchived(conversationId, false);
   }
 
   async addAttachment(
@@ -544,9 +437,7 @@ export class MessagingService {
     fileSize: number,
     mimeType: string,
   ): Promise<AttachmentDto> {
-    const message = await this.messageRepo.findOne({
-      where: { id: messageId },
-    });
+    const message = await this.messageRepo.findById(messageId);
 
     if (!message) {
       throw new NotFoundException("Message not found");
@@ -556,15 +447,13 @@ export class MessagingService {
       throw new ForbiddenException("You can only add attachments to your own messages");
     }
 
-    const attachment = this.attachmentRepo.create({
+    const saved = await this.attachmentRepo.create({
       messageId,
       fileName,
       filePath,
       fileSize,
       mimeType,
     });
-
-    const saved = await this.attachmentRepo.save(attachment);
 
     return {
       id: saved.id,
@@ -576,22 +465,16 @@ export class MessagingService {
   }
 
   async attachment(attachmentId: number, userId: number): Promise<MessageAttachment> {
-    const attachment = await this.attachmentRepo.findOne({
-      where: { id: attachmentId },
-      relations: ["message"],
-    });
+    const attachment = await this.attachmentRepo.findById(attachmentId, ["message"]);
 
     if (!attachment) {
       throw new NotFoundException("Attachment not found");
     }
 
-    const participant = await this.participantRepo.findOne({
-      where: {
-        conversationId: attachment.message.conversationId,
-        userId,
-        isActive: true,
-      },
-    });
+    const participant = await this.participantRepo.findActiveByConversationAndUser(
+      attachment.message.conversationId,
+      userId,
+    );
 
     if (!participant) {
       throw new ForbiddenException("You do not have access to this attachment");
@@ -601,20 +484,11 @@ export class MessagingService {
   }
 
   async unreadCountForUser(userId: number): Promise<number> {
-    const participations = await this.participantRepo.find({
-      where: { userId, isActive: true },
-    });
+    const participations = await this.participantRepo.findActiveByUser(userId);
 
     const counts = await Promise.all(
       participations.map(async (p) => {
-        const count = await this.messageRepo.count({
-          where: {
-            conversationId: p.conversationId,
-            senderId: Not(userId),
-            sentAt: p.lastReadAt ? LessThan(p.lastReadAt) : undefined,
-          },
-        });
-        return count;
+        return this.messageRepo.countUnreadForParticipant(p.conversationId, userId, p.lastReadAt);
       }),
     );
 
@@ -625,33 +499,20 @@ export class MessagingService {
     conversation: Conversation,
     userId: number,
   ): Promise<ConversationSummaryDto> {
-    const participants = await this.participantRepo.find({
-      where: { conversationId: conversation.id, isActive: true },
-      relations: ["user"],
-    });
+    const participants = await this.participantRepo.findActiveByConversation(conversation.id);
 
     const userParticipant = participants.find((p) => p.userId === userId);
 
-    const lastMessage = await this.messageRepo.findOne({
-      where: { conversationId: conversation.id, isDeleted: false },
-      order: { sentAt: "DESC" },
+    const lastMessage = await this.messageRepo.findOneWhere({
+      conversationId: conversation.id,
+      isDeleted: false,
     });
 
-    const unreadCount = userParticipant?.lastReadAt
-      ? await this.messageRepo.count({
-          where: {
-            conversationId: conversation.id,
-            senderId: Not(userId),
-            isDeleted: false,
-          },
-        })
-      : await this.messageRepo.count({
-          where: {
-            conversationId: conversation.id,
-            senderId: Not(userId),
-            isDeleted: false,
-          },
-        });
+    const unreadCount = await this.messageRepo.countUnreadForParticipant(
+      conversation.id,
+      userId,
+      userParticipant?.lastReadAt ?? null,
+    );
 
     const participantNames = participants
       .filter((p) => p.userId !== userId)
@@ -721,26 +582,20 @@ export class MessagingService {
       return { deleted: 0 };
     }
 
-    await this.receiptRepo.delete({
-      message: { conversationId: In(conversationIds) },
-    });
+    await this.receiptRepo.deleteByConversationIds(conversationIds);
+    await this.attachmentRepo.deleteByConversationIds(conversationIds);
+    await this.messageRepo.deleteByConversationIds(conversationIds);
+    await this.participantRepo.deleteByConversationIds(conversationIds);
 
-    await this.attachmentRepo.delete({
-      message: { conversationId: In(conversationIds) },
-    });
+    let deleted = 0;
+    for (const id of conversationIds) {
+      const conversation = await this.conversationRepo.findById(id);
+      if (conversation) {
+        await this.conversationRepo.remove(conversation);
+        deleted++;
+      }
+    }
 
-    await this.messageRepo.delete({
-      conversationId: In(conversationIds),
-    });
-
-    await this.participantRepo.delete({
-      conversationId: In(conversationIds),
-    });
-
-    const result = await this.conversationRepo.delete({
-      id: In(conversationIds),
-    });
-
-    return { deleted: result.affected || 0 };
+    return { deleted };
   }
 }

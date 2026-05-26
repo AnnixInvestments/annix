@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromJSDate, now } from "../lib/datetime";
 import type {
   SageInvoiceLine,
@@ -10,12 +8,13 @@ import type {
 } from "../sage-export/sage-api.service";
 import { SageApiService } from "../sage-export/sage-api.service";
 import { SageConnectionService } from "../sage-export/sage-connection.service";
-import { RubberCompany } from "./entities/rubber-company.entity";
 import {
   RubberTaxInvoice,
   TaxInvoiceStatus,
   TaxInvoiceType,
 } from "./entities/rubber-tax-invoice.entity";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
 
 export interface PostToSageResult {
   sageInvoiceId: number;
@@ -35,19 +34,14 @@ export class RubberSageInvoicePostService {
   private readonly logger = new Logger(RubberSageInvoicePostService.name);
 
   constructor(
-    @InjectRepository(RubberTaxInvoice)
-    private readonly invoiceRepo: Repository<RubberTaxInvoice>,
-    @InjectRepository(RubberCompany)
-    private readonly companyRepo: Repository<RubberCompany>,
+    private readonly invoiceRepo: RubberTaxInvoiceRepository,
+    private readonly companyRepo: RubberCompanyRepository,
     private readonly sageApiService: SageApiService,
     private readonly sageConnectionService: SageConnectionService,
   ) {}
 
   async postInvoice(invoiceId: number, appKey: string): Promise<PostToSageResult> {
-    const invoice = await this.invoiceRepo.findOne({
-      where: { id: invoiceId },
-      relations: ["company"],
-    });
+    const invoice = await this.invoiceRepo.findOneByIdWithCompany(invoiceId);
 
     if (!invoice) {
       throw new BadRequestException("Invoice not found");
@@ -63,8 +57,7 @@ export class RubberSageInvoicePostService {
       );
     }
 
-    const company =
-      invoice.company ?? (await this.companyRepo.findOneBy({ id: invoice.companyId }));
+    const company = invoice.company ?? (await this.companyRepo.findById(invoice.companyId));
 
     if (!company?.sageContactId) {
       throw new BadRequestException(
@@ -146,10 +139,7 @@ export class RubberSageInvoicePostService {
   async postBulk(invoiceIds: number[], appKey: string): Promise<BulkPostResult> {
     const results: BulkPostResult = { successful: [], failed: [] };
 
-    const invoices = await this.invoiceRepo.find({
-      where: invoiceIds.map((id) => ({ id })),
-      relations: ["company"],
-    });
+    const invoices = await this.invoiceRepo.findManyByIdsWithCompany(invoiceIds);
 
     const finalResults = await invoices.reduce(async (accPromise, invoice) => {
       const acc = await accPromise;
@@ -207,10 +197,10 @@ export class RubberSageInvoicePostService {
   }
 
   private async markPosted(invoiceId: number, sageInvoiceId: number): Promise<void> {
-    await this.invoiceRepo.update(invoiceId, {
+    await this.invoiceRepo.updateById(invoiceId, {
       sageInvoiceId,
       postedToSageAt: now().toJSDate(),
-    } as unknown as RubberTaxInvoice);
+    });
   }
 
   private async decryptedPassword(appKey: string): Promise<string> {

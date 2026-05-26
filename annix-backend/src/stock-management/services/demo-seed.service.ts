@@ -1,12 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { StockItem } from "../../stock-control/entities/stock-item.entity";
+import { StockItemRepository } from "../../stock-control/repositories/stock-item.repository";
 import { IssuableProduct } from "../entities/issuable-product.entity";
-import { PaintProduct } from "../entities/paint-product.entity";
-import { ProductCategory } from "../entities/product-category.entity";
-import { RubberCompound } from "../entities/rubber-compound.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { PaintProductRepository } from "../repositories/paint-product.repository";
+import { ProductCategoryRepository } from "../repositories/product-category.repository";
+import { RubberCompoundRepository } from "../repositories/rubber-compound.repository";
 import { FifoBatchService } from "./fifo-batch.service";
 import { IssuableProductService } from "./issuable-product.service";
 import { ProductCategoryService } from "./product-category.service";
@@ -25,19 +25,15 @@ export class DemoSeedService {
   private readonly logger = new Logger(DemoSeedService.name);
 
   constructor(
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
-    @InjectRepository(ProductCategory)
-    private readonly categoryRepo: Repository<ProductCategory>,
-    @InjectRepository(PaintProduct)
-    private readonly paintRepo: Repository<PaintProduct>,
-    @InjectRepository(RubberCompound)
-    private readonly compoundRepo: Repository<RubberCompound>,
+    private readonly productRepo: IssuableProductRepository,
+    private readonly categoryRepo: ProductCategoryRepository,
+    private readonly paintRepo: PaintProductRepository,
+    private readonly compoundRepo: RubberCompoundRepository,
+    private readonly stockItemRepo: StockItemRepository,
     private readonly categoryService: ProductCategoryService,
     private readonly compoundService: RubberCompoundService,
     private readonly productService: IssuableProductService,
     private readonly fifoBatchService: FifoBatchService,
-    private readonly dataSource: DataSource,
   ) {}
 
   async seed(companyId: number): Promise<DemoSeedResult> {
@@ -46,8 +42,8 @@ export class DemoSeedService {
     const categoriesCreated = await this.categoryService.ensureSeedDataForCompany(companyId);
     const compoundsCreated = await this.compoundService.ensureSeedCompoundsForCompany(companyId);
 
-    const categories = await this.categoryRepo.find({ where: { companyId } });
-    const compounds = await this.compoundRepo.find({ where: { companyId } });
+    const categories = await this.categoryRepo.findAllForCompany(companyId);
+    const compounds = await this.compoundRepo.findAllForCompany(companyId);
 
     const toolsCategory = categories.find(
       (c) => c.productType === "consumable" && c.slug === "tools",
@@ -75,9 +71,7 @@ export class DemoSeedService {
       creator: () => Promise<IssuableProduct | null>,
       costPerUnit: number,
     ): Promise<void> => {
-      const existing = await this.productRepo.findOne({
-        where: { companyId, sku },
-      });
+      const existing = await this.productRepo.findBySkuForCompany(companyId, sku);
       if (existing) {
         productsSkipped += 1;
         return;
@@ -360,9 +354,7 @@ export class DemoSeedService {
   }> {
     this.logger.log(`Syncing legacy stock items for company ${companyId}`);
 
-    const stockItems = await this.dataSource.getRepository(StockItem).find({
-      where: { companyId },
-    });
+    const stockItems = await this.stockItemRepo.findManyWhere({ companyId });
     this.logger.log(`Found ${stockItems.length} legacy stock items`);
 
     let created = 0;
@@ -391,10 +383,7 @@ export class DemoSeedService {
     ];
 
     for (const si of stockItems) {
-      const existing = await this.productRepo.findOne({
-        where: { companyId, legacyStockItemId: si.id },
-        relations: { paint: true },
-      });
+      const existing = await this.productRepo.findByLegacyStockItemIdWithPaint(companyId, si.id);
       if (existing) {
         const paintChild = existing.paint;
         if (
@@ -422,9 +411,7 @@ export class DemoSeedService {
         continue;
       }
 
-      const alsoExistsBySku = await this.productRepo.findOne({
-        where: { companyId, sku: si.sku },
-      });
+      const alsoExistsBySku = await this.productRepo.findBySkuForCompany(companyId, si.sku);
       if (alsoExistsBySku) {
         skipped++;
         continue;
@@ -496,9 +483,7 @@ export class DemoSeedService {
 
         await this.productService.create(companyId, createDto);
 
-        const createdProduct = await this.productRepo.findOne({
-          where: { companyId, sku: si.sku },
-        });
+        const createdProduct = await this.productRepo.findBySkuForCompany(companyId, si.sku);
         if (createdProduct) {
           createdProduct.legacyStockItemId = si.id;
           await this.productRepo.save(createdProduct);

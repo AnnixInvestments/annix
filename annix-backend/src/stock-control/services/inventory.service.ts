@@ -5,17 +5,27 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, In, IsNull, Repository } from "typeorm";
+import { DataSource, In } from "typeorm";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { LearningSource, LearningType, NixLearning } from "../../nix/entities/nix-learning.entity";
+import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
+import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
+import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { DeliverySupplierService } from "./delivery-supplier.service";
 import { RequisitionService } from "./requisition.service";
 
@@ -41,30 +51,23 @@ export class InventoryService {
   private readonly logger = new Logger(InventoryService.name);
 
   constructor(
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(NixLearning)
-    private readonly nixLearningRepo: Repository<NixLearning>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(DeliveryNoteItem)
-    private readonly deliveryNoteItemRepo: Repository<DeliveryNoteItem>,
-    @InjectRepository(StockAllocation)
-    private readonly allocationRepo: Repository<StockAllocation>,
-    @InjectRepository(StockIssuance)
-    private readonly issuanceRepo: Repository<StockIssuance>,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly nixLearningRepo: NixLearningRepository,
+    private readonly movementRepo: StockMovementRepository,
+    private readonly deliveryNoteItemRepo: DeliveryNoteItemRepository,
+    private readonly allocationRepo: StockAllocationRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
-    private readonly dataSource: DataSource,
+    @Optional() private readonly dataSource: DataSource,
+    private readonly txRunner: TransactionRunner,
     private readonly aiChatService: AiChatService,
     private readonly supplierService: DeliverySupplierService,
   ) {}
 
   async create(companyId: number, data: Partial<StockItem>): Promise<StockItem> {
-    const item = this.stockItemRepo.create({ ...data, companyId });
-    const saved = await this.stockItemRepo.save(item);
+    const saved = await this.stockItemRepo.create({ ...data, companyId });
 
     if (!saved.category && saved.name) {
       this.inferCategoryForItem(companyId, saved).catch((err) =>
@@ -125,33 +128,16 @@ export class InventoryService {
       return { items: await this.refreshPhotoUrls(result.items), total: result.total };
     }
 
-    const qb = this.stockItemRepo
-      .createQueryBuilder("item")
-      .where("item.companyId = :companyId", { companyId });
-
-    if (filters?.category) {
-      qb.andWhere("item.category = :category", { category: filters.category });
-    }
-
-    if (filters?.belowMinStock === "true") {
-      qb.andWhere("item.quantity <= item.min_stock_level");
-    }
-
-    if (filters?.locationId === "null") {
-      qb.andWhere("item.location_id IS NULL");
-    } else if (filters?.locationId) {
-      const parsedLocId = Number(filters.locationId);
-      if (Number.isInteger(parsedLocId) && parsedLocId > 0) {
-        qb.andWhere("item.location_id = :locationId", { locationId: parsedLocId });
-      }
-    }
-
-    qb.orderBy("item.name", "ASC");
-    if (limit > 0) {
-      qb.skip(skip).take(limit);
-    }
-
-    const [items, total] = await qb.getManyAndCount();
+    const { items, total } = await this.stockItemRepo.findFilteredForCompany(
+      companyId,
+      {
+        category: filters?.category,
+        belowMinStock: filters?.belowMinStock === "true",
+        locationId: filters?.locationId,
+      },
+      skip,
+      limit,
+    );
 
     return { items: await this.refreshPhotoUrls(items), total };
   }
@@ -164,42 +150,21 @@ export class InventoryService {
     belowMinStock = false,
     locationId?: string,
   ): Promise<{ items: StockItem[]; total: number }> {
-    const qb = this.stockItemRepo
-      .createQueryBuilder("item")
-      .where("item.companyId = :companyId", { companyId })
-      .andWhere(
-        "(item.name ILIKE :search OR item.sku ILIKE :search OR item.description ILIKE :search)",
-        { search: `%${search}%` },
-      );
-
-    if (belowMinStock) {
-      qb.andWhere("item.quantity <= item.min_stock_level");
-    }
-
-    if (locationId === "null") {
-      qb.andWhere("item.location_id IS NULL");
-    } else if (locationId) {
-      const parsedLocId = Number(locationId);
-      if (Number.isInteger(parsedLocId) && parsedLocId > 0) {
-        qb.andWhere("item.location_id = :locationId", { locationId: parsedLocId });
-      }
-    }
-
-    qb.orderBy("item.name", "ASC");
-    if (limit > 0) {
-      qb.skip(skip).take(limit);
-    }
-
-    const [items, total] = await qb.getManyAndCount();
-
-    return { items, total };
+    return this.stockItemRepo.searchForCompany(
+      companyId,
+      search,
+      skip,
+      limit,
+      belowMinStock,
+      locationId,
+    );
   }
 
   async findById(companyId: number, id: number): Promise<StockItem> {
-    const item = await this.stockItemRepo.findOne({
-      where: { id, companyId },
-      relations: ["allocations", "movements"],
-    });
+    const item = await this.stockItemRepo.findOneForCompanyWithRelations(id, companyId, [
+      "allocations",
+      "movements",
+    ]);
     if (!item) {
       throw new NotFoundException("Stock item not found");
     }
@@ -213,10 +178,7 @@ export class InventoryService {
   }
 
   async findByIds(companyId: number, ids: number[]): Promise<StockItem[]> {
-    return this.stockItemRepo.find({
-      where: { companyId, id: In(ids) },
-      order: { name: "ASC" },
-    });
+    return this.stockItemRepo.findByIdsForCompanyOrderedByName(ids, companyId);
   }
 
   async update(companyId: number, id: number, data: Partial<StockItem>): Promise<StockItem> {
@@ -258,26 +220,13 @@ export class InventoryService {
   }
 
   async lowStockAlerts(companyId: number): Promise<StockItem[]> {
-    const items = await this.stockItemRepo
-      .createQueryBuilder("item")
-      .where("item.company_id = :companyId", { companyId })
-      .andWhere("item.quantity <= item.min_stock_level")
-      .orderBy("item.quantity", "ASC")
-      .getMany();
+    const items = await this.stockItemRepo.lowStockForCompany(companyId);
 
     return this.refreshPhotoUrls(items);
   }
 
   async categories(companyId: number): Promise<string[]> {
-    const result = await this.stockItemRepo
-      .createQueryBuilder("item")
-      .select("DISTINCT item.category", "category")
-      .where("item.company_id = :companyId", { companyId })
-      .andWhere("item.category IS NOT NULL")
-      .orderBy("item.category", "ASC")
-      .getRawMany();
-
-    return result.map((r) => r.category);
+    return this.stockItemRepo.categoriesForCompany(companyId);
   }
 
   async groupedByCategory(
@@ -292,28 +241,13 @@ export class InventoryService {
     page: number;
     limit: number;
   }> {
-    const queryBuilder = this.stockItemRepo
-      .createQueryBuilder("item")
-      .where("item.company_id = :companyId", { companyId });
-
-    if (search) {
-      queryBuilder.andWhere(
-        "(item.name ILIKE :search OR item.sku ILIKE :search OR item.description ILIKE :search)",
-        { search: `%${search}%` },
-      );
-    }
-
-    if (locationId) {
-      queryBuilder.andWhere("item.location_id = :locationId", { locationId });
-    }
-
-    queryBuilder
-      .orderBy("item.category", "ASC")
-      .addOrderBy("item.name", "ASC")
-      .skip((page - 1) * limit)
-      .take(limit);
-
-    const [rawItems, total] = await queryBuilder.getManyAndCount();
+    const { items: rawItems, total } = await this.stockItemRepo.groupedForCompany(
+      companyId,
+      search,
+      locationId,
+      (page - 1) * limit,
+      limit,
+    );
     const allItems = await this.refreshPhotoUrls(rawItems);
 
     const grouped = allItems.reduce(
@@ -353,14 +287,10 @@ export class InventoryService {
       confirmationCount: number;
     }>
   > {
-    const learnings = await this.nixLearningRepo.find({
-      where: {
-        learningType: LearningType.CORRECTION,
-        category: "delivery_stock_matching",
-        isActive: true,
-      },
-      order: { confidence: "DESC", confirmationCount: "DESC" },
-    });
+    const learnings =
+      await this.nixLearningRepo.findActiveCorrectionsByCategoryOrderedByConfidence(
+        "delivery_stock_matching",
+      );
 
     const skuMappings = learnings.filter((l) => l.patternKey.startsWith("delivery_sku_map:"));
 
@@ -369,7 +299,7 @@ export class InventoryService {
       .filter((id) => !Number.isNaN(id) && id > 0);
     const stockItems =
       stockItemIds.length > 0
-        ? await this.stockItemRepo.find({ where: { id: In(stockItemIds), companyId } })
+        ? await this.stockItemRepo.findByIdsForCompanyOrderedByName(stockItemIds, companyId)
         : [];
     const itemMap = new Map(stockItems.map((si) => [si.id, si]));
 
@@ -396,9 +326,10 @@ export class InventoryService {
   }
 
   async deleteSupplierSkuMapping(id: number): Promise<{ deleted: boolean }> {
-    const learning = await this.nixLearningRepo.findOne({
-      where: { id, category: "delivery_stock_matching" },
-    });
+    const learning = await this.nixLearningRepo.findOneByIdAndCategory(
+      id,
+      "delivery_stock_matching",
+    );
     if (!learning) {
       throw new NotFoundException("Mapping not found");
     }
@@ -408,10 +339,7 @@ export class InventoryService {
   }
 
   async detectDuplicates(companyId: number): Promise<DuplicateGroup[]> {
-    const allItems = await this.stockItemRepo.find({
-      where: { companyId },
-      order: { name: "ASC" },
-    });
+    const allItems = await this.stockItemRepo.findAllForCompanyOrderedByName(companyId);
 
     if (allItems.length < 2) return [];
 
@@ -459,12 +387,10 @@ export class InventoryService {
       throw new BadRequestException("At least one source item is required");
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const result = await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
 
-    try {
-      const targetItem = await queryRunner.manager.findOne(StockItem, {
+      const targetItem = await manager.findOne(StockItem, {
         where: { id: targetItemId, companyId },
         lock: { mode: "pessimistic_write" },
       });
@@ -473,7 +399,7 @@ export class InventoryService {
         throw new NotFoundException("Target stock item not found");
       }
 
-      const sourceItems = await queryRunner.manager.find(StockItem, {
+      const sourceItems = await manager.find(StockItem, {
         where: { id: In(sourceItemIds), companyId },
         lock: { mode: "pessimistic_write" },
       });
@@ -490,32 +416,32 @@ export class InventoryService {
       for (const source of sourceItems) {
         quantityAdded += Number(source.quantity);
 
-        const movedMovements = await queryRunner.manager.update(
+        const movedMovements = await manager.update(
           StockMovement,
           { stockItem: { id: source.id }, companyId },
           { stockItem: { id: targetItemId } as any },
         );
         movementsTransferred += movedMovements.affected || 0;
 
-        await queryRunner.manager.update(
+        await manager.update(
           DeliveryNoteItem,
           { stockItem: { id: source.id }, companyId },
           { stockItem: { id: targetItemId } as any },
         );
 
-        await queryRunner.manager.update(
+        await manager.update(
           StockAllocation,
           { stockItem: { id: source.id }, companyId },
           { stockItem: { id: targetItemId } as any },
         );
 
-        await queryRunner.manager.update(
+        await manager.update(
           StockIssuance,
           { stockItemId: source.id, companyId },
           { stockItemId: targetItemId },
         );
 
-        const mergeMovement = queryRunner.manager.create(StockMovement, {
+        const mergeMovement = manager.create(StockMovement, {
           stockItem: { id: targetItemId } as StockItem,
           movementType: MovementType.IN,
           quantity: Number(source.quantity),
@@ -525,9 +451,9 @@ export class InventoryService {
           createdBy: mergedBy,
           companyId,
         });
-        await queryRunner.manager.save(StockMovement, mergeMovement);
+        await manager.save(StockMovement, mergeMovement);
 
-        await queryRunner.manager.remove(StockItem, source);
+        await manager.remove(StockItem, source);
 
         this.logger.log(
           `Merged stock item "${source.name}" (id=${source.id}, qty=${source.quantity}) into "${targetItem.name}" (id=${targetItemId})`,
@@ -535,9 +461,7 @@ export class InventoryService {
       }
 
       targetItem.quantity = Number(targetItem.quantity) + quantityAdded;
-      const saved = await queryRunner.manager.save(StockItem, targetItem);
-
-      await queryRunner.commitTransaction();
+      const saved = await manager.save(StockItem, targetItem);
 
       this.logger.log(
         `Merge complete: ${sourceItems.length} items into "${targetItem.name}", total qty now ${saved.quantity}`,
@@ -549,21 +473,22 @@ export class InventoryService {
         quantityAdded,
         movementsTransferred,
       };
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
+    });
+
+    return result;
+  }
+
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("InventoryService transactions require a TypeOrmTransactionContext");
     }
+    return context.manager;
   }
 
   async adjustQuantity(companyId: number, id: number, delta: number): Promise<StockItem> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const item = await queryRunner.manager.findOne(StockItem, {
+    const saved = await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
+      const item = await manager.findOne(StockItem, {
         where: { id, companyId },
         lock: { mode: "pessimistic_write" },
       });
@@ -572,31 +497,22 @@ export class InventoryService {
       }
 
       item.quantity = Math.max(0, item.quantity + delta);
-      const saved = await queryRunner.manager.save(StockItem, item);
+      return manager.save(StockItem, item);
+    });
 
-      await queryRunner.commitTransaction();
-
-      if (delta < 0 && saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
-        this.requisitionService
-          .createReorderRequisition(companyId, saved.id)
-          .catch((err) =>
-            this.logger.error(`Failed to create reorder requisition: ${err.message}`),
-          );
-      }
-
-      const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
-      return refreshed;
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
+    if (delta < 0 && saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
+      this.requisitionService
+        .createReorderRequisition(companyId, saved.id)
+        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
     }
+
+    const [refreshed] = await this.refreshPhotoUrls([{ ...saved }]);
+    return refreshed;
   }
 
   async bulkCreate(companyId: number, items: Partial<StockItem>[]): Promise<StockItem[]> {
-    const entities = items.map((data) => this.stockItemRepo.create({ ...data, companyId }));
-    return this.stockItemRepo.save(entities);
+    const entities = this.stockItemRepo.buildMany(items.map((data) => ({ ...data, companyId })));
+    return this.stockItemRepo.saveMany(entities);
   }
 
   async uploadPhoto(companyId: number, id: number, file: Express.Multer.File): Promise<StockItem> {
@@ -749,10 +665,8 @@ export class InventoryService {
       newName: string;
     }>;
   }> {
-    const rubberItems = await this.stockItemRepo.find({
-      where: { companyId, category: "RUBBER" },
-      order: { name: "ASC" },
-    });
+    const rubberItems =
+      await this.stockItemRepo.findRubberCategoryForCompanyOrderedByName(companyId);
 
     const details: Array<{
       id: number;
@@ -776,7 +690,10 @@ export class InventoryService {
 
       if (newName === item.name && newSku === item.sku) continue;
 
-      await this.stockItemRepo.update({ id: item.id, companyId }, { name: newName, sku: newSku });
+      await this.stockItemRepo.updateByIdForCompany(item.id, companyId, {
+        name: newName,
+        sku: newSku,
+      });
 
       details.push({
         id: item.id,
@@ -839,11 +756,7 @@ export class InventoryService {
       throw new Error("AI service is not available for categorization");
     }
 
-    const uncategorized = await this.stockItemRepo.find({
-      where: { companyId, category: IsNull() },
-      select: ["id", "name", "sku"],
-      order: { name: "ASC" },
-    });
+    const uncategorized = await this.stockItemRepo.findUncategorizedForCompany(companyId);
 
     if (uncategorized.length === 0) {
       return { categorized: 0, total: 0, categories: {} };
@@ -852,13 +765,8 @@ export class InventoryService {
     const categoryCounts: Record<string, number> = {};
     let categorized = 0;
 
-    const allLearnings = await this.nixLearningRepo.find({
-      where: {
-        learningType: LearningType.CORRECTION,
-        category: "stock_categorization",
-        isActive: true,
-      },
-    });
+    const allLearnings =
+      await this.nixLearningRepo.findActiveCorrectionsByCategory("stock_categorization");
     const learnedMap = new Map<string, string>();
     for (const l of allLearnings) {
       const name = (l.context?.itemName || l.originalValue || "").toLowerCase().trim();
@@ -871,7 +779,7 @@ export class InventoryService {
     for (const item of uncategorized) {
       const learned = learnedMap.get(item.name.toLowerCase().trim());
       if (learned) {
-        await this.stockItemRepo.update({ id: item.id, companyId }, { category: learned });
+        await this.stockItemRepo.updateByIdForCompany(item.id, companyId, { category: learned });
         const count = categoryCounts[learned] || 0;
         categoryCounts[learned] = count + 1;
         categorized++;
@@ -933,10 +841,9 @@ export class InventoryService {
           .filter((u) => !Number.isNaN(u.id));
 
         for (const update of updates) {
-          await this.stockItemRepo.update(
-            { id: update.id, companyId },
-            { category: update.category },
-          );
+          await this.stockItemRepo.updateByIdForCompany(update.id, companyId, {
+            category: update.category,
+          });
           const count = categoryCounts[update.category] || 0;
           categoryCounts[update.category] = count + 1;
           categorized++;
@@ -973,21 +880,18 @@ export class InventoryService {
     const normalizedName = itemName.toLowerCase().trim();
     const patternKey = `category_assignment:${normalizedName.slice(0, 200)}`;
 
-    const existing = await this.nixLearningRepo.findOne({
-      where: {
-        patternKey,
-        learningType: LearningType.CORRECTION,
-        category: "stock_categorization",
-        learnedValue: newCategory,
-      },
-    });
+    const existing = await this.nixLearningRepo.findOneCorrectionByPatternKeyCategoryAndValue(
+      patternKey,
+      "stock_categorization",
+      newCategory,
+    );
 
     if (existing) {
       existing.confirmationCount += 1;
       existing.confidence = Math.min(1, Number(existing.confidence) + 0.1);
       await this.nixLearningRepo.save(existing);
     } else {
-      const learning = this.nixLearningRepo.create({
+      const learning = this.nixLearningRepo.build({
         learningType: LearningType.CORRECTION,
         source: LearningSource.USER_CORRECTION,
         category: "stock_categorization",
@@ -1010,15 +914,10 @@ export class InventoryService {
     const normalizedName = itemName.toLowerCase().trim();
     const patternKey = `category_assignment:${normalizedName.slice(0, 200)}`;
 
-    const exact = await this.nixLearningRepo.findOne({
-      where: {
-        patternKey,
-        learningType: LearningType.CORRECTION,
-        category: "stock_categorization",
-        isActive: true,
-      },
-      order: { confidence: "DESC", confirmationCount: "DESC" },
-    });
+    const exact = await this.nixLearningRepo.findActiveCorrectionByPatternKeyAndCategory(
+      patternKey,
+      "stock_categorization",
+    );
 
     if (exact) return exact.learnedValue;
 
@@ -1028,7 +927,7 @@ export class InventoryService {
   private async inferCategoryForItem(companyId: number, item: StockItem): Promise<void> {
     const learned = await this.learnedCategoryFor(item.name);
     if (learned) {
-      await this.stockItemRepo.update({ id: item.id, companyId }, { category: learned });
+      await this.stockItemRepo.updateByIdForCompany(item.id, companyId, { category: learned });
       this.logger.log(`Auto-categorized item ${item.id} from learning: "${learned}"`);
       return;
     }
@@ -1039,15 +938,10 @@ export class InventoryService {
     const existingCategories = await this.categories(companyId);
     if (existingCategories.length === 0) return;
 
-    const allLearnings = await this.nixLearningRepo.find({
-      where: {
-        learningType: LearningType.CORRECTION,
-        category: "stock_categorization",
-        isActive: true,
-      },
-      order: { confidence: "DESC" },
-      take: 50,
-    });
+    const allLearnings = await this.nixLearningRepo.findActiveCorrectionsByCategoryTopByConfidence(
+      "stock_categorization",
+      50,
+    );
 
     const examples = allLearnings
       .map((l) => {
@@ -1076,7 +970,7 @@ export class InventoryService {
 
       const category = content.replace(/['"]+/g, "").trim();
       if (category && category.length < 100) {
-        await this.stockItemRepo.update({ id: item.id, companyId }, { category });
+        await this.stockItemRepo.updateByIdForCompany(item.id, companyId, { category });
         this.logger.log(`Auto-categorized item ${item.id} via AI: "${category}"`);
       }
     } catch (err) {

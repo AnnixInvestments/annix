@@ -1,12 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { now } from "../lib/datetime";
 import { CreatePumpOrderDto } from "./dto/create-pump-order.dto";
 import { UpdatePumpOrderDto } from "./dto/update-pump-order.dto";
-import { PumpOrder, PumpOrderStatus, PumpOrderType } from "./entities/pump-order.entity";
-import { PumpOrderItem, PumpOrderItemType } from "./entities/pump-order-item.entity";
+import { PumpOrderStatus, PumpOrderType } from "./entities/pump-order.entity";
+import { PumpOrderItemType } from "./entities/pump-order-item.entity";
 import { PumpOrderController } from "./pump-order.controller";
+import { PumpOrderRepository } from "./pump-order.repository";
 import { PumpOrderService } from "./pump-order.service";
+import { PumpOrderItemRepository } from "./pump-order-item.repository";
 
 describe("PumpOrderController", () => {
   let controller: PumpOrderController;
@@ -15,16 +16,17 @@ describe("PumpOrderController", () => {
   const mockPumpOrderRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findByOrderNumber: jest.fn(),
+    summary: jest.fn(),
+    updateTotals: jest.fn(),
     remove: jest.fn(),
-    createQueryBuilder: jest.fn(),
   };
 
   const mockPumpOrderItemRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
+    saveMany: jest.fn(),
+    deleteByOrderId: jest.fn(),
   };
 
   const mockPumpOrderService = {
@@ -62,14 +64,8 @@ describe("PumpOrderController", () => {
       controllers: [PumpOrderController],
       providers: [
         { provide: PumpOrderService, useValue: mockPumpOrderService },
-        {
-          provide: getRepositoryToken(PumpOrder),
-          useValue: mockPumpOrderRepo,
-        },
-        {
-          provide: getRepositoryToken(PumpOrderItem),
-          useValue: mockPumpOrderItemRepo,
-        },
+        { provide: PumpOrderRepository, useValue: mockPumpOrderRepo },
+        { provide: PumpOrderItemRepository, useValue: mockPumpOrderItemRepo },
       ],
     }).compile();
 

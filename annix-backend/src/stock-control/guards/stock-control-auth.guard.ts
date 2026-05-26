@@ -1,15 +1,12 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { StockControlProfile } from "../entities/stock-control-profile.entity";
+import { StockControlProfileRepository } from "../repositories/stock-control-profile.repository";
 
 @Injectable()
 export class StockControlAuthGuard implements CanActivate {
   constructor(
     private readonly jwtService: JwtService,
-    @InjectRepository(StockControlProfile)
-    private readonly profileRepo: Repository<StockControlProfile>,
+    private readonly profileRepo: StockControlProfileRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -34,9 +31,7 @@ export class StockControlAuthGuard implements CanActivate {
         throw new UnauthorizedException("Invalid token type");
       }
 
-      const profile = await this.profileRepo.findOne({
-        where: { userId: payload.sub },
-      });
+      const profile = await this.profileRepo.findOneByUserId(payload.sub);
 
       request.user = {
         id: payload.sub,

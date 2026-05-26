@@ -1,19 +1,17 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import * as QRCode from "qrcode";
-import { Repository } from "typeorm";
 import { JobCard } from "../entities/job-card.entity";
 import { StockItem } from "../entities/stock-item.entity";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 
 @Injectable()
 export class QrCodeService {
   private readonly logger = new Logger(QrCodeService.name);
 
   constructor(
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly jobCardRepo: JobCardRepository,
   ) {}
 
   async stockItemQrPng(itemId: number, companyId: number): Promise<Buffer> {
@@ -163,9 +161,7 @@ export class QrCodeService {
   }
 
   private async findStockItem(itemId: number, companyId: number): Promise<StockItem> {
-    const item = await this.stockItemRepo.findOne({
-      where: { id: itemId, companyId },
-    });
+    const item = await this.stockItemRepo.findOneForCompany(itemId, companyId);
     if (!item) {
       throw new NotFoundException("Stock item not found");
     }
@@ -173,10 +169,7 @@ export class QrCodeService {
   }
 
   private async findJobCard(jobId: number, companyId: number): Promise<JobCard> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobId, companyId },
-      relations: ["lineItems"],
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompanyWithLineItems(jobId, companyId);
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }

@@ -1,9 +1,8 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import sharp from "sharp";
-import { Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
-import { BrandingType, Company } from "../../platform/entities/company.entity";
+import { CompanyRepository } from "../../platform/company.repository";
+import { BrandingType } from "../../platform/entities/company.entity";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { PublicBrandingDto } from "../dto/public-branding.dto";
 
@@ -20,14 +19,13 @@ export class PublicBrandingService {
   private readonly iconCache = new Map<string, CachedIcon>();
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
+    private readonly companyRepo: CompanyRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
 
   async publicBrandingInfo(companyId: number): Promise<PublicBrandingDto | null> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
 
     if (!company) {
       return null;
@@ -51,7 +49,7 @@ export class PublicBrandingService {
       return cached.buffer;
     }
 
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
 
     if (!company) {
       return null;

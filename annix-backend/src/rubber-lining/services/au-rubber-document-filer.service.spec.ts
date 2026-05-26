@@ -12,7 +12,7 @@ describe("AuRubberDocumentFilerService", () => {
 
     const build = () => {
       const deliveryNoteRepository = {
-        findByIds: jest.fn().mockResolvedValue([
+        findManyByIds: jest.fn().mockResolvedValue([
           {
             id: 268,
             documentPath: parentPath,
@@ -21,7 +21,7 @@ describe("AuRubberDocumentFilerService", () => {
             deliveryNoteNumber: "IN177565",
           },
         ]),
-        update: jest.fn().mockResolvedValue(undefined),
+        updateById: jest.fn().mockResolvedValue(undefined),
       };
       const companyRepository = {
         findByIds: jest.fn().mockResolvedValue([{ id: 9, companyType: CompanyType.SUPPLIER }]),
@@ -35,15 +35,14 @@ describe("AuRubberDocumentFilerService", () => {
       };
       const pdfPageCacheService = { invalidate: jest.fn() };
 
+      const cocExtractionService = { dispatchRollsForDeliveryNote: jest.fn() };
       const service = new AuRubberDocumentFilerService(
         storageService as never,
         pdfSlicerService as never,
         pdfPageCacheService as never,
         deliveryNoteRepository as never,
         companyRepository as never,
-        {} as never,
-        {} as never,
-        {} as never,
+        cocExtractionService as never,
       );
       return { service, deliveryNoteRepository, storageService, pdfPageCacheService };
     };
@@ -56,12 +55,12 @@ describe("AuRubberDocumentFilerService", () => {
         deliveryNoteIds: [268],
       });
 
-      expect(deliveryNoteRepository.update).toHaveBeenCalledWith(268, {
+      expect(deliveryNoteRepository.updateById).toHaveBeenCalledWith(268, {
         documentPath: uploadedKey,
       });
       // Regression: the old code wrote the computed ".../IN177565.pdf" path,
       // which no object was ever stored at — surfacing as "File not found".
-      expect(deliveryNoteRepository.update).not.toHaveBeenCalledWith(
+      expect(deliveryNoteRepository.updateById).not.toHaveBeenCalledWith(
         268,
         expect.objectContaining({
           documentPath: "au-rubber/suppliers/delivery-notes/IN177565/IN177565.pdf",

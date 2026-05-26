@@ -1,27 +1,18 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, MoreThan, Repository } from "typeorm";
+import { AuditLogRepository } from "../audit/audit.repository";
 import { AuditAction, AuditLog } from "../audit/entities/audit-log.entity";
-import {
-  CustomerOnboarding,
-  CustomerOnboardingStatus,
-} from "../customer/entities/customer-onboarding.entity";
-import {
-  CustomerAccountStatus,
-  CustomerProfile,
-} from "../customer/entities/customer-profile.entity";
-import { CustomerSession } from "../customer/entities/customer-session.entity";
+import { CustomerOnboardingRepository } from "../customer/customer-onboarding.repository";
+import { CustomerProfileRepository } from "../customer/customer-profile.repository";
+import { CustomerSessionRepository } from "../customer/customer-session.repository";
+import { CustomerOnboardingStatus } from "../customer/entities/customer-onboarding.entity";
+import { CustomerAccountStatus } from "../customer/entities/customer-profile.entity";
 import { now } from "../lib/datetime";
-import { Rfq } from "../rfq/entities/rfq.entity";
-import {
-  SupplierOnboarding,
-  SupplierOnboardingStatus,
-} from "../supplier/entities/supplier-onboarding.entity";
-import {
-  SupplierAccountStatus,
-  SupplierProfile,
-} from "../supplier/entities/supplier-profile.entity";
-import { SupplierSession } from "../supplier/entities/supplier-session.entity";
+import { RfqRepository } from "../rfq/rfq.repository";
+import { SupplierOnboardingStatus } from "../supplier/entities/supplier-onboarding.entity";
+import { SupplierAccountStatus } from "../supplier/entities/supplier-profile.entity";
+import { SupplierOnboardingRepository } from "../supplier/supplier-onboarding.repository";
+import { SupplierProfileRepository } from "../supplier/supplier-profile.repository";
+import { SupplierSessionRepository } from "../supplier/supplier-session.repository";
 import {
   AdminAttentionDto,
   AttentionItemDto,
@@ -30,31 +21,22 @@ import {
   RecentActivityItemDto,
   SupplierStatsDto,
 } from "./dto/admin-dashboard.dto";
-import { AdminSession } from "./entities/admin-session.entity";
+import { AdminSessionRepository } from "./repositories/admin-session.repository";
 
 @Injectable()
 export class AdminDashboardService {
   private readonly logger = new Logger(AdminDashboardService.name);
 
   constructor(
-    @InjectRepository(CustomerProfile)
-    private readonly customerProfileRepo: Repository<CustomerProfile>,
-    @InjectRepository(CustomerOnboarding)
-    private readonly customerOnboardingRepo: Repository<CustomerOnboarding>,
-    @InjectRepository(CustomerSession)
-    private readonly customerSessionRepo: Repository<CustomerSession>,
-    @InjectRepository(SupplierProfile)
-    private readonly supplierProfileRepo: Repository<SupplierProfile>,
-    @InjectRepository(SupplierOnboarding)
-    private readonly supplierOnboardingRepo: Repository<SupplierOnboarding>,
-    @InjectRepository(SupplierSession)
-    private readonly supplierSessionRepo: Repository<SupplierSession>,
-    @InjectRepository(Rfq)
-    private readonly rfqRepo: Repository<Rfq>,
-    @InjectRepository(AdminSession)
-    private readonly adminSessionRepo: Repository<AdminSession>,
-    @InjectRepository(AuditLog)
-    private readonly auditLogRepo: Repository<AuditLog>,
+    private readonly customerProfileRepo: CustomerProfileRepository,
+    private readonly customerOnboardingRepo: CustomerOnboardingRepository,
+    private readonly customerSessionRepo: CustomerSessionRepository,
+    private readonly supplierProfileRepo: SupplierProfileRepository,
+    private readonly supplierOnboardingRepo: SupplierOnboardingRepository,
+    private readonly supplierSessionRepo: SupplierSessionRepository,
+    private readonly rfqRepo: RfqRepository,
+    private readonly adminSessionRepo: AdminSessionRepository,
+    private readonly auditLogRepo: AuditLogRepository,
   ) {}
 
   /**
@@ -63,27 +45,22 @@ export class AdminDashboardService {
   async getDashboardStats(): Promise<DashboardStatsDto> {
     this.logger.log("Fetching dashboard statistics");
 
-    // Count customers (excluding deactivated)
     const totalCustomers = await this.customerProfileRepo.count({
-      where: { accountStatus: CustomerAccountStatus.ACTIVE },
+      accountStatus: CustomerAccountStatus.ACTIVE,
     });
 
-    // Count suppliers (excluding deactivated)
     const totalSuppliers = await this.supplierProfileRepo.count({
-      where: { accountStatus: SupplierAccountStatus.ACTIVE },
+      accountStatus: SupplierAccountStatus.ACTIVE,
     });
 
-    // Count total RFQs
     const totalRfqs = await this.rfqRepo.count();
 
-    // Count pending customer approvals
     const pendingCustomerApprovals = await this.customerOnboardingRepo.count({
-      where: { status: CustomerOnboardingStatus.UNDER_REVIEW },
+      status: CustomerOnboardingStatus.UNDER_REVIEW,
     });
 
-    // Count pending supplier approvals
     const pendingSupplierApprovals = await this.supplierOnboardingRepo.count({
-      where: { status: SupplierOnboardingStatus.UNDER_REVIEW },
+      status: SupplierOnboardingStatus.UNDER_REVIEW,
     });
 
     // Get recent activity (last 10 audit log entries)
@@ -93,29 +70,20 @@ export class AdminDashboardService {
     const currentTime = now().toJSDate();
     const recentActivityThreshold = now().minus({ minutes: 30 }).toJSDate();
 
-    const activeCustomerSessions = await this.customerSessionRepo.count({
-      where: {
-        isActive: true,
-        expiresAt: MoreThan(currentTime),
-        lastActivity: MoreThan(recentActivityThreshold),
-      },
-    });
+    const activeCustomerSessions = await this.customerSessionRepo.countActiveSince(
+      currentTime,
+      recentActivityThreshold,
+    );
 
-    const activeSupplierSessions = await this.supplierSessionRepo.count({
-      where: {
-        isActive: true,
-        expiresAt: MoreThan(currentTime),
-        lastActivity: MoreThan(recentActivityThreshold),
-      },
-    });
+    const activeSupplierSessions = await this.supplierSessionRepo.countActiveSince(
+      currentTime,
+      recentActivityThreshold,
+    );
 
-    const activeAdminSessions = await this.adminSessionRepo.count({
-      where: {
-        isRevoked: false,
-        expiresAt: MoreThan(currentTime),
-        lastActiveAt: MoreThan(recentActivityThreshold),
-      },
-    });
+    const activeAdminSessions = await this.adminSessionRepo.countActive(
+      currentTime,
+      recentActivityThreshold,
+    );
 
     return {
       totalCustomers,
@@ -142,40 +110,54 @@ export class AdminDashboardService {
    * are identified.
    */
   async getAttentionSummary(): Promise<AdminAttentionDto> {
-    const pendingSuppliers = await this.supplierOnboardingRepo.count({
-      where: {
-        status: In([SupplierOnboardingStatus.SUBMITTED, SupplierOnboardingStatus.UNDER_REVIEW]),
-      },
-    });
-
-    const pendingCustomers = await this.customerOnboardingRepo.count({
-      where: {
-        status: In([CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW]),
-      },
-    });
-
-    // Registrations whose uploaded documents disagreed with the typed company
-    // details — still open (not yet approved or rejected).
-    const supplierDocReview = await this.supplierOnboardingRepo.count({
-      where: {
+    const [
+      submittedSuppliers,
+      reviewSuppliers,
+      submittedCustomers,
+      reviewCustomers,
+      draftSupplierDocReview,
+      submittedSupplierDocReview,
+      underReviewSupplierDocReview,
+      draftCustomerDocReview,
+      submittedCustomerDocReview,
+      underReviewCustomerDocReview,
+    ] = await Promise.all([
+      this.supplierOnboardingRepo.count({ status: SupplierOnboardingStatus.SUBMITTED }),
+      this.supplierOnboardingRepo.count({ status: SupplierOnboardingStatus.UNDER_REVIEW }),
+      this.customerOnboardingRepo.count({ status: CustomerOnboardingStatus.SUBMITTED }),
+      this.customerOnboardingRepo.count({ status: CustomerOnboardingStatus.UNDER_REVIEW }),
+      this.supplierOnboardingRepo.count({
+        status: SupplierOnboardingStatus.DRAFT,
         documentsNeedReview: true,
-        status: In([
-          SupplierOnboardingStatus.DRAFT,
-          SupplierOnboardingStatus.SUBMITTED,
-          SupplierOnboardingStatus.UNDER_REVIEW,
-        ]),
-      },
-    });
-    const customerDocReview = await this.customerOnboardingRepo.count({
-      where: {
+      }),
+      this.supplierOnboardingRepo.count({
+        status: SupplierOnboardingStatus.SUBMITTED,
         documentsNeedReview: true,
-        status: In([
-          CustomerOnboardingStatus.DRAFT,
-          CustomerOnboardingStatus.SUBMITTED,
-          CustomerOnboardingStatus.UNDER_REVIEW,
-        ]),
-      },
-    });
+      }),
+      this.supplierOnboardingRepo.count({
+        status: SupplierOnboardingStatus.UNDER_REVIEW,
+        documentsNeedReview: true,
+      }),
+      this.customerOnboardingRepo.count({
+        status: CustomerOnboardingStatus.DRAFT,
+        documentsNeedReview: true,
+      }),
+      this.customerOnboardingRepo.count({
+        status: CustomerOnboardingStatus.SUBMITTED,
+        documentsNeedReview: true,
+      }),
+      this.customerOnboardingRepo.count({
+        status: CustomerOnboardingStatus.UNDER_REVIEW,
+        documentsNeedReview: true,
+      }),
+    ]);
+
+    const pendingSuppliers = submittedSuppliers + reviewSuppliers;
+    const pendingCustomers = submittedCustomers + reviewCustomers;
+    const supplierDocReview =
+      draftSupplierDocReview + submittedSupplierDocReview + underReviewSupplierDocReview;
+    const customerDocReview =
+      draftCustomerDocReview + submittedCustomerDocReview + underReviewCustomerDocReview;
 
     const rfqItems: AttentionItemDto[] = [
       {
@@ -210,15 +192,8 @@ export class AdminDashboardService {
     };
   }
 
-  /**
-   * Get recent activity from audit logs
-   */
   async getRecentActivity(limit: number = 20): Promise<RecentActivityItemDto[]> {
-    const auditLogs = await this.auditLogRepo.find({
-      order: { timestamp: "DESC" },
-      take: limit,
-      relations: ["performedBy"],
-    });
+    const auditLogs = await this.auditLogRepo.findRecentWithPerformedBy(limit);
 
     return auditLogs.map((log) => ({
       id: log.id,
@@ -240,18 +215,10 @@ export class AdminDashboardService {
   async getCustomerStats(): Promise<CustomerStatsDto> {
     const [total, active, suspended, pendingReview, deactivated] = await Promise.all([
       this.customerProfileRepo.count(),
-      this.customerProfileRepo.count({
-        where: { accountStatus: CustomerAccountStatus.ACTIVE },
-      }),
-      this.customerProfileRepo.count({
-        where: { accountStatus: CustomerAccountStatus.SUSPENDED },
-      }),
-      this.customerOnboardingRepo.count({
-        where: { status: CustomerOnboardingStatus.UNDER_REVIEW },
-      }),
-      this.customerProfileRepo.count({
-        where: { accountStatus: CustomerAccountStatus.DEACTIVATED },
-      }),
+      this.customerProfileRepo.count({ accountStatus: CustomerAccountStatus.ACTIVE }),
+      this.customerProfileRepo.count({ accountStatus: CustomerAccountStatus.SUSPENDED }),
+      this.customerOnboardingRepo.count({ status: CustomerOnboardingStatus.UNDER_REVIEW }),
+      this.customerProfileRepo.count({ accountStatus: CustomerAccountStatus.DEACTIVATED }),
     ]);
 
     return {
@@ -269,18 +236,10 @@ export class AdminDashboardService {
   async getSupplierStats(): Promise<SupplierStatsDto> {
     const [total, active, suspended, pendingReview, deactivated] = await Promise.all([
       this.supplierProfileRepo.count(),
-      this.supplierProfileRepo.count({
-        where: { accountStatus: SupplierAccountStatus.ACTIVE },
-      }),
-      this.supplierProfileRepo.count({
-        where: { accountStatus: SupplierAccountStatus.SUSPENDED },
-      }),
-      this.supplierOnboardingRepo.count({
-        where: { status: SupplierOnboardingStatus.UNDER_REVIEW },
-      }),
-      this.supplierProfileRepo.count({
-        where: { accountStatus: SupplierAccountStatus.DEACTIVATED },
-      }),
+      this.supplierProfileRepo.count({ accountStatus: SupplierAccountStatus.ACTIVE }),
+      this.supplierProfileRepo.count({ accountStatus: SupplierAccountStatus.SUSPENDED }),
+      this.supplierOnboardingRepo.count({ status: SupplierOnboardingStatus.UNDER_REVIEW }),
+      this.supplierProfileRepo.count({ accountStatus: SupplierAccountStatus.DEACTIVATED }),
     ]);
 
     return {

@@ -1,7 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, LessThanOrEqual, Repository } from "typeorm";
 import { now } from "../../../lib/datetime";
 import {
   type IStorageService,
@@ -9,13 +7,13 @@ import {
   StorageArea,
 } from "../../../storage/storage.interface";
 import { StockControlRole, StockControlUser } from "../../entities/stock-control-user.entity";
-import {
-  NotificationActionType,
-  WorkflowNotification,
-} from "../../entities/workflow-notification.entity";
+import { NotificationActionType } from "../../entities/workflow-notification.entity";
+import { StockControlUserRepository } from "../../repositories/stock-control-user.repository";
+import { WorkflowNotificationRepository } from "../../repositories/workflow-notification.repository";
 import { CompanyEmailService } from "../../services/company-email.service";
 import { WebPushService } from "../../services/web-push.service";
 import { CalibrationCertificate } from "../entities/calibration-certificate.entity";
+import { CalibrationCertificateRepository } from "../repositories/calibration-certificate.repository";
 
 interface UserContext {
   id: number;
@@ -44,12 +42,9 @@ export class CalibrationCertificateService {
   private readonly logger = new Logger(CalibrationCertificateService.name);
 
   constructor(
-    @InjectRepository(CalibrationCertificate)
-    private readonly calCertRepo: Repository<CalibrationCertificate>,
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
-    @InjectRepository(WorkflowNotification)
-    private readonly notificationRepo: Repository<WorkflowNotification>,
+    private readonly calCertRepo: CalibrationCertificateRepository,
+    private readonly userRepo: StockControlUserRepository,
+    private readonly notificationRepo: WorkflowNotificationRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly companyEmailService: CompanyEmailService,
@@ -73,7 +68,7 @@ export class CalibrationCertificateService {
     const subPath = `${StorageArea.STOCK_CONTROL}/calibration-certificates/${companyId}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
-    const certificate = this.calCertRepo.create({
+    const saved = await this.calCertRepo.create({
       companyId,
       equipmentName: dto.equipmentName.trim(),
       equipmentIdentifier: dto.equipmentIdentifier?.trim() || null,
@@ -88,8 +83,6 @@ export class CalibrationCertificateService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-
-    const saved = await this.calCertRepo.save(certificate);
     this.logger.log(
       `Calibration certificate uploaded: ${dto.equipmentName} expires=${dto.expiryDate} by ${user.name}`,
     );
@@ -101,22 +94,11 @@ export class CalibrationCertificateService {
     companyId: number,
     filters?: { active?: boolean },
   ): Promise<CalibrationCertificate[]> {
-    const qb = this.calCertRepo
-      .createQueryBuilder("cal")
-      .where("cal.companyId = :companyId", { companyId })
-      .orderBy("cal.expiryDate", "ASC");
-
-    if (filters?.active !== undefined) {
-      qb.andWhere("cal.isActive = :active", { active: filters.active });
-    }
-
-    return qb.getMany();
+    return this.calCertRepo.findAllForCompany(companyId, filters?.active);
   }
 
   async findById(companyId: number, id: number): Promise<CalibrationCertificate> {
-    const cert = await this.calCertRepo.findOne({
-      where: { id, companyId },
-    });
+    const cert = await this.calCertRepo.findByIdForCompany(companyId, id);
 
     if (!cert) {
       throw new NotFoundException("Calibration certificate not found");
@@ -168,10 +150,7 @@ export class CalibrationCertificateService {
   }
 
   async activeCertificatesForCompany(companyId: number): Promise<CalibrationCertificate[]> {
-    return this.calCertRepo.find({
-      where: { companyId, isActive: true },
-      order: { equipmentName: "ASC" },
-    });
+    return this.calCertRepo.findActiveForCompany(companyId);
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_8AM, { name: "stock-control:calibration-expiry" })
@@ -182,22 +161,13 @@ export class CalibrationCertificateService {
     const thirtyDaysFromNow = today.plus({ days: 30 }).toJSDate();
     const todayDate = today.toJSDate();
 
-    const warningCerts = await this.calCertRepo.find({
-      where: {
-        isActive: true,
-        expiryDate: LessThanOrEqual(thirtyDaysFromNow.toISOString().split("T")[0]),
-        expiryWarningSentAt: IsNull(),
-        expiryNotificationSentAt: IsNull(),
-      },
-    });
+    const warningCerts = await this.calCertRepo.findExpiryWarningCandidates(
+      thirtyDaysFromNow.toISOString().split("T")[0],
+    );
 
-    const expiredCerts = await this.calCertRepo.find({
-      where: {
-        isActive: true,
-        expiryDate: LessThanOrEqual(todayDate.toISOString().split("T")[0]),
-        expiryNotificationSentAt: IsNull(),
-      },
-    });
+    const expiredCerts = await this.calCertRepo.findExpiredCandidates(
+      todayDate.toISOString().split("T")[0],
+    );
 
     if (warningCerts.length === 0 && expiredCerts.length === 0) {
       this.logger.log("No calibration certificates need expiry notifications");
@@ -209,12 +179,10 @@ export class CalibrationCertificateService {
 
     await Promise.all(
       companyIds.map(async (companyId) => {
-        const managers = await this.userRepo.find({
-          where: [
-            { companyId, role: StockControlRole.MANAGER },
-            { companyId, role: StockControlRole.ADMIN },
-          ],
-        });
+        const managers = await this.userRepo.findForCompanyByRoles(companyId, [
+          StockControlRole.MANAGER,
+          StockControlRole.ADMIN,
+        ]);
 
         if (managers.length === 0) return;
 
@@ -260,8 +228,8 @@ export class CalibrationCertificateService {
       ? `The calibration certificate for ${cert.equipmentName}${cert.equipmentIdentifier ? ` (${cert.equipmentIdentifier})` : ""} expired on ${cert.expiryDate}. Please arrange recertification.`
       : `The calibration certificate for ${cert.equipmentName}${cert.equipmentIdentifier ? ` (${cert.equipmentIdentifier})` : ""} expires on ${cert.expiryDate}. Please arrange recertification before the expiry date.`;
 
-    const notifications = recipients.map((user) =>
-      this.notificationRepo.create({
+    const notifications = this.notificationRepo.buildMany(
+      recipients.map((user) => ({
         companyId,
         userId: user.id,
         jobCardId: null,
@@ -269,10 +237,10 @@ export class CalibrationCertificateService {
         message,
         actionType,
         actionUrl: null,
-      }),
+      })),
     );
 
-    await this.notificationRepo.save(notifications);
+    await this.notificationRepo.saveMany(notifications);
 
     this.webPushService
       .sendToUsers(

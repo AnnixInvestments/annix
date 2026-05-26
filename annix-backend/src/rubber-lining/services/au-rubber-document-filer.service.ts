@@ -1,14 +1,9 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { PDFDocument } from "pdf-lib";
-import { Repository } from "typeorm";
 import { extractTextFromPdf } from "../../lib/document-extraction";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { DocumentVersionStatus } from "../entities/document-version.types";
-import { CompanyType, RubberCompany } from "../entities/rubber-company.entity";
-import { DeliveryNoteStatus, RubberDeliveryNote } from "../entities/rubber-delivery-note.entity";
-import { RubberSupplierCoc } from "../entities/rubber-supplier-coc.entity";
-import { RubberTaxInvoice } from "../entities/rubber-tax-invoice.entity";
+import { CompanyType } from "../entities/rubber-company.entity";
+import { DeliveryNoteStatus } from "../entities/rubber-delivery-note.entity";
 import {
   AuRubberDocumentType,
   AuRubberPartyType,
@@ -16,6 +11,8 @@ import {
   isAuRubberInboxPath,
   sanitizeAuRubberDocNumber,
 } from "../lib/au-rubber-document-paths";
+import { RubberCompanyRepository } from "../repositories/rubber-company.repository";
+import { RubberDeliveryNoteRepository } from "../repositories/rubber-delivery-note.repository";
 import { RubberCocExtractionService } from "../rubber-coc-extraction.service";
 import { PdfPageCacheService } from "./pdf-page-cache.service";
 import { PdfSlicerService } from "./pdf-slicer.service";
@@ -33,14 +30,8 @@ export class AuRubberDocumentFilerService {
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
     private readonly pdfSlicerService: PdfSlicerService,
     private readonly pdfPageCacheService: PdfPageCacheService,
-    @InjectRepository(RubberDeliveryNote)
-    private readonly deliveryNoteRepository: Repository<RubberDeliveryNote>,
-    @InjectRepository(RubberCompany)
-    private readonly companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberTaxInvoice)
-    private readonly taxInvoiceRepository: Repository<RubberTaxInvoice>,
-    @InjectRepository(RubberSupplierCoc)
-    private readonly supplierCocRepository: Repository<RubberSupplierCoc>,
+    private readonly deliveryNoteRepository: RubberDeliveryNoteRepository,
+    private readonly companyRepository: RubberCompanyRepository,
     private readonly cocExtractionService: RubberCocExtractionService,
   ) {}
 
@@ -48,7 +39,7 @@ export class AuRubberDocumentFilerService {
     const { parentDocumentPath, deliveryNoteIds } = args;
     if (deliveryNoteIds.length === 0) return;
 
-    const notes = await this.deliveryNoteRepository.findByIds(deliveryNoteIds);
+    const notes = await this.deliveryNoteRepository.findManyByIds(deliveryNoteIds);
     const eligible = notes.filter(
       (n) =>
         n.documentPath === parentDocumentPath &&
@@ -100,7 +91,7 @@ export class AuRubberDocumentFilerService {
           this.bufferAsMulter(slicedBuffer, filename, isPdf ? "application/pdf" : "image/png"),
           targetPath.substring(0, targetPath.lastIndexOf("/")),
         );
-        await this.deliveryNoteRepository.update(note.id, { documentPath: uploaded.path });
+        await this.deliveryNoteRepository.updateById(note.id, { documentPath: uploaded.path });
         this.pdfPageCacheService.invalidate(parentDocumentPath);
         this.pdfPageCacheService.invalidate(uploaded.path);
         this.logger.log(
@@ -110,70 +101,46 @@ export class AuRubberDocumentFilerService {
     );
   }
 
-  /**
-   * Retroactive repair: a CDN created via the bulk analyze-create flow before
-   * per-DN slicing was wired up has the WHOLE multi-DN bundle as its document,
-   * so opening it shows every other DN's pages. This re-slices such a CDN down
-   * to only the pages whose text contains its own DN number.
-   *
-   * Returns the number of pages kept, or null if nothing changed (single-page
-   * doc, no match, or already correctly sliced).
-   */
   async resliceCustomerDnByDnNumber(deliveryNoteId: number): Promise<number | null> {
-    const note = await this.deliveryNoteRepository.findOne({ where: { id: deliveryNoteId } });
+    const note = await this.deliveryNoteRepository.findById(deliveryNoteId);
     if (!note?.documentPath) return null;
     if (!note.documentPath.toLowerCase().endsWith(".pdf")) return null;
 
     const dnNumber = (note.deliveryNoteNumber || "").trim();
     if (dnNumber.length === 0) return null;
 
-    let sourceBuffer: Buffer;
-    try {
-      sourceBuffer = await this.storageService.download(note.documentPath);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      this.logger.warn(
-        `reslice DN ${deliveryNoteId}: cannot download ${note.documentPath}: ${message}`,
-      );
-      return null;
-    }
+    const sourceBuffer = await this.downloadOrNull(note.documentPath, deliveryNoteId);
+    if (!sourceBuffer) return null;
 
     const sourcePdf = await PDFDocument.load(sourceBuffer);
     const totalPages = sourcePdf.getPageCount();
-    if (totalPages <= 1) return null; // single page — nothing to slice
+    if (totalPages <= 1) return null;
 
-    // Per-page text scan: keep pages whose text mentions this DN number.
-    let matchingPages: number[] = [];
-    for (let pageNum = 1; pageNum <= totalPages; pageNum++) {
-      const onePage = await PDFDocument.create();
-      const [copied] = await onePage.copyPages(sourcePdf, [pageNum - 1]);
-      onePage.addPage(copied);
-      const pageBuffer = Buffer.from(await onePage.save());
-      const text = await extractTextFromPdf(pageBuffer);
-      if (this.pageTextMentionsDn(text, dnNumber)) {
-        matchingPages.push(pageNum);
-      }
-    }
+    const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1);
+    const textMatchingPages = await pageNumbers.reduce(
+      async (accPromise, pageNum) => {
+        const acc = await accPromise;
+        const onePage = await PDFDocument.create();
+        const [copied] = await onePage.copyPages(sourcePdf, [pageNum - 1]);
+        onePage.addPage(copied);
+        const pageBuffer = Buffer.from(await onePage.save());
+        const text = await extractTextFromPdf(pageBuffer);
+        return this.pageTextMentionsDn(text, dnNumber) ? [...acc, pageNum] : acc;
+      },
+      Promise.resolve([] as number[]),
+    );
 
-    // Scanned (image-only) PDFs have no text layer, so the text scan finds
-    // nothing. Fall back to Vision OCR: render the pages and ask which one(s)
-    // carry this DN number. Only override when Vision actually returns a
-    // subset — never let it widen a confident text match.
-    if (matchingPages.length === 0) {
-      const visionPages = await this.cocExtractionService.pagesContainingDnNumber(
-        sourceBuffer,
-        dnNumber,
+    const visionFallbackPages =
+      textMatchingPages.length === 0
+        ? await this.cocExtractionService.pagesContainingDnNumber(sourceBuffer, dnNumber)
+        : [];
+    if (textMatchingPages.length === 0 && visionFallbackPages.length > 0) {
+      this.logger.log(
+        `reslice DN ${dnNumber} (#${deliveryNoteId}): text scan matched 0/${totalPages}; Vision matched [${visionFallbackPages.join(",")}]`,
       );
-      if (visionPages.length > 0) {
-        this.logger.log(
-          `reslice DN ${dnNumber} (#${deliveryNoteId}): text scan matched 0/${totalPages}; Vision matched [${visionPages.join(",")}]`,
-        );
-        matchingPages = visionPages;
-      }
     }
+    const matchingPages = textMatchingPages.length > 0 ? textMatchingPages : visionFallbackPages;
 
-    // No match, or every page matches → either we can't improve it or it's
-    // already a single-DN document. Leave it alone.
     if (matchingPages.length === 0 || matchingPages.length === totalPages) {
       this.logger.log(
         `reslice DN ${dnNumber} (#${deliveryNoteId}): ${matchingPages.length}/${totalPages} pages match — no change`,
@@ -182,7 +149,7 @@ export class AuRubberDocumentFilerService {
     }
 
     const slicedBuffer = await this.pdfSlicerService.slicePages(sourceBuffer, matchingPages);
-    const company = await this.companyRepository.findOne({ where: { id: note.supplierCompanyId } });
+    const company = await this.companyRepository.findById(note.supplierCompanyId);
     const party: AuRubberPartyType =
       company?.companyType === CompanyType.CUSTOMER ? "customers" : "suppliers";
     const filename = `${sanitizeAuRubberDocNumber(note.deliveryNoteNumber)}.pdf`;
@@ -196,12 +163,8 @@ export class AuRubberDocumentFilerService {
       this.bufferAsMulter(slicedBuffer, filename, "application/pdf"),
       targetPath.substring(0, targetPath.lastIndexOf("/")),
     );
-    // documentPath now points at the SLICED PDF, whose pages are renumbered
-    // 1..N — so sourcePageNumbers must describe the slice (1,2,…), not the
-    // original page numbers (e.g. [2]). Recording the originals leaves the
-    // viewer trying to show a page index that no longer exists in the slice.
-    const slicedPageNumbers = matchingPages.map((_, i) => i + 1);
-    await this.deliveryNoteRepository.update(note.id, {
+    const slicedPageNumbers = matchingPages.map((_, index) => index + 1);
+    await this.deliveryNoteRepository.updateById(note.id, {
       documentPath: uploaded.path,
       sourcePageNumbers: slicedPageNumbers,
     });
@@ -213,72 +176,63 @@ export class AuRubberDocumentFilerService {
     return matchingPages.length;
   }
 
-  /**
-   * Bulk version: re-slice every customer-side DN whose document is a
-   * multi-page PDF (likely a full bundle). Idempotent — single-DN docs and
-   * already-sliced docs are skipped.
-   */
   async resliceAllCustomerDnBundles(): Promise<{ checked: number; resliced: number[] }> {
-    const customerCompanies = await this.companyRepository.find({
-      where: { companyType: CompanyType.CUSTOMER },
-    });
-    const customerIds = customerCompanies.map((c) => c.id);
-    if (customerIds.length === 0) return { checked: 0, resliced: [] };
-    const notes = await this.deliveryNoteRepository.find({
-      where: customerIds.map((id) => ({ supplierCompanyId: id })),
+    const notes = await this.deliveryNoteRepository.findFiltered({
+      companyType: CompanyType.CUSTOMER,
     });
     const candidates = notes.filter(
-      (n) =>
-        n.documentPath?.toLowerCase().endsWith(".pdf") && n.status !== DeliveryNoteStatus.FAILED,
+      (note) =>
+        note.documentPath?.toLowerCase().endsWith(".pdf") &&
+        note.status !== DeliveryNoteStatus.FAILED,
     );
-    const resliced: number[] = [];
-    for (const note of candidates) {
-      try {
-        const kept = await this.resliceCustomerDnByDnNumber(note.id);
-        if (kept !== null) resliced.push(note.id);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`reslice DN ${note.id} failed: ${message}`);
-      }
-    }
+    const resliced = await this.resliceCandidates(candidates);
     return { checked: candidates.length, resliced };
   }
 
-  /**
-   * Global version: re-slice EVERY active delivery note — customer AND supplier
-   * — whose stored document is a multi-page PDF, scoping each down to the pages
-   * that mention its own DN number. Idempotent: single-page docs, docs where no
-   * page matches, and docs where every page already matches are left untouched.
-   * `resliceCustomerDnByDnNumber` is DN-number driven, so it works the same for
-   * supplier DNs (it just files the slice under suppliers/ vs customers/).
-   */
   async resliceAllDeliveryNoteBundles(): Promise<{ checked: number; resliced: number[] }> {
-    const notes = await this.deliveryNoteRepository.find({
-      where: { versionStatus: DocumentVersionStatus.ACTIVE },
-    });
+    const notes = await this.deliveryNoteRepository.findFiltered();
     const candidates = notes.filter(
-      (n) =>
-        n.documentPath?.toLowerCase().endsWith(".pdf") && n.status !== DeliveryNoteStatus.FAILED,
+      (note) =>
+        note.documentPath?.toLowerCase().endsWith(".pdf") &&
+        note.status !== DeliveryNoteStatus.FAILED,
     );
-    const resliced: number[] = [];
-    for (const note of candidates) {
-      try {
-        const kept = await this.resliceCustomerDnByDnNumber(note.id);
-        if (kept !== null) resliced.push(note.id);
-      } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        this.logger.warn(`reslice DN ${note.id} failed: ${message}`);
-      }
-    }
+    const resliced = await this.resliceCandidates(candidates);
     this.logger.log(
       `resliceAllDeliveryNoteBundles: checked ${candidates.length}, resliced ${resliced.length} [${resliced.join(",")}]`,
     );
     return { checked: candidates.length, resliced };
   }
 
-  // A page "mentions" the DN if its number appears as a standalone token.
-  // Guards against 1337 matching 13370 / 21337 by requiring non-digit (or
-  // string) boundaries on both sides.
+  private resliceCandidates(candidates: Array<{ id: number }>): Promise<number[]> {
+    return candidates.reduce(
+      async (accPromise, note) => {
+        const acc = await accPromise;
+        try {
+          const kept = await this.resliceCustomerDnByDnNumber(note.id);
+          return kept !== null ? [...acc, note.id] : acc;
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          this.logger.warn(`reslice DN ${note.id} failed: ${message}`);
+          return acc;
+        }
+      },
+      Promise.resolve([] as number[]),
+    );
+  }
+
+  private async downloadOrNull(
+    documentPath: string,
+    deliveryNoteId: number,
+  ): Promise<Buffer | null> {
+    try {
+      return await this.storageService.download(documentPath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`reslice DN ${deliveryNoteId}: cannot download ${documentPath}: ${message}`);
+      return null;
+    }
+  }
+
   private pageTextMentionsDn(text: string, dnNumber: string): boolean {
     if (!text || dnNumber.length === 0) return false;
     const escaped = dnNumber.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");

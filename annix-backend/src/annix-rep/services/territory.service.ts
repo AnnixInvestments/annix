@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Prospect } from "../entities/prospect.entity";
 import { Territory, TerritoryBounds } from "../entities/territory.entity";
+import { ProspectRepository } from "../prospect.repository";
+import { TerritoryRepository } from "../territory.repository";
 
 export interface CreateTerritoryDto {
   name: string;
@@ -30,14 +30,12 @@ export class TerritoryService {
   private readonly logger = new Logger(TerritoryService.name);
 
   constructor(
-    @InjectRepository(Territory)
-    private readonly territoryRepo: Repository<Territory>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
+    private readonly territoryRepo: TerritoryRepository,
+    private readonly prospectRepo: ProspectRepository,
   ) {}
 
   async create(orgId: number, dto: CreateTerritoryDto): Promise<Territory> {
-    const territory = this.territoryRepo.create({
+    const saved = await this.territoryRepo.create({
       organizationId: orgId,
       name: dto.name,
       description: dto.description ?? null,
@@ -46,24 +44,16 @@ export class TerritoryService {
       bounds: dto.bounds ?? null,
       isActive: true,
     });
-
-    const saved = await this.territoryRepo.save(territory);
     this.logger.log(`Territory created: ${saved.name} for org ${orgId}`);
     return saved;
   }
 
   async findAll(orgId: number): Promise<TerritoryWithProspectCount[]> {
-    const territories = await this.territoryRepo.find({
-      where: { organizationId: orgId },
-      relations: ["assignedTo"],
-      order: { name: "ASC" },
-    });
+    const territories = await this.territoryRepo.findByOrganization(orgId);
 
     const result: TerritoryWithProspectCount[] = await Promise.all(
       territories.map(async (t) => {
-        const prospectCount = await this.prospectRepo.count({
-          where: { territoryId: t.id },
-        });
+        const prospectCount = await this.prospectRepo.countByTerritory(t.id);
         return { ...t, prospectCount };
       }),
     );
@@ -72,10 +62,7 @@ export class TerritoryService {
   }
 
   async findOne(id: number): Promise<Territory | null> {
-    return this.territoryRepo.findOne({
-      where: { id },
-      relations: ["assignedTo", "organization"],
-    });
+    return this.territoryRepo.findByIdWithRelations(id);
   }
 
   async update(id: number, dto: UpdateTerritoryDto): Promise<Territory> {
@@ -129,11 +116,7 @@ export class TerritoryService {
   }
 
   async prospectsInTerritory(territoryId: number): Promise<Prospect[]> {
-    return this.prospectRepo.find({
-      where: { territoryId },
-      relations: ["owner"],
-      order: { createdAt: "DESC" },
-    });
+    return this.prospectRepo.findByTerritoryWithOwner(territoryId);
   }
 
   async findTerritoryForLocation(
@@ -141,9 +124,7 @@ export class TerritoryService {
     lat: number,
     lng: number,
   ): Promise<Territory | null> {
-    const territories = await this.territoryRepo.find({
-      where: { organizationId: orgId, isActive: true },
-    });
+    const territories = await this.territoryRepo.findActiveByOrganization(orgId);
 
     const matching = territories.find((t) => {
       if (t.bounds) {
@@ -161,9 +142,6 @@ export class TerritoryService {
   }
 
   async territoriesForUser(userId: number): Promise<Territory[]> {
-    return this.territoryRepo.find({
-      where: { assignedToId: userId, isActive: true },
-      order: { name: "ASC" },
-    });
+    return this.territoryRepo.findActiveByAssignedUser(userId);
   }
 }

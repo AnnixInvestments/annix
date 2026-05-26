@@ -1,7 +1,5 @@
 import * as fs from "node:fs";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Not, Repository } from "typeorm";
 import { bufferToMulterFile, documentPath } from "../lib/app-storage-helper";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
@@ -26,8 +24,11 @@ import {
   NixExtraction,
 } from "./entities/nix-extraction.entity";
 import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
-import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { MineInferenceService } from "./mine-inference.service";
+import { NixClarificationRepository } from "./nix-clarification.repository";
+import { NixExtractionRepository } from "./nix-extraction.repository";
+import { NixLearningRepository } from "./nix-learning.repository";
+import { NixUserPreferenceRepository } from "./nix-user-preference.repository";
 import { NixExtractionProfileRegistry } from "./profiles";
 import { RevisionTrackingService, type SupersessionVerdict } from "./revision-tracking.service";
 import {
@@ -44,14 +45,10 @@ export class NixService {
   private readonly logger = new Logger(NixService.name);
 
   constructor(
-    @InjectRepository(NixExtraction)
-    private readonly extractionRepo: Repository<NixExtraction>,
-    @InjectRepository(NixLearning)
-    private readonly learningRepo: Repository<NixLearning>,
-    @InjectRepository(NixUserPreference)
-    private readonly preferenceRepo: Repository<NixUserPreference>,
-    @InjectRepository(NixClarification)
-    private readonly clarificationRepo: Repository<NixClarification>,
+    private readonly extractionRepo: NixExtractionRepository,
+    private readonly learningRepo: NixLearningRepository,
+    private readonly preferenceRepo: NixUserPreferenceRepository,
+    private readonly clarificationRepo: NixClarificationRepository,
     private readonly excelExtractor: ExcelExtractorService,
     private readonly pdfExtractor: PdfExtractorService,
     private readonly wordExtractor: WordExtractorService,
@@ -225,10 +222,7 @@ export class NixService {
    * doesn't persist body today and has no FK to the session.
    */
   async suggestCustomerOrderNumber(sessionId: number): Promise<{ suggestion: string | null }> {
-    const extractions = await this.extractionRepo.find({
-      where: { sessionId },
-      order: { id: "ASC" },
-    });
+    const extractions = await this.extractionRepo.findBySessionOrderedAsc(sessionId);
     if (extractions.length === 0) return { suggestion: null };
 
     const MAX_PROMPT_CHARS = 20000;
@@ -292,7 +286,7 @@ export class NixService {
    * before #253 task E can't be retried via this path (no source on file).
    */
   async retryExtraction(extractionId: number): Promise<NixExtraction> {
-    const extraction = await this.extractionRepo.findOne({ where: { id: extractionId } });
+    const extraction = await this.extractionRepo.findById(extractionId);
     if (!extraction) {
       throw new Error("Extraction not found");
     }
@@ -439,13 +433,9 @@ export class NixService {
     // has half its docs processed. Failed extractions are excluded so
     // a legitimate retry-after-failure still succeeds.
     if (dto.sessionId) {
-      const existing = await this.extractionRepo.findOne({
-        where: {
-          sessionId: dto.sessionId,
-          documentName: resolvedDocumentName,
-          status: Not(ExtractionStatus.FAILED),
-        },
-        order: { id: "DESC" },
+      const existing = await this.extractionRepo.findLatestSameSessionDuplicate({
+        sessionId: dto.sessionId,
+        documentName: resolvedDocumentName,
       });
       if (existing) {
         this.logger.log(
@@ -465,7 +455,7 @@ export class NixService {
       }
     }
 
-    const extraction = this.extractionRepo.create({
+    const extraction = await this.extractionRepo.create({
       documentName: resolvedDocumentName,
       documentPath: dto.documentPath,
       documentType,
@@ -478,8 +468,6 @@ export class NixService {
       documentRole: dto.documentRole,
       sessionId: dto.sessionId,
     });
-
-    await this.extractionRepo.save(extraction);
 
     // Persist the uploaded file to S3 so the source document survives the
     // request. Best-effort — does not block extraction even if S3 is down.
@@ -731,34 +719,20 @@ export class NixService {
     sourceId: number | undefined,
     excludeExtractionId: number,
   ): Promise<NixExtraction[]> {
-    const completedStatuses = [ExtractionStatus.COMPLETED, ExtractionStatus.NEEDS_CLARIFICATION];
-
     if (sessionId) {
-      return this.extractionRepo
-        .createQueryBuilder("extraction")
-        .where("extraction.session_id = :sessionId", { sessionId })
-        .andWhere("extraction.id <> :excludeId", { excludeId: excludeExtractionId })
-        .andWhere("extraction.status IN (:...completedStatuses)", { completedStatuses })
-        .orderBy("extraction.created_at", "ASC")
-        .getMany();
+      return this.extractionRepo.findUsableSessionSiblings(sessionId, excludeExtractionId);
     }
 
     if (!sourceModule || !sourceId) return [];
-    return this.extractionRepo
-      .createQueryBuilder("extraction")
-      .where("extraction.source_module = :sourceModule", { sourceModule })
-      .andWhere("extraction.source_id = :sourceId", { sourceId })
-      .andWhere("extraction.id <> :excludeId", { excludeId: excludeExtractionId })
-      .andWhere("extraction.status IN (:...completedStatuses)", { completedStatuses })
-      .orderBy("extraction.created_at", "ASC")
-      .getMany();
+    return this.extractionRepo.findUsableSourceSiblings(
+      sourceModule,
+      sourceId,
+      excludeExtractionId,
+    );
   }
 
   async submitClarification(dto: SubmitClarificationDto): Promise<SubmitClarificationResponseDto> {
-    const clarification = await this.clarificationRepo.findOne({
-      where: { id: dto.clarificationId },
-      relations: ["extraction"],
-    });
+    const clarification = await this.clarificationRepo.findByIdWithExtraction(dto.clarificationId);
 
     if (!clarification) {
       return { success: false };
@@ -777,12 +751,9 @@ export class NixService {
       await this.learnFromClarification(clarification);
     }
 
-    const remainingCount = await this.clarificationRepo.count({
-      where: {
-        extractionId: clarification.extractionId,
-        status: ClarificationStatus.PENDING,
-      },
-    });
+    const remainingCount = await this.clarificationRepo.countPendingForExtraction(
+      clarification.extractionId,
+    );
 
     if (remainingCount === 0 && clarification.extraction) {
       clarification.extraction.status = ExtractionStatus.COMPLETED;
@@ -803,28 +774,15 @@ export class NixService {
   }
 
   async extraction(id: number): Promise<NixExtraction | null> {
-    return this.extractionRepo.findOne({
-      where: { id },
-      relations: ["user", "rfq"],
-    });
+    return this.extractionRepo.findByIdWithUserAndRfq(id);
   }
 
   async pendingClarifications(extractionId: number): Promise<NixClarification[]> {
-    return this.clarificationRepo.find({
-      where: {
-        extractionId,
-        status: ClarificationStatus.PENDING,
-      },
-      order: { createdAt: "ASC" },
-    });
+    return this.clarificationRepo.findPendingForExtractionOrdered(extractionId);
   }
 
   async userExtractions(userId: number): Promise<NixExtraction[]> {
-    return this.extractionRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-      take: 50,
-    });
+    return this.extractionRepo.findRecentForUser(userId);
   }
 
   private detectDocumentType(path: string): DocumentType {
@@ -1485,12 +1443,7 @@ export class NixService {
     items: Array<any>,
     _productTypes?: string[],
   ): Promise<Array<any>> {
-    const learningRules = await this.learningRepo.find({
-      where: {
-        learningType: LearningType.RELEVANCE_RULE,
-        isActive: true,
-      },
-    });
+    const learningRules = await this.learningRepo.findActiveRelevanceRules();
 
     return items.map((item) => ({
       ...item,
@@ -1556,7 +1509,7 @@ export class NixService {
         continue;
       }
 
-      const clarification = this.clarificationRepo.create({
+      const clarification = await this.clarificationRepo.create({
         extractionId: extraction.id,
         userId: extraction.userId,
         clarificationType,
@@ -1578,7 +1531,7 @@ export class NixService {
         },
       });
 
-      clarifications.push(await this.clarificationRepo.save(clarification));
+      clarifications.push(clarification);
     }
 
     return clarifications;
@@ -1613,7 +1566,7 @@ export class NixService {
 
         const question = `📋 SPECIFICATION HEADER (${specCell.cellRef}):\n\n"${specCell.rawText.substring(0, 200)}${specCell.rawText.length > 200 ? "..." : ""}"\n\n${extractedInfo.length > 0 ? `I extracted:\n${extractedInfo.map((i) => `• ${i}`).join("\n")}\n\n` : ""}I could not determine the following from this specification:\n${missingFields.map((f) => `• ${f}`).join("\n")}\n\nPlease provide the missing specification details.`;
 
-        const clarification = this.clarificationRepo.create({
+        const clarification = await this.clarificationRepo.create({
           extractionId: extraction.id,
           userId: extraction.userId,
           clarificationType: ClarificationType.MISSING_INFO,
@@ -1634,7 +1587,7 @@ export class NixService {
           },
         });
 
-        clarifications.push(await this.clarificationRepo.save(clarification));
+        clarifications.push(clarification);
         this.logger.log(
           `Generated specification clarification for ${specCell.cellRef} - missing: ${missingFields.join(", ")}`,
         );
@@ -1653,12 +1606,9 @@ export class NixService {
       return;
     }
 
-    const existingRule = await this.learningRepo.findOne({
-      where: {
-        patternKey: clarification.context.itemDescription,
-        learningType: LearningType.CORRECTION,
-      },
-    });
+    const existingRule = await this.learningRepo.findCorrectionByPatternKey(
+      clarification.context.itemDescription,
+    );
 
     if (existingRule) {
       existingRule.learnedValue = clarification.responseText;
@@ -1666,7 +1616,7 @@ export class NixService {
       existingRule.confidence = Math.min(1, existingRule.confidence + 0.05);
       await this.learningRepo.save(existingRule);
     } else {
-      const newRule = this.learningRepo.create({
+      await this.learningRepo.create({
         learningType: LearningType.CORRECTION,
         source: LearningSource.USER_CORRECTION,
         patternKey: clarification.context.itemDescription,
@@ -1675,7 +1625,6 @@ export class NixService {
         confidence: 0.6,
         confirmationCount: 1,
       });
-      await this.learningRepo.save(newRule);
     }
 
     clarification.usedForLearning = true;
@@ -1688,7 +1637,7 @@ export class NixService {
     learnedValue: string,
     applicableProducts?: string[],
   ): Promise<NixLearning> {
-    const rule = this.learningRepo.create({
+    return this.learningRepo.create({
       learningType: LearningType.RELEVANCE_RULE,
       source: LearningSource.ADMIN_SEEDED,
       category,
@@ -1699,15 +1648,10 @@ export class NixService {
       confirmationCount: 1,
       isActive: true,
     });
-
-    return this.learningRepo.save(rule);
   }
 
   async adminLearningRules(): Promise<NixLearning[]> {
-    return this.learningRepo.find({
-      where: { source: LearningSource.ADMIN_SEEDED },
-      order: { createdAt: "DESC" },
-    });
+    return this.learningRepo.findAdminSeededOrdered();
   }
 
   /**
@@ -1729,7 +1673,7 @@ export class NixService {
     field: string,
     rawValue: string | number | boolean | null,
   ): Promise<NixExtraction> {
-    const extraction = await this.extractionRepo.findOne({ where: { id: extractionId } });
+    const extraction = await this.extractionRepo.findById(extractionId);
     if (!extraction) {
       throw new Error("Extraction not found");
     }
@@ -1802,12 +1746,7 @@ export class NixService {
   }): Promise<{ success: boolean }> {
     const patternKey = `${correction.itemDescription}::${correction.fieldName}`;
 
-    const existingRule = await this.learningRepo.findOne({
-      where: {
-        patternKey,
-        learningType: LearningType.CORRECTION,
-      },
-    });
+    const existingRule = await this.learningRepo.findCorrectionByPatternKey(patternKey);
 
     if (existingRule) {
       if (existingRule.learnedValue === String(correction.correctedValue)) {
@@ -1823,7 +1762,7 @@ export class NixService {
       await this.learningRepo.save(existingRule);
       this.logger.log(`Updated learning rule for pattern: ${patternKey}`);
     } else {
-      const newRule = this.learningRepo.create({
+      await this.learningRepo.create({
         learningType: LearningType.CORRECTION,
         source: LearningSource.USER_CORRECTION,
         patternKey,
@@ -1835,7 +1774,6 @@ export class NixService {
         confirmationCount: 1,
         isActive: true,
       });
-      await this.learningRepo.save(newRule);
       this.logger.log(`Created new learning rule for pattern: ${patternKey}`);
     }
 

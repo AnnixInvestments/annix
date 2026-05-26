@@ -1,41 +1,27 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { StockItem } from "../entities/stock-item.entity";
 import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockPriceHistoryRepository } from "../repositories/stock-price-history.repository";
 
 @Injectable()
 export class PriceHistoryService {
   constructor(
-    @InjectRepository(StockPriceHistory)
-    private readonly priceHistoryRepo: Repository<StockPriceHistory>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
+    private readonly priceHistoryRepo: StockPriceHistoryRepository,
+    private readonly stockItemRepo: StockItemRepository,
   ) {}
 
   async historyForItem(companyId: number, stockItemId: number): Promise<StockPriceHistory[]> {
-    const stockItem = await this.stockItemRepo.findOne({
-      where: { id: stockItemId, companyId },
-    });
+    const stockItem = await this.stockItemRepo.findOneForCompany(stockItemId, companyId);
 
     if (!stockItem) {
       throw new NotFoundException(`Stock item ${stockItemId} not found`);
     }
 
-    return this.priceHistoryRepo.find({
-      where: { stockItemId, companyId },
-      order: { createdAt: "DESC" },
-      take: 50,
-    });
+    return this.priceHistoryRepo.findForItemRecent(companyId, stockItemId, 50);
   }
 
   async recentChanges(companyId: number, limit = 20): Promise<StockPriceHistory[]> {
-    return this.priceHistoryRepo.find({
-      where: { companyId },
-      relations: ["stockItem"],
-      order: { createdAt: "DESC" },
-      take: limit,
-    });
+    return this.priceHistoryRepo.recentChangesForCompany(companyId, limit);
   }
 
   async recordManualChange(
@@ -45,9 +31,7 @@ export class PriceHistoryService {
     newPrice: number,
     changedBy: number,
   ): Promise<StockPriceHistory> {
-    const stockItem = await this.stockItemRepo.findOne({
-      where: { id: stockItemId, companyId },
-    });
+    const stockItem = await this.stockItemRepo.findOneForCompany(stockItemId, companyId);
 
     if (!stockItem) {
       throw new NotFoundException(`Stock item ${stockItemId} not found`);
@@ -75,18 +59,13 @@ export class PriceHistoryService {
     priceChangeCount: number;
     lastChangeDate: Date | null;
   }> {
-    const stockItem = await this.stockItemRepo.findOne({
-      where: { id: stockItemId, companyId },
-    });
+    const stockItem = await this.stockItemRepo.findOneForCompany(stockItemId, companyId);
 
     if (!stockItem) {
       throw new NotFoundException(`Stock item ${stockItemId} not found`);
     }
 
-    const history = await this.priceHistoryRepo.find({
-      where: { stockItemId, companyId },
-      order: { createdAt: "DESC" },
-    });
+    const history = await this.priceHistoryRepo.findForItemOrdered(companyId, stockItemId);
 
     if (history.length === 0) {
       return {

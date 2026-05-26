@@ -1,10 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
-import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 import { QaReviewDecision } from "../entities/qa-review-decision.entity";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { JobCardBackgroundCompletionRepository } from "../repositories/job-card-background-completion.repository";
+import { QaReviewDecisionRepository } from "../repositories/qa-review-decision.repository";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
 interface UserContext {
@@ -39,19 +38,14 @@ export class QaProcessService {
   private readonly logger = new Logger(QaProcessService.name);
 
   constructor(
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(JobCardBackgroundCompletion)
-    private readonly completionRepo: Repository<JobCardBackgroundCompletion>,
-    @InjectRepository(QaReviewDecision)
-    private readonly reviewRepo: Repository<QaReviewDecision>,
+    private readonly coatingRepo: JobCardCoatingAnalysisRepository,
+    private readonly completionRepo: JobCardBackgroundCompletionRepository,
+    private readonly reviewRepo: QaReviewDecisionRepository,
     private readonly notificationService: WorkflowNotificationService,
   ) {}
 
   async applicability(companyId: number, jobCardId: number): Promise<QaApplicability> {
-    const analysis = await this.coatingRepo.findOne({
-      where: { companyId, jobCardId },
-    });
+    const analysis = await this.coatingRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!analysis) {
       return { hasRubber: true, hasPaint: true };
@@ -82,15 +76,13 @@ export class QaProcessService {
       stepsToSkip.push("qc_batch_certs", "qc_repairs", "qa_review");
     }
 
-    const existing = await this.completionRepo.find({
-      where: { jobCardId, companyId },
-    });
+    const existing = await this.completionRepo.findForJobCardAndCompany(jobCardId, companyId);
     const completedKeys = new Set(existing.map((c) => c.stepKey));
 
-    const newCompletions = stepsToSkip
-      .filter((key) => !completedKeys.has(key))
-      .map((key) =>
-        this.completionRepo.create({
+    const newCompletions = this.completionRepo.buildMany(
+      stepsToSkip
+        .filter((key) => !completedKeys.has(key))
+        .map((key) => ({
           companyId,
           jobCardId,
           stepKey: key,
@@ -99,11 +91,11 @@ export class QaProcessService {
           completedAt: now().toJSDate(),
           notes: "Auto-skipped — not applicable",
           completionType: "skipped",
-        }),
-      );
+        })),
+    );
 
     if (newCompletions.length > 0) {
-      await this.completionRepo.save(newCompletions);
+      await this.completionRepo.saveMany(newCompletions);
       this.logger.log(
         `Auto-skipped ${newCompletions.length} QA step(s) [${stepsToSkip.join(", ")}] for job card ${jobCardId}`,
       );
@@ -117,7 +109,7 @@ export class QaProcessService {
           ["qc_batch_certs", "qc_repairs", "qa_review"].includes(c.stepKey),
       );
       if (wronglySkipped.length > 0) {
-        await this.completionRepo.remove(wronglySkipped);
+        await this.completionRepo.removeMany(wronglySkipped);
         this.logger.log(
           `Reversed ${wronglySkipped.length} wrongly-skipped QA step(s) for job card ${jobCardId} (now has rubber=${hasRubber}, paint=${hasPaint})`,
         );
@@ -133,13 +125,10 @@ export class QaProcessService {
   ): Promise<QaReviewDecision> {
     const { hasRubber, hasPaint } = await this.applicability(companyId, jobCardId);
 
-    const lastDecision = await this.reviewRepo.findOne({
-      where: { companyId, jobCardId },
-      order: { cycleNumber: "DESC" },
-    });
+    const lastDecision = await this.reviewRepo.findLatestForJobCard(companyId, jobCardId);
     const cycleNumber = lastDecision ? lastDecision.cycleNumber + 1 : 1;
 
-    const decision = this.reviewRepo.create({
+    const saved = await this.reviewRepo.create({
       companyId,
       jobCardId,
       cycleNumber,
@@ -153,8 +142,6 @@ export class QaProcessService {
       notes: input.notes,
     });
 
-    const saved = await this.reviewRepo.save(decision);
-
     const stepsToSkip: string[] = [];
     const rubberAccepted = !hasRubber || input.rubberAccepted === true;
     const paintAccepted = !hasPaint || input.paintAccepted === true;
@@ -164,13 +151,13 @@ export class QaProcessService {
     }
 
     if (stepsToSkip.length > 0) {
-      const existing = await this.completionRepo.find({ where: { jobCardId, companyId } });
+      const existing = await this.completionRepo.findForJobCardAndCompany(jobCardId, companyId);
       const completedKeys = new Set(existing.map((c) => c.stepKey));
 
-      const skipCompletions = stepsToSkip
-        .filter((key) => !completedKeys.has(key))
-        .map((key) =>
-          this.completionRepo.create({
+      const skipCompletions = this.completionRepo.buildMany(
+        stepsToSkip
+          .filter((key) => !completedKeys.has(key))
+          .map((key) => ({
             companyId,
             jobCardId,
             stepKey: key,
@@ -179,11 +166,11 @@ export class QaProcessService {
             completedAt: now().toJSDate(),
             notes: "Auto-skipped — accepted in QA review",
             completionType: "skipped",
-          }),
-        );
+          })),
+      );
 
       if (skipCompletions.length > 0) {
-        await this.completionRepo.save(skipCompletions);
+        await this.completionRepo.saveMany(skipCompletions);
         this.logger.log(
           `Auto-skipped repair steps [${stepsToSkip.join(", ")}] for job card ${jobCardId} (cycle ${cycleNumber})`,
         );
@@ -214,10 +201,7 @@ export class QaProcessService {
   }
 
   async resetReviewAfterRepairs(companyId: number, jobCardId: number): Promise<boolean> {
-    const latestDecision = await this.reviewRepo.findOne({
-      where: { companyId, jobCardId },
-      order: { cycleNumber: "DESC" },
-    });
+    const latestDecision = await this.reviewRepo.findLatestForJobCard(companyId, jobCardId);
 
     if (!latestDecision) {
       return false;
@@ -231,24 +215,25 @@ export class QaProcessService {
       return false;
     }
 
-    const repairCompletions = await this.completionRepo.find({
-      where: { jobCardId, companyId },
-    });
+    const repairCompletions = await this.completionRepo.findForJobCardAndCompany(
+      jobCardId,
+      companyId,
+    );
     const completedKeys = new Set(repairCompletions.map((c) => c.stepKey));
 
     if (!completedKeys.has("qc_repairs")) {
       return false;
     }
 
-    await this.completionRepo.delete({ jobCardId, companyId, stepKey: "qc_repairs" });
-    await this.completionRepo.delete({ jobCardId, companyId, stepKey: "qa_review" });
-    await this.completionRepo.delete({ jobCardId, companyId, stepKey: "qa_final_check" });
-    await this.completionRepo.delete({
+    await this.completionRepo.deleteByJobCardCompanyStep(jobCardId, companyId, "qc_repairs");
+    await this.completionRepo.deleteByJobCardCompanyStep(jobCardId, companyId, "qa_review");
+    await this.completionRepo.deleteByJobCardCompanyStep(jobCardId, companyId, "qa_final_check");
+    await this.completionRepo.deleteByJobCardCompanyStep(
       jobCardId,
       companyId,
-      stepKey: "book_3rd_party_inspections",
-    });
-    await this.completionRepo.delete({ jobCardId, companyId, stepKey: "compile_data_book" });
+      "book_3rd_party_inspections",
+    );
+    await this.completionRepo.deleteByJobCardCompanyStep(jobCardId, companyId, "compile_data_book");
 
     this.logger.log(
       `Reset QA review and downstream steps for job card ${jobCardId} after repairs (cycle ${latestDecision.cycleNumber})`,
@@ -266,9 +251,6 @@ export class QaProcessService {
   }
 
   latestDecisionForJobCard(companyId: number, jobCardId: number): Promise<QaReviewDecision | null> {
-    return this.reviewRepo.findOne({
-      where: { companyId, jobCardId },
-      order: { cycleNumber: "DESC" },
-    });
+    return this.reviewRepo.findLatestForJobCard(companyId, jobCardId);
   }
 }

@@ -1,6 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { StockTake } from "../entities/stock-take.entity";
+import { StockTakeRepository } from "../repositories/stock-take.repository";
 import { StockTakeService } from "./stock-take.service";
 import { StockTakeCronService } from "./stock-take-cron.service";
 
@@ -8,11 +7,8 @@ describe("StockTakeCronService", () => {
   let service: StockTakeCronService;
 
   const mockStockTakeRepo = {
-    createQueryBuilder: jest.fn(() => ({
-      select: jest.fn().mockReturnThis(),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    })),
-    findOne: jest.fn(),
+    distinctCompanyIds: jest.fn().mockResolvedValue([]),
+    findDraftForPeriod: jest.fn(),
   };
 
   const mockStockTakeService = {
@@ -24,13 +20,16 @@ describe("StockTakeCronService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StockTakeCronService,
-        { provide: getRepositoryToken(StockTake), useValue: mockStockTakeRepo },
+        { provide: StockTakeRepository, useValue: mockStockTakeRepo },
         { provide: StockTakeService, useValue: mockStockTakeService },
       ],
     }).compile();
 
     service = module.get<StockTakeCronService>(StockTakeCronService);
     jest.clearAllMocks();
+    mockStockTakeRepo.distinctCompanyIds.mockResolvedValue([]);
+    mockStockTakeService.createSession.mockResolvedValue({ id: 1 });
+    mockStockTakeService.captureSnapshot.mockResolvedValue({ id: 1 });
   });
 
   it("should be defined", () => {
@@ -39,10 +38,7 @@ describe("StockTakeCronService", () => {
 
   describe("monthlySnapshot", () => {
     it("does nothing when no companies exist", async () => {
-      mockStockTakeRepo.createQueryBuilder.mockReturnValueOnce({
-        select: jest.fn().mockReturnThis(),
-        getRawMany: jest.fn().mockResolvedValue([]),
-      } as never);
+      mockStockTakeRepo.distinctCompanyIds.mockResolvedValueOnce([]);
       await service.monthlySnapshot();
       expect(mockStockTakeService.createSession).not.toHaveBeenCalled();
     });

@@ -1,9 +1,7 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { PaperPortfolioSnapshot } from "../entities/paper-portfolio-snapshot.entity";
+import { PaperPortfolioSnapshotRepository } from "../repositories/paper-portfolio-snapshot.repository";
 import { BenchmarkExecutionService } from "./benchmark-execution.service";
 import { MacroSentimentService } from "./macro-sentiment.service";
 import { MarketDataIngestionService } from "./market-data-ingestion.service";
@@ -40,8 +38,7 @@ export class InsightsCronService implements OnApplicationBootstrap {
     private readonly signalEngine: SignalEngineService,
     private readonly tradeExecution: PaperTradeExecutionService,
     private readonly macroSentiment: MacroSentimentService,
-    @InjectRepository(PaperPortfolioSnapshot)
-    private readonly snapshotRepo: Repository<PaperPortfolioSnapshot>,
+    private readonly snapshotRepo: PaperPortfolioSnapshotRepository,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
@@ -53,11 +50,7 @@ export class InsightsCronService implements OnApplicationBootstrap {
     if (currentHour < 6) {
       return;
     }
-    const latest = await this.snapshotRepo
-      .createQueryBuilder("s")
-      .select("MAX(s.snapshot_date)", "maxDate")
-      .getRawOne<{ maxDate: string | Date | null }>();
-    const rawMax = latest?.maxDate ?? null;
+    const rawMax = await this.snapshotRepo.maxSnapshotDate();
     const latestDate =
       rawMax instanceof Date ? rawMax.toISOString().slice(0, 10) : (rawMax as string | null);
     if (latestDate && latestDate >= today) {

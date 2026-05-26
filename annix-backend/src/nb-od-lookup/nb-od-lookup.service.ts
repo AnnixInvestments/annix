@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { NbOdLookup } from "./entities/nb-od-lookup.entity";
+import { NbOdLookupRepository } from "./nb-od-lookup.repository";
 
 export interface NbOdLookupResult {
   found: boolean;
@@ -12,21 +11,14 @@ export interface NbOdLookupResult {
 
 @Injectable()
 export class NbOdLookupService {
-  constructor(
-    @InjectRepository(NbOdLookup)
-    private nbOdLookupRepository: Repository<NbOdLookup>,
-  ) {}
+  constructor(private readonly nbOdLookupRepository: NbOdLookupRepository) {}
 
-  async findAll(): Promise<NbOdLookup[]> {
-    return this.nbOdLookupRepository.find({
-      order: { nominal_bore_mm: "ASC" },
-    });
+  findAll(): Promise<NbOdLookup[]> {
+    return this.nbOdLookupRepository.findAllOrdered();
   }
 
   async nbToOd(nominalBoreMm: number): Promise<NbOdLookupResult> {
-    const result = await this.nbOdLookupRepository.findOne({
-      where: { nominal_bore_mm: nominalBoreMm },
-    });
+    const result = await this.nbOdLookupRepository.findByNominalBore(nominalBoreMm);
 
     if (!result) {
       const estimatedOd = nominalBoreMm * 1.1;
@@ -46,12 +38,7 @@ export class NbOdLookupService {
   }
 
   async availableNominalBores(): Promise<number[]> {
-    const result = await this.nbOdLookupRepository
-      .createQueryBuilder("nb")
-      .select("nb.nominal_bore_mm", "nominalBoreMm")
-      .orderBy("nb.nominal_bore_mm", "ASC")
-      .getRawMany<{ nominalBoreMm: number }>();
-
+    const result = await this.nbOdLookupRepository.allNominalBores();
     return result.map((r) => r.nominalBoreMm);
   }
 }

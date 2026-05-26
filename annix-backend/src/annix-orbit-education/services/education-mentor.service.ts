@@ -1,11 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import type { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
-import { EducationAiAdviceLog } from "../entities/education-ai-advice-log.entity";
 import type { EducationProfile } from "../entities/education-profile.entity";
+import { EducationAiAdviceLogRepository } from "../repositories/education-ai-advice-log.repository";
 import { EducationConsentService } from "./education-consent.service";
 import { EducationProfileService } from "./education-profile.service";
 
@@ -30,8 +28,7 @@ export class EducationMentorService {
   private readonly logger = new Logger(EducationMentorService.name);
 
   constructor(
-    @InjectRepository(EducationAiAdviceLog)
-    private readonly adviceLogRepo: Repository<EducationAiAdviceLog>,
+    private readonly adviceLogRepo: EducationAiAdviceLogRepository,
     private readonly profileService: EducationProfileService,
     private readonly consentService: EducationConsentService,
     private readonly aiChatService: AiChatService,
@@ -56,15 +53,13 @@ export class EducationMentorService {
       () => this.aiChatService.chat(messages, MENTOR_SYSTEM_PROMPT),
     );
 
-    const log = await this.adviceLogRepo.save(
-      this.adviceLogRepo.create({
-        educationProfileId,
-        question,
-        answer: result.content,
-        groundingContext: grounding,
-        model: result.providerUsed,
-      }),
-    );
+    const log = await this.adviceLogRepo.create({
+      educationProfileId,
+      question,
+      answer: result.content,
+      groundingContext: grounding,
+      model: result.providerUsed,
+    });
     this.logger.log(`FuturePath mentor answered for profile ${educationProfileId} (log ${log.id})`);
 
     return { answer: result.content, model: result.providerUsed, logId: log.id };

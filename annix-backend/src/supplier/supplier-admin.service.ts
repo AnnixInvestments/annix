@@ -1,21 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
-import {
-  CustomerPreferredSupplier,
-  SupplierInvitation,
-  SupplierInvitationStatus,
-} from "../customer/entities";
+import { CustomerPreferredSupplierRepository } from "../customer/customer-preferred-supplier.repository";
+import { SupplierInvitationStatus } from "../customer/entities";
+import { SupplierInvitationRepository } from "../customer/supplier-invitation.repository";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
 import { ConversationType, RelatedEntityType } from "../messaging/entities";
 import { MessagingService } from "../messaging/messaging.service";
-import { Company } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
-import { User } from "../user/entities/user.entity";
 import {
   RejectSupplierDto,
   ReviewDocumentDto,
@@ -23,38 +17,26 @@ import {
   SupplierListItemDto,
   SuspendSupplierDto,
 } from "./dto";
-import {
-  SupplierAccountStatus,
-  SupplierDocument,
-  SupplierOnboarding,
-  SupplierOnboardingStatus,
-  SupplierProfile,
-} from "./entities";
+import { SupplierAccountStatus, SupplierDocument, SupplierOnboardingStatus } from "./entities";
+import { SupplierDocumentRepository } from "./supplier-document.repository";
+import { SupplierOnboardingRepository } from "./supplier-onboarding.repository";
+import { SupplierProfileRepository } from "./supplier-profile.repository";
 
 @Injectable()
 export class SupplierAdminService {
   private readonly logger = new Logger(SupplierAdminService.name);
 
   constructor(
-    @InjectRepository(SupplierProfile)
-    private readonly profileRepo: Repository<SupplierProfile>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(SupplierOnboarding)
-    private readonly onboardingRepo: Repository<SupplierOnboarding>,
-    @InjectRepository(SupplierDocument)
-    private readonly documentRepo: Repository<SupplierDocument>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly profileRepository: SupplierProfileRepository,
+    private readonly onboardingRepository: SupplierOnboardingRepository,
+    private readonly documentRepository: SupplierDocumentRepository,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
     private readonly storageService: S3StorageService,
     private readonly secureDocumentsService: SecureDocumentsService,
     private readonly messagingService: MessagingService,
-    @InjectRepository(SupplierInvitation)
-    private readonly invitationRepo: Repository<SupplierInvitation>,
-    @InjectRepository(CustomerPreferredSupplier)
-    private readonly preferredSupplierRepo: Repository<CustomerPreferredSupplier>,
+    private readonly invitationRepository: SupplierInvitationRepository,
+    private readonly preferredSupplierRepository: CustomerPreferredSupplierRepository,
   ) {}
 
   /**
@@ -70,26 +52,12 @@ export class SupplierAdminService {
     page: number;
     totalPages: number;
   }> {
-    const queryBuilder = this.profileRepo
-      .createQueryBuilder("profile")
-      .leftJoinAndSelect("profile.user", "user")
-      .leftJoinAndSelect("profile.company", "company")
-      .leftJoinAndSelect("profile.onboarding", "onboarding")
-      .orderBy("profile.createdAt", "DESC");
-
-    if (accountStatus) {
-      queryBuilder.andWhere("profile.accountStatus = :accountStatus", {
-        accountStatus,
-      });
-    }
-
-    const total = await queryBuilder.getCount();
+    const { items: profiles, total } = await this.profileRepository.findAllPaginated(
+      page,
+      limit,
+      accountStatus,
+    );
     const totalPages = Math.ceil(total / limit);
-
-    const profiles = await queryBuilder
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getMany();
 
     const items: SupplierListItemDto[] = profiles.map((profile) => ({
       id: profile.id,
@@ -109,15 +77,7 @@ export class SupplierAdminService {
    * Get suppliers pending review
    */
   async getPendingReview(): Promise<SupplierListItemDto[]> {
-    const profiles = await this.profileRepo.find({
-      where: {
-        onboarding: {
-          status: SupplierOnboardingStatus.SUBMITTED,
-        },
-      },
-      relations: ["user", "company", "onboarding"],
-      order: { createdAt: "ASC" },
-    });
+    const profiles = await this.profileRepository.findSubmittedForReview();
 
     return profiles.map((profile) => ({
       id: profile.id,
@@ -135,10 +95,12 @@ export class SupplierAdminService {
    * Get supplier details
    */
   async getSupplierDetails(supplierId: number): Promise<SupplierDetailDto> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["user", "company", "onboarding", "documents"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "user",
+      "company",
+      "onboarding",
+      "documents",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier not found");
@@ -199,9 +161,7 @@ export class SupplierAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<SupplierDocument> {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId, supplierId },
-    });
+    const document = await this.documentRepository.findByIdAndSupplierId(documentId, supplierId);
 
     if (!document) {
       throw new NotFoundException("Document not found");
@@ -214,7 +174,7 @@ export class SupplierAdminService {
     document.reviewedById = adminUserId;
     document.reviewedAt = now().toJSDate();
 
-    const savedDocument = await this.documentRepo.save(document);
+    const savedDocument = await this.documentRepository.save(document);
 
     await this.auditService.log({
       entityType: "supplier_document",
@@ -240,10 +200,11 @@ export class SupplierAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["user", "company", "onboarding"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "user",
+      "company",
+      "onboarding",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier not found");
@@ -265,11 +226,11 @@ export class SupplierAdminService {
     onboarding.status = SupplierOnboardingStatus.APPROVED;
     onboarding.reviewedAt = now().toJSDate();
     onboarding.reviewedById = adminUserId;
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     // Activate supplier account
     profile.accountStatus = SupplierAccountStatus.ACTIVE;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     // Send approval email
     if (profile.user?.email) {
@@ -350,10 +311,11 @@ export class SupplierAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["user", "company", "onboarding"],
-    });
+    const profile = await this.profileRepository.findByIdWithRelations(supplierId, [
+      "user",
+      "company",
+      "onboarding",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Supplier not found");
@@ -377,7 +339,7 @@ export class SupplierAdminService {
     onboarding.reviewedById = adminUserId;
     onboarding.rejectionReason = dto.rejectionReason;
     onboarding.remediationSteps = dto.remediationSteps;
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     // Send rejection email
     if (profile.user?.email) {
@@ -415,9 +377,7 @@ export class SupplierAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean }> {
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { supplierId },
-    });
+    const onboarding = await this.onboardingRepository.findBySupplierId(supplierId);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding record not found");
@@ -428,7 +388,7 @@ export class SupplierAdminService {
     }
 
     onboarding.status = SupplierOnboardingStatus.UNDER_REVIEW;
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     await this.auditService.log({
       entityType: "supplier_onboarding",
@@ -453,9 +413,7 @@ export class SupplierAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-    });
+    const profile = await this.profileRepository.findById(supplierId);
 
     if (!profile) {
       throw new NotFoundException("Supplier not found");
@@ -465,7 +423,7 @@ export class SupplierAdminService {
     profile.suspensionReason = dto.reason;
     profile.suspendedAt = now().toJSDate();
     profile.suspendedBy = adminUserId;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     await this.auditService.log({
       entityType: "supplier_profile",
@@ -496,9 +454,7 @@ export class SupplierAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: supplierId },
-    });
+    const profile = await this.profileRepository.findById(supplierId);
 
     if (!profile) {
       throw new NotFoundException("Supplier not found");
@@ -508,7 +464,7 @@ export class SupplierAdminService {
     profile.suspensionReason = null;
     profile.suspendedAt = null;
     profile.suspendedBy = null;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     await this.auditService.log({
       entityType: "supplier_profile",
@@ -527,10 +483,11 @@ export class SupplierAdminService {
   }
 
   async getDocumentReviewData(supplierId: number, documentId: number) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId, supplierId },
-      relations: ["supplier", "supplier.company", "reviewedBy"],
-    });
+    const document = await this.documentRepository.findByIdAndSupplierIdWithRelations(
+      documentId,
+      supplierId,
+      ["supplier", "supplier.company", "reviewedBy"],
+    );
 
     if (!document) {
       throw new NotFoundException("Document not found");
@@ -648,43 +605,37 @@ export class SupplierAdminService {
     supplierEmail: string,
     supplierProfileId: number,
   ): Promise<number> {
-    const pendingInvitations = await this.invitationRepo.find({
-      where: {
-        email: supplierEmail.toLowerCase(),
-        status: SupplierInvitationStatus.PENDING,
-      },
-    });
+    const pendingInvitations = await this.invitationRepository.findPendingByEmail(
+      supplierEmail.toLowerCase(),
+    );
 
     let acceptedCount = 0;
 
     for (const invitation of pendingInvitations) {
-      const existingRelation = await this.preferredSupplierRepo.findOne({
-        where: {
-          customerCompanyId: invitation.customerCompanyId,
-          supplierProfileId,
-        },
-      });
+      const existingRelation = await this.preferredSupplierRepository.findByCompanyAndSupplier(
+        invitation.customerCompanyId,
+        supplierProfileId,
+      );
 
       if (!existingRelation) {
         invitation.status = SupplierInvitationStatus.ACCEPTED;
         invitation.acceptedAt = now().toJSDate();
         invitation.supplierProfileId = supplierProfileId;
-        await this.invitationRepo.save(invitation);
+        await this.invitationRepository.save(invitation);
 
-        const preferredSupplier = this.preferredSupplierRepo.create({
+        await this.preferredSupplierRepository.create({
           customerCompanyId: invitation.customerCompanyId,
           supplierProfileId,
           addedById: invitation.invitedById,
           isActive: true,
         });
-        await this.preferredSupplierRepo.save(preferredSupplier);
 
         acceptedCount++;
       } else {
         invitation.status = SupplierInvitationStatus.ACCEPTED;
         invitation.acceptedAt = now().toJSDate();
         invitation.supplierProfileId = supplierProfileId;
-        await this.invitationRepo.save(invitation);
+        await this.invitationRepository.save(invitation);
       }
     }
 
@@ -695,9 +646,7 @@ export class SupplierAdminService {
     supplierId: number,
     documentId: number,
   ): Promise<{ pages: string[]; totalPages: number }> {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId, supplierId },
-    });
+    const document = await this.documentRepository.findByIdAndSupplierId(documentId, supplierId);
 
     if (!document) {
       throw new NotFoundException("Document not found");

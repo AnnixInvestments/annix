@@ -1,18 +1,16 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import type { CatalogAddOn, CatalogTier, ModuleCatalog } from "./dto/module-catalog";
 import type { AddOnOverride, TierPricingOverride } from "./entities/module-catalog-override.entity";
 import { ModuleCatalogOverride } from "./entities/module-catalog-override.entity";
 import { FeatureRegistry } from "./feature-registry.service";
 import type { TierVisibility } from "./licensing.types";
+import { ModuleCatalogOverrideRepository } from "./repositories/module-catalog-override.repository";
 
 @Injectable()
 export class LicensingCatalogService {
   constructor(
     private readonly registry: FeatureRegistry,
-    @InjectRepository(ModuleCatalogOverride)
-    private readonly overrideRepo: Repository<ModuleCatalogOverride>,
+    private readonly overrideRepo: ModuleCatalogOverrideRepository,
   ) {}
 
   baseCatalog(moduleKey: string): ModuleCatalog {
@@ -57,7 +55,7 @@ export class LicensingCatalogService {
 
   async effectiveCatalog(moduleKey: string): Promise<ModuleCatalog> {
     const base = this.baseCatalog(moduleKey);
-    const override = await this.overrideRepo.findOne({ where: { moduleKey } });
+    const override = await this.overrideRepo.findByModuleKey(moduleKey);
     if (!override) {
       return base;
     }
@@ -179,7 +177,7 @@ export class LicensingCatalogService {
   }
 
   private async ensureOverride(moduleKey: string): Promise<ModuleCatalogOverride> {
-    const existing = await this.overrideRepo.findOne({ where: { moduleKey } });
+    const existing = await this.overrideRepo.findByModuleKey(moduleKey);
     if (existing) {
       return existing;
     }

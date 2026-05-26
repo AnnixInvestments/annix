@@ -1,13 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { chunk, isNumber, isString } from "es-toolkit/compat";
-import { In, Repository } from "typeorm";
 import { stripHtmlToText } from "../../../lib/html-text";
 import { parseJsonFromAi } from "../../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../../metrics/extraction-metric.service";
 import { AiChatService } from "../../../nix/ai-providers/ai-chat.service";
-import { ExternalJob } from "../../entities/external-job.entity";
 import { JobMarketSource } from "../../entities/job-market-source.entity";
+import { ExternalJobRepository } from "../../repositories/external-job.repository";
 import { IngestedJobResult } from "../ingested-job.types";
 import { CrawledJobExtraction, SitemapCrawlProfile } from "./sitemap-crawl.types";
 import { sitemapCrawlProfile } from "./sitemap-crawl-profiles";
@@ -59,8 +57,7 @@ export class SitemapCrawlIngestionService {
   private readonly robotsDisallowCache = new Map<string, string[]>();
 
   constructor(
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
+    private readonly externalJobRepo: ExternalJobRepository,
     private readonly aiChatService: AiChatService,
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
@@ -133,10 +130,7 @@ export class SitemapCrawlIngestionService {
     const ids = [...urlById.keys()];
     if (ids.length === 0) return [];
 
-    const existing = await this.externalJobRepo.find({
-      where: { sourceExternalId: In(ids), sourceId },
-      select: ["sourceExternalId"],
-    });
+    const existing = await this.externalJobRepo.findByExternalIds(ids, sourceId);
     const known = new Set(existing.map((row) => row.sourceExternalId));
 
     return ids.filter((id) => !known.has(id)).map((id) => ({ id, url: urlById.get(id) as string }));

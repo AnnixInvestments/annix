@@ -1,9 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { InboundEmailAttachment } from "../../inbound-email/entities/inbound-email-attachment.entity";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { Candidate } from "../entities/candidate.entity";
 import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { CandidateService } from "./candidate.service";
 import { CvDocumentType, CvEmailAdapterService } from "./cv-email-adapter.service";
 import { WorkflowAutomationService } from "./workflow-automation.service";
@@ -12,11 +13,11 @@ describe("CvEmailAdapterService", () => {
   let service: CvEmailAdapterService;
 
   const jobPostingRepo = {
-    find: jest.fn(),
+    findManyWhere: jest.fn(),
   };
 
   const candidateRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const candidateService = {
@@ -34,8 +35,8 @@ describe("CvEmailAdapterService", () => {
       providers: [
         CvEmailAdapterService,
         { provide: InboundEmailRegistry, useValue: registry },
-        { provide: getRepositoryToken(JobPosting), useValue: jobPostingRepo },
-        { provide: getRepositoryToken(Candidate), useValue: candidateRepo },
+        { provide: JobPostingRepository, useValue: jobPostingRepo },
+        { provide: CandidateRepository, useValue: candidateRepo },
         { provide: CandidateService, useValue: candidateService },
         { provide: WorkflowAutomationService, useValue: workflowAutomationService },
       ],
@@ -130,11 +131,11 @@ describe("CvEmailAdapterService", () => {
       expect(result.linkedEntityType).toBeNull();
       expect(result.linkedEntityId).toBeNull();
       expect(result.extractionTriggered).toBe(false);
-      expect(jobPostingRepo.find).not.toHaveBeenCalled();
+      expect(jobPostingRepo.findManyWhere).not.toHaveBeenCalled();
     });
 
     it("matches job by emailSubjectPattern regex", async () => {
-      jobPostingRepo.find.mockResolvedValue([
+      jobPostingRepo.findManyWhere.mockResolvedValue([
         {
           id: 10,
           title: "Senior Developer",
@@ -142,7 +143,7 @@ describe("CvEmailAdapterService", () => {
           status: JobPostingStatus.ACTIVE,
         } as JobPosting,
       ]);
-      candidateRepo.findOne.mockResolvedValue(null);
+      candidateRepo.findOneWhere.mockResolvedValue(null);
       candidateService.create.mockResolvedValue({ id: 999, jobPostingId: 10 } as Candidate);
 
       const result = await service.route(
@@ -164,7 +165,7 @@ describe("CvEmailAdapterService", () => {
     });
 
     it("falls back to title substring match when no pattern", async () => {
-      jobPostingRepo.find.mockResolvedValue([
+      jobPostingRepo.findManyWhere.mockResolvedValue([
         {
           id: 20,
           title: "Data Scientist",
@@ -172,7 +173,7 @@ describe("CvEmailAdapterService", () => {
           status: JobPostingStatus.ACTIVE,
         } as JobPosting,
       ]);
-      candidateRepo.findOne.mockResolvedValue(null);
+      candidateRepo.findOneWhere.mockResolvedValue(null);
       candidateService.create.mockResolvedValue({ id: 888, jobPostingId: 20 } as Candidate);
 
       const result = await service.route(
@@ -188,7 +189,7 @@ describe("CvEmailAdapterService", () => {
     });
 
     it("returns empty result when no job matches", async () => {
-      jobPostingRepo.find.mockResolvedValue([
+      jobPostingRepo.findManyWhere.mockResolvedValue([
         {
           id: 30,
           title: "Plumber",
@@ -210,7 +211,7 @@ describe("CvEmailAdapterService", () => {
     });
 
     it("deduplicates via sourceEmailId when candidate already exists", async () => {
-      jobPostingRepo.find.mockResolvedValue([
+      jobPostingRepo.findManyWhere.mockResolvedValue([
         {
           id: 40,
           title: "Analyst",
@@ -218,7 +219,7 @@ describe("CvEmailAdapterService", () => {
           status: JobPostingStatus.ACTIVE,
         } as JobPosting,
       ]);
-      candidateRepo.findOne.mockResolvedValue({ id: 777, jobPostingId: 40 } as Candidate);
+      candidateRepo.findOneWhere.mockResolvedValue({ id: 777, jobPostingId: 40 } as Candidate);
 
       const result = await service.route(
         buildAttachment(42),
@@ -232,13 +233,14 @@ describe("CvEmailAdapterService", () => {
       expect(result.linkedEntityId).toBe(777);
       expect(result.extractionTriggered).toBe(false);
       expect(candidateService.create).not.toHaveBeenCalled();
-      expect(candidateRepo.findOne).toHaveBeenCalledWith({
-        where: { sourceEmailId: "attachment-42", jobPostingId: 40 },
+      expect(candidateRepo.findOneWhere).toHaveBeenCalledWith({
+        sourceEmailId: "attachment-42",
+        jobPostingId: 40,
       });
     });
 
     it("triggers workflow automation on new candidate creation", async () => {
-      jobPostingRepo.find.mockResolvedValue([
+      jobPostingRepo.findManyWhere.mockResolvedValue([
         {
           id: 50,
           title: "Engineer",
@@ -246,7 +248,7 @@ describe("CvEmailAdapterService", () => {
           status: JobPostingStatus.ACTIVE,
         } as JobPosting,
       ]);
-      candidateRepo.findOne.mockResolvedValue(null);
+      candidateRepo.findOneWhere.mockResolvedValue(null);
       candidateService.create.mockResolvedValue({ id: 555 } as Candidate);
 
       await service.route(
@@ -261,7 +263,7 @@ describe("CvEmailAdapterService", () => {
     });
 
     it("handles candidate creation errors gracefully", async () => {
-      jobPostingRepo.find.mockResolvedValue([
+      jobPostingRepo.findManyWhere.mockResolvedValue([
         {
           id: 60,
           title: "Manager",
@@ -269,7 +271,7 @@ describe("CvEmailAdapterService", () => {
           status: JobPostingStatus.ACTIVE,
         } as JobPosting,
       ]);
-      candidateRepo.findOne.mockResolvedValue(null);
+      candidateRepo.findOneWhere.mockResolvedValue(null);
       candidateService.create.mockRejectedValue(new Error("DB error"));
 
       const result = await service.route(
@@ -285,7 +287,7 @@ describe("CvEmailAdapterService", () => {
     });
 
     it("only queries active job postings", async () => {
-      jobPostingRepo.find.mockResolvedValue([]);
+      jobPostingRepo.findManyWhere.mockResolvedValue([]);
 
       await service.route(
         buildAttachment(),
@@ -295,8 +297,9 @@ describe("CvEmailAdapterService", () => {
         "subject",
       );
 
-      expect(jobPostingRepo.find).toHaveBeenCalledWith({
-        where: { companyId: 1, status: JobPostingStatus.ACTIVE },
+      expect(jobPostingRepo.findManyWhere).toHaveBeenCalledWith({
+        companyId: 1,
+        status: JobPostingStatus.ACTIVE,
       });
     });
   });

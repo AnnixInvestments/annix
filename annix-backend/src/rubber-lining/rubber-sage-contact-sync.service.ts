@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { SageConnectionService } from "../sage-export/sage-connection.service";
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
 
 interface SageContactMatch {
   companyId: number;
@@ -47,8 +46,7 @@ export class RubberSageContactSyncService {
   private readonly logger = new Logger(RubberSageContactSyncService.name);
 
   constructor(
-    @InjectRepository(RubberCompany)
-    private readonly companyRepo: Repository<RubberCompany>,
+    private readonly companyRepo: RubberCompanyRepository,
     private readonly sageConnectionService: SageConnectionService,
   ) {}
 
@@ -56,12 +54,10 @@ export class RubberSageContactSyncService {
     const [sageSuppliers, sageCustomers, unmappedCompanies] = await Promise.all([
       this.sageConnectionService.sageSuppliers(appKey),
       this.sageConnectionService.sageCustomers(appKey),
-      this.companyRepo.find({ where: { sageContactId: IsNull() } }),
+      this.companyRepo.findUnmappedToSage(),
     ]);
 
-    const alreadyMapped = await this.companyRepo.count({
-      where: [{ sageContactId: IsNull() as unknown as number }],
-    });
+    const alreadyMapped = await this.companyRepo.countUnmappedToSage();
     const totalCompanies = await this.companyRepo.count();
     const alreadyMappedCount = totalCompanies - unmappedCompanies.length;
 
@@ -104,7 +100,7 @@ export class RubberSageContactSyncService {
 
     await Promise.all(
       newMappings.map((mapping) =>
-        this.companyRepo.update(mapping.companyId, {
+        this.companyRepo.updateById(mapping.companyId, {
           sageContactId: mapping.sageContactId,
           sageContactType:
             unmappedCompanies.find((c) => c.id === mapping.companyId)?.companyType ===
@@ -129,7 +125,7 @@ export class RubberSageContactSyncService {
 
   async mappingStatus(appKey: string): Promise<SageContactMappingStatus> {
     const [allCompanies, sageSuppliers, sageCustomers] = await Promise.all([
-      this.companyRepo.find({ order: { name: "ASC" } }),
+      this.companyRepo.findAllOrderedByName(),
       this.sageConnectionService.sageSuppliers(appKey),
       this.sageConnectionService.sageCustomers(appKey),
     ]);
@@ -180,8 +176,8 @@ export class RubberSageContactSyncService {
     sageContactId: number,
     sageContactType: string,
   ): Promise<RubberCompany> {
-    await this.companyRepo.update(companyId, { sageContactId, sageContactType });
-    const updated = await this.companyRepo.findOneBy({ id: companyId });
+    await this.companyRepo.updateById(companyId, { sageContactId, sageContactType });
+    const updated = await this.companyRepo.findById(companyId);
     if (!updated) {
       throw new Error("Company not found");
     }
@@ -189,8 +185,11 @@ export class RubberSageContactSyncService {
   }
 
   async unmap(companyId: number): Promise<RubberCompany> {
-    await this.companyRepo.update(companyId, { sageContactId: null, sageContactType: null });
-    const updated = await this.companyRepo.findOneBy({ id: companyId });
+    await this.companyRepo.updateById(companyId, {
+      sageContactId: null,
+      sageContactType: null,
+    });
+    const updated = await this.companyRepo.findById(companyId);
     if (!updated) {
       throw new Error("Company not found");
     }

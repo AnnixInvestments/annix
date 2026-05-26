@@ -1,6 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { CoatingSystem, SystemApplication, SystemStandard } from "./entities/coating-system.entity";
 import { RfqSurfaceProtection } from "./entities/rfq-surface-protection.entity";
 import {
@@ -15,58 +13,33 @@ import {
   SubstrateMaterial,
   SurfacePrepGrade,
 } from "./entities/sp-surface-prep-rate.entity";
+import { SurfaceProtectionRepository } from "./surface-protection.repository";
 
 @Injectable()
 export class SurfaceProtectionService {
-  constructor(
-    @InjectRepository(CoatingSystem)
-    private readonly coatingSystemRepo: Repository<CoatingSystem>,
-    @InjectRepository(RfqSurfaceProtection)
-    private readonly rfqSpRepo: Repository<RfqSurfaceProtection>,
-    @InjectRepository(SpCoatingRate)
-    private readonly coatingRateRepo: Repository<SpCoatingRate>,
-    @InjectRepository(SpLiningRate)
-    private readonly liningRateRepo: Repository<SpLiningRate>,
-    @InjectRepository(SpSurfacePrepRate)
-    private readonly surfacePrepRateRepo: Repository<SpSurfacePrepRate>,
-  ) {}
-
-  // Coating System Methods
+  constructor(private readonly surfaceProtectionRepository: SurfaceProtectionRepository) {}
 
   async findAllCoatingSystems(): Promise<CoatingSystem[]> {
-    return this.coatingSystemRepo.find({
-      where: { isActive: true },
-      order: { systemCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findAllActiveCoatingSystems();
   }
 
   async findCoatingSystemByCode(systemCode: string): Promise<CoatingSystem | null> {
-    return this.coatingSystemRepo.findOne({
-      where: { systemCode, isActive: true },
-    });
+    return this.surfaceProtectionRepository.findCoatingSystemByCode(systemCode);
   }
 
   async findCoatingSystemsByStandard(standard: SystemStandard): Promise<CoatingSystem[]> {
-    return this.coatingSystemRepo.find({
-      where: { systemStandard: standard, isActive: true },
-      order: { systemCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findCoatingSystemsByStandard(standard);
   }
 
   async findCoatingSystemsByApplication(application: SystemApplication): Promise<CoatingSystem[]> {
-    return this.coatingSystemRepo.find({
-      where: { application, isActive: true },
-      order: { systemCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findCoatingSystemsByApplication(application);
   }
 
   async findRecommendedCoatingSystems(
     corrosivityCategory: string,
     durabilityClass: string,
   ): Promise<CoatingSystem[]> {
-    const systems = await this.coatingSystemRepo.find({
-      where: { isActive: true, isRecommended: true },
-    });
+    const systems = await this.surfaceProtectionRepository.findRecommendedCoatingSystems();
 
     return systems.filter((system) => {
       const categories = system.corrosivityCategories.split(",").map((c) => c.trim());
@@ -75,19 +48,14 @@ export class SurfaceProtectionService {
     });
   }
 
-  // RFQ Surface Protection Methods
-
   async findRfqSurfaceProtection(rfqId: number): Promise<RfqSurfaceProtection | null> {
-    return this.rfqSpRepo.findOne({
-      where: { rfqId },
-    });
+    return this.surfaceProtectionRepository.findRfqSurfaceProtection(rfqId);
   }
 
   async createRfqSurfaceProtection(
     data: Partial<RfqSurfaceProtection>,
   ): Promise<RfqSurfaceProtection> {
-    const entity = this.rfqSpRepo.create(data);
-    return this.rfqSpRepo.save(entity);
+    return this.surfaceProtectionRepository.createRfqSurfaceProtection(data);
   }
 
   async updateRfqSurfaceProtection(
@@ -97,135 +65,85 @@ export class SurfaceProtectionService {
     const existing = await this.findRfqSurfaceProtection(rfqId);
     if (existing) {
       Object.assign(existing, data);
-      return this.rfqSpRepo.save(existing);
+      return this.surfaceProtectionRepository.saveRfqSurfaceProtection(existing);
     }
-    return this.createRfqSurfaceProtection({ ...data, rfqId });
+    return this.surfaceProtectionRepository.createRfqSurfaceProtection({ ...data, rfqId });
   }
 
   async deleteRfqSurfaceProtection(rfqId: number): Promise<void> {
-    await this.rfqSpRepo.delete({ rfqId });
+    await this.surfaceProtectionRepository.deleteRfqSurfaceProtection(rfqId);
   }
 
-  // Coating Rate Methods
-
   async findAllCoatingRates(): Promise<SpCoatingRate[]> {
-    return this.coatingRateRepo.find({
-      where: { isActive: true },
-      order: { rateCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findAllActiveCoatingRates();
   }
 
   async findCoatingRateByCode(rateCode: string): Promise<SpCoatingRate | null> {
-    return this.coatingRateRepo.findOne({
-      where: { rateCode, isActive: true },
-    });
+    return this.surfaceProtectionRepository.findCoatingRateByCode(rateCode);
   }
 
   async findCoatingRatesByCategory(category: CoatingCategory): Promise<SpCoatingRate[]> {
-    return this.coatingRateRepo.find({
-      where: { coatingCategory: category, isActive: true },
-      order: { totalPricePerM2: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findCoatingRatesByCategory(category);
   }
 
   async findCoatingRatesByISO(
     iso12944Category: ISO12944Category,
     durabilityClass?: DurabilityClass,
   ): Promise<SpCoatingRate[]> {
-    const where: any = { iso12944Category, isActive: true };
-    if (durabilityClass) {
-      where.durabilityClass = durabilityClass;
-    }
-    return this.coatingRateRepo.find({
-      where,
-      order: { totalPricePerM2: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findCoatingRatesByISO(
+      iso12944Category,
+      durabilityClass,
+    );
   }
 
   async findCoatingRatesBySupplier(supplierId: number): Promise<SpCoatingRate[]> {
-    return this.coatingRateRepo.find({
-      where: { supplierId, isActive: true },
-      order: { rateCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findCoatingRatesBySupplier(supplierId);
   }
 
-  // Lining Rate Methods
-
   async findAllLiningRates(): Promise<SpLiningRate[]> {
-    return this.liningRateRepo.find({
-      where: { isActive: true },
-      order: { rateCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findAllActiveLiningRates();
   }
 
   async findLiningRateByCode(rateCode: string): Promise<SpLiningRate | null> {
-    return this.liningRateRepo.findOne({
-      where: { rateCode, isActive: true },
-    });
+    return this.surfaceProtectionRepository.findLiningRateByCode(rateCode);
   }
 
   async findLiningRatesByType(liningType: LiningType): Promise<SpLiningRate[]> {
-    return this.liningRateRepo.find({
-      where: { liningType, isActive: true },
-      order: { totalPricePerM2: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findLiningRatesByType(liningType);
   }
 
   async findLiningRatesByCategory(category: LiningCategory): Promise<SpLiningRate[]> {
-    return this.liningRateRepo.find({
-      where: { liningCategory: category, isActive: true },
-      order: { thicknessMm: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findLiningRatesByCategory(category);
   }
 
   async findLiningRatesByThickness(
     category: LiningCategory,
     thicknessMm: number,
   ): Promise<SpLiningRate | null> {
-    return this.liningRateRepo.findOne({
-      where: { liningCategory: category, thicknessMm, isActive: true },
-    });
+    return this.surfaceProtectionRepository.findLiningRateByThickness(category, thicknessMm);
   }
 
   async findLiningRatesBySupplier(supplierId: number): Promise<SpLiningRate[]> {
-    return this.liningRateRepo.find({
-      where: { supplierId, isActive: true },
-      order: { rateCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findLiningRatesBySupplier(supplierId);
   }
 
-  // Surface Prep Rate Methods
-
   async findAllSurfacePrepRates(): Promise<SpSurfacePrepRate[]> {
-    return this.surfacePrepRateRepo.find({
-      where: { isActive: true },
-      order: { rateCode: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findAllActiveSurfacePrepRates();
   }
 
   async findSurfacePrepRateByCode(rateCode: string): Promise<SpSurfacePrepRate | null> {
-    return this.surfacePrepRateRepo.findOne({
-      where: { rateCode, isActive: true },
-    });
+    return this.surfaceProtectionRepository.findSurfacePrepRateByCode(rateCode);
   }
 
   async findSurfacePrepRatesByGrade(grade: SurfacePrepGrade): Promise<SpSurfacePrepRate[]> {
-    return this.surfacePrepRateRepo.find({
-      where: { prepGrade: grade, isActive: true },
-      order: { pricePerM2: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findSurfacePrepRatesByGrade(grade);
   }
 
   async findSurfacePrepRatesBySubstrate(
     substrate: SubstrateMaterial,
   ): Promise<SpSurfacePrepRate[]> {
-    return this.surfacePrepRateRepo.find({
-      where: { substrateMaterial: substrate, isActive: true },
-      order: { pricePerM2: "ASC" },
-    });
+    return this.surfaceProtectionRepository.findSurfacePrepRatesBySubstrate(substrate);
   }
-
-  // Pricing Calculation Methods
 
   calculateExternalCoatingCost(
     areaM2: number,
@@ -279,8 +197,6 @@ export class SurfaceProtectionService {
     return subtotal * (1 + marginPercent / 100);
   }
 
-  // Surface Area Calculation Methods
-
   calculatePipeSurfaceArea(
     nominalBoreMm: number,
     outsideDiameterMm: number,
@@ -311,8 +227,6 @@ export class SurfaceProtectionService {
       totalWithWastageM2: totalWithWastage,
     };
   }
-
-  // Paint Quantity Calculation
 
   calculatePaintQuantityLiters(
     areaM2: number,

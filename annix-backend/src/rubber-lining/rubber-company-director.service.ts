@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { RubberCompanyDirector } from "./entities/rubber-company-director.entity";
+import { RubberCompanyDirectorRepository } from "./repositories/rubber-company-director.repository";
 
 export interface CreateDirectorDto {
   name: string;
@@ -30,28 +29,20 @@ export interface DirectorDto {
 export class RubberCompanyDirectorService {
   private readonly logger = new Logger(RubberCompanyDirectorService.name);
 
-  constructor(
-    @InjectRepository(RubberCompanyDirector)
-    private readonly directorRepository: Repository<RubberCompanyDirector>,
-  ) {}
+  constructor(private readonly directorRepository: RubberCompanyDirectorRepository) {}
 
   async allDirectors(): Promise<DirectorDto[]> {
-    const directors = await this.directorRepository.find({
-      order: { name: "ASC" },
-    });
+    const directors = await this.directorRepository.findAllOrderedByName();
     return directors.map((d) => this.mapToDto(d));
   }
 
   async activeDirectors(): Promise<DirectorDto[]> {
-    const directors = await this.directorRepository.find({
-      where: { isActive: true },
-      order: { name: "ASC" },
-    });
+    const directors = await this.directorRepository.findActiveOrderedByName();
     return directors.map((d) => this.mapToDto(d));
   }
 
   async createDirector(dto: CreateDirectorDto): Promise<DirectorDto> {
-    const director = this.directorRepository.create({
+    const director = this.directorRepository.build({
       name: dto.name,
       title: dto.title,
       email: dto.email,
@@ -62,7 +53,7 @@ export class RubberCompanyDirectorService {
   }
 
   async updateDirector(id: number, dto: UpdateDirectorDto): Promise<DirectorDto | null> {
-    const director = await this.directorRepository.findOne({ where: { id } });
+    const director = await this.directorRepository.findById(id);
     if (!director) {
       return null;
     }
@@ -75,8 +66,7 @@ export class RubberCompanyDirectorService {
   }
 
   async deleteDirector(id: number): Promise<boolean> {
-    const result = await this.directorRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.directorRepository.deleteById(id);
   }
 
   private mapToDto(director: RubberCompanyDirector): DirectorDto {

@@ -13,11 +13,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
 import type { Response } from "express";
-import { Repository } from "typeorm";
-import { JobCardCoatingAnalysis } from "../../entities/coating-analysis.entity";
-import { JobCard } from "../../entities/job-card.entity";
 import { StockControlAuthGuard } from "../../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../../guards/stock-control-onboarding.guard";
 import {
@@ -25,6 +21,8 @@ import {
   StockControlRoleGuard,
   StockControlRoles,
 } from "../../guards/stock-control-role.guard";
+import { JobCardCoatingAnalysisRepository } from "../../repositories/coating-analysis.repository";
+import { JobCardRepository } from "../../repositories/job-card.repository";
 import { CertificateService } from "../../services/certificate.service";
 import { DataBookPdfService } from "../../services/data-book-pdf.service";
 import { QcEnabledGuard } from "../guards/qc-enabled.guard";
@@ -47,10 +45,8 @@ export class CpoQcController {
     private readonly batchService: QcBatchAssignmentService,
     private readonly dataBookPdfService: DataBookPdfService,
     private readonly certificateService: CertificateService,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingRepo: Repository<JobCardCoatingAnalysis>,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly coatingRepo: JobCardCoatingAnalysisRepository,
   ) {}
 
   @Get("control-plans")
@@ -76,10 +72,11 @@ export class CpoQcController {
     @Param("cpoId") cpoId: number,
     @Param("id") id: number,
   ) {
-    const firstChild = await this.jobCardRepo.findOne({
-      where: { cpoId, companyId: req.user.companyId },
-      order: { createdAt: "ASC" },
-    });
+    const childJcs = await this.jobCardRepo.findChildJobCardsByCpoCreatedAsc(
+      cpoId,
+      req.user.companyId,
+    );
+    const firstChild = childJcs[0] ?? null;
 
     if (!firstChild) {
       throw new NotFoundException("No child job cards found for this CPO");
@@ -182,10 +179,11 @@ export class CpoQcController {
     @Param("cpoId") cpoId: number,
     @Param("id") id: number,
   ) {
-    const firstChild = await this.jobCardRepo.findOne({
-      where: { cpoId, companyId: req.user.companyId },
-      order: { createdAt: "ASC" },
-    });
+    const childJcs = await this.jobCardRepo.findChildJobCardsByCpoCreatedAsc(
+      cpoId,
+      req.user.companyId,
+    );
+    const firstChild = childJcs[0] ?? null;
 
     if (!firstChild) {
       throw new NotFoundException("No child job cards found for this CPO");
@@ -225,17 +223,11 @@ export class CpoQcController {
   @ApiOperation({ summary: "Line items from all child JCs with coating analysis" })
   async childJcLineItems(@Req() req: any, @Param("cpoId") cpoId: number) {
     const companyId = req.user.companyId;
-    const childJcs = await this.jobCardRepo.find({
-      where: { cpoId, companyId },
-      relations: ["lineItems"],
-      order: { createdAt: "ASC" },
-    });
+    const childJcs = await this.jobCardRepo.findForCpoWithLineItemsOrdered(cpoId, companyId);
 
     const results = await Promise.all(
       childJcs.map(async (jc) => {
-        const coating = await this.coatingRepo.findOne({
-          where: { jobCardId: jc.id, companyId },
-        });
+        const coating = await this.coatingRepo.findOneForJobCard(companyId, jc.id);
         const items = (jc.lineItems || []).map((li) => ({
           id: li.id,
           jobCardId: jc.id,

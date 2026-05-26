@@ -1,18 +1,17 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { fromISO, now } from "../lib/datetime";
-import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
 import {
   RequisitionItemType,
   RequisitionSourceType,
   RequisitionStatus,
   RubberPurchaseRequisition,
-  RubberPurchaseRequisitionItem,
   requisitionSourceLabels,
   requisitionStatusLabels,
 } from "./entities/rubber-purchase-requisition.entity";
+import { RubberCompoundStockRepository } from "./repositories/rubber-compound-stock.repository";
+import { RubberPurchaseRequisitionRepository } from "./repositories/rubber-purchase-requisition.repository";
+import { RubberPurchaseRequisitionItemRepository } from "./repositories/rubber-purchase-requisition-item.repository";
 
 export interface RequisitionDto {
   id: number;
@@ -62,12 +61,9 @@ export class RubberRequisitionService {
   private readonly logger = new Logger(RubberRequisitionService.name);
 
   constructor(
-    @InjectRepository(RubberPurchaseRequisition)
-    private readonly requisitionRepo: Repository<RubberPurchaseRequisition>,
-    @InjectRepository(RubberPurchaseRequisitionItem)
-    private readonly requisitionItemRepo: Repository<RubberPurchaseRequisitionItem>,
-    @InjectRepository(RubberCompoundStock)
-    private readonly compoundStockRepo: Repository<RubberCompoundStock>,
+    private readonly requisitionRepo: RubberPurchaseRequisitionRepository,
+    private readonly requisitionItemRepo: RubberPurchaseRequisitionItemRepository,
+    private readonly compoundStockRepo: RubberCompoundStockRepository,
   ) {}
 
   private async generateRequisitionNumber(): Promise<string> {
@@ -80,31 +76,12 @@ export class RubberRequisitionService {
     status?: RequisitionStatus;
     sourceType?: RequisitionSourceType;
   }): Promise<RequisitionDto[]> {
-    const queryBuilder = this.requisitionRepo
-      .createQueryBuilder("req")
-      .leftJoinAndSelect("req.supplierCompany", "supplier")
-      .leftJoinAndSelect("req.items", "items")
-      .orderBy("req.createdAt", "DESC");
-
-    if (filters?.status) {
-      queryBuilder.andWhere("req.status = :status", { status: filters.status });
-    }
-
-    if (filters?.sourceType) {
-      queryBuilder.andWhere("req.sourceType = :sourceType", {
-        sourceType: filters.sourceType,
-      });
-    }
-
-    const requisitions = await queryBuilder.getMany();
+    const requisitions = await this.requisitionRepo.findFilteredWithRelations(filters);
     return requisitions.map((req) => this.toDto(req));
   }
 
   async requisitionById(id: number): Promise<RequisitionDto> {
-    const requisition = await this.requisitionRepo.findOne({
-      where: { id },
-      relations: ["supplierCompany", "items"],
-    });
+    const requisition = await this.requisitionRepo.findOneByIdWithRelations(id);
 
     if (!requisition) {
       throw new NotFoundException(`Requisition ${id} not found`);
@@ -129,7 +106,7 @@ export class RubberRequisitionService {
       notes?: string;
     }[];
   }): Promise<RequisitionDto> {
-    const requisition = this.requisitionRepo.create({
+    const requisition = this.requisitionRepo.build({
       firebaseUid: uuidv4(),
       requisitionNumber: await this.generateRequisitionNumber(),
       sourceType: RequisitionSourceType.MANUAL,
@@ -142,7 +119,7 @@ export class RubberRequisitionService {
       notes: data.notes || null,
       createdBy: data.createdBy || null,
       items: data.items.map((item) =>
-        this.requisitionItemRepo.create({
+        this.requisitionItemRepo.build({
           itemType: item.itemType,
           compoundStockId: item.compoundStockId || null,
           compoundCodingId: item.compoundCodingId || null,
@@ -176,7 +153,7 @@ export class RubberRequisitionService {
       notes?: string;
     }[];
   }): Promise<RequisitionDto> {
-    const requisition = this.requisitionRepo.create({
+    const requisition = this.requisitionRepo.build({
       firebaseUid: uuidv4(),
       requisitionNumber: await this.generateRequisitionNumber(),
       sourceType: RequisitionSourceType.EXTERNAL_PO,
@@ -192,7 +169,7 @@ export class RubberRequisitionService {
       approvedBy: data.createdBy || "System",
       approvedAt: now().toJSDate(),
       items: data.items.map((item) =>
-        this.requisitionItemRepo.create({
+        this.requisitionItemRepo.build({
           itemType: item.itemType,
           compoundStockId: item.compoundStockId || null,
           compoundCodingId: item.compoundCodingId || null,
@@ -210,10 +187,7 @@ export class RubberRequisitionService {
   }
 
   async createLowStockRequisition(compoundStockId: number): Promise<RequisitionDto | null> {
-    const compoundStock = await this.compoundStockRepo.findOne({
-      where: { id: compoundStockId },
-      relations: ["compoundCoding"],
-    });
+    const compoundStock = await this.compoundStockRepo.findOneByIdWithCoding(compoundStockId);
 
     if (!compoundStock) {
       this.logger.warn(`Compound stock ${compoundStockId} not found`);
@@ -227,13 +201,7 @@ export class RubberRequisitionService {
       return null;
     }
 
-    const existingRequisition = await this.requisitionRepo.findOne({
-      where: {
-        sourceType: RequisitionSourceType.LOW_STOCK,
-        status: RequisitionStatus.PENDING,
-      },
-      relations: ["items"],
-    });
+    const existingRequisition = await this.requisitionRepo.findOnePendingLowStockWithItems();
 
     if (existingRequisition) {
       const hasItem = existingRequisition.items.some(
@@ -257,7 +225,7 @@ export class RubberRequisitionService {
     const compoundName = compoundStock.compoundCoding?.name || `Compound #${compoundStockId}`;
     const compoundCode = compoundStock.compoundCoding?.code || "";
 
-    const requisition = this.requisitionRepo.create({
+    const requisition = this.requisitionRepo.build({
       firebaseUid: uuidv4(),
       requisitionNumber: await this.generateRequisitionNumber(),
       sourceType: RequisitionSourceType.LOW_STOCK,
@@ -265,7 +233,7 @@ export class RubberRequisitionService {
       notes: `Auto-generated: ${compoundName} (${compoundCode}) is below minimum stock level. Current: ${compoundStock.quantityKg} kg, Minimum: ${compoundStock.minStockLevelKg} kg`,
       createdBy: "System",
       items: [
-        this.requisitionItemRepo.create({
+        this.requisitionItemRepo.build({
           itemType: RequisitionItemType.COMPOUND,
           compoundStockId: compoundStock.id,
           compoundCodingId: compoundStock.compoundCodingId,
@@ -283,10 +251,7 @@ export class RubberRequisitionService {
   }
 
   async approveRequisition(id: number, approvedBy: string): Promise<RequisitionDto> {
-    const requisition = await this.requisitionRepo.findOne({
-      where: { id },
-      relations: ["items"],
-    });
+    const requisition = await this.requisitionRepo.findOneByIdWithItems(id);
 
     if (!requisition) {
       throw new NotFoundException(`Requisition ${id} not found`);
@@ -307,10 +272,7 @@ export class RubberRequisitionService {
   }
 
   async rejectRequisition(id: number, rejectedBy: string, reason: string): Promise<RequisitionDto> {
-    const requisition = await this.requisitionRepo.findOne({
-      where: { id },
-      relations: ["items"],
-    });
+    const requisition = await this.requisitionRepo.findOneByIdWithItems(id);
 
     if (!requisition) {
       throw new NotFoundException(`Requisition ${id} not found`);
@@ -335,10 +297,7 @@ export class RubberRequisitionService {
     id: number,
     data?: { externalPoNumber?: string; expectedDeliveryDate?: string },
   ): Promise<RequisitionDto> {
-    const requisition = await this.requisitionRepo.findOne({
-      where: { id },
-      relations: ["items"],
-    });
+    const requisition = await this.requisitionRepo.findOneByIdWithItems(id);
 
     if (!requisition) {
       throw new NotFoundException(`Requisition ${id} not found`);
@@ -368,10 +327,7 @@ export class RubberRequisitionService {
     id: number,
     itemReceipts: { itemId: number; quantityReceivedKg: number }[],
   ): Promise<RequisitionDto> {
-    const requisition = await this.requisitionRepo.findOne({
-      where: { id },
-      relations: ["items"],
-    });
+    const requisition = await this.requisitionRepo.findOneByIdWithItems(id);
 
     if (!requisition) {
       throw new NotFoundException(`Requisition ${id} not found`);
@@ -396,10 +352,7 @@ export class RubberRequisitionService {
       }
     }, Promise.resolve());
 
-    const updatedRequisition = await this.requisitionRepo.findOne({
-      where: { id },
-      relations: ["items"],
-    });
+    const updatedRequisition = await this.requisitionRepo.findOneByIdWithItems(id);
 
     const totalOrdered = updatedRequisition!.items.reduce(
       (sum, item) => sum + Number(item.quantityKg),
@@ -422,10 +375,7 @@ export class RubberRequisitionService {
   }
 
   async cancelRequisition(id: number): Promise<RequisitionDto> {
-    const requisition = await this.requisitionRepo.findOne({
-      where: { id },
-      relations: ["items"],
-    });
+    const requisition = await this.requisitionRepo.findOneByIdWithItems(id);
 
     if (!requisition) {
       throw new NotFoundException(`Requisition ${id} not found`);
@@ -444,30 +394,15 @@ export class RubberRequisitionService {
   }
 
   async pendingApprovals(): Promise<RequisitionDto[]> {
-    const requisitions = await this.requisitionRepo.find({
-      where: { status: RequisitionStatus.PENDING },
-      relations: ["supplierCompany", "items"],
-      order: { createdAt: "ASC" },
-    });
+    const requisitions = await this.requisitionRepo.findPendingWithRelations();
 
     return requisitions.map((req) => this.toDto(req));
   }
 
   async checkAndCreateLowStockRequisitions(): Promise<RequisitionDto[]> {
     const [lowStockItems, existingRequisition] = await Promise.all([
-      this.compoundStockRepo
-        .createQueryBuilder("stock")
-        .leftJoinAndSelect("stock.compoundCoding", "coding")
-        .where("stock.min_stock_level_kg > 0")
-        .andWhere("stock.quantity_kg < stock.min_stock_level_kg")
-        .getMany(),
-      this.requisitionRepo.findOne({
-        where: {
-          sourceType: RequisitionSourceType.LOW_STOCK,
-          status: RequisitionStatus.PENDING,
-        },
-        relations: ["items"],
-      }),
+      this.compoundStockRepo.findLowStockBelowMinWithCoding(),
+      this.requisitionRepo.findOnePendingLowStockWithItems(),
     ]);
 
     const existingItemStockIds = new Set(
@@ -487,7 +422,7 @@ export class RubberRequisitionService {
         const compoundName = stock.compoundCoding?.name || `Compound #${stock.id}`;
         const compoundCode = stock.compoundCoding?.code || "";
 
-        const requisition = this.requisitionRepo.create({
+        const requisition = this.requisitionRepo.build({
           firebaseUid: uuidv4(),
           requisitionNumber: await this.generateRequisitionNumber(),
           sourceType: RequisitionSourceType.LOW_STOCK,
@@ -495,7 +430,7 @@ export class RubberRequisitionService {
           notes: `Auto-generated: ${compoundName} (${compoundCode}) is below minimum stock level. Current: ${stock.quantityKg} kg, Minimum: ${stock.minStockLevelKg} kg`,
           createdBy: "System",
           items: [
-            this.requisitionItemRepo.create({
+            this.requisitionItemRepo.build({
               itemType: RequisitionItemType.COMPOUND,
               compoundStockId: stock.id,
               compoundCodingId: stock.compoundCodingId,

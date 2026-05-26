@@ -1,38 +1,55 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
+
 import { AuditService } from "../../audit/audit.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { DeliveryNote } from "../entities/delivery-note.entity";
-import { InvoiceClarification } from "../entities/invoice-clarification.entity";
-import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
-import { SupplierInvoiceItem } from "../entities/supplier-invoice-item.entity";
+import { InvoiceExtractionStatus } from "../entities/supplier-invoice.entity";
+import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
+import { InvoiceClarificationRepository } from "../repositories/invoice-clarification.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
+import { SupplierInvoiceItemRepository } from "../repositories/supplier-invoice-item.repository";
 import { InvoiceService } from "./invoice.service";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 describe("InvoiceService", () => {
   let service: InvoiceService;
 
+  const invoiceFindOne = jest.fn();
+  const invoiceFind = jest.fn();
+
   const mockInvoiceRepo = {
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    findOne: jest.fn(),
-    find: jest.fn(),
+    findOne: invoiceFindOne,
+    find: invoiceFind,
     remove: jest.fn().mockResolvedValue(null),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
+    updateById: jest.fn().mockResolvedValue(undefined),
+    findOneById: (id: number) => invoiceFindOne({ where: { id } }),
+    findOneForCompany: (id: number, companyId: number) =>
+      invoiceFindOne({ where: { id, companyId } }),
+    findOneByIdWithRelations: (id: number) => invoiceFindOne({ where: { id } }),
+    findOneForCompanyWithRelations: (id: number, companyId: number) =>
+      invoiceFindOne({ where: { id, companyId } }),
+    findForCompanyWithDeliveryNotePaginated: (companyId: number, page: number, limit: number) =>
+      invoiceFind({ where: { companyId }, take: limit, skip: (page - 1) * limit }),
+    findStaleProcessingForCompany: (companyId: number) => invoiceFind({ where: { companyId } }),
+    findFailedForCompany: (companyId: number) => invoiceFind({ where: { companyId } }),
+    findUnlinkedForCompany: (companyId: number) =>
+      invoiceFind({ where: { companyId, deliveryNoteId: null } }),
   };
 
   const mockInvoiceItemRepo = {
-    count: jest.fn().mockResolvedValue(0),
+    countByInvoice: jest.fn().mockResolvedValue(0),
   };
 
   const mockClarificationRepo = {
-    count: jest.fn().mockResolvedValue(0),
+    countByInvoiceAndStatus: jest.fn().mockResolvedValue(0),
   };
 
   const mockDeliveryNoteRepo = {
-    findOne: jest.fn(),
-    find: jest.fn(),
+    findOneForCompany: jest.fn(),
+    findAllForCompanyByReceivedDate: jest.fn(),
   };
 
   const mockStorageService = {
@@ -70,10 +87,10 @@ describe("InvoiceService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InvoiceService,
-        { provide: getRepositoryToken(SupplierInvoice), useValue: mockInvoiceRepo },
-        { provide: getRepositoryToken(SupplierInvoiceItem), useValue: mockInvoiceItemRepo },
-        { provide: getRepositoryToken(InvoiceClarification), useValue: mockClarificationRepo },
-        { provide: getRepositoryToken(DeliveryNote), useValue: mockDeliveryNoteRepo },
+        { provide: SupplierInvoiceRepository, useValue: mockInvoiceRepo },
+        { provide: SupplierInvoiceItemRepository, useValue: mockInvoiceItemRepo },
+        { provide: InvoiceClarificationRepository, useValue: mockClarificationRepo },
+        { provide: DeliveryNoteRepository, useValue: mockDeliveryNoteRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: InvoiceExtractionService, useValue: mockExtractionService },
         { provide: AuditService, useValue: mockAuditService },
@@ -104,12 +121,11 @@ describe("InvoiceService", () => {
           deliveryNoteId: null,
         }),
       );
-      expect(mockInvoiceRepo.save).toHaveBeenCalled();
       expect(result).toHaveProperty("id");
     });
 
     it("links to delivery note when deliveryNoteId is provided", async () => {
-      mockDeliveryNoteRepo.findOne.mockResolvedValue({
+      mockDeliveryNoteRepo.findOneForCompany.mockResolvedValue({
         id: 5,
         companyId: 1,
         supplierName: "DN Supplier",
@@ -121,9 +137,7 @@ describe("InvoiceService", () => {
         deliveryNoteId: 5,
       });
 
-      expect(mockDeliveryNoteRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 5, companyId: 1 },
-      });
+      expect(mockDeliveryNoteRepo.findOneForCompany).toHaveBeenCalledWith(5, 1);
       expect(mockInvoiceRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           deliveryNoteId: 5,
@@ -133,7 +147,7 @@ describe("InvoiceService", () => {
     });
 
     it("falls back to delivery note supplier name when dto supplierName is empty", async () => {
-      mockDeliveryNoteRepo.findOne.mockResolvedValue({
+      mockDeliveryNoteRepo.findOneForCompany.mockResolvedValue({
         id: 5,
         companyId: 1,
         supplierName: "DN Supplier",
@@ -153,7 +167,7 @@ describe("InvoiceService", () => {
     });
 
     it("throws NotFoundException when delivery note does not exist", async () => {
-      mockDeliveryNoteRepo.findOne.mockResolvedValue(null);
+      mockDeliveryNoteRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(
         service.create(1, {
@@ -201,13 +215,9 @@ describe("InvoiceService", () => {
 
       const result = await service.findAll(1, 1, 50);
 
-      expect(mockInvoiceRepo.find).toHaveBeenCalledWith({
-        where: { companyId: 1 },
-        relations: ["deliveryNote"],
-        order: { createdAt: "DESC" },
-        take: 50,
-        skip: 0,
-      });
+      expect(mockInvoiceRepo.find).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { companyId: 1 }, take: 50, skip: 0 }),
+      );
       expect(result).toHaveLength(2);
       expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/invoices/scan1.pdf",
@@ -241,10 +251,9 @@ describe("InvoiceService", () => {
 
       const result = await service.findById(1, 1);
 
-      expect(mockInvoiceRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1, companyId: 1 },
-        relations: ["deliveryNote", "items", "items.stockItem", "clarifications"],
-      });
+      expect(mockInvoiceRepo.findOne).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 1, companyId: 1 } }),
+      );
       expect(mockStorageService.presignedUrl).toHaveBeenCalledWith(
         "stock-control/invoices/scan.pdf",
         3600,
@@ -397,7 +406,7 @@ describe("InvoiceService", () => {
     it("updates the invoice scanUrl", async () => {
       await service.linkScanPath(1, "stock-control/invoices/new-path.pdf");
 
-      expect(mockInvoiceRepo.update).toHaveBeenCalledWith(1, {
+      expect(mockInvoiceRepo.updateById).toHaveBeenCalledWith(1, {
         scanUrl: "stock-control/invoices/new-path.pdf",
       });
     });
@@ -659,9 +668,7 @@ describe("InvoiceService", () => {
 
       expect(result).toHaveLength(2);
       expect(mockInvoiceRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { companyId: 1, deliveryNoteId: expect.anything() },
-        }),
+        expect.objectContaining({ where: { companyId: 1, deliveryNoteId: null } }),
       );
     });
   });
@@ -676,7 +683,7 @@ describe("InvoiceService", () => {
         items: [],
         clarifications: [],
       });
-      mockDeliveryNoteRepo.findOne.mockResolvedValue({
+      mockDeliveryNoteRepo.findOneForCompany.mockResolvedValue({
         id: 5,
         companyId: 1,
         deliveryNumber: "DN-001",
@@ -709,7 +716,7 @@ describe("InvoiceService", () => {
         items: [],
         clarifications: [],
       });
-      mockDeliveryNoteRepo.findOne.mockResolvedValue(null);
+      mockDeliveryNoteRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.linkToDeliveryNote(1, 1, 999)).rejects.toThrow(NotFoundException);
     });
@@ -746,7 +753,7 @@ describe("InvoiceService", () => {
         items: [],
         clarifications: [],
       });
-      mockDeliveryNoteRepo.find.mockResolvedValue([
+      mockDeliveryNoteRepo.findAllForCompanyByReceivedDate.mockResolvedValue([
         {
           id: 10,
           deliveryNumber: "DN-001",
@@ -778,7 +785,7 @@ describe("InvoiceService", () => {
         items: [],
         clarifications: [],
       });
-      mockDeliveryNoteRepo.find.mockResolvedValue([
+      mockDeliveryNoteRepo.findAllForCompanyByReceivedDate.mockResolvedValue([
         {
           id: 10,
           deliveryNumber: "DN-001",
@@ -809,7 +816,7 @@ describe("InvoiceService", () => {
         items: [],
         clarifications: [],
       });
-      mockDeliveryNoteRepo.find.mockResolvedValue([
+      mockDeliveryNoteRepo.findAllForCompanyByReceivedDate.mockResolvedValue([
         {
           id: 10,
           deliveryNumber: "DN-001",
@@ -841,7 +848,7 @@ describe("InvoiceService", () => {
         supplierName: "Acme",
         receivedDate: new Date("2025-06-01"),
       }));
-      mockDeliveryNoteRepo.find.mockResolvedValue(manyDeliveryNotes);
+      mockDeliveryNoteRepo.findAllForCompanyByReceivedDate.mockResolvedValue(manyDeliveryNotes);
 
       const result = await service.suggestDeliveryNoteMatches(1, 1);
 
@@ -858,7 +865,7 @@ describe("InvoiceService", () => {
         items: [],
         clarifications: [],
       });
-      mockDeliveryNoteRepo.find.mockResolvedValue([
+      mockDeliveryNoteRepo.findAllForCompanyByReceivedDate.mockResolvedValue([
         {
           id: 10,
           deliveryNumber: "DN-001",

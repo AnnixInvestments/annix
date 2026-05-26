@@ -1,9 +1,6 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { decrypt, encrypt } from "../secure-documents/crypto.util";
-import { SageConnection } from "./entities/sage-connection.entity";
 import {
   SageApiService,
   type SageCompany,
@@ -11,6 +8,7 @@ import {
   type SageSupplier,
   type SageTaxType,
 } from "./sage-api.service";
+import { SageConnectionRepository } from "./sage-connection.repository";
 
 export interface SageConfigDto {
   sageUsername: string | null;
@@ -34,14 +32,13 @@ export class SageConnectionService {
   private readonly logger = new Logger(SageConnectionService.name);
 
   constructor(
-    @InjectRepository(SageConnection)
-    private readonly connectionRepo: Repository<SageConnection>,
+    private readonly connectionRepo: SageConnectionRepository,
     private readonly configService: ConfigService,
     private readonly sageApiService: SageApiService,
   ) {}
 
   async connectionStatus(appKey: string): Promise<SageConnectionStatus> {
-    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    const conn = await this.connectionRepo.findByAppKey(appKey);
 
     if (!conn) {
       return {
@@ -70,16 +67,16 @@ export class SageConnectionService {
   }
 
   async addonEnabled(appKey: string): Promise<boolean> {
-    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    const conn = await this.connectionRepo.findByAppKey(appKey);
     return conn?.enabled ?? false;
   }
 
   async saveCredentials(appKey: string, dto: SageConfigDto): Promise<{ message: string }> {
     const encryptionKey = this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY");
 
-    let conn = await this.connectionRepo.findOne({ where: { appKey } });
+    let conn = await this.connectionRepo.findByAppKey(appKey);
     if (!conn) {
-      conn = this.connectionRepo.create({ appKey, enabled: false });
+      conn = this.connectionRepo.instantiate({ appKey, enabled: false });
     }
 
     conn.sageUsername = dto.sageUsername;
@@ -102,16 +99,13 @@ export class SageConnectionService {
   }
 
   async disconnect(appKey: string): Promise<{ message: string }> {
-    await this.connectionRepo.update(
-      { appKey },
-      {
-        sageUsername: null,
-        sagePassEncrypted: null,
-        sageCompanyId: null,
-        sageCompanyName: null,
-        connectedAt: null,
-      },
-    );
+    await this.connectionRepo.updateByAppKey(appKey, {
+      sageUsername: null,
+      sagePassEncrypted: null,
+      sageCompanyId: null,
+      sageCompanyName: null,
+      connectedAt: null,
+    });
     return { message: "Sage connection removed" };
   }
 
@@ -135,7 +129,7 @@ export class SageConnectionService {
 
   async sageSuppliers(appKey: string): Promise<SageSupplier[]> {
     const creds = await this.storedCredentials(appKey);
-    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    const conn = await this.connectionRepo.findByAppKey(appKey);
     if (!conn?.sageCompanyId) {
       throw new BadRequestException("No Sage company selected");
     }
@@ -144,7 +138,7 @@ export class SageConnectionService {
 
   async sageCustomers(appKey: string): Promise<SageCustomer[]> {
     const creds = await this.storedCredentials(appKey);
-    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    const conn = await this.connectionRepo.findByAppKey(appKey);
     if (!conn?.sageCompanyId) {
       throw new BadRequestException("No Sage company selected");
     }
@@ -153,7 +147,7 @@ export class SageConnectionService {
 
   async sageTaxTypes(appKey: string): Promise<SageTaxType[]> {
     const creds = await this.storedCredentials(appKey);
-    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    const conn = await this.connectionRepo.findByAppKey(appKey);
     if (!conn?.sageCompanyId) {
       throw new BadRequestException("No Sage company selected");
     }
@@ -176,7 +170,7 @@ export class SageConnectionService {
   }
 
   private async storedCredentials(appKey: string): Promise<{ username: string; password: string }> {
-    const conn = await this.connectionRepo.findOne({ where: { appKey } });
+    const conn = await this.connectionRepo.findByAppKey(appKey);
 
     if (!conn?.sageUsername || !conn?.sagePassEncrypted) {
       throw new BadRequestException("Sage credentials not configured");

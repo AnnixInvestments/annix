@@ -1,7 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 
 import { FeatureFlag } from "./entities/feature-flag.entity";
 import {
@@ -11,6 +9,7 @@ import {
   FEATURE_FLAGS,
   FeatureFlagKey,
 } from "./feature-flags.constants";
+import { FeatureFlagRepository } from "./feature-flags.repository";
 
 @Injectable()
 export class FeatureFlagsService {
@@ -18,8 +17,7 @@ export class FeatureFlagsService {
   private flagsByKeyCache: Map<string, FeatureFlag> | null = null;
 
   constructor(
-    @InjectRepository(FeatureFlag)
-    private readonly flagRepo: Repository<FeatureFlag>,
+    private readonly flagRepo: FeatureFlagRepository,
     private readonly configService: ConfigService,
   ) {}
 
@@ -31,30 +29,31 @@ export class FeatureFlagsService {
     if (this.flagsByKeyCache) {
       return this.flagsByKeyCache;
     }
-    const flags = await this.flagRepo.find({ order: { flagKey: "ASC" } });
+    const flags = await this.flagRepo.findAllOrdered();
     const map = new Map(flags.map((f) => [f.flagKey, f]));
     this.flagsByKeyCache = map;
     return map;
   }
 
   async ensureFlags(): Promise<void> {
-    const existing = await this.flagRepo.find();
+    const existing = await this.flagRepo.findAll();
     const existingKeys = new Set(existing.map((f) => f.flagKey));
 
     const missing = Object.values(FEATURE_FLAGS).filter((key) => !existingKeys.has(key));
 
     if (missing.length > 0) {
-      const newFlags = missing.map((key) => {
-        const envValue = this.configService.get(`ENABLE_${key}`);
-        const defaultValue = FEATURE_FLAG_DEFAULTS[key] ?? false;
-        const enabled = envValue !== undefined ? envValue === "true" : defaultValue;
-        return this.flagRepo.create({
-          flagKey: key,
-          enabled,
-          description: FEATURE_FLAG_DESCRIPTIONS[key] || null,
-        });
-      });
-      await this.flagRepo.save(newFlags);
+      await Promise.all(
+        missing.map((key) => {
+          const envValue = this.configService.get(`ENABLE_${key}`);
+          const defaultValue = FEATURE_FLAG_DEFAULTS[key] ?? false;
+          const enabled = envValue !== undefined ? envValue === "true" : defaultValue;
+          return this.flagRepo.create({
+            flagKey: key,
+            enabled,
+            description: FEATURE_FLAG_DESCRIPTIONS[key] || null,
+          });
+        }),
+      );
       this.invalidateCache();
       this.logger.log(`Initialised feature flags: ${missing.join(", ")}`);
     }
@@ -99,7 +98,7 @@ export class FeatureFlagsService {
     enabled: boolean;
     description: string | null;
   }> {
-    const flag = await this.flagRepo.findOne({ where: { flagKey } });
+    const flag = await this.flagRepo.findByKey(flagKey);
 
     if (!flag) {
       throw new NotFoundException(`Feature flag '${flagKey}' not found`);

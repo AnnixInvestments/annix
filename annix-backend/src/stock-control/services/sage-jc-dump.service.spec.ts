@@ -1,13 +1,13 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { DataSource } from "typeorm";
 import * as XLSX from "xlsx";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
-import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
-import { JobCard } from "../entities/job-card.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
+import { CustomerPurchaseOrderRepository } from "../repositories/customer-purchase-order.repository";
+import { CustomerPurchaseOrderItemRepository } from "../repositories/customer-purchase-order-item.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 import { SageJcDumpService } from "./sage-jc-dump.service";
 
 const COMPANY_ID = 1;
@@ -88,24 +88,42 @@ describe("SageJcDumpService", () => {
 
   beforeEach(async () => {
     cpoRepo = {
-      findOne: jest.fn(),
+      findOneForCompanyWithItems: jest.fn(),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      withTransaction: jest.fn().mockReturnThis(),
     };
     jobCardRepo = {
-      findOne: jest.fn().mockResolvedValue(null),
-      find: jest.fn().mockResolvedValue([]),
-      create: jest.fn().mockImplementation((data) => data),
+      findParentForCpo: jest.fn().mockResolvedValue(null),
+      findChildJobCardsByJobNumber: jest.fn().mockResolvedValue([]),
+      build: jest.fn().mockImplementation((data) => data),
       save: jest.fn().mockImplementation((data) => Promise.resolve({ ...data, id: 100 })),
+      withTransaction: jest.fn().mockReturnThis(),
+    };
+    const lineItemRepo = {
+      buildMany: jest.fn().mockImplementation((rows) => rows),
+      count: jest.fn().mockResolvedValue(0),
+      save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      withTransaction: jest.fn().mockReturnThis(),
+    };
+    const cpoItemRepo = {
+      save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      findManyWhere: jest.fn().mockResolvedValue([]),
+      withTransaction: jest.fn().mockReturnThis(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SageJcDumpService,
-        { provide: getRepositoryToken(CustomerPurchaseOrder), useValue: cpoRepo },
-        { provide: getRepositoryToken(CustomerPurchaseOrderItem), useValue: {} },
-        { provide: getRepositoryToken(JobCard), useValue: jobCardRepo },
-        { provide: getRepositoryToken(JobCardLineItem), useValue: {} },
-        { provide: DataSource, useValue: {} },
+        { provide: CustomerPurchaseOrderRepository, useValue: cpoRepo },
+        { provide: JobCardRepository, useValue: jobCardRepo },
+        { provide: JobCardLineItemRepository, useValue: lineItemRepo },
+        { provide: CustomerPurchaseOrderItemRepository, useValue: cpoItemRepo },
+        {
+          provide: TransactionRunner,
+          useValue: {
+            run: jest.fn().mockImplementation((work) => work({})),
+          },
+        },
         { provide: QcMeasurementService, useValue: {} },
       ],
     }).compile();
@@ -115,7 +133,7 @@ describe("SageJcDumpService", () => {
 
   describe("parseSageJcDump", () => {
     it("throws NotFoundException when CPO does not exist", async () => {
-      cpoRepo.findOne.mockResolvedValue(null);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(null);
       const buffer = buildSageExcel(baseSageRows());
 
       await expect(service.parseSageJcDump(buffer, COMPANY_ID, 999)).rejects.toThrow(
@@ -124,7 +142,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("throws BadRequestException when file has no pages", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const buffer = buildSageExcel([["not a page header"]]);
 
       await expect(service.parseSageJcDump(buffer, COMPANY_ID, 1)).rejects.toThrow(
@@ -133,7 +151,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("parses basic line items with JT numbers", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -152,7 +170,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("detects spec rows in column 0 with empty other columns", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -168,7 +186,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("detects spec rows when footer labels occupy columns 4-6 (bug fix)", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -193,7 +211,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("strips trailing PRODUCTION from spec text", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -207,7 +225,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("skips pure footer rows (col 0 is a footer label)", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -223,7 +241,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("filters footer labels from collected spec notes", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -238,7 +256,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("classifies asterisk items correctly", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "****", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -250,7 +268,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("classifies items without JT number as undelivered", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -265,7 +283,7 @@ describe("SageJcDumpService", () => {
         reference: "PAINT EXT : PAINT PILOT QD RED OXIDE PRODUCTION Forman Sign Material Spec",
         coatingSpecs: null,
       });
-      cpoRepo.findOne.mockResolvedValue(cpo);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -278,7 +296,7 @@ describe("SageJcDumpService", () => {
 
     it("clears footer-only coatingSpecs", async () => {
       const cpo = makeCpo({ coatingSpecs: "Job Comp Date" });
-      cpoRepo.findOne.mockResolvedValue(cpo);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -290,7 +308,7 @@ describe("SageJcDumpService", () => {
 
     it("clears footer-only notes", async () => {
       const cpo = makeCpo({ notes: "Job Comp Date" });
-      cpoRepo.findOne.mockResolvedValue(cpo);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -302,7 +320,7 @@ describe("SageJcDumpService", () => {
 
     it("preserves legitimate notes that are not footer labels", async () => {
       const cpo = makeCpo({ notes: "Deliver to Gate 5" });
-      cpoRepo.findOne.mockResolvedValue(cpo);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -313,7 +331,7 @@ describe("SageJcDumpService", () => {
 
     it("preserves non-spec reference text", async () => {
       const cpo = makeCpo({ reference: "REF-2025-001" });
-      cpoRepo.findOne.mockResolvedValue(cpo);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -323,7 +341,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("detects spec text in column 1 (item description) when column 0 is empty", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -337,7 +355,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("handles multiple spec lines for the same item group", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -354,7 +372,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("handles multi-page Sage dumps when both pages match the CPO JC suffix", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const page1 = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -384,7 +402,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("filters out pages whose documentNumber does not match the CPO JC suffix", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const matchingPage = [
         ...baseSageRows({ docNumber: "JC025694" }),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -415,7 +433,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("throws when no parsed page matches the CPO JC suffix", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const buffer = buildSageExcel([
         ...baseSageRows({ docNumber: "JC999999" }),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -427,8 +445,10 @@ describe("SageJcDumpService", () => {
     });
 
     it("flags JT numbers as merged when they already exist on a sibling CPO of the same Sage job", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
-      jobCardRepo.find.mockResolvedValue([{ id: 200, jtDnNumber: "JT001" }]);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
+      jobCardRepo.findChildJobCardsByJobNumber.mockResolvedValue([
+        { id: 200, jtDnNumber: "JT001" },
+      ]);
 
       const rows = [
         ...baseSageRows(),
@@ -445,7 +465,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("inherits last JT number for rows missing JT No", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -463,7 +483,7 @@ describe("SageJcDumpService", () => {
         reference: "PAINT EXT : RED OXIDE",
         coatingSpecs: "PAINT INT : EPOXY LINING",
       });
-      cpoRepo.findOne.mockResolvedValue(cpo);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -478,7 +498,7 @@ describe("SageJcDumpService", () => {
         reference: "PAINT EXT : RED OXIDE",
         coatingSpecs: "PAINT EXT : RED OXIDE",
       });
-      cpoRepo.findOne.mockResolvedValue(cpo);
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(cpo);
       const rows = [...baseSageRows(), ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""]];
       const buffer = buildSageExcel(rows);
 
@@ -489,7 +509,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("extracts document number from header rows when CPO has no JC suffix (filter bypassed)", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo({ cpoNumber: "CPO-P9972" }));
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo({ cpoNumber: "CPO-P9972" }));
       const rows = [
         ...baseSageRows({ docNumber: "INV-12345" }),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "JT001", ""],
@@ -502,7 +522,7 @@ describe("SageJcDumpService", () => {
     });
 
     it("handles rows with pricing in JT column as non-JT items", async () => {
-      cpoRepo.findOne.mockResolvedValue(makeCpo());
+      cpoRepo.findOneForCompanyWithItems.mockResolvedValue(makeCpo());
       const rows = [
         ...baseSageRows(),
         ["PIPE-001", "6in CS pipe", "", "", "001", 10, "Pricing", ""],

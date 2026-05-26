@@ -4,16 +4,15 @@ import * as os from "node:os";
 import * as path from "node:path";
 import { promisify } from "node:util";
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import sharp from "sharp";
 import { createWorker } from "tesseract.js";
-import { Repository } from "typeorm";
 import {
   PdfPageImageDto,
   PdfPagesResponseDto,
   SaveExtractionRegionDto,
 } from "../dto/extraction-region.dto";
 import { NixExtractionRegion, RegionCoordinates } from "../entities/nix-extraction-region.entity";
+import { NixExtractionRegionRepository } from "../nix-extraction-region.repository";
 
 const execAsync = promisify(exec);
 
@@ -21,10 +20,7 @@ const execAsync = promisify(exec);
 export class DocumentAnnotationService {
   private readonly logger = new Logger(DocumentAnnotationService.name);
 
-  constructor(
-    @InjectRepository(NixExtractionRegion)
-    private readonly regionRepo: Repository<NixExtractionRegion>,
-  ) {}
+  constructor(private readonly regionRepo: NixExtractionRegionRepository) {}
 
   private normalizeDocumentCategory(category: string): string {
     return category.toLowerCase().replace("_cert", "");
@@ -246,13 +242,10 @@ export class DocumentAnnotationService {
     const normalizedCategory = this.normalizeDocumentCategory(dto.documentCategory);
     this.logger.log(`Saving extraction region for ${normalizedCategory}:${dto.fieldName}`);
 
-    const existingRegion = await this.regionRepo.findOne({
-      where: {
-        documentCategory: normalizedCategory,
-        fieldName: dto.fieldName,
-        isActive: true,
-      },
-    });
+    const existingRegion = await this.regionRepo.findActiveByCategoryAndField(
+      normalizedCategory,
+      dto.fieldName,
+    );
 
     if (existingRegion) {
       existingRegion.regionCoordinates = dto.regionCoordinates;
@@ -264,7 +257,7 @@ export class DocumentAnnotationService {
       return this.regionRepo.save(existingRegion);
     }
 
-    const region = this.regionRepo.create({
+    return this.regionRepo.create({
       documentCategory: normalizedCategory,
       fieldName: dto.fieldName,
       regionCoordinates: dto.regionCoordinates,
@@ -275,21 +268,11 @@ export class DocumentAnnotationService {
       isCustomField: dto.isCustomField ?? false,
       createdByUserId: userId || null,
     });
-
-    return this.regionRepo.save(region);
   }
 
   async findRegionsForDocument(documentCategory: string): Promise<NixExtractionRegion[]> {
     const normalizedCategory = this.normalizeDocumentCategory(documentCategory);
-    return this.regionRepo.find({
-      where: {
-        documentCategory: normalizedCategory,
-        isActive: true,
-      },
-      order: {
-        fieldName: "ASC",
-      },
-    });
+    return this.regionRepo.findActiveForCategory(normalizedCategory);
   }
 
   async extractUsingLearnedRegions(
@@ -335,13 +318,10 @@ export class DocumentAnnotationService {
   }
 
   async deleteRegion(id: number): Promise<void> {
-    await this.regionRepo.update(id, { isActive: false });
+    await this.regionRepo.deactivate(id);
   }
 
   async allRegions(): Promise<NixExtractionRegion[]> {
-    return this.regionRepo.find({
-      where: { isActive: true },
-      order: { documentCategory: "ASC", fieldName: "ASC" },
-    });
+    return this.regionRepo.findAllActive();
   }
 }

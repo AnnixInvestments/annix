@@ -1,19 +1,17 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { AnnixOrbitProfile } from "../annix-orbit/entities/annix-orbit-profile.entity";
-import { AnnixOrbitUser } from "../annix-orbit/entities/annix-orbit-user.entity";
-import { RepProfile } from "../annix-rep/rep-profile/rep-profile.entity";
-import { AnnixSentinelProfile } from "../annix-sentinel/companies/entities/annix-sentinel-profile.entity";
-import { CustomerProfile } from "../customer/entities/customer-profile.entity";
+import { AnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository";
+import { AnnixOrbitUserRepository } from "../annix-orbit/repositories/annix-orbit-user.repository";
+import { RepProfileRepository } from "../annix-rep/rep-profile/rep-profile.repository";
+import { AnnixSentinelProfileRepository } from "../annix-sentinel/companies/annix-sentinel-profile.repository";
+import { CustomerProfileRepository } from "../customer/customer-profile.repository";
 import { nowISO } from "../lib/datetime";
-import { App } from "../rbac/entities/app.entity";
-import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
-import { StockControlProfile } from "../stock-control/entities/stock-control-profile.entity";
-import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
-import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
-import { TeacherAssistantUser } from "../teacher-assistant/entities/teacher-assistant-user.entity";
-import { User } from "../user/entities/user.entity";
+import { CrudRepository } from "../lib/persistence/crud-repository";
+import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
+import { StockControlProfileRepository } from "../stock-control/repositories/stock-control-profile.repository";
+import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
+import { SupplierProfileRepository } from "../supplier/supplier-profile.repository";
+import { TeacherAssistantUserRepository } from "../teacher-assistant/teacher-assistant-user.repository";
+import { UserRepository } from "../user/user.repository";
 import {
   AnnixRepGapSectionDto,
   CoverageSectionDto,
@@ -37,34 +35,22 @@ interface CoreUserRef {
 @Injectable()
 export class IdentityReconciliationService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(App)
-    private readonly appRepo: Repository<App>,
-    @InjectRepository(UserAppAccess)
-    private readonly accessRepo: Repository<UserAppAccess>,
-    @InjectRepository(CustomerProfile)
-    private readonly customerProfileRepo: Repository<CustomerProfile>,
-    @InjectRepository(SupplierProfile)
-    private readonly supplierProfileRepo: Repository<SupplierProfile>,
-    @InjectRepository(StockControlProfile)
-    private readonly stockControlProfileRepo: Repository<StockControlProfile>,
-    @InjectRepository(AnnixOrbitProfile)
-    private readonly annixOrbitProfileRepo: Repository<AnnixOrbitProfile>,
-    @InjectRepository(AnnixSentinelProfile)
-    private readonly annixSentinelProfileRepo: Repository<AnnixSentinelProfile>,
-    @InjectRepository(RepProfile)
-    private readonly repProfileRepo: Repository<RepProfile>,
-    @InjectRepository(TeacherAssistantUser)
-    private readonly teacherAssistantUserRepo: Repository<TeacherAssistantUser>,
-    @InjectRepository(StockControlUser)
-    private readonly stockControlUserRepo: Repository<StockControlUser>,
-    @InjectRepository(AnnixOrbitUser)
-    private readonly annixOrbitUserRepo: Repository<AnnixOrbitUser>,
+    private readonly userRepo: UserRepository,
+    private readonly appRepo: AppRepository,
+    private readonly accessRepo: UserAppAccessRepository,
+    private readonly customerProfileRepo: CustomerProfileRepository,
+    private readonly supplierProfileRepo: SupplierProfileRepository,
+    private readonly stockControlProfileRepo: StockControlProfileRepository,
+    private readonly annixOrbitProfileRepo: AnnixOrbitProfileRepository,
+    private readonly annixSentinelProfileRepo: AnnixSentinelProfileRepository,
+    private readonly repProfileRepo: RepProfileRepository,
+    private readonly teacherAssistantUserRepo: TeacherAssistantUserRepository,
+    private readonly stockControlUserRepo: StockControlUserRepository,
+    private readonly annixOrbitUserRepo: AnnixOrbitUserRepository,
   ) {}
 
   async buildReport(): Promise<IdentityReconciliationReportDto> {
-    const coreUsers = await this.userRepo.find({ select: ["id", "email"] });
+    const coreUsers = await this.userRepo.findAllIdAndEmail();
     const coreUsersByEmail = this.indexCoreUsersByEmail(coreUsers);
 
     const coverage = await this.coverageSection(coreUsers.length);
@@ -102,11 +88,11 @@ export class IdentityReconciliationService {
   }
 
   private async coverageSection(totalCoreUsers: number): Promise<CoverageSectionDto> {
-    const apps = await this.appRepo.find({ order: { displayOrder: "ASC" } });
+    const apps = await this.appRepo.findAllOrderedByDisplayOrder();
 
     const accessByApp = await Promise.all(
       apps.map(async (app) => {
-        const accessCount = await this.accessRepo.count({ where: { appId: app.id } });
+        const accessCount = await this.accessRepo.countByAppId(app.id);
         return { appCode: app.code, appName: app.name, accessCount };
       }),
     );
@@ -126,18 +112,15 @@ export class IdentityReconciliationService {
   private async profileCount(
     portal: string,
     table: string,
-    repo: Repository<object>,
+    repo: CrudRepository<{ id: number }>,
   ): Promise<{ portal: string; table: string; profileCount: number }> {
     const profileCount = await repo.count();
     return { portal, table, profileCount };
   }
 
   private async annixRepGapSection(): Promise<AnnixRepGapSectionDto> {
-    const repApp = await this.appRepo.findOne({ where: { code: ANNIX_REP_APP_CODE } });
-    const repProfiles = await this.repProfileRepo.find({
-      relations: ["user"],
-      order: { id: "ASC" },
-    });
+    const repApp = await this.appRepo.findByCode(ANNIX_REP_APP_CODE);
+    const repProfiles = await this.repProfileRepo.findAllWithUserOrderedById();
 
     if (!repApp) {
       const sampleNoApp = repProfiles.slice(0, SAMPLE_LIMIT).map((profile) => ({
@@ -151,7 +134,7 @@ export class IdentityReconciliationService {
       };
     }
 
-    const repAccess = await this.accessRepo.find({ where: { appId: repApp.id } });
+    const repAccess = await this.accessRepo.findManyByAppId(repApp.id);
     const userIdsWithAccess = repAccess.reduce(
       (acc, access) => acc.add(access.userId),
       new Set<number>(),
@@ -174,7 +157,7 @@ export class IdentityReconciliationService {
   private async teacherAssistantSection(
     coreUsersByEmail: Map<string, CoreUserRef>,
   ): Promise<TeacherAssistantSectionDto> {
-    const teacherUsers = await this.teacherAssistantUserRepo.find({ order: { id: "ASC" } });
+    const teacherUsers = await this.teacherAssistantUserRepo.findAllOrderedById();
 
     const classified = teacherUsers.reduce(
       (acc, teacherUser) => {
@@ -210,27 +193,28 @@ export class IdentityReconciliationService {
   private async unbridgedLegacySection(
     coreUsersByEmail: Map<string, CoreUserRef>,
   ): Promise<UnbridgedLegacySectionDto> {
-    const stockControlTable = await this.unbridgedTable(
+    const stockControlRows = await this.stockControlUserRepo.findAllOrderedById();
+    const annixOrbitRows = await this.annixOrbitUserRepo.findAllOrderedById();
+
+    const stockControlTable = this.unbridgedTable(
       "stock_control_users",
       coreUsersByEmail,
-      this.stockControlUserRepo,
+      stockControlRows,
     );
-    const annixOrbitTable = await this.unbridgedTable(
+    const annixOrbitTable = this.unbridgedTable(
       "cv_assistant_users",
       coreUsersByEmail,
-      this.annixOrbitUserRepo,
+      annixOrbitRows,
     );
 
     return { tables: [stockControlTable, annixOrbitTable] };
   }
 
-  private async unbridgedTable(
+  private unbridgedTable(
     table: string,
     coreUsersByEmail: Map<string, CoreUserRef>,
-    repo: Repository<{ id: number; email: string }>,
-  ): Promise<UnbridgedTableDto> {
-    const rows = await repo.find({ order: { id: "ASC" } });
-
+    rows: { id: number; email: string }[],
+  ): UnbridgedTableDto {
     const unbridged = rows.reduce((acc, row) => {
       const normalized = this.normalizeEmail(row.email);
       const coreMatch = normalized ? (coreUsersByEmail.get(normalized) ?? null) : null;
@@ -300,7 +284,7 @@ export class IdentityReconciliationService {
       rolesByEmail.set(normalized, existing);
     };
 
-    const accessRecords = await this.accessRepo.find({ relations: ["app", "role"] });
+    const accessRecords = await this.accessRepo.findAllWithAppAndRole();
     accessRecords.forEach((access) => {
       const coreUser = coreUserById.get(access.userId);
       const appCode = access.app?.code ?? null;
@@ -309,17 +293,17 @@ export class IdentityReconciliationService {
       }
     });
 
-    const teacherUsers = await this.teacherAssistantUserRepo.find();
+    const teacherUsers = await this.teacherAssistantUserRepo.findAll();
     teacherUsers.forEach((teacherUser) => {
       recordRole(teacherUser.email, "teacher-assistant", null);
     });
 
-    const stockControlUsers = await this.stockControlUserRepo.find();
+    const stockControlUsers = await this.stockControlUserRepo.findAll();
     stockControlUsers.forEach((scUser) => {
       recordRole(scUser.email, "stock-control:legacy", scUser.role ?? null);
     });
 
-    const annixOrbitUsers = await this.annixOrbitUserRepo.find();
+    const annixOrbitUsers = await this.annixOrbitUserRepo.findAll();
     annixOrbitUsers.forEach((orbitUser) => {
       recordRole(orbitUser.email, "annix-orbit:legacy", orbitUser.role ?? null);
     });

@@ -1,16 +1,15 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
-import { CustomerProfile } from "../customer/entities/customer-profile.entity";
+import { CustomerProfileRepository } from "../customer/customer-profile.repository";
 import { EmailService } from "../email/email.service";
 import { formatDateTime, now } from "../lib/datetime";
 import { ConversationType, RelatedEntityType } from "../messaging/entities";
 import { MessagingService } from "../messaging/messaging.service";
 import { PuppeteerPoolService } from "../shared/services/puppeteer-pool.service";
-import { StockControlUser } from "../stock-control/entities/stock-control-user.entity";
+import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
 import { type IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
-import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
+import { CustomerFeedbackRepository } from "./customer-feedback.repository";
 import { SubmitFeedbackDto, SubmitFeedbackResponseDto } from "./dto";
 import {
   CustomerFeedback,
@@ -18,6 +17,7 @@ import {
   type SubmitterType,
 } from "./entities/customer-feedback.entity";
 import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
+import { FeedbackAttachmentRepository } from "./feedback-attachment.repository";
 import { FeedbackGithubService } from "./feedback-github.service";
 import type { FeedbackSubmitter } from "./guards/feedback-auth.guard";
 
@@ -53,16 +53,11 @@ export class FeedbackService {
   private readonly logger = new Logger(FeedbackService.name);
 
   constructor(
-    @InjectRepository(CustomerFeedback)
-    private readonly feedbackRepository: Repository<CustomerFeedback>,
-    @InjectRepository(FeedbackAttachment)
-    private readonly attachmentRepository: Repository<FeedbackAttachment>,
-    @InjectRepository(CustomerProfile)
-    private readonly customerProfileRepository: Repository<CustomerProfile>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
-    @InjectRepository(StockControlUser)
-    private readonly stockControlUserRepository: Repository<StockControlUser>,
+    private readonly feedbackRepository: CustomerFeedbackRepository,
+    private readonly attachmentRepository: FeedbackAttachmentRepository,
+    private readonly customerProfileRepository: CustomerProfileRepository,
+    private readonly userRepository: UserRepository,
+    private readonly stockControlUserRepository: StockControlUserRepository,
     private readonly messagingService: MessagingService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
@@ -76,10 +71,10 @@ export class FeedbackService {
     customerId: number,
     dto: SubmitFeedbackDto,
   ): Promise<SubmitFeedbackResponseDto> {
-    const profile = await this.customerProfileRepository.findOne({
-      where: { id: customerId },
-      relations: ["user", "company"],
-    });
+    const profile = await this.customerProfileRepository.findByIdWithRelations(customerId, [
+      "user",
+      "company",
+    ]);
 
     if (!profile) {
       throw new Error("Customer profile not found");
@@ -93,7 +88,7 @@ export class FeedbackService {
       userId: profile.userId,
     };
 
-    const feedback = this.feedbackRepository.create({
+    const savedFeedback = await this.feedbackRepository.create({
       customerProfileId: customerId,
       content: dto.content,
       source: dto.source,
@@ -102,8 +97,6 @@ export class FeedbackService {
       submitterName: `${customerInfo.firstName} ${customerInfo.lastName}`,
       submitterEmail: customerInfo.email,
     });
-
-    const savedFeedback = await this.feedbackRepository.save(feedback);
 
     const conversationId = await this.createFeedbackConversation(savedFeedback, dto, customerInfo);
 
@@ -134,7 +127,7 @@ export class FeedbackService {
   ): Promise<SubmitFeedbackResponseDto> {
     const effectiveSubmitter = await this.resolveGeneralSubmitter(submitter, dto);
     const captureContext = this.buildCaptureContext(dto);
-    const feedback = this.feedbackRepository.create({
+    const savedFeedback = await this.feedbackRepository.create({
       customerProfileId: null,
       content: dto.content,
       source: dto.source,
@@ -146,8 +139,6 @@ export class FeedbackService {
       captureContext,
       captureCompletenessScore: this.calculateCaptureCompletenessScore(dto),
     });
-
-    const savedFeedback = await this.feedbackRepository.save(feedback);
 
     this.processGeneralFeedbackAsync(savedFeedback, effectiveSubmitter, dto, files, bearerToken);
 
@@ -211,7 +202,7 @@ export class FeedbackService {
           `${StorageArea.ANNIX_APP}/feedback/${feedbackId}`,
         );
 
-        const attachment = this.attachmentRepository.create({
+        return this.attachmentRepository.create({
           feedbackId,
           filePath: result.path,
           originalFilename: file.originalname,
@@ -219,8 +210,6 @@ export class FeedbackService {
           fileSize: file.size,
           isAutoScreenshot,
         });
-
-        return this.attachmentRepository.save(attachment);
       }),
     );
 
@@ -230,10 +219,7 @@ export class FeedbackService {
   async attachmentUrls(
     feedbackId: number,
   ): Promise<Array<{ id: number; url: string; filename: string; isAutoScreenshot: boolean }>> {
-    const attachments = await this.attachmentRepository.find({
-      where: { feedbackId },
-      order: { createdAt: "ASC" },
-    });
+    const attachments = await this.attachmentRepository.findByFeedbackId(feedbackId);
 
     const urls = await Promise.all(
       attachments.map(async (att) => ({
@@ -248,10 +234,7 @@ export class FeedbackService {
   }
 
   async assignFeedback(feedbackId: number, adminUserId: number): Promise<CustomerFeedback> {
-    const feedback = await this.feedbackRepository.findOne({
-      where: { id: feedbackId },
-      relations: ["conversation"],
-    });
+    const feedback = await this.feedbackRepository.findById(feedbackId, ["conversation"]);
 
     if (!feedback) {
       throw new Error("Feedback not found");
@@ -264,7 +247,7 @@ export class FeedbackService {
     await this.feedbackRepository.save(feedback);
 
     if (feedback.conversationId) {
-      const admin = await this.userRepository.findOne({ where: { id: adminUserId } });
+      const admin = await this.userRepository.findById(adminUserId);
       const adminName = admin ? `${admin.firstName} ${admin.lastName}`.trim() : "An admin";
 
       await this.messagingService.sendMessage(feedback.conversationId, adminUserId, {
@@ -278,9 +261,7 @@ export class FeedbackService {
   }
 
   async unassignFeedback(feedbackId: number, adminUserId: number): Promise<CustomerFeedback> {
-    const feedback = await this.feedbackRepository.findOne({
-      where: { id: feedbackId },
-    });
+    const feedback = await this.feedbackRepository.findById(feedbackId);
 
     if (!feedback) {
       throw new Error("Feedback not found");
@@ -293,7 +274,7 @@ export class FeedbackService {
     await this.feedbackRepository.save(feedback);
 
     if (feedback.conversationId) {
-      const admin = await this.userRepository.findOne({ where: { id: adminUserId } });
+      const admin = await this.userRepository.findById(adminUserId);
       const adminName = admin ? `${admin.firstName} ${admin.lastName}`.trim() : "An admin";
 
       await this.messagingService.sendMessage(feedback.conversationId, adminUserId, {
@@ -311,9 +292,7 @@ export class FeedbackService {
     resolutionStatus: string | null,
     testCriteria: string | null,
   ): Promise<CustomerFeedback> {
-    const feedback = await this.feedbackRepository.findOne({
-      where: { id: feedbackId },
-    });
+    const feedback = await this.feedbackRepository.findById(feedbackId);
 
     if (!feedback) {
       throw new Error("Feedback not found");
@@ -341,22 +320,17 @@ export class FeedbackService {
   }
 
   async feedbackById(feedbackId: number): Promise<CustomerFeedback | null> {
-    return this.feedbackRepository.findOne({
-      where: { id: feedbackId },
-      relations: [
-        "customerProfile",
-        "customerProfile.company",
-        "assignedTo",
-        "conversation",
-        "attachments",
-      ],
-    });
+    return this.feedbackRepository.findById(feedbackId, [
+      "customerProfile",
+      "customerProfile.company",
+      "assignedTo",
+      "conversation",
+      "attachments",
+    ]);
   }
 
   async feedbackStatusForSubmitter(feedbackId: number, submitter: FeedbackSubmitter) {
-    const feedback = await this.feedbackRepository.findOne({
-      where: { id: feedbackId },
-    });
+    const feedback = await this.feedbackRepository.findById(feedbackId);
 
     if (!feedback || !this.canAccessFeedbackStatus(feedback, submitter)) {
       throw new NotFoundException("Feedback not found");
@@ -374,10 +348,7 @@ export class FeedbackService {
   }
 
   async markResolvedByIssue(issueNumber: number, prNumber: number): Promise<void> {
-    const feedback = await this.feedbackRepository.findOne({
-      where: { githubIssueNumber: issueNumber },
-      relations: ["conversation"],
-    });
+    const feedback = await this.feedbackRepository.findByGithubIssueNumber(issueNumber);
 
     if (!feedback) {
       this.logger.warn(`No feedback found for GitHub issue #${issueNumber}`);
@@ -405,10 +376,7 @@ export class FeedbackService {
   }
 
   async markResolvedByIds(feedbackIds: number[], prNumber: number): Promise<void> {
-    const feedbacks = await this.feedbackRepository.find({
-      where: { id: In(feedbackIds) },
-      relations: ["conversation"],
-    });
+    const feedbacks = await this.feedbackRepository.findManyByIds(feedbackIds);
 
     for (const feedback of feedbacks) {
       feedback.status = "resolved";
@@ -431,10 +399,7 @@ export class FeedbackService {
   }
 
   async allFeedback(): Promise<CustomerFeedback[]> {
-    return this.feedbackRepository.find({
-      relations: ["customerProfile", "customerProfile.company", "assignedTo", "attachments"],
-      order: { createdAt: "DESC" },
-    });
+    return this.feedbackRepository.findAllOrdered();
   }
 
   private async createFeedbackConversation(
@@ -521,13 +486,7 @@ ${feedback.content}
   }
 
   private async adminUserIds(): Promise<number[]> {
-    const adminUsers = await this.userRepository
-      .createQueryBuilder("user")
-      .innerJoin("user.roles", "role", "role.name = :roleName", { roleName: "admin" })
-      .select("user.id")
-      .getMany();
-
-    return adminUsers.map((u) => u.id);
+    return this.userRepository.findIdsByRoleName("admin");
   }
 
   private canAccessFeedbackStatus(
@@ -696,12 +655,10 @@ ${feedback.content}
       return submitter;
     }
 
-    const previewUser = await this.stockControlUserRepository.findOne({
-      where: {
-        id: dto.previewUserId,
-        companyId: submitter.companyId,
-      },
-    });
+    const previewUser = await this.stockControlUserRepository.findOneForCompany(
+      dto.previewUserId,
+      submitter.companyId,
+    );
 
     if (!previewUser) {
       return submitter;
@@ -781,7 +738,7 @@ ${feedback.content}
 
   private createGithubIssueAsync(feedbackId: number): void {
     this.feedbackRepository
-      .findOne({ where: { id: feedbackId } })
+      .findById(feedbackId)
       .then((feedback) => {
         if (feedback) {
           return this.feedbackGithubService.createIssueFromFeedback(feedback);

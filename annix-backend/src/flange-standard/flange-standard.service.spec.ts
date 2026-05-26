@@ -1,6 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { FlangeStandard } from "./entities/flange-standard.entity";
+import { FlangeStandardRepository } from "./flange-standard.repository";
 import { FlangeStandardService } from "./flange-standard.service";
 
 describe("FlangeStandardService", () => {
@@ -9,17 +8,17 @@ describe("FlangeStandardService", () => {
   const mockRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     remove: jest.fn(),
+    count: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FlangeStandardService,
-        { provide: getRepositoryToken(FlangeStandard), useValue: mockRepo },
-      ],
+      providers: [FlangeStandardService, { provide: FlangeStandardRepository, useValue: mockRepo }],
     }).compile();
 
     service = module.get<FlangeStandardService>(FlangeStandardService);

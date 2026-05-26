@@ -1,37 +1,32 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, Not, Repository } from "typeorm";
-import { CustomerProfile } from "../customer/entities";
+import { CustomerProfileRepository } from "../customer/customer-profile.repository";
 import { fromISO, now } from "../lib/datetime";
-import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
-import { User } from "../user/entities/user.entity";
+import { SupplierProfileRepository } from "../supplier/supplier-profile.repository";
+import { UserRepository } from "../user/user.repository";
+import { BroadcastRepository } from "./broadcast.repository";
+import { BroadcastRecipientRepository } from "./broadcast-recipient.repository";
 import {
   BroadcastDetailDto,
   BroadcastFilterDto,
   BroadcastSummaryDto,
   CreateBroadcastDto,
 } from "./dto";
-import { Broadcast, BroadcastPriority, BroadcastRecipient, BroadcastTarget } from "./entities";
+import { Broadcast, BroadcastPriority, BroadcastTarget } from "./entities";
 import { MessageNotificationService } from "./message-notification.service";
 
 @Injectable()
 export class BroadcastService {
   constructor(
-    @InjectRepository(Broadcast)
-    private readonly broadcastRepo: Repository<Broadcast>,
-    @InjectRepository(BroadcastRecipient)
-    private readonly recipientRepo: Repository<BroadcastRecipient>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(CustomerProfile)
-    private readonly customerProfileRepo: Repository<CustomerProfile>,
-    @InjectRepository(SupplierProfile)
-    private readonly supplierProfileRepo: Repository<SupplierProfile>,
+    private readonly broadcastRepo: BroadcastRepository,
+    private readonly recipientRepo: BroadcastRecipientRepository,
+    private readonly userRepo: UserRepository,
+    private readonly customerProfileRepo: CustomerProfileRepository,
+    private readonly supplierProfileRepo: SupplierProfileRepository,
     private readonly notificationService: MessageNotificationService,
   ) {}
 
   async createBroadcast(senderId: number, dto: CreateBroadcastDto): Promise<BroadcastDetailDto> {
-    const sender = await this.userRepo.findOne({ where: { id: senderId } });
+    const sender = await this.userRepo.findById(senderId);
 
     if (!sender) {
       throw new NotFoundException("Sender not found");
@@ -43,7 +38,7 @@ export class BroadcastService {
       throw new BadRequestException("No recipients found for this broadcast");
     }
 
-    const broadcast = this.broadcastRepo.create({
+    const savedBroadcast = await this.broadcastRepo.create({
       title: dto.title,
       content: dto.content,
       targetAudience: dto.targetAudience || BroadcastTarget.ALL,
@@ -52,18 +47,16 @@ export class BroadcastService {
       expiresAt: dto.expiresAt ? fromISO(dto.expiresAt).toJSDate() : null,
     });
 
-    const savedBroadcast = await this.broadcastRepo.save(broadcast);
-
-    const recipients = targetUserIds.map((userId) =>
-      this.recipientRepo.create({
-        broadcastId: savedBroadcast.id,
-        userId,
-        readAt: null,
-        emailSentAt: null,
-      }),
+    await Promise.all(
+      targetUserIds.map((userId) =>
+        this.recipientRepo.create({
+          broadcastId: savedBroadcast.id,
+          userId,
+          readAt: null,
+          emailSentAt: null,
+        }),
+      ),
     );
-
-    await this.recipientRepo.save(recipients);
 
     if (dto.sendEmail) {
       await this.sendBroadcastEmails(savedBroadcast, targetUserIds);
@@ -80,34 +73,14 @@ export class BroadcastService {
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const recipientRecords = await this.recipientRepo.find({
-      where: { userId },
-      select: ["broadcastId", "readAt"],
-    });
+    const recipientRecords = await this.recipientRepo.findByUser(userId);
 
     const broadcastIdToReadAt = new Map(recipientRecords.map((r) => [r.broadcastId, r.readAt]));
 
-    const broadcastIds = recipientRecords.map((r) => r.broadcastId);
+    let broadcastIds = recipientRecords.map((r) => r.broadcastId);
 
     if (broadcastIds.length === 0) {
       return { broadcasts: [], total: 0 };
-    }
-
-    const queryBuilder = this.broadcastRepo
-      .createQueryBuilder("b")
-      .leftJoinAndSelect("b.sentBy", "sentBy")
-      .where("b.id IN (:...ids)", { ids: broadcastIds });
-
-    if (!filters.includeExpired) {
-      queryBuilder.andWhere("(b.expiresAt IS NULL OR b.expiresAt > :now)", {
-        now: now().toJSDate(),
-      });
-    }
-
-    if (filters.priority) {
-      queryBuilder.andWhere("b.priority = :priority", {
-        priority: filters.priority,
-      });
     }
 
     if (filters.unreadOnly) {
@@ -117,12 +90,15 @@ export class BroadcastService {
         return { broadcasts: [], total: 0 };
       }
 
-      queryBuilder.andWhere("b.id IN (:...unreadIds)", { unreadIds });
+      broadcastIds = unreadIds;
     }
 
-    queryBuilder.orderBy("b.createdAt", "DESC").skip(skip).take(limit);
-
-    const [broadcasts, total] = await queryBuilder.getManyAndCount();
+    const { broadcasts, total } = await this.broadcastRepo.findPageForIds(
+      broadcastIds,
+      filters,
+      skip,
+      limit,
+    );
 
     const summaries = broadcasts.map((b) =>
       this.broadcastToSummary(b, broadcastIdToReadAt.get(b.id) ?? null),
@@ -138,25 +114,7 @@ export class BroadcastService {
     const limit = filters.limit || 20;
     const skip = (page - 1) * limit;
 
-    const queryBuilder = this.broadcastRepo
-      .createQueryBuilder("b")
-      .leftJoinAndSelect("b.sentBy", "sentBy");
-
-    if (!filters.includeExpired) {
-      queryBuilder.andWhere("(b.expiresAt IS NULL OR b.expiresAt > :now)", {
-        now: now().toJSDate(),
-      });
-    }
-
-    if (filters.priority) {
-      queryBuilder.andWhere("b.priority = :priority", {
-        priority: filters.priority,
-      });
-    }
-
-    queryBuilder.orderBy("b.createdAt", "DESC").skip(skip).take(limit);
-
-    const [broadcasts, total] = await queryBuilder.getManyAndCount();
+    const { broadcasts, total } = await this.broadcastRepo.findPage(filters, skip, limit);
 
     const details = await Promise.all(broadcasts.map((b) => this.broadcastDetailFromEntity(b)));
 
@@ -164,18 +122,13 @@ export class BroadcastService {
   }
 
   async broadcastDetail(broadcastId: number, userId: number): Promise<BroadcastDetailDto> {
-    const broadcast = await this.broadcastRepo.findOne({
-      where: { id: broadcastId },
-      relations: ["sentBy"],
-    });
+    const broadcast = await this.broadcastRepo.findById(broadcastId, ["sentBy"]);
 
     if (!broadcast) {
       throw new NotFoundException("Broadcast not found");
     }
 
-    const recipient = await this.recipientRepo.findOne({
-      where: { broadcastId, userId },
-    });
+    const recipient = await this.recipientRepo.findByBroadcastAndUser(broadcastId, userId);
 
     if (!recipient && broadcast.sentById !== userId) {
       throw new NotFoundException("Broadcast not found");
@@ -185,9 +138,7 @@ export class BroadcastService {
   }
 
   async markBroadcastRead(broadcastId: number, userId: number): Promise<void> {
-    const recipient = await this.recipientRepo.findOne({
-      where: { broadcastId, userId },
-    });
+    const recipient = await this.recipientRepo.findByBroadcastAndUser(broadcastId, userId);
 
     if (!recipient) {
       throw new NotFoundException("Broadcast recipient not found");
@@ -200,12 +151,7 @@ export class BroadcastService {
   }
 
   async unreadBroadcastCount(userId: number): Promise<number> {
-    return this.recipientRepo.count({
-      where: {
-        userId,
-        readAt: IsNull(),
-      },
-    });
+    return this.recipientRepo.countUnreadForUser(userId);
   }
 
   private async resolveTargetUsers(dto: CreateBroadcastDto): Promise<number[]> {
@@ -216,46 +162,27 @@ export class BroadcastService {
     }
 
     if (target === BroadcastTarget.CUSTOMERS) {
-      const profiles = await this.customerProfileRepo.find({
-        select: ["userId"],
-      });
-      return profiles.map((p) => p.userId);
+      return this.customerProfileRepo.allUserIds();
     }
 
     if (target === BroadcastTarget.SUPPLIERS) {
-      const profiles = await this.supplierProfileRepo.find({
-        select: ["userId"],
-      });
-      return profiles.map((p) => p.userId);
+      return this.supplierProfileRepo.allUserIds();
     }
 
-    const customerProfiles = await this.customerProfileRepo.find({
-      select: ["userId"],
-    });
-    const supplierProfiles = await this.supplierProfileRepo.find({
-      select: ["userId"],
-    });
+    const customerUserIds = await this.customerProfileRepo.allUserIds();
+    const supplierUserIds = await this.supplierProfileRepo.allUserIds();
 
-    const allUserIds = [
-      ...customerProfiles.map((p) => p.userId),
-      ...supplierProfiles.map((p) => p.userId),
-    ];
+    const allUserIds = [...customerUserIds, ...supplierUserIds];
 
     return [...new Set(allUserIds)];
   }
 
   private async sendBroadcastEmails(broadcast: Broadcast, userIds: number[]): Promise<void> {
-    const users = await this.userRepo.find({
-      where: { id: In(userIds) },
-      relations: ["roles"],
-    });
+    const users = await this.userRepo.findByIdsWithRoles(userIds);
 
     await this.notificationService.notifyBroadcast(broadcast, users);
 
-    await this.recipientRepo.update(
-      { broadcastId: broadcast.id, userId: In(userIds) },
-      { emailSentAt: now().toJSDate() },
-    );
+    await this.recipientRepo.updateEmailSentAt(broadcast.id, userIds, now().toJSDate());
   }
 
   private broadcastToSummary(broadcast: Broadcast, readAt: Date | null): BroadcastSummaryDto {
@@ -278,23 +205,9 @@ export class BroadcastService {
     broadcast: Broadcast,
     readAt?: Date | null,
   ): Promise<BroadcastDetailDto> {
-    const totalRecipients = await this.recipientRepo.count({
-      where: { broadcastId: broadcast.id },
-    });
-
-    const readCount = await this.recipientRepo.count({
-      where: {
-        broadcastId: broadcast.id,
-        readAt: Not(IsNull()),
-      },
-    });
-
-    const emailSentCount = await this.recipientRepo.count({
-      where: {
-        broadcastId: broadcast.id,
-        emailSentAt: Not(IsNull()),
-      },
-    });
+    const totalRecipients = await this.recipientRepo.count({ broadcastId: broadcast.id });
+    const readCount = await this.recipientRepo.countReadForBroadcast(broadcast.id);
+    const emailSentCount = await this.recipientRepo.countEmailSentForBroadcast(broadcast.id);
 
     return {
       id: broadcast.id,

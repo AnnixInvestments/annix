@@ -1,10 +1,10 @@
 import type { TradeKey } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Rfq } from "../../rfq/entities/rfq.entity";
+import { RfqRepository } from "../../rfq/rfq.repository";
 import { Candidate } from "../entities/candidate.entity";
 import { CvCredential } from "../entities/cv-credential.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CvCredentialRepository } from "../repositories/cv-credential.repository";
 import { GeocodeService, haversineKm } from "./geocode.service";
 
 export interface WorkforceNeedSummary {
@@ -29,17 +29,14 @@ export class WorkforceNeedService {
   private readonly logger = new Logger(WorkforceNeedService.name);
 
   constructor(
-    @InjectRepository(Rfq)
-    private readonly rfqRepo: Repository<Rfq>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(CvCredential)
-    private readonly credentialRepo: Repository<CvCredential>,
+    private readonly rfqRepo: RfqRepository,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly credentialRepo: CvCredentialRepository,
     private readonly geocodeService: GeocodeService,
   ) {}
 
   async calculateForRfq(rfqId: number): Promise<WorkforceNeedSummary | null> {
-    const rfq = await this.rfqRepo.findOne({ where: { id: rfqId } });
+    const rfq = await this.rfqRepo.findById(rfqId);
     if (!rfq) return null;
 
     const requiredTrades = (rfq.requiredTrades ?? []) as TradeKey[];
@@ -80,7 +77,7 @@ export class WorkforceNeedService {
       if (geocoded) {
         projectLat = geocoded.lat;
         projectLon = geocoded.lon;
-        await this.rfqRepo.update(rfq.id, {
+        await this.rfqRepo.updateById(rfq.id, {
           projectLocationLat: geocoded.lat,
           projectLocationLon: geocoded.lon,
         });
@@ -148,20 +145,12 @@ export class WorkforceNeedService {
 
   private async candidatesMatchingTrades(tradeKeys: TradeKey[]): Promise<Candidate[]> {
     if (tradeKeys.length === 0) return [];
-    const candidates = await this.candidateRepo
-      .createQueryBuilder("c")
-      .where(`c.trade_profile -> 'shared' -> 'tradeKeys' ?| ARRAY[:...keys]`, { keys: tradeKeys })
-      .getMany();
-    return candidates;
+    return this.candidateRepo.candidatesMatchingTrades(tradeKeys);
   }
 
   private async validCredentialsForCandidates(candidateIds: number[]): Promise<CvCredential[]> {
     if (candidateIds.length === 0) return [];
     const today = new Date().toISOString().slice(0, 10);
-    return this.credentialRepo
-      .createQueryBuilder("c")
-      .where("c.candidate_id IN (:...ids)", { ids: candidateIds })
-      .andWhere("(c.expires_at IS NULL OR c.expires_at >= :today)", { today })
-      .getMany();
+    return this.credentialRepo.validForCandidates(candidateIds, today);
   }
 }

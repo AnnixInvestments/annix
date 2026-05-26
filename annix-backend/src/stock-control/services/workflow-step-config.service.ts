@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common"; // v2
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import type { StepOutcome } from "../entities/workflow-step-config.entity";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
+import { WorkflowStepConfigRepository } from "../repositories/workflow-step-config.repository";
 
 interface PhaseGroup {
   phase: number;
@@ -167,10 +166,7 @@ export class WorkflowStepConfigService {
   private readonly logger = new Logger(WorkflowStepConfigService.name);
   private readonly cache = new Map<number, CompanyCacheEntry>();
 
-  constructor(
-    @InjectRepository(WorkflowStepConfig)
-    private readonly repo: Repository<WorkflowStepConfig>,
-  ) {}
+  constructor(private readonly repo: WorkflowStepConfigRepository) {}
 
   private cacheFg(companyId: number, foreground: WorkflowStepConfig[]): void {
     const entry = this.cache.get(companyId) ?? {};
@@ -194,10 +190,7 @@ export class WorkflowStepConfigService {
       return cached;
     }
 
-    const existing = await this.repo.find({
-      where: { companyId, isBackground: false },
-      order: { sortOrder: "ASC" },
-    });
+    const existing = await this.repo.findOrderedForeground(companyId);
 
     if (existing.length > 0) {
       this.cacheFg(companyId, existing);
@@ -206,10 +199,7 @@ export class WorkflowStepConfigService {
 
     await this.seedDefaults(companyId);
 
-    const seeded = await this.repo.find({
-      where: { companyId, isBackground: false },
-      order: { sortOrder: "ASC" },
-    });
+    const seeded = await this.repo.findOrderedForeground(companyId);
     this.cacheFg(companyId, seeded);
     return seeded;
   }
@@ -220,10 +210,7 @@ export class WorkflowStepConfigService {
       return cached;
     }
 
-    const existing = await this.repo.find({
-      where: { companyId, isBackground: true },
-      order: { sortOrder: "ASC", createdAt: "ASC" },
-    });
+    const existing = await this.repo.findOrderedBackground(companyId);
 
     if (existing.length > 0) {
       this.cacheBg(companyId, existing);
@@ -232,10 +219,7 @@ export class WorkflowStepConfigService {
 
     await this.seedDefaults(companyId);
 
-    const seeded = await this.repo.find({
-      where: { companyId, isBackground: true },
-      order: { sortOrder: "ASC", createdAt: "ASC" },
-    });
+    const seeded = await this.repo.findOrderedBackground(companyId);
     this.cacheBg(companyId, seeded);
     return seeded;
   }
@@ -244,38 +228,27 @@ export class WorkflowStepConfigService {
     companyId: number,
     triggerStepKey: string,
   ): Promise<WorkflowStepConfig[]> {
-    return this.repo.find({
-      where: { companyId, isBackground: true, triggerAfterStep: triggerStepKey },
-      order: { sortOrder: "ASC", createdAt: "ASC" },
-    });
+    return this.repo.findBackgroundForTrigger(companyId, triggerStepKey);
   }
 
   async seedDefaults(companyId: number): Promise<void> {
-    const entities = DEFAULT_STEPS.map((step) =>
-      this.repo.create({
-        companyId,
-        key: step.key,
-        label: step.label,
-        sortOrder: step.sortOrder,
-        isSystem: true,
-        isBackground: step.isBackground,
-        triggerAfterStep: step.triggerAfterStep,
-        actionLabel: step.actionLabel,
-        branchColor: step.branchColor,
-        phaseActionLabels: step.phaseActionLabels,
-        stepOutcomes: step.stepOutcomes,
-        branchType: step.branchType,
-        rejoinAtStep: step.rejoinAtStep,
-      }),
-    );
+    const entities = DEFAULT_STEPS.map((step) => ({
+      companyId,
+      key: step.key,
+      label: step.label,
+      sortOrder: step.sortOrder,
+      isSystem: true,
+      isBackground: step.isBackground,
+      triggerAfterStep: step.triggerAfterStep,
+      actionLabel: step.actionLabel,
+      branchColor: step.branchColor,
+      phaseActionLabels: step.phaseActionLabels,
+      stepOutcomes: step.stepOutcomes,
+      branchType: step.branchType,
+      rejoinAtStep: step.rejoinAtStep,
+    }));
 
-    await this.repo
-      .createQueryBuilder()
-      .insert()
-      .into(WorkflowStepConfig)
-      .values(entities)
-      .orIgnore()
-      .execute();
+    await this.repo.insertManyIgnore(entities);
 
     this.invalidate(companyId);
   }
@@ -285,9 +258,9 @@ export class WorkflowStepConfigService {
     stepKey: string,
     actionLabel: string | null,
   ): Promise<void> {
-    const result = await this.repo.update({ companyId, key: stepKey }, { actionLabel });
+    const result = await this.repo.updateByCompanyAndKey(companyId, stepKey, { actionLabel });
 
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
@@ -295,9 +268,9 @@ export class WorkflowStepConfigService {
   }
 
   async updateLabel(companyId: number, stepKey: string, label: string): Promise<void> {
-    const result = await this.repo.update({ companyId, key: stepKey }, { label });
+    const result = await this.repo.updateByCompanyAndKey(companyId, stepKey, { label });
 
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
@@ -309,9 +282,9 @@ export class WorkflowStepConfigService {
     stepKey: string,
     branchColor: string | null,
   ): Promise<void> {
-    const result = await this.repo.update({ companyId, key: stepKey }, { branchColor });
+    const result = await this.repo.updateByCompanyAndKey(companyId, stepKey, { branchColor });
 
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
@@ -329,13 +302,13 @@ export class WorkflowStepConfigService {
   ): Promise<WorkflowStepConfig> {
     const key = this.generateKey(input.label);
 
-    const existingWithKey = await this.repo.findOne({ where: { companyId, key } });
+    const existingWithKey = await this.repo.findOneForCompanyByKey(companyId, key);
     if (existingWithKey) {
       throw new BadRequestException(`A step with key "${key}" already exists`);
     }
 
     if (input.isBackground) {
-      const newStep = this.repo.create({
+      const saved = await this.repo.create({
         companyId,
         key,
         label: input.label,
@@ -344,8 +317,6 @@ export class WorkflowStepConfigService {
         isBackground: true,
         triggerAfterStep: input.triggerAfterStep ?? null,
       });
-
-      const saved = await this.repo.save(newStep);
       this.invalidate(companyId);
       return saved;
     }
@@ -359,18 +330,10 @@ export class WorkflowStepConfigService {
 
     const stepsAfterInsertion = steps.filter((s) => s.sortOrder > afterStep.sortOrder);
     if (stepsAfterInsertion.length > 0) {
-      await this.repo
-        .createQueryBuilder()
-        .update(WorkflowStepConfig)
-        .set({ sortOrder: () => "sort_order + 1" })
-        .where("companyId = :companyId AND sortOrder > :sortOrder", {
-          companyId,
-          sortOrder: afterStep.sortOrder,
-        })
-        .execute();
+      await this.repo.bumpSortOrderAfter(companyId, afterStep.sortOrder);
     }
 
-    const newStep = this.repo.create({
+    const saved = await this.repo.create({
       companyId,
       key,
       label: input.label,
@@ -379,8 +342,6 @@ export class WorkflowStepConfigService {
       isBackground: false,
       triggerAfterStep: null,
     });
-
-    const saved = await this.repo.save(newStep);
     this.invalidate(companyId);
     return saved;
   }
@@ -391,7 +352,7 @@ export class WorkflowStepConfigService {
     isBackground: boolean,
     triggerAfterStep?: string,
   ): Promise<WorkflowStepConfig> {
-    const step = await this.repo.findOne({ where: { companyId, key: stepKey } });
+    const step = await this.repo.findOneForCompanyByKey(companyId, stepKey);
 
     if (!step) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
@@ -411,7 +372,7 @@ export class WorkflowStepConfigService {
     stepKey: string,
     triggerAfterStep: string | null,
   ): Promise<WorkflowStepConfig> {
-    const step = await this.repo.findOne({ where: { companyId, key: stepKey } });
+    const step = await this.repo.findOneForCompanyByKey(companyId, stepKey);
 
     if (!step) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
@@ -432,7 +393,7 @@ export class WorkflowStepConfigService {
   }
 
   async removeStep(companyId: number, stepKey: string): Promise<void> {
-    const step = await this.repo.findOne({ where: { companyId, key: stepKey } });
+    const step = await this.repo.findOneForCompanyByKey(companyId, stepKey);
     this.logger.log(
       `removeStep: key=${stepKey}, found=${!!step}, isSystem=${step?.isSystem}, isBg=${step?.isBackground}`,
     );
@@ -443,10 +404,7 @@ export class WorkflowStepConfigService {
 
     this.logger.log(`removeStep: proceeding to delete key=${stepKey}`);
 
-    await this.repo.update(
-      { companyId, triggerAfterStep: stepKey },
-      { triggerAfterStep: step.triggerAfterStep },
-    );
+    await this.repo.updateTriggerAfterStep(companyId, stepKey, step.triggerAfterStep);
 
     await this.repo.remove(step);
     this.invalidate(companyId);
@@ -470,13 +428,13 @@ export class WorkflowStepConfigService {
     const swapStep = steps[swapIndex];
     const tempOrder = currentStep.sortOrder;
 
-    await this.repo.update({ id: currentStep.id }, { sortOrder: swapStep.sortOrder });
-    await this.repo.update({ id: swapStep.id }, { sortOrder: tempOrder });
+    await this.repo.updateById(currentStep.id, { sortOrder: swapStep.sortOrder });
+    await this.repo.updateById(swapStep.id, { sortOrder: tempOrder });
     this.invalidate(companyId);
   }
 
   async bulkReorder(companyId: number, orderedKeys: string[]): Promise<void> {
-    const steps = await this.repo.find({ where: { companyId } });
+    const steps = await this.repo.findForCompany(companyId);
 
     const stepsByKey = new Map(steps.map((s) => [s.key, s]));
 
@@ -491,7 +449,7 @@ export class WorkflowStepConfigService {
       .filter((update): update is { id: number; sortOrder: number } => update !== null);
 
     await Promise.all(
-      updates.map((update) => this.repo.update({ id: update.id }, { sortOrder: update.sortOrder })),
+      updates.map((update) => this.repo.updateById(update.id, { sortOrder: update.sortOrder })),
     );
     this.invalidate(companyId);
   }
@@ -540,9 +498,9 @@ export class WorkflowStepConfigService {
     stepKey: string,
     phaseActionLabels: Record<string, string> | null,
   ): Promise<void> {
-    const result = await this.repo.update({ companyId, key: stepKey }, { phaseActionLabels });
+    const result = await this.repo.updateByCompanyAndKey(companyId, stepKey, { phaseActionLabels });
 
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
@@ -554,9 +512,9 @@ export class WorkflowStepConfigService {
     stepKey: string,
     stepOutcomes: StepOutcome[] | null,
   ): Promise<void> {
-    const result = await this.repo.update({ companyId, key: stepKey }, { stepOutcomes });
+    const result = await this.repo.updateByCompanyAndKey(companyId, stepKey, { stepOutcomes });
 
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
@@ -568,9 +526,9 @@ export class WorkflowStepConfigService {
     stepKey: string,
     branchType: "loop" | "connect" | null,
   ): Promise<void> {
-    const result = await this.repo.update({ companyId, key: stepKey }, { branchType });
+    const result = await this.repo.updateByCompanyAndKey(companyId, stepKey, { branchType });
 
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
@@ -582,9 +540,9 @@ export class WorkflowStepConfigService {
     stepKey: string,
     rejoinAtStep: string | null,
   ): Promise<void> {
-    const result = await this.repo.update({ companyId, key: stepKey }, { rejoinAtStep });
+    const result = await this.repo.updateByCompanyAndKey(companyId, stepKey, { rejoinAtStep });
 
-    if (result.affected === 0) {
+    if (result === 0) {
       throw new NotFoundException(`Step "${stepKey}" not found for this company`);
     }
 
@@ -592,7 +550,7 @@ export class WorkflowStepConfigService {
   }
 
   async fgStepConfig(companyId: number, stepKey: string): Promise<WorkflowStepConfig | null> {
-    return this.repo.findOne({ where: { companyId, key: stepKey, isBackground: false } });
+    return this.repo.findOneForegroundForCompanyByKey(companyId, stepKey);
   }
 
   private generateKey(label: string): string {

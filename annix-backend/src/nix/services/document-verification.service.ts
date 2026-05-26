@@ -1,13 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { CustomerDocumentRepository } from "../../customer/customer-document.repository";
+import { CustomerProfileRepository } from "../../customer/customer-profile.repository";
 import {
   CustomerDocument,
   CustomerDocumentType,
   CustomerDocumentValidationStatus,
 } from "../../customer/entities/customer-document.entity";
-import { CustomerOnboarding } from "../../customer/entities/customer-onboarding.entity";
-import { CustomerProfile } from "../../customer/entities/customer-profile.entity";
 import { now } from "../../lib/datetime";
 import { Company } from "../../platform/entities/company.entity";
 import { S3StorageService } from "../../storage/s3-storage.service";
@@ -16,8 +14,8 @@ import {
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
 } from "../../supplier/entities/supplier-document.entity";
-import { SupplierOnboarding } from "../../supplier/entities/supplier-onboarding.entity";
-import { SupplierProfile } from "../../supplier/entities/supplier-profile.entity";
+import { SupplierDocumentRepository } from "../../supplier/supplier-document.repository";
+import { SupplierProfileRepository } from "../../supplier/supplier-profile.repository";
 import {
   ExpectedCompanyData,
   RegistrationDocumentType,
@@ -47,18 +45,10 @@ export class DocumentVerificationService {
   private readonly logger = new Logger(DocumentVerificationService.name);
 
   constructor(
-    @InjectRepository(CustomerDocument)
-    private readonly customerDocumentRepo: Repository<CustomerDocument>,
-    @InjectRepository(CustomerProfile)
-    private readonly customerProfileRepo: Repository<CustomerProfile>,
-    @InjectRepository(SupplierDocument)
-    private readonly supplierDocumentRepo: Repository<SupplierDocument>,
-    @InjectRepository(SupplierProfile)
-    private readonly supplierProfileRepo: Repository<SupplierProfile>,
-    @InjectRepository(CustomerOnboarding)
-    private readonly customerOnboardingRepo: Repository<CustomerOnboarding>,
-    @InjectRepository(SupplierOnboarding)
-    private readonly supplierOnboardingRepo: Repository<SupplierOnboarding>,
+    private readonly customerDocumentRepo: CustomerDocumentRepository,
+    private readonly customerProfileRepo: CustomerProfileRepository,
+    private readonly supplierDocumentRepo: SupplierDocumentRepository,
+    private readonly supplierProfileRepo: SupplierProfileRepository,
     private readonly storageService: S3StorageService,
     private readonly verifierService: RegistrationDocumentVerifierService,
   ) {}
@@ -93,18 +83,16 @@ export class DocumentVerificationService {
     customerId: number,
     documentId: number,
   ): Promise<DocumentVerificationResponse> {
-    const document = await this.customerDocumentRepo.findOne({
-      where: { id: documentId, customerId },
+    const document = await this.customerDocumentRepo.findOneWhere({
+      id: documentId,
+      customerId,
     });
 
     if (!document) {
       throw new Error("Customer document not found");
     }
 
-    const profile = await this.customerProfileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company"],
-    });
+    const profile = await this.customerProfileRepo.findById(customerId, ["company"]);
 
     if (!profile?.company) {
       throw new Error("Customer company not found");
@@ -139,10 +127,6 @@ export class DocumentVerificationService {
     const requiresManualReview =
       !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
 
-    if (requiresManualReview) {
-      await this.customerOnboardingRepo.update({ customerId }, { documentsNeedReview: true });
-    }
-
     return {
       success: verificationResult.success,
       documentId,
@@ -158,18 +142,13 @@ export class DocumentVerificationService {
     supplierId: number,
     documentId: number,
   ): Promise<DocumentVerificationResponse> {
-    const document = await this.supplierDocumentRepo.findOne({
-      where: { id: documentId, supplierId },
-    });
+    const document = await this.supplierDocumentRepo.findByIdAndSupplierId(documentId, supplierId);
 
     if (!document) {
       throw new Error("Supplier document not found");
     }
 
-    const profile = await this.supplierProfileRepo.findOne({
-      where: { id: supplierId },
-      relations: ["company"],
-    });
+    const profile = await this.supplierProfileRepo.findByIdWithRelations(supplierId, ["company"]);
 
     if (!profile?.company) {
       throw new Error("Supplier company not found");
@@ -203,10 +182,6 @@ export class DocumentVerificationService {
 
     const requiresManualReview =
       !verificationResult.allFieldsMatch || verificationResult.overallConfidence < 0.7;
-
-    if (requiresManualReview) {
-      await this.supplierOnboardingRepo.update({ supplierId }, { documentsNeedReview: true });
-    }
 
     return {
       success: verificationResult.success,
@@ -360,11 +335,9 @@ export class DocumentVerificationService {
     const results: DocumentVerificationResponse[] = [];
 
     if (entityType === "customer") {
-      const documents = await this.customerDocumentRepo.find({
-        where: {
-          customerId: entityId,
-          validationStatus: CustomerDocumentValidationStatus.PENDING,
-        },
+      const documents = await this.customerDocumentRepo.findManyWhere({
+        customerId: entityId,
+        validationStatus: CustomerDocumentValidationStatus.PENDING,
       });
 
       for (const doc of documents) {
@@ -379,11 +352,9 @@ export class DocumentVerificationService {
         }
       }
     } else {
-      const documents = await this.supplierDocumentRepo.find({
-        where: {
-          supplierId: entityId,
-          validationStatus: SupplierDocumentValidationStatus.PENDING,
-        },
+      const documents = await this.supplierDocumentRepo.findManyWhere({
+        supplierId: entityId,
+        validationStatus: SupplierDocumentValidationStatus.PENDING,
       });
 
       for (const doc of documents) {

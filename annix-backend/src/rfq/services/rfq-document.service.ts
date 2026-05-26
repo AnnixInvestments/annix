@@ -1,11 +1,10 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { User } from "../../user/entities/user.entity";
 import { RfqDocumentResponseDto } from "../dto/rfq-document.dto";
-import { Rfq } from "../entities/rfq.entity";
 import { RfqDocument } from "../entities/rfq-document.entity";
+import { RfqRepository } from "../rfq.repository";
+import { RfqDocumentRepository } from "../rfq-document.repository";
 
 const MAX_DOCUMENTS_PER_RFQ = 10;
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
@@ -15,10 +14,8 @@ export class RfqDocumentService {
   private readonly logger = new Logger(RfqDocumentService.name);
 
   constructor(
-    @InjectRepository(Rfq)
-    private rfqRepository: Repository<Rfq>,
-    @InjectRepository(RfqDocument)
-    private rfqDocumentRepository: Repository<RfqDocument>,
+    private rfqRepository: RfqRepository,
+    private rfqDocumentRepository: RfqDocumentRepository,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
   ) {}
@@ -32,10 +29,7 @@ export class RfqDocumentService {
       throw new BadRequestException("File size exceeds maximum allowed size of 50MB");
     }
 
-    const rfq = await this.rfqRepository.findOne({
-      where: { id: rfqId },
-      relations: ["documents"],
-    });
+    const rfq = await this.rfqRepository.findById(rfqId, ["documents"]);
 
     if (!rfq) {
       throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
@@ -51,7 +45,7 @@ export class RfqDocumentService {
     const subPath = `annix-app/rfq-documents/${rfqId}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
-    const document = this.rfqDocumentRepository.create({
+    const savedDocument = await this.rfqDocumentRepository.create({
       rfq,
       filename: file.originalname,
       filePath: storageResult.path,
@@ -60,34 +54,23 @@ export class RfqDocumentService {
       uploadedBy: user,
     });
 
-    const savedDocument = await this.rfqDocumentRepository.save(document);
-
     return this.mapDocumentToResponse(savedDocument);
   }
 
   async documents(rfqId: number): Promise<RfqDocumentResponseDto[]> {
-    const rfq = await this.rfqRepository.findOne({
-      where: { id: rfqId },
-    });
+    const rfq = await this.rfqRepository.findById(rfqId);
 
     if (!rfq) {
       throw new NotFoundException(`RFQ with ID ${rfqId} not found`);
     }
 
-    const documents = await this.rfqDocumentRepository.find({
-      where: { rfq: { id: rfqId } },
-      relations: ["uploadedBy"],
-      order: { createdAt: "DESC" },
-    });
+    const documents = await this.rfqDocumentRepository.findByRfqIdWithUploadedBy(rfqId);
 
     return documents.map((doc) => this.mapDocumentToResponse(doc));
   }
 
   async documentById(documentId: number): Promise<RfqDocument> {
-    const document = await this.rfqDocumentRepository.findOne({
-      where: { id: documentId },
-      relations: ["rfq", "uploadedBy"],
-    });
+    const document = await this.rfqDocumentRepository.findByIdWithRfqAndUploadedBy(documentId);
 
     if (!document) {
       throw new NotFoundException(`Document with ID ${documentId} not found`);

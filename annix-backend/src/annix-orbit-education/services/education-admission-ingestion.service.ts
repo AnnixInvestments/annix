@@ -1,7 +1,5 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { stripHtmlToText } from "../../lib/html-text";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
@@ -9,8 +7,8 @@ import { ExtractionMetricService } from "../../metrics/extraction-metric.service
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { PuppeteerPoolService } from "../../shared/services/puppeteer-pool.service";
 import { type IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { EducationExtractionCorrection } from "../entities/education-extraction-correction.entity";
-import { EducationRequirementDraft } from "../entities/education-requirement-draft.entity";
+import { EducationExtractionCorrectionRepository } from "../repositories/education-extraction-correction.repository";
+import { EducationRequirementDraftRepository } from "../repositories/education-requirement-draft.repository";
 
 const HTML_TEXT_LIMIT = 18000;
 const EXTRACTION_MAX_TOKENS = 2048;
@@ -53,10 +51,8 @@ export class EducationAdmissionIngestionService {
   private readonly logger = new Logger(EducationAdmissionIngestionService.name);
 
   constructor(
-    @InjectRepository(EducationRequirementDraft)
-    private readonly draftRepo: Repository<EducationRequirementDraft>,
-    @InjectRepository(EducationExtractionCorrection)
-    private readonly correctionRepo: Repository<EducationExtractionCorrection>,
+    private readonly draftRepo: EducationRequirementDraftRepository,
+    private readonly correctionRepo: EducationExtractionCorrectionRepository,
     private readonly puppeteerPool: PuppeteerPoolService,
     private readonly aiChatService: AiChatService,
     private readonly metrics: ExtractionMetricService,
@@ -77,28 +73,26 @@ export class EducationAdmissionIngestionService {
     );
 
     const fetchedAt = now().toJSDate();
-    const rows = requirements.map((req) =>
-      this.draftRepo.create({
-        institutionId: params.institutionId,
-        programmeId: params.programmeId,
-        intakeYear: params.intakeYear,
-        fieldKey: req.fieldKey,
-        label: req.label ?? "",
-        extractedValue: req.value,
-        approvedValue: null,
-        status: "draft",
-        confidence: req.confidence ?? null,
-        sourceUrl: params.sourceUrl,
-        screenshotPath,
-        rawSnippet: req.snippet ?? null,
-        fetchedAt,
-      }),
-    );
-    await this.draftRepo.save(rows);
+    const rows = requirements.map((req) => ({
+      institutionId: params.institutionId,
+      programmeId: params.programmeId,
+      intakeYear: params.intakeYear,
+      fieldKey: req.fieldKey,
+      label: req.label ?? "",
+      extractedValue: req.value,
+      approvedValue: null,
+      status: "draft" as const,
+      confidence: req.confidence ?? null,
+      sourceUrl: params.sourceUrl,
+      screenshotPath,
+      rawSnippet: req.snippet ?? null,
+      fetchedAt,
+    }));
+    const saved = await this.draftRepo.createMany(rows);
     this.logger.log(
-      `Ingested ${rows.length} draft requirement(s) from ${params.sourceUrl} (programme ${params.programmeId ?? "n/a"})`,
+      `Ingested ${saved.length} draft requirement(s) from ${params.sourceUrl} (programme ${params.programmeId ?? "n/a"})`,
     );
-    return { drafts: rows.length, screenshotPath, sourceUrl: params.sourceUrl };
+    return { drafts: saved.length, screenshotPath, sourceUrl: params.sourceUrl };
   }
 
   @Cron("0 3 1 */3 *", { name: "orbit-education:refresh-admission-data" })
@@ -109,40 +103,18 @@ export class EducationAdmissionIngestionService {
     if (!enabled) {
       return;
     }
-    const sources = await this.distinctSources();
+    const sources = await this.draftRepo.distinctSources();
     this.logger.log(`Refreshing ${sources.length} admission source(s)`);
     await sources.reduce<Promise<void>>(async (previous, source) => {
       await previous;
       try {
-        await this.draftRepo.delete({ sourceUrl: source.sourceUrl, status: "draft" });
+        await this.draftRepo.deleteDraftsForSource(source.sourceUrl);
         await this.ingest(source);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn(`Refresh failed for ${source.sourceUrl}: ${message}`);
       }
     }, Promise.resolve());
-  }
-
-  private async distinctSources(): Promise<IngestionParams[]> {
-    const rows = await this.draftRepo
-      .createQueryBuilder("draft")
-      .select("draft.institution_id", "institutionId")
-      .addSelect("draft.programme_id", "programmeId")
-      .addSelect("draft.intake_year", "intakeYear")
-      .addSelect("draft.source_url", "sourceUrl")
-      .distinct(true)
-      .getRawMany<{
-        institutionId: string | null;
-        programmeId: string | null;
-        intakeYear: number;
-        sourceUrl: string;
-      }>();
-    return rows.map((row) => ({
-      institutionId: row.institutionId,
-      programmeId: row.programmeId,
-      intakeYear: Number(row.intakeYear),
-      sourceUrl: row.sourceUrl,
-    }));
   }
 
   private async capture(url: string): Promise<{ html: string; screenshot: Buffer }> {
@@ -179,11 +151,7 @@ export class EducationAdmissionIngestionService {
     if (!institutionId) {
       return "";
     }
-    const corrections = await this.correctionRepo.find({
-      where: { institutionId },
-      order: { createdAt: "DESC" },
-      take: 8,
-    });
+    const corrections = await this.correctionRepo.recentForInstitution(institutionId, 8);
     if (corrections.length === 0) {
       return "";
     }

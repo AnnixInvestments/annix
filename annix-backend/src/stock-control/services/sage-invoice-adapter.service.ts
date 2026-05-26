@@ -1,6 +1,4 @@
 import { Injectable, type OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import type { SageExportFilterDto } from "../../sage-export/dto/sage-export.dto";
 import type { SageExportLineItem } from "../../sage-export/interfaces/sage-invoice";
@@ -11,7 +9,8 @@ import type {
   SageInvoiceAdapter,
 } from "../../sage-export/interfaces/sage-invoice-adapter.interface";
 import { SageAdapterRegistry } from "../../sage-export/sage-adapter-registry.service";
-import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
 
 const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
@@ -19,8 +18,7 @@ const DEFAULT_ACCOUNT_CODE = "5000";
 @Injectable()
 export class SageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleInit {
   constructor(
-    @InjectRepository(SupplierInvoice)
-    private readonly invoiceRepo: Repository<SupplierInvoice>,
+    private readonly invoiceRepo: SupplierInvoiceRepository,
     private readonly sageAdapterRegistry: SageAdapterRegistry,
   ) {}
 
@@ -37,28 +35,11 @@ export class SageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleIn
     filters: SageExportFilterDto,
     context: SageAdapterContext,
   ): Promise<SageExportResult> {
-    const qb = this.invoiceRepo
-      .createQueryBuilder("invoice")
-      .leftJoinAndSelect("invoice.items", "item")
-      .where("invoice.companyId = :companyId", { companyId: context.companyId })
-      .andWhere("invoice.extractionStatus = :status", { status: InvoiceExtractionStatus.COMPLETED })
-      .andWhere("invoice.approvedBy IS NOT NULL");
-
-    if (filters.dateFrom) {
-      qb.andWhere("invoice.invoiceDate >= :dateFrom", { dateFrom: filters.dateFrom });
-    }
-
-    if (filters.dateTo) {
-      qb.andWhere("invoice.invoiceDate <= :dateTo", { dateTo: filters.dateTo });
-    }
-
-    if (filters.excludeExported) {
-      qb.andWhere("invoice.exportedToSageAt IS NULL");
-    }
-
-    qb.orderBy("invoice.invoiceDate", "ASC");
-
-    const entities = await qb.getMany();
+    const entities = await this.invoiceRepo.findExportableForCompany(context.companyId!, {
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      excludeExported: filters.excludeExported,
+    });
 
     return {
       invoices: entities.map((entity) => toSageInvoice(entity)),
@@ -71,10 +52,9 @@ export class SageInvoiceAdapterService implements SageInvoiceAdapter, OnModuleIn
       return;
     }
 
-    await this.invoiceRepo.update(
-      { id: In(entityIds), companyId: context.companyId! },
-      { exportedToSageAt: now().toJSDate() },
-    );
+    await this.invoiceRepo.updateManyByIdsForCompany(entityIds, context.companyId!, {
+      exportedToSageAt: now().toJSDate(),
+    });
   }
 
   async previewCount(

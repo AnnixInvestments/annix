@@ -1,22 +1,16 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { FlangeWeightTestCase, testScenarios } from "../test/flange-data-test-scenarios";
+import { BnwSetWeightRepository } from "./bnw-set-weight.repository";
 import { BnwSetWeightService } from "./bnw-set-weight.service";
 import { BnwSetWeight } from "./entities/bnw-set-weight.entity";
 
 describe("BnwSetWeightService", () => {
   let service: BnwSetWeightService;
 
-  const mockQueryBuilder = {
-    select: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn(),
-  };
-
   const mockRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(() => mockQueryBuilder),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    availablePressureClasses: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -24,7 +18,7 @@ describe("BnwSetWeightService", () => {
       providers: [
         BnwSetWeightService,
         {
-          provide: getRepositoryToken(BnwSetWeight),
+          provide: BnwSetWeightRepository,
           useValue: mockRepository,
         },
       ],
@@ -33,7 +27,6 @@ describe("BnwSetWeightService", () => {
     service = module.get<BnwSetWeightService>(BnwSetWeightService);
 
     jest.clearAllMocks();
-    mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
   });
 
   it("should be defined", () => {
@@ -43,12 +36,12 @@ describe("BnwSetWeightService", () => {
   describe("findAll", () => {
     it("should return all BNW set weights", async () => {
       const mockData = [{ id: 1, nominal_bore_mm: 50, pressure_class: "PN16" }] as BnwSetWeight[];
-      mockRepository.find.mockResolvedValue(mockData);
+      mockRepository.findAll.mockResolvedValue(mockData);
 
       const result = await service.findAll();
 
       expect(result).toEqual(mockData);
-      expect(mockRepository.find).toHaveBeenCalled();
+      expect(mockRepository.findAll).toHaveBeenCalled();
     });
   });
 
@@ -59,7 +52,7 @@ describe("BnwSetWeightService", () => {
         weight_per_hole_kg: 0.25,
         num_holes: 4,
       };
-      mockRepository.findOne.mockResolvedValue(mockEntity);
+      mockRepository.findOneWhere.mockResolvedValue(mockEntity);
 
       const result = await service.bnwSetInfo(50, "PN16");
 
@@ -75,7 +68,7 @@ describe("BnwSetWeightService", () => {
     });
 
     it("should return defaults when not found", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findOneWhere.mockResolvedValue(null);
 
       const result = await service.bnwSetInfo(999, "PN99");
 
@@ -93,7 +86,7 @@ describe("BnwSetWeightService", () => {
         weight_per_hole_kg: 0.35,
         num_holes: 12,
       };
-      mockRepository.findOne.mockResolvedValue(mockEntity);
+      mockRepository.findOneWhere.mockResolvedValue(mockEntity);
 
       const result = await service.bnwSetInfo(200, "PN40");
 
@@ -103,11 +96,7 @@ describe("BnwSetWeightService", () => {
 
   describe("availablePressureClasses", () => {
     it("should return distinct pressure classes", async () => {
-      mockQueryBuilder.getRawMany.mockResolvedValue([
-        { pressureClass: "PN10" },
-        { pressureClass: "PN16" },
-        { pressureClass: "PN25" },
-      ]);
+      mockRepository.availablePressureClasses.mockResolvedValue(["PN10", "PN16", "PN25"]);
 
       const result = await service.availablePressureClasses();
 
@@ -123,7 +112,7 @@ describe("BnwSetWeightService", () => {
     bnwSetScenarios.forEach((scenario: FlangeWeightTestCase) => {
       it(`should handle ${scenario.description}`, async () => {
         const input = scenario.input as { nb: number; pc: string };
-        mockRepository.findOne.mockResolvedValue({
+        mockRepository.findOneWhere.mockResolvedValue({
           bolt_size: "M16x65",
           weight_per_hole_kg: 0.18,
           num_holes: 8,

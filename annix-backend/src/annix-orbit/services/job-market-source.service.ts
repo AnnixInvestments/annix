@@ -1,18 +1,14 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
 import { JobMarketSource } from "../entities/job-market-source.entity";
+import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 
 @Injectable()
 export class JobMarketSourceService {
-  constructor(
-    @InjectRepository(JobMarketSource)
-    private readonly sourceRepo: Repository<JobMarketSource>,
-  ) {}
+  constructor(private readonly sourceRepo: JobMarketSourceRepository) {}
 
   async create(companyId: number, dto: CreateJobMarketSourceDto): Promise<JobMarketSource> {
-    const source = this.sourceRepo.create({
+    return this.sourceRepo.create({
       provider: dto.provider,
       name: dto.name,
       apiId: dto.apiId ?? null,
@@ -23,16 +19,14 @@ export class JobMarketSourceService {
       ingestionIntervalHours: dto.ingestionIntervalHours ?? 6,
       companyId,
     });
-
-    return this.sourceRepo.save(source);
   }
 
   async findAllForCompany(companyId: number): Promise<JobMarketSource[]> {
-    return this.sourceRepo.find({ where: { companyId }, order: { createdAt: "DESC" } });
+    return this.sourceRepo.findForCompany(companyId);
   }
 
   async findById(id: number, companyId: number): Promise<JobMarketSource> {
-    const source = await this.sourceRepo.findOne({ where: { id, companyId } });
+    const source = await this.sourceRepo.findByIdForCompany(id, companyId);
     if (!source) {
       throw new NotFoundException("Job market source not found");
     }
@@ -65,7 +59,7 @@ export class JobMarketSourceService {
   }
 
   async createPlatformGlobal(dto: CreateJobMarketSourceDto): Promise<JobMarketSource> {
-    const source = this.sourceRepo.create({
+    return this.sourceRepo.create({
       provider: dto.provider,
       name: dto.name,
       apiId: dto.apiId ?? null,
@@ -76,20 +70,15 @@ export class JobMarketSourceService {
       ingestionIntervalHours: dto.ingestionIntervalHours ?? 6,
       companyId: null,
     });
-
-    return this.sourceRepo.save(source);
   }
 
   async findAllPlatformGlobal(): Promise<JobMarketSource[]> {
-    return this.sourceRepo.find({
-      where: { companyId: IsNull() },
-      order: { createdAt: "DESC" },
-    });
+    return this.sourceRepo.findManyWhere({ companyId: null } as Partial<JobMarketSource>);
   }
 
   async findByIdPlatformGlobal(id: number): Promise<JobMarketSource> {
-    const source = await this.sourceRepo.findOne({ where: { id, companyId: IsNull() } });
-    if (!source) {
+    const source = await this.sourceRepo.findById(id);
+    if (!source || source.companyId !== null) {
       throw new NotFoundException("Job market source not found");
     }
     return source;

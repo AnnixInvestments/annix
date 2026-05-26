@@ -1,6 +1,4 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
 import { DateTime, fromISO } from "../../lib/datetime";
 import {
   MeetingOutcomesReport,
@@ -9,28 +7,26 @@ import {
   WeeklyActivityReport,
 } from "../dto/report.dto";
 import {
-  Meeting,
   MeetingStatus,
   MeetingType,
   Prospect,
   ProspectActivity,
-  ProspectActivityType,
   ProspectStatus,
   Visit,
   VisitOutcome,
 } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { ProspectRepository } from "../prospect.repository";
+import { ProspectActivityRepository } from "../prospect-activity.repository";
+import { VisitRepository } from "../visit.repository";
 
 @Injectable()
 export class ReportsService {
   constructor(
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
-    @InjectRepository(Visit)
-    private readonly visitRepo: Repository<Visit>,
-    @InjectRepository(ProspectActivity)
-    private readonly activityRepo: Repository<ProspectActivity>,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly prospectRepo: ProspectRepository,
+    private readonly visitRepo: VisitRepository,
+    private readonly activityRepo: ProspectActivityRepository,
   ) {}
 
   async weeklyActivityReport(
@@ -42,30 +38,10 @@ export class ReportsService {
     const end = fromISO(endDate).endOf("day").toJSDate();
 
     const [meetings, visits, prospects, activities] = await Promise.all([
-      this.meetingRepo.find({
-        where: {
-          salesRepId: userId,
-          scheduledStart: Between(start, end),
-        },
-      }),
-      this.visitRepo.find({
-        where: {
-          salesRepId: userId,
-        },
-      }),
-      this.prospectRepo.find({
-        where: {
-          ownerId: userId,
-        },
-      }),
-      this.activityRepo.find({
-        where: {
-          userId,
-          activityType: ProspectActivityType.STATUS_CHANGE,
-          createdAt: Between(start, end),
-        },
-        relations: ["prospect"],
-      }),
+      this.meetingRepo.findInRange(userId, start, end),
+      this.visitRepo.findBySalesRep(userId),
+      this.prospectRepo.findAllByOwner(userId),
+      this.activityRepo.findStatusChangesInRange(userId, start, end),
     ]);
 
     const filteredVisits = visits.filter(
@@ -141,30 +117,10 @@ export class ReportsService {
     const end = monthEnd.toJSDate();
 
     const [meetings, visits, prospects, activities] = await Promise.all([
-      this.meetingRepo.find({
-        where: {
-          salesRepId: userId,
-          scheduledStart: Between(start, end),
-        },
-      }),
-      this.visitRepo.find({
-        where: {
-          salesRepId: userId,
-        },
-      }),
-      this.prospectRepo.find({
-        where: {
-          ownerId: userId,
-        },
-      }),
-      this.activityRepo.find({
-        where: {
-          userId,
-          activityType: ProspectActivityType.STATUS_CHANGE,
-          createdAt: Between(start, end),
-        },
-        relations: ["prospect"],
-      }),
+      this.meetingRepo.findInRange(userId, start, end),
+      this.visitRepo.findBySalesRep(userId),
+      this.prospectRepo.findAllByOwner(userId),
+      this.activityRepo.findStatusChangesInRange(userId, start, end),
     ]);
 
     const filteredVisits = visits.filter(
@@ -272,17 +228,8 @@ export class ReportsService {
     const end = fromISO(endDate).endOf("day").toJSDate();
 
     const [prospects, visits] = await Promise.all([
-      this.prospectRepo.find({
-        where: {
-          ownerId: userId,
-        },
-      }),
-      this.visitRepo.find({
-        where: {
-          salesRepId: userId,
-        },
-        relations: ["prospect"],
-      }),
+      this.prospectRepo.findAllByOwner(userId),
+      this.visitRepo.findBySalesRepWithProspect(userId),
     ]);
 
     const filteredVisits = visits.filter(
@@ -356,13 +303,7 @@ export class ReportsService {
     const start = fromISO(startDate).startOf("day").toJSDate();
     const end = fromISO(endDate).endOf("day").toJSDate();
 
-    const meetings = await this.meetingRepo.find({
-      where: {
-        salesRepId: userId,
-        scheduledStart: Between(start, end),
-      },
-      relations: ["prospect"],
-    });
+    const meetings = await this.meetingRepo.findInRangeWithProspect(userId, start, end);
 
     const completed = meetings.filter((m) => m.status === MeetingStatus.COMPLETED);
     const cancelled = meetings.filter((m) => m.status === MeetingStatus.CANCELLED);

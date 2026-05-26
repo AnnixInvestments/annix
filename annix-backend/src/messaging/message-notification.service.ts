@@ -1,7 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { fromJSDate } from "../lib/datetime";
 import { User } from "../user/entities/user.entity";
@@ -14,8 +12,6 @@ export class MessageNotificationService {
   constructor(
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
-    @InjectRepository(SlaConfig)
-    private readonly slaConfigRepo: Repository<SlaConfig>,
   ) {}
 
   async notifyNewMessage(

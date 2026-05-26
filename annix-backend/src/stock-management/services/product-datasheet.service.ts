@@ -1,6 +1,4 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
   type IStorageService,
@@ -12,6 +10,10 @@ import {
   type ProductDatasheetDocType,
   type ProductDatasheetType,
 } from "../entities/product-datasheet.entity";
+import {
+  type DatasheetOwnerField,
+  ProductDatasheetRepository,
+} from "../repositories/product-datasheet.repository";
 import { DatasheetExtractionService } from "./datasheet-extraction.service";
 import { RubberCompoundService } from "./rubber-compound.service";
 
@@ -33,8 +35,7 @@ export class ProductDatasheetService {
   private readonly logger = new Logger(ProductDatasheetService.name);
 
   constructor(
-    @InjectRepository(ProductDatasheet)
-    private readonly datasheetRepo: Repository<ProductDatasheet>,
+    private readonly datasheetRepo: ProductDatasheetRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storage: IStorageService,
     private readonly extractionService: DatasheetExtractionService,
@@ -47,9 +48,12 @@ export class ProductDatasheetService {
     const subPath = `${StorageArea.STOCK_MANAGEMENT}/datasheets/${input.productType}/${ownerId}`;
     const storageResult = await this.storage.upload(input.file, subPath);
 
-    const previousActive = await this.datasheetRepo.find({
-      where: this.ownerWhere(companyId, input),
-    });
+    const owner = this.ownerFieldAndId(input);
+    const previousActive = await this.datasheetRepo.findActiveByOwner(
+      companyId,
+      owner.field,
+      owner.id,
+    );
     const nextRevision =
       previousActive.length === 0
         ? 1
@@ -57,10 +61,10 @@ export class ProductDatasheetService {
 
     if (previousActive.length > 0) {
       const previousIds = previousActive.map((row) => row.id);
-      await this.datasheetRepo.update(previousIds, { isActive: false });
+      await this.datasheetRepo.updateActiveFlagForIds(previousIds, false);
     }
 
-    const datasheet = this.datasheetRepo.create({
+    const datasheet = this.datasheetRepo.build({
       companyId,
       productType: input.productType,
       paintProductId: input.paintProductId ?? null,
@@ -97,21 +101,11 @@ export class ProductDatasheetService {
   }
 
   async list(companyId: number, productType?: ProductDatasheetType): Promise<ProductDatasheet[]> {
-    const where: { companyId: number; productType?: ProductDatasheetType; isActive: boolean } = {
-      companyId,
-      isActive: true,
-    };
-    if (productType) {
-      where.productType = productType;
-    }
-    return this.datasheetRepo.find({
-      where,
-      order: { uploadedAt: "DESC" },
-    });
+    return this.datasheetRepo.findActiveForCompany(companyId, productType);
   }
 
   async byId(companyId: number, id: number): Promise<ProductDatasheet> {
-    const datasheet = await this.datasheetRepo.findOne({ where: { id, companyId } });
+    const datasheet = await this.datasheetRepo.findOneForCompany(companyId, id);
     if (!datasheet) {
       throw new NotFoundException(`Datasheet ${id} not found`);
     }
@@ -142,13 +136,13 @@ export class ProductDatasheetService {
     fileBuffer: Buffer,
     mimeType: string,
   ): Promise<void> {
-    await this.datasheetRepo.update(datasheetId, {
+    await this.datasheetRepo.updateById(datasheetId, {
       extractionStatus: "in_progress",
       extractionStartedAt: now().toJSDate(),
     });
     try {
       const result = await this.extractionService.extractFromBuffer(fileBuffer, mimeType);
-      const datasheet = await this.datasheetRepo.findOneOrFail({ where: { id: datasheetId } });
+      const datasheet = await this.datasheetRepo.findByIdOrFail(datasheetId);
       datasheet.extractionStatus = "completed";
       datasheet.extractionCompletedAt = now().toJSDate();
       datasheet.extractedData = result.data;
@@ -163,7 +157,7 @@ export class ProductDatasheetService {
         );
       }
     } catch (err) {
-      await this.datasheetRepo.update(datasheetId, {
+      await this.datasheetRepo.updateById(datasheetId, {
         extractionStatus: "failed",
         extractionCompletedAt: now().toJSDate(),
         extractionNotes: err instanceof Error ? err.message : String(err),
@@ -198,28 +192,21 @@ export class ProductDatasheetService {
     return id;
   }
 
-  private ownerWhere(
-    companyId: number,
-    input: UploadDatasheetInput,
-  ): {
-    companyId: number;
-    isActive: boolean;
-    paintProductId?: number;
-    rubberCompoundId?: number;
-    solutionProductId?: number;
-    consumableProductId?: number;
+  private ownerFieldAndId(input: UploadDatasheetInput): {
+    field: DatasheetOwnerField;
+    id: number;
   } {
     if (input.paintProductId) {
-      return { companyId, isActive: true, paintProductId: input.paintProductId };
+      return { field: "paintProductId", id: input.paintProductId };
     }
     if (input.rubberCompoundId) {
-      return { companyId, isActive: true, rubberCompoundId: input.rubberCompoundId };
+      return { field: "rubberCompoundId", id: input.rubberCompoundId };
     }
     if (input.solutionProductId) {
-      return { companyId, isActive: true, solutionProductId: input.solutionProductId };
+      return { field: "solutionProductId", id: input.solutionProductId };
     }
     if (input.consumableProductId) {
-      return { companyId, isActive: true, consumableProductId: input.consumableProductId };
+      return { field: "consumableProductId", id: input.consumableProductId };
     }
     throw new BadRequestException("No owner id present");
   }

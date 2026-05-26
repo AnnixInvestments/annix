@@ -1,12 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
-import { DeliveryNote } from "../entities/delivery-note.entity";
-import { JobCard } from "../entities/job-card.entity";
-import { StaffMember } from "../entities/staff-member.entity";
-import { StockItem } from "../entities/stock-item.entity";
-import { SupplierInvoice } from "../entities/supplier-invoice.entity";
+import { CustomerPurchaseOrderRepository } from "../repositories/customer-purchase-order.repository";
+import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { StaffMemberRepository } from "../repositories/staff-member.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
 
 export interface SearchResultItem {
   id: number;
@@ -28,18 +26,12 @@ export interface SearchResponse {
 @Injectable()
 export class SearchService {
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StaffMember)
-    private readonly staffRepo: Repository<StaffMember>,
-    @InjectRepository(DeliveryNote)
-    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
-    @InjectRepository(SupplierInvoice)
-    private readonly invoiceRepo: Repository<SupplierInvoice>,
-    @InjectRepository(CustomerPurchaseOrder)
-    private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly staffRepo: StaffMemberRepository,
+    private readonly deliveryNoteRepo: DeliveryNoteRepository,
+    private readonly invoiceRepo: SupplierInvoiceRepository,
+    private readonly cpoRepo: CustomerPurchaseOrderRepository,
   ) {}
 
   async search(
@@ -91,27 +83,7 @@ export class SearchService {
     exact: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
-    const qb = this.jobCardRepo
-      .createQueryBuilder("jc")
-      .select([
-        "jc.id",
-        "jc.jobNumber",
-        "jc.jcNumber",
-        "jc.jobName",
-        "jc.customerName",
-        "jc.description",
-        "jc.status",
-        "jc.updatedAt",
-      ])
-      .where("jc.companyId = :companyId", { companyId })
-      .andWhere(
-        "(jc.jobNumber ILIKE :pattern OR jc.jcNumber ILIKE :pattern OR jc.jobName ILIKE :pattern OR jc.customerName ILIKE :pattern OR jc.description ILIKE :pattern OR jc.poNumber ILIKE :pattern)",
-        { pattern },
-      )
-      .orderBy("jc.updatedAt", "DESC")
-      .take(limit);
-
-    const rows = await qb.getMany();
+    const rows = await this.jobCardRepo.searchForCompany(companyId, pattern, limit);
     const lowerExact = exact.toLowerCase();
 
     return rows.map((jc) => {
@@ -139,27 +111,7 @@ export class SearchService {
     exact: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
-    const qb = this.stockItemRepo
-      .createQueryBuilder("si")
-      .select([
-        "si.id",
-        "si.sku",
-        "si.name",
-        "si.description",
-        "si.category",
-        "si.quantity",
-        "si.unitOfMeasure",
-        "si.updatedAt",
-      ])
-      .where("si.companyId = :companyId", { companyId })
-      .andWhere(
-        "(si.name ILIKE :pattern OR si.sku ILIKE :pattern OR si.description ILIKE :pattern OR si.category ILIKE :pattern)",
-        { pattern },
-      )
-      .orderBy("si.updatedAt", "DESC")
-      .take(limit);
-
-    const rows = await qb.getMany();
+    const rows = await this.stockItemRepo.searchSummaryForCompany(companyId, pattern, limit);
     const lowerExact = exact.toLowerCase();
 
     return rows.map((si) => {
@@ -186,18 +138,7 @@ export class SearchService {
     exact: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
-    const qb = this.staffRepo
-      .createQueryBuilder("s")
-      .select(["s.id", "s.name", "s.employeeNumber", "s.department", "s.active", "s.updatedAt"])
-      .where("s.companyId = :companyId", { companyId })
-      .andWhere(
-        "(s.name ILIKE :pattern OR s.employeeNumber ILIKE :pattern OR s.department ILIKE :pattern)",
-        { pattern },
-      )
-      .orderBy("s.updatedAt", "DESC")
-      .take(limit);
-
-    const rows = await qb.getMany();
+    const rows = await this.staffRepo.searchForCompany(companyId, pattern, limit);
     const lowerExact = exact.toLowerCase();
 
     return rows.map((s) => ({
@@ -218,18 +159,7 @@ export class SearchService {
     exact: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
-    const qb = this.deliveryNoteRepo
-      .createQueryBuilder("dn")
-      .select(["dn.id", "dn.deliveryNumber", "dn.supplierName", "dn.notes", "dn.createdAt"])
-      .where("dn.companyId = :companyId", { companyId })
-      .andWhere(
-        "(dn.deliveryNumber ILIKE :pattern OR dn.supplierName ILIKE :pattern OR dn.notes ILIKE :pattern)",
-        { pattern },
-      )
-      .orderBy("dn.createdAt", "DESC")
-      .take(limit);
-
-    const rows = await qb.getMany();
+    const rows = await this.deliveryNoteRepo.searchForCompany(companyId, pattern, limit);
     const lowerExact = exact.toLowerCase();
 
     return rows.map((dn) => ({
@@ -250,24 +180,7 @@ export class SearchService {
     exact: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
-    const qb = this.invoiceRepo
-      .createQueryBuilder("inv")
-      .select([
-        "inv.id",
-        "inv.invoiceNumber",
-        "inv.supplierName",
-        "inv.totalAmount",
-        "inv.extractionStatus",
-        "inv.updatedAt",
-      ])
-      .where("inv.companyId = :companyId", { companyId })
-      .andWhere("(inv.invoiceNumber ILIKE :pattern OR inv.supplierName ILIKE :pattern)", {
-        pattern,
-      })
-      .orderBy("inv.updatedAt", "DESC")
-      .take(limit);
-
-    const rows = await qb.getMany();
+    const rows = await this.invoiceRepo.searchSummaryForCompany(companyId, pattern, limit);
     const lowerExact = exact.toLowerCase();
 
     return rows.map((inv) => ({
@@ -291,27 +204,7 @@ export class SearchService {
     exact: string,
     limit: number,
   ): Promise<SearchResultItem[]> {
-    const qb = this.cpoRepo
-      .createQueryBuilder("cpo")
-      .select([
-        "cpo.id",
-        "cpo.cpoNumber",
-        "cpo.jobNumber",
-        "cpo.jobName",
-        "cpo.customerName",
-        "cpo.poNumber",
-        "cpo.status",
-        "cpo.updatedAt",
-      ])
-      .where("cpo.companyId = :companyId", { companyId })
-      .andWhere(
-        "(cpo.cpoNumber ILIKE :pattern OR cpo.jobNumber ILIKE :pattern OR cpo.jobName ILIKE :pattern OR cpo.customerName ILIKE :pattern OR cpo.poNumber ILIKE :pattern)",
-        { pattern },
-      )
-      .orderBy("cpo.updatedAt", "DESC")
-      .take(limit);
-
-    const rows = await qb.getMany();
+    const rows = await this.cpoRepo.searchForCompany(companyId, pattern, limit);
     const lowerExact = exact.toLowerCase();
 
     return rows.map((cpo) => ({

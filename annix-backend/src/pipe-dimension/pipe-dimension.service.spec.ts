@@ -1,44 +1,41 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
-import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
 import { PipeDimension } from "./entities/pipe-dimension.entity";
+import { PipeDimensionRepository } from "./pipe-dimension.repository";
 import { PipeDimensionService } from "./pipe-dimension.service";
 
 describe("PipeDimensionService", () => {
   let service: PipeDimensionService;
 
-  const mockPipeRepo = {
+  const mockRepository: jest.Mocked<PipeDimensionRepository> = {
+    findAllWithRelations: jest.fn(),
+    findAllWithDiameterAndSpec: jest.fn(),
+    findOneWithRelations: jest.fn(),
+    findNominalByDiameter: jest.fn(),
+    findNominalById: jest.fn(),
+    findSteelById: jest.fn(),
+    createPipe: jest.fn(),
+    savePipe: jest.fn(),
+    removePipe: jest.fn(),
+    findBySpecAndNominal: jest.fn(),
+    recommendedSpecs: jest.fn(),
+    higherSchedules: jest.fn(),
+    findByNominalDiameterScheduleAndSteel: jest.fn(),
     create: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
     remove: jest.fn(),
-    createQueryBuilder: jest.fn(),
-  };
-
-  const mockNominalRepo = {
-    findOne: jest.fn(),
-  };
-
-  const mockSteelRepo = {
-    findOne: jest.fn(),
-  };
+    count: jest.fn(),
+  } as jest.Mocked<PipeDimensionRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PipeDimensionService,
-        { provide: getRepositoryToken(PipeDimension), useValue: mockPipeRepo },
-        {
-          provide: getRepositoryToken(NominalOutsideDiameterMm),
-          useValue: mockNominalRepo,
-        },
-        {
-          provide: getRepositoryToken(SteelSpecification),
-          useValue: mockSteelRepo,
-        },
+        { provide: PipeDimensionRepository, useValue: mockRepository },
       ],
     }).compile();
 
@@ -54,29 +51,24 @@ describe("PipeDimensionService", () => {
   describe("findAll", () => {
     it("should return array of pipe dimensions", async () => {
       const result = [{ id: 1 }] as PipeDimension[];
-      mockPipeRepo.find.mockResolvedValue(result);
+      mockRepository.findAllWithRelations.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockPipeRepo.find).toHaveBeenCalledWith({
-        relations: ["nominalOutsideDiameter", "steelSpecification", "pressures"],
-      });
+      expect(mockRepository.findAllWithRelations).toHaveBeenCalled();
     });
   });
 
   describe("findOne", () => {
     it("should return a pipe dimension by id", async () => {
       const result = { id: 1 } as PipeDimension;
-      mockPipeRepo.findOne.mockResolvedValue(result);
+      mockRepository.findOneWithRelations.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
-      expect(mockPipeRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ["nominalOutsideDiameter", "steelSpecification", "pressures"],
-      });
+      expect(mockRepository.findOneWithRelations).toHaveBeenCalledWith(1);
     });
 
     it("should throw NotFoundException if pipe dimension not found", async () => {
-      mockPipeRepo.findOne.mockResolvedValue(undefined);
+      mockRepository.findOneWithRelations.mockResolvedValue(null);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
@@ -85,30 +77,21 @@ describe("PipeDimensionService", () => {
   describe("remove", () => {
     it("should delete a pipe dimension", async () => {
       const entity = { id: 1 } as PipeDimension;
-      mockPipeRepo.findOne.mockResolvedValue(entity);
-      mockPipeRepo.remove.mockResolvedValue(undefined);
+      mockRepository.findOneWithRelations.mockResolvedValue(entity);
+      mockRepository.removePipe.mockResolvedValue(undefined);
 
       await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(mockPipeRepo.remove).toHaveBeenCalledWith(entity);
+      expect(mockRepository.removePipe).toHaveBeenCalledWith(entity);
     });
   });
 
   describe("findAllBySpecAndNominal", () => {
     it("should return pipe dimensions by spec and nominal", async () => {
       const result = [{ id: 1 }] as PipeDimension[];
-      mockPipeRepo.find.mockResolvedValue(result);
+      mockRepository.findBySpecAndNominal.mockResolvedValue(result);
 
       expect(await service.findAllBySpecAndNominal(1, 1)).toEqual(result);
-      expect(mockPipeRepo.find).toHaveBeenCalledWith({
-        where: {
-          steelSpecification: { id: 1 },
-          nominalOutsideDiameter: { id: 1 },
-        },
-        relations: ["nominalOutsideDiameter", "steelSpecification", "pressures"],
-        order: {
-          wall_thickness_mm: "ASC",
-        },
-      });
+      expect(mockRepository.findBySpecAndNominal).toHaveBeenCalledWith(1, 1);
     });
   });
 });

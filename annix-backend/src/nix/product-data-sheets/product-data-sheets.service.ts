@@ -1,9 +1,8 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { AiChatService } from "../ai-providers/ai-chat.service";
 import { ProductDataSheet, ProductDataSheetKind } from "../entities/product-data-sheet.entity";
+import { ProductDataSheetRepository } from "../product-data-sheet.repository";
 
 export interface ProductDataSheetExtraction {
   manufacturer: string | null;
@@ -46,8 +45,7 @@ export class ProductDataSheetsService {
   private readonly logger = new Logger(ProductDataSheetsService.name);
 
   constructor(
-    @InjectRepository(ProductDataSheet)
-    private readonly repo: Repository<ProductDataSheet>,
+    private readonly repo: ProductDataSheetRepository,
     private readonly aiChatService: AiChatService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
@@ -90,13 +88,7 @@ export class ProductDataSheetsService {
     const manufacturerSlug = slugify(extracted.manufacturer);
     const productSlug = slugify(extracted.productName);
 
-    const existing = await this.repo.findOne({
-      where: {
-        manufacturerSlug,
-        productSlug,
-        isLatest: true,
-      },
-    });
+    const existing = await this.repo.findLatestForProduct(manufacturerSlug, productSlug);
 
     const incomingRev = normaliseRevision(extracted.publishedRevision);
     const existingRev = existing ? normaliseRevision(existing.publishedRevision ?? null) : null;
@@ -117,7 +109,7 @@ export class ProductDataSheetsService {
       subPath,
     );
 
-    const row = this.repo.create({
+    const saved = await this.repo.create({
       manufacturer: extracted.manufacturer.trim(),
       manufacturerSlug,
       productName: extracted.productName.trim(),
@@ -135,8 +127,6 @@ export class ProductDataSheetsService {
       uploadedByUserId: userId,
       isLatest: true,
     });
-
-    const saved = await this.repo.save(row);
 
     if (existing) {
       existing.isLatest = false;
@@ -159,13 +149,13 @@ export class ProductDataSheetsService {
    * affordance once a row has matched.
    */
   async presignedUrl(id: number, expiresIn = 600): Promise<string | null> {
-    const row = await this.repo.findOne({ where: { id } });
+    const row = await this.repo.findById(id);
     if (!row) return null;
     return this.storageService.presignedUrl(row.storagePath, expiresIn);
   }
 
   async findById(id: number): Promise<ProductDataSheet | null> {
-    return this.repo.findOne({ where: { id } });
+    return this.repo.findById(id);
   }
 
   /**
@@ -173,10 +163,7 @@ export class ProductDataSheetsService {
    * then descending by version. Powers the future archive view.
    */
   async listVersions(manufacturerSlug: string, productSlug: string): Promise<ProductDataSheet[]> {
-    return this.repo.find({
-      where: { manufacturerSlug, productSlug },
-      order: { isLatest: "DESC", version: "DESC" },
-    });
+    return this.repo.findVersionsForProduct(manufacturerSlug, productSlug);
   }
 
   /**
@@ -196,18 +183,7 @@ export class ProductDataSheetsService {
       .split(/\s+/)
       .filter((t) => t.length > 0);
     if (terms.length === 0) return [];
-    const qb = this.repo
-      .createQueryBuilder("ds")
-      .where("ds.is_latest = true")
-      .orderBy("ds.published_date", "DESC", "NULLS LAST")
-      .addOrderBy("ds.updated_at", "DESC")
-      .limit(20);
-    terms.forEach((term, i) => {
-      qb.andWhere(`lower(ds.manufacturer || ' ' || ds.product_name) LIKE :t${i}`, {
-        [`t${i}`]: `%${term}%`,
-      });
-    });
-    return qb.getMany();
+    return this.repo.searchLatest(terms);
   }
 
   // ------------------------------------------------------------------

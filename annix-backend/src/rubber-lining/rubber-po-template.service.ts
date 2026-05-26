@@ -1,13 +1,10 @@
 import * as crypto from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { DocumentAnnotationService } from "../nix/services/document-annotation.service";
-import {
-  RegionCoordinates,
-  RubberPoExtractionRegion,
-} from "./entities/rubber-po-extraction-region.entity";
+import { RegionCoordinates } from "./entities/rubber-po-extraction-region.entity";
 import { RubberPoExtractionTemplate } from "./entities/rubber-po-extraction-template.entity";
+import { RubberPoExtractionRegionRepository } from "./repositories/rubber-po-extraction-region.repository";
+import { RubberPoExtractionTemplateRepository } from "./repositories/rubber-po-extraction-template.repository";
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const pdfParseModule = require("pdf-parse");
@@ -54,10 +51,8 @@ export class RubberPoTemplateService {
   private readonly logger = new Logger(RubberPoTemplateService.name);
 
   constructor(
-    @InjectRepository(RubberPoExtractionTemplate)
-    private readonly templateRepo: Repository<RubberPoExtractionTemplate>,
-    @InjectRepository(RubberPoExtractionRegion)
-    private readonly regionRepo: Repository<RubberPoExtractionRegion>,
+    private readonly templateRepo: RubberPoExtractionTemplateRepository,
+    private readonly regionRepo: RubberPoExtractionRegionRepository,
     private readonly documentAnnotationService: DocumentAnnotationService,
   ) {}
 
@@ -146,14 +141,10 @@ export class RubberPoTemplateService {
       `Looking for template: company=${companyId}, hash=${formatHash.substring(0, 16)}...`,
     );
 
-    const template = await this.templateRepo.findOne({
-      where: {
-        companyId,
-        formatHash,
-        isActive: true,
-      },
-      relations: ["regions"],
-    });
+    const template = await this.templateRepo.findActiveByCompanyAndHashWithRegions(
+      companyId,
+      formatHash,
+    );
 
     if (template) {
       this.logger.log(
@@ -176,13 +167,10 @@ export class RubberPoTemplateService {
       `Creating template for company=${dto.companyId}, hash=${dto.formatHash.substring(0, 16)}..., regions=${dto.regions.length}`,
     );
 
-    const existingTemplate = await this.templateRepo.findOne({
-      where: {
-        companyId: dto.companyId,
-        formatHash: dto.formatHash,
-        isActive: true,
-      },
-    });
+    const existingTemplate = await this.templateRepo.findActiveByCompanyAndHash(
+      dto.companyId,
+      dto.formatHash,
+    );
 
     if (existingTemplate) {
       this.logger.log(`Deactivating existing template ${existingTemplate.id}`);
@@ -190,7 +178,7 @@ export class RubberPoTemplateService {
       await this.templateRepo.save(existingTemplate);
     }
 
-    const template = this.templateRepo.create({
+    const template = this.templateRepo.build({
       companyId: dto.companyId,
       formatHash: dto.formatHash,
       templateName: dto.templateName || null,
@@ -201,7 +189,7 @@ export class RubberPoTemplateService {
     const savedTemplate = await this.templateRepo.save(template);
 
     const regions = dto.regions.map((regionDto) =>
-      this.regionRepo.create({
+      this.regionRepo.build({
         templateId: savedTemplate.id,
         fieldName: regionDto.fieldName,
         regionCoordinates: regionDto.regionCoordinates,
@@ -212,7 +200,7 @@ export class RubberPoTemplateService {
       }),
     );
 
-    await this.regionRepo.save(regions);
+    await this.regionRepo.saveMany(regions);
     savedTemplate.regions = regions;
 
     this.logger.log(`Created template ${savedTemplate.id} with ${regions.length} regions`);
@@ -275,7 +263,7 @@ export class RubberPoTemplateService {
   }
 
   async recordExtractionResult(templateId: number, success: boolean): Promise<void> {
-    const template = await this.templateRepo.findOneBy({ id: templateId });
+    const template = await this.templateRepo.findById(templateId);
     if (template) {
       template.useCount += 1;
       if (success) {
@@ -289,25 +277,15 @@ export class RubberPoTemplateService {
   }
 
   async templatesForCompany(companyId: number): Promise<RubberPoExtractionTemplate[]> {
-    return this.templateRepo.find({
-      where: {
-        companyId,
-        isActive: true,
-      },
-      relations: ["regions"],
-      order: { createdAt: "DESC" },
-    });
+    return this.templateRepo.findActiveByCompanyWithRegions(companyId);
   }
 
   async templateById(id: number): Promise<RubberPoExtractionTemplate | null> {
-    return this.templateRepo.findOne({
-      where: { id },
-      relations: ["regions"],
-    });
+    return this.templateRepo.findByIdWithRegions(id);
   }
 
   async deactivateTemplate(id: number): Promise<void> {
-    await this.templateRepo.update(id, { isActive: false });
+    await this.templateRepo.deactivateById(id);
     this.logger.log(`Deactivated template ${id}`);
   }
 
@@ -330,9 +308,7 @@ export class RubberPoTemplateService {
   }
 
   async companyHasTemplates(companyId: number): Promise<boolean> {
-    const count = await this.templateRepo.count({
-      where: { companyId, isActive: true },
-    });
+    const count = await this.templateRepo.countActiveByCompany(companyId);
     return count > 0;
   }
 }

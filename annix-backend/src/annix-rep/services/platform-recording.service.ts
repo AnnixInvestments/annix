@@ -1,8 +1,6 @@
 import { Readable } from "node:stream";
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import {
@@ -16,6 +14,9 @@ import {
   PlatformMeetingRecord,
   PlatformRecordingStatus,
 } from "../entities/platform-meeting-record.entity";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { PlatformMeetingRecordRepository } from "../platform-meeting-record.repository";
 import { MeetingPlatformService } from "./meeting-platform.service";
 
 const MEETING_MATCH_WINDOW_MINUTES = 30;
@@ -33,12 +34,9 @@ export class PlatformRecordingService {
   private readonly logger = new Logger(PlatformRecordingService.name);
 
   constructor(
-    @InjectRepository(PlatformMeetingRecord)
-    private readonly recordRepo: Repository<PlatformMeetingRecord>,
-    @InjectRepository(MeetingRecording)
-    private readonly meetingRecordingRepo: Repository<MeetingRecording>,
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
+    private readonly recordRepo: PlatformMeetingRecordRepository,
+    private readonly meetingRecordingRepo: MeetingRecordingRepository,
+    private readonly meetingRepo: MeetingRepository,
     private readonly platformService: MeetingPlatformService,
     private readonly s3Storage: S3StorageService,
     private readonly configService: ConfigService,
@@ -138,12 +136,7 @@ export class PlatformRecordingService {
   }
 
   async processPendingRecordings(limit: number = 10): Promise<DownloadResult[]> {
-    const pendingRecords = await this.recordRepo.find({
-      where: { recordingStatus: PlatformRecordingStatus.PENDING },
-      relations: ["connection"],
-      take: limit,
-      order: { startTime: "DESC" },
-    });
+    const pendingRecords = await this.recordRepo.findPendingWithConnectionLimited(limit);
 
     return pendingRecords.reduce(
       async (accPromise, record) => {
@@ -172,9 +165,7 @@ export class PlatformRecordingService {
       return null;
     }
 
-    const existingRecording = await this.meetingRecordingRepo.findOne({
-      where: { meetingId: linkedMeeting.id },
-    });
+    const existingRecording = await this.meetingRecordingRepo.findByMeetingId(linkedMeeting.id);
 
     if (existingRecording) {
       this.logger.log(`Meeting ${linkedMeeting.id} already has a recording`);
@@ -184,7 +175,7 @@ export class PlatformRecordingService {
       return existingRecording;
     }
 
-    const meetingRecording = this.meetingRecordingRepo.create({
+    const saved = await this.meetingRecordingRepo.create({
       meetingId: linkedMeeting.id,
       storagePath: record.s3StoragePath,
       storageBucket: record.s3StorageBucket ?? this.s3Storage.bucket(),
@@ -194,8 +185,6 @@ export class PlatformRecordingService {
       durationSeconds: record.durationSeconds,
       processingStatus: RecordingProcessingStatus.PROCESSING,
     });
-
-    const saved = await this.meetingRecordingRepo.save(meetingRecording);
 
     record.meetingId = linkedMeeting.id;
     record.recordingStatus = PlatformRecordingStatus.PROCESSING;
@@ -211,7 +200,7 @@ export class PlatformRecordingService {
 
   private async findOrCreateLinkedMeeting(record: PlatformMeetingRecord): Promise<Meeting | null> {
     if (record.meetingId) {
-      return this.meetingRepo.findOne({ where: { id: record.meetingId } });
+      return this.meetingRepo.findById(record.meetingId);
     }
 
     const connection = await record.connection;
@@ -220,12 +209,10 @@ export class PlatformRecordingService {
     }
 
     if (record.joinUrl) {
-      const meetingByUrl = await this.meetingRepo
-        .createQueryBuilder("m")
-        .leftJoin("m.calendarEvent", "e")
-        .where("e.meeting_url = :url", { url: record.joinUrl })
-        .andWhere("m.sales_rep_id = :userId", { userId: connection.userId })
-        .getOne();
+      const meetingByUrl = await this.meetingRepo.findByMeetingUrlForSalesRep(
+        record.joinUrl,
+        connection.userId,
+      );
 
       if (meetingByUrl) {
         return meetingByUrl;
@@ -239,42 +226,40 @@ export class PlatformRecordingService {
       .plus({ minutes: MEETING_MATCH_WINDOW_MINUTES })
       .toJSDate();
 
-    const meetingByTime = await this.meetingRepo
-      .createQueryBuilder("m")
-      .where("m.sales_rep_id = :userId", { userId: connection.userId })
-      .andWhere("m.scheduled_start >= :start", { start: startWindow })
-      .andWhere("m.scheduled_start <= :end", { end: endWindow })
-      .andWhere("m.title ILIKE :title", { title: `%${record.title.substring(0, 50)}%` })
-      .getOne();
+    const meetingByTime = await this.meetingRepo.findByTitleWindowForSalesRep(
+      connection.userId,
+      startWindow,
+      endWindow,
+      record.title.substring(0, 50),
+    );
 
     if (meetingByTime) {
       return meetingByTime;
     }
 
-    const newMeeting = new Meeting();
-    newMeeting.salesRepId = connection.userId;
-    newMeeting.title = record.title;
-    newMeeting.description = record.topic;
-    newMeeting.meetingType = MeetingType.VIDEO;
-    newMeeting.status = MeetingStatus.COMPLETED;
-    newMeeting.scheduledStart = record.startTime;
-    newMeeting.scheduledEnd =
-      record.endTime ??
-      fromJSDate(record.startTime)
-        .plus({ seconds: record.durationSeconds ?? DEFAULT_MEETING_DURATION_SECONDS })
-        .toJSDate();
-    newMeeting.actualStart = record.startTime;
-    newMeeting.actualEnd = record.endTime;
-    newMeeting.attendees = record.participants;
-
-    const saved = await this.meetingRepo.save(newMeeting);
+    const saved = await this.meetingRepo.create({
+      salesRepId: connection.userId,
+      title: record.title,
+      description: record.topic,
+      meetingType: MeetingType.VIDEO,
+      status: MeetingStatus.COMPLETED,
+      scheduledStart: record.startTime,
+      scheduledEnd:
+        record.endTime ??
+        fromJSDate(record.startTime)
+          .plus({ seconds: record.durationSeconds ?? DEFAULT_MEETING_DURATION_SECONDS })
+          .toJSDate(),
+      actualStart: record.startTime,
+      actualEnd: record.endTime,
+      attendees: record.participants,
+    });
     this.logger.log(`Created new meeting ${saved.id} from platform record ${record.id}`);
 
     return saved;
   }
 
   async markRecordingComplete(recordId: number): Promise<void> {
-    const record = await this.recordRepo.findOne({ where: { id: recordId } });
+    const record = await this.recordRepo.findById(recordId);
     if (record) {
       record.recordingStatus = PlatformRecordingStatus.COMPLETED;
       await this.recordRepo.save(record);
@@ -282,7 +267,7 @@ export class PlatformRecordingService {
   }
 
   async markRecordingFailed(recordId: number, error: string): Promise<void> {
-    const record = await this.recordRepo.findOne({ where: { id: recordId } });
+    const record = await this.recordRepo.findById(recordId);
     if (record) {
       record.recordingStatus = PlatformRecordingStatus.FAILED;
       record.recordingError = error;
@@ -291,12 +276,7 @@ export class PlatformRecordingService {
   }
 
   async downloadedRecordingsForTranscription(): Promise<PlatformMeetingRecord[]> {
-    return this.recordRepo.find({
-      where: { recordingStatus: PlatformRecordingStatus.DOWNLOADED },
-      relations: ["connection"],
-      order: { downloadedAt: "ASC" },
-      take: 10,
-    });
+    return this.recordRepo.findDownloadedForTranscription(10);
   }
 
   private mimeTypeFromExtension(ext: string): string {

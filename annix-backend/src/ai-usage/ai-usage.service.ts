@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { AiApp, AiProvider, AiUsageLog } from "./entities/ai-usage-log.entity";
+import { AiUsageLogRepository } from "./ai-usage.repository";
+import { AiApp, AiProvider } from "./entities/ai-usage-log.entity";
 
 export interface LogAiUsageDto {
   app: AiApp;
@@ -50,14 +49,11 @@ export interface AiUsageListResponse {
 export class AiUsageService {
   private readonly logger = new Logger(AiUsageService.name);
 
-  constructor(
-    @InjectRepository(AiUsageLog)
-    private readonly repo: Repository<AiUsageLog>,
-  ) {}
+  constructor(private readonly repo: AiUsageLogRepository) {}
 
   log(dto: LogAiUsageDto): void {
     this.repo
-      .save({
+      .create({
         app: dto.app,
         actionType: dto.actionType,
         provider: dto.provider,
@@ -76,17 +72,7 @@ export class AiUsageService {
     model: string,
     since: Date,
   ): Promise<{ calls: number; tokens: number }> {
-    const row = await this.repo
-      .createQueryBuilder("log")
-      .select("COUNT(*)::int", "calls")
-      .addSelect("COALESCE(SUM(log.tokens_used), 0)::bigint", "tokens")
-      .where("log.model = :model", { model })
-      .andWhere("log.createdAt >= :since", { since })
-      .getRawOne<{ calls: number; tokens: string | number }>();
-    return {
-      calls: Number(row?.calls ?? 0),
-      tokens: Number(row?.tokens ?? 0),
-    };
+    return this.repo.aggregateDailyUsageByModel(model, since);
   }
 
   async usageLogs(query: AiUsageQueryDto): Promise<AiUsageListResponse> {
@@ -94,57 +80,16 @@ export class AiUsageService {
     const limit = query.limit ?? 50;
     const offset = (page - 1) * limit;
 
-    const baseQb = this.repo.createQueryBuilder("log");
+    const app = query.app ?? null;
+    const provider = query.provider ?? null;
+    const from = query.from ?? null;
+    const to = query.to ?? null;
 
-    if (query.app) {
-      baseQb.andWhere("log.app = :app", { app: query.app });
-    }
-    if (query.provider) {
-      baseQb.andWhere("log.provider = :provider", { provider: query.provider });
-    }
-    if (query.from) {
-      baseQb.andWhere("log.createdAt >= :from", { from: query.from });
-    }
-    if (query.to) {
-      baseQb.andWhere("log.createdAt <= :to", { to: query.to });
-    }
-
-    const summaryQb = baseQb.clone();
-
-    const summaryResult = await summaryQb
-      .select("COALESCE(SUM(log.tokensUsed), 0)", "totalTokens")
-      .addSelect("COUNT(*)", "totalCalls")
-      .getRawOne();
-
-    const groupQb = baseQb.clone();
-    groupQb
-      .select("log.created_at::date", "date")
-      .addSelect("log.app", "app")
-      .addSelect("log.action_type", "actionType")
-      .addSelect("log.provider", "provider")
-      .addSelect("MAX(log.model)", "model")
-      .addSelect("COUNT(*)::int", "totalCalls")
-      .addSelect("COALESCE(SUM(log.tokens_used), 0)::int", "totalTokens")
-      .addSelect("COALESCE(SUM(log.page_count), 0)::int", "totalPages")
-      .addSelect("COALESCE(SUM(log.processing_time_ms), 0)::int", "totalTimeMs")
-      .groupBy("log.created_at::date")
-      .addGroupBy("log.app")
-      .addGroupBy("log.action_type")
-      .addGroupBy("log.provider")
-      .orderBy("log.created_at::date", "DESC")
-      .offset(offset)
-      .limit(limit);
-
-    const rows: AiUsageGroupRow[] = await groupQb.getRawMany();
-
-    const countQb = baseQb.clone();
-    const countResult = await countQb
-      .select(
-        "COUNT(DISTINCT (log.created_at::date || log.app || log.action_type || log.provider))",
-        "cnt",
-      )
-      .getRawOne();
-    const total = Number(countResult?.cnt ?? 0);
+    const [summary, rows, total] = await Promise.all([
+      this.repo.sumUsage(app, provider, from, to),
+      this.repo.queryGroupedUsage(app, provider, from, to, offset, limit),
+      this.repo.countDistinctGroups(app, provider, from, to),
+    ]);
 
     return {
       data: rows,
@@ -152,8 +97,8 @@ export class AiUsageService {
       page,
       limit,
       summary: {
-        totalTokens: Number(summaryResult?.totalTokens ?? 0),
-        totalCalls: Number(summaryResult?.totalCalls ?? 0),
+        totalTokens: summary.totalTokens,
+        totalCalls: summary.totalCalls,
       },
     };
   }

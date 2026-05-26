@@ -1,18 +1,15 @@
 import { NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
 import {
   MeetingPlatform,
   MeetingPlatformConnection,
   PlatformConnectionStatus,
 } from "../entities/meeting-platform-connection.entity";
-import {
-  PlatformMeetingRecord,
-  PlatformRecordingStatus,
-} from "../entities/platform-meeting-record.entity";
+import { PlatformRecordingStatus } from "../entities/platform-meeting-record.entity";
+import { MeetingPlatformConnectionRepository } from "../meeting-platform-connection.repository";
+import { PlatformMeetingRecordRepository } from "../platform-meeting-record.repository";
 import { GoogleMeetProvider } from "../providers/google-meet.provider";
 import type {
   PlatformMeetingData,
@@ -25,8 +22,8 @@ import { MeetingPlatformService } from "./meeting-platform.service";
 
 describe("MeetingPlatformService", () => {
   let service: MeetingPlatformService;
-  let mockConnectionRepo: Partial<Repository<MeetingPlatformConnection>>;
-  let mockRecordRepo: Partial<Repository<PlatformMeetingRecord>>;
+  let mockConnectionRepo: Partial<MeetingPlatformConnectionRepository>;
+  let mockRecordRepo: Partial<PlatformMeetingRecordRepository>;
   let mockZoomProvider: Partial<ZoomMeetingProvider>;
   let mockTeamsProvider: Partial<TeamsMeetingProvider>;
   let mockGoogleMeetProvider: Partial<GoogleMeetProvider>;
@@ -61,25 +58,25 @@ describe("MeetingPlatformService", () => {
 
   beforeEach(async () => {
     mockConnectionRepo = {
-      find: jest.fn(),
-      findOne: jest.fn(),
+      findByUser: jest.fn(),
+      findByIdAndUser: jest.fn(),
+      findByUserAndPlatform: jest.fn(),
+      findActive: jest.fn(),
+      findNeedingTokenRefresh: jest.fn().mockResolvedValue([]),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-      create: jest.fn().mockImplementation((data) => ({ ...data })),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ ...data })),
       remove: jest.fn().mockResolvedValue(undefined),
-      update: jest.fn().mockResolvedValue({ affected: 1 }),
-      createQueryBuilder: jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([]),
-      }),
+      markError: jest.fn().mockResolvedValue(undefined),
     };
 
     mockRecordRepo = {
-      find: jest.fn(),
-      findOne: jest.fn(),
+      findByConnection: jest.fn(),
+      findByConnectionAndPlatformMeeting: jest.fn(),
+      findWithConnection: jest.fn(),
+      findPendingWithConnection: jest.fn(),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-      create: jest.fn().mockImplementation((data) => ({ ...data })),
-      delete: jest.fn().mockResolvedValue({ affected: 0 }),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ ...data })),
+      deleteByConnection: jest.fn().mockResolvedValue(undefined),
     };
 
     mockZoomProvider = {
@@ -105,11 +102,11 @@ describe("MeetingPlatformService", () => {
       providers: [
         MeetingPlatformService,
         {
-          provide: getRepositoryToken(MeetingPlatformConnection),
+          provide: MeetingPlatformConnectionRepository,
           useValue: mockConnectionRepo,
         },
         {
-          provide: getRepositoryToken(PlatformMeetingRecord),
+          provide: PlatformMeetingRecordRepository,
           useValue: mockRecordRepo,
         },
         {
@@ -184,7 +181,7 @@ describe("MeetingPlatformService", () => {
     it("should create a new connection when none exists", async () => {
       (mockZoomProvider.exchangeAuthCode as jest.Mock).mockResolvedValue(tokenResponse);
       (mockZoomProvider.userInfo as jest.Mock).mockResolvedValue(userInfo);
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConnectionRepo.findByUserAndPlatform as jest.Mock).mockResolvedValue(null);
 
       const result = await service.connectPlatform(100, {
         platform: MeetingPlatform.ZOOM,
@@ -196,13 +193,14 @@ describe("MeetingPlatformService", () => {
       expect(result.accountEmail).toBe("user@example.com");
       expect(result.connectionStatus).toBe(PlatformConnectionStatus.ACTIVE);
       expect(mockConnectionRepo.create).toHaveBeenCalled();
-      expect(mockConnectionRepo.save).toHaveBeenCalled();
     });
 
     it("should update an existing connection", async () => {
       (mockZoomProvider.exchangeAuthCode as jest.Mock).mockResolvedValue(tokenResponse);
       (mockZoomProvider.userInfo as jest.Mock).mockResolvedValue(userInfo);
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue({ ...mockConnection });
+      (mockConnectionRepo.findByUserAndPlatform as jest.Mock).mockResolvedValue({
+        ...mockConnection,
+      });
 
       const result = await service.connectPlatform(100, {
         platform: MeetingPlatform.ZOOM,
@@ -220,7 +218,7 @@ describe("MeetingPlatformService", () => {
       const noExpiryTokens = { ...tokenResponse, expiresIn: 0 };
       (mockZoomProvider.exchangeAuthCode as jest.Mock).mockResolvedValue(noExpiryTokens);
       (mockZoomProvider.userInfo as jest.Mock).mockResolvedValue(userInfo);
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConnectionRepo.findByUserAndPlatform as jest.Mock).mockResolvedValue(null);
 
       const result = await service.connectPlatform(100, {
         platform: MeetingPlatform.ZOOM,
@@ -234,21 +232,18 @@ describe("MeetingPlatformService", () => {
 
   describe("listConnections", () => {
     it("should return mapped connections for user", async () => {
-      (mockConnectionRepo.find as jest.Mock).mockResolvedValue([mockConnection]);
+      (mockConnectionRepo.findByUser as jest.Mock).mockResolvedValue([mockConnection]);
 
       const result = await service.listConnections(100);
 
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe(1);
       expect(result[0].platform).toBe(MeetingPlatform.ZOOM);
-      expect(mockConnectionRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { createdAt: "DESC" },
-      });
+      expect(mockConnectionRepo.findByUser).toHaveBeenCalledWith(100);
     });
 
     it("should return empty array when no connections exist", async () => {
-      (mockConnectionRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockConnectionRepo.findByUser as jest.Mock).mockResolvedValue([]);
 
       const result = await service.listConnections(100);
 
@@ -258,7 +253,7 @@ describe("MeetingPlatformService", () => {
 
   describe("connection", () => {
     it("should return connection by id and userId", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(mockConnection);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockConnection);
 
       const result = await service.connection(100, 1);
 
@@ -267,7 +262,7 @@ describe("MeetingPlatformService", () => {
     });
 
     it("should throw NotFoundException when not found", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.connection(100, 999)).rejects.toThrow(NotFoundException);
     });
@@ -276,7 +271,7 @@ describe("MeetingPlatformService", () => {
   describe("updateConnection", () => {
     it("should update connection settings", async () => {
       const conn = { ...mockConnection };
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(conn);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(conn);
 
       const result = await service.updateConnection(100, 1, {
         autoFetchRecordings: false,
@@ -288,7 +283,7 @@ describe("MeetingPlatformService", () => {
     });
 
     it("should throw NotFoundException when connection not found", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.updateConnection(100, 999, { autoFetchRecordings: false }),
@@ -297,7 +292,7 @@ describe("MeetingPlatformService", () => {
 
     it("should only update provided fields", async () => {
       const conn = { ...mockConnection };
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(conn);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(conn);
 
       const result = await service.updateConnection(100, 1, { autoSendSummary: false });
 
@@ -309,16 +304,16 @@ describe("MeetingPlatformService", () => {
 
   describe("disconnectPlatform", () => {
     it("should delete records and remove connection", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(mockConnection);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockConnection);
 
       await service.disconnectPlatform(100, 1);
 
-      expect(mockRecordRepo.delete).toHaveBeenCalledWith({ connectionId: 1 });
+      expect(mockRecordRepo.deleteByConnection).toHaveBeenCalledWith(1);
       expect(mockConnectionRepo.remove).toHaveBeenCalledWith(mockConnection);
     });
 
     it("should throw NotFoundException when connection not found", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.disconnectPlatform(100, 999)).rejects.toThrow(NotFoundException);
     });
@@ -385,7 +380,7 @@ describe("MeetingPlatformService", () => {
 
   describe("syncRecentMeetings", () => {
     it("should throw NotFoundException when connection not found", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.syncRecentMeetings(100, 999)).rejects.toThrow(NotFoundException);
     });
@@ -417,14 +412,13 @@ describe("MeetingPlatformService", () => {
       ];
 
       (mockZoomProvider.listRecentMeetings as jest.Mock).mockResolvedValue(meetings);
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRecordRepo.findByConnectionAndPlatformMeeting as jest.Mock).mockResolvedValue(null);
 
       const result = await service.syncConnectionMeetings(conn);
 
       expect(result.synced).toBe(1);
       expect(result.recordings).toBe(1);
       expect(mockRecordRepo.create).toHaveBeenCalled();
-      expect(mockRecordRepo.save).toHaveBeenCalled();
     });
 
     it("should update existing records", async () => {
@@ -460,7 +454,9 @@ describe("MeetingPlatformService", () => {
       };
 
       (mockZoomProvider.listRecentMeetings as jest.Mock).mockResolvedValue(meetings);
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue(existingRecord);
+      (mockRecordRepo.findByConnectionAndPlatformMeeting as jest.Mock).mockResolvedValue(
+        existingRecord,
+      );
 
       const result = await service.syncConnectionMeetings(conn);
 
@@ -472,13 +468,13 @@ describe("MeetingPlatformService", () => {
 
   describe("listMeetingRecords", () => {
     it("should throw NotFoundException when connection not found", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.listMeetingRecords(100, 999)).rejects.toThrow(NotFoundException);
     });
 
     it("should return mapped records for valid connection", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(mockConnection);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockConnection);
 
       const records = [
         {
@@ -499,7 +495,7 @@ describe("MeetingPlatformService", () => {
         },
       ];
 
-      (mockRecordRepo.find as jest.Mock).mockResolvedValue(records);
+      (mockRecordRepo.findByConnection as jest.Mock).mockResolvedValue(records);
 
       const result = await service.listMeetingRecords(100, 1);
 
@@ -510,13 +506,13 @@ describe("MeetingPlatformService", () => {
 
   describe("meetingRecord", () => {
     it("should throw NotFoundException when record not found", async () => {
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRecordRepo.findWithConnection as jest.Mock).mockResolvedValue(null);
 
       await expect(service.meetingRecord(100, 999)).rejects.toThrow(NotFoundException);
     });
 
     it("should throw NotFoundException when record belongs to different user", async () => {
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue({
+      (mockRecordRepo.findWithConnection as jest.Mock).mockResolvedValue({
         id: 1,
         connection: { userId: 200 },
       });
@@ -543,7 +539,7 @@ describe("MeetingPlatformService", () => {
         connection: { userId: 100 },
       };
 
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue(record);
+      (mockRecordRepo.findWithConnection as jest.Mock).mockResolvedValue(record);
 
       const result = await service.meetingRecord(100, 1);
 
@@ -554,26 +550,21 @@ describe("MeetingPlatformService", () => {
 
   describe("recordsWithPendingRecordings", () => {
     it("should query records with PENDING status", async () => {
-      (mockRecordRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRecordRepo.findPendingWithConnection as jest.Mock).mockResolvedValue([]);
 
       await service.recordsWithPendingRecordings();
 
-      expect(mockRecordRepo.find).toHaveBeenCalledWith({
-        where: { recordingStatus: PlatformRecordingStatus.PENDING },
-        relations: ["connection"],
-      });
+      expect(mockRecordRepo.findPendingWithConnection).toHaveBeenCalled();
     });
   });
 
   describe("activeConnections", () => {
     it("should query connections with ACTIVE status", async () => {
-      (mockConnectionRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockConnectionRepo.findActive as jest.Mock).mockResolvedValue([]);
 
       await service.activeConnections();
 
-      expect(mockConnectionRepo.find).toHaveBeenCalledWith({
-        where: { connectionStatus: PlatformConnectionStatus.ACTIVE },
-      });
+      expect(mockConnectionRepo.findActive).toHaveBeenCalled();
     });
   });
 
@@ -581,7 +572,7 @@ describe("MeetingPlatformService", () => {
     it("should update connection with error status", async () => {
       await service.markConnectionError(1, "API rate limit exceeded");
 
-      expect(mockConnectionRepo.update).toHaveBeenCalledWith(
+      expect(mockConnectionRepo.markError).toHaveBeenCalledWith(
         1,
         expect.objectContaining({
           connectionStatus: PlatformConnectionStatus.ERROR,

@@ -1,9 +1,10 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { fromISO } from "../../lib/datetime";
-import { Prospect, ProspectStatus } from "../entities/prospect.entity";
+import { ProspectStatus } from "../entities/prospect.entity";
+import { ProspectRepository } from "../prospect.repository";
 import { RepProfile } from "../rep-profile/rep-profile.entity";
+import { RepProfileRepository } from "../rep-profile/rep-profile.repository";
 import { DiscoveryService } from "./discovery.service";
 import { DiscoveredBusiness, DiscoverySource } from "./dto";
 import { GooglePlacesProvider, OsmOverpassProvider, YellowPagesProvider } from "./providers";
@@ -12,15 +13,15 @@ describe("DiscoveryService", () => {
   let service: DiscoveryService;
 
   const mockProspectRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findExistingExternalIds: jest.fn(),
+    findOwnerDuplicate: jest.fn(),
+    findOwnerByNormalizedPhone: jest.fn(),
+    findOwnerByNameAndCity: jest.fn(),
     create: jest.fn(),
-    save: jest.fn(),
-    createQueryBuilder: jest.fn(),
   };
 
   const mockRepProfileRepository = {
-    findOne: jest.fn(),
+    findByUserId: jest.fn(),
   };
 
   const mockGooglePlacesProvider = {
@@ -65,8 +66,8 @@ describe("DiscoveryService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DiscoveryService,
-        { provide: getRepositoryToken(Prospect), useValue: mockProspectRepository },
-        { provide: getRepositoryToken(RepProfile), useValue: mockRepProfileRepository },
+        { provide: ProspectRepository, useValue: mockProspectRepository },
+        { provide: RepProfileRepository, useValue: mockRepProfileRepository },
         { provide: GooglePlacesProvider, useValue: mockGooglePlacesProvider },
         { provide: YellowPagesProvider, useValue: mockYellowPagesProvider },
         { provide: OsmOverpassProvider, useValue: mockOsmOverpassProvider },
@@ -92,10 +93,10 @@ describe("DiscoveryService", () => {
 
     it("should search Google Places and return results", async () => {
       const businesses = [sampleBusiness()];
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue(businesses);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const result = await service.search(1, searchDto);
 
@@ -107,10 +108,10 @@ describe("DiscoveryService", () => {
 
     it("should filter out already-imported prospects", async () => {
       const businesses = [sampleBusiness()];
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue(businesses);
-      mockProspectRepository.find.mockResolvedValue([
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([
         { googlePlaceId: "place_abc123", externalId: null },
       ]);
 
@@ -129,10 +130,10 @@ describe("DiscoveryService", () => {
         targetCustomerProfile: { businessTypes: ["OEM"] },
         defaultSearchRadiusKm: 25,
       } as RepProfile;
-      mockRepProfileRepository.findOne.mockResolvedValue(profile);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(profile);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue([]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const dto = { latitude: -26.2041, longitude: 28.0473 };
       await service.search(1, dto);
@@ -146,10 +147,10 @@ describe("DiscoveryService", () => {
     });
 
     it("should use default search terms when no profile and no custom terms", async () => {
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue([]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const dto = { latitude: -26.2041, longitude: 28.0473 };
       await service.search(1, dto);
@@ -162,9 +163,9 @@ describe("DiscoveryService", () => {
     });
 
     it("should skip Google Places when not configured", async () => {
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(false);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const result = await service.search(1, searchDto);
 
@@ -181,11 +182,11 @@ describe("DiscoveryService", () => {
         latitude: -26.3,
         longitude: 28.1,
       });
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue([googleBusiness]);
       mockOsmOverpassProvider.search.mockResolvedValue([osmBusiness]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const dto = {
         ...searchDto,
@@ -206,11 +207,11 @@ describe("DiscoveryService", () => {
         source: DiscoverySource.OSM,
         externalId: "osm_1",
       });
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue([googleBusiness]);
       mockOsmOverpassProvider.search.mockResolvedValue([osmBusiness]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const dto = {
         ...searchDto,
@@ -223,10 +224,10 @@ describe("DiscoveryService", () => {
     });
 
     it("should return cached results on second call", async () => {
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue([sampleBusiness()]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       await service.search(1, searchDto);
       await service.search(1, searchDto);
@@ -239,9 +240,9 @@ describe("DiscoveryService", () => {
         source: DiscoverySource.YELLOW_PAGES,
         externalId: "yp_1",
       });
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockYellowPagesProvider.search.mockResolvedValue([ypBusiness]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const dto = {
         ...searchDto,
@@ -254,10 +255,10 @@ describe("DiscoveryService", () => {
     });
 
     it("should skip Google Places when daily limit reached", async () => {
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue([sampleBusiness()]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       mockConfigService.get.mockImplementation((key: string, defaultValue: number) => {
         if (key === "DISCOVERY_GOOGLE_DAILY_LIMIT") return 1;
@@ -267,8 +268,8 @@ describe("DiscoveryService", () => {
       const freshModule = await Test.createTestingModule({
         providers: [
           DiscoveryService,
-          { provide: getRepositoryToken(Prospect), useValue: mockProspectRepository },
-          { provide: getRepositoryToken(RepProfile), useValue: mockRepProfileRepository },
+          { provide: ProspectRepository, useValue: mockProspectRepository },
+          { provide: RepProfileRepository, useValue: mockRepProfileRepository },
           { provide: GooglePlacesProvider, useValue: mockGooglePlacesProvider },
           { provide: YellowPagesProvider, useValue: mockYellowPagesProvider },
           { provide: OsmOverpassProvider, useValue: mockOsmOverpassProvider },
@@ -291,15 +292,10 @@ describe("DiscoveryService", () => {
   describe("importBusinesses", () => {
     it("should import new businesses as prospects", async () => {
       const business = sampleBusiness();
-      mockProspectRepository.findOne.mockResolvedValue(null);
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(null),
-      };
-      mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
-      mockProspectRepository.create.mockReturnValue({ id: 1, ...business });
-      mockProspectRepository.save.mockResolvedValue({ id: 1, ...business });
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNormalizedPhone.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNameAndCity.mockResolvedValue(null);
+      mockProspectRepository.create.mockResolvedValue({ id: 1, ...business });
 
       const result = await service.importBusinesses(1, [business]);
 
@@ -319,7 +315,7 @@ describe("DiscoveryService", () => {
 
     it("should skip duplicate businesses by external ID", async () => {
       const business = sampleBusiness();
-      mockProspectRepository.findOne.mockResolvedValue({ id: 99 });
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue({ id: 99 });
 
       const result = await service.importBusinesses(1, [business]);
 
@@ -330,13 +326,9 @@ describe("DiscoveryService", () => {
 
     it("should skip duplicate businesses by phone number", async () => {
       const business = sampleBusiness();
-      mockProspectRepository.findOne.mockResolvedValue(null);
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValueOnce({ id: 99 }),
-      };
-      mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNormalizedPhone.mockResolvedValue({ id: 99 });
+      mockProspectRepository.findOwnerByNameAndCity.mockResolvedValue(null);
 
       const result = await service.importBusinesses(1, [business]);
 
@@ -345,13 +337,9 @@ describe("DiscoveryService", () => {
 
     it("should skip duplicate businesses by name and city", async () => {
       const business = sampleBusiness({ phone: null });
-      mockProspectRepository.findOne.mockResolvedValue(null);
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue({ id: 99 }),
-      };
-      mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNormalizedPhone.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNameAndCity.mockResolvedValue({ id: 99 });
 
       const result = await service.importBusinesses(1, [business]);
 
@@ -363,15 +351,10 @@ describe("DiscoveryService", () => {
         source: DiscoverySource.OSM,
         externalId: "osm_123",
       });
-      mockProspectRepository.findOne.mockResolvedValue(null);
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(null),
-      };
-      mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
-      mockProspectRepository.create.mockReturnValue({ id: 2 });
-      mockProspectRepository.save.mockResolvedValue({ id: 2 });
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNormalizedPhone.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNameAndCity.mockResolvedValue(null);
+      mockProspectRepository.create.mockResolvedValue({ id: 2 });
 
       await service.importBusinesses(1, [osmBusiness]);
 
@@ -385,15 +368,10 @@ describe("DiscoveryService", () => {
 
     it("should store website in notes field", async () => {
       const business = sampleBusiness({ website: "https://example.com" });
-      mockProspectRepository.findOne.mockResolvedValue(null);
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(null),
-      };
-      mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
-      mockProspectRepository.create.mockReturnValue({ id: 3 });
-      mockProspectRepository.save.mockResolvedValue({ id: 3 });
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNormalizedPhone.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNameAndCity.mockResolvedValue(null);
+      mockProspectRepository.create.mockResolvedValue({ id: 3 });
 
       await service.importBusinesses(1, [business]);
 
@@ -406,15 +384,10 @@ describe("DiscoveryService", () => {
 
     it("should set null notes when no website", async () => {
       const business = sampleBusiness({ website: null });
-      mockProspectRepository.findOne.mockResolvedValue(null);
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(null),
-      };
-      mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
-      mockProspectRepository.create.mockReturnValue({ id: 4 });
-      mockProspectRepository.save.mockResolvedValue({ id: 4 });
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNormalizedPhone.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNameAndCity.mockResolvedValue(null);
+      mockProspectRepository.create.mockResolvedValue({ id: 4 });
 
       await service.importBusinesses(1, [business]);
 
@@ -429,15 +402,10 @@ describe("DiscoveryService", () => {
       const business = sampleBusiness({
         businessTypes: ["type1", "type2", "type3", "type4", "type5", "type6", "type7"],
       });
-      mockProspectRepository.findOne.mockResolvedValue(null);
-      const mockQueryBuilder = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        getOne: jest.fn().mockResolvedValue(null),
-      };
-      mockProspectRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
-      mockProspectRepository.create.mockReturnValue({ id: 5 });
-      mockProspectRepository.save.mockResolvedValue({ id: 5 });
+      mockProspectRepository.findOwnerDuplicate.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNormalizedPhone.mockResolvedValue(null);
+      mockProspectRepository.findOwnerByNameAndCity.mockResolvedValue(null);
+      mockProspectRepository.create.mockResolvedValue({ id: 5 });
 
       await service.importBusinesses(1, [business]);
 
@@ -460,10 +428,10 @@ describe("DiscoveryService", () => {
     });
 
     it("should reflect usage after searches", async () => {
-      mockRepProfileRepository.findOne.mockResolvedValue(null);
+      mockRepProfileRepository.findByUserId.mockResolvedValue(null);
       mockGooglePlacesProvider.isConfigured.mockReturnValue(true);
       mockGooglePlacesProvider.search.mockResolvedValue([]);
-      mockProspectRepository.find.mockResolvedValue([]);
+      mockProspectRepository.findExistingExternalIds.mockResolvedValue([]);
 
       const quotaBefore = service.quota();
 

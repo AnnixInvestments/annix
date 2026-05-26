@@ -1,23 +1,17 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { CreateRepProfileDto, UpdateRepProfileDto } from "./rep-profile.dto";
 import { RepProfile } from "./rep-profile.entity";
+import { RepProfileRepository } from "./rep-profile.repository";
 
 @Injectable()
 export class RepProfileService {
   private readonly logger = new Logger(RepProfileService.name);
 
-  constructor(
-    @InjectRepository(RepProfile)
-    private readonly repProfileRepo: Repository<RepProfile>,
-  ) {}
+  constructor(private readonly repProfileRepo: RepProfileRepository) {}
 
   async profileByUserId(userId: number): Promise<RepProfile | null> {
-    return this.repProfileRepo.findOne({
-      where: { userId },
-    });
+    return this.repProfileRepo.findByUserId(userId);
   }
 
   async setupStatus(
@@ -36,7 +30,7 @@ export class RepProfileService {
       return this.updateProfile(userId, dto);
     }
 
-    const profile = this.repProfileRepo.create({
+    const saved = await this.repProfileRepo.create({
       userId,
       industry: dto.industry,
       subIndustries: dto.subIndustries,
@@ -52,8 +46,6 @@ export class RepProfileService {
       setupCompleted: true,
       setupCompletedAt: now().toJSDate(),
     });
-
-    const saved = await this.repProfileRepo.save(profile);
     this.logger.log(`Rep profile created for user ${userId}`);
     return saved;
   }
@@ -62,13 +54,13 @@ export class RepProfileService {
     const existingProfile = await this.profileByUserId(userId);
     const profile =
       existingProfile ??
-      this.repProfileRepo.create({
+      ({
         userId,
         industry: dto.industry ?? "",
         subIndustries: dto.subIndustries ?? [],
         productCategories: dto.productCategories ?? [],
         setupCompleted: false,
-      });
+      } as RepProfile);
 
     if (dto.industry != null) {
       profile.industry = dto.industry;
@@ -125,7 +117,9 @@ export class RepProfileService {
       profile.workingDays = dto.workingDays;
     }
 
-    const saved = await this.repProfileRepo.save(profile);
+    const saved = existingProfile
+      ? await this.repProfileRepo.save(profile)
+      : await this.repProfileRepo.create(profile);
     this.logger.log(`Rep profile updated for user ${userId}`);
     return saved;
   }

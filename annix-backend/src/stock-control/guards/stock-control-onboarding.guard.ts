@@ -6,9 +6,7 @@ import {
   SetMetadata,
 } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Company } from "../../platform/entities/company.entity";
+import { CompanyRepository } from "../../platform/company.repository";
 
 export const SKIP_ONBOARDING_CHECK = "skipOnboardingCheck";
 export const SkipOnboardingCheck = () => SetMetadata(SKIP_ONBOARDING_CHECK, true);
@@ -17,8 +15,7 @@ export const SkipOnboardingCheck = () => SetMetadata(SKIP_ONBOARDING_CHECK, true
 export class StockControlOnboardingGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
+    private readonly companyRepo: CompanyRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,10 +32,7 @@ export class StockControlOnboardingGuard implements CanActivate {
     const companyId = request.user?.companyId;
     if (!companyId) return true;
 
-    const company = await this.companyRepo.findOne({
-      where: { id: companyId },
-      select: { id: true, onboardingComplete: true },
-    });
+    const company = await this.companyRepo.findOnboardingStatusById(companyId);
     if (company?.onboardingComplete === false) {
       throw new ForbiddenException({
         code: "ONBOARDING_REQUIRED",

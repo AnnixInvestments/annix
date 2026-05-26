@@ -1,25 +1,23 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
-import { Repository } from "typeorm";
 import { UserRole } from "../../src/user-roles/entities/user-role.entity";
+import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { User } from "./entities/user.entity";
+import { UserRepository } from "./user.repository";
 import { UserService } from "./user.service";
 
 const mockUserRepo = {
-  create: jest.fn(),
+  instantiate: jest.fn(),
   save: jest.fn(),
-  find: jest.fn(),
-  findOne: jest.fn(),
-  findOneBy: jest.fn(),
-  delete: jest.fn(),
+  findAllWithRoles: jest.fn(),
+  findByIdWithRoles: jest.fn(),
+  deleteById: jest.fn(),
 };
 
 const mockUserRoleRepo = {
-  findOne: jest.fn(),
+  findByName: jest.fn(),
   create: jest.fn(),
-  save: jest.fn(),
 };
 
 jest.mock("bcrypt", () => ({
@@ -29,21 +27,21 @@ jest.mock("bcrypt", () => ({
 
 describe("UserService", () => {
   let service: UserService;
-  let userRepo: jest.Mocked<Repository<User>>;
-  let roleRepo: jest.Mocked<Repository<UserRole>>;
+  let userRepo: jest.Mocked<UserRepository>;
+  let roleRepo: jest.Mocked<UserRoleRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
-        { provide: getRepositoryToken(User), useValue: mockUserRepo },
-        { provide: getRepositoryToken(UserRole), useValue: mockUserRoleRepo },
+        { provide: UserRepository, useValue: mockUserRepo },
+        { provide: UserRoleRepository, useValue: mockUserRoleRepo },
       ],
     }).compile();
 
     service = module.get<UserService>(UserService);
-    userRepo = module.get(getRepositoryToken(User));
-    roleRepo = module.get(getRepositoryToken(UserRole));
+    userRepo = module.get(UserRepository);
+    roleRepo = module.get(UserRoleRepository);
 
     jest.clearAllMocks();
   });
@@ -64,7 +62,7 @@ describe("UserService", () => {
       (bcrypt.hash as jest.Mock).mockResolvedValue(hashedPassword);
 
       const role = { id: 1, name: "employee" } as UserRole;
-      roleRepo.findOne.mockResolvedValue(role);
+      roleRepo.findByName.mockResolvedValue(role);
 
       const createdUser = {
         username: dto.username,
@@ -72,12 +70,12 @@ describe("UserService", () => {
         passwordHash: hashedPassword,
         roles: [role],
       } as User;
-      userRepo.create.mockReturnValue(createdUser);
+      userRepo.instantiate.mockReturnValue(createdUser);
       userRepo.save.mockResolvedValue({ ...createdUser, id: 1 });
 
       const result = await service.create(dto);
 
-      expect(userRepo.create).toHaveBeenCalledWith({
+      expect(userRepo.instantiate).toHaveBeenCalledWith({
         ...dto,
         passwordHash: hashedPassword,
       });
@@ -93,28 +91,28 @@ describe("UserService", () => {
   describe("findAll", () => {
     it("should return all users", async () => {
       const users = [{ id: 1, username: "john", email: "john@example.com" }] as User[];
-      userRepo.find.mockResolvedValue(users);
+      userRepo.findAllWithRoles.mockResolvedValue(users);
 
       const result = await service.findAll();
 
       expect(result).toHaveLength(1);
-      expect(userRepo.find).toHaveBeenCalled();
+      expect(userRepo.findAllWithRoles).toHaveBeenCalled();
     });
   });
 
   describe("findOne", () => {
     it("should return a user by ID", async () => {
       const user = { id: 1, username: "john" } as User;
-      userRepo.findOne.mockResolvedValue(user);
+      userRepo.findByIdWithRoles.mockResolvedValue(user);
 
       const result = await service.findOne(1);
 
       expect(result).toEqual(user);
-      expect(userRepo.findOne).toHaveBeenCalledWith({ where: { id: 1 }, relations: ["roles"] });
+      expect(userRepo.findByIdWithRoles).toHaveBeenCalledWith(1);
     });
 
     it("should throw NotFoundException if user does not exist", async () => {
-      userRepo.findOne.mockResolvedValue(null);
+      userRepo.findByIdWithRoles.mockResolvedValue(null);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
@@ -135,16 +133,16 @@ describe("UserService", () => {
 
   describe("remove", () => {
     it("should delete a user", async () => {
-      userRepo.delete.mockResolvedValue({ affected: 1 } as any);
+      userRepo.deleteById.mockResolvedValue(1);
 
       const result = await service.remove(1);
 
       expect(result).toEqual({ deleted: true });
-      expect(userRepo.delete).toHaveBeenCalledWith(1);
+      expect(userRepo.deleteById).toHaveBeenCalledWith(1);
     });
 
     it("should throw NotFoundException if user not found", async () => {
-      userRepo.delete.mockResolvedValue({ affected: 0 } as any);
+      userRepo.deleteById.mockResolvedValue(0);
 
       await expect(service.remove(1)).rejects.toThrow(NotFoundException);
     });

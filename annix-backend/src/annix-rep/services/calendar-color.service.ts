@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { CalendarColorRepository } from "../calendar-color.repository";
 import {
   CalendarColor,
   type CalendarColorType,
@@ -16,13 +15,10 @@ export interface UserColorScheme {
 
 @Injectable()
 export class CalendarColorService {
-  constructor(
-    @InjectRepository(CalendarColor)
-    private readonly colorRepo: Repository<CalendarColor>,
-  ) {}
+  constructor(private readonly colorRepo: CalendarColorRepository) {}
 
   async colorsForUser(userId: number): Promise<UserColorScheme> {
-    const colors = await this.colorRepo.find({ where: { userId } });
+    const colors = await this.colorRepo.findByUser(userId);
 
     const meetingTypes = { ...DEFAULT_MEETING_TYPE_COLORS };
     const statuses = { ...DEFAULT_STATUS_COLORS };
@@ -47,23 +43,19 @@ export class CalendarColorService {
     colorKey: string,
     colorValue: string,
   ): Promise<CalendarColor> {
-    const existing = await this.colorRepo.findOne({
-      where: { userId, colorType, colorKey },
-    });
+    const existing = await this.colorRepo.findByUserTypeKey(userId, colorType, colorKey);
 
     if (existing) {
       existing.colorValue = colorValue;
       return this.colorRepo.save(existing);
     }
 
-    const newColor = this.colorRepo.create({
+    return this.colorRepo.create({
       userId,
       colorType,
       colorKey,
       colorValue,
     });
-
-    return this.colorRepo.save(newColor);
   }
 
   async setColors(
@@ -77,7 +69,10 @@ export class CalendarColorService {
   }
 
   async resetToDefaults(userId: number, colorType?: CalendarColorType): Promise<void> {
-    const whereClause = colorType ? { userId, colorType } : { userId };
-    await this.colorRepo.delete(whereClause);
+    if (colorType) {
+      await this.colorRepo.deleteByUserAndType(userId, colorType);
+    } else {
+      await this.colorRepo.deleteByUser(userId);
+    }
   }
 }

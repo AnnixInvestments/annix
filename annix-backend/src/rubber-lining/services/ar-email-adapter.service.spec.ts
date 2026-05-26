@@ -1,11 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { InboundEmailAttachment } from "../../inbound-email/entities/inbound-email-attachment.entity";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { RubberCompany } from "../entities/rubber-company.entity";
-import { DeliveryNoteType, RubberDeliveryNote } from "../entities/rubber-delivery-note.entity";
-import { RubberTaxInvoice } from "../entities/rubber-tax-invoice.entity";
+import { DeliveryNoteType } from "../entities/rubber-delivery-note.entity";
+import { RubberCompanyRepository } from "../repositories/rubber-company.repository";
+import { RubberDeliveryNoteRepository } from "../repositories/rubber-delivery-note.repository";
+import { RubberTaxInvoiceRepository } from "../repositories/rubber-tax-invoice.repository";
 import { RubberInboundEmailService } from "../rubber-inbound-email.service";
 import { ArDocumentType, ArEmailAdapterService } from "./ar-email-adapter.service";
 import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
@@ -28,7 +29,7 @@ describe("ArEmailAdapterService", () => {
   };
 
   const companyRepo = {
-    find: jest.fn(),
+    findByCompoundOwner: jest.fn(),
   };
 
   const registry = { registerAdapter: jest.fn() };
@@ -51,9 +52,9 @@ describe("ArEmailAdapterService", () => {
         ArEmailAdapterService,
         { provide: InboundEmailRegistry, useValue: registry },
         { provide: AiChatService, useValue: aiChatMock },
-        { provide: getRepositoryToken(RubberDeliveryNote), useValue: deliveryNoteRepo },
-        { provide: getRepositoryToken(RubberTaxInvoice), useValue: taxInvoiceRepo },
-        { provide: getRepositoryToken(RubberCompany), useValue: companyRepo },
+        { provide: RubberDeliveryNoteRepository, useValue: deliveryNoteRepo },
+        { provide: RubberTaxInvoiceRepository, useValue: taxInvoiceRepo },
+        { provide: RubberCompanyRepository, useValue: companyRepo },
         { provide: RubberExtractionOrchestratorService, useValue: orchestratorMock },
         { provide: RubberInboundEmailService, useValue: rubberInboundEmailMock },
       ],
@@ -245,7 +246,7 @@ describe("ArEmailAdapterService", () => {
 
   describe("route - tax invoice", () => {
     it("creates RubberTaxInvoice and triggers extraction", async () => {
-      companyRepo.find.mockResolvedValue([
+      companyRepo.findByCompoundOwner.mockResolvedValue([
         {
           id: 10,
           name: "Test Supplier",
@@ -284,7 +285,7 @@ describe("ArEmailAdapterService", () => {
     });
 
     it("extracts invoice number from subject", async () => {
-      companyRepo.find.mockResolvedValue([]);
+      companyRepo.findByCompoundOwner.mockResolvedValue([]);
 
       const attachment = {
         documentType: ArDocumentType.TAX_INVOICE,
@@ -307,7 +308,7 @@ describe("ArEmailAdapterService", () => {
 
   describe("route - delivery note", () => {
     it("creates RubberDeliveryNote and triggers extraction", async () => {
-      companyRepo.find.mockResolvedValue([]);
+      companyRepo.findByCompoundOwner.mockResolvedValue([]);
 
       const fileBuffer = Buffer.from("dn pdf content");
       const attachment = {
@@ -414,7 +415,7 @@ describe("ArEmailAdapterService", () => {
 
   describe("supplier resolution via emailConfig", () => {
     it("finds supplier by email domain in emailConfig values", async () => {
-      companyRepo.find.mockResolvedValue([
+      companyRepo.findByCompoundOwner.mockResolvedValue([
         { id: 1, isCompoundOwner: false, emailConfig: { po: "other@different.com" } },
         { id: 2, isCompoundOwner: false, emailConfig: { notify: "ap@example.com" } },
       ] as unknown as RubberCompany[]);
@@ -431,7 +432,7 @@ describe("ArEmailAdapterService", () => {
     });
 
     it("returns companyId=0 when no supplier match", async () => {
-      companyRepo.find.mockResolvedValue([]);
+      companyRepo.findByCompoundOwner.mockResolvedValue([]);
 
       const attachment = {
         documentType: ArDocumentType.TAX_INVOICE,

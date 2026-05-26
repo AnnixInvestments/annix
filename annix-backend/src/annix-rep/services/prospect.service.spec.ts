@@ -1,15 +1,14 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository, SelectQueryBuilder } from "typeorm";
 import { fromISO } from "../../lib/datetime";
 import { FollowUpRecurrence, Prospect, ProspectPriority, ProspectStatus } from "../entities";
+import { ProspectRepository } from "../prospect.repository";
 import { ProspectService } from "./prospect.service";
 import { ProspectActivityService } from "./prospect-activity.service";
 
 describe("ProspectService", () => {
   let service: ProspectService;
-  let mockRepo: Partial<Repository<Prospect>>;
+  let mockRepo: any;
   let mockActivityService: Partial<ProspectActivityService>;
 
   const OWNER_ID = 100;
@@ -61,32 +60,25 @@ describe("ProspectService", () => {
       ...overrides,
     }) as Prospect;
 
-  const mockQueryBuilder = (): Partial<SelectQueryBuilder<Prospect>> => {
-    const qb: Partial<SelectQueryBuilder<Prospect>> = {
-      where: jest.fn().mockReturnThis() as any,
-      andWhere: jest.fn().mockReturnThis() as any,
-      orderBy: jest.fn().mockReturnThis() as any,
-      select: jest.fn().mockReturnThis() as any,
-      addSelect: jest.fn().mockReturnThis() as any,
-      groupBy: jest.fn().mockReturnThis() as any,
-      setParameter: jest.fn().mockReturnThis() as any,
-      limit: jest.fn().mockReturnThis() as any,
-      getMany: jest.fn().mockResolvedValue([]),
-      getRawMany: jest.fn().mockResolvedValue([]),
-    };
-    return qb;
-  };
-
   beforeEach(async () => {
     mockRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      find: jest.fn(),
-      findOne: jest.fn(),
+      saveMany: jest.fn(),
+      createMany: jest.fn(),
       remove: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder()),
+      findByOwner: jest.fn().mockResolvedValue([]),
+      findAllByOwner: jest.fn().mockResolvedValue([]),
+      findByOwnerAndStatus: jest.fn().mockResolvedValue([]),
+      findByOwnerAndId: jest.fn(),
+      findByOwnerInIds: jest.fn().mockResolvedValue([]),
+      findByOwnerInIdsSelectId: jest.fn().mockResolvedValue([]),
+      findNearby: jest.fn().mockResolvedValue([]),
+      countByStatusGrouped: jest.fn().mockResolvedValue([]),
+      findFollowUpsDue: jest.fn().mockResolvedValue([]),
+      updateStatusForOwner: jest.fn().mockResolvedValue(undefined),
+      deleteByOwnerInIds: jest.fn().mockResolvedValue(undefined),
+      deleteByIds: jest.fn().mockResolvedValue(undefined),
     };
 
     mockActivityService = {
@@ -105,7 +97,7 @@ describe("ProspectService", () => {
       providers: [
         ProspectService,
         {
-          provide: getRepositoryToken(Prospect),
+          provide: ProspectRepository,
           useValue: mockRepo,
         },
         {
@@ -151,8 +143,7 @@ describe("ProspectService", () => {
         ...dto,
         nextFollowUpAt: fromISO(dto.nextFollowUpAt).toJSDate(),
       });
-      (mockRepo.create as jest.Mock).mockReturnValue(created);
-      (mockRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockRepo.create as jest.Mock).mockResolvedValue(created);
 
       const result = await service.create(OWNER_ID, dto);
 
@@ -179,8 +170,7 @@ describe("ProspectService", () => {
       };
 
       const created = mockProspect({ companyName: "Minimal Prospect" });
-      (mockRepo.create as jest.Mock).mockReturnValue(created);
-      (mockRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockRepo.create as jest.Mock).mockResolvedValue(created);
 
       await service.create(OWNER_ID, dto);
 
@@ -205,8 +195,7 @@ describe("ProspectService", () => {
       };
 
       const created = mockProspect({ companyName: "Local Company" });
-      (mockRepo.create as jest.Mock).mockReturnValue(created);
-      (mockRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockRepo.create as jest.Mock).mockResolvedValue(created);
 
       await service.create(OWNER_ID, dto);
 
@@ -222,8 +211,7 @@ describe("ProspectService", () => {
       };
 
       const created = mockProspect();
-      (mockRepo.create as jest.Mock).mockReturnValue(created);
-      (mockRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockRepo.create as jest.Mock).mockResolvedValue(created);
 
       await service.create(OWNER_ID, dto);
 
@@ -240,8 +228,7 @@ describe("ProspectService", () => {
       };
 
       const created = mockProspect();
-      (mockRepo.create as jest.Mock).mockReturnValue(created);
-      (mockRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockRepo.create as jest.Mock).mockResolvedValue(created);
 
       await service.create(OWNER_ID, dto);
 
@@ -253,20 +240,16 @@ describe("ProspectService", () => {
   describe("findAll", () => {
     it("should return all prospects for owner ordered by updatedAt DESC", async () => {
       const prospects = [mockProspect({ id: 1 }), mockProspect({ id: 2 })];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.findAll(OWNER_ID);
 
       expect(result).toEqual(prospects);
-      expect(mockRepo.find).toHaveBeenCalledWith({
-        where: { ownerId: OWNER_ID },
-        order: { updatedAt: "DESC" },
-        take: 500,
-      });
+      expect(mockRepo.findByOwner).toHaveBeenCalledWith(OWNER_ID, 500);
     });
 
     it("should return empty array when no prospects exist", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue([]);
 
       const result = await service.findAll(OWNER_ID);
 
@@ -277,33 +260,31 @@ describe("ProspectService", () => {
   describe("findByStatus", () => {
     it("should return prospects filtered by status", async () => {
       const prospects = [mockProspect({ status: ProspectStatus.QUALIFIED })];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwnerAndStatus as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.findByStatus(OWNER_ID, ProspectStatus.QUALIFIED);
 
       expect(result).toEqual(prospects);
-      expect(mockRepo.find).toHaveBeenCalledWith({
-        where: { ownerId: OWNER_ID, status: ProspectStatus.QUALIFIED },
-        order: { updatedAt: "DESC" },
-      });
+      expect(mockRepo.findByOwnerAndStatus).toHaveBeenCalledWith(
+        OWNER_ID,
+        ProspectStatus.QUALIFIED,
+      );
     });
   });
 
   describe("findOne", () => {
     it("should return a prospect by id and ownerId", async () => {
       const prospect = mockProspect();
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(prospect);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(prospect);
 
       const result = await service.findOne(OWNER_ID, 1);
 
       expect(result).toEqual(prospect);
-      expect(mockRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1, ownerId: OWNER_ID },
-      });
+      expect(mockRepo.findByOwnerAndId).toHaveBeenCalledWith(OWNER_ID, 1);
     });
 
     it("should throw NotFoundException when prospect does not exist", async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(null);
 
       await expect(service.findOne(OWNER_ID, 999)).rejects.toThrow(NotFoundException);
       await expect(service.findOne(OWNER_ID, 999)).rejects.toThrow("Prospect 999 not found");
@@ -317,7 +298,7 @@ describe("ProspectService", () => {
         companyName: "Updated Name",
         contactEmail: "new@example.com",
       });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(updated);
 
       const result = await service.update(OWNER_ID, 1, {
@@ -332,7 +313,7 @@ describe("ProspectService", () => {
     it("should log status change when status is updated", async () => {
       const existing = mockProspect({ status: ProspectStatus.NEW });
       const updated = mockProspect({ status: ProspectStatus.CONTACTED });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(updated);
 
       await service.update(OWNER_ID, 1, { status: ProspectStatus.CONTACTED });
@@ -348,7 +329,7 @@ describe("ProspectService", () => {
     it("should log tags changed when tags are updated", async () => {
       const existing = mockProspect({ tags: ["mining"] });
       const updated = mockProspect({ tags: ["mining", "industrial"] });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(updated);
 
       await service.update(OWNER_ID, 1, { tags: ["mining", "industrial"] });
@@ -364,7 +345,7 @@ describe("ProspectService", () => {
     it("should log field updates when neither status nor tags change", async () => {
       const existing = mockProspect();
       const updated = mockProspect({ companyName: "New Name" });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(updated);
 
       await service.update(OWNER_ID, 1, { companyName: "New Name" });
@@ -377,7 +358,7 @@ describe("ProspectService", () => {
     it("should not log field updates when status changes", async () => {
       const existing = mockProspect({ status: ProspectStatus.NEW });
       const updated = mockProspect({ status: ProspectStatus.CONTACTED });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(updated);
 
       await service.update(OWNER_ID, 1, { status: ProspectStatus.CONTACTED });
@@ -387,7 +368,7 @@ describe("ProspectService", () => {
 
     it("should parse nextFollowUpAt ISO string when updating", async () => {
       const existing = mockProspect();
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       await service.update(OWNER_ID, 1, { nextFollowUpAt: "2026-04-01T09:00:00Z" });
@@ -397,7 +378,7 @@ describe("ProspectService", () => {
     });
 
     it("should throw NotFoundException for non-existent prospect", async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.update(OWNER_ID, 999, { companyName: "Does not matter" }),
@@ -409,7 +390,7 @@ describe("ProspectService", () => {
     it("should update prospect status and log change", async () => {
       const existing = mockProspect({ status: ProspectStatus.NEW });
       const updated = mockProspect({ status: ProspectStatus.QUALIFIED });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(updated);
 
       const result = await service.updateStatus(OWNER_ID, 1, ProspectStatus.QUALIFIED);
@@ -425,7 +406,7 @@ describe("ProspectService", () => {
 
     it("should not log status change when status is unchanged", async () => {
       const existing = mockProspect({ status: ProspectStatus.NEW });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockResolvedValue(existing);
 
       await service.updateStatus(OWNER_ID, 1, ProspectStatus.NEW);
@@ -437,7 +418,7 @@ describe("ProspectService", () => {
   describe("markContacted", () => {
     it("should set lastContactedAt and log contacted activity", async () => {
       const existing = mockProspect();
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       const result = await service.markContacted(OWNER_ID, 1);
@@ -450,7 +431,7 @@ describe("ProspectService", () => {
   describe("remove", () => {
     it("should remove a prospect", async () => {
       const existing = mockProspect();
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.remove as jest.Mock).mockResolvedValue(existing);
 
       await service.remove(OWNER_ID, 1);
@@ -459,7 +440,7 @@ describe("ProspectService", () => {
     });
 
     it("should throw NotFoundException for non-existent prospect", async () => {
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(null);
 
       await expect(service.remove(OWNER_ID, 999)).rejects.toThrow(NotFoundException);
     });
@@ -467,9 +448,7 @@ describe("ProspectService", () => {
 
   describe("findNearby", () => {
     it("should use query builder with Haversine formula", async () => {
-      const qb = mockQueryBuilder();
-      (mockRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
-      (qb.getMany as jest.Mock).mockResolvedValue([mockProspect()]);
+      (mockRepo.findNearby as jest.Mock).mockResolvedValue([mockProspect()]);
 
       const result = await service.findNearby(OWNER_ID, {
         latitude: -26.2041,
@@ -479,29 +458,24 @@ describe("ProspectService", () => {
       });
 
       expect(result).toHaveLength(1);
-      expect(qb.where).toHaveBeenCalled();
-      expect(qb.limit).toHaveBeenCalledWith(10);
+      expect(mockRepo.findNearby).toHaveBeenCalledWith(OWNER_ID, -26.2041, 28.0473, 15, 10);
     });
 
     it("should default radiusKm to 10 and limit to 20", async () => {
-      const qb = mockQueryBuilder();
-      (mockRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
-      (qb.getMany as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findNearby as jest.Mock).mockResolvedValue([]);
 
       await service.findNearby(OWNER_ID, {
         latitude: -26.2041,
         longitude: 28.0473,
       });
 
-      expect(qb.limit).toHaveBeenCalledWith(20);
+      expect(mockRepo.findNearby).toHaveBeenCalledWith(OWNER_ID, -26.2041, 28.0473, 10, 20);
     });
   });
 
   describe("countByStatus", () => {
     it("should return counts for all statuses", async () => {
-      const qb = mockQueryBuilder();
-      (mockRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
-      (qb.getRawMany as jest.Mock).mockResolvedValue([
+      (mockRepo.countByStatusGrouped as jest.Mock).mockResolvedValue([
         { status: ProspectStatus.NEW, count: "5" },
         { status: ProspectStatus.CONTACTED, count: "3" },
       ]);
@@ -517,9 +491,7 @@ describe("ProspectService", () => {
     });
 
     it("should return all zeros when no prospects exist", async () => {
-      const qb = mockQueryBuilder();
-      (mockRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
-      (qb.getRawMany as jest.Mock).mockResolvedValue([]);
+      (mockRepo.countByStatusGrouped as jest.Mock).mockResolvedValue([]);
 
       const result = await service.countByStatus(OWNER_ID);
 
@@ -531,27 +503,20 @@ describe("ProspectService", () => {
 
   describe("followUpsDue", () => {
     it("should query for due follow-ups excluding closed statuses", async () => {
-      const qb = mockQueryBuilder();
-      (mockRepo.createQueryBuilder as jest.Mock).mockReturnValue(qb);
       const dueProspect = mockProspect({ nextFollowUpAt: testDate });
-      (qb.getMany as jest.Mock).mockResolvedValue([dueProspect]);
+      (mockRepo.findFollowUpsDue as jest.Mock).mockResolvedValue([dueProspect]);
 
       const result = await service.followUpsDue(OWNER_ID);
 
       expect(result).toHaveLength(1);
-      expect(qb.andWhere).toHaveBeenCalledWith(
-        "prospect.status NOT IN (:...closedStatuses)",
-        expect.objectContaining({
-          closedStatuses: [ProspectStatus.WON, ProspectStatus.LOST],
-        }),
-      );
+      expect(mockRepo.findFollowUpsDue).toHaveBeenCalledWith(OWNER_ID, expect.any(Date));
     });
   });
 
   describe("completeFollowUp", () => {
     it("should set lastContactedAt and clear nextFollowUpAt when recurrence is NONE", async () => {
       const existing = mockProspect({ followUpRecurrence: FollowUpRecurrence.NONE });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       const result = await service.completeFollowUp(OWNER_ID, 1);
@@ -563,7 +528,7 @@ describe("ProspectService", () => {
 
     it("should auto-schedule next follow-up for WEEKLY recurrence", async () => {
       const existing = mockProspect({ followUpRecurrence: FollowUpRecurrence.WEEKLY });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       const result = await service.completeFollowUp(OWNER_ID, 1);
@@ -574,7 +539,7 @@ describe("ProspectService", () => {
 
     it("should auto-schedule next follow-up for DAILY recurrence", async () => {
       const existing = mockProspect({ followUpRecurrence: FollowUpRecurrence.DAILY });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       const result = await service.completeFollowUp(OWNER_ID, 1);
@@ -584,7 +549,7 @@ describe("ProspectService", () => {
 
     it("should auto-schedule next follow-up for MONTHLY recurrence", async () => {
       const existing = mockProspect({ followUpRecurrence: FollowUpRecurrence.MONTHLY });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       const result = await service.completeFollowUp(OWNER_ID, 1);
@@ -596,7 +561,7 @@ describe("ProspectService", () => {
   describe("snoozeFollowUp", () => {
     it("should set nextFollowUpAt to now plus given days", async () => {
       const existing = mockProspect();
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(existing);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       const result = await service.snoozeFollowUp(OWNER_ID, 1, 3);
@@ -613,8 +578,8 @@ describe("ProspectService", () => {
 
   describe("bulkUpdateStatus", () => {
     it("should update status for owned prospects only", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([{ id: 1 }, { id: 2 }]);
-      (mockRepo.update as jest.Mock).mockResolvedValue({ affected: 2 });
+      (mockRepo.findByOwnerInIdsSelectId as jest.Mock).mockResolvedValue([{ id: 1 }, { id: 2 }]);
+      (mockRepo.updateStatusForOwner as jest.Mock).mockResolvedValue(undefined);
 
       const result = await service.bulkUpdateStatus(
         OWNER_ID,
@@ -628,7 +593,7 @@ describe("ProspectService", () => {
     });
 
     it("should return all ids as notFound when none are owned", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findByOwnerInIdsSelectId as jest.Mock).mockResolvedValue([]);
 
       const result = await service.bulkUpdateStatus(OWNER_ID, [10, 20], ProspectStatus.LOST);
 
@@ -638,18 +603,18 @@ describe("ProspectService", () => {
     });
 
     it("should not call update when no owned prospects found", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findByOwnerInIdsSelectId as jest.Mock).mockResolvedValue([]);
 
       await service.bulkUpdateStatus(OWNER_ID, [10], ProspectStatus.WON);
 
-      expect(mockRepo.update).not.toHaveBeenCalled();
+      expect(mockRepo.updateStatusForOwner).not.toHaveBeenCalled();
     });
   });
 
   describe("bulkDelete", () => {
     it("should delete owned prospects and return result", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([{ id: 1 }, { id: 3 }]);
-      (mockRepo.delete as jest.Mock).mockResolvedValue({ affected: 2 });
+      (mockRepo.findByOwnerInIdsSelectId as jest.Mock).mockResolvedValue([{ id: 1 }, { id: 3 }]);
+      (mockRepo.deleteByOwnerInIds as jest.Mock).mockResolvedValue(undefined);
 
       const result = await service.bulkDelete(OWNER_ID, [1, 2, 3]);
 
@@ -659,11 +624,11 @@ describe("ProspectService", () => {
     });
 
     it("should not call delete when no owned prospects found", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findByOwnerInIdsSelectId as jest.Mock).mockResolvedValue([]);
 
       await service.bulkDelete(OWNER_ID, [10]);
 
-      expect(mockRepo.delete).not.toHaveBeenCalled();
+      expect(mockRepo.deleteByOwnerInIds).not.toHaveBeenCalled();
     });
   });
 
@@ -673,7 +638,7 @@ describe("ProspectService", () => {
         createdAt: testDate,
         updatedAt: testDate,
       });
-      (mockRepo.find as jest.Mock).mockResolvedValue([prospect]);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue([prospect]);
 
       const csv = await service.exportToCsv(OWNER_ID);
 
@@ -684,7 +649,7 @@ describe("ProspectService", () => {
     });
 
     it("should return only headers when no prospects exist", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue([]);
 
       const csv = await service.exportToCsv(OWNER_ID);
 
@@ -699,7 +664,7 @@ describe("ProspectService", () => {
         createdAt: testDate,
         updatedAt: testDate,
       });
-      (mockRepo.find as jest.Mock).mockResolvedValue([prospect]);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue([prospect]);
 
       const csv = await service.exportToCsv(OWNER_ID);
 
@@ -712,7 +677,7 @@ describe("ProspectService", () => {
         createdAt: testDate,
         updatedAt: testDate,
       });
-      (mockRepo.find as jest.Mock).mockResolvedValue([prospect]);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue([prospect]);
 
       const csv = await service.exportToCsv(OWNER_ID);
 
@@ -727,7 +692,7 @@ describe("ProspectService", () => {
         createdAt: testDate,
         updatedAt: testDate,
       });
-      (mockRepo.find as jest.Mock).mockResolvedValue([prospect]);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue([prospect]);
 
       const csv = await service.exportToCsv(OWNER_ID);
 
@@ -742,7 +707,7 @@ describe("ProspectService", () => {
         mockProspect({ id: 2, companyName: "acme industrial" }),
         mockProspect({ id: 3, companyName: "Different Company" }),
       ];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.findDuplicates(OWNER_ID);
 
@@ -756,7 +721,7 @@ describe("ProspectService", () => {
         mockProspect({ id: 1, contactEmail: "john@example.com" }),
         mockProspect({ id: 2, contactEmail: "john@example.com" }),
       ];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.findDuplicates(OWNER_ID);
 
@@ -769,7 +734,7 @@ describe("ProspectService", () => {
         mockProspect({ id: 1, contactPhone: "0821234567" }),
         mockProspect({ id: 2, contactPhone: "0821234567" }),
       ];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.findDuplicates(OWNER_ID);
 
@@ -792,7 +757,7 @@ describe("ProspectService", () => {
           contactPhone: "222",
         }),
       ];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.findDuplicates(OWNER_ID);
 
@@ -804,7 +769,7 @@ describe("ProspectService", () => {
         mockProspect({ id: 1, contactEmail: null }),
         mockProspect({ id: 2, contactEmail: null }),
       ];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.findDuplicates(OWNER_ID);
 
@@ -821,8 +786,7 @@ describe("ProspectService", () => {
         mockProspect({ id: 10, companyName: "Import Co 1" }),
         mockProspect({ id: 11, companyName: "Import Co 2" }),
       ];
-      (mockRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockRepo.save as jest.Mock).mockResolvedValue(saved);
+      (mockRepo.createMany as jest.Mock).mockResolvedValue(saved);
 
       const result = await service.importFromCsv(OWNER_ID, rows as any);
 
@@ -836,8 +800,7 @@ describe("ProspectService", () => {
       const rows = [{ companyName: "" }, { companyName: "Valid Co" }];
 
       const saved = [mockProspect({ id: 10, companyName: "Valid Co" })];
-      (mockRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockRepo.save as jest.Mock).mockResolvedValue(saved);
+      (mockRepo.createMany as jest.Mock).mockResolvedValue(saved);
 
       const result = await service.importFromCsv(OWNER_ID, rows as any);
 
@@ -850,8 +813,7 @@ describe("ProspectService", () => {
     it("should reject invalid status values", async () => {
       const rows = [{ companyName: "Bad Status Co", status: "invalid_status" }];
 
-      (mockRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockRepo.save as jest.Mock).mockResolvedValue([]);
+      (mockRepo.createMany as jest.Mock).mockResolvedValue([]);
 
       const result = await service.importFromCsv(OWNER_ID, rows as any);
 
@@ -862,8 +824,7 @@ describe("ProspectService", () => {
     it("should reject invalid priority values", async () => {
       const rows = [{ companyName: "Bad Priority Co", priority: "super_urgent" }];
 
-      (mockRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockRepo.save as jest.Mock).mockResolvedValue([]);
+      (mockRepo.createMany as jest.Mock).mockResolvedValue([]);
 
       const result = await service.importFromCsv(OWNER_ID, rows as any);
 
@@ -878,42 +839,39 @@ describe("ProspectService", () => {
 
       expect(result.imported).toBe(0);
       expect(result.skipped).toBe(1);
-      expect(mockRepo.save).not.toHaveBeenCalled();
+      expect(mockRepo.createMany).not.toHaveBeenCalled();
     });
 
     it("should parse tags from semicolon-separated string", async () => {
       const rows = [{ companyName: "Tagged Co", tags: "mining; industrial; steel" }];
 
-      (mockRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockRepo.save as jest.Mock).mockResolvedValue([mockProspect({ id: 10 })]);
+      (mockRepo.createMany as jest.Mock).mockResolvedValue([mockProspect({ id: 10 })]);
 
       await service.importFromCsv(OWNER_ID, rows as any);
 
-      const createArg = (mockRepo.create as jest.Mock).mock.calls[0][0];
+      const createArg = (mockRepo.createMany as jest.Mock).mock.calls[0][0][0];
       expect(createArg.tags).toEqual(["mining", "industrial", "steel"]);
     });
 
     it("should parse estimated value stripping currency symbols", async () => {
       const rows = [{ companyName: "Value Co", estimatedValue: "R500,000.00" }];
 
-      (mockRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockRepo.save as jest.Mock).mockResolvedValue([mockProspect({ id: 10 })]);
+      (mockRepo.createMany as jest.Mock).mockResolvedValue([mockProspect({ id: 10 })]);
 
       await service.importFromCsv(OWNER_ID, rows as any);
 
-      const createArg = (mockRepo.create as jest.Mock).mock.calls[0][0];
+      const createArg = (mockRepo.createMany as jest.Mock).mock.calls[0][0][0];
       expect(createArg.estimatedValue).toBe(500000);
     });
 
     it("should default country to South Africa for imported rows", async () => {
       const rows = [{ companyName: "Local Import" }];
 
-      (mockRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockRepo.save as jest.Mock).mockResolvedValue([mockProspect({ id: 10 })]);
+      (mockRepo.createMany as jest.Mock).mockResolvedValue([mockProspect({ id: 10 })]);
 
       await service.importFromCsv(OWNER_ID, rows as any);
 
-      const createArg = (mockRepo.create as jest.Mock).mock.calls[0][0];
+      const createArg = (mockRepo.createMany as jest.Mock).mock.calls[0][0][0];
       expect(createArg.country).toBe("South Africa");
     });
   });
@@ -935,10 +893,10 @@ describe("ProspectService", () => {
         customFields: { region: "north" },
       });
 
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(primary);
-      (mockRepo.find as jest.Mock).mockResolvedValue([secondary]);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(primary);
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue([secondary]);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
-      (mockRepo.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+      (mockRepo.deleteByIds as jest.Mock).mockResolvedValue(undefined);
 
       const result = await service.mergeProspects(OWNER_ID, {
         primaryId: 1,
@@ -952,14 +910,14 @@ describe("ProspectService", () => {
       expect(result.customFields).toEqual(
         expect.objectContaining({ sector: "heavy", region: "north" }),
       );
-      expect(mockRepo.delete).toHaveBeenCalled();
+      expect(mockRepo.deleteByIds).toHaveBeenCalled();
       expect(mockActivityService.logMerged).toHaveBeenCalledWith(1, OWNER_ID, [2]);
     });
 
     it("should throw NotFoundException when merge prospect is not found", async () => {
       const primary = mockProspect({ id: 1 });
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(primary);
-      (mockRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(primary);
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue([]);
 
       await expect(
         service.mergeProspects(OWNER_ID, { primaryId: 1, mergeIds: [999] }),
@@ -970,10 +928,10 @@ describe("ProspectService", () => {
       const primary = mockProspect({ id: 1, companyName: "Old Name" });
       const secondary = mockProspect({ id: 2 });
 
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(primary);
-      (mockRepo.find as jest.Mock).mockResolvedValue([secondary]);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(primary);
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue([secondary]);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
-      (mockRepo.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+      (mockRepo.deleteByIds as jest.Mock).mockResolvedValue(undefined);
 
       const result = await service.mergeProspects(OWNER_ID, {
         primaryId: 1,
@@ -1000,10 +958,10 @@ describe("ProspectService", () => {
         customFields: null,
       });
 
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(primary);
-      (mockRepo.find as jest.Mock).mockResolvedValue([secondary]);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(primary);
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue([secondary]);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
-      (mockRepo.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+      (mockRepo.deleteByIds as jest.Mock).mockResolvedValue(undefined);
 
       const result = await service.mergeProspects(OWNER_ID, {
         primaryId: 1,
@@ -1163,7 +1121,7 @@ describe("ProspectService", () => {
   describe("updateScore", () => {
     it("should calculate and save score for a prospect", async () => {
       const prospect = mockProspect();
-      (mockRepo.findOne as jest.Mock).mockResolvedValue(prospect);
+      (mockRepo.findByOwnerAndId as jest.Mock).mockResolvedValue(prospect);
       (mockRepo.save as jest.Mock).mockImplementation((p) => Promise.resolve(p));
 
       const result = await service.updateScore(OWNER_ID, 1);
@@ -1176,18 +1134,18 @@ describe("ProspectService", () => {
   describe("recalculateAllScores", () => {
     it("should recalculate scores for all owner prospects", async () => {
       const prospects = [mockProspect({ id: 1 }), mockProspect({ id: 2 })];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockRepo.save as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.saveMany as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.recalculateAllScores(OWNER_ID);
 
       expect(result.updated).toBe(2);
-      expect(mockRepo.save).toHaveBeenCalled();
+      expect(mockRepo.saveMany).toHaveBeenCalled();
     });
 
     it("should return 0 updated when no prospects exist", async () => {
-      (mockRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockRepo.save as jest.Mock).mockResolvedValue([]);
+      (mockRepo.findByOwner as jest.Mock).mockResolvedValue([]);
+      (mockRepo.saveMany as jest.Mock).mockResolvedValue([]);
 
       const result = await service.recalculateAllScores(OWNER_ID);
 
@@ -1198,8 +1156,8 @@ describe("ProspectService", () => {
   describe("bulkAssign", () => {
     it("should assign prospects to a user", async () => {
       const prospects = [mockProspect({ id: 1 }), mockProspect({ id: 2 })];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockRepo.save as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.saveMany as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.bulkAssign(OWNER_ID, [1, 2], 200);
 
@@ -1209,13 +1167,13 @@ describe("ProspectService", () => {
 
     it("should unassign prospects when assignedToId is null", async () => {
       const prospects = [mockProspect({ id: 1, assignedToId: 200 })];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockRepo.save as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.saveMany as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
 
       const result = await service.bulkAssign(OWNER_ID, [1], null);
 
       expect(result.updated).toBe(1);
-      const savedProspects = (mockRepo.save as jest.Mock).mock.calls[0][0];
+      const savedProspects = (mockRepo.saveMany as jest.Mock).mock.calls[0][0];
       expect(savedProspects[0].assignedToId).toBeNull();
     });
   });
@@ -1226,8 +1184,8 @@ describe("ProspectService", () => {
         mockProspect({ id: 1, tags: ["existing"] }),
         mockProspect({ id: 2, tags: null }),
       ];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockRepo.save as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.saveMany as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
 
       const result = await service.bulkTagOperation(OWNER_ID, {
         ids: [1, 2],
@@ -1241,8 +1199,8 @@ describe("ProspectService", () => {
 
     it("should remove tags from prospects", async () => {
       const prospects = [mockProspect({ id: 1, tags: ["mining", "industrial"] })];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockRepo.save as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.saveMany as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
 
       const result = await service.bulkTagOperation(OWNER_ID, {
         ids: [1],
@@ -1251,14 +1209,14 @@ describe("ProspectService", () => {
       });
 
       expect(result.updated).toBe(1);
-      const savedProspects = (mockRepo.save as jest.Mock).mock.calls[0][0];
+      const savedProspects = (mockRepo.saveMany as jest.Mock).mock.calls[0][0];
       expect(savedProspects[0].tags).toEqual(["industrial"]);
     });
 
     it("should set tags to null when all tags are removed", async () => {
       const prospects = [mockProspect({ id: 1, tags: ["only-tag"] })];
-      (mockRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockRepo.save as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
+      (mockRepo.findByOwnerInIds as jest.Mock).mockResolvedValue(prospects);
+      (mockRepo.saveMany as jest.Mock).mockImplementation((arr) => Promise.resolve(arr));
 
       await service.bulkTagOperation(OWNER_ID, {
         ids: [1],
@@ -1266,7 +1224,7 @@ describe("ProspectService", () => {
         tags: ["only-tag"],
       });
 
-      const savedProspects = (mockRepo.save as jest.Mock).mock.calls[0][0];
+      const savedProspects = (mockRepo.saveMany as jest.Mock).mock.calls[0][0];
       expect(savedProspects[0].tags).toBeNull();
     });
   });

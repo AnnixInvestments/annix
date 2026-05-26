@@ -1,6 +1,4 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import {
   ReconciliationEvent,
   ReconciliationEventType,
@@ -10,6 +8,8 @@ import {
   ReconciliationSourceType,
   ReconciliationStatus,
 } from "../entities/reconciliation-item.entity";
+import { ReconciliationEventRepository } from "../repositories/reconciliation-event.repository";
+import { ReconciliationItemRepository } from "../repositories/reconciliation-item.repository";
 
 interface UserContext {
   id: number;
@@ -34,28 +34,18 @@ export class ReconciliationService {
   private readonly logger = new Logger(ReconciliationService.name);
 
   constructor(
-    @InjectRepository(ReconciliationItem)
-    private readonly itemRepo: Repository<ReconciliationItem>,
-    @InjectRepository(ReconciliationEvent)
-    private readonly eventRepo: Repository<ReconciliationEvent>,
+    private readonly itemRepo: ReconciliationItemRepository,
+    private readonly eventRepo: ReconciliationEventRepository,
   ) {}
 
   async itemsForJobCard(
     companyId: number,
     jobCardId: number,
   ): Promise<Array<ReconciliationItem & { events: ReconciliationEvent[] }>> {
-    const items = await this.itemRepo.find({
-      where: { companyId, jobCardId },
-      order: { sortOrder: "ASC", createdAt: "ASC" },
-    });
+    const items = await this.itemRepo.findForJobCardOrdered(companyId, jobCardId);
 
     const events =
-      items.length > 0
-        ? await this.eventRepo.find({
-            where: items.map((i) => ({ reconciliationItemId: i.id })),
-            order: { createdAt: "DESC" },
-          })
-        : [];
+      items.length > 0 ? await this.eventRepo.findForItemsOrdered(items.map((i) => i.id)) : [];
 
     const eventsByItemId = events.reduce<Record<number, ReconciliationEvent[]>>(
       (acc, e) => ({
@@ -77,13 +67,9 @@ export class ReconciliationService {
     data: { itemDescription: string; itemCode: string | null; quantityOrdered: number },
     _user: UserContext,
   ): Promise<ReconciliationItem> {
-    const maxSort = await this.itemRepo
-      .createQueryBuilder("ri")
-      .select("COALESCE(MAX(ri.sort_order), -1)", "maxSort")
-      .where("ri.company_id = :companyId AND ri.job_card_id = :jobCardId", { companyId, jobCardId })
-      .getRawOne();
+    const maxSort = await this.itemRepo.maxSortOrder(companyId, jobCardId);
 
-    const record = this.itemRepo.create({
+    return this.itemRepo.create({
       companyId,
       jobCardId,
       itemDescription: data.itemDescription,
@@ -91,10 +77,8 @@ export class ReconciliationService {
       sourceType: ReconciliationSourceType.MANUAL,
       quantityOrdered: data.quantityOrdered,
       reconciliationStatus: ReconciliationStatus.PENDING,
-      sortOrder: (maxSort?.maxSort ?? -1) + 1,
+      sortOrder: maxSort + 1,
     });
-
-    return this.itemRepo.save(record);
   }
 
   async updateItem(
@@ -128,7 +112,7 @@ export class ReconciliationService {
       items.map(async (entry) => {
         const item = await this.findOrFail(companyId, entry.reconciliationItemId);
 
-        const event = this.eventRepo.create({
+        const saved = await this.eventRepo.create({
           reconciliationItemId: item.id,
           companyId,
           eventType,
@@ -138,8 +122,6 @@ export class ReconciliationService {
           performedById: user.id,
           notes,
         });
-
-        const saved = await this.eventRepo.save(event);
 
         if (eventType === ReconciliationEventType.QA_RELEASE) {
           item.quantityReleased = Number(item.quantityReleased) + entry.quantity;
@@ -162,9 +144,7 @@ export class ReconciliationService {
   }
 
   async summary(companyId: number, jobCardId: number): Promise<ReconciliationSummary> {
-    const items = await this.itemRepo.find({
-      where: { companyId, jobCardId },
-    });
+    const items = await this.itemRepo.findForJobCard(companyId, jobCardId);
 
     return items.reduce<ReconciliationSummary>(
       (acc, item) => ({
@@ -212,7 +192,7 @@ export class ReconciliationService {
   }
 
   private async findOrFail(companyId: number, id: number): Promise<ReconciliationItem> {
-    const item = await this.itemRepo.findOne({ where: { id, companyId } });
+    const item = await this.itemRepo.findOneForCompany(id, companyId);
     if (!item) {
       throw new NotFoundException(`Reconciliation item #${id} not found`);
     }

@@ -1,20 +1,20 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { fromISO } from "../../lib/datetime";
+import { CustomFieldDefinitionRepository } from "../custom-field-definition.repository";
 import { CustomFieldDefinition, CustomFieldType } from "../entities/custom-field-definition.entity";
 import { CustomFieldService } from "./custom-field.service";
 
 describe("CustomFieldService", () => {
   let service: CustomFieldService;
 
-  const mockCustomFieldRepo: Partial<
-    Record<keyof import("typeorm").Repository<CustomFieldDefinition>, jest.Mock>
-  > = {
-    find: jest.fn(),
-    findOne: jest.fn(),
+  const mockCustomFieldRepo = {
+    findForUser: jest.fn(),
+    findByUserAndKey: jest.fn(),
+    findByIdAndUser: jest.fn(),
     create: jest.fn(),
     save: jest.fn(),
+    saveMany: jest.fn(),
     remove: jest.fn(),
   };
 
@@ -42,7 +42,7 @@ describe("CustomFieldService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CustomFieldService,
-        { provide: getRepositoryToken(CustomFieldDefinition), useValue: mockCustomFieldRepo },
+        { provide: CustomFieldDefinitionRepository, useValue: mockCustomFieldRepo },
       ],
     }).compile();
 
@@ -55,10 +55,9 @@ describe("CustomFieldService", () => {
 
   describe("create", () => {
     it("should create a custom field definition", async () => {
-      mockCustomFieldRepo.findOne!.mockResolvedValue(null);
+      mockCustomFieldRepo.findByUserAndKey.mockResolvedValue(null);
       const created = sampleField();
-      mockCustomFieldRepo.create!.mockReturnValue(created);
-      mockCustomFieldRepo.save!.mockResolvedValue(created);
+      mockCustomFieldRepo.create.mockResolvedValue(created);
 
       const result = await service.create(100, {
         name: "Industry",
@@ -82,7 +81,7 @@ describe("CustomFieldService", () => {
     });
 
     it("should throw ConflictException when fieldKey already exists", async () => {
-      mockCustomFieldRepo.findOne!.mockResolvedValue(sampleField());
+      mockCustomFieldRepo.findByUserAndKey.mockResolvedValue(sampleField());
 
       await expect(service.create(100, { name: "Industry", fieldKey: "industry" })).rejects.toThrow(
         ConflictException,
@@ -90,13 +89,12 @@ describe("CustomFieldService", () => {
     });
 
     it("should create a select field with options", async () => {
-      mockCustomFieldRepo.findOne!.mockResolvedValue(null);
+      mockCustomFieldRepo.findByUserAndKey.mockResolvedValue(null);
       const selectField = sampleField({
         fieldType: CustomFieldType.SELECT,
         options: ["Option A", "Option B"],
       });
-      mockCustomFieldRepo.create!.mockReturnValue(selectField);
-      mockCustomFieldRepo.save!.mockResolvedValue(selectField);
+      mockCustomFieldRepo.create.mockResolvedValue(selectField);
 
       const result = await service.create(100, {
         name: "Category",
@@ -110,10 +108,9 @@ describe("CustomFieldService", () => {
     });
 
     it("should create a required field", async () => {
-      mockCustomFieldRepo.findOne!.mockResolvedValue(null);
+      mockCustomFieldRepo.findByUserAndKey.mockResolvedValue(null);
       const requiredField = sampleField({ isRequired: true });
-      mockCustomFieldRepo.create!.mockReturnValue(requiredField);
-      mockCustomFieldRepo.save!.mockResolvedValue(requiredField);
+      mockCustomFieldRepo.create.mockResolvedValue(requiredField);
 
       await service.create(100, {
         name: "Company Size",
@@ -130,32 +127,26 @@ describe("CustomFieldService", () => {
   describe("findAll", () => {
     it("should return only active fields by default", async () => {
       const fields = [sampleField(), sampleField({ id: 2, fieldKey: "size" })];
-      mockCustomFieldRepo.find!.mockResolvedValue(fields);
+      mockCustomFieldRepo.findForUser.mockResolvedValue(fields);
 
       const result = await service.findAll(100);
 
       expect(result).toHaveLength(2);
-      expect(mockCustomFieldRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100, isActive: true },
-        order: { displayOrder: "ASC", name: "ASC" },
-      });
+      expect(mockCustomFieldRepo.findForUser).toHaveBeenCalledWith(100, false);
     });
 
     it("should include inactive fields when requested", async () => {
       const fields = [sampleField(), sampleField({ id: 2, isActive: false })];
-      mockCustomFieldRepo.find!.mockResolvedValue(fields);
+      mockCustomFieldRepo.findForUser.mockResolvedValue(fields);
 
       const result = await service.findAll(100, true);
 
       expect(result).toHaveLength(2);
-      expect(mockCustomFieldRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { displayOrder: "ASC", name: "ASC" },
-      });
+      expect(mockCustomFieldRepo.findForUser).toHaveBeenCalledWith(100, true);
     });
 
     it("should return empty array when no fields exist", async () => {
-      mockCustomFieldRepo.find!.mockResolvedValue([]);
+      mockCustomFieldRepo.findForUser.mockResolvedValue([]);
 
       const result = await service.findAll(100);
 
@@ -165,18 +156,16 @@ describe("CustomFieldService", () => {
 
   describe("findOne", () => {
     it("should return a field by ID and userId", async () => {
-      mockCustomFieldRepo.findOne!.mockResolvedValue(sampleField());
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValue(sampleField());
 
       const result = await service.findOne(100, 1);
 
       expect(result.id).toBe(1);
-      expect(mockCustomFieldRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1, userId: 100 },
-      });
+      expect(mockCustomFieldRepo.findByIdAndUser).toHaveBeenCalledWith(1, 100);
     });
 
     it("should throw NotFoundException when field not found", async () => {
-      mockCustomFieldRepo.findOne!.mockResolvedValue(null);
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValue(null);
 
       await expect(service.findOne(100, 999)).rejects.toThrow(NotFoundException);
     });
@@ -185,8 +174,8 @@ describe("CustomFieldService", () => {
   describe("update", () => {
     it("should update field properties", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!.mockResolvedValueOnce(existing);
-      mockCustomFieldRepo.save!.mockResolvedValue({ ...existing, name: "Updated Name" });
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.save.mockResolvedValue({ ...existing, name: "Updated Name" });
 
       const result = await service.update(100, 1, { name: "Updated Name" });
 
@@ -195,9 +184,10 @@ describe("CustomFieldService", () => {
 
     it("should throw ConflictException when changing fieldKey to existing key", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo
-        .findOne!.mockResolvedValueOnce(existing)
-        .mockResolvedValueOnce(sampleField({ id: 2, fieldKey: "other_key" }));
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.findByUserAndKey.mockResolvedValueOnce(
+        sampleField({ id: 2, fieldKey: "other_key" }),
+      );
 
       await expect(service.update(100, 1, { fieldKey: "other_key" })).rejects.toThrow(
         ConflictException,
@@ -206,8 +196,9 @@ describe("CustomFieldService", () => {
 
     it("should allow keeping the same fieldKey", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!.mockResolvedValueOnce(existing).mockResolvedValueOnce(existing);
-      mockCustomFieldRepo.save!.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.findByUserAndKey.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.save.mockResolvedValueOnce(existing);
 
       const result = await service.update(100, 1, { fieldKey: "industry" });
 
@@ -215,17 +206,17 @@ describe("CustomFieldService", () => {
     });
 
     it("should throw NotFoundException when field not found", async () => {
-      mockCustomFieldRepo.findOne!.mockReset();
-      mockCustomFieldRepo.findOne!.mockResolvedValueOnce(null);
+      mockCustomFieldRepo.findByIdAndUser.mockReset();
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValueOnce(null);
 
       await expect(service.update(100, 999, { name: "test" })).rejects.toThrow(NotFoundException);
     });
 
     it("should update isActive to deactivate a field", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!.mockReset();
-      mockCustomFieldRepo.findOne!.mockResolvedValueOnce(existing);
-      mockCustomFieldRepo.save!.mockImplementation((f) => Promise.resolve(f));
+      mockCustomFieldRepo.findByIdAndUser.mockReset();
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.save.mockImplementation((f) => Promise.resolve(f));
 
       const result = await service.update(100, 1, { isActive: false });
 
@@ -234,8 +225,8 @@ describe("CustomFieldService", () => {
 
     it("should update fieldType", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!.mockResolvedValueOnce(existing);
-      mockCustomFieldRepo.save!.mockImplementation((f) => Promise.resolve(f));
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.save.mockImplementation((f) => Promise.resolve(f));
 
       const result = await service.update(100, 1, { fieldType: CustomFieldType.NUMBER });
 
@@ -244,8 +235,8 @@ describe("CustomFieldService", () => {
 
     it("should update displayOrder", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!.mockResolvedValueOnce(existing);
-      mockCustomFieldRepo.save!.mockImplementation((f) => Promise.resolve(f));
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValueOnce(existing);
+      mockCustomFieldRepo.save.mockImplementation((f) => Promise.resolve(f));
 
       const result = await service.update(100, 1, { displayOrder: 5 });
 
@@ -256,8 +247,8 @@ describe("CustomFieldService", () => {
   describe("remove", () => {
     it("should remove a custom field", async () => {
       const existing = sampleField();
-      mockCustomFieldRepo.findOne!.mockResolvedValue(existing);
-      mockCustomFieldRepo.remove!.mockResolvedValue(existing);
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValue(existing);
+      mockCustomFieldRepo.remove.mockResolvedValue(undefined);
 
       await service.remove(100, 1);
 
@@ -265,7 +256,7 @@ describe("CustomFieldService", () => {
     });
 
     it("should throw NotFoundException when field not found", async () => {
-      mockCustomFieldRepo.findOne!.mockResolvedValue(null);
+      mockCustomFieldRepo.findByIdAndUser.mockResolvedValue(null);
 
       await expect(service.remove(100, 999)).rejects.toThrow(NotFoundException);
     });
@@ -278,12 +269,12 @@ describe("CustomFieldService", () => {
         sampleField({ id: 2, fieldKey: "size", displayOrder: 1 }),
         sampleField({ id: 3, fieldKey: "category", displayOrder: 2 }),
       ];
-      mockCustomFieldRepo.find!.mockResolvedValueOnce(fields).mockResolvedValueOnce(fields);
-      mockCustomFieldRepo.save!.mockResolvedValue(fields);
+      mockCustomFieldRepo.findForUser.mockResolvedValueOnce(fields).mockResolvedValueOnce(fields);
+      mockCustomFieldRepo.saveMany.mockResolvedValue(fields);
 
       const result = await service.reorder(100, [3, 1, 2]);
 
-      expect(mockCustomFieldRepo.save).toHaveBeenCalledWith(
+      expect(mockCustomFieldRepo.saveMany).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ id: 3, displayOrder: 0 }),
           expect.objectContaining({ id: 1, displayOrder: 1 }),
@@ -294,20 +285,20 @@ describe("CustomFieldService", () => {
 
     it("should skip IDs that do not exist in fields", async () => {
       const fields = [sampleField({ id: 1, displayOrder: 0 })];
-      mockCustomFieldRepo.find!.mockResolvedValueOnce(fields).mockResolvedValueOnce(fields);
-      mockCustomFieldRepo.save!.mockResolvedValue([]);
+      mockCustomFieldRepo.findForUser.mockResolvedValueOnce(fields).mockResolvedValueOnce(fields);
+      mockCustomFieldRepo.saveMany.mockResolvedValue([]);
 
       await service.reorder(100, [1, 999]);
 
-      expect(mockCustomFieldRepo.save).toHaveBeenCalledWith(
+      expect(mockCustomFieldRepo.saveMany).toHaveBeenCalledWith(
         expect.arrayContaining([expect.objectContaining({ id: 1, displayOrder: 0 })]),
       );
     });
 
     it("should return updated fields list after reorder", async () => {
       const fields = [sampleField({ id: 1 }), sampleField({ id: 2, fieldKey: "size" })];
-      mockCustomFieldRepo.find!.mockResolvedValue(fields);
-      mockCustomFieldRepo.save!.mockResolvedValue(fields);
+      mockCustomFieldRepo.findForUser.mockResolvedValue(fields);
+      mockCustomFieldRepo.saveMany.mockResolvedValue(fields);
 
       const result = await service.reorder(100, [2, 1]);
 

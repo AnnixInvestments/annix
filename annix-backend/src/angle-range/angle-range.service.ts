@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { BaseCrudService } from "../lib/base-crud.service";
+import { AngleRangeRepository } from "./angle-range.repository";
 import { CreateAngleRangeDto } from "./dto/create-angle-range.dto";
 import { UpdateAngleRangeDto } from "./dto/update-angle-range.dto";
 import { AngleRange } from "./entities/angle-range.entity";
@@ -12,11 +11,8 @@ export class AngleRangeService extends BaseCrudService<
   CreateAngleRangeDto,
   UpdateAngleRangeDto
 > {
-  constructor(
-    @InjectRepository(AngleRange)
-    rangeRepo: Repository<AngleRange>,
-  ) {
-    super(rangeRepo, { entityName: "AngleRange", defaultRelations: ["fittingDimensions"] });
+  constructor(repository: AngleRangeRepository) {
+    super(repository, { entityName: "AngleRange", defaultRelations: ["fittingDimensions"] });
   }
 
   async create(dto: CreateAngleRangeDto): Promise<AngleRange> {

@@ -1,13 +1,12 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { InboundEmailAttachment } from "../../inbound-email/entities/inbound-email-attachment.entity";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { ClassificationResult } from "../../inbound-email/interfaces/document-classifier.interface";
 import { RoutingResult } from "../../inbound-email/interfaces/document-router.interface";
 import { EmailAppAdapter } from "../../inbound-email/interfaces/email-app-adapter.interface";
-import { Candidate } from "../entities/candidate.entity";
-import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { JobPostingStatus } from "../entities/job-posting.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { CandidateService } from "./candidate.service";
 import { WorkflowAutomationService } from "./workflow-automation.service";
 
@@ -26,10 +25,8 @@ export class CvEmailAdapterService implements EmailAppAdapter, OnModuleInit {
 
   constructor(
     private readonly registry: InboundEmailRegistry,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly candidateRepo: CandidateRepository,
     private readonly candidateService: CandidateService,
     private readonly workflowAutomationService: WorkflowAutomationService,
   ) {}
@@ -85,8 +82,9 @@ export class CvEmailAdapterService implements EmailAppAdapter, OnModuleInit {
       return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
     }
 
-    const activeJobs = await this.jobPostingRepo.find({
-      where: { companyId, status: JobPostingStatus.ACTIVE },
+    const activeJobs = await this.jobPostingRepo.findManyWhere({
+      companyId,
+      status: JobPostingStatus.ACTIVE,
     });
 
     const matchingJob = activeJobs.find((job) => {
@@ -103,8 +101,9 @@ export class CvEmailAdapterService implements EmailAppAdapter, OnModuleInit {
     }
 
     const sourceEmailId = `attachment-${attachment.id}`;
-    const existing = await this.candidateRepo.findOne({
-      where: { sourceEmailId, jobPostingId: matchingJob.id },
+    const existing = await this.candidateRepo.findOneWhere({
+      sourceEmailId,
+      jobPostingId: matchingJob.id,
     });
 
     if (existing) {

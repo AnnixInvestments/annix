@@ -1,13 +1,12 @@
 import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import {
   AnnixOrbitEmailTemplate,
   CvEmailTemplateKind,
 } from "../entities/annix-orbit-email-template.entity";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { AnnixOrbitEmailTemplateRepository } from "../repositories/annix-orbit-email-template.repository";
 import {
   defaultByKind,
   EMAIL_TEMPLATE_DEFAULTS,
@@ -32,10 +31,8 @@ export class EmailTemplateService {
   private readonly logger = new Logger(EmailTemplateService.name);
 
   constructor(
-    @InjectRepository(AnnixOrbitEmailTemplate)
-    private readonly templateRepo: Repository<AnnixOrbitEmailTemplate>,
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly companyRepo: Repository<AnnixOrbitCompany>,
+    private readonly templateRepo: AnnixOrbitEmailTemplateRepository,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
     private readonly aiChatService: AiChatService,
     private readonly emailService: EmailService,
   ) {}
@@ -65,7 +62,7 @@ export class EmailTemplateService {
   }
 
   async listForCompany(companyId: number): Promise<ResolvedTemplate[]> {
-    const customised = await this.templateRepo.find({ where: { companyId } });
+    const customised = await this.templateRepo.findForCompany(companyId);
     const customByKind = new Map(customised.map((t) => [t.kind, t]));
     return EMAIL_TEMPLATE_DEFAULTS.map((def) =>
       this.merge(def, customByKind.get(def.kind) ?? null),
@@ -74,7 +71,7 @@ export class EmailTemplateService {
 
   async forCompany(companyId: number, kind: CvEmailTemplateKind): Promise<ResolvedTemplate> {
     const def = defaultByKind(kind);
-    const custom = await this.templateRepo.findOne({ where: { companyId, kind } });
+    const custom = await this.templateRepo.findForCompanyKind(companyId, kind);
     return this.merge(def, custom);
   }
 
@@ -84,28 +81,27 @@ export class EmailTemplateService {
     payload: { subject: string; bodyHtml: string; bodyText: string },
   ): Promise<ResolvedTemplate> {
     defaultByKind(kind);
-    const existing = await this.templateRepo.findOne({ where: { companyId, kind } });
+    const existing = await this.templateRepo.findForCompanyKind(companyId, kind);
     if (existing) {
       existing.subject = payload.subject;
       existing.bodyHtml = payload.bodyHtml;
       existing.bodyText = payload.bodyText;
       await this.templateRepo.save(existing);
     } else {
-      const created = this.templateRepo.create({
+      await this.templateRepo.create({
         companyId,
         kind,
         subject: payload.subject,
         bodyHtml: payload.bodyHtml,
         bodyText: payload.bodyText,
       });
-      await this.templateRepo.save(created);
     }
     return this.forCompany(companyId, kind);
   }
 
   async resetToDefault(companyId: number, kind: CvEmailTemplateKind): Promise<ResolvedTemplate> {
     defaultByKind(kind);
-    await this.templateRepo.delete({ companyId, kind });
+    await this.templateRepo.deleteForCompanyKind(companyId, kind);
     return this.forCompany(companyId, kind);
   }
 
@@ -115,7 +111,7 @@ export class EmailTemplateService {
     instructions?: string,
   ): Promise<{ subject: string; bodyHtml: string; bodyText: string }> {
     const def = defaultByKind(kind);
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) throw new NotFoundException("Company not found");
 
     const prompt = this.buildNixPrompt(def, company.name ?? "the hiring team", instructions);
@@ -169,7 +165,7 @@ export class EmailTemplateService {
     instructions?: string,
   ): { system: string; user: string } {
     const system =
-      "You are Nix, the AI hiring assistant inside the Annix Annix Orbit. " +
+      "You are Nix, the AI hiring assistant inside the Annix CV Assistant. " +
       "You help South African employers draft candidate-facing emails that are professional, clear and warm. " +
       "Always respond with strict JSON only — no markdown, no commentary, no code fences.";
 

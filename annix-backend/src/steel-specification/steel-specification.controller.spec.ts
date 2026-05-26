@@ -1,5 +1,4 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { CreateSteelSpecificationDto } from "./dto/create-steel-specification.dto";
 import { UpdateSteelSpecificationDto } from "./dto/update-steel-specification.dto";
 import { SteelSpecification } from "./entities/steel-specification.entity";
@@ -9,14 +8,6 @@ import { SteelSpecificationService } from "./steel-specification.service";
 describe("SteelSpecificationController", () => {
   let controller: SteelSpecificationController;
   let service: jest.Mocked<SteelSpecificationService>;
-
-  const mockSteelSpecRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -31,10 +22,6 @@ describe("SteelSpecificationController", () => {
             update: jest.fn(),
             remove: jest.fn(),
           },
-        },
-        {
-          provide: getRepositoryToken(SteelSpecification),
-          useValue: mockSteelSpecRepo,
         },
       ],
     }).compile();

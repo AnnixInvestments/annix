@@ -1,11 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/web-push.channel";
 import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
-import { PushSubscription } from "../entities/push-subscription.entity";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
-import { StockControlUser } from "../entities/stock-control-user.entity";
+import { PushSubscriptionRepository } from "../repositories/push-subscription.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
 
 interface PushPayload {
   title: string;
@@ -27,12 +25,9 @@ export class WebPushService {
   private readonly logger = new Logger(WebPushService.name);
 
   constructor(
-    @InjectRepository(PushSubscription)
-    private readonly subscriptionRepo: Repository<PushSubscription>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
+    private readonly subscriptionRepo: PushSubscriptionRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
+    private readonly userRepo: StockControlUserRepository,
     private readonly dispatcher: NotificationDispatcherService,
     private readonly webPushChannel: WebPushChannel,
   ) {}
@@ -46,9 +41,7 @@ export class WebPushService {
     companyId: number,
     subscription: SubscriptionInput,
   ): Promise<void> {
-    const existing = await this.subscriptionRepo.findOne({
-      where: { endpoint: subscription.endpoint },
-    });
+    const existing = await this.subscriptionRepo.findByEndpoint(subscription.endpoint);
 
     if (existing) {
       existing.userId = userId;
@@ -57,20 +50,18 @@ export class WebPushService {
       existing.keyAuth = subscription.keys.auth;
       await this.subscriptionRepo.save(existing);
     } else {
-      await this.subscriptionRepo.save(
-        this.subscriptionRepo.create({
-          userId,
-          companyId,
-          endpoint: subscription.endpoint,
-          keyP256dh: subscription.keys.p256dh,
-          keyAuth: subscription.keys.auth,
-        }),
-      );
+      await this.subscriptionRepo.create({
+        userId,
+        companyId,
+        endpoint: subscription.endpoint,
+        keyP256dh: subscription.keys.p256dh,
+        keyAuth: subscription.keys.auth,
+      });
     }
   }
 
   async unsubscribe(userId: number, endpoint: string): Promise<void> {
-    await this.subscriptionRepo.delete({ userId, endpoint });
+    await this.subscriptionRepo.deleteByUserAndEndpoint(userId, endpoint);
   }
 
   async sendToUser(userId: number, payload: PushPayload): Promise<void> {
@@ -78,12 +69,12 @@ export class WebPushService {
       return;
     }
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (user && user.pushNotificationsEnabled === false) {
       return;
     }
 
-    const subscriptions = await this.subscriptionRepo.find({ where: { userId } });
+    const subscriptions = await this.subscriptionRepo.findForUser(userId);
 
     if (subscriptions.length === 0) {
       this.logger.warn(`No push subscriptions found for user ${userId}`);
@@ -91,7 +82,7 @@ export class WebPushService {
     }
 
     const companyId = subscriptions[0].companyId;
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (company && !company.notificationsEnabled) {
       this.logger.log(
         `Push notifications disabled for company ${companyId}, skipping user ${userId}`,
@@ -124,7 +115,7 @@ export class WebPushService {
         .filter((sub) => pushResult.staleEndpoints.includes(sub.endpoint))
         .map((sub) => sub.id);
       if (staleIds.length > 0) {
-        await this.subscriptionRepo.delete(staleIds);
+        await this.subscriptionRepo.deleteByIds(staleIds);
         this.logger.log(`Cleaned up ${staleIds.length} stale push subscriptions`);
       }
     }

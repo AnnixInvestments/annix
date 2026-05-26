@@ -12,13 +12,9 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiResponse, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
 import { IsNotEmpty, IsNumber, IsObject, IsOptional, IsString } from "class-validator";
-import { Repository } from "typeorm";
 import { now } from "../lib/datetime";
-import { PumpRfq } from "../rfq/entities/pump-rfq.entity";
-import { Rfq } from "../rfq/entities/rfq.entity";
-import { RfqItem } from "../rfq/entities/rfq-item.entity";
+import { RfqRepository } from "../rfq/rfq.repository";
 import { SupplierAuthGuard, SupplierRequest } from "./guards/supplier-auth.guard";
 
 export type SupplierPumpQuoteStatus = "pending" | "viewed" | "quoted" | "declined" | "expired";
@@ -70,14 +66,7 @@ interface PumpQuoteRequest {
 @UseGuards(SupplierAuthGuard)
 @ApiBearerAuth()
 export class SupplierPumpQuoteController {
-  constructor(
-    @InjectRepository(Rfq)
-    private readonly rfqRepository: Repository<Rfq>,
-    @InjectRepository(RfqItem)
-    private readonly rfqItemRepository: Repository<RfqItem>,
-    @InjectRepository(PumpRfq)
-    private readonly pumpRfqRepository: Repository<PumpRfq>,
-  ) {}
+  constructor(private readonly rfqRepository: RfqRepository) {}
 
   @Get()
   @ApiOperation({ summary: "Get all pump quote requests assigned to the supplier" })
@@ -92,20 +81,7 @@ export class SupplierPumpQuoteController {
   ): Promise<PumpQuoteRequest[]> {
     const supplierProfileId = req.supplier.supplierId;
 
-    const queryBuilder = this.rfqRepository
-      .createQueryBuilder("rfq")
-      .leftJoinAndSelect("rfq.items", "item")
-      .leftJoinAndSelect("item.pumpDetails", "pump")
-      .leftJoinAndSelect("rfq.supplierAssignments", "assignment")
-      .where("assignment.supplierId = :supplierId", { supplierId: supplierProfileId })
-      .andWhere("item.itemType = :itemType", { itemType: "pump" })
-      .orderBy("rfq.createdAt", "DESC");
-
-    if (status) {
-      queryBuilder.andWhere("assignment.status = :status", { status });
-    }
-
-    const rfqs = await queryBuilder.getMany();
+    const rfqs = await this.rfqRepository.findPumpRfqsAssignedToSupplier(supplierProfileId, status);
 
     return rfqs.map((rfq) => {
       const pumpItem = rfq.items.find((item) => item.itemType === "pump");
@@ -142,10 +118,11 @@ export class SupplierPumpQuoteController {
   ) {
     const supplierProfileId = req.supplier.supplierId;
 
-    const rfq = await this.rfqRepository.findOne({
-      where: { id: rfqId },
-      relations: ["items", "items.pumpDetails", "supplierAssignments"],
-    });
+    const rfq = await this.rfqRepository.findById(rfqId, [
+      "items",
+      "items.pumpDetails",
+      "supplierAssignments",
+    ]);
 
     if (!rfq) {
       return { error: "RFQ not found" };
@@ -229,10 +206,7 @@ export class SupplierPumpQuoteController {
   async markAsViewed(@Request() req: SupplierRequest, @Param("id", ParseIntPipe) rfqId: number) {
     const supplierProfileId = req.supplier.supplierId;
 
-    const rfq = await this.rfqRepository.findOne({
-      where: { id: rfqId },
-      relations: ["supplierAssignments"],
-    });
+    const rfq = await this.rfqRepository.findById(rfqId, ["supplierAssignments"]);
 
     if (!rfq) {
       return { error: "RFQ not found" };
@@ -269,10 +243,7 @@ export class SupplierPumpQuoteController {
   ) {
     const supplierProfileId = req.supplier.supplierId;
 
-    const rfq = await this.rfqRepository.findOne({
-      where: { id: rfqId },
-      relations: ["supplierAssignments"],
-    });
+    const rfq = await this.rfqRepository.findById(rfqId, ["supplierAssignments"]);
 
     if (!rfq) {
       return { error: "RFQ not found" };
@@ -310,10 +281,7 @@ export class SupplierPumpQuoteController {
   ) {
     const supplierProfileId = req.supplier.supplierId;
 
-    const rfq = await this.rfqRepository.findOne({
-      where: { id: rfqId },
-      relations: ["supplierAssignments"],
-    });
+    const rfq = await this.rfqRepository.findById(rfqId, ["supplierAssignments"]);
 
     if (!rfq) {
       return { error: "RFQ not found" };

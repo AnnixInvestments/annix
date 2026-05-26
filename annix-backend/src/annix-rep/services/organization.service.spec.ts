@@ -1,15 +1,15 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Organization, OrganizationPlan } from "../entities/organization.entity";
 import { TeamMember, TeamMemberStatus, TeamRole } from "../entities/team-member.entity";
+import { OrganizationRepository } from "../organization.repository";
+import { TeamMemberRepository } from "../team-member.repository";
 import { OrganizationService } from "./organization.service";
 
 describe("OrganizationService", () => {
   let service: OrganizationService;
-  let mockOrgRepo: Partial<Repository<Organization>>;
-  let mockTeamMemberRepo: Partial<Repository<TeamMember>>;
+  let mockOrgRepo: Partial<OrganizationRepository>;
+  let mockTeamMemberRepo: Partial<TeamMemberRepository>;
 
   const baseOrg: Organization = {
     id: 1,
@@ -45,26 +45,29 @@ describe("OrganizationService", () => {
     mockOrgRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
+      findWithOwner: jest.fn(),
+      findBySlug: jest.fn(),
+      findBySlugWithOwner: jest.fn(),
       remove: jest.fn(),
     };
 
     mockTeamMemberRepo = {
       create: jest.fn(),
-      save: jest.fn(),
-      findOne: jest.fn(),
-      count: jest.fn(),
+      findByOrganizationAndUser: jest.fn(),
+      findByUserWithOrganization: jest.fn(),
+      countByOrganization: jest.fn(),
+      countActiveByOrganization: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrganizationService,
         {
-          provide: getRepositoryToken(Organization),
+          provide: OrganizationRepository,
           useValue: mockOrgRepo,
         },
         {
-          provide: getRepositoryToken(TeamMember),
+          provide: TeamMemberRepository,
           useValue: mockTeamMemberRepo,
         },
       ],
@@ -80,12 +83,11 @@ describe("OrganizationService", () => {
 
   describe("create", () => {
     it("should create organization and add owner as admin member", async () => {
-      (mockTeamMemberRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockOrgRepo.create as jest.Mock).mockReturnValue(baseOrg);
-      (mockOrgRepo.save as jest.Mock).mockResolvedValue(baseOrg);
-      (mockTeamMemberRepo.create as jest.Mock).mockReturnValue(baseMember);
-      (mockTeamMemberRepo.save as jest.Mock).mockResolvedValue(baseMember);
+      (mockTeamMemberRepo.findByOrganizationAndUser as jest.Mock).mockResolvedValue(null);
+      (mockTeamMemberRepo.findByUserWithOrganization as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.findBySlug as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.create as jest.Mock).mockResolvedValue(baseOrg);
+      (mockTeamMemberRepo.create as jest.Mock).mockResolvedValue(baseMember);
 
       const result = await service.create(100, { name: "Test Corp" });
 
@@ -110,25 +112,23 @@ describe("OrganizationService", () => {
     });
 
     it("should throw ConflictException when user already in an org", async () => {
-      (mockTeamMemberRepo.findOne as jest.Mock).mockResolvedValue(baseMember);
+      (mockTeamMemberRepo.findByUserWithOrganization as jest.Mock).mockResolvedValue(baseMember);
 
       await expect(service.create(100, { name: "New Corp" })).rejects.toThrow(ConflictException);
     });
 
     it("should throw ConflictException when slug already taken", async () => {
-      (mockTeamMemberRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(baseOrg);
+      (mockTeamMemberRepo.findByUserWithOrganization as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.findBySlug as jest.Mock).mockResolvedValue(baseOrg);
 
       await expect(service.create(100, { name: "Test Corp" })).rejects.toThrow(ConflictException);
     });
 
     it("should pass optional industry and logoUrl", async () => {
-      (mockTeamMemberRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockOrgRepo.create as jest.Mock).mockReturnValue(baseOrg);
-      (mockOrgRepo.save as jest.Mock).mockResolvedValue(baseOrg);
-      (mockTeamMemberRepo.create as jest.Mock).mockReturnValue(baseMember);
-      (mockTeamMemberRepo.save as jest.Mock).mockResolvedValue(baseMember);
+      (mockTeamMemberRepo.findByUserWithOrganization as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.findBySlug as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.create as jest.Mock).mockResolvedValue(baseOrg);
+      (mockTeamMemberRepo.create as jest.Mock).mockResolvedValue(baseMember);
 
       await service.create(100, {
         name: "Test Corp",
@@ -147,19 +147,16 @@ describe("OrganizationService", () => {
 
   describe("findOne", () => {
     it("should return organization when found", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(baseOrg);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(baseOrg);
 
       const result = await service.findOne(1);
 
       expect(result).toEqual(baseOrg);
-      expect(mockOrgRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ["owner"],
-      });
+      expect(mockOrgRepo.findWithOwner).toHaveBeenCalledWith(1);
     });
 
     it("should return null when not found", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(null);
 
       const result = await service.findOne(999);
 
@@ -169,21 +166,18 @@ describe("OrganizationService", () => {
 
   describe("findBySlug", () => {
     it("should return organization by slug", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(baseOrg);
+      (mockOrgRepo.findBySlugWithOwner as jest.Mock).mockResolvedValue(baseOrg);
 
       const result = await service.findBySlug("test-corp-ab12");
 
       expect(result).toEqual(baseOrg);
-      expect(mockOrgRepo.findOne).toHaveBeenCalledWith({
-        where: { slug: "test-corp-ab12" },
-        relations: ["owner"],
-      });
+      expect(mockOrgRepo.findBySlugWithOwner).toHaveBeenCalledWith("test-corp-ab12");
     });
   });
 
   describe("findByUser", () => {
     it("should return organization for user", async () => {
-      (mockTeamMemberRepo.findOne as jest.Mock).mockResolvedValue(baseMember);
+      (mockTeamMemberRepo.findByUserWithOrganization as jest.Mock).mockResolvedValue(baseMember);
 
       const result = await service.findByUser(100);
 
@@ -191,7 +185,7 @@ describe("OrganizationService", () => {
     });
 
     it("should return null when user has no org", async () => {
-      (mockTeamMemberRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockTeamMemberRepo.findByUserWithOrganization as jest.Mock).mockResolvedValue(null);
 
       const result = await service.findByUser(999);
 
@@ -202,7 +196,7 @@ describe("OrganizationService", () => {
   describe("update", () => {
     it("should update organization fields", async () => {
       const updated = { ...baseOrg, name: "Updated Corp" };
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue({ ...baseOrg });
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue({ ...baseOrg });
       (mockOrgRepo.save as jest.Mock).mockResolvedValue(updated);
 
       const result = await service.update(1, { name: "Updated Corp" });
@@ -211,14 +205,14 @@ describe("OrganizationService", () => {
     });
 
     it("should throw NotFoundException when org not found", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(null);
 
       await expect(service.update(999, { name: "X" })).rejects.toThrow(NotFoundException);
     });
 
     it("should only update provided fields", async () => {
       const org = { ...baseOrg };
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(org);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(org);
       (mockOrgRepo.save as jest.Mock).mockImplementation((o) => Promise.resolve(o));
 
       await service.update(1, { industry: "tech" });
@@ -229,7 +223,7 @@ describe("OrganizationService", () => {
 
     it("should update plan and maxMembers", async () => {
       const org = { ...baseOrg };
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(org);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(org);
       (mockOrgRepo.save as jest.Mock).mockImplementation((o) => Promise.resolve(o));
 
       await service.update(1, { plan: OrganizationPlan.TEAM, maxMembers: 20 });
@@ -241,8 +235,8 @@ describe("OrganizationService", () => {
 
   describe("delete", () => {
     it("should delete organization when requested by owner", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(baseOrg);
-      (mockOrgRepo.remove as jest.Mock).mockResolvedValue(baseOrg);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(baseOrg);
+      (mockOrgRepo.remove as jest.Mock).mockResolvedValue(undefined);
 
       await service.delete(1, 100);
 
@@ -250,13 +244,13 @@ describe("OrganizationService", () => {
     });
 
     it("should throw NotFoundException when org not found", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(null);
 
       await expect(service.delete(999, 100)).rejects.toThrow(NotFoundException);
     });
 
     it("should throw ConflictException when non-owner tries to delete", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(baseOrg);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(baseOrg);
 
       await expect(service.delete(1, 999)).rejects.toThrow(ConflictException);
     });
@@ -264,21 +258,19 @@ describe("OrganizationService", () => {
 
   describe("memberCount", () => {
     it("should return count of active members", async () => {
-      (mockTeamMemberRepo.count as jest.Mock).mockResolvedValue(3);
+      (mockTeamMemberRepo.countActiveByOrganization as jest.Mock).mockResolvedValue(3);
 
       const result = await service.memberCount(1);
 
       expect(result).toBe(3);
-      expect(mockTeamMemberRepo.count).toHaveBeenCalledWith({
-        where: { organizationId: 1, status: TeamMemberStatus.ACTIVE },
-      });
+      expect(mockTeamMemberRepo.countActiveByOrganization).toHaveBeenCalledWith(1);
     });
   });
 
   describe("canAddMembers", () => {
     it("should return true when under max members", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(baseOrg);
-      (mockTeamMemberRepo.count as jest.Mock).mockResolvedValue(3);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(baseOrg);
+      (mockTeamMemberRepo.countActiveByOrganization as jest.Mock).mockResolvedValue(3);
 
       const result = await service.canAddMembers(1);
 
@@ -286,8 +278,8 @@ describe("OrganizationService", () => {
     });
 
     it("should return false when at max members", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(baseOrg);
-      (mockTeamMemberRepo.count as jest.Mock).mockResolvedValue(5);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(baseOrg);
+      (mockTeamMemberRepo.countActiveByOrganization as jest.Mock).mockResolvedValue(5);
 
       const result = await service.canAddMembers(1);
 
@@ -295,7 +287,7 @@ describe("OrganizationService", () => {
     });
 
     it("should return false when org not found", async () => {
-      (mockOrgRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockOrgRepo.findWithOwner as jest.Mock).mockResolvedValue(null);
 
       const result = await service.canAddMembers(999);
 
@@ -305,7 +297,8 @@ describe("OrganizationService", () => {
 
   describe("stats", () => {
     it("should return organization statistics", async () => {
-      (mockTeamMemberRepo.count as jest.Mock).mockResolvedValueOnce(5).mockResolvedValueOnce(4);
+      (mockTeamMemberRepo.countByOrganization as jest.Mock).mockResolvedValue(5);
+      (mockTeamMemberRepo.countActiveByOrganization as jest.Mock).mockResolvedValue(4);
 
       const result = await service.stats(1);
 

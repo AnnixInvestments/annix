@@ -1,20 +1,38 @@
 import { forwardRef, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
+import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { isMongoDriver } from "../lib/persistence/database-driver";
+import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { ExtractionMetric } from "./entities/extraction-metric.entity";
+import { ExtractionMetricRepository } from "./extraction-metric.repository";
+import { MongoExtractionMetricRepository } from "./extraction-metric.repository.mongo";
+import { PostgresExtractionMetricRepository } from "./extraction-metric.repository.postgres";
 import { ExtractionMetricService } from "./extraction-metric.service";
 import { MetricsController } from "./metrics.controller";
 import { NeonApiService } from "./neon-api.service";
+import { ExtractionMetricSchema } from "./schemas/extraction-metric.schema";
 
 @Module({
   imports: [
     ConfigModule,
-    TypeOrmModule.forFeature([ExtractionMetric]),
+    ...(isMongoDriver()
+      ? [MongooseModule.forFeature([{ name: "ExtractionMetric", schema: ExtractionMetricSchema }])]
+      : []),
+    ...(isMongoDriver() ? [] : [TypeOrmModule.forFeature([ExtractionMetric])]),
     forwardRef(() => AdminModule),
   ],
   controllers: [MetricsController],
-  providers: [ExtractionMetricService, NeonApiService],
+  providers: [
+    ExtractionMetricService,
+    NeonApiService,
+    repositoryProvider(
+      ExtractionMetricRepository,
+      PostgresExtractionMetricRepository,
+      MongoExtractionMetricRepository,
+    ),
+  ],
   exports: [ExtractionMetricService, NeonApiService],
 })
 export class MetricsModule {}

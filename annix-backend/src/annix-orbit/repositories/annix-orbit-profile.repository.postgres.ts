@@ -1,0 +1,65 @@
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { MoreThan, Repository } from "typeorm";
+import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
+import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import { AnnixOrbitProfileRepository } from "./annix-orbit-profile.repository";
+
+@Injectable()
+export class PostgresAnnixOrbitProfileRepository
+  extends TypeOrmCrudRepository<AnnixOrbitProfile>
+  implements AnnixOrbitProfileRepository
+{
+  constructor(@InjectRepository(AnnixOrbitProfile) repository: Repository<AnnixOrbitProfile>) {
+    super(repository);
+  }
+
+  findByUserId(userId: number): Promise<AnnixOrbitProfile | null> {
+    return this.repository.findOne({ where: { userId } });
+  }
+
+  findByUserIdWithCompany(userId: number): Promise<AnnixOrbitProfile | null> {
+    return this.repository.findOne({ where: { userId }, relations: ["company"] });
+  }
+
+  teamMembers(companyId: number): Promise<AnnixOrbitProfile[]> {
+    return this.repository.find({
+      where: { companyId, userType: AnnixOrbitUserType.COMPANY },
+      relations: ["user"],
+      order: { createdAt: "ASC" },
+    });
+  }
+
+  findByCompanyWithUser(companyId: number): Promise<AnnixOrbitProfile[]> {
+    return this.repository.find({ where: { companyId }, relations: ["user"] });
+  }
+
+  findDigestEnabledForCompany(companyId: number): Promise<AnnixOrbitProfile[]> {
+    return this.repository.find({
+      where: { companyId, digestEnabled: true },
+      relations: ["user"],
+    });
+  }
+
+  async digestEnabledCompanyIds(): Promise<number[]> {
+    const rows = await this.repository
+      .createQueryBuilder("profile")
+      .select("DISTINCT profile.company_id", "companyId")
+      .where("profile.digest_enabled = true")
+      .getRawMany();
+    return rows.map((r) => r.companyId);
+  }
+
+  findByValidDeletionToken(token: string, now: Date): Promise<AnnixOrbitProfile | null> {
+    return this.repository.findOne({
+      where: {
+        deletionToken: token,
+        deletionTokenExpires: MoreThan(now),
+      },
+    });
+  }
+
+  async setPushEnabledForUser(userId: number, enabled: boolean): Promise<void> {
+    await this.repository.update({ userId }, { pushEnabled: enabled });
+  }
+}

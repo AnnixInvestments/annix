@@ -1,17 +1,16 @@
 import { Injectable, Logger, OnModuleDestroy } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { filter, map, Observable, Subject } from "rxjs";
-import { Repository } from "typeorm";
 import { nowISO, nowMillis } from "../../../lib/datetime";
 import type { BlastProfileReadingEntry } from "../entities/qc-blast-profile.entity";
-import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import type { DftReadingEntry } from "../entities/qc-dft-reading.entity";
-import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
+import { DftCoatType } from "../entities/qc-dft-reading.entity";
 import type {
   ShoreHardnessAverages,
   ShoreHardnessReadings,
 } from "../entities/qc-shore-hardness.entity";
-import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
+import { QcBlastProfileRepository } from "../repositories/qc-blast-profile.repository";
+import { QcDftReadingRepository } from "../repositories/qc-dft-reading.repository";
+import { QcShoreHardnessRepository } from "../repositories/qc-shore-hardness.repository";
 
 export interface StreamingReading {
   value: number;
@@ -73,12 +72,9 @@ export class PositectorStreamingService implements OnModuleDestroy {
   private readonly activeSessions = new Map<string, StreamingSession>();
 
   constructor(
-    @InjectRepository(QcDftReading)
-    private readonly dftRepo: Repository<QcDftReading>,
-    @InjectRepository(QcBlastProfile)
-    private readonly blastRepo: Repository<QcBlastProfile>,
-    @InjectRepository(QcShoreHardness)
-    private readonly shoreRepo: Repository<QcShoreHardness>,
+    private readonly dftRepo: QcDftReadingRepository,
+    private readonly blastRepo: QcBlastProfileRepository,
+    private readonly shoreRepo: QcShoreHardnessRepository,
   ) {}
 
   onModuleDestroy(): void {
@@ -319,7 +315,7 @@ export class PositectorStreamingService implements OnModuleDestroy {
     const sum = dftReadings.reduce((acc, r) => acc + r.reading, 0);
     const average = dftReadings.length > 0 ? sum / dftReadings.length : null;
 
-    const record = this.dftRepo.create({
+    const saved = await this.dftRepo.create({
       companyId,
       jobCardId: config.jobCardId,
       coatType: config.coatType ?? DftCoatType.PRIMER,
@@ -333,8 +329,6 @@ export class PositectorStreamingService implements OnModuleDestroy {
       capturedByName: session.startedByName,
       capturedById: session.startedById,
     });
-
-    const saved = await this.dftRepo.save(record);
 
     return {
       sessionId: session.sessionId,
@@ -359,7 +353,7 @@ export class PositectorStreamingService implements OnModuleDestroy {
     const sum = blastReadings.reduce((acc, r) => acc + r.reading, 0);
     const average = blastReadings.length > 0 ? sum / blastReadings.length : null;
 
-    const record = this.blastRepo.create({
+    const saved = await this.blastRepo.create({
       companyId,
       jobCardId: config.jobCardId,
       specMicrons: config.specMicrons ?? 0,
@@ -371,8 +365,6 @@ export class PositectorStreamingService implements OnModuleDestroy {
       capturedByName: session.startedByName,
       capturedById: session.startedById,
     });
-
-    const saved = await this.blastRepo.save(record);
 
     return {
       sessionId: session.sessionId,
@@ -416,7 +408,7 @@ export class PositectorStreamingService implements OnModuleDestroy {
       overall,
     };
 
-    const record = this.shoreRepo.create({
+    const saved = await this.shoreRepo.create({
       companyId,
       jobCardId: config.jobCardId,
       rubberSpec: config.rubberSpec ?? "Unknown",
@@ -428,8 +420,6 @@ export class PositectorStreamingService implements OnModuleDestroy {
       capturedByName: session.startedByName,
       capturedById: session.startedById,
     });
-
-    const saved = await this.shoreRepo.save(record);
 
     return {
       sessionId: session.sessionId,

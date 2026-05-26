@@ -5,33 +5,38 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
   UnauthorizedException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, MoreThan, Repository } from "typeorm";
+import { DataSource } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { CompleteOnboardingDto } from "../dto/complete-onboarding.dto";
 import { UpdateCompanyDetailsDto } from "../dto/update-company-details.dto";
-import { PushSubscription } from "../entities/push-subscription.entity";
-import { StaffMember } from "../entities/staff-member.entity";
-import {
-  AdminTransferStatus,
-  StockControlAdminTransfer,
-} from "../entities/stock-control-admin-transfer.entity";
-import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
-import {
-  StockControlInvitation,
-  StockControlInvitationStatus,
-} from "../entities/stock-control-invitation.entity";
+import { AdminTransferStatus } from "../entities/stock-control-admin-transfer.entity";
+import { BrandingType } from "../entities/stock-control-company.entity";
+import { StockControlInvitationStatus } from "../entities/stock-control-invitation.entity";
 import { StockControlProfile } from "../entities/stock-control-profile.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
+import { PushSubscriptionRepository } from "../repositories/push-subscription.repository";
+import { StaffMemberRepository } from "../repositories/staff-member.repository";
+import { StockControlAdminTransferRepository } from "../repositories/stock-control-admin-transfer.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockControlInvitationRepository } from "../repositories/stock-control-invitation.repository";
+import { StockControlProfileRepository } from "../repositories/stock-control-profile.repository";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
 import { CompanyRoleService } from "./company-role.service";
 import { PublicBrandingService } from "./public-branding.service";
 
@@ -43,22 +48,14 @@ export class StockControlAuthService {
   private readonly storageType: string;
 
   constructor(
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
-    @InjectRepository(StockControlInvitation)
-    private readonly invitationRepo: Repository<StockControlInvitation>,
-    @InjectRepository(StockControlAdminTransfer)
-    private readonly adminTransferRepo: Repository<StockControlAdminTransfer>,
-    @InjectRepository(StaffMember)
-    private readonly staffRepo: Repository<StaffMember>,
-    @InjectRepository(PushSubscription)
-    private readonly pushSubscriptionRepo: Repository<PushSubscription>,
-    @InjectRepository(User)
-    private readonly unifiedUserRepo: Repository<User>,
-    @InjectRepository(StockControlProfile)
-    private readonly profileRepo: Repository<StockControlProfile>,
+    private readonly userRepo: StockControlUserRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
+    private readonly invitationRepo: StockControlInvitationRepository,
+    private readonly adminTransferRepo: StockControlAdminTransferRepository,
+    private readonly staffRepo: StaffMemberRepository,
+    private readonly pushSubscriptionRepo: PushSubscriptionRepository,
+    private readonly unifiedUserRepo: UserRepository,
+    private readonly profileRepo: StockControlProfileRepository,
     private readonly jwtService: JwtService,
     private readonly emailService: EmailService,
     private readonly s3StorageService: S3StorageService,
@@ -66,8 +63,17 @@ export class StockControlAuthService {
     private readonly publicBrandingService: PublicBrandingService,
     private readonly companyRoleService: CompanyRoleService,
     private readonly passwordService: PasswordService,
+    @Optional() private readonly dataSource: DataSource,
+    private readonly txRunner: TransactionRunner,
   ) {
     this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
+  }
+
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("StockControlAuthService transactions require a TypeOrmTransactionContext");
+    }
+    return context.manager;
   }
 
   private async resolveStorageUrl(path: string | null): Promise<string | null> {
@@ -89,7 +95,7 @@ export class StockControlAuthService {
     invitationToken?: string,
   ) {
     const normalizedEmail = email.toLowerCase().trim();
-    const existing = await this.userRepo.findOne({ where: { email: normalizedEmail } });
+    const existing = await this.userRepo.findOneByEmail(normalizedEmail);
     if (existing) {
       throw new ConflictException("Email already registered");
     }
@@ -100,9 +106,10 @@ export class StockControlAuthService {
 
     const { companyId, role, isInvitedUser } = await (async () => {
       if (invitationToken) {
-        const invitation = await this.invitationRepo.findOne({
-          where: { token: invitationToken, status: StockControlInvitationStatus.PENDING },
-        });
+        const invitation = await this.invitationRepo.findOneByTokenAndStatus(
+          invitationToken,
+          StockControlInvitationStatus.PENDING,
+        );
 
         if (!invitation) {
           throw new BadRequestException("Invalid or expired invitation token");
@@ -125,9 +132,10 @@ export class StockControlAuthService {
         };
       }
 
-      const pendingInvitation = await this.invitationRepo.findOne({
-        where: { email: normalizedEmail, status: StockControlInvitationStatus.PENDING },
-      });
+      const pendingInvitation = await this.invitationRepo.findOneByEmailAndStatus(
+        normalizedEmail,
+        StockControlInvitationStatus.PENDING,
+      );
 
       if (pendingInvitation) {
         pendingInvitation.status = StockControlInvitationStatus.ACCEPTED;
@@ -141,10 +149,9 @@ export class StockControlAuthService {
         };
       }
 
-      const company = this.companyRepo.create({
+      const savedCompany = await this.companyRepo.create({
         name: companyName || `${name} Company`,
       });
-      const savedCompany = await this.companyRepo.save(company);
       return {
         companyId: savedCompany.id,
         role: StockControlRole.ADMIN as StockControlRole,
@@ -152,7 +159,7 @@ export class StockControlAuthService {
       };
     })();
 
-    const user = this.userRepo.create({
+    const saved = await this.userRepo.create({
       email: normalizedEmail,
       passwordHash,
       name,
@@ -162,8 +169,6 @@ export class StockControlAuthService {
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
     });
-
-    const saved = await this.userRepo.save(user);
 
     await this.dualWriteUnifiedUser(
       normalizedEmail,
@@ -188,12 +193,7 @@ export class StockControlAuthService {
   }
 
   async verifyEmail(token: string): Promise<Record<string, unknown>> {
-    const user = await this.userRepo.findOne({
-      where: {
-        emailVerificationToken: token,
-        emailVerificationExpires: MoreThan(now().toJSDate()),
-      },
-    });
+    const user = await this.userRepo.findOneByEmailVerificationToken(token);
 
     if (!user) {
       throw new BadRequestException(
@@ -208,17 +208,12 @@ export class StockControlAuthService {
     user.emailVerificationExpires = null;
     await this.userRepo.save(user);
 
-    await this.unifiedUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({
-        emailVerified: true,
-        emailVerificationToken: null,
-        emailVerificationExpires: null,
-        status: "active",
-      })
-      .where("LOWER(email) = LOWER(:email)", { email: user.email })
-      .execute();
+    await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
+      emailVerified: true,
+      emailVerificationToken: null,
+      emailVerificationExpires: null,
+      status: "active",
+    });
 
     const result: Record<string, unknown> = {
       message: "Email verified successfully. You can now sign in.",
@@ -229,12 +224,8 @@ export class StockControlAuthService {
 
     if (!isInvitedUser) {
       // Issue unified JWT tokens for auto-login after verification
-      const unifiedUser = await this.unifiedUserRepo.findOne({
-        where: { email: user.email },
-      });
-      const profile = unifiedUser
-        ? await this.profileRepo.findOne({ where: { userId: unifiedUser.id } })
-        : null;
+      const unifiedUser = await this.unifiedUserRepo.findOneByEmail(user.email);
+      const profile = unifiedUser ? await this.profileRepo.findOneByUserId(unifiedUser.id) : null;
       if (unifiedUser && profile) {
         const tokens = this.generateTokens(unifiedUser, profile, user.role);
         result.accessToken = tokens.accessToken;
@@ -246,7 +237,7 @@ export class StockControlAuthService {
   }
 
   async resendVerification(email: string): Promise<{ message: string }> {
-    const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
+    const user = await this.userRepo.findOneByEmailCaseInsensitive(email.trim());
 
     if (!user) {
       throw new NotFoundException("No account found with this email address.");
@@ -263,15 +254,10 @@ export class StockControlAuthService {
     user.emailVerificationExpires = verificationExpires;
     await this.userRepo.save(user);
 
-    await this.unifiedUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({
-        emailVerificationToken: verificationToken,
-        emailVerificationExpires: verificationExpires,
-      })
-      .where("LOWER(email) = LOWER(:email)", { email: user.email })
-      .execute();
+    await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
+    });
 
     await this.emailService.sendStockControlVerificationEmail(email, verificationToken);
 
@@ -279,7 +265,7 @@ export class StockControlAuthService {
   }
 
   async forgotPassword(email: string): Promise<{ message: string }> {
-    const user = await this.userRepo.findOne({ where: { email: ILike(email.trim()) } });
+    const user = await this.userRepo.findOneByEmailCaseInsensitive(email.trim());
 
     if (user?.emailVerified) {
       const resetToken = uuidv4();
@@ -289,12 +275,10 @@ export class StockControlAuthService {
       user.resetPasswordExpires = resetExpires;
       await this.userRepo.save(user);
 
-      await this.unifiedUserRepo
-        .createQueryBuilder()
-        .update()
-        .set({ resetPasswordToken: resetToken, resetPasswordExpires: resetExpires })
-        .where("LOWER(email) = LOWER(:email)", { email: user.email })
-        .execute();
+      await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
+        resetPasswordToken: resetToken,
+        resetPasswordExpires: resetExpires,
+      });
 
       await this.emailService.sendStockControlPasswordResetEmail(email, resetToken);
     }
@@ -305,12 +289,7 @@ export class StockControlAuthService {
   }
 
   async resetPassword(token: string, password: string): Promise<{ message: string }> {
-    const user = await this.userRepo.findOne({
-      where: {
-        resetPasswordToken: token,
-        resetPasswordExpires: MoreThan(now().toJSDate()),
-      },
-    });
+    const user = await this.userRepo.findOneByResetToken(token);
 
     if (!user) {
       throw new BadRequestException("Invalid or expired reset link. Please request a new one.");
@@ -322,12 +301,11 @@ export class StockControlAuthService {
     user.resetPasswordExpires = null;
     await this.userRepo.save(user);
 
-    await this.unifiedUserRepo
-      .createQueryBuilder()
-      .update()
-      .set({ passwordHash: newHash, resetPasswordToken: null, resetPasswordExpires: null })
-      .where("LOWER(email) = LOWER(:email)", { email: user.email })
-      .execute();
+    await this.unifiedUserRepo.updateByEmailCaseInsensitive(user.email, {
+      passwordHash: newHash,
+      resetPasswordToken: null,
+      resetPasswordExpires: null,
+    });
 
     return { message: "Password reset successfully. You can now sign in with your new password." };
   }
@@ -336,9 +314,7 @@ export class StockControlAuthService {
     const normalizedEmail = email.toLowerCase().trim();
 
     // Look up the unified User for password verification
-    const unifiedUser = await this.unifiedUserRepo.findOne({
-      where: { email: ILike(normalizedEmail) },
-    });
+    const unifiedUser = await this.unifiedUserRepo.findOneByEmailCaseInsensitive(normalizedEmail);
     if (!unifiedUser) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -349,16 +325,14 @@ export class StockControlAuthService {
     }
 
     // Get the SC profile for company and role info
-    const profile = await this.profileRepo.findOne({
-      where: { userId: unifiedUser.id },
-    });
+    const profile = await this.profileRepo.findOneByUserId(unifiedUser.id);
     if (!profile) {
       throw new UnauthorizedException("No Stock Control profile found");
     }
 
     // Resolve role from legacy SC user (until roles migrate to RBAC)
     const scUser = profile.legacyScUserId
-      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      ? await this.userRepo.findById(profile.legacyScUserId)
       : null;
     const role = scUser?.role || StockControlRole.STOREMAN;
 
@@ -382,10 +356,10 @@ export class StockControlAuthService {
   }
 
   async currentUser(unifiedUserId: number) {
-    const profile = await this.profileRepo.findOne({
-      where: { userId: unifiedUserId },
-      relations: ["user", "company"],
-    });
+    const profile = await this.profileRepo.findOneByUserIdWithRelations(unifiedUserId, [
+      "user",
+      "company",
+    ]);
     if (!profile) {
       throw new UnauthorizedException("User not found");
     }
@@ -395,7 +369,7 @@ export class StockControlAuthService {
 
     // Resolve role from legacy SC user (until roles migrate to RBAC)
     const scUser = profile.legacyScUserId
-      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      ? await this.userRepo.findById(profile.legacyScUserId)
       : null;
     const role = scUser?.role || StockControlRole.STOREMAN;
 
@@ -454,15 +428,16 @@ export class StockControlAuthService {
     linkedStaffId: number | null,
   ): Promise<{ linkedStaffId: number | null }> {
     if (linkedStaffId !== null) {
-      const staff = await this.staffRepo.findOne({
-        where: { id: linkedStaffId, unifiedCompanyId, active: true } as any,
-      });
+      const staff = await this.staffRepo.findActiveByIdForUnifiedCompany(
+        linkedStaffId,
+        unifiedCompanyId,
+      );
       if (!staff) {
         throw new NotFoundException("Staff member not found or inactive");
       }
     }
 
-    await this.profileRepo.update({ userId: unifiedUserId }, { linkedStaffId });
+    await this.profileRepo.updateByUserId(unifiedUserId, { linkedStaffId });
     return { linkedStaffId };
   }
 
@@ -470,7 +445,7 @@ export class StockControlAuthService {
     unifiedUserId: number,
     hideTooltips: boolean,
   ): Promise<{ hideTooltips: boolean }> {
-    await this.profileRepo.update({ userId: unifiedUserId }, { hideTooltips });
+    await this.profileRepo.updateByUserId(unifiedUserId, { hideTooltips });
     return { hideTooltips };
   }
 
@@ -485,8 +460,8 @@ export class StockControlAuthService {
     if (prefs.pushNotificationsEnabled !== undefined) {
       updates.pushNotificationsEnabled = prefs.pushNotificationsEnabled;
     }
-    await this.profileRepo.update({ userId: unifiedUserId }, updates);
-    const profile = await this.profileRepo.findOneOrFail({ where: { userId: unifiedUserId } });
+    await this.profileRepo.updateByUserId(unifiedUserId, updates);
+    const profile = await this.profileRepo.findOneOrFailByUserId(unifiedUserId);
     return {
       emailNotificationsEnabled: profile.emailNotificationsEnabled,
       pushNotificationsEnabled: profile.pushNotificationsEnabled,
@@ -501,18 +476,18 @@ export class StockControlAuthService {
       }
 
       // payload.sub is now unified User.id
-      const unifiedUser = await this.unifiedUserRepo.findOne({ where: { id: payload.sub } });
+      const unifiedUser = await this.unifiedUserRepo.findById(payload.sub);
       if (!unifiedUser) {
         throw new UnauthorizedException("User not found");
       }
 
-      const profile = await this.profileRepo.findOne({ where: { userId: unifiedUser.id } });
+      const profile = await this.profileRepo.findOneByUserId(unifiedUser.id);
       if (!profile) {
         throw new UnauthorizedException("No Stock Control profile found");
       }
 
       const scUser = profile.legacyScUserId
-        ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+        ? await this.userRepo.findById(profile.legacyScUserId)
         : null;
       const role = scUser?.role || StockControlRole.STOREMAN;
       const name =
@@ -547,7 +522,7 @@ export class StockControlAuthService {
     logoUrl?: string,
     heroImageUrl?: string,
   ) {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) {
       throw new NotFoundException("Company not found");
     }
@@ -564,13 +539,13 @@ export class StockControlAuthService {
     await this.companyRepo.save(company);
 
     // Also update the unified companies table (currentUser reads from there)
-    const unifiedIdResult = await this.profileRepo.manager.query(
+    const unifiedIdResult = await this.dataSource.query(
       "SELECT unified_company_id FROM stock_control_companies WHERE id = $1",
       [companyId],
     );
     const unifiedCompanyId = unifiedIdResult[0]?.unified_company_id;
     if (unifiedCompanyId) {
-      await this.profileRepo.manager.query(
+      await this.dataSource.query(
         `UPDATE companies SET
           branding_type = $1, website_url = $2, branding_authorized = $3,
           primary_color = $4, accent_color = $5, logo_url = $6, hero_image_url = $7,
@@ -595,7 +570,7 @@ export class StockControlAuthService {
   }
 
   async updateCompanyDetails(companyId: number, dto: UpdateCompanyDetailsDto) {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) {
       throw new NotFoundException("Company not found");
     }
@@ -624,13 +599,13 @@ export class StockControlAuthService {
     await this.companyRepo.save(company);
 
     // Dual-write to unified companies table
-    const unifiedIdResult = await this.profileRepo.manager.query(
+    const unifiedIdResult = await this.dataSource.query(
       "SELECT unified_company_id FROM stock_control_companies WHERE id = $1",
       [companyId],
     );
     const unifiedCompanyId = unifiedIdResult[0]?.unified_company_id;
     if (unifiedCompanyId) {
-      await this.profileRepo.manager.query(
+      await this.dataSource.query(
         `UPDATE companies SET
           name = $1, registration_number = $2, vat_number = $3,
           street_address = $4, city = $5, province = $6, postal_code = $7,
@@ -657,14 +632,14 @@ export class StockControlAuthService {
     }
 
     if (dto.notificationsEnabled === false) {
-      await this.pushSubscriptionRepo.delete({ companyId });
+      await this.pushSubscriptionRepo.deleteForCompany(companyId);
     }
 
     return { message: "Company details updated successfully." };
   }
 
   async completeOnboarding(companyId: number, unifiedUserId: number, dto: CompleteOnboardingDto) {
-    const legacy = await this.companyRepo.findOne({ where: { id: companyId } });
+    const legacy = await this.companyRepo.findById(companyId);
     if (legacy) {
       legacy.name = dto.legalName;
       legacy.registrationNumber = dto.registrationNumber;
@@ -678,13 +653,13 @@ export class StockControlAuthService {
       await this.companyRepo.save(legacy);
     }
 
-    const unifiedIdResult = await this.profileRepo.manager.query(
+    const unifiedIdResult = await this.dataSource.query(
       "SELECT unified_company_id FROM stock_control_companies WHERE id = $1",
       [companyId],
     );
     const unifiedCompanyId = unifiedIdResult[0]?.unified_company_id ?? companyId;
 
-    await this.profileRepo.manager.query(
+    await this.dataSource.query(
       `UPDATE companies SET
         legal_name = $1,
         name = $1,
@@ -719,10 +694,7 @@ export class StockControlAuthService {
   }
 
   async teamMembers(companyId: number) {
-    const users = await this.userRepo.find({
-      where: { companyId },
-      order: { createdAt: "ASC" },
-    });
+    const users = await this.userRepo.findForCompanyOrderedByCreated(companyId);
 
     return users.map((u) => ({
       id: u.id,
@@ -735,7 +707,7 @@ export class StockControlAuthService {
   }
 
   async updateMemberRole(companyId: number, userId: number, role: string) {
-    const user = await this.userRepo.findOne({ where: { id: userId, companyId } });
+    const user = await this.userRepo.findOneForCompany(userId, companyId);
     if (!user) {
       throw new NotFoundException("Team member not found");
     }
@@ -746,9 +718,7 @@ export class StockControlAuthService {
       throw new BadRequestException(`Invalid role. Must be one of: ${validKeys.join(", ")}`);
     }
 
-    const admins = await this.userRepo.count({
-      where: { companyId, role: StockControlRole.ADMIN },
-    });
+    const admins = await this.userRepo.countAdminsForCompany(companyId);
     if (user.role === StockControlRole.ADMIN && role !== StockControlRole.ADMIN && admins <= 1) {
       throw new ForbiddenException("Cannot change role of the only admin");
     }
@@ -764,7 +734,7 @@ export class StockControlAuthService {
     userId: number,
     requesterUnifiedUserId: number,
   ): Promise<{ message: string }> {
-    const user = await this.userRepo.findOne({ where: { id: userId, companyId } });
+    const user = await this.userRepo.findOneForCompany(userId, companyId);
     if (!user) {
       throw new NotFoundException("Team member not found");
     }
@@ -774,15 +744,14 @@ export class StockControlAuthService {
     }
 
     if (user.role === StockControlRole.ADMIN) {
-      const admins = await this.userRepo.count({
-        where: { companyId, role: StockControlRole.ADMIN },
-      });
+      const admins = await this.userRepo.countAdminsForCompany(companyId);
       if (admins <= 1) {
         throw new ForbiddenException("Cannot delete the only admin");
       }
     }
 
-    await this.userRepo.manager.transaction(async (manager) => {
+    await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
       if (user.unifiedUserId !== null && user.unifiedUserId !== undefined) {
         await manager.query(
           `DELETE FROM user_app_access
@@ -803,10 +772,7 @@ export class StockControlAuthService {
   }
 
   async sendAppLink(companyId: number, userId: number): Promise<{ message: string }> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId, companyId },
-      relations: ["company"],
-    });
+    const user = await this.userRepo.findOneForCompanyWithCompany(userId, companyId);
     if (!user) {
       throw new NotFoundException("Team member not found");
     }
@@ -826,10 +792,7 @@ export class StockControlAuthService {
     targetEmail: string,
     newRoleForInitiator: string | null,
   ): Promise<{ message: string }> {
-    const initiator = await this.userRepo.findOne({
-      where: { id: initiatorId, companyId },
-      relations: ["company"],
-    });
+    const initiator = await this.userRepo.findOneForCompanyWithCompany(initiatorId, companyId);
     if (!initiator || initiator.role !== StockControlRole.ADMIN) {
       throw new ForbiddenException("Only the admin can initiate a transfer");
     }
@@ -840,9 +803,7 @@ export class StockControlAuthService {
       throw new BadRequestException("Cannot transfer admin to yourself");
     }
 
-    const targetUser = await this.userRepo.findOne({
-      where: { email: normalizedEmail, companyId },
-    });
+    const targetUser = await this.userRepo.findOneByEmailAndCompany(normalizedEmail, companyId);
     if (!targetUser) {
       throw new BadRequestException(
         "No team member found with this email address. They must be an existing member of your company.",
@@ -857,9 +818,7 @@ export class StockControlAuthService {
       }
     }
 
-    const existingPending = await this.adminTransferRepo.findOne({
-      where: { companyId, status: AdminTransferStatus.PENDING },
-    });
+    const existingPending = await this.adminTransferRepo.findPendingForCompany(companyId);
     if (existingPending) {
       existingPending.status = AdminTransferStatus.CANCELLED;
       await this.adminTransferRepo.save(existingPending);
@@ -868,7 +827,7 @@ export class StockControlAuthService {
     const token = uuidv4();
     const expiresAt = now().plus({ days: 7 }).toJSDate();
 
-    const transfer = this.adminTransferRepo.create({
+    await this.adminTransferRepo.create({
       companyId,
       initiatedById: initiatorId,
       targetEmail: normalizedEmail,
@@ -877,7 +836,6 @@ export class StockControlAuthService {
       status: AdminTransferStatus.PENDING,
       expiresAt,
     });
-    await this.adminTransferRepo.save(transfer);
 
     await this.emailService.sendStockControlAdminTransferEmail(
       normalizedEmail,
@@ -897,9 +855,7 @@ export class StockControlAuthService {
     createdAt: Date;
     expiresAt: Date;
   } | null> {
-    const transfer = await this.adminTransferRepo.findOne({
-      where: { companyId, status: AdminTransferStatus.PENDING },
-    });
+    const transfer = await this.adminTransferRepo.findPendingForCompany(companyId);
 
     if (!transfer) {
       return null;
@@ -922,10 +878,7 @@ export class StockControlAuthService {
   }
 
   async resendAdminTransfer(companyId: number): Promise<{ message: string }> {
-    const transfer = await this.adminTransferRepo.findOne({
-      where: { companyId, status: AdminTransferStatus.PENDING },
-      relations: ["initiatedBy", "initiatedBy.company"],
-    });
+    const transfer = await this.adminTransferRepo.findPendingForCompanyWithInitiator(companyId);
 
     if (!transfer) {
       throw new NotFoundException("No pending admin transfer found");
@@ -937,10 +890,7 @@ export class StockControlAuthService {
       throw new BadRequestException("Admin transfer has expired. Please initiate a new one.");
     }
 
-    const initiator = await this.userRepo.findOne({
-      where: { id: transfer.initiatedById },
-      relations: ["company"],
-    });
+    const initiator = await this.userRepo.findOneByIdWithCompany(transfer.initiatedById);
 
     await this.emailService.sendStockControlAdminTransferEmail(
       transfer.targetEmail,
@@ -953,9 +903,7 @@ export class StockControlAuthService {
   }
 
   async cancelAdminTransfer(companyId: number, transferId: number): Promise<{ message: string }> {
-    const transfer = await this.adminTransferRepo.findOne({
-      where: { id: transferId, companyId, status: AdminTransferStatus.PENDING },
-    });
+    const transfer = await this.adminTransferRepo.findPendingByIdForCompany(transferId, companyId);
 
     if (!transfer) {
       throw new NotFoundException("No pending admin transfer found");
@@ -968,9 +916,10 @@ export class StockControlAuthService {
   }
 
   async acceptAdminTransfer(token: string): Promise<{ transferred: boolean; message: string }> {
-    const transfer = await this.adminTransferRepo.findOne({
-      where: { token, status: AdminTransferStatus.PENDING },
-    });
+    const transfer = await this.adminTransferRepo.findByStatusToken(
+      token,
+      AdminTransferStatus.PENDING,
+    );
 
     if (!transfer) {
       return { transferred: false, message: "No pending transfer" };
@@ -982,9 +931,10 @@ export class StockControlAuthService {
       return { transferred: false, message: "Transfer has expired" };
     }
 
-    const targetUser = await this.userRepo.findOne({
-      where: { email: transfer.targetEmail, companyId: transfer.companyId },
-    });
+    const targetUser = await this.userRepo.findOneByEmailAndCompany(
+      transfer.targetEmail,
+      transfer.companyId,
+    );
     if (!targetUser) {
       return { transferred: false, message: "User not found in company" };
     }
@@ -993,9 +943,10 @@ export class StockControlAuthService {
       return { transferred: false, message: "Target user email is not verified" };
     }
 
-    const initiator = await this.userRepo.findOne({
-      where: { id: transfer.initiatedById, companyId: transfer.companyId },
-    });
+    const initiator = await this.userRepo.findOneForCompany(
+      transfer.initiatedById,
+      transfer.companyId,
+    );
 
     targetUser.role = StockControlRole.ADMIN;
     await this.userRepo.save(targetUser);
@@ -1018,9 +969,7 @@ export class StockControlAuthService {
 
   async adminBridge(adminEmail: string) {
     const normalizedEmail = adminEmail.toLowerCase().trim();
-    const unifiedUser = await this.unifiedUserRepo.findOne({
-      where: { email: normalizedEmail },
-    });
+    const unifiedUser = await this.unifiedUserRepo.findOneByEmail(normalizedEmail);
 
     if (!unifiedUser) {
       throw new NotFoundException(
@@ -1028,9 +977,7 @@ export class StockControlAuthService {
       );
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId: unifiedUser.id },
-    });
+    const profile = await this.profileRepo.findOneByUserId(unifiedUser.id);
     if (!profile) {
       throw new NotFoundException("No Stock Control profile found for this admin email.");
     }
@@ -1059,9 +1006,7 @@ export class StockControlAuthService {
     verificationExpires: Date,
   ): Promise<void> {
     try {
-      const existingUnified = await this.unifiedUserRepo.findOne({
-        where: { email },
-      });
+      const existingUnified = await this.unifiedUserRepo.findOneByEmail(email);
 
       if (existingUnified) {
         existingUnified.passwordHash = passwordHash;
@@ -1070,7 +1015,7 @@ export class StockControlAuthService {
         await this.unifiedUserRepo.save(existingUnified);
       } else {
         const nameParts = name.split(" ");
-        const user = this.unifiedUserRepo.create({
+        const user = this.unifiedUserRepo.instantiate({
           email,
           username: email,
           passwordHash,
@@ -1091,9 +1036,7 @@ export class StockControlAuthService {
   async issueTokensForAuthenticatedUser(
     unifiedUser: User,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { userId: unifiedUser.id },
-    });
+    const profile = await this.profileRepo.findOneByUserId(unifiedUser.id);
 
     if (!profile) {
       throw new UnauthorizedException(
@@ -1102,7 +1045,7 @@ export class StockControlAuthService {
     }
 
     const scUser = profile.legacyScUserId
-      ? await this.userRepo.findOne({ where: { id: profile.legacyScUserId } })
+      ? await this.userRepo.findById(profile.legacyScUserId)
       : null;
     const role = scUser?.role || StockControlRole.STOREMAN;
 

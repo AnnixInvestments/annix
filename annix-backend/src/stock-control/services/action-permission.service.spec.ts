@@ -1,6 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
+import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
+import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
 import {
   ACTION_PERMISSION_LABELS,
   ActionPermissionService,
@@ -17,17 +19,21 @@ describe("ActionPermissionService", () => {
   };
 
   const mockRepo = {
-    find: jest.fn(),
-    manager: {
-      transaction: jest.fn().mockImplementation((fn) => fn(mockManager)),
-    },
+    findForCompany: jest.fn(),
+  };
+
+  const mockTxRunner = {
+    run: jest
+      .fn()
+      .mockImplementation((fn) => fn(new TypeOrmTransactionContext(mockManager as never))),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ActionPermissionService,
-        { provide: getRepositoryToken(StockControlActionPermission), useValue: mockRepo },
+        { provide: StockControlActionPermissionRepository, useValue: mockRepo },
+        { provide: TransactionRunner, useValue: mockTxRunner },
       ],
     }).compile();
 
@@ -43,7 +49,7 @@ describe("ActionPermissionService", () => {
 
   describe("permissionsForCompany — defaults", () => {
     it("should return defaults when no rows exist for company", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       const result = await service.permissionsForCompany(1);
 
@@ -148,7 +154,7 @@ describe("ActionPermissionService", () => {
 
   describe("permissionsForCompany — stored overrides", () => {
     it("should use stored config when rows exist", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, actionKey: "job-cards.create", role: "admin" },
         { companyId: 1, actionKey: "job-cards.create", role: "viewer" },
       ]);
@@ -160,7 +166,7 @@ describe("ActionPermissionService", () => {
     });
 
     it("should fall back to defaults for actions not in stored config", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, actionKey: "job-cards.create", role: "admin" },
       ]);
 
@@ -170,9 +176,9 @@ describe("ActionPermissionService", () => {
     });
 
     it("should scope queries by companyId", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
       await service.permissionsForCompany(42);
-      expect(mockRepo.find).toHaveBeenCalledWith({ where: { companyId: 42 } });
+      expect(mockRepo.findForCompany).toHaveBeenCalledWith(42);
     });
   });
 
@@ -180,7 +186,7 @@ describe("ActionPermissionService", () => {
 
   describe("rolesForAction", () => {
     it("should return roles for a specific action from defaults", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       const roles = await service.rolesForAction(1, "job-cards.create");
 
@@ -188,7 +194,7 @@ describe("ActionPermissionService", () => {
     });
 
     it("should return null for an unknown action key", async () => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
 
       const roles = await service.rolesForAction(1, "nonexistent.action");
 
@@ -196,7 +202,7 @@ describe("ActionPermissionService", () => {
     });
 
     it("should return stored roles when config exists", async () => {
-      mockRepo.find.mockResolvedValue([
+      mockRepo.findForCompany.mockResolvedValue([
         { companyId: 1, actionKey: "inventory.create", role: "storeman" },
         { companyId: 1, actionKey: "inventory.create", role: "admin" },
       ]);
@@ -212,7 +218,7 @@ describe("ActionPermissionService", () => {
 
   describe("updatePermissions", () => {
     beforeEach(() => {
-      mockRepo.find.mockResolvedValue([]);
+      mockRepo.findForCompany.mockResolvedValue([]);
     });
 
     it("should delete existing permissions and insert new ones in a transaction", async () => {

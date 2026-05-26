@@ -8,14 +8,18 @@ import {
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now, nowMillis } from "../lib/datetime";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../lib/persistence/transaction-context";
+import { TransactionRunner } from "../lib/persistence/transaction-runner";
+import { CompanyRepository } from "../platform/company.repository";
 import { Company, CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
@@ -29,7 +33,14 @@ import {
   TokenService,
 } from "../shared/auth";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { UserRole } from "../user-roles/entities/user-role.entity";
+import { CustomerDeviceBindingRepository } from "./customer-device-binding.repository";
+import { CustomerDocumentRepository } from "./customer-document.repository";
+import { CustomerLoginAttemptRepository } from "./customer-login-attempt.repository";
+import { CustomerOnboardingRepository } from "./customer-onboarding.repository";
+import { CustomerProfileRepository } from "./customer-profile.repository";
+import { CustomerSessionRepository } from "./customer-session.repository";
 import { DocumentOcrService } from "./document-ocr.service";
 import {
   CreateCustomerRegistrationDto,
@@ -40,10 +51,6 @@ import {
 import {
   CustomerAccountStatus,
   CustomerDeviceBinding,
-  CustomerDocument,
-  CustomerLoginAttempt,
-  CustomerOnboarding,
-  CustomerProfile,
   CustomerRole,
   CustomerSession,
 } from "./entities";
@@ -61,25 +68,15 @@ export class CustomerAuthService {
   private readonly uploadDir: string;
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CustomerProfile)
-    private readonly profileRepo: Repository<CustomerProfile>,
-    @InjectRepository(CustomerDeviceBinding)
-    private readonly deviceBindingRepo: Repository<CustomerDeviceBinding>,
-    @InjectRepository(CustomerLoginAttempt)
-    private readonly loginAttemptRepo: Repository<CustomerLoginAttempt>,
-    @InjectRepository(CustomerSession)
-    private readonly sessionRepo: Repository<CustomerSession>,
-    @InjectRepository(CustomerOnboarding)
-    private readonly onboardingRepo: Repository<CustomerOnboarding>,
-    @InjectRepository(CustomerDocument)
-    private readonly documentRepo: Repository<CustomerDocument>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(UserRole)
-    private readonly userRoleRepo: Repository<UserRole>,
-    private readonly dataSource: DataSource,
+    private readonly companyRepo: CompanyRepository,
+    private readonly profileRepository: CustomerProfileRepository,
+    private readonly deviceBindingRepository: CustomerDeviceBindingRepository,
+    private readonly loginAttemptRepository: CustomerLoginAttemptRepository,
+    private readonly sessionRepository: CustomerSessionRepository,
+    private readonly onboardingRepository: CustomerOnboardingRepository,
+    private readonly documentRepository: CustomerDocumentRepository,
+    private readonly userRepo: UserRepository,
+    private readonly txRunner: TransactionRunner,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
     private readonly documentOcrService: DocumentOcrService,
@@ -110,35 +107,26 @@ export class CustomerAuthService {
       );
     }
 
-    const existingUser = await this.userRepo.findOne({
-      where: { email: dto.user.email },
-    });
+    const existingUser = await this.userRepo.findOneByEmail(dto.user.email);
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
 
-    // A company has a single registration number shared across every Annix app
-    // and side (customer/supplier). Only block if this company already has a
-    // customer account — a supplier of the same company may still register here.
-    if (dto.company.registrationNumber) {
-      const existingCustomerCount = await this.profileRepo
-        .createQueryBuilder("profile")
-        .innerJoin("profile.company", "company")
-        .where("company.registrationNumber = :registrationNumber", {
-          registrationNumber: dto.company.registrationNumber,
-        })
-        .getCount();
-      if (existingCustomerCount > 0) {
-        throw new ConflictException("A customer account is already registered for this company");
-      }
+    const existingCompany = await this.companyRepo.findByRegistrationNumber(
+      dto.company.registrationNumber,
+    );
+    if (existingCompany) {
+      throw new ConflictException("A company with this registration number already exists");
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const { savedProfile, savedUser, savedCompany } = await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
+      const companyTxRepo = manager.getRepository(Company);
+      const userRoleTxRepo = manager.getRepository(UserRole);
+      const userTxRepo = manager.getRepository(User);
+      const deviceBindingTxRepo = manager.getRepository(CustomerDeviceBinding);
 
-    try {
-      const company = this.companyRepo.create({
+      const company = companyTxRepo.create({
         name: dto.company.legalName,
         companyType: CompanyType.CUSTOMER,
         legalName: dto.company.legalName,
@@ -156,34 +144,35 @@ export class CustomerAuthService {
         email: dto.company.generalEmail,
         websiteUrl: dto.company.website,
       });
-      const savedCompany = await queryRunner.manager.save(company);
+      const company_ = await companyTxRepo.save(company);
 
       const { passwordHash } = await this.passwordService.hash(dto.user.password);
 
-      let customerRole = await this.userRoleRepo.findOne({
+      let customerRole = await userRoleTxRepo.findOne({
         where: { name: "customer" },
       });
       if (!customerRole) {
-        customerRole = this.userRoleRepo.create({ name: "customer" });
-        customerRole = await queryRunner.manager.save(customerRole);
+        customerRole = userRoleTxRepo.create({ name: "customer" });
+        customerRole = await userRoleTxRepo.save(customerRole);
       }
 
-      const user = this.userRepo.create({
+      const user = userTxRepo.create({
         username: dto.user.email,
         email: dto.user.email,
         passwordHash,
         roles: [customerRole],
       });
-      const savedUser = await queryRunner.manager.save(user);
+      const user_ = await userTxRepo.save(user);
 
       const emailVerificationToken = uuidv4();
       const emailVerificationExpires = now()
         .plus({ hours: AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS })
         .toJSDate();
 
-      const profile = this.profileRepo.create({
-        userId: savedUser.id,
-        companyId: savedCompany.id,
+      const profileRepo = this.profileRepository.withTransaction(ctx);
+      const profile_ = await profileRepo.create({
+        userId: user_.id,
+        companyId: company_.id,
         firstName: dto.user.firstName,
         lastName: dto.user.lastName,
         jobTitle: dto.user.jobTitle,
@@ -198,38 +187,34 @@ export class CustomerAuthService {
         securityPolicyAcceptedAt: now().toJSDate(),
         documentStorageAcceptedAt: now().toJSDate(),
       });
-      const savedProfile = await queryRunner.manager.save(profile);
 
       const documentsComplete = !!(vatDocument && companyRegDocument);
-      const onboarding = this.onboardingRepo.create({
-        customerId: savedProfile.id,
+      const onboardingRepo = this.onboardingRepository.withTransaction(ctx);
+      await onboardingRepo.create({
+        customerId: profile_.id,
         status: CustomerOnboardingStatus.DRAFT,
         companyDetailsComplete: true,
         documentsComplete,
       });
-      await queryRunner.manager.save(onboarding);
 
       if (vatDocument || companyRegDocument) {
-        await this.saveRegistrationDocuments(
-          queryRunner.manager,
-          savedProfile.id,
-          vatDocument,
-          companyRegDocument,
-        );
+        await this.saveRegistrationDocuments(ctx, profile_.id, vatDocument, companyRegDocument);
       }
 
-      const deviceBinding = this.deviceBindingRepo.create({
-        customerProfileId: savedProfile.id,
+      const deviceBinding = deviceBindingTxRepo.create({
+        customerProfileId: profile_.id,
         deviceFingerprint: dto.security.deviceFingerprint,
         registeredIp: clientIp,
         browserInfo: dto.security.browserInfo,
         isPrimary: true,
         isActive: true,
       });
-      await queryRunner.manager.save(deviceBinding);
+      await deviceBindingTxRepo.save(deviceBinding);
 
-      await queryRunner.commitTransaction();
+      return { savedProfile: profile_, savedUser: user_, savedCompany: company_ };
+    });
 
+    {
       await this.auditService.log({
         entityType: "customer_profile",
         entityId: savedProfile.id,
@@ -249,14 +234,17 @@ export class CustomerAuthService {
         savedCompany.tradingName || savedCompany.legalName || "",
       );
 
-      const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
+      const { sessionData, sessionToken } = this.sessionService.createSession<
+        CustomerSession,
+        "customerProfileId"
+      >({
         profileId: savedProfile.id,
         profileIdField: "customerProfileId",
         deviceFingerprint: dto.security.deviceFingerprint,
         ipAddress: clientIp,
         userAgent: dto.security.browserInfo?.userAgent || "unknown",
       });
-      await this.sessionRepo.save(session);
+      await this.sessionRepository.create(sessionData);
 
       const payload: JwtTokenPayload = {
         sub: savedUser.id,
@@ -277,20 +265,23 @@ export class CustomerAuthService {
         name: `${savedProfile.firstName} ${savedProfile.lastName}`,
         companyName: savedCompany.tradingName || savedCompany.legalName || "",
       };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
     }
   }
 
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("Customer registration requires a TypeOrmTransactionContext");
+    }
+    return context.manager;
+  }
+
   private async saveRegistrationDocuments(
-    manager: any,
+    context: TransactionContext,
     customerId: number,
     vatDocument?: Express.Multer.File,
     companyRegDocument?: Express.Multer.File,
   ): Promise<void> {
+    const documentRepo = this.documentRepository.withTransaction(context);
     const customerDir = path.join(this.uploadDir, "customers", customerId.toString());
 
     if (!fs.existsSync(customerDir)) {
@@ -303,7 +294,7 @@ export class CustomerAuthService {
 
       fs.writeFileSync(filePath, vatDocument.buffer);
 
-      const vatDocEntity = this.documentRepo.create({
+      await documentRepo.create({
         customerId,
         documentType: CustomerDocumentType.TAX_CLEARANCE,
         fileName: vatDocument.originalname,
@@ -313,8 +304,6 @@ export class CustomerAuthService {
         validationStatus: CustomerDocumentValidationStatus.PENDING,
         isRequired: true,
       });
-
-      await manager.save(vatDocEntity);
     }
 
     if (companyRegDocument) {
@@ -323,7 +312,7 @@ export class CustomerAuthService {
 
       fs.writeFileSync(filePath, companyRegDocument.buffer);
 
-      const companyRegEntity = this.documentRepo.create({
+      await documentRepo.create({
         customerId,
         documentType: CustomerDocumentType.REGISTRATION_CERT,
         fileName: companyRegDocument.originalname,
@@ -333,8 +322,6 @@ export class CustomerAuthService {
         validationStatus: CustomerDocumentValidationStatus.PENDING,
         isRequired: true,
       });
-
-      await manager.save(companyRegEntity);
     }
   }
 
@@ -343,12 +330,9 @@ export class CustomerAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<CustomerLoginResponseDto> {
-    await this.rateLimitingService.checkLoginAttempts(this.loginAttemptRepo, dto.email);
+    await this.rateLimitingService.checkLoginAttempts(this.loginAttemptRepository, dto.email);
 
-    const user = await this.userRepo.findOne({
-      where: { email: dto.email },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByEmailWithRoles(dto.email);
 
     if (!user) {
       await this.logLoginAttempt(
@@ -382,10 +366,10 @@ export class CustomerAuthService {
       }
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-      relations: ["company", "deviceBindings"],
-    });
+    const profile = await this.profileRepository.findByUserId(user.id, [
+      "company",
+      "deviceBindings",
+    ]);
 
     if (!profile) {
       const userRoles = user.roles?.map((r) => r.name) || [];
@@ -518,20 +502,23 @@ export class CustomerAuthService {
     }
 
     await this.sessionService.invalidateAllSessions(
-      this.sessionRepo,
+      this.sessionRepository,
       profile.id,
       "customerProfileId",
       SessionInvalidationReason.NEW_LOGIN,
     );
 
-    const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
+    const { sessionData, sessionToken } = this.sessionService.createSession<
+      CustomerSession,
+      "customerProfileId"
+    >({
       profileId: profile.id,
       profileIdField: "customerProfileId",
       deviceFingerprint: dto.deviceFingerprint,
       ipAddress: clientIp,
       userAgent,
     });
-    await this.sessionRepo.save(session);
+    await this.sessionRepository.create(sessionData);
 
     const payload: JwtTokenPayload = {
       sub: user.id,
@@ -590,10 +577,7 @@ export class CustomerAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<{ accessToken: string; refreshToken: string; customerId: number }> {
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findByUserId(user.id, ["company"]);
 
     if (!profile) {
       throw new UnauthorizedException("Customer profile not found. Please register first.");
@@ -609,20 +593,23 @@ export class CustomerAuthService {
     }
 
     await this.sessionService.invalidateAllSessions(
-      this.sessionRepo,
+      this.sessionRepository,
       profile.id,
       "customerProfileId",
       SessionInvalidationReason.NEW_LOGIN,
     );
 
-    const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
+    const { sessionData, sessionToken } = this.sessionService.createSession<
+      CustomerSession,
+      "customerProfileId"
+    >({
       profileId: profile.id,
       profileIdField: "customerProfileId",
       deviceFingerprint: "passkey",
       ipAddress: clientIp,
       userAgent,
     });
-    await this.sessionRepo.save(session);
+    await this.sessionRepository.create(sessionData);
 
     const payload: JwtTokenPayload = {
       sub: user.id,
@@ -645,7 +632,7 @@ export class CustomerAuthService {
 
   async logout(sessionToken: string, clientIp: string): Promise<void> {
     const session = await this.sessionService.invalidateSession(
-      this.sessionRepo,
+      this.sessionRepository,
       sessionToken,
       SessionInvalidationReason.LOGOUT,
     );
@@ -668,10 +655,11 @@ export class CustomerAuthService {
     try {
       const payload = await this.tokenService.verifyToken<JwtTokenPayload>(dto.refreshToken);
 
-      const profile = await this.profileRepo.findOne({
-        where: { id: payload.customerId },
-        relations: ["company", "deviceBindings", "user"],
-      });
+      const profile = await this.profileRepository.findById(payload.customerId as number, [
+        "company",
+        "deviceBindings",
+        "user",
+      ]);
 
       if (!profile) {
         throw new UnauthorizedException("Customer not found");
@@ -703,7 +691,7 @@ export class CustomerAuthService {
       const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(newPayload);
 
       await this.sessionService.updateSessionToken(
-        this.sessionRepo,
+        this.sessionRepository,
         profile.id,
         "customerProfileId",
         sessionToken,
@@ -727,7 +715,7 @@ export class CustomerAuthService {
     deviceFingerprint: string,
   ): Promise<CustomerDeviceBinding | null> {
     return this.deviceBindingService.findBinding(
-      this.deviceBindingRepo,
+      this.deviceBindingRepository,
       customerId,
       "customerProfileId",
       deviceFingerprint,
@@ -735,7 +723,9 @@ export class CustomerAuthService {
   }
 
   async verifySession(sessionToken: string): Promise<CustomerSession | null> {
-    return this.sessionService.validateSession(this.sessionRepo, sessionToken, ["customerProfile"]);
+    return this.sessionService.validateSession(this.sessionRepository, sessionToken, [
+      "customerProfile",
+    ]);
   }
 
   private async logLoginAttempt(
@@ -748,7 +738,7 @@ export class CustomerAuthService {
     userAgent: string,
     ipMismatchWarning: boolean = false,
   ): Promise<void> {
-    await this.rateLimitingService.logLoginAttempt(this.loginAttemptRepo, {
+    await this.rateLimitingService.logLoginAttempt(this.loginAttemptRepository, {
       profileId: customerProfileId,
       profileIdField: "customerProfileId",
       email,
@@ -765,13 +755,10 @@ export class CustomerAuthService {
     token: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: {
-        emailVerificationToken: token,
-        emailVerificationExpires: MoreThan(now().toJSDate()),
-      },
-      relations: ["user", "company"],
-    });
+    const profile = await this.profileRepository.findByValidEmailVerificationToken(
+      token,
+      now().toJSDate(),
+    );
 
     if (!profile) {
       throw new BadRequestException("Invalid or expired verification token");
@@ -788,7 +775,7 @@ export class CustomerAuthService {
     profile.emailVerificationToken = null;
     profile.emailVerificationExpires = null;
     profile.accountStatus = CustomerAccountStatus.ACTIVE;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     await this.auditService.log({
       entityType: "customer_profile",
@@ -811,7 +798,7 @@ export class CustomerAuthService {
     email: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOneByEmail(email);
     if (!user) {
       return {
         success: true,
@@ -819,9 +806,7 @@ export class CustomerAuthService {
       };
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-    });
+    const profile = await this.profileRepository.findByUserId(user.id);
 
     if (!profile) {
       return {
@@ -841,7 +826,7 @@ export class CustomerAuthService {
 
     profile.emailVerificationToken = emailVerificationToken;
     profile.emailVerificationExpires = emailVerificationExpires;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     await this.emailService.sendCustomerVerificationEmail(email, emailVerificationToken);
 

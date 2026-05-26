@@ -28,18 +28,16 @@ import {
   ApiResponse,
   ApiTags,
 } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
 import type { Response } from "express";
-import { Repository } from "typeorm";
 import { AdminAuthGuard, AdminRequest } from "../admin/guards/admin-auth.guard";
 import { AnyUserAuthGuard, AuthenticatedUser } from "../auth/guards/any-user-auth.guard";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
-import { CustomerDocument } from "../customer/entities/customer-document.entity";
-import { Company } from "../platform/entities/company.entity";
+import { CustomerDocumentRepository } from "../customer/customer-document.repository";
+import { CompanyRepository } from "../platform/company.repository";
 import { CompanyEmailService } from "../stock-control/services/company-email.service";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
-import { SupplierDocument } from "../supplier/entities/supplier-document.entity";
+import { SupplierDocumentRepository } from "../supplier/supplier-document.repository";
 import { ConvertToJobCardDto, ConvertToJobCardResponseDto } from "./dto/convert-to-job-card.dto";
 import {
   ExtractFromRegionDto,
@@ -89,15 +87,12 @@ export class NixController {
     private readonly customFieldService: CustomFieldService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
-    @InjectRepository(CustomerDocument)
-    private readonly customerDocumentRepo: Repository<CustomerDocument>,
-    @InjectRepository(SupplierDocument)
-    private readonly supplierDocumentRepo: Repository<SupplierDocument>,
+    private readonly customerDocumentRepo: CustomerDocumentRepository,
+    private readonly supplierDocumentRepo: SupplierDocumentRepository,
     private readonly quotePdfService: QuotePdfService,
     private readonly quoteToJobCardService: QuoteToJobCardService,
     private readonly companyEmailService: CompanyEmailService,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
+    private readonly companyRepo: CompanyRepository,
   ) {}
 
   @Post("process")
@@ -483,7 +478,7 @@ export class NixController {
   private async resolveCustomerEmail(session: NixExtractionSession): Promise<string> {
     const customerCompanyId = session.customerCompanyId;
     if (customerCompanyId != null) {
-      const live = await this.companyRepo.findOne({ where: { id: customerCompanyId } });
+      const live = await this.companyRepo.findById(customerCompanyId);
       const liveEmail = live ? live.email : null;
       if (liveEmail && liveEmail.trim().length > 0) return liveEmail.trim();
     }
@@ -1057,10 +1052,8 @@ export class NixController {
   ): Promise<PdfPagesResponseDto> {
     const document =
       entityType === "customer"
-        ? await this.customerDocumentRepo.findOne({ where: { id: documentId } })
-        : await this.supplierDocumentRepo.findOne({
-            where: { id: documentId },
-          });
+        ? await this.customerDocumentRepo.findById(documentId)
+        : await this.supplierDocumentRepo.findById(documentId);
 
     if (!document) {
       throw new BadRequestException("Document not found");
@@ -1083,10 +1076,8 @@ export class NixController {
   ): Promise<{ text: string; confidence: number }> {
     const document =
       entityType === "customer"
-        ? await this.customerDocumentRepo.findOne({ where: { id: documentId } })
-        : await this.supplierDocumentRepo.findOne({
-            where: { id: documentId },
-          });
+        ? await this.customerDocumentRepo.findById(documentId)
+        : await this.supplierDocumentRepo.findById(documentId);
 
     if (!document) {
       throw new BadRequestException("Document not found");

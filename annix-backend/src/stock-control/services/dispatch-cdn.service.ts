@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { CdnLineMatch, DispatchCdn } from "../entities/dispatch-cdn.entity";
-import { JobCard } from "../entities/job-card.entity";
-import { JobCardJobFile } from "../entities/job-card-job-file.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { DispatchCdnRepository } from "../repositories/dispatch-cdn.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 
 const CDN_EXTRACTION_PROMPT = `You are a document extraction assistant for a piping/fabrication company.
 You are analysing a Customer Delivery Note (CDN) document.
@@ -35,14 +35,10 @@ export class DispatchCdnService {
   private readonly logger = new Logger(DispatchCdnService.name);
 
   constructor(
-    @InjectRepository(DispatchCdn)
-    private readonly cdnRepo: Repository<DispatchCdn>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
-    @InjectRepository(JobCardJobFile)
-    private readonly jobFileRepo: Repository<JobCardJobFile>,
+    private readonly cdnRepo: DispatchCdnRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly jobFileRepo: JobCardJobFileRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
@@ -54,9 +50,7 @@ export class DispatchCdnService {
     file: Express.Multer.File,
     user: { id: number; name: string },
   ): Promise<DispatchCdn> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
@@ -65,7 +59,7 @@ export class DispatchCdnService {
     const storagePath = `${StorageArea.STOCK_CONTROL}/dispatch-cdns/company-${companyId}/jc-${jobCardId}`;
     const stored = await this.storageService.upload(file, storagePath);
 
-    const cdn = this.cdnRepo.create({
+    const saved = await this.cdnRepo.create({
       jobCardId,
       companyId,
       filePath: stored.path,
@@ -74,8 +68,6 @@ export class DispatchCdnService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-
-    const saved = await this.cdnRepo.save(cdn);
 
     this.storeInJobFile(companyId, jobCardId, file, stored.path, user).catch((err) => {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -91,10 +83,7 @@ export class DispatchCdnService {
   }
 
   async cdnsForJobCard(companyId: number, jobCardId: number): Promise<DispatchCdn[]> {
-    const cdns = await this.cdnRepo.find({
-      where: { jobCardId, companyId },
-      order: { createdAt: "DESC" },
-    });
+    const cdns = await this.cdnRepo.findForJobCard(companyId, jobCardId);
 
     return Promise.all(
       cdns.map(async (cdn) => {
@@ -109,9 +98,7 @@ export class DispatchCdnService {
     cdnId: number,
     lineMatches: CdnLineMatch[],
   ): Promise<DispatchCdn> {
-    const cdn = await this.cdnRepo.findOne({
-      where: { id: cdnId, companyId },
-    });
+    const cdn = await this.cdnRepo.findOneForCompany(cdnId, companyId);
 
     if (!cdn) {
       throw new NotFoundException(`CDN ${cdnId} not found`);
@@ -122,9 +109,7 @@ export class DispatchCdnService {
   }
 
   async deleteCdn(companyId: number, cdnId: number): Promise<void> {
-    const cdn = await this.cdnRepo.findOne({
-      where: { id: cdnId, companyId },
-    });
+    const cdn = await this.cdnRepo.findOneForCompany(cdnId, companyId);
 
     if (!cdn) {
       throw new NotFoundException(`CDN ${cdnId} not found`);
@@ -134,9 +119,7 @@ export class DispatchCdnService {
   }
 
   async hasCdns(companyId: number, jobCardId: number): Promise<boolean> {
-    const count = await this.cdnRepo.count({
-      where: { jobCardId, companyId },
-    });
+    const count = await this.cdnRepo.count({ jobCardId, companyId });
     return count > 0;
   }
 
@@ -148,7 +131,7 @@ export class DispatchCdnService {
     user: { id: number; name: string },
   ): Promise<void> {
     const extension = file.originalname.split(".").pop() || "";
-    const jobFile = this.jobFileRepo.create({
+    await this.jobFileRepo.create({
       jobCardId,
       companyId,
       filePath,
@@ -160,7 +143,6 @@ export class DispatchCdnService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-    await this.jobFileRepo.save(jobFile);
   }
 
   private async analyseInBackground(
@@ -169,10 +151,7 @@ export class DispatchCdnService {
     jobCardId: number,
     file: Express.Multer.File,
   ): Promise<void> {
-    const lineItems = await this.lineItemRepo.find({
-      where: { jobCardId, companyId },
-      order: { sortOrder: "ASC" },
-    });
+    const lineItems = await this.lineItemRepo.findForJobCardOrderedBySort(jobCardId, companyId);
 
     const lineItemContext = lineItems
       .map(
@@ -230,7 +209,7 @@ ${CDN_EXTRACTION_PROMPT}`;
       };
     });
 
-    await this.cdnRepo.update(cdnId, {
+    await this.cdnRepo.updateById(cdnId, {
       cdnNumber: extraction.cdnNumber,
       lineMatches,
       aiRawResponse: JSON.stringify(extraction),

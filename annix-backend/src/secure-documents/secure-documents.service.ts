@@ -13,16 +13,18 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { now, nowISO } from "../lib/datetime";
 import { S3StorageService } from "../storage/s3-storage.service";
-import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { decrypt, encrypt } from "./crypto.util";
 import { CreateSecureDocumentDto } from "./dto/create-secure-document.dto";
 import { UpdateSecureDocumentDto } from "./dto/update-secure-document.dto";
 import { SecureDocument } from "./secure-document.entity";
+import {
+  SecureDocumentRepository,
+  SecureEntityFolderRepository,
+} from "./secure-documents.repository";
 import { EntityType, SecureEntityFolder } from "./secure-entity-folder.entity";
 
 export interface LocalDocument {
@@ -55,12 +57,9 @@ export class SecureDocumentsService {
   private readonly localStoragePath: string;
 
   constructor(
-    @InjectRepository(SecureDocument)
-    private readonly documentRepo: Repository<SecureDocument>,
-    @InjectRepository(SecureEntityFolder)
-    private readonly entityFolderRepo: Repository<SecureEntityFolder>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly documentRepo: SecureDocumentRepository,
+    private readonly entityFolderRepo: SecureEntityFolderRepository,
+    private readonly userRepo: UserRepository,
     private readonly configService: ConfigService,
     private readonly s3StorageService: S3StorageService,
   ) {
@@ -102,17 +101,11 @@ export class SecureDocumentsService {
   }
 
   async findAll(): Promise<SecureDocument[]> {
-    return this.documentRepo.find({
-      relations: ["createdBy"],
-      order: { updatedAt: "DESC" },
-    });
+    return this.documentRepo.findAll(["createdBy"]);
   }
 
   async findOne(id: string): Promise<SecureDocument> {
-    const document = await this.documentRepo.findOne({
-      where: { id },
-      relations: ["createdBy"],
-    });
+    const document = await this.documentRepo.findById(id, ["createdBy"]);
     if (!document) {
       throw new NotFoundException(`Secure document #${id} not found`);
     }
@@ -120,10 +113,7 @@ export class SecureDocumentsService {
   }
 
   async findBySlug(slug: string): Promise<SecureDocument> {
-    const document = await this.documentRepo.findOne({
-      where: { slug },
-      relations: ["createdBy"],
-    });
+    const document = await this.documentRepo.findBySlug(slug);
     if (!document) {
       throw new NotFoundException(`Secure document with slug "${slug}" not found`);
     }
@@ -148,7 +138,7 @@ export class SecureDocumentsService {
     let counter = 1;
 
     while (true) {
-      const existing = await this.documentRepo.findOne({ where: { slug } });
+      const existing = await this.documentRepo.findOneWhere({ slug });
       if (!existing) {
         return slug;
       }
@@ -158,7 +148,7 @@ export class SecureDocumentsService {
   }
 
   async create(dto: CreateSecureDocumentDto, userId: number): Promise<SecureDocument> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundException(`User #${userId} not found`);
     }
@@ -166,7 +156,7 @@ export class SecureDocumentsService {
     const slug = await this.generateUniqueSlug(dto.title);
     const storagePath = await this.encryptAndUpload(dto.content);
 
-    const document = this.documentRepo.create({
+    const saved = await this.documentRepo.create({
       title: dto.title,
       slug,
       description: dto.description,
@@ -178,7 +168,6 @@ export class SecureDocumentsService {
       createdBy: user,
     });
 
-    const saved = await this.documentRepo.save(document);
     this.logger.log(`Created secure document: ${saved.id} (${slug}) by user ${userId}`);
     return saved;
   }
@@ -384,7 +373,6 @@ export class SecureDocumentsService {
     const dirName = path.dirname(relativePath);
 
     const title = dirName === "." ? "Project README" : `${dirName.replace(/\//g, " / ")} README`;
-
     const slug = `local:${slugify(relativePath.replace(/\//g, "-").replace(/\.md$/i, ""))}`;
 
     const document: LocalDocument = {
@@ -419,9 +407,7 @@ export class SecureDocumentsService {
     entityId: number,
     companyName: string,
   ): Promise<SecureEntityFolder> {
-    const existingFolder = await this.entityFolderRepo.findOne({
-      where: { entityType, entityId },
-    });
+    const existingFolder = await this.entityFolderRepo.findByEntityTypeAndId(entityType, entityId);
 
     if (existingFolder) {
       this.logger.log(`Entity folder already exists for ${entityType} ${entityId}`);
@@ -433,7 +419,7 @@ export class SecureDocumentsService {
     const parentFolder = entityType === "customer" ? "Customers" : "Suppliers";
     const secureFolderPath = `${parentFolder}/${folderName}`;
 
-    const folder = this.entityFolderRepo.create({
+    const savedFolder = await this.entityFolderRepo.create({
       entityType,
       entityId,
       folderName,
@@ -441,15 +427,12 @@ export class SecureDocumentsService {
       isActive: true,
     });
 
-    const savedFolder = await this.entityFolderRepo.save(folder);
     this.logger.log(`Created entity folder: ${secureFolderPath} for ${entityType} ${entityId}`);
     return savedFolder;
   }
 
   async entityFolder(entityType: EntityType, entityId: number): Promise<SecureEntityFolder | null> {
-    return this.entityFolderRepo.findOne({
-      where: { entityType, entityId },
-    });
+    return this.entityFolderRepo.findByEntityTypeAndId(entityType, entityId);
   }
 
   async deactivateEntityFolder(
@@ -457,9 +440,7 @@ export class SecureDocumentsService {
     entityId: number,
     reason: string,
   ): Promise<void> {
-    const folder = await this.entityFolderRepo.findOne({
-      where: { entityType, entityId },
-    });
+    const folder = await this.entityFolderRepo.findByEntityTypeAndId(entityType, entityId);
 
     if (!folder) {
       this.logger.warn(`No entity folder found for ${entityType} ${entityId} to deactivate`);
@@ -475,9 +456,7 @@ export class SecureDocumentsService {
   }
 
   async reactivateEntityFolder(entityType: EntityType, entityId: number): Promise<void> {
-    const folder = await this.entityFolderRepo.findOne({
-      where: { entityType, entityId },
-    });
+    const folder = await this.entityFolderRepo.findByEntityTypeAndId(entityType, entityId);
 
     if (!folder) {
       this.logger.warn(`No entity folder found for ${entityType} ${entityId} to reactivate`);
@@ -496,37 +475,18 @@ export class SecureDocumentsService {
     entityType: EntityType,
     entityId: number,
   ): Promise<SecureDocument[]> {
-    const folder = await this.entityFolderRepo.findOne({
-      where: { entityType, entityId },
-    });
-
+    const folder = await this.entityFolderRepo.findByEntityTypeAndId(entityType, entityId);
     if (!folder) {
       return [];
     }
-
-    return this.documentRepo.find({
-      where: { folder: folder.secureFolderPath },
-      relations: ["createdBy"],
-      order: { updatedAt: "DESC" },
-    });
+    return this.documentRepo.findByFolder(folder.secureFolderPath);
   }
 
   async listAllEntityFolders(
     entityType?: EntityType,
     activeOnly: boolean = true,
   ): Promise<SecureEntityFolder[]> {
-    const whereClause: any = {};
-    if (entityType) {
-      whereClause.entityType = entityType;
-    }
-    if (activeOnly) {
-      whereClause.isActive = true;
-    }
-
-    return this.entityFolderRepo.find({
-      where: whereClause,
-      order: { createdAt: "DESC" },
-    });
+    return this.entityFolderRepo.findAllByEntityType(entityType, activeOnly);
   }
 
   async createFromEntityDocument(
@@ -543,7 +503,7 @@ export class SecureDocumentsService {
       throw new NotFoundException(`Secure folder not found for ${entityType} ${entityId}`);
     }
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new NotFoundException(`User #${userId} not found`);
     }
@@ -555,7 +515,7 @@ export class SecureDocumentsService {
     const storagePath = await this.encryptAndUploadBuffer(fileBuffer);
     const fileType = this.mimeToFileType(mimeType);
 
-    const document = this.documentRepo.create({
+    const saved = await this.documentRepo.create({
       title,
       slug,
       description: `${title} for ${folder.folderName}`,
@@ -566,7 +526,6 @@ export class SecureDocumentsService {
       createdBy: user,
     });
 
-    const saved = await this.documentRepo.save(document);
     this.logger.log(`Created secure document from ${entityType} upload: ${saved.id} (${slug})`);
     return saved;
   }

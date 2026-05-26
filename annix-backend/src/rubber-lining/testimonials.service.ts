@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Testimonial, type TestimonialSource } from "./entities/testimonial.entity";
+import { TestimonialRepository } from "./repositories/testimonial.repository";
 
 export interface CreateTestimonialDto {
   authorName: string;
@@ -33,26 +32,18 @@ export interface UpdateTestimonialDto {
 export class TestimonialsService {
   private readonly logger = new Logger(TestimonialsService.name);
 
-  constructor(
-    @InjectRepository(Testimonial)
-    private readonly testimonialRepository: Repository<Testimonial>,
-  ) {}
+  constructor(private readonly testimonialRepository: TestimonialRepository) {}
 
   async publishedTestimonials(): Promise<Testimonial[]> {
-    return this.testimonialRepository.find({
-      where: { isPublished: true },
-      order: { sortOrder: "ASC", datePublished: "DESC" },
-    });
+    return this.testimonialRepository.findPublishedOrdered();
   }
 
   async allTestimonials(): Promise<Testimonial[]> {
-    return this.testimonialRepository.find({
-      order: { sortOrder: "ASC", datePublished: "DESC" },
-    });
+    return this.testimonialRepository.findAllOrdered();
   }
 
   async testimonialById(id: string): Promise<Testimonial> {
-    const testimonial = await this.testimonialRepository.findOne({ where: { id } });
+    const testimonial = await this.testimonialRepository.findById(id);
     if (!testimonial) {
       throw new NotFoundException(`Testimonial not found: ${id}`);
     }
@@ -63,7 +54,7 @@ export class TestimonialsService {
     if (dto.rating < 1 || dto.rating > 5) {
       throw new BadRequestException("Rating must be between 1 and 5");
     }
-    const testimonial = this.testimonialRepository.create({
+    const testimonial = this.testimonialRepository.build({
       authorName: dto.authorName,
       authorRole: dto.authorRole || null,
       authorCompany: dto.authorCompany || null,

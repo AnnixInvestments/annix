@@ -1,9 +1,7 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
 import PDFDocument from "pdfkit";
 import * as QRCode from "qrcode";
-import { ILike, MoreThan, Repository } from "typeorm";
 import { formatDateTime, now } from "../../lib/datetime";
 import { createPdfDocument } from "../../lib/pdf-builder";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -12,7 +10,6 @@ import type { RubberPlanManualRoll } from "../entities/job-card.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
 import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
-import { StockItem } from "../entities/stock-item.entity";
 import {
   type BandSpec,
   type CutPiece,
@@ -22,6 +19,11 @@ import {
   parseRubberSpecNote,
   type RollAllocation,
 } from "../lib/rubberCuttingCalculator";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardApprovalRepository } from "../repositories/job-card-approval.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 import { WorkflowStepConfigService } from "./workflow-step-config.service";
 
 @Injectable()
@@ -29,16 +31,11 @@ export class JobCardPdfService {
   private readonly logger = new Logger(JobCardPdfService.name);
 
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardApproval)
-    private readonly approvalRepo: Repository<JobCardApproval>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly approvalRepo: JobCardApprovalRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
+    private readonly coatingAnalysisRepo: JobCardCoatingAnalysisRepository,
+    private readonly stockItemRepo: StockItemRepository,
     private readonly configService: ConfigService,
     private readonly stepConfigService: WorkflowStepConfigService,
     @Inject(STORAGE_SERVICE)
@@ -49,27 +46,22 @@ export class JobCardPdfService {
     companyId: number,
     jobCardId: number,
   ): Promise<{ buffer: Buffer; filename: string }> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-      relations: ["allocations", "allocations.stockItem", "lineItems", "cpo"],
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompanyWithRelations(jobCardId, companyId, [
+      "allocations",
+      "allocations.stockItem",
+      "lineItems",
+      "cpo",
+    ]);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
     }
 
-    const company = await this.companyRepo.findOne({
-      where: { id: companyId },
-    });
+    const company = await this.companyRepo.findById(companyId);
 
-    const approvals = await this.approvalRepo.find({
-      where: { jobCardId, companyId },
-      order: { createdAt: "ASC" },
-    });
+    const approvals = await this.approvalRepo.findForJobCardOrdered(companyId, jobCardId);
 
-    const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const coatingAnalysis = await this.coatingAnalysisRepo.findOneForJobCard(companyId, jobCardId);
 
     this.logger.log(
       `PDF for job card ${jobCardId}: coatingAnalysis=${coatingAnalysis ? "found" : "null"}, coats=${coatingAnalysis?.coats ? coatingAnalysis.coats.length : "none"}`,
@@ -581,13 +573,7 @@ export class JobCardPdfService {
 
     const { filteredItems } = this.partitionLineItems(jobCard.lineItems);
 
-    const rubberStock = await this.stockItemRepo.find({
-      where: {
-        companyId: jobCard.companyId,
-        category: ILike("%rubber%"),
-        quantity: MoreThan(0),
-      },
-    });
+    const rubberStock = await this.stockItemRepo.findRubberInStockForCompany(jobCard.companyId);
 
     const stockRolls = rubberStock
       .filter((s) => s.thicknessMm !== null)

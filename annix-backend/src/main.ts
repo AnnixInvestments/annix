@@ -1,3 +1,4 @@
+import "./load-env";
 import { setDefaultResultOrder } from "node:dns";
 import { setDefaultAutoSelectFamily } from "node:net";
 import * as path from "node:path";

@@ -6,15 +6,20 @@ import {
   Logger,
   UnauthorizedException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
+import { EntityTarget, ObjectLiteral, type Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { now } from "../lib/datetime";
+import {
+  TransactionContext,
+  TypeOrmTransactionContext,
+} from "../lib/persistence/transaction-context";
+import { TransactionRunner } from "../lib/persistence/transaction-runner";
 import { DocumentVerificationService } from "../nix/services/document-verification.service";
+import { CompanyRepository } from "../platform/company.repository";
 import { Company, CompanyType } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import {
@@ -29,22 +34,26 @@ import {
 } from "../shared/auth";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { UserRole } from "../user-roles/entities/user-role.entity";
+import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { CreateSupplierRegistrationDto, SupplierLoginDto, SupplierLoginResponseDto } from "./dto";
 import {
   SupplierAccountStatus,
-  SupplierDeviceBinding,
   SupplierDocument,
   SupplierDocumentType,
   SupplierDocumentValidationStatus,
-  SupplierLoginAttempt,
-  SupplierOnboarding,
   SupplierOnboardingStatus,
-  SupplierProfile,
   SupplierSession,
 } from "./entities";
 import { SupplierLoginFailureReason } from "./entities/supplier-login-attempt.entity";
 import { SupplierSessionInvalidationReason } from "./entities/supplier-session.entity";
+import { SupplierDeviceBindingRepository } from "./supplier-device-binding.repository";
+import { SupplierDocumentRepository } from "./supplier-document.repository";
+import { SupplierLoginAttemptRepository } from "./supplier-login-attempt.repository";
+import { SupplierOnboardingRepository } from "./supplier-onboarding.repository";
+import { SupplierProfileRepository } from "./supplier-profile.repository";
+import { SupplierSessionRepository } from "./supplier-session.repository";
 
 @Injectable()
 export class SupplierAuthService {
@@ -52,25 +61,16 @@ export class SupplierAuthService {
   private readonly uploadDir: string;
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(SupplierProfile)
-    private readonly profileRepo: Repository<SupplierProfile>,
-    @InjectRepository(SupplierDeviceBinding)
-    private readonly deviceBindingRepo: Repository<SupplierDeviceBinding>,
-    @InjectRepository(SupplierLoginAttempt)
-    private readonly loginAttemptRepo: Repository<SupplierLoginAttempt>,
-    @InjectRepository(SupplierSession)
-    private readonly sessionRepo: Repository<SupplierSession>,
-    @InjectRepository(SupplierOnboarding)
-    private readonly onboardingRepo: Repository<SupplierOnboarding>,
-    @InjectRepository(SupplierDocument)
-    private readonly documentRepo: Repository<SupplierDocument>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(UserRole)
-    private readonly userRoleRepo: Repository<UserRole>,
-    private readonly dataSource: DataSource,
+    private readonly companyRepo: CompanyRepository,
+    private readonly profileRepository: SupplierProfileRepository,
+    private readonly deviceBindingRepository: SupplierDeviceBindingRepository,
+    private readonly loginAttemptRepository: SupplierLoginAttemptRepository,
+    private readonly sessionRepository: SupplierSessionRepository,
+    private readonly onboardingRepository: SupplierOnboardingRepository,
+    private readonly documentRepository: SupplierDocumentRepository,
+    private readonly userRepo: UserRepository,
+    private readonly userRoleRepo: UserRoleRepository,
+    private readonly txRunner: TransactionRunner,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
     private readonly storageService: S3StorageService,
@@ -107,39 +107,46 @@ export class SupplierAuthService {
     }
   }
 
+  private transactionalRepo<Entity extends ObjectLiteral>(
+    ctx: TransactionContext,
+    entity: EntityTarget<Entity>,
+  ): Repository<Entity> {
+    if (!(ctx instanceof TypeOrmTransactionContext)) {
+      throw new Error("Supplier auth writes require a TypeOrmTransactionContext");
+    }
+    return ctx.manager.getRepository(entity);
+  }
+
   async register(
     dto: CreateSupplierRegistrationDto,
     clientIp: string,
   ): Promise<SupplierLoginResponseDto> {
-    const existingUser = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const existingUser = await this.userRepo.findOneByEmail(dto.email);
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
+    const { savedUser, savedProfile } = await this.txRunner.run(async (ctx) => {
+      const profileRepo = this.profileRepository.withTransaction(ctx);
+      const onboardingRepo = this.onboardingRepository.withTransaction(ctx);
+      const userRepo = this.transactionalRepo(ctx, User);
+      const userRoleRepo = this.transactionalRepo(ctx, UserRole);
 
-    try {
       const { passwordHash } = await this.passwordService.hash(dto.password);
 
-      let supplierRole = await this.userRoleRepo.findOne({
-        where: { name: "supplier" },
-      });
+      let supplierRole = await this.userRoleRepo.findByName("supplier");
       if (!supplierRole) {
-        supplierRole = this.userRoleRepo.create({ name: "supplier" });
-        supplierRole = await queryRunner.manager.save(supplierRole);
+        supplierRole = await userRoleRepo.save(userRoleRepo.create({ name: "supplier" }));
       }
 
-      const user = this.userRepo.create({
-        username: dto.email,
-        email: dto.email,
-        passwordHash,
-        roles: [supplierRole],
-      });
-      const savedUser = await queryRunner.manager.save(user);
+      const savedUser = await userRepo.save(
+        userRepo.create({
+          username: dto.email,
+          email: dto.email,
+          passwordHash,
+          roles: [supplierRole],
+        }),
+      );
 
       const verificationToken = this.tokenService.generateVerificationToken(
         {
@@ -153,84 +160,79 @@ export class SupplierAuthService {
         .plus({ hours: AUTH_CONSTANTS.EMAIL_VERIFICATION_EXPIRY_HOURS })
         .toJSDate();
 
-      const profile = this.profileRepo.create({
+      const savedProfile = await profileRepo.create({
         userId: savedUser.id,
         accountStatus: SupplierAccountStatus.PENDING,
         emailVerified: false,
         emailVerificationToken: verificationToken,
         emailVerificationExpires: verificationExpires,
       });
-      const savedProfile = await queryRunner.manager.save(profile);
 
-      const onboarding = this.onboardingRepo.create({
+      await onboardingRepo.create({
         supplierId: savedProfile.id,
         status: SupplierOnboardingStatus.DRAFT,
         companyDetailsComplete: false,
         documentsComplete: false,
       });
-      await queryRunner.manager.save(onboarding);
 
-      await queryRunner.commitTransaction();
+      return { savedUser, savedProfile };
+    });
 
-      await this.auditService.log({
-        entityType: "supplier_profile",
-        entityId: savedProfile.id,
-        action: AuditAction.CREATE,
-        newValues: {
-          email: dto.email,
-          emailVerified: false,
-        },
-        ipAddress: clientIp,
-      });
+    await this.auditService.log({
+      entityType: "supplier_profile",
+      entityId: savedProfile.id,
+      action: AuditAction.CREATE,
+      newValues: {
+        email: dto.email,
+        emailVerified: false,
+      },
+      ipAddress: clientIp,
+    });
 
-      const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
-        profileId: savedProfile.id,
-        profileIdField: "supplierProfileId",
-        deviceFingerprint: "registration-device",
-        ipAddress: clientIp,
-        userAgent: "registration",
-      });
+    const { sessionData, sessionToken } = this.sessionService.createSession<
+      SupplierSession,
+      "supplierProfileId"
+    >({
+      profileId: savedProfile.id,
+      profileIdField: "supplierProfileId",
+      deviceFingerprint: "registration-device",
+      ipAddress: clientIp,
+      userAgent: "registration",
+    });
 
-      const deviceBinding = this.deviceBindingRepo.create({
-        supplierProfileId: savedProfile.id,
-        deviceFingerprint: "registration-device",
-        registeredIp: clientIp,
-        isPrimary: true,
-        isActive: true,
-      });
-      await this.deviceBindingRepo.save(deviceBinding);
-      await this.sessionRepo.save(session);
+    await this.deviceBindingRepository.create({
+      supplierProfileId: savedProfile.id,
+      deviceFingerprint: "registration-device",
+      registeredIp: clientIp,
+      isPrimary: true,
+      isActive: true,
+    });
+    await this.sessionRepository.create(sessionData);
 
-      const payload: JwtTokenPayload = {
-        sub: savedUser.id,
-        supplierId: savedProfile.id,
+    const payload: JwtTokenPayload = {
+      sub: savedUser.id,
+      supplierId: savedProfile.id,
+      email: savedUser.email,
+      type: "supplier",
+      sessionToken,
+    };
+
+    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 3600,
+      supplier: {
+        id: savedProfile.id,
         email: savedUser.email,
-        type: "supplier",
-        sessionToken,
-      };
-
-      const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
-
-      return {
-        accessToken,
-        refreshToken,
-        expiresIn: 3600,
-        supplier: {
-          id: savedProfile.id,
-          email: savedUser.email,
-          firstName: undefined,
-          lastName: undefined,
-          companyName: undefined,
-          accountStatus: savedProfile.accountStatus,
-          onboardingStatus: SupplierOnboardingStatus.DRAFT,
-        },
-      };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
-    }
+        firstName: undefined,
+        lastName: undefined,
+        companyName: undefined,
+        accountStatus: savedProfile.accountStatus,
+        onboardingStatus: SupplierOnboardingStatus.DRAFT,
+      },
+    };
   }
 
   async registerFull(
@@ -256,200 +258,190 @@ export class SupplierAuthService {
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
   ): Promise<SupplierLoginResponseDto> {
-    const existingUser = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const existingUser = await this.userRepo.findOneByEmail(dto.email);
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
 
-    // A company has a single registration number shared across every Annix app
-    // and side (customer/supplier). Only block if this company already has a
-    // supplier account — a customer of the same company may still register here.
     if (dto.company?.registrationNumber) {
-      const existingSupplierCount = await this.profileRepo
-        .createQueryBuilder("profile")
-        .innerJoin("profile.company", "company")
-        .where("company.registrationNumber = :registrationNumber", {
-          registrationNumber: dto.company.registrationNumber,
-        })
-        .getCount();
-      if (existingSupplierCount > 0) {
-        throw new ConflictException("A supplier account is already registered for this company");
-      }
-    }
-
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const company = this.companyRepo.create({
-        name: dto.company.legalName,
-        companyType: CompanyType.SUPPLIER,
-        legalName: dto.company.legalName,
-        tradingName: dto.company.tradingName,
-        registrationNumber: dto.company.registrationNumber,
-        vatNumber: dto.company.vatNumber,
-        streetAddress: dto.company.streetAddress,
-        city: dto.company.city,
-        province: dto.company.provinceState,
-        postalCode: dto.company.postalCode,
-        country: dto.company.country || "South Africa",
-        phone: dto.company.primaryPhone || dto.company.primaryContactPhone,
-        contactPerson: dto.company.primaryContactName,
-        email: dto.company.generalEmail || dto.company.primaryContactEmail,
-        websiteUrl: dto.company.website,
-        industry: dto.company.industryType,
-        companySize: dto.company.companySize,
-        beeLevel: dto.company.beeLevel,
-        beeCertificateExpiry: dto.company.beeCertificateExpiry,
-        beeVerificationAgency: dto.company.beeVerificationAgency,
-        isExemptMicroEnterprise: dto.company.isExemptMicroEnterprise || false,
-      });
-      const savedCompany = await queryRunner.manager.save(company);
-
-      const { passwordHash } = await this.passwordService.hash(dto.password);
-
-      let supplierRole = await this.userRoleRepo.findOne({
-        where: { name: "supplier" },
-      });
-      if (!supplierRole) {
-        supplierRole = this.userRoleRepo.create({ name: "supplier" });
-        supplierRole = await queryRunner.manager.save(supplierRole);
-      }
-
-      const user = this.userRepo.create({
-        username: dto.email,
-        email: dto.email,
-        passwordHash,
-        roles: [supplierRole],
-      });
-      const savedUser = await queryRunner.manager.save(user);
-
-      const profile = this.profileRepo.create({
-        userId: savedUser.id,
-        companyId: savedCompany.id,
-        firstName: dto.profile?.firstName,
-        lastName: dto.profile?.lastName,
-        jobTitle: dto.profile?.jobTitle,
-        directPhone: dto.profile?.directPhone,
-        mobilePhone: dto.profile?.mobilePhone,
-        accountStatus: SupplierAccountStatus.PENDING,
-        emailVerified: true,
-        termsAcceptedAt: dto.termsAccepted ? now().toJSDate() : null,
-        securityPolicyAcceptedAt: dto.securityPolicyAccepted ? now().toJSDate() : null,
-        documentStorageAcceptedAt: dto.documentStorageAccepted ? now().toJSDate() : null,
-      });
-      const savedProfile = await queryRunner.manager.save(profile);
-
-      const documentsComplete = !!(vatDocument && companyRegDocument);
-      const documentsNeedReview = this.documentsNeedManualReview(dto.documentVerificationResults);
-      const onboarding = this.onboardingRepo.create({
-        supplierId: savedProfile.id,
-        status: SupplierOnboardingStatus.DRAFT,
-        companyDetailsComplete: true,
-        documentsComplete,
-        documentsNeedReview,
-      });
-      await queryRunner.manager.save(onboarding);
-
-      let documentIdsNeedingVerification: number[] = [];
-      if (vatDocument || companyRegDocument || beeDocument) {
-        documentIdsNeedingVerification = await this.saveRegistrationDocuments(
-          queryRunner.manager,
-          savedProfile.id,
-          vatDocument,
-          companyRegDocument,
-          beeDocument,
-          dto.documentVerificationResults,
-        );
-      }
-
-      const deviceBinding = this.deviceBindingRepo.create({
-        supplierProfileId: savedProfile.id,
-        deviceFingerprint: dto.deviceFingerprint,
-        registeredIp: clientIp,
-        browserInfo: dto.browserInfo,
-        isPrimary: true,
-        isActive: true,
-      });
-      await queryRunner.manager.save(deviceBinding);
-
-      await queryRunner.commitTransaction();
-
-      await this.auditService.log({
-        entityType: "supplier_profile",
-        entityId: savedProfile.id,
-        action: AuditAction.CREATE,
-        newValues: {
-          email: dto.email,
-          companyName: dto.company.legalName,
-          deviceFingerprint: `${dto.deviceFingerprint?.substring(0, 20)}...`,
-        },
-        ipAddress: clientIp,
-        userAgent,
-      });
-
-      await this.secureDocumentsService.createEntityFolder(
-        "supplier",
-        savedProfile.id,
-        savedCompany.tradingName || savedCompany.legalName || "",
+      const existingCompany = await this.companyRepo.findByRegistrationNumber(
+        dto.company.registrationNumber,
       );
-
-      if (documentIdsNeedingVerification.length > 0) {
-        this.triggerDocumentVerifications(savedProfile.id, documentIdsNeedingVerification);
+      if (existingCompany) {
+        throw new ConflictException("A company with this registration number already exists");
       }
-
-      const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
-        profileId: savedProfile.id,
-        profileIdField: "supplierProfileId",
-        deviceFingerprint: dto.deviceFingerprint,
-        ipAddress: clientIp,
-        userAgent,
-      });
-      await this.sessionRepo.save(session);
-
-      const payload: JwtTokenPayload = {
-        sub: savedUser.id,
-        supplierId: savedProfile.id,
-        email: savedUser.email,
-        type: "supplier",
-        sessionToken,
-      };
-
-      const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
-
-      return {
-        accessToken,
-        refreshToken,
-        expiresIn: 3600,
-        supplier: {
-          id: savedProfile.id,
-          email: savedUser.email,
-          firstName: savedProfile.firstName,
-          lastName: savedProfile.lastName,
-          companyName: savedCompany.tradingName || savedCompany.legalName || undefined,
-          accountStatus: savedProfile.accountStatus,
-          onboardingStatus: SupplierOnboardingStatus.DRAFT,
-        },
-      };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
     }
+
+    const { savedCompany, savedProfile, savedUser, documentIdsNeedingVerification } =
+      await this.txRunner.run(async (ctx) => {
+        const profileRepo = this.profileRepository.withTransaction(ctx);
+        const onboardingRepo = this.onboardingRepository.withTransaction(ctx);
+        const deviceBindingRepo = this.deviceBindingRepository.withTransaction(ctx);
+        const userRepo = this.transactionalRepo(ctx, User);
+        const userRoleRepo = this.transactionalRepo(ctx, UserRole);
+        const companyRepo = this.transactionalRepo(ctx, Company);
+
+        const savedCompany = await companyRepo.save(
+          companyRepo.create({
+            name: dto.company.legalName,
+            companyType: CompanyType.SUPPLIER,
+            legalName: dto.company.legalName,
+            tradingName: dto.company.tradingName,
+            registrationNumber: dto.company.registrationNumber,
+            vatNumber: dto.company.vatNumber,
+            streetAddress: dto.company.streetAddress,
+            city: dto.company.city,
+            province: dto.company.provinceState,
+            postalCode: dto.company.postalCode,
+            country: dto.company.country || "South Africa",
+            phone: dto.company.primaryPhone || dto.company.primaryContactPhone,
+            contactPerson: dto.company.primaryContactName,
+            email: dto.company.generalEmail || dto.company.primaryContactEmail,
+            websiteUrl: dto.company.website,
+            industry: dto.company.industryType,
+            companySize: dto.company.companySize,
+            beeLevel: dto.company.beeLevel,
+            beeCertificateExpiry: dto.company.beeCertificateExpiry,
+            beeVerificationAgency: dto.company.beeVerificationAgency,
+            isExemptMicroEnterprise: dto.company.isExemptMicroEnterprise || false,
+          }),
+        );
+
+        const { passwordHash } = await this.passwordService.hash(dto.password);
+
+        let supplierRole = await this.userRoleRepo.findByName("supplier");
+        if (!supplierRole) {
+          supplierRole = await userRoleRepo.save(userRoleRepo.create({ name: "supplier" }));
+        }
+
+        const savedUser = await userRepo.save(
+          userRepo.create({
+            username: dto.email,
+            email: dto.email,
+            passwordHash,
+            roles: [supplierRole],
+          }),
+        );
+
+        const savedProfile = await profileRepo.create({
+          userId: savedUser.id,
+          companyId: savedCompany.id,
+          firstName: dto.profile?.firstName,
+          lastName: dto.profile?.lastName,
+          jobTitle: dto.profile?.jobTitle,
+          directPhone: dto.profile?.directPhone,
+          mobilePhone: dto.profile?.mobilePhone,
+          accountStatus: SupplierAccountStatus.PENDING,
+          emailVerified: true,
+          termsAcceptedAt: dto.termsAccepted ? now().toJSDate() : null,
+          securityPolicyAcceptedAt: dto.securityPolicyAccepted ? now().toJSDate() : null,
+          documentStorageAcceptedAt: dto.documentStorageAccepted ? now().toJSDate() : null,
+        });
+
+        const documentsComplete = !!(vatDocument && companyRegDocument);
+        const documentsNeedReview = this.documentsNeedManualReview(dto.documentVerificationResults);
+        await onboardingRepo.create({
+          supplierId: savedProfile.id,
+          status: SupplierOnboardingStatus.DRAFT,
+          companyDetailsComplete: true,
+          documentsComplete,
+          documentsNeedReview,
+        });
+
+        let documentIdsNeedingVerification: number[] = [];
+        if (vatDocument || companyRegDocument || beeDocument) {
+          documentIdsNeedingVerification = await this.saveRegistrationDocuments(
+            ctx,
+            savedProfile.id,
+            vatDocument,
+            companyRegDocument,
+            beeDocument,
+            dto.documentVerificationResults,
+          );
+        }
+
+        await deviceBindingRepo.create({
+          supplierProfileId: savedProfile.id,
+          deviceFingerprint: dto.deviceFingerprint,
+          registeredIp: clientIp,
+          browserInfo: dto.browserInfo,
+          isPrimary: true,
+          isActive: true,
+        });
+
+        return { savedCompany, savedProfile, savedUser, documentIdsNeedingVerification };
+      });
+
+    await this.auditService.log({
+      entityType: "supplier_profile",
+      entityId: savedProfile.id,
+      action: AuditAction.CREATE,
+      newValues: {
+        email: dto.email,
+        companyName: dto.company.legalName,
+        deviceFingerprint: `${dto.deviceFingerprint?.substring(0, 20)}...`,
+      },
+      ipAddress: clientIp,
+      userAgent,
+    });
+
+    await this.secureDocumentsService.createEntityFolder(
+      "supplier",
+      savedProfile.id,
+      savedCompany.tradingName || savedCompany.legalName || "",
+    );
+
+    if (documentIdsNeedingVerification.length > 0) {
+      this.triggerDocumentVerifications(savedProfile.id, documentIdsNeedingVerification);
+    }
+
+    const { sessionData, sessionToken } = this.sessionService.createSession<
+      SupplierSession,
+      "supplierProfileId"
+    >({
+      profileId: savedProfile.id,
+      profileIdField: "supplierProfileId",
+      deviceFingerprint: dto.deviceFingerprint,
+      ipAddress: clientIp,
+      userAgent,
+    });
+    await this.sessionRepository.create(sessionData);
+
+    const payload: JwtTokenPayload = {
+      sub: savedUser.id,
+      supplierId: savedProfile.id,
+      email: savedUser.email,
+      type: "supplier",
+      sessionToken,
+    };
+
+    const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
+
+    return {
+      accessToken,
+      refreshToken,
+      expiresIn: 3600,
+      supplier: {
+        id: savedProfile.id,
+        email: savedUser.email,
+        firstName: savedProfile.firstName,
+        lastName: savedProfile.lastName,
+        companyName: savedCompany.tradingName || savedCompany.legalName || undefined,
+        accountStatus: savedProfile.accountStatus,
+        onboardingStatus: SupplierOnboardingStatus.DRAFT,
+      },
+    };
   }
 
   private async saveRegistrationDocuments(
-    manager: any,
+    ctx: TransactionContext,
     supplierId: number,
     vatDocument?: Express.Multer.File,
     companyRegDocument?: Express.Multer.File,
     beeDocument?: Express.Multer.File,
     verificationResults?: { vat?: any; registration?: any; bee?: any },
   ): Promise<number[]> {
+    const documentRepo = this.documentRepository.withTransaction(ctx);
     const subPath = `suppliers/${supplierId}/documents`;
     const idsNeedingVerification: number[] = [];
 
@@ -457,7 +449,7 @@ export class SupplierAuthService {
       const storageResult = await this.storageService.upload(vatDocument, subPath);
 
       const vatVerification = verificationResults?.vat;
-      const vatDocEntity = this.documentRepo.create({
+      const saved = await documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.VAT_CERT,
         fileName: vatDocument.originalname,
@@ -468,8 +460,6 @@ export class SupplierAuthService {
         isRequired: true,
         ...this.extractVerificationFields(vatVerification),
       });
-
-      const saved = await manager.save(vatDocEntity);
       if (!vatVerification) {
         idsNeedingVerification.push(saved.id);
       }
@@ -479,7 +469,7 @@ export class SupplierAuthService {
       const storageResult = await this.storageService.upload(companyRegDocument, subPath);
 
       const regVerification = verificationResults?.registration;
-      const companyRegEntity = this.documentRepo.create({
+      const saved = await documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.REGISTRATION_CERT,
         fileName: companyRegDocument.originalname,
@@ -490,8 +480,6 @@ export class SupplierAuthService {
         isRequired: true,
         ...this.extractVerificationFields(regVerification),
       });
-
-      const saved = await manager.save(companyRegEntity);
       if (!regVerification) {
         idsNeedingVerification.push(saved.id);
       }
@@ -501,7 +489,7 @@ export class SupplierAuthService {
       const storageResult = await this.storageService.upload(beeDocument, subPath);
 
       const beeVerification = verificationResults?.bee;
-      const beeDocEntity = this.documentRepo.create({
+      const saved = await documentRepo.create({
         supplierId,
         documentType: SupplierDocumentType.BEE_CERT,
         fileName: beeDocument.originalname,
@@ -512,8 +500,6 @@ export class SupplierAuthService {
         isRequired: false,
         ...this.extractVerificationFields(beeVerification),
       });
-
-      const saved = await manager.save(beeDocEntity);
       if (!beeVerification) {
         idsNeedingVerification.push(saved.id);
       }
@@ -522,12 +508,6 @@ export class SupplierAuthService {
     return idsNeedingVerification;
   }
 
-  /**
-   * True when any client-supplied document verification result lands in
-   * MANUAL_REVIEW (a field mismatch or low OCR confidence). Documents without a
-   * client-side result are verified asynchronously — DocumentVerificationService
-   * flips the onboarding flag if that later check finds a mismatch.
-   */
   private documentsNeedManualReview(verificationResults?: {
     vat?: any;
     registration?: any;
@@ -605,12 +585,10 @@ export class SupplierAuthService {
         throw new BadRequestException("Invalid verification token");
       }
 
-      const profile = await this.profileRepo.findOne({
-        where: {
-          userId: payload.userId,
-          emailVerificationToken: token,
-        },
-      });
+      const profile = await this.profileRepository.findByUserIdAndVerificationToken(
+        payload.userId,
+        token,
+      );
 
       if (!profile) {
         throw new BadRequestException("Invalid or expired verification token");
@@ -630,7 +608,7 @@ export class SupplierAuthService {
       profile.emailVerified = true;
       profile.emailVerificationToken = null;
       profile.emailVerificationExpires = null;
-      await this.profileRepo.save(profile);
+      await this.profileRepository.save(profile);
 
       await this.auditService.log({
         entityType: "supplier_profile",
@@ -656,7 +634,7 @@ export class SupplierAuthService {
     email: string,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOneByEmail(email);
     if (!user) {
       return {
         success: true,
@@ -664,9 +642,7 @@ export class SupplierAuthService {
       };
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-    });
+    const profile = await this.profileRepository.findByUserId(user.id);
     if (!profile) {
       return {
         success: true,
@@ -688,7 +664,7 @@ export class SupplierAuthService {
 
     profile.emailVerificationToken = verificationToken;
     profile.emailVerificationExpires = verificationExpires;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     await this.emailService.sendSupplierVerificationEmail(email, verificationToken);
 
@@ -703,12 +679,9 @@ export class SupplierAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<SupplierLoginResponseDto> {
-    await this.rateLimitingService.checkLoginAttempts(this.loginAttemptRepo, dto.email);
+    await this.rateLimitingService.checkLoginAttempts(this.loginAttemptRepository, dto.email);
 
-    const user = await this.userRepo.findOne({
-      where: { email: dto.email },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByEmailWithRoles(dto.email);
 
     if (!user) {
       await this.logLoginAttempt(
@@ -742,10 +715,11 @@ export class SupplierAuthService {
       }
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-      relations: ["company", "deviceBindings", "onboarding"],
-    });
+    const profile = await this.profileRepository.findByUserId(user.id, [
+      "company",
+      "deviceBindings",
+      "onboarding",
+    ]);
 
     if (!profile) {
       const userRoles = user.roles?.map((r) => r.name) || [];
@@ -819,7 +793,7 @@ export class SupplierAuthService {
 
     if (!this.authConfigService.isDeviceFingerprintDisabled()) {
       if (!activeBinding) {
-        const deviceBinding = this.deviceBindingRepo.create({
+        activeBinding = await this.deviceBindingRepository.create({
           supplierProfileId: profile.id,
           deviceFingerprint: dto.deviceFingerprint,
           registeredIp: clientIp,
@@ -827,7 +801,6 @@ export class SupplierAuthService {
           isPrimary: true,
           isActive: true,
         });
-        activeBinding = await this.deviceBindingRepo.save(deviceBinding);
         this.logger.log(`Created device binding for supplier ${profile.id}`);
       } else if (activeBinding.deviceFingerprint !== dto.deviceFingerprint) {
         await this.logLoginAttempt(
@@ -867,20 +840,23 @@ export class SupplierAuthService {
     }
 
     await this.sessionService.invalidateAllSessions(
-      this.sessionRepo,
+      this.sessionRepository,
       profile.id,
       "supplierProfileId",
       SupplierSessionInvalidationReason.NEW_LOGIN,
     );
 
-    const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
+    const { sessionData, sessionToken } = this.sessionService.createSession<
+      SupplierSession,
+      "supplierProfileId"
+    >({
       profileId: profile.id,
       profileIdField: "supplierProfileId",
       deviceFingerprint: dto.deviceFingerprint,
       ipAddress: clientIp,
       userAgent,
     });
-    await this.sessionRepo.save(session);
+    await this.sessionRepository.create(sessionData);
 
     const payload: JwtTokenPayload = {
       sub: user.id,
@@ -936,10 +912,7 @@ export class SupplierAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<{ accessToken: string; refreshToken: string; supplierId: number }> {
-    const profile = await this.profileRepo.findOne({
-      where: { userId: user.id },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepository.findByUserId(user.id, ["company"]);
 
     if (!profile) {
       throw new UnauthorizedException("Supplier profile not found. Please register first.");
@@ -955,20 +928,23 @@ export class SupplierAuthService {
     }
 
     await this.sessionService.invalidateAllSessions(
-      this.sessionRepo,
+      this.sessionRepository,
       profile.id,
       "supplierProfileId",
       SupplierSessionInvalidationReason.NEW_LOGIN,
     );
 
-    const { session, sessionToken } = this.sessionService.createSession(this.sessionRepo, {
+    const { sessionData, sessionToken } = this.sessionService.createSession<
+      SupplierSession,
+      "supplierProfileId"
+    >({
       profileId: profile.id,
       profileIdField: "supplierProfileId",
       deviceFingerprint: "passkey",
       ipAddress: clientIp,
       userAgent,
     });
-    await this.sessionRepo.save(session);
+    await this.sessionRepository.create(sessionData);
 
     const payload: JwtTokenPayload = {
       sub: user.id,
@@ -985,7 +961,7 @@ export class SupplierAuthService {
 
   async logout(sessionToken: string, clientIp: string): Promise<void> {
     const session = await this.sessionService.invalidateSession(
-      this.sessionRepo,
+      this.sessionRepository,
       sessionToken,
       SupplierSessionInvalidationReason.LOGOUT,
     );
@@ -1009,10 +985,7 @@ export class SupplierAuthService {
     try {
       const payload = await this.tokenService.verifyToken<JwtTokenPayload>(refreshToken);
 
-      const profile = await this.profileRepo.findOne({
-        where: { id: payload.supplierId },
-        relations: ["company", "deviceBindings", "onboarding", "user"],
-      });
+      const profile = await this.profileRepository.findByIdForRefresh(payload.supplierId);
 
       if (!profile) {
         throw new UnauthorizedException("Supplier not found");
@@ -1047,7 +1020,7 @@ export class SupplierAuthService {
         await this.tokenService.generateTokenPair(newPayload);
 
       await this.sessionService.updateSessionToken(
-        this.sessionRepo,
+        this.sessionRepository,
         profile.id,
         "supplierProfileId",
         sessionToken,
@@ -1073,7 +1046,9 @@ export class SupplierAuthService {
   }
 
   async verifySession(sessionToken: string): Promise<SupplierSession | null> {
-    return this.sessionService.validateSession(this.sessionRepo, sessionToken, ["supplierProfile"]);
+    return this.sessionService.validateSession(this.sessionRepository, sessionToken, [
+      "supplierProfile",
+    ]);
   }
 
   private async logLoginAttempt(
@@ -1086,7 +1061,7 @@ export class SupplierAuthService {
     userAgent: string,
     ipMismatchWarning: boolean = false,
   ): Promise<void> {
-    await this.rateLimitingService.logLoginAttempt(this.loginAttemptRepo, {
+    await this.rateLimitingService.logLoginAttempt(this.loginAttemptRepository, {
       profileId: supplierProfileId,
       profileIdField: "supplierProfileId",
       email,

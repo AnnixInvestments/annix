@@ -3,9 +3,8 @@ import {
   type OrbitEducationApplicationStatus,
 } from "@annix/product-data/orbit-education";
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EducationApplication } from "../entities/education-application.entity";
+import { EducationApplicationRepository } from "../repositories/education-application.repository";
 import { EducationConsentService } from "./education-consent.service";
 import { EducationProfileService } from "./education-profile.service";
 
@@ -20,8 +19,7 @@ export interface CreateApplicationInput {
 @Injectable()
 export class EducationApplicationService {
   constructor(
-    @InjectRepository(EducationApplication)
-    private readonly applicationRepo: Repository<EducationApplication>,
+    private readonly applicationRepo: EducationApplicationRepository,
     private readonly profileService: EducationProfileService,
     private readonly consentService: EducationConsentService,
   ) {}
@@ -30,10 +28,7 @@ export class EducationApplicationService {
     const profile = await this.profileService.profileForUser(userId);
     if (!profile) return [];
     await this.consentService.assertProcessingAllowed(profile);
-    return this.applicationRepo.find({
-      where: { educationProfileId: profile.id },
-      order: { createdAt: "DESC" },
-    });
+    return this.applicationRepo.orderedForProfile(profile.id);
   }
 
   async create(userId: number, input: CreateApplicationInput): Promise<EducationApplication> {
@@ -43,16 +38,14 @@ export class EducationApplicationService {
     if (!isOrbitEducationApplicationStatus(status)) {
       throw new BadRequestException(`Unknown application status: ${status}`);
     }
-    return this.applicationRepo.save(
-      this.applicationRepo.create({
-        educationProfileId: profile.id,
-        programmeId: input.programmeId ?? null,
-        institutionName: input.institutionName,
-        programmeName: input.programmeName,
-        status,
-        notes: input.notes ?? null,
-      }),
-    );
+    return this.applicationRepo.create({
+      educationProfileId: profile.id,
+      programmeId: input.programmeId ?? null,
+      institutionName: input.institutionName,
+      programmeName: input.programmeName,
+      status,
+      notes: input.notes ?? null,
+    });
   }
 
   async updateStatus(
@@ -65,9 +58,7 @@ export class EducationApplicationService {
     }
     const profile = await this.profileService.profileForUser(userId);
     if (!profile) return null;
-    const application = await this.applicationRepo.findOne({
-      where: { id: applicationId, educationProfileId: profile.id },
-    });
+    const application = await this.applicationRepo.findByIdForProfile(applicationId, profile.id);
     if (!application) return null;
     application.status = status;
     return this.applicationRepo.save(application);
@@ -76,10 +67,7 @@ export class EducationApplicationService {
   async delete(userId: number, applicationId: string): Promise<boolean> {
     const profile = await this.profileService.profileForUser(userId);
     if (!profile) return false;
-    const result = await this.applicationRepo.delete({
-      id: applicationId,
-      educationProfileId: profile.id,
-    });
-    return (result.affected ?? 0) > 0;
+    const affected = await this.applicationRepo.deleteByIdForProfile(applicationId, profile.id);
+    return affected > 0;
   }
 }

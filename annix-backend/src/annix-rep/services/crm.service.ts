@@ -1,7 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Not, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import {
@@ -14,15 +12,13 @@ import {
   SalesforceAdapter,
   WebhookCrmAdapter,
 } from "../adapters";
+import { CrmConfigRepository } from "../crm-config.repository";
 import { CreateCrmConfigDto, UpdateCrmConfigDto } from "../dto";
-import {
-  CrmConfig,
-  CrmType,
-  Meeting,
-  MeetingRecording,
-  MeetingTranscript,
-  Prospect,
-} from "../entities";
+import { CrmConfig, CrmType } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { MeetingTranscriptRepository } from "../meeting-transcript.repository";
+import { ProspectRepository } from "../prospect.repository";
 import {
   type CrmOAuthTokenResponse,
   HubSpotOAuthProvider,
@@ -36,16 +32,11 @@ export class CrmService {
   private readonly encryptionKey: string;
 
   constructor(
-    @InjectRepository(CrmConfig)
-    private readonly crmConfigRepo: Repository<CrmConfig>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(MeetingRecording)
-    private readonly recordingRepo: Repository<MeetingRecording>,
-    @InjectRepository(MeetingTranscript)
-    private readonly transcriptRepo: Repository<MeetingTranscript>,
+    private readonly crmConfigRepo: CrmConfigRepository,
+    private readonly prospectRepo: ProspectRepository,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly recordingRepo: MeetingRecordingRepository,
+    private readonly transcriptRepo: MeetingTranscriptRepository,
     private readonly configService: ConfigService,
     private readonly salesforceProvider: SalesforceOAuthProvider,
     private readonly hubspotProvider: HubSpotOAuthProvider,
@@ -99,9 +90,7 @@ export class CrmService {
 
     const userInfo = await this.oauthUserInfo(provider, tokenResponse);
 
-    const existingConfig = await this.crmConfigRepo.findOne({
-      where: { userId, crmType: provider },
-    });
+    const existingConfig = await this.crmConfigRepo.findByUserAndType(userId, provider);
 
     if (existingConfig) {
       existingConfig.apiKeyEncrypted = this.encryptValue(tokenResponse.accessToken);
@@ -117,7 +106,7 @@ export class CrmService {
       return this.crmConfigRepo.save(existingConfig);
     }
 
-    const config = this.crmConfigRepo.create({
+    return this.crmConfigRepo.create({
       userId,
       name: this.defaultConfigName(provider),
       crmType: provider,
@@ -135,8 +124,6 @@ export class CrmService {
       syncOnCreate: true,
       syncOnUpdate: true,
     });
-
-    return this.crmConfigRepo.save(config);
   }
 
   async disconnectOAuth(userId: number, configId: number): Promise<void> {
@@ -209,16 +196,11 @@ export class CrmService {
   }
 
   async listConfigs(userId: number): Promise<CrmConfig[]> {
-    return this.crmConfigRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-    });
+    return this.crmConfigRepo.findByUser(userId);
   }
 
   async configById(userId: number, configId: number): Promise<CrmConfig> {
-    const config = await this.crmConfigRepo.findOne({
-      where: { id: configId, userId },
-    });
+    const config = await this.crmConfigRepo.findByIdAndUser(configId, userId);
 
     if (!config) {
       throw new NotFoundException(`CRM config ${configId} not found`);
@@ -228,7 +210,7 @@ export class CrmService {
   }
 
   async createConfig(userId: number, dto: CreateCrmConfigDto): Promise<CrmConfig> {
-    const config = this.crmConfigRepo.create({
+    const saved = await this.crmConfigRepo.create({
       userId,
       name: dto.name,
       crmType: dto.crmType,
@@ -244,8 +226,6 @@ export class CrmService {
       syncOnUpdate: dto.syncOnUpdate ?? true,
       isActive: true,
     });
-
-    const saved = await this.crmConfigRepo.save(config);
     this.logger.log(`CRM config created: ${saved.id} by user ${userId}`);
     return saved;
   }
@@ -320,9 +300,7 @@ export class CrmService {
 
   async syncProspect(userId: number, configId: number, prospectId: number): Promise<CrmSyncResult> {
     const config = await this.configById(userId, configId);
-    const prospect = await this.prospectRepo.findOne({
-      where: { id: prospectId, ownerId: userId },
-    });
+    const prospect = await this.prospectRepo.findByOwnerAndId(userId, prospectId);
 
     if (!prospect) {
       throw new NotFoundException(`Prospect ${prospectId} not found`);
@@ -342,10 +320,7 @@ export class CrmService {
 
   async syncMeeting(userId: number, configId: number, meetingId: number): Promise<CrmSyncResult> {
     const config = await this.configById(userId, configId);
-    const meeting = await this.meetingRepo.findOne({
-      where: { id: meetingId, salesRepId: userId },
-      relations: ["prospect"],
-    });
+    const meeting = await this.meetingRepo.findOneForSalesRep(userId, meetingId);
 
     if (!meeting) {
       throw new NotFoundException(`Meeting ${meetingId} not found`);
@@ -355,15 +330,9 @@ export class CrmService {
       throw new NotFoundException(`Meeting ${meetingId} has no associated prospect`);
     }
 
-    const recording = await this.recordingRepo.findOne({
-      where: { meetingId },
-    });
+    const recording = await this.recordingRepo.findByMeetingId(meetingId);
 
-    const transcript = recording
-      ? await this.transcriptRepo.findOne({
-          where: { recordingId: recording.id },
-        })
-      : null;
+    const transcript = recording ? await this.transcriptRepo.findByRecordingId(recording.id) : null;
 
     const summary = transcript?.analysis
       ? {
@@ -395,9 +364,7 @@ export class CrmService {
     configId: number,
   ): Promise<{ synced: number; failed: number }> {
     const config = await this.configById(userId, configId);
-    const prospects = await this.prospectRepo.find({
-      where: { ownerId: userId },
-    });
+    const prospects = await this.prospectRepo.findAllByOwner(userId);
 
     const adapter = this.adapterForConfig(config);
 
@@ -427,10 +394,7 @@ export class CrmService {
 
   async exportProspectsCsv(userId: number, configId: number | null): Promise<string> {
     const config = configId ? await this.configById(userId, configId) : null;
-    const prospects = await this.prospectRepo.find({
-      where: { ownerId: userId },
-      order: { createdAt: "DESC" },
-    });
+    const prospects = await this.prospectRepo.findByOwnerOrderedByCreated(userId);
 
     const csvAdapter = new CsvExportAdapter();
     if (config) {
@@ -454,21 +418,13 @@ export class CrmService {
 
   async exportMeetingsCsv(userId: number, configId: number | null): Promise<string> {
     const config = configId ? await this.configById(userId, configId) : null;
-    const meetings = await this.meetingRepo.find({
-      where: { salesRepId: userId },
-      relations: ["prospect"],
-      order: { scheduledStart: "DESC" },
-    });
+    const meetings = await this.meetingRepo.findAllWithProspectOrdered(userId);
 
     const meetingsWithSummaries = await Promise.all(
       meetings.map(async (meeting) => {
-        const recording = await this.recordingRepo.findOne({
-          where: { meetingId: meeting.id },
-        });
+        const recording = await this.recordingRepo.findByMeetingId(meeting.id);
         const transcript = recording
-          ? await this.transcriptRepo.findOne({
-              where: { recordingId: recording.id },
-            })
+          ? await this.transcriptRepo.findByRecordingId(recording.id)
           : null;
 
         const summary = transcript?.analysis
@@ -521,14 +477,10 @@ export class CrmService {
     const config = await this.configById(userId, configId);
 
     const [prospectsSynced, meetingsSynced, totalProspects, totalMeetings] = await Promise.all([
-      this.prospectRepo.count({
-        where: { ownerId: userId, crmExternalId: Not(IsNull()) },
-      }),
-      this.meetingRepo.count({
-        where: { salesRepId: userId, crmExternalId: Not(IsNull()) },
-      }),
-      this.prospectRepo.count({ where: { ownerId: userId } }),
-      this.meetingRepo.count({ where: { salesRepId: userId } }),
+      this.prospectRepo.countByOwnerCrmSynced(userId),
+      this.meetingRepo.countBySalesRepCrmSynced(userId),
+      this.prospectRepo.countByOwner(userId),
+      this.meetingRepo.countBySalesRep(userId),
     ]);
 
     return {

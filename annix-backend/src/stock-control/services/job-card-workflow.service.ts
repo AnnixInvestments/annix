@@ -8,8 +8,6 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
@@ -22,11 +20,15 @@ import {
 } from "../entities/job-card.entity";
 import { JobCardActionCompletion } from "../entities/job-card-action-completion.entity";
 import { ApprovalStatus, JobCardApproval } from "../entities/job-card-approval.entity";
-import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 import { JobCardDocument, JobCardDocumentType } from "../entities/job-card-document.entity";
 import { StockControlRole } from "../entities/stock-control-user.entity";
 import type { StepOutcome } from "../entities/workflow-step-config.entity";
 import { WorkflowStepConfig } from "../entities/workflow-step-config.entity";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardActionCompletionRepository } from "../repositories/job-card-action-completion.repository";
+import { JobCardApprovalRepository } from "../repositories/job-card-approval.repository";
+import { JobCardBackgroundCompletionRepository } from "../repositories/job-card-background-completion.repository";
+import { JobCardDocumentRepository } from "../repositories/job-card-document.repository";
 import { BackgroundStepService } from "./background-step.service";
 import { RequisitionService } from "./requisition.service";
 import { SignatureService } from "./signature.service";
@@ -52,16 +54,11 @@ export class JobCardWorkflowService {
   private readonly logger = new Logger(JobCardWorkflowService.name);
 
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardApproval)
-    private readonly approvalRepo: Repository<JobCardApproval>,
-    @InjectRepository(JobCardDocument)
-    private readonly documentRepo: Repository<JobCardDocument>,
-    @InjectRepository(JobCardActionCompletion)
-    private readonly actionCompletionRepo: Repository<JobCardActionCompletion>,
-    @InjectRepository(JobCardBackgroundCompletion)
-    private readonly bgCompletionRepo: Repository<JobCardBackgroundCompletion>,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly approvalRepo: JobCardApprovalRepository,
+    private readonly documentRepo: JobCardDocumentRepository,
+    private readonly actionCompletionRepo: JobCardActionCompletionRepository,
+    private readonly bgCompletionRepo: JobCardBackgroundCompletionRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly signatureService: SignatureService,
@@ -98,7 +95,7 @@ export class JobCardWorkflowService {
       `stock-control/job-cards/${companyId}/${jobCardId}`,
     );
 
-    const document = this.documentRepo.create({
+    const saved = await this.documentRepo.create({
       jobCardId,
       companyId,
       documentType,
@@ -109,8 +106,6 @@ export class JobCardWorkflowService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-
-    const saved = await this.documentRepo.save(document);
 
     if (jobCard.workflowStatus === WORKFLOW_STATUS_DRAFT) {
       jobCard.workflowStatus = firstFgKey;
@@ -168,9 +163,10 @@ export class JobCardWorkflowService {
       );
       const prevRequired = prevBgSteps.filter((s) => s.rejoinAtStep === null);
       if (prevRequired.length > 0) {
-        const completions = await this.bgCompletionRepo.find({
-          where: { jobCardId, companyId },
-        });
+        const completions = await this.bgCompletionRepo.findForJobCardAndCompany(
+          jobCardId,
+          companyId,
+        );
         const completedKeys = new Set(completions.map((c) => c.stepKey));
         const incomplete = prevRequired.filter((s) => !completedKeys.has(s.key));
         if (incomplete.length > 0) {
@@ -184,9 +180,10 @@ export class JobCardWorkflowService {
     const phases = await this.stepConfigService.phasesForFgStep(companyId, currentStep.key);
     if (phases.length > 1) {
       const phase1Keys = phases[0].bgStepKeys;
-      const completions = await this.bgCompletionRepo.find({
-        where: { jobCardId, companyId },
-      });
+      const completions = await this.bgCompletionRepo.findForJobCardAndCompany(
+        jobCardId,
+        companyId,
+      );
       const completedKeys = new Set(completions.map((c) => c.stepKey));
       const phase1Incomplete = phase1Keys.filter((key) => !completedKeys.has(key));
       if (phase1Incomplete.length > 0) {
@@ -196,12 +193,14 @@ export class JobCardWorkflowService {
       }
     }
 
-    const actionCompletion = await this.actionCompletionRepo.findOne({
-      where: { jobCardId, stepKey: currentStep.key, actionType: "primary" },
-    });
+    const actionCompletion = await this.actionCompletionRepo.findOneForStepAction(
+      jobCardId,
+      currentStep.key,
+      "primary",
+    );
 
     if (!actionCompletion) {
-      const autoAction = this.actionCompletionRepo.create({
+      await this.actionCompletionRepo.create({
         jobCardId,
         companyId,
         stepKey: currentStep.key,
@@ -211,7 +210,6 @@ export class JobCardWorkflowService {
         completedAt: now().toJSDate(),
         metadata: { autoCreatedByApproval: true },
       });
-      await this.actionCompletionRepo.save(autoAction);
     }
 
     await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
@@ -242,12 +240,14 @@ export class JobCardWorkflowService {
 
     const nextStatus = this.nextFgStatus(currentStep.key, fgSteps);
 
-    const updateResult = await this.jobCardRepo.update(
-      { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
-      { workflowStatus: nextStatus },
+    const updateAffected = await this.jobCardRepo.updateWorkflowStatusIfMatches(
+      jobCardId,
+      companyId,
+      jobCard.workflowStatus,
+      nextStatus,
     );
 
-    if (updateResult.affected === 0) {
+    if (updateAffected === 0) {
       throw new ConflictException(
         "Job card workflow status has changed. Please refresh and try again.",
       );
@@ -318,16 +318,18 @@ export class JobCardWorkflowService {
 
     await this.validateUserIsAssigned(user, stepKey);
 
-    const existing = await this.actionCompletionRepo.findOne({
-      where: { jobCardId, stepKey, actionType },
-    });
+    const existing = await this.actionCompletionRepo.findOneForStepAction(
+      jobCardId,
+      stepKey,
+      actionType,
+    );
 
     if (existing) {
       throw new BadRequestException(`Action already completed for step "${stepKey}"`);
     }
 
     if (stepKey === "job_file_review" && actionType === "secondary") {
-      const completion = this.actionCompletionRepo.create({
+      const saved = await this.actionCompletionRepo.create({
         jobCardId,
         companyId,
         stepKey,
@@ -337,8 +339,6 @@ export class JobCardWorkflowService {
         completedAt: now().toJSDate(),
         metadata: { choice: "job_file_still_open", ...metadata },
       });
-
-      const saved = await this.actionCompletionRepo.save(completion);
       this.logger.log(
         `Job file review marked as "still open" for job card ${jobCardId} by ${user.name}`,
       );
@@ -350,7 +350,7 @@ export class JobCardWorkflowService {
       metadata = { ...metadata, ...archiveMetadata };
     }
 
-    const completion = this.actionCompletionRepo.create({
+    const saved = await this.actionCompletionRepo.create({
       jobCardId,
       companyId,
       stepKey,
@@ -360,8 +360,6 @@ export class JobCardWorkflowService {
       completedAt: now().toJSDate(),
       metadata: metadata ?? null,
     });
-
-    const saved = await this.actionCompletionRepo.save(completion);
 
     if (actionType === "primary" && !stepConfig.isBackground) {
       const phases = await this.stepConfigService.phasesForFgStep(companyId, stepKey);
@@ -399,19 +397,19 @@ export class JobCardWorkflowService {
     companyId: number,
     jobCardId: number,
   ): Promise<JobCardActionCompletion[]> {
-    return this.actionCompletionRepo.find({
-      where: { jobCardId, companyId },
-      order: { completedAt: "ASC" },
-    });
+    return this.actionCompletionRepo.findForJobCardOrdered(jobCardId, companyId);
   }
 
   async archiveUrls(
     companyId: number,
     jobCardId: number,
   ): Promise<Array<{ filename: string; url: string }>> {
-    const completion = await this.actionCompletionRepo.findOne({
-      where: { jobCardId, companyId, stepKey: "file_sign_off", actionType: "primary" },
-    });
+    const completion = await this.actionCompletionRepo.findOneForJobCardStepAction(
+      jobCardId,
+      companyId,
+      "file_sign_off",
+      "primary",
+    );
 
     if (!completion?.metadata) {
       return [];
@@ -506,25 +504,24 @@ export class JobCardWorkflowService {
 
     await this.notificationService.markJobCardNotificationsAsRead(user.id, jobCardId);
 
-    await this.approvalRepo.update(
-      { jobCardId, step: currentStep.key, status: ApprovalStatus.PENDING },
-      {
-        status: ApprovalStatus.REJECTED,
-        rejectedReason: reason,
-        approvedById: user.id,
-        approvedByName: user.name,
-        approvedAt: now().toJSDate(),
-      },
-    );
+    await this.approvalRepo.rejectPendingStep(jobCardId, currentStep.key, {
+      status: ApprovalStatus.REJECTED,
+      rejectedReason: reason,
+      approvedById: user.id,
+      approvedByName: user.name,
+      approvedAt: now().toJSDate(),
+    });
 
     const firstFgKey = fgSteps.length > 0 ? fgSteps[0].key : WORKFLOW_STATUS_DRAFT;
 
-    const updateResult = await this.jobCardRepo.update(
-      { id: jobCardId, companyId, workflowStatus: jobCard.workflowStatus },
-      { workflowStatus: firstFgKey },
+    const updateAffected = await this.jobCardRepo.updateWorkflowStatusIfMatches(
+      jobCardId,
+      companyId,
+      jobCard.workflowStatus,
+      firstFgKey,
     );
 
-    if (updateResult.affected === 0) {
+    if (updateAffected === 0) {
       throw new ConflictException(
         "Job card workflow status has changed. Please refresh and try again.",
       );
@@ -610,10 +607,7 @@ export class JobCardWorkflowService {
       this.assignmentService.allAssignments(companyId),
       this.stepConfigService.orderedSteps(companyId),
       this.backgroundStepService.statusForJobCard(companyId, jobCardId),
-      this.actionCompletionRepo.find({
-        where: { jobCardId, companyId },
-        order: { completedAt: "ASC" },
-      }),
+      this.actionCompletionRepo.findForJobCardOrdered(jobCardId, companyId),
     ]);
 
     if (
@@ -696,11 +690,7 @@ export class JobCardWorkflowService {
   }
 
   async approvalHistory(companyId: number, jobCardId: number): Promise<JobCardApproval[]> {
-    const approvals = await this.approvalRepo.find({
-      where: { jobCardId, companyId },
-      relations: ["approvedBy"],
-      order: { createdAt: "ASC" },
-    });
+    const approvals = await this.approvalRepo.findForJobCardWithApprovedBy(companyId, jobCardId);
 
     const withPresignedUrls = await Promise.all(
       approvals.map(async (approval) => {
@@ -729,21 +719,11 @@ export class JobCardWorkflowService {
       return [];
     }
 
-    return this.jobCardRepo
-      .createQueryBuilder("jc")
-      .where("jc.companyId = :companyId", { companyId: user.companyId })
-      .andWhere("jc.workflowStatus IN (:...statuses)", { statuses })
-      .andWhere("jc.status = :status", { status: JobCardStatus.ACTIVE })
-      .orderBy("jc.createdAt", "ASC")
-      .take(limit)
-      .skip((page - 1) * limit)
-      .getMany();
+    return this.jobCardRepo.findPendingApprovalsForCompany(user.companyId, statuses, page, limit);
   }
 
   async canUserApprove(user: UserContext, jobCardId: number): Promise<boolean> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId: user.companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, user.companyId);
 
     if (!jobCard) {
       return false;
@@ -785,10 +765,7 @@ export class JobCardWorkflowService {
       return;
     }
 
-    const firstDocument = await this.documentRepo.findOne({
-      where: { jobCardId, companyId },
-      order: { createdAt: "ASC" },
-    });
+    const firstDocument = await this.documentRepo.findFirstForJobCard(jobCardId, companyId);
 
     const documentUploader =
       firstDocument?.uploadedById && firstDocument?.uploadedByName
@@ -825,16 +802,11 @@ export class JobCardWorkflowService {
   }
 
   async documents(companyId: number, jobCardId: number): Promise<JobCardDocument[]> {
-    return this.documentRepo.find({
-      where: { jobCardId, companyId },
-      order: { createdAt: "DESC" },
-    });
+    return this.documentRepo.findForJobCardOrdered(jobCardId, companyId);
   }
 
   private async jobCardForWorkflow(companyId: number, jobCardId: number): Promise<JobCard> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
@@ -853,7 +825,7 @@ export class JobCardWorkflowService {
     comments?: string,
     outcomeKey?: string | null,
   ): Promise<JobCardApproval> {
-    const approval = this.approvalRepo.create({
+    return this.approvalRepo.create({
       jobCardId,
       companyId,
       step,
@@ -865,8 +837,6 @@ export class JobCardWorkflowService {
       outcomeKey: outcomeKey ?? null,
       approvedAt: status === ApprovalStatus.APPROVED ? now().toJSDate() : null,
     });
-
-    return this.approvalRepo.save(approval);
   }
 
   private async validateUserIsAssigned(user: UserContext, stepKey: string): Promise<void> {
@@ -908,10 +878,7 @@ export class JobCardWorkflowService {
 
     const completions =
       jobCardIds.length > 0
-        ? await this.bgCompletionRepo.find({
-            where: { companyId, jobCardId: In(jobCardIds) },
-            select: ["jobCardId", "stepKey"],
-          })
+        ? await this.bgCompletionRepo.findForCompanyAndJobCardIds(companyId, jobCardIds)
         : [];
 
     const completedByJob = completions.reduce<Record<number, Set<string>>>((acc, c) => {
@@ -1064,9 +1031,7 @@ export class JobCardWorkflowService {
     companyId: number,
     jobCardId: number,
   ): Promise<Record<string, unknown>> {
-    const docs = await this.documentRepo.find({
-      where: { jobCardId, companyId },
-    });
+    const docs = await this.documentRepo.findForJobCard(jobCardId, companyId);
 
     const archivePath = `${StorageArea.STOCK_CONTROL}/job-cards/${jobCardId}/archive`;
 

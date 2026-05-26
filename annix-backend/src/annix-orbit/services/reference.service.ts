@@ -1,14 +1,14 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { fromJSDate, now } from "../../lib/datetime";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { CvEmailTemplateKind } from "../entities/annix-orbit-email-template.entity";
-import { Candidate, CandidateStatus, ExtractedCvData } from "../entities/candidate.entity";
+import { CandidateStatus, ExtractedCvData } from "../entities/candidate.entity";
 import { CandidateReference, ReferenceStatus } from "../entities/candidate-reference.entity";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { EmailTemplateService } from "./email-template.service";
 
 const TOKEN_EXPIRY_DAYS = 7;
@@ -18,12 +18,9 @@ export class ReferenceService {
   private readonly logger = new Logger(ReferenceService.name);
 
   constructor(
-    @InjectRepository(CandidateReference)
-    private readonly referenceRepo: Repository<CandidateReference>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly companyRepo: Repository<AnnixOrbitCompany>,
+    private readonly referenceRepo: CandidateReferenceRepository,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
     private readonly emailService: EmailService,
     private readonly emailTemplateService: EmailTemplateService,
     private readonly configService: ConfigService,
@@ -39,7 +36,7 @@ export class ReferenceService {
     return refsWithEmail.reduce(
       async (accPromise, ref) => {
         const acc = await accPromise;
-        const reference = this.referenceRepo.create({
+        const saved = await this.referenceRepo.create({
           candidateId,
           name: ref.name,
           email: ref.email,
@@ -48,7 +45,6 @@ export class ReferenceService {
           tokenExpiresAt: now().plus({ days: TOKEN_EXPIRY_DAYS }).toJSDate(),
           status: ReferenceStatus.PENDING,
         });
-        const saved = await this.referenceRepo.save(reference);
         return [...acc, saved];
       },
       Promise.resolve([] as CandidateReference[]),
@@ -56,10 +52,7 @@ export class ReferenceService {
   }
 
   async sendReferenceRequests(candidateId: number): Promise<number> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting", "references"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobAndReferences(candidateId);
 
     if (!candidate || !candidate.jobPosting) {
       throw new NotFoundException("Candidate not found");
@@ -67,7 +60,7 @@ export class ReferenceService {
 
     const jobPosting = candidate.jobPosting;
     const companyId = jobPosting.companyId;
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     const companyName = company?.name ?? "the hiring team";
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") ?? "http://localhost:3000";
 
@@ -112,10 +105,7 @@ export class ReferenceService {
     candidateName?: string;
     jobTitle?: string;
   }> {
-    const reference = await this.referenceRepo.findOne({
-      where: { feedbackToken: token },
-      relations: ["candidate", "candidate.jobPosting"],
-    });
+    const reference = await this.referenceRepo.findByFeedbackTokenWithCandidate(token);
 
     if (!reference) {
       return { valid: false };
@@ -156,34 +146,17 @@ export class ReferenceService {
   }
 
   async pendingReferencesForCandidate(candidateId: number): Promise<CandidateReference[]> {
-    return this.referenceRepo.find({
-      where: {
-        candidateId,
-        status: ReferenceStatus.REQUESTED,
-      },
-    });
+    return this.referenceRepo.findByCandidateAndStatus(candidateId, ReferenceStatus.REQUESTED);
   }
 
   async completedReferencesForCandidate(candidateId: number): Promise<CandidateReference[]> {
-    return this.referenceRepo.find({
-      where: {
-        candidateId,
-        status: ReferenceStatus.RESPONDED,
-      },
-    });
+    return this.referenceRepo.findByCandidateAndStatus(candidateId, ReferenceStatus.RESPONDED);
   }
 
   async sendReminders(): Promise<number> {
     const twoDaysAgo = now().minus({ days: 2 }).toJSDate();
 
-    const pendingRefs = await this.referenceRepo.find({
-      where: {
-        status: ReferenceStatus.REQUESTED,
-        requestSentAt: LessThan(twoDaysAgo),
-        reminderSentAt: null as unknown as Date,
-      },
-      relations: ["candidate", "candidate.jobPosting"],
-    });
+    const pendingRefs = await this.referenceRepo.findPendingRemindersBefore(twoDaysAgo);
 
     const sentCount = await pendingRefs
       .filter((reference) => fromJSDate(reference.tokenExpiresAt) > now())
@@ -212,16 +185,6 @@ export class ReferenceService {
     companyId: number,
     status?: ReferenceStatus,
   ): Promise<CandidateReference[]> {
-    const queryBuilder = this.referenceRepo
-      .createQueryBuilder("reference")
-      .innerJoinAndSelect("reference.candidate", "candidate")
-      .innerJoinAndSelect("candidate.jobPosting", "jobPosting")
-      .where("jobPosting.companyId = :companyId", { companyId });
-
-    if (status) {
-      queryBuilder.andWhere("reference.status = :status", { status });
-    }
-
-    return queryBuilder.orderBy("reference.createdAt", "DESC").getMany();
+    return this.referenceRepo.referencesForCompany(companyId, status);
   }
 }

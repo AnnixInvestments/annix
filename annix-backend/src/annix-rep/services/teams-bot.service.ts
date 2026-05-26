@@ -1,7 +1,5 @@
 import { randomUUID } from "node:crypto";
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import type {
   JoinTeamsMeetingDto,
@@ -15,14 +13,14 @@ import {
   type TeamsBotTranscriptEntry,
 } from "../entities/teams-bot-session.entity";
 import { TeamsBotProvider } from "../providers/teams-bot.provider";
+import { TeamsBotSessionRepository } from "../teams-bot-session.repository";
 
 @Injectable()
 export class TeamsBotService {
   private readonly logger = new Logger(TeamsBotService.name);
 
   constructor(
-    @InjectRepository(TeamsBotSession)
-    private readonly sessionRepo: Repository<TeamsBotSession>,
+    private readonly sessionRepo: TeamsBotSessionRepository,
     private readonly botProvider: TeamsBotProvider,
   ) {}
 
@@ -34,7 +32,7 @@ export class TeamsBotService {
     const sessionId = randomUUID();
     const displayName = dto.botDisplayName ?? "Annix AI Meeting Assistant";
 
-    const session = this.sessionRepo.create({
+    const session = await this.sessionRepo.create({
       userId,
       sessionId,
       meetingUrl: dto.meetingUrl,
@@ -44,8 +42,6 @@ export class TeamsBotService {
       participants: [],
       transcriptEntries: [],
     });
-
-    await this.sessionRepo.save(session);
 
     try {
       const result = await this.botProvider.joinMeeting(dto.meetingUrl, displayName);
@@ -71,9 +67,7 @@ export class TeamsBotService {
   }
 
   async leaveMeeting(userId: number, sessionId: string): Promise<TeamsBotSessionResponseDto> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionId, userId },
-    });
+    const session = await this.sessionRepo.findBySessionIdAndUser(sessionId, userId);
 
     if (!session) {
       throw new NotFoundException(`Session not found: ${sessionId}`);
@@ -107,9 +101,7 @@ export class TeamsBotService {
   }
 
   async session(userId: number, sessionId: string): Promise<TeamsBotSessionResponseDto> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionId, userId },
-    });
+    const session = await this.sessionRepo.findBySessionIdAndUser(sessionId, userId);
 
     if (!session) {
       throw new NotFoundException(`Session not found: ${sessionId}`);
@@ -119,31 +111,19 @@ export class TeamsBotService {
   }
 
   async activeSessions(userId: number): Promise<TeamsBotSessionResponseDto[]> {
-    const sessions = await this.sessionRepo.find({
-      where: {
-        userId,
-        status: In([TeamsBotSessionStatus.JOINING, TeamsBotSessionStatus.ACTIVE]),
-      },
-      order: { createdAt: "DESC" },
-    });
+    const sessions = await this.sessionRepo.findActiveByUser(userId);
 
     return sessions.map((s) => this.mapToResponse(s));
   }
 
   async sessionHistory(userId: number, limit: number = 20): Promise<TeamsBotSessionResponseDto[]> {
-    const sessions = await this.sessionRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-      take: limit,
-    });
+    const sessions = await this.sessionRepo.findHistoryByUser(userId, limit);
 
     return sessions.map((s) => this.mapToResponse(s));
   }
 
   async transcript(userId: number, sessionId: string): Promise<TeamsBotTranscriptResponseDto> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionId, userId },
-    });
+    const session = await this.sessionRepo.findBySessionIdAndUser(sessionId, userId);
 
     if (!session) {
       throw new NotFoundException(`Session not found: ${sessionId}`);
@@ -161,9 +141,7 @@ export class TeamsBotService {
     status: TeamsBotSessionStatus,
     errorMessage?: string,
   ): Promise<TeamsBotSession | null> {
-    const session = await this.sessionRepo.findOne({
-      where: { callId },
-    });
+    const session = await this.sessionRepo.findByCallId(callId);
 
     if (!session) {
       this.logger.warn(`Session not found for callId: ${callId}`);
@@ -189,9 +167,7 @@ export class TeamsBotService {
     callId: string,
     participant: TeamsBotParticipant,
   ): Promise<TeamsBotSession | null> {
-    const session = await this.sessionRepo.findOne({
-      where: { callId },
-    });
+    const session = await this.sessionRepo.findByCallId(callId);
 
     if (!session) {
       return null;
@@ -212,9 +188,7 @@ export class TeamsBotService {
   }
 
   async removeParticipant(callId: string, participantId: string): Promise<TeamsBotSession | null> {
-    const session = await this.sessionRepo.findOne({
-      where: { callId },
-    });
+    const session = await this.sessionRepo.findByCallId(callId);
 
     if (!session) {
       return null;
@@ -238,9 +212,7 @@ export class TeamsBotService {
     callId: string,
     entry: TeamsBotTranscriptEntry,
   ): Promise<TeamsBotSession | null> {
-    const session = await this.sessionRepo.findOne({
-      where: { callId },
-    });
+    const session = await this.sessionRepo.findByCallId(callId);
 
     if (!session) {
       return null;
@@ -255,9 +227,7 @@ export class TeamsBotService {
   }
 
   async sessionByCallId(callId: string): Promise<TeamsBotSession | null> {
-    return this.sessionRepo.findOne({
-      where: { callId },
-    });
+    return this.sessionRepo.findByCallId(callId);
   }
 
   private mapToResponse(session: TeamsBotSession): TeamsBotSessionResponseDto {

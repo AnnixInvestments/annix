@@ -1,14 +1,14 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, LessThan, Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { DeliveryNote } from "../entities/delivery-note.entity";
 import { InvoiceClarification } from "../entities/invoice-clarification.entity";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
-import { SupplierInvoiceItem } from "../entities/supplier-invoice-item.entity";
+import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
+import { InvoiceClarificationRepository } from "../repositories/invoice-clarification.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
+import { SupplierInvoiceItemRepository } from "../repositories/supplier-invoice-item.repository";
 import { InvoiceExtractionService } from "./invoice-extraction.service";
 
 export interface CreateInvoiceDto {
@@ -48,14 +48,10 @@ export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name);
 
   constructor(
-    @InjectRepository(SupplierInvoice)
-    private readonly invoiceRepo: Repository<SupplierInvoice>,
-    @InjectRepository(SupplierInvoiceItem)
-    private readonly invoiceItemRepo: Repository<SupplierInvoiceItem>,
-    @InjectRepository(InvoiceClarification)
-    private readonly clarificationRepo: Repository<InvoiceClarification>,
-    @InjectRepository(DeliveryNote)
-    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
+    private readonly invoiceRepo: SupplierInvoiceRepository,
+    private readonly invoiceItemRepo: SupplierInvoiceItemRepository,
+    private readonly clarificationRepo: InvoiceClarificationRepository,
+    private readonly deliveryNoteRepo: DeliveryNoteRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly extractionService: InvoiceExtractionService,
@@ -64,9 +60,7 @@ export class InvoiceService {
 
   async create(companyId: number, dto: CreateInvoiceDto): Promise<SupplierInvoice> {
     const deliveryNote = dto.deliveryNoteId
-      ? await this.deliveryNoteRepo.findOne({
-          where: { id: dto.deliveryNoteId, companyId },
-        })
+      ? await this.deliveryNoteRepo.findOneForCompany(dto.deliveryNoteId, companyId)
       : null;
 
     if (dto.deliveryNoteId && !deliveryNote) {
@@ -75,7 +69,7 @@ export class InvoiceService {
 
     const supplierName = dto.supplierName || deliveryNote?.supplierName || dto.supplierName;
 
-    const invoice = this.invoiceRepo.create({
+    return this.invoiceRepo.create({
       companyId,
       deliveryNoteId: dto.deliveryNoteId || null,
       invoiceNumber: dto.invoiceNumber,
@@ -83,8 +77,6 @@ export class InvoiceService {
       invoiceDate: dto.invoiceDate ? fromISO(dto.invoiceDate).toJSDate() : null,
       extractionStatus: InvoiceExtractionStatus.PENDING,
     });
-
-    return this.invoiceRepo.save(invoice);
   }
 
   async findAll(
@@ -94,39 +86,33 @@ export class InvoiceService {
   ): Promise<SupplierInvoice[]> {
     await this.recoverStaleProcessingInvoices(companyId);
 
-    const invoices = await this.invoiceRepo.find({
-      where: { companyId },
-      relations: ["deliveryNote"],
-      order: { createdAt: "DESC" },
-      take: limit,
-      skip: (page - 1) * limit,
-    });
+    const invoices = await this.invoiceRepo.findForCompanyWithDeliveryNotePaginated(
+      companyId,
+      page,
+      limit,
+    );
 
     return Promise.all(invoices.map((inv) => this.resolveScanUrl(inv)));
   }
 
   private async recoverStaleProcessingInvoices(companyId: number): Promise<void> {
     const staleThreshold = now().minus({ minutes: 5 }).toJSDate();
-    const staleInvoices = await this.invoiceRepo.find({
-      where: {
-        companyId,
-        extractionStatus: InvoiceExtractionStatus.PROCESSING,
-        updatedAt: LessThan(staleThreshold),
-      },
-    });
+    const staleInvoices = await this.invoiceRepo.findStaleProcessingForCompany(
+      companyId,
+      staleThreshold,
+    );
 
     if (staleInvoices.length === 0) return;
 
     await Promise.all(
       staleInvoices.map(async (invoice) => {
-        const itemCount = await this.invoiceItemRepo.count({
-          where: { invoiceId: invoice.id },
-        });
+        const itemCount = await this.invoiceItemRepo.countByInvoice(invoice.id);
 
         if (itemCount > 0) {
-          const pendingClarifications = await this.clarificationRepo.count({
-            where: { invoiceId: invoice.id, status: "pending" as any },
-          });
+          const pendingClarifications = await this.clarificationRepo.countByInvoiceAndStatus(
+            invoice.id,
+            "pending",
+          );
           invoice.extractionStatus =
             pendingClarifications > 0
               ? InvoiceExtractionStatus.NEEDS_CLARIFICATION
@@ -144,10 +130,12 @@ export class InvoiceService {
   }
 
   async findById(companyId: number, id: number): Promise<SupplierInvoice> {
-    const invoice = await this.invoiceRepo.findOne({
-      where: { id, companyId },
-      relations: ["deliveryNote", "items", "items.stockItem", "clarifications"],
-    });
+    const invoice = await this.invoiceRepo.findOneForCompanyWithRelations(id, companyId, [
+      "deliveryNote",
+      "items",
+      "items.stockItem",
+      "clarifications",
+    ]);
 
     if (!invoice) {
       throw new NotFoundException(`Invoice ${id} not found`);
@@ -157,9 +145,7 @@ export class InvoiceService {
   }
 
   async reExtract(companyId: number, invoiceId: number): Promise<SupplierInvoice> {
-    const invoice = await this.invoiceRepo.findOne({
-      where: { id: invoiceId, companyId },
-    });
+    const invoice = await this.invoiceRepo.findOneForCompany(invoiceId, companyId);
 
     if (!invoice) {
       throw new NotFoundException(`Invoice ${invoiceId} not found`);
@@ -253,7 +239,7 @@ export class InvoiceService {
   }
 
   async linkScanPath(invoiceId: number, s3Path: string): Promise<void> {
-    await this.invoiceRepo.update(invoiceId, { scanUrl: s3Path });
+    await this.invoiceRepo.updateById(invoiceId, { scanUrl: s3Path });
   }
 
   private mimeToMediaType(
@@ -388,9 +374,7 @@ export class InvoiceService {
   }
 
   async reExtractAllFailed(companyId: number): Promise<{ triggered: number; failed: string[] }> {
-    const failedInvoices = await this.invoiceRepo.find({
-      where: { companyId, extractionStatus: InvoiceExtractionStatus.FAILED },
-    });
+    const failedInvoices = await this.invoiceRepo.findFailedForCompany(companyId);
 
     const results = await Promise.allSettled(
       failedInvoices
@@ -414,10 +398,7 @@ export class InvoiceService {
   }
 
   async findUnlinked(companyId: number): Promise<SupplierInvoice[]> {
-    return this.invoiceRepo.find({
-      where: { companyId, deliveryNoteId: IsNull() },
-      order: { createdAt: "DESC" },
-    });
+    return this.invoiceRepo.findUnlinkedForCompany(companyId);
   }
 
   async linkToDeliveryNote(
@@ -427,9 +408,7 @@ export class InvoiceService {
   ): Promise<SupplierInvoice> {
     const invoice = await this.findById(companyId, invoiceId);
 
-    const deliveryNote = await this.deliveryNoteRepo.findOne({
-      where: { id: deliveryNoteId, companyId },
-    });
+    const deliveryNote = await this.deliveryNoteRepo.findOneForCompany(deliveryNoteId, companyId);
 
     if (!deliveryNote) {
       throw new NotFoundException(`Delivery note ${deliveryNoteId} not found`);
@@ -463,10 +442,7 @@ export class InvoiceService {
   ): Promise<SuggestedDeliveryNote[]> {
     const invoice = await this.findById(companyId, invoiceId);
 
-    const deliveryNotes = await this.deliveryNoteRepo.find({
-      where: { companyId },
-      order: { receivedDate: "DESC" },
-    });
+    const deliveryNotes = await this.deliveryNoteRepo.findAllForCompanyByReceivedDate(companyId);
 
     const suggestions: SuggestedDeliveryNote[] = [];
 

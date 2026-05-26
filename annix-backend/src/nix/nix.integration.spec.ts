@@ -1,6 +1,4 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { AiChatService } from "./ai-providers/ai-chat.service";
@@ -13,9 +11,12 @@ import {
 } from "./entities/nix-clarification.entity";
 import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 import { NixLearning } from "./entities/nix-learning.entity";
-import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { MineInferenceService } from "./mine-inference.service";
 import { NixService } from "./nix.service";
+import { NixClarificationRepository } from "./nix-clarification.repository";
+import { NixExtractionRepository } from "./nix-extraction.repository";
+import { NixLearningRepository } from "./nix-learning.repository";
+import { NixUserPreferenceRepository } from "./nix-user-preference.repository";
 import { NixExtractionProfileRegistry } from "./profiles";
 import { RevisionTrackingService } from "./revision-tracking.service";
 import {
@@ -28,9 +29,9 @@ import { WordExtractorService } from "./services/word-extractor.service";
 
 describe("NixService Integration Tests", () => {
   let nixService: NixService;
-  let extractionRepo: jest.Mocked<Repository<NixExtraction>>;
-  let clarificationRepo: jest.Mocked<Repository<NixClarification>>;
-  let learningRepo: jest.Mocked<Repository<NixLearning>>;
+  let extractionRepo: jest.Mocked<NixExtractionRepository>;
+  let clarificationRepo: jest.Mocked<NixClarificationRepository>;
+  let learningRepo: jest.Mocked<NixLearningRepository>;
   let pdfExtractor: jest.Mocked<PdfExtractorService>;
   let excelExtractor: jest.Mocked<ExcelExtractorService>;
   let aiExtractor: jest.Mocked<AiExtractionService>;
@@ -145,28 +146,34 @@ describe("NixService Integration Tests", () => {
     const mockExtractionRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
+      findById: jest.fn(),
+      findByIdWithUserAndRfq: jest.fn(),
+      findBySessionOrderedAsc: jest.fn(),
+      findLatestSameSessionDuplicate: jest.fn(),
+      findRecentForUser: jest.fn(),
+      findUsableSessionSiblings: jest.fn().mockResolvedValue([]),
+      findUsableSourceSiblings: jest.fn().mockResolvedValue([]),
     };
 
     const mockClarificationRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
-      count: jest.fn(),
+      findByIdWithExtraction: jest.fn(),
+      findPendingForExtractionOrdered: jest.fn(),
+      countPendingForExtraction: jest.fn(),
     };
 
     mockLearningRepoFind = jest.fn().mockResolvedValue([]);
     const mockLearningRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      find: mockLearningRepoFind,
-      findOne: jest.fn(),
+      findActiveRelevanceRules: mockLearningRepoFind,
+      findAdminSeededOrdered: jest.fn().mockResolvedValue([]),
+      findCorrectionByPatternKey: jest.fn(),
     };
 
     const mockPreferenceRepo = {
-      findOne: jest.fn(),
+      findOneWhere: jest.fn(),
       save: jest.fn(),
     };
 
@@ -204,10 +211,10 @@ describe("NixService Integration Tests", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NixService,
-        { provide: getRepositoryToken(NixExtraction), useValue: mockExtractionRepo },
-        { provide: getRepositoryToken(NixClarification), useValue: mockClarificationRepo },
-        { provide: getRepositoryToken(NixLearning), useValue: mockLearningRepo },
-        { provide: getRepositoryToken(NixUserPreference), useValue: mockPreferenceRepo },
+        { provide: NixExtractionRepository, useValue: mockExtractionRepo },
+        { provide: NixClarificationRepository, useValue: mockClarificationRepo },
+        { provide: NixLearningRepository, useValue: mockLearningRepo },
+        { provide: NixUserPreferenceRepository, useValue: mockPreferenceRepo },
         { provide: PdfExtractorService, useValue: mockPdfExtractor },
         { provide: ExcelExtractorService, useValue: mockExcelExtractor },
         { provide: WordExtractorService, useValue: mockWordExtractor },
@@ -242,9 +249,9 @@ describe("NixService Integration Tests", () => {
     }).compile();
 
     nixService = module.get<NixService>(NixService);
-    extractionRepo = module.get(getRepositoryToken(NixExtraction));
-    clarificationRepo = module.get(getRepositoryToken(NixClarification));
-    learningRepo = module.get(getRepositoryToken(NixLearning));
+    extractionRepo = module.get(NixExtractionRepository);
+    clarificationRepo = module.get(NixClarificationRepository);
+    learningRepo = module.get(NixLearningRepository);
     pdfExtractor = module.get(PdfExtractorService);
     excelExtractor = module.get(ExcelExtractorService);
     aiExtractor = module.get(AiExtractionService);
@@ -272,7 +279,7 @@ describe("NixService Integration Tests", () => {
 
     it("should process PDF document end-to-end without clarifications", async () => {
       const mockExtraction = createMockExtraction();
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       pdfExtractor.extractFromPdf.mockResolvedValue({
@@ -292,16 +299,16 @@ describe("NixService Integration Tests", () => {
       expect(result.status).toBe(ExtractionStatus.COMPLETED);
       expect(result.items).toHaveLength(1);
       expect(result.pendingClarifications).toHaveLength(0);
-      expect(extractionRepo.save).toHaveBeenCalledTimes(2);
+      expect(extractionRepo.save).toHaveBeenCalledTimes(1);
     });
 
     it("should process PDF and generate clarifications for items needing them", async () => {
       const mockExtraction = createMockExtraction();
       const mockClarification = createMockClarification();
 
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
-      clarificationRepo.create.mockReturnValue(mockClarification);
+      clarificationRepo.create.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
 
       pdfExtractor.extractFromPdf.mockResolvedValue({
@@ -335,7 +342,7 @@ describe("NixService Integration Tests", () => {
 
     it("should handle PDF extraction failure gracefully", async () => {
       const mockExtraction = createMockExtraction();
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       pdfExtractor.extractFromPdf.mockRejectedValue(new Error("PDF parsing failed"));
@@ -363,7 +370,7 @@ describe("NixService Integration Tests", () => {
         documentPath: "/uploads/test.xlsx",
       });
 
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       excelExtractor.extractFromExcel.mockResolvedValue({
@@ -413,7 +420,7 @@ describe("NixService Integration Tests", () => {
         documentType: DocumentType.EXCEL,
       });
 
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       excelExtractor.extractFromExcel.mockResolvedValue({
@@ -441,7 +448,7 @@ describe("NixService Integration Tests", () => {
         documentType: DocumentType.EXCEL,
       });
 
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       excelExtractor.extractFromExcel.mockRejectedValue(new Error("Invalid Excel format"));
@@ -464,7 +471,7 @@ describe("NixService Integration Tests", () => {
         documentName: "drawing.dwg",
       });
 
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       const result = await nixService.processDocument({
@@ -490,7 +497,7 @@ describe("NixService Integration Tests", () => {
           documentName: name,
         });
 
-        extractionRepo.create.mockReturnValue(mockExtraction);
+        extractionRepo.create.mockResolvedValue(mockExtraction);
         extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
         if (expectedType === DocumentType.PDF) {
@@ -530,11 +537,11 @@ describe("NixService Integration Tests", () => {
         extraction: mockExtraction,
       });
 
-      clarificationRepo.findOne.mockResolvedValue(mockClarification);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
-      clarificationRepo.count.mockResolvedValue(0);
+      clarificationRepo.countPendingForExtraction.mockResolvedValue(0);
       extractionRepo.save.mockResolvedValue(mockExtraction);
-      learningRepo.create.mockReturnValue({} as NixLearning);
+      learningRepo.create.mockResolvedValue({} as NixLearning);
       learningRepo.save.mockResolvedValue({} as NixLearning);
 
       const result = await nixService.submitClarification({
@@ -558,10 +565,10 @@ describe("NixService Integration Tests", () => {
         extraction: mockExtraction,
       });
 
-      clarificationRepo.findOne.mockResolvedValue(mockClarification);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
-      clarificationRepo.count.mockResolvedValue(2);
-      learningRepo.create.mockReturnValue({} as NixLearning);
+      clarificationRepo.countPendingForExtraction.mockResolvedValue(2);
+      learningRepo.create.mockResolvedValue({} as NixLearning);
       learningRepo.save.mockResolvedValue({} as NixLearning);
 
       const result = await nixService.submitClarification({
@@ -576,7 +583,7 @@ describe("NixService Integration Tests", () => {
     });
 
     it("should return failure for non-existent clarification", async () => {
-      clarificationRepo.findOne.mockResolvedValue(null);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(null);
 
       const result = await nixService.submitClarification({
         clarificationId: 999,
@@ -592,9 +599,9 @@ describe("NixService Integration Tests", () => {
         extraction: createMockExtraction(),
       });
 
-      clarificationRepo.findOne.mockResolvedValue(mockClarification);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
-      clarificationRepo.count.mockResolvedValue(0);
+      clarificationRepo.countPendingForExtraction.mockResolvedValue(0);
       extractionRepo.save.mockResolvedValue(mockClarification.extraction as NixExtraction);
 
       await nixService.submitClarification({
@@ -611,7 +618,7 @@ describe("NixService Integration Tests", () => {
   describe("AI-Enhanced Processing", () => {
     it("should fall back to pattern matching when no AI providers available", async () => {
       const mockExtraction = createMockExtraction();
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       aiExtractor.getAvailableProviders.mockResolvedValue([]);
@@ -642,19 +649,16 @@ describe("NixService Integration Tests", () => {
         extractedItems: [createMockExtractedItem()],
       });
 
-      extractionRepo.findOne.mockResolvedValue(mockExtraction);
+      extractionRepo.findByIdWithUserAndRfq.mockResolvedValue(mockExtraction);
 
       const result = await nixService.extraction(1);
 
       expect(result).toBe(mockExtraction);
-      expect(extractionRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ["user", "rfq"],
-      });
+      expect(extractionRepo.findByIdWithUserAndRfq).toHaveBeenCalledWith(1);
     });
 
     it("should return null for non-existent extraction", async () => {
-      extractionRepo.findOne.mockResolvedValue(null);
+      extractionRepo.findByIdWithUserAndRfq.mockResolvedValue(null);
 
       const result = await nixService.extraction(999);
 
@@ -664,16 +668,12 @@ describe("NixService Integration Tests", () => {
     it("should retrieve user extractions", async () => {
       const extractions = [createMockExtraction({ id: 1 }), createMockExtraction({ id: 2 })];
 
-      extractionRepo.find.mockResolvedValue(extractions);
+      extractionRepo.findRecentForUser.mockResolvedValue(extractions);
 
       const result = await nixService.userExtractions(100);
 
       expect(result).toHaveLength(2);
-      expect(extractionRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { createdAt: "DESC" },
-        take: 50,
-      });
+      expect(extractionRepo.findRecentForUser).toHaveBeenCalledWith(100);
     });
   });
 
@@ -684,18 +684,12 @@ describe("NixService Integration Tests", () => {
         createMockClarification({ id: 2 }),
       ];
 
-      clarificationRepo.find.mockResolvedValue(clarifications);
+      clarificationRepo.findPendingForExtractionOrdered.mockResolvedValue(clarifications);
 
       const result = await nixService.pendingClarifications(1);
 
       expect(result).toHaveLength(2);
-      expect(clarificationRepo.find).toHaveBeenCalledWith({
-        where: {
-          extractionId: 1,
-          status: ClarificationStatus.PENDING,
-        },
-        order: { createdAt: "ASC" },
-      });
+      expect(clarificationRepo.findPendingForExtractionOrdered).toHaveBeenCalledWith(1);
     });
   });
 
@@ -706,7 +700,7 @@ describe("NixService Integration Tests", () => {
 
     it("should track processing time on successful extraction", async () => {
       const mockExtraction = createMockExtraction();
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => {
         if ((e as NixExtraction).processingTimeMs) {
           expect((e as NixExtraction).processingTimeMs).toBeGreaterThanOrEqual(0);
@@ -732,7 +726,7 @@ describe("NixService Integration Tests", () => {
 
     it("should track processing time on failed extraction", async () => {
       const mockExtraction = createMockExtraction();
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       pdfExtractor.extractFromPdf.mockRejectedValue(new Error("Extraction failed"));
@@ -744,7 +738,7 @@ describe("NixService Integration Tests", () => {
       });
 
       expect(result.status).toBe(ExtractionStatus.FAILED);
-      const savedExtraction = extractionRepo.save.mock.calls[1][0] as NixExtraction;
+      const savedExtraction = extractionRepo.save.mock.calls[0][0] as NixExtraction;
       expect(savedExtraction.processingTimeMs).toBeGreaterThanOrEqual(0);
     });
   });
@@ -752,7 +746,7 @@ describe("NixService Integration Tests", () => {
   describe("Multi-Document Type Support", () => {
     it("should correctly route PDF to PDF extractor", async () => {
       const mockExtraction = createMockExtraction();
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
       aiExtractor.getAvailableProviders.mockResolvedValue([]);
 
@@ -774,7 +768,7 @@ describe("NixService Integration Tests", () => {
 
     it("should correctly route Excel to Excel extractor", async () => {
       const mockExtraction = createMockExtraction({ documentType: DocumentType.EXCEL });
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockImplementation((e) => Promise.resolve(e as NixExtraction));
 
       excelExtractor.extractFromExcel.mockResolvedValue(createMockExtractionResult());

@@ -1,7 +1,5 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Like, Repository } from "typeorm";
 import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
 import { Roles } from "../../auth/roles.decorator";
 import { RolesGuard } from "../../auth/roles.guard";
@@ -11,6 +9,7 @@ import {
   NewsItem,
 } from "../entities/news-item.entity";
 import { INSIGHTS_ROLE } from "../insights.constants";
+import { NewsItemRepository } from "../repositories/news-item.repository";
 
 export interface NewsItemDto {
   id: string;
@@ -38,7 +37,7 @@ const MAX_LIMIT = 200;
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(INSIGHTS_ROLE)
 export class InsightsNewsController {
-  constructor(@InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>) {}
+  constructor(private readonly newsRepo: NewsItemRepository) {}
 
   @Get()
   @ApiOperation({ summary: "List news items, newest first, optionally filtered by symbol." })
@@ -51,15 +50,11 @@ export class InsightsNewsController {
     const limit = clampInt(limitRaw, DEFAULT_LIMIT, 1, MAX_LIMIT);
     const offset = clampInt(offsetRaw, 0, 0, Number.MAX_SAFE_INTEGER);
 
-    const where: Record<string, unknown> = {};
-    if (status) where.extractionStatus = status;
-    if (symbol) where.relatedSymbols = Like(`%${symbol.toUpperCase()}%`);
-
-    const [rows, total] = await this.newsRepo.findAndCount({
-      where,
-      order: { publishedAt: "DESC", createdAt: "DESC" },
-      take: limit,
-      skip: offset,
+    const { rows, total } = await this.newsRepo.findAndCountForList({
+      extractionStatus: status ?? null,
+      symbol: symbol ?? null,
+      limit,
+      offset,
     });
 
     return {

@@ -43,19 +43,33 @@ const nextConfig: NextConfig = {
     // /_next/static filenames are content-hashed. Turbopack dev chunks reuse
     // stable names, so an immutable header would pin stale code in the browser
     // across every edit — apply this rule in production only.
-    const productionStaticCaching =
-      process.env.NODE_ENV === "production"
-        ? [
-            {
-              source: "/_next/static/:path*",
-              headers: [
-                { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-              ],
-            },
-          ]
-        : [];
+    const isProduction = process.env.NODE_ENV === "production";
+    const productionStaticCaching = isProduction
+      ? [
+          {
+            source: "/_next/static/:path*",
+            headers: [
+              { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+            ],
+          },
+        ]
+      : [];
+    // Turbopack dev chunks reuse stable filenames across rebuilds, so the
+    // browser's HTTP cache will pin a stale chunk under the same URL after a
+    // rebuild — surfacing as "module factory is not available" runtime errors
+    // until a manual hard-reload. Force no-store in dev so every chunk is
+    // re-fetched fresh.
+    const developmentStaticCaching = isProduction
+      ? []
+      : [
+          {
+            source: "/_next/static/:path*",
+            headers: [{ key: "Cache-Control", value: "no-store, must-revalidate" }],
+          },
+        ];
     return [
       ...productionStaticCaching,
+      ...developmentStaticCaching,
       {
         // Marketing-site images: long cache, but revalidate so a swapped
         // banner is eventually picked up (these filenames are not hashed).

@@ -1,14 +1,17 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
-import { Company } from "../platform/entities/company.entity";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
-import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
+import { CustomerDeviceBindingRepository } from "./customer-device-binding.repository";
+import { CustomerDocumentRepository } from "./customer-document.repository";
+import { CustomerLoginAttemptRepository } from "./customer-login-attempt.repository";
+import { CustomerOnboardingRepository } from "./customer-onboarding.repository";
+import { CustomerProfileRepository } from "./customer-profile.repository";
+import { CustomerSessionRepository } from "./customer-session.repository";
 import {
   CustomerDetailDto,
   CustomerListResponseDto,
@@ -17,17 +20,9 @@ import {
   ResetDeviceBindingDto,
   SuspendCustomerDto,
 } from "./dto";
-import {
-  CustomerAccountStatus,
-  CustomerDeviceBinding,
-  CustomerDocument,
-  CustomerLoginAttempt,
-  CustomerOnboarding,
-  CustomerProfile,
-  CustomerSession,
-} from "./entities";
 import { CustomerDocumentValidationStatus } from "./entities/customer-document.entity";
 import { CustomerOnboardingStatus } from "./entities/customer-onboarding.entity";
+import { CustomerAccountStatus } from "./entities/customer-profile.entity";
 import { SessionInvalidationReason } from "./entities/customer-session.entity";
 
 @Injectable()
@@ -35,22 +30,13 @@ export class CustomerAdminService {
   private readonly logger = new Logger(CustomerAdminService.name);
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(CustomerProfile)
-    private readonly profileRepo: Repository<CustomerProfile>,
-    @InjectRepository(CustomerDeviceBinding)
-    private readonly deviceBindingRepo: Repository<CustomerDeviceBinding>,
-    @InjectRepository(CustomerLoginAttempt)
-    private readonly loginAttemptRepo: Repository<CustomerLoginAttempt>,
-    @InjectRepository(CustomerSession)
-    private readonly sessionRepo: Repository<CustomerSession>,
-    @InjectRepository(CustomerOnboarding)
-    private readonly onboardingRepo: Repository<CustomerOnboarding>,
-    @InjectRepository(CustomerDocument)
-    private readonly documentRepo: Repository<CustomerDocument>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly profileRepository: CustomerProfileRepository,
+    private readonly deviceBindingRepository: CustomerDeviceBindingRepository,
+    private readonly loginAttemptRepository: CustomerLoginAttemptRepository,
+    private readonly sessionRepository: CustomerSessionRepository,
+    private readonly onboardingRepository: CustomerOnboardingRepository,
+    private readonly documentRepository: CustomerDocumentRepository,
+    private readonly userRepo: UserRepository,
     private readonly auditService: AuditService,
     private readonly emailService: EmailService,
     private readonly storageService: S3StorageService,
@@ -70,44 +56,18 @@ export class CustomerAdminService {
       sortOrder = "DESC",
     } = query;
 
-    const queryBuilder = this.profileRepo
-      .createQueryBuilder("profile")
-      .leftJoinAndSelect("profile.company", "company")
-      .leftJoinAndSelect("profile.user", "user")
-      .leftJoinAndSelect(
-        "profile.deviceBindings",
-        "deviceBinding",
-        "deviceBinding.isActive = true AND deviceBinding.isPrimary = true",
-      )
-      .leftJoin(
-        "profile.sessions",
-        "session",
-        "session.isActive = true OR session.invalidatedAt IS NOT NULL",
-      );
-
-    // Search filter
-    if (search) {
-      queryBuilder.andWhere(
-        "(company.legalName ILIKE :search OR company.tradingName ILIKE :search OR user.email ILIKE :search OR profile.firstName ILIKE :search OR profile.lastName ILIKE :search)",
-        { search: `%${search}%` },
-      );
-    }
-
-    // Status filter
-    if (status) {
-      queryBuilder.andWhere("profile.accountStatus = :status", { status });
-    }
-
-    // Sorting
     const validSortFields = ["createdAt", "firstName", "lastName", "accountStatus"];
     const sortField = validSortFields.includes(sortBy) ? sortBy : "createdAt";
-    queryBuilder.orderBy(`profile.${sortField}`, sortOrder);
-
-    // Pagination
     const skip = (page - 1) * limit;
-    queryBuilder.skip(skip).take(limit);
 
-    const [profiles, total] = await queryBuilder.getManyAndCount();
+    const [profiles, total] = await this.profileRepository.listForAdmin({
+      search: search ?? null,
+      status: status ?? null,
+      sortField,
+      sortOrder,
+      skip,
+      limit,
+    });
 
     const items = profiles.map((profile) => ({
       id: profile.id,
@@ -134,28 +94,22 @@ export class CustomerAdminService {
    * Get detailed customer information
    */
   async getCustomerDetail(customerId: number): Promise<CustomerDetailDto> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["company", "user", "deviceBindings"],
-    });
+    const profile = await this.profileRepository.findById(customerId, [
+      "company",
+      "user",
+      "deviceBindings",
+    ]);
 
     if (!profile) {
       throw new NotFoundException("Customer not found");
     }
 
     // Get recent login attempts
-    const recentLogins = await this.loginAttemptRepo.find({
-      where: { customerProfileId: customerId },
-      order: { attemptTime: "DESC" },
-      take: 10,
-    });
+    const recentLogins = await this.loginAttemptRepository.recentByProfile(customerId, 10);
 
     const activeBinding = profile.deviceBindings.find((b) => b.isActive && b.isPrimary);
 
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { customerId },
-      relations: ["reviewedBy"],
-    });
+    const onboarding = await this.onboardingRepository.findByCustomerId(customerId, ["reviewedBy"]);
 
     return {
       id: profile.id,
@@ -228,9 +182,7 @@ export class CustomerAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer not found");
@@ -247,21 +199,16 @@ export class CustomerAdminService {
     profile.suspendedAt = now().toJSDate();
     profile.suspendedBy = adminUserId;
 
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     // Invalidate all active sessions
-    await this.sessionRepo.update(
-      { customerProfileId: customerId, isActive: true },
-      {
-        isActive: false,
-        invalidatedAt: now().toJSDate(),
-        invalidationReason: SessionInvalidationReason.ACCOUNT_SUSPENDED,
-      },
-    );
-
-    const adminUser = await this.userRepo.findOne({
-      where: { id: adminUserId },
+    await this.sessionRepository.updateActiveByProfile("customerProfileId", customerId, {
+      isActive: false,
+      invalidatedAt: now().toJSDate(),
+      invalidationReason: SessionInvalidationReason.ACCOUNT_SUSPENDED,
     });
+
+    const adminUser = await this.userRepo.findById(adminUserId);
     await this.auditService.log({
       entityType: "customer_profile",
       entityId: customerId,
@@ -297,9 +244,7 @@ export class CustomerAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-    });
+    const profile = await this.profileRepository.findById(customerId);
 
     if (!profile) {
       throw new NotFoundException("Customer not found");
@@ -316,11 +261,9 @@ export class CustomerAdminService {
     profile.suspendedAt = null;
     profile.suspendedBy = null;
 
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
-    const adminUser = await this.userRepo.findOne({
-      where: { id: adminUserId },
-    });
+    const adminUser = await this.userRepo.findById(adminUserId);
     await this.auditService.log({
       entityType: "customer_profile",
       entityId: customerId,
@@ -352,10 +295,7 @@ export class CustomerAdminService {
     adminUserId: number,
     clientIp: string,
   ): Promise<{ success: boolean; message: string }> {
-    const profile = await this.profileRepo.findOne({
-      where: { id: customerId },
-      relations: ["deviceBindings"],
-    });
+    const profile = await this.profileRepository.findById(customerId, ["deviceBindings"]);
 
     if (!profile) {
       throw new NotFoundException("Customer not found");
@@ -373,25 +313,20 @@ export class CustomerAdminService {
     activeBinding.deactivatedBy = adminUserId;
     activeBinding.deactivationReason = dto.reason;
 
-    await this.deviceBindingRepo.save(activeBinding);
+    await this.deviceBindingRepository.save(activeBinding);
 
     // Invalidate all active sessions
-    await this.sessionRepo.update(
-      { customerProfileId: customerId, isActive: true },
-      {
-        isActive: false,
-        invalidatedAt: now().toJSDate(),
-        invalidationReason: SessionInvalidationReason.DEVICE_RESET,
-      },
-    );
+    await this.sessionRepository.updateActiveByProfile("customerProfileId", customerId, {
+      isActive: false,
+      invalidatedAt: now().toJSDate(),
+      invalidationReason: SessionInvalidationReason.DEVICE_RESET,
+    });
 
     // Update account status to pending so they need to re-bind device on next login
     profile.accountStatus = CustomerAccountStatus.PENDING;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
-    const adminUser = await this.userRepo.findOne({
-      where: { id: adminUserId },
-    });
+    const adminUser = await this.userRepo.findById(adminUserId);
     await this.auditService.log({
       entityType: "customer_profile",
       entityId: customerId,
@@ -416,11 +351,7 @@ export class CustomerAdminService {
    * Get login history for a customer
    */
   async getLoginHistory(customerId: number, limit: number = 50) {
-    const attempts = await this.loginAttemptRepo.find({
-      where: { customerProfileId: customerId },
-      order: { attemptTime: "DESC" },
-      take: limit,
-    });
+    const attempts = await this.loginAttemptRepository.recentByProfile(customerId, limit);
 
     return attempts.map((attempt) => ({
       id: attempt.id,
@@ -440,13 +371,10 @@ export class CustomerAdminService {
    * Get customers pending onboarding review
    */
   async getPendingReviewCustomers() {
-    const onboardings = await this.onboardingRepo.find({
-      where: {
-        status: In([CustomerOnboardingStatus.SUBMITTED, CustomerOnboardingStatus.UNDER_REVIEW]),
-      },
-      relations: ["customer", "customer.company", "customer.user"],
-      order: { submittedAt: "ASC" },
-    });
+    const onboardings = await this.onboardingRepository.findPendingReview([
+      CustomerOnboardingStatus.SUBMITTED,
+      CustomerOnboardingStatus.UNDER_REVIEW,
+    ]);
 
     return onboardings.map((onb) => ({
       id: onb.id,
@@ -467,17 +395,19 @@ export class CustomerAdminService {
    * Get onboarding details for review
    */
   async getOnboardingForReview(onboardingId: number) {
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { id: onboardingId },
-      relations: ["customer", "customer.company", "customer.user", "reviewedBy"],
-    });
+    const onboarding = await this.onboardingRepository.findById(onboardingId, [
+      "customer",
+      "customer.company",
+      "customer.user",
+      "reviewedBy",
+    ]);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding not found");
     }
 
-    const documents = await this.documentRepo.find({
-      where: { customerId: onboarding.customerId },
+    const documents = await this.documentRepository.findManyWhere({
+      customerId: onboarding.customerId,
     });
 
     return {
@@ -531,10 +461,11 @@ export class CustomerAdminService {
    * Approve customer onboarding
    */
   async approveOnboarding(onboardingId: number, adminUserId: number, clientIp: string) {
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { id: onboardingId },
-      relations: ["customer", "customer.company", "customer.user"],
-    });
+    const onboarding = await this.onboardingRepository.findById(onboardingId, [
+      "customer",
+      "customer.company",
+      "customer.user",
+    ]);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding not found");
@@ -549,9 +480,7 @@ export class CustomerAdminService {
     }
 
     // Validate all required documents are in acceptable state
-    const documents = await this.documentRepo.find({
-      where: { customerId: onboarding.customerId, isRequired: true },
-    });
+    const documents = await this.documentRepository.findRequiredByCustomerId(onboarding.customerId);
 
     const invalidDocuments = documents.filter((doc) => {
       // Documents must be either VALID or MANUAL_REVIEW (with admin review completed)
@@ -582,24 +511,18 @@ export class CustomerAdminService {
     onboarding.status = CustomerOnboardingStatus.APPROVED;
     onboarding.reviewedAt = now().toJSDate();
     onboarding.reviewedById = adminUserId;
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     // Update profile to ACTIVE
     const profile = onboarding.customer;
     profile.accountStatus = CustomerAccountStatus.ACTIVE;
-    await this.profileRepo.save(profile);
+    await this.profileRepository.save(profile);
 
     // Approve all documents
-    await this.documentRepo.update(
-      {
-        customerId: onboarding.customerId,
-        validationStatus: CustomerDocumentValidationStatus.PENDING,
-      },
-      {
-        validationStatus: CustomerDocumentValidationStatus.VALID,
-        reviewedById: adminUserId,
-        reviewedAt: now().toJSDate(),
-      },
+    await this.documentRepository.approvePendingForCustomer(
+      onboarding.customerId,
+      adminUserId,
+      now().toJSDate(),
     );
 
     // Send approval email
@@ -608,9 +531,7 @@ export class CustomerAdminService {
       profile.company.tradingName || profile.company.legalName || "",
     );
 
-    const adminUser = await this.userRepo.findOne({
-      where: { id: adminUserId },
-    });
+    const adminUser = await this.userRepo.findById(adminUserId);
     await this.auditService.log({
       entityType: "customer_onboarding",
       entityId: onboardingId,
@@ -639,10 +560,11 @@ export class CustomerAdminService {
     adminUserId: number,
     clientIp: string,
   ) {
-    const onboarding = await this.onboardingRepo.findOne({
-      where: { id: onboardingId },
-      relations: ["customer", "customer.company", "customer.user"],
-    });
+    const onboarding = await this.onboardingRepository.findById(onboardingId, [
+      "customer",
+      "customer.company",
+      "customer.user",
+    ]);
 
     if (!onboarding) {
       throw new NotFoundException("Onboarding not found");
@@ -662,7 +584,7 @@ export class CustomerAdminService {
     onboarding.reviewedById = adminUserId;
     onboarding.rejectionReason = reason;
     onboarding.remediationSteps = remediationSteps;
-    await this.onboardingRepo.save(onboarding);
+    await this.onboardingRepository.save(onboarding);
 
     // Send rejection email
     const profile = onboarding.customer;
@@ -673,9 +595,7 @@ export class CustomerAdminService {
       remediationSteps,
     );
 
-    const adminUser = await this.userRepo.findOne({
-      where: { id: adminUserId },
-    });
+    const adminUser = await this.userRepo.findById(adminUserId);
     await this.auditService.log({
       entityType: "customer_onboarding",
       entityId: onboardingId,
@@ -706,10 +626,11 @@ export class CustomerAdminService {
     adminUserId: number,
     clientIp: string,
   ) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId },
-      relations: ["customer", "customer.user", "customer.company"],
-    });
+    const document = await this.documentRepository.findByIdWithRelations(documentId, [
+      "customer",
+      "customer.user",
+      "customer.company",
+    ]);
 
     if (!document) {
       throw new NotFoundException("Document not found");
@@ -719,11 +640,9 @@ export class CustomerAdminService {
     document.validationNotes = validationNotes;
     document.reviewedById = adminUserId;
     document.reviewedAt = now().toJSDate();
-    await this.documentRepo.save(document);
+    await this.documentRepository.save(document);
 
-    const adminUser = await this.userRepo.findOne({
-      where: { id: adminUserId },
-    });
+    const adminUser = await this.userRepo.findById(adminUserId);
     await this.auditService.log({
       entityType: "customer_document",
       entityId: documentId,
@@ -738,9 +657,7 @@ export class CustomerAdminService {
     });
 
     if (validationStatus === CustomerDocumentValidationStatus.INVALID) {
-      const onboarding = await this.onboardingRepo.findOne({
-        where: { customerId: document.customerId },
-      });
+      const onboarding = await this.onboardingRepository.findByCustomerId(document.customerId);
 
       if (onboarding && onboarding.status !== CustomerOnboardingStatus.REJECTED) {
         onboarding.status = CustomerOnboardingStatus.REJECTED;
@@ -749,7 +666,7 @@ export class CustomerAdminService {
           validationNotes || "Please re-upload the rejected document with the correct information.";
         onboarding.reviewedAt = now().toJSDate();
         onboarding.reviewedById = adminUserId;
-        await this.onboardingRepo.save(onboarding);
+        await this.onboardingRepository.save(onboarding);
 
         await this.auditService.log({
           entityType: "customer_onboarding",
@@ -824,11 +741,7 @@ export class CustomerAdminService {
    * Get customer documents for admin review
    */
   async getCustomerDocuments(customerId: number) {
-    const documents = await this.documentRepo.find({
-      where: { customerId },
-      relations: ["reviewedBy"],
-      order: { uploadedAt: "DESC" },
-    });
+    const documents = await this.documentRepository.findByCustomerIdWithReviewer(customerId);
 
     return documents.map((doc) => ({
       id: doc.id,
@@ -847,9 +760,7 @@ export class CustomerAdminService {
   }
 
   async getDocumentUrl(documentId: number) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId },
-    });
+    const document = await this.documentRepository.findById(documentId);
 
     if (!document) {
       throw new NotFoundException("Document not found");
@@ -865,9 +776,7 @@ export class CustomerAdminService {
   }
 
   async getDocumentById(documentId: number) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId },
-    });
+    const document = await this.documentRepository.findById(documentId);
 
     if (!document) {
       throw new NotFoundException("Document not found");
@@ -877,10 +786,11 @@ export class CustomerAdminService {
   }
 
   async getDocumentReviewData(documentId: number) {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId },
-      relations: ["customer", "customer.company", "reviewedBy"],
-    });
+    const document = await this.documentRepository.findByIdWithRelations(documentId, [
+      "customer",
+      "customer.company",
+      "reviewedBy",
+    ]);
 
     if (!document) {
       throw new NotFoundException("Document not found");
@@ -997,9 +907,7 @@ export class CustomerAdminService {
   async getDocumentPreviewImages(
     documentId: number,
   ): Promise<{ pages: string[]; totalPages: number }> {
-    const document = await this.documentRepo.findOne({
-      where: { id: documentId },
-    });
+    const document = await this.documentRepository.findById(documentId);
 
     if (!document) {
       throw new NotFoundException("Document not found");

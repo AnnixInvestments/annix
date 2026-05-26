@@ -1,13 +1,12 @@
 import { Controller, Get, Param, Query, UseGuards } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { JwtAuthGuard } from "../../auth/jwt-auth.guard";
 import { Roles } from "../../auth/roles.decorator";
 import { RolesGuard } from "../../auth/roles.guard";
-import { Asset } from "../entities/asset.entity";
 import { SignalSnapshot } from "../entities/signal-snapshot.entity";
 import { INSIGHTS_ROLE } from "../insights.constants";
+import { AssetRepository } from "../repositories/asset.repository";
+import { SignalSnapshotRepository } from "../repositories/signal-snapshot.repository";
 
 export interface SignalSnapshotDto {
   symbol: string;
@@ -32,9 +31,8 @@ export interface SignalSnapshotDto {
 @Roles(INSIGHTS_ROLE)
 export class InsightsSignalsController {
   constructor(
-    @InjectRepository(SignalSnapshot)
-    private readonly signalRepo: Repository<SignalSnapshot>,
-    @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
+    private readonly signalRepo: SignalSnapshotRepository,
+    private readonly assetRepo: AssetRepository,
   ) {}
 
   @Get("latest")
@@ -42,21 +40,7 @@ export class InsightsSignalsController {
     summary: "Latest signal snapshot per asset (one row per asset, newest available date).",
   })
   async latest(): Promise<SignalSnapshotDto[]> {
-    const rows = await this.signalRepo
-      .createQueryBuilder("s")
-      .innerJoinAndSelect("s.asset", "asset")
-      .innerJoin(
-        (qb) =>
-          qb
-            .from(SignalSnapshot, "ss")
-            .select("ss.asset_id", "asset_id")
-            .addSelect("MAX(ss.snapshot_date)", "max_date")
-            .groupBy("ss.asset_id"),
-        "latest",
-        '"latest".asset_id = s.asset_id AND "latest".max_date = s.snapshot_date',
-      )
-      .orderBy("s.opportunity_score", "DESC")
-      .getMany();
+    const rows = await this.signalRepo.findLatestPerAssetWithAsset();
     return rows.map((row) => this.toDto(row));
   }
 
@@ -67,16 +51,11 @@ export class InsightsSignalsController {
     @Query("limit") limit?: string,
   ): Promise<SignalSnapshotDto[]> {
     const upper = symbol.toUpperCase();
-    const asset = await this.assetRepo.findOne({ where: { symbol: upper } });
+    const asset = await this.assetRepo.findBySymbol(upper);
     if (!asset) return [];
     const parsed = limit ? Number.parseInt(limit, 10) : 365;
     const safe = Number.isFinite(parsed) && parsed > 0 ? Math.min(parsed, 2000) : 365;
-    const rows = await this.signalRepo.find({
-      where: { assetId: asset.id },
-      relations: { asset: true },
-      order: { snapshotDate: "DESC" },
-      take: safe,
-    });
+    const rows = await this.signalRepo.findHistoryForAsset(asset.id, safe);
     return rows.map((row) => this.toDto(row)).reverse();
   }
 

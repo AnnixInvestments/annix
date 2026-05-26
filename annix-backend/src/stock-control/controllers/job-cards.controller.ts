@@ -19,8 +19,6 @@ import {
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, MoreThan, Repository } from "typeorm";
 import { now, nowISO } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
@@ -34,10 +32,7 @@ import { CreateAllocationDto } from "../dto/create-allocation.dto";
 import { CreateJobCardDto } from "../dto/create-job-card.dto";
 import { UpdateJobCardDto } from "../dto/update-job-card.dto";
 import { RejectAllocationDto } from "../dto/workflow.dto";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
-import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
-import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
@@ -46,6 +41,10 @@ import {
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
+import { RubberDimensionOverrideRepository } from "../repositories/rubber-dimension-override.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
@@ -78,14 +77,10 @@ export class JobCardsController {
     private readonly stockAllocationService: StockAllocationService,
     private readonly rubberCuttingTrainingService: RubberCuttingTrainingService,
     private readonly workflowNotificationService: WorkflowNotificationService,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(RubberDimensionOverride)
-    private readonly dimensionOverrideRepo: Repository<RubberDimensionOverride>,
-    @InjectRepository(StockMovement)
-    private readonly stockMovementRepo: Repository<StockMovement>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly dimensionOverrideRepo: RubberDimensionOverrideRepository,
+    private readonly stockMovementRepo: StockMovementRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -152,27 +147,13 @@ export class JobCardsController {
   @ApiOperation({ summary: "Query learned rubber dimension overrides" })
   async rubberDimensionSuggestions(@Req() req: any, @Query() query: any) {
     const companyId = req.user.companyId;
-    const results = await this.dimensionOverrideRepo
-      .createQueryBuilder("o")
-      .where("o.company_id = :companyId", { companyId })
-      .andWhere("COALESCE(o.item_type, '') = COALESCE(:itemType, '')", {
-        itemType: query.itemType || null,
-      })
-      .andWhere("COALESCE(o.nb_mm, 0) = COALESCE(:nbMm, 0)", {
-        nbMm: query.nbMm ? Number(query.nbMm) : null,
-      })
-      .andWhere("COALESCE(o.schedule, '') = COALESCE(:schedule, '')", {
-        schedule: query.schedule || null,
-      })
-      .andWhere("o.pipe_length_mm = :pipeLengthMm", {
-        pipeLengthMm: Number(query.pipeLengthMm),
-      })
-      .andWhere("COALESCE(o.flange_config, '') = COALESCE(:flangeConfig, '')", {
-        flangeConfig: query.flangeConfig || null,
-      })
-      .orderBy("o.usage_count", "DESC")
-      .limit(1)
-      .getMany();
+    const results = await this.dimensionOverrideRepo.findBestSuggestions(companyId, {
+      itemType: query.itemType || null,
+      nbMm: query.nbMm ? Number(query.nbMm) : null,
+      schedule: query.schedule || null,
+      pipeLengthMm: Number(query.pipeLengthMm),
+      flangeConfig: query.flangeConfig || null,
+    });
 
     return results;
   }
@@ -489,9 +470,7 @@ export class JobCardsController {
     @Param("id") id: number,
     @Param("lineItemId") lineItemId: number,
   ) {
-    const lineItem = await this.lineItemRepo.findOne({
-      where: { id: lineItemId, jobCardId: id, companyId: req.user.companyId },
-    });
+    const lineItem = await this.lineItemRepo.findOneForJobCard(lineItemId, id, req.user.companyId);
     if (!lineItem) {
       throw new BadRequestException("Line item not found");
     }
@@ -527,7 +506,7 @@ export class JobCardsController {
       0,
     );
 
-    const lineItem = this.lineItemRepo.create({
+    const saved = await this.lineItemRepo.create({
       jobCardId: id,
       companyId: req.user.companyId,
       itemCode: body.itemCode || null,
@@ -539,8 +518,6 @@ export class JobCardsController {
       liningM2: body.liningM2 || null,
       sortOrder: maxSort + 1,
     });
-
-    const saved = await this.lineItemRepo.save(lineItem);
     return saved;
   }
 
@@ -562,14 +539,9 @@ export class JobCardsController {
       null,
     );
 
-    const rubberStock = await this.stockItemRepo.find({
-      where: {
-        companyId: req.user.companyId,
-        category: ILike("%rubber%"),
-        quantity: MoreThan(0),
-      },
-      order: { thicknessMm: "ASC", widthMm: "ASC" },
-    });
+    const rubberStock = await this.stockItemRepo.findRubberInStockForCompanyOrdered(
+      req.user.companyId,
+    );
 
     const stockItems = rubberStock.map((item) => ({
       stockItemId: item.id,
@@ -683,12 +655,14 @@ export class JobCardsController {
     const wastageName = `Rubber Wastage - ${colour}`;
     const wastageSku = `RW-${colour.toUpperCase().replace(/\s+/g, "-")}`;
 
-    let wastageItem = await this.stockItemRepo.findOne({
-      where: { companyId, sku: wastageSku, category: "rubber-wastage" },
-    });
+    let wastageItem = await this.stockItemRepo.findOneWastageForCompany(
+      companyId,
+      wastageSku,
+      "rubber-wastage",
+    );
 
     if (!wastageItem) {
-      wastageItem = this.stockItemRepo.create({
+      wastageItem = await this.stockItemRepo.create({
         companyId,
         sku: wastageSku,
         name: wastageName,
@@ -699,16 +673,13 @@ export class JobCardsController {
         minStockLevel: 0,
         color: colour,
       });
-      wastageItem = await this.stockItemRepo.save(wastageItem);
     }
 
     const roundedKg = Math.round(weightKg * 100) / 100;
     const wholeKg = Math.max(1, Math.round(weightKg));
-    await this.stockItemRepo.update(wastageItem.id, {
-      quantity: () => `quantity + ${wholeKg}`,
-    });
+    await this.stockItemRepo.incrementQuantityById(wastageItem.id, wholeKg);
 
-    const movement = this.stockMovementRepo.create({
+    const movement = this.stockMovementRepo.build({
       stockItem: wastageItem,
       companyId,
       movementType: MovementType.IN,
@@ -721,7 +692,7 @@ export class JobCardsController {
     await this.stockMovementRepo.save(movement);
 
     const offcutSku = `RO-${id}-${Date.now()}`;
-    const offcutItem = this.stockItemRepo.create({
+    const savedOffcut = await this.stockItemRepo.create({
       companyId,
       sku: offcutSku,
       name: `Rubber Offcut ${dto.widthMm}x${dto.lengthMm}mm ${dto.thicknessMm}mm ${colour}`,
@@ -738,7 +709,6 @@ export class JobCardsController {
       sourceJobCardId: id,
       sourceRollNumber: null,
     });
-    const savedOffcut = await this.stockItemRepo.save(offcutItem);
 
     return { weightKg: roundedKg, stockItemId: wastageItem.id, offcutStockItemId: savedOffcut.id };
   }
@@ -761,7 +731,7 @@ export class JobCardsController {
         const offcutSku = `RO-${id}-${timestamp}-${idx}`;
         const lengthM = offcut.lengthMm / 1000;
 
-        const stockItem = this.stockItemRepo.create({
+        const saved = await this.stockItemRepo.create({
           companyId,
           sku: offcutSku,
           name: `Rubber Offcut ${offcut.widthMm}x${offcut.lengthMm}mm ${offcut.thicknessMm}mm ${colour}`,
@@ -779,9 +749,8 @@ export class JobCardsController {
           rollNumber: offcut.rollNumber || null,
           sourceRollNumber: offcut.rollNumber || null,
         });
-        const saved = await this.stockItemRepo.save(stockItem);
 
-        const movement = this.stockMovementRepo.create({
+        const movement = this.stockMovementRepo.build({
           stockItem: saved,
           companyId,
           movementType: MovementType.IN,
@@ -809,31 +778,17 @@ export class JobCardsController {
   private async upsertDimensionOverrides(companyId: number, overrides: any[]): Promise<void> {
     await Promise.all(
       overrides.map(async (ov) => {
-        const existing = await this.dimensionOverrideRepo
-          .createQueryBuilder("o")
-          .where("o.company_id = :companyId", { companyId })
-          .andWhere("COALESCE(o.item_type, '') = COALESCE(:itemType, '')", {
-            itemType: ov.itemType || null,
-          })
-          .andWhere("COALESCE(o.nb_mm, 0) = COALESCE(:nbMm, 0)", {
-            nbMm: ov.nbMm || null,
-          })
-          .andWhere("COALESCE(o.od_mm, 0) = COALESCE(:odMm, 0)", {
-            odMm: ov.odMm || null,
-          })
-          .andWhere("COALESCE(o.schedule, '') = COALESCE(:schedule, '')", {
-            schedule: ov.schedule || null,
-          })
-          .andWhere("o.pipe_length_mm = :pipeLengthMm", {
-            pipeLengthMm: ov.pipeLengthMm,
-          })
-          .andWhere("COALESCE(o.flange_config, '') = COALESCE(:flangeConfig, '')", {
-            flangeConfig: ov.flangeConfig || null,
-          })
-          .getOne();
+        const existing = await this.dimensionOverrideRepo.findMatchingOverride(companyId, {
+          itemType: ov.itemType || null,
+          nbMm: ov.nbMm || null,
+          odMm: ov.odMm || null,
+          schedule: ov.schedule || null,
+          pipeLengthMm: ov.pipeLengthMm,
+          flangeConfig: ov.flangeConfig || null,
+        });
 
         if (existing) {
-          await this.dimensionOverrideRepo.update(existing.id, {
+          await this.dimensionOverrideRepo.updateById(existing.id, {
             overrideWidthMm: ov.overrideWidthMm,
             overrideLengthMm: ov.overrideLengthMm,
             calculatedWidthMm: ov.calculatedWidthMm,
@@ -842,7 +797,7 @@ export class JobCardsController {
             lastUsedAt: now().toJSDate(),
           });
         } else {
-          await this.dimensionOverrideRepo.save({
+          await this.dimensionOverrideRepo.create({
             companyId,
             itemType: ov.itemType || null,
             nbMm: ov.nbMm || null,

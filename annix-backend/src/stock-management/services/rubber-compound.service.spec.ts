@@ -1,7 +1,6 @@
 import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { RubberCompound } from "../entities/rubber-compound.entity";
+import { RubberCompoundRepository } from "../repositories/rubber-compound.repository";
 import { RubberCompoundService } from "./rubber-compound.service";
 import { StockManagementNotificationsService } from "./stock-management-notifications.service";
 
@@ -9,16 +8,18 @@ describe("RubberCompoundService", () => {
   let service: RubberCompoundService;
 
   const mockCompoundRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => {
-      if (Array.isArray(entity)) {
-        return Promise.resolve(entity.map((e, i) => ({ id: i + 1, ...e })));
-      }
-      return Promise.resolve({ id: 1, ...entity });
-    }),
-    update: jest.fn().mockResolvedValue({ affected: 1 }),
+    findForCompany: jest.fn(),
+    findOneForCompany: jest.fn(),
+    findOneByCode: jest.fn(),
+    findAllForCompany: jest.fn(),
+    updateById: jest.fn().mockResolvedValue(undefined),
+    build: jest.fn().mockImplementation((data) => ({ ...data })),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    saveMany: jest
+      .fn()
+      .mockImplementation((entities) =>
+        Promise.resolve(entities.map((e: object, i: number) => ({ id: i + 1, ...e }))),
+      ),
   };
 
   const mockNotifications = {
@@ -29,13 +30,19 @@ describe("RubberCompoundService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberCompoundService,
-        { provide: getRepositoryToken(RubberCompound), useValue: mockCompoundRepo },
+        { provide: RubberCompoundRepository, useValue: mockCompoundRepo },
         { provide: StockManagementNotificationsService, useValue: mockNotifications },
       ],
     }).compile();
 
     service = module.get<RubberCompoundService>(RubberCompoundService);
     jest.clearAllMocks();
+    mockCompoundRepo.build.mockImplementation((data) => ({ ...data }));
+    mockCompoundRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockCompoundRepo.saveMany.mockImplementation((entities) =>
+      Promise.resolve(entities.map((e: object, i: number) => ({ id: i + 1, ...e }))),
+    );
+    mockNotifications.notifyMissingDatasheet.mockResolvedValue(undefined);
   });
 
   it("should be defined", () => {
@@ -44,7 +51,7 @@ describe("RubberCompoundService", () => {
 
   describe("create", () => {
     it("creates a new compound when code is unique", async () => {
-      mockCompoundRepo.findOne.mockResolvedValueOnce(null);
+      mockCompoundRepo.findOneByCode.mockResolvedValueOnce(null);
 
       const result = await service.create(1, {
         code: "SBR70",
@@ -58,7 +65,7 @@ describe("RubberCompoundService", () => {
     });
 
     it("throws ConflictException when code already exists", async () => {
-      mockCompoundRepo.findOne.mockResolvedValueOnce({ id: 1, code: "SBR70" });
+      mockCompoundRepo.findOneByCode.mockResolvedValueOnce({ id: 1, code: "SBR70" });
 
       await expect(service.create(1, { code: "SBR70", name: "SBR 70" })).rejects.toThrow(
         ConflictException,
@@ -68,7 +75,7 @@ describe("RubberCompoundService", () => {
 
   describe("byId", () => {
     it("throws NotFoundException when compound does not exist", async () => {
-      mockCompoundRepo.findOne.mockResolvedValueOnce(null);
+      mockCompoundRepo.findOneForCompany.mockResolvedValueOnce(null);
       await expect(service.byId(1, 999)).rejects.toThrow(NotFoundException);
     });
   });
@@ -89,7 +96,7 @@ describe("RubberCompoundService", () => {
 
   describe("ensureSeedCompoundsForCompany", () => {
     it("seeds standard compounds when none exist", async () => {
-      mockCompoundRepo.find.mockResolvedValueOnce([]);
+      mockCompoundRepo.findAllForCompany.mockResolvedValueOnce([]);
       const created = await service.ensureSeedCompoundsForCompany(1);
       expect(created).toBeGreaterThan(0);
     });

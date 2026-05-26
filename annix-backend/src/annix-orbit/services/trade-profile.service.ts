@@ -6,18 +6,16 @@ import {
   type TradeProfile,
 } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Candidate } from "../entities/candidate.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
 
 @Injectable()
 export class TradeProfileService {
   private readonly logger = new Logger(TradeProfileService.name);
 
   constructor(
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
+    private readonly candidateRepo: CandidateRepository,
     private readonly aiChatService: AiChatService,
   ) {}
 
@@ -43,7 +41,7 @@ export class TradeProfileService {
     }
     const normalised = normaliseProfile(profile);
     await Promise.all(
-      candidates.map((c) => this.candidateRepo.update(c.id, { tradeProfile: normalised })),
+      candidates.map((c) => this.candidateRepo.updateTradeProfile(c.id, normalised)),
     );
     return { saved: true, candidateIds: candidates.map((c) => c.id) };
   }
@@ -96,7 +94,7 @@ export class TradeProfileService {
     const merged = mergeProfiles(target.tradeProfile, aiProfile);
     const normalised = normaliseProfile(merged);
     await Promise.all(
-      candidates.map((c) => this.candidateRepo.update(c.id, { tradeProfile: normalised })),
+      candidates.map((c) => this.candidateRepo.updateTradeProfile(c.id, normalised)),
     );
 
     return {
@@ -149,7 +147,7 @@ export class TradeProfileService {
 
   private async candidatesForEmail(email: string | null): Promise<Candidate[]> {
     if (!email) return [];
-    return this.candidateRepo.find({ where: { email } });
+    return this.candidateRepo.findByEmail(email);
   }
 }
 

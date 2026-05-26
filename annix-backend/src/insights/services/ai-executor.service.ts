@@ -1,11 +1,9 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Asset } from "../entities/asset.entity";
-import { NewsItem } from "../entities/news-item.entity";
 import { PaperHolding } from "../entities/paper-holding.entity";
 import {
   type ExecutorStrategy,
@@ -13,13 +11,22 @@ import {
   type PaperPortfolioSlug,
 } from "../entities/paper-portfolio.entity";
 import type { NewsProvenance } from "../entities/paper-trade.entity";
-import { PriceHistory } from "../entities/price-history.entity";
 import { type SignalComponentBreakdown, SignalSnapshot } from "../entities/signal-snapshot.entity";
-import { WatchlistItem } from "../entities/watchlist-item.entity";
+import { NewsItemRepository } from "../repositories/news-item.repository";
+import { PaperHoldingRepository } from "../repositories/paper-holding.repository";
+import { PaperPortfolioRepository } from "../repositories/paper-portfolio.repository";
+import { PaperTradeRepository } from "../repositories/paper-trade.repository";
+import { PriceHistoryRepository } from "../repositories/price-history.repository";
+import { SignalSnapshotRepository } from "../repositories/signal-snapshot.repository";
+import { WatchlistItemRepository } from "../repositories/watchlist-item.repository";
 import type { BuyDecision, Decision, SellDecision } from "./allocation-rules-engine.service";
 import { AllocationRulesEngineService } from "./allocation-rules-engine.service";
 import { dedupeProvenance, toNewsProvenance } from "./news-provenance";
-import { applyTradeDecisions, type ExecutionResult } from "./paper-trade-execution.service";
+import {
+  applyTradeDecisions,
+  type ExecutionResult,
+  type TradeDecisionRepositories,
+} from "./paper-trade-execution.service";
 
 const METRIC_CATEGORY = "insights-ai-exec";
 const TOP_SIGNAL_COUNT = 20;
@@ -79,23 +86,27 @@ export class AiExecutorService {
   private readonly logger = new Logger(AiExecutorService.name);
 
   constructor(
-    @InjectRepository(PaperPortfolio)
-    private readonly portfolioRepo: Repository<PaperPortfolio>,
-    @InjectRepository(PaperHolding)
-    private readonly holdingRepo: Repository<PaperHolding>,
-    @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
-    @InjectRepository(WatchlistItem)
-    private readonly watchlistRepo: Repository<WatchlistItem>,
-    @InjectRepository(PriceHistory)
-    private readonly historyRepo: Repository<PriceHistory>,
-    @InjectRepository(SignalSnapshot)
-    private readonly signalRepo: Repository<SignalSnapshot>,
-    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
-    private readonly dataSource: DataSource,
+    private readonly portfolioRepo: PaperPortfolioRepository,
+    private readonly holdingRepo: PaperHoldingRepository,
+    private readonly tradeRepo: PaperTradeRepository,
+    private readonly watchlistRepo: WatchlistItemRepository,
+    private readonly historyRepo: PriceHistoryRepository,
+    private readonly signalRepo: SignalSnapshotRepository,
+    private readonly newsRepo: NewsItemRepository,
+    private readonly txRunner: TransactionRunner,
     private readonly ai: AiChatService,
     private readonly metrics: ExtractionMetricService,
     private readonly rulesEngine: AllocationRulesEngineService,
   ) {}
+
+  private tradeDecisionRepositories(): TradeDecisionRepositories {
+    return {
+      txRunner: this.txRunner,
+      portfolioRepo: this.portfolioRepo,
+      holdingRepo: this.holdingRepo,
+      tradeRepo: this.tradeRepo,
+    };
+  }
 
   async executeOne(portfolio: PaperPortfolio): Promise<ExecutionResult> {
     const strategy = portfolio.executorStrategy;
@@ -195,7 +206,7 @@ export class AiExecutorService {
         skipReason: null,
       };
     }
-    return applyTradeDecisions(this.dataSource, portfolio, filtered, this.logger);
+    return applyTradeDecisions(this.tradeDecisionRepositories(), portfolio, filtered, this.logger);
   }
 
   private async runOverrideMode(portfolio: PaperPortfolio): Promise<ExecutionResult> {
@@ -257,7 +268,7 @@ export class AiExecutorService {
         skipReason: null,
       };
     }
-    return applyTradeDecisions(this.dataSource, portfolio, applied, this.logger);
+    return applyTradeDecisions(this.tradeDecisionRepositories(), portfolio, applied, this.logger);
   }
 
   private async runPureMode(portfolio: PaperPortfolio): Promise<ExecutionResult> {
@@ -300,12 +311,12 @@ export class AiExecutorService {
         skipReason: null,
       };
     }
-    return applyTradeDecisions(this.dataSource, portfolio, decisions, this.logger);
+    return applyTradeDecisions(this.tradeDecisionRepositories(), portfolio, decisions, this.logger);
   }
 
   private async gatherContext(portfolio: PaperPortfolio): Promise<AiDecisionContext> {
     const todayIso = now().toISODate() ?? "";
-    const watchlist = await this.watchlistRepo.find({ relations: { asset: true } });
+    const watchlist = await this.watchlistRepo.findAllWithAsset();
     const candidateAssets = watchlist.map((w) => w.asset);
     const candidateAssetIds = candidateAssets.map((a) => a.id);
 
@@ -331,14 +342,7 @@ export class AiExecutorService {
       .slice(0, TOP_SIGNAL_COUNT);
 
     const cutoff = now().minus({ hours: NEWS_LOOKBACK_HOURS }).toJSDate();
-    const newsRows = await this.newsRepo
-      .createQueryBuilder("n")
-      .where("n.extraction_status = :status", { status: "extracted" })
-      .andWhere("(n.published_at >= :cutoff OR n.created_at >= :cutoff)", { cutoff })
-      .andWhere("n.impact_level IN (:...impacts)", { impacts: ["high", "medium"] })
-      .orderBy("n.published_at", "DESC")
-      .limit(NEWS_MAX_ARTICLES)
-      .getMany();
+    const newsRows = await this.newsRepo.findExtractedHighImpact(cutoff, NEWS_MAX_ARTICLES);
     const newsItems: NewsContextRow[] = newsRows.map((n) => ({
       publishedAt: n.publishedAt,
       symbols: n.relatedSymbols ?? [],
@@ -349,10 +353,7 @@ export class AiExecutorService {
     }));
     const promptNews = dedupeProvenance(newsRows.map(toNewsProvenance));
 
-    const holdings = await this.holdingRepo.find({
-      where: { portfolioId: portfolio.id },
-      relations: { asset: true },
-    });
+    const holdings = await this.holdingRepo.findByPortfolioWithAsset(portfolio.id);
     const holdingAssetIds = holdings.map((h) => h.assetId);
     const holdingSignals = await this.latestSignalsByAsset(holdingAssetIds);
     const holdingPrices = await this.latestPricesByAsset(holdingAssetIds);
@@ -488,12 +489,7 @@ export class AiExecutorService {
   private async latestSignalsByAsset(assetIds: string[]): Promise<Map<string, SignalSnapshot>> {
     const map = new Map<string, SignalSnapshot>();
     if (assetIds.length === 0) return map;
-    const rows = await this.signalRepo
-      .createQueryBuilder("s")
-      .where({ assetId: In(assetIds) })
-      .orderBy("s.asset_id")
-      .addOrderBy("s.snapshot_date", "DESC")
-      .getMany();
+    const rows = await this.signalRepo.findForAssetsOrderedByDate(assetIds);
     for (const row of rows) {
       if (map.has(row.assetId)) continue;
       map.set(row.assetId, row);
@@ -506,16 +502,7 @@ export class AiExecutorService {
   ): Promise<Map<string, { close: number; date: string }>> {
     const map = new Map<string, { close: number; date: string }>();
     if (assetIds.length === 0) return map;
-    const rows = await this.historyRepo
-      .createQueryBuilder("h")
-      .select("h.asset_id", "asset_id")
-      .addSelect("h.close", "close")
-      .addSelect("h.date", "date")
-      .distinctOn(["h.asset_id"])
-      .where({ assetId: In(assetIds) })
-      .orderBy("h.asset_id")
-      .addOrderBy("h.date", "DESC")
-      .getRawMany<{ asset_id: string; close: string; date: string | Date }>();
+    const rows = await this.historyRepo.latestPriceRows(assetIds);
     for (const row of rows) {
       const date =
         typeof row.date === "string" ? row.date.slice(0, 10) : row.date.toISOString().slice(0, 10);

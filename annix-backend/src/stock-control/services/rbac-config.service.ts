@@ -1,7 +1,11 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlRbacConfig } from "../entities/stock-control-rbac-config.entity";
+import { StockControlRbacConfigRepository } from "../repositories/stock-control-rbac-config.repository";
 import { ActionPermissionService } from "./action-permission.service";
 
 const DEFAULT_NAV_CONFIG: Record<string, string[]> = {
@@ -27,13 +31,20 @@ const NAV_TO_ACTION_KEYS: Record<string, string[]> = {
 @Injectable()
 export class RbacConfigService {
   constructor(
-    @InjectRepository(StockControlRbacConfig)
-    private readonly rbacRepo: Repository<StockControlRbacConfig>,
+    private readonly rbacRepo: StockControlRbacConfigRepository,
     private readonly actionPermissionService: ActionPermissionService,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("RbacConfigService transactions require a TypeOrmTransactionContext");
+    }
+    return context.manager;
+  }
+
   async navConfig(companyId: number): Promise<Record<string, string[]>> {
-    const rows = await this.rbacRepo.find({ where: { companyId } });
+    const rows = await this.rbacRepo.findForCompany(companyId);
 
     const config: Record<string, string[]> =
       rows.length > 0
@@ -87,7 +98,8 @@ export class RbacConfigService {
       }
     });
 
-    await this.rbacRepo.manager.transaction(async (manager) => {
+    await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
       await manager.delete(StockControlRbacConfig, { companyId });
 
       const entities = Object.entries(mergedConfig).flatMap(([navKey, roles]) =>

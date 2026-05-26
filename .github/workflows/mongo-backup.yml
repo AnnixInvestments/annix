@@ -1,0 +1,63 @@
+name: Daily MongoDB backup to S3
+
+on:
+  schedule:
+    # 03:00 UTC = 05:00 SAST daily, one hour before the staging-refresh job
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: mongo-backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Install MongoDB Database Tools
+        run: |
+          curl -fsSL -o mongodb-database-tools.deb \
+            https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.10.0.deb
+          sudo apt-get update
+          sudo apt-get install -y ./mongodb-database-tools.deb
+          mongodump --version
+
+      - name: Dump MongoDB and stream to S3
+        env:
+          MONGODB_URI: ${{ secrets.MONGO_BACKUP_URI }}
+          MONGO_DATABASE: ${{ secrets.MONGO_BACKUP_DATABASE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_AWS_REGION }}
+          S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          timestamp="$(date -u +%Y-%m-%dT%H-%M-%SZ)"
+          key="database-backups/mongo/${MONGO_DATABASE}-${timestamp}.archive.gz"
+          echo "Backing up ${MONGO_DATABASE} to s3://${S3_BUCKET}/${key}"
+          mongodump --uri="${MONGODB_URI}" --db="${MONGO_DATABASE}" --archive --gzip \
+            | aws s3 cp - "s3://${S3_BUCKET}/${key}" --expected-size 5368709120
+          echo "Backup uploaded: s3://${S3_BUCKET}/${key}"
+
+      - name: Prune backups older than 30 days
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_AWS_REGION }}
+          S3_BUCKET: ${{ secrets.BACKUP_S3_BUCKET }}
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d '30 days ago' +%Y-%m-%d)"
+          aws s3api list-objects-v2 \
+            --bucket "${S3_BUCKET}" \
+            --prefix "database-backups/mongo/" \
+            --query "Contents[?LastModified<='${cutoff}'].Key" \
+            --output text \
+            | tr '\t' '\n' \
+            | while read -r key; do
+                if [ -n "${key}" ] && [ "${key}" != "None" ]; then
+                  echo "Pruning s3://${S3_BUCKET}/${key}"
+                  aws s3 rm "s3://${S3_BUCKET}/${key}"
+                fi
+              done

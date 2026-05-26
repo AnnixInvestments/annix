@@ -10,11 +10,12 @@ import {
   type TradeKey,
 } from "@annix/product-data/sa-market";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { CvNotificationService } from "./cv-notification.service";
 import { haversineKm } from "./geocode.service";
 
@@ -38,7 +39,6 @@ const CATEGORY_BOOST_CAP_BY_TIER: Record<MatchTier, number> = {
 const ADJACENT_CATEGORY_BOOST_FACTOR = 0.5;
 
 interface CategoryNarrowing {
-  // null = no pool restriction (Soft tier, or seeker has no target categories).
   pool: string[] | null;
   targetSet: Set<string>;
   adjacentSet: Set<string>;
@@ -78,31 +78,28 @@ export class CandidateJobMatchingService {
   private readonly logger = new Logger(CandidateJobMatchingService.name);
 
   constructor(
-    @InjectRepository(CandidateJobMatch)
-    private readonly matchRepo: Repository<CandidateJobMatch>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
+    private readonly matchRepo: CandidateJobMatchRepository,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly externalJobRepo: ExternalJobRepository,
     @Inject(forwardRef(() => CvNotificationService))
     private readonly notificationService: CvNotificationService,
   ) {}
 
   async matchCandidateToJobs(candidateId: number): Promise<CandidateJobMatch[]> {
-    const candidate = await this.candidateRepo.findOne({ where: { id: candidateId } });
+    const candidate = await this.candidateRepo.findById(candidateId);
     if (!candidate) {
       return [];
     } else {
       const narrowing = this.resolveCategoryNarrowing(candidate);
       const similarJobs = await this.findSimilarJobsByEmbedding(
-        candidateId,
+        candidate,
         TOP_MATCHES_LIMIT,
         narrowing.pool,
       );
 
       const results = await Promise.all(
         similarJobs.map(async (row) => {
-          const job = await this.externalJobRepo.findOne({ where: { id: row.jobId } });
+          const job = await this.externalJobRepo.findById(row.jobId);
           if (!job) {
             return null;
           } else {
@@ -139,18 +136,15 @@ export class CandidateJobMatchingService {
   }
 
   async matchJobToCandidates(externalJobId: number): Promise<CandidateJobMatch[]> {
-    const job = await this.externalJobRepo.findOne({ where: { id: externalJobId } });
+    const job = await this.externalJobRepo.findById(externalJobId);
     if (!job) {
       return [];
     } else {
-      const similarCandidates = await this.findSimilarCandidatesByEmbedding(
-        externalJobId,
-        TOP_MATCHES_LIMIT,
-      );
+      const similarCandidates = await this.findSimilarCandidatesByEmbedding(job, TOP_MATCHES_LIMIT);
 
       const results = await Promise.all(
         similarCandidates.map(async (row) => {
-          const candidate = await this.candidateRepo.findOne({ where: { id: row.candidateId } });
+          const candidate = await this.candidateRepo.findById(row.candidateId);
           if (!candidate) {
             return null;
           } else {
@@ -176,21 +170,11 @@ export class CandidateJobMatchingService {
     candidateId: number,
     options: { includeDismissed?: boolean } = {},
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
-    const qb = this.matchRepo
-      .createQueryBuilder("match")
-      .innerJoinAndSelect("match.externalJob", "job")
-      .where("match.candidate_id = :candidateId", { candidateId })
-      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
-      .orderBy("match.overallScore", "DESC")
-      .take(RECOMMENDED_FETCH_WINDOW);
-
-    if (!options.includeDismissed) {
-      qb.andWhere("match.dismissed = false");
-    }
-
-    const allMatches = (await qb.getMany()) as Array<
-      CandidateJobMatch & { externalJob: ExternalJob }
-    >;
+    const allMatches = await this.matchRepo.recommendedJobsForCandidate(
+      candidateId,
+      options.includeDismissed ?? false,
+      RECOMMENDED_FETCH_WINDOW,
+    );
 
     return this.applyStretchMatchDiversity(allMatches);
   }
@@ -232,18 +216,11 @@ export class CandidateJobMatchingService {
   async matchingCandidatesForJob(
     externalJobId: number,
   ): Promise<Array<CandidateJobMatch & { candidate: Candidate }>> {
-    return this.matchRepo
-      .createQueryBuilder("match")
-      .leftJoinAndSelect("match.candidate", "candidate")
-      .where("match.external_job_id = :externalJobId", { externalJobId })
-      .andWhere("match.dismissed = false")
-      .orderBy("match.overallScore", "DESC")
-      .take(TOP_MATCHES_LIMIT)
-      .getMany() as Promise<Array<CandidateJobMatch & { candidate: Candidate }>>;
+    return this.matchRepo.matchingCandidatesForJob(externalJobId, TOP_MATCHES_LIMIT);
   }
 
   async dismissMatch(matchId: number): Promise<void> {
-    await this.matchRepo.update(matchId, { dismissed: true });
+    await this.matchRepo.setDismissed(matchId, true);
   }
 
   resolveCategoryNarrowing(candidate: Candidate): CategoryNarrowing {
@@ -280,56 +257,40 @@ export class CandidateJobMatchingService {
   }
 
   private async findSimilarJobsByEmbedding(
-    candidateId: number,
+    candidate: Candidate,
     limit: number,
     categoryPool: string[] | null = null,
   ): Promise<Array<{ jobId: number; similarity: number }>> {
-    const hasPool = categoryPool !== null && categoryPool.length > 0;
-    const result = await this.externalJobRepo.query(
-      `
-      SELECT j.id AS "jobId",
-             1 - (c.embedding <=> j.embedding) AS similarity
-      FROM cv_assistant_candidates c
-      CROSS JOIN cv_assistant_external_jobs j
-      WHERE c.id = $1
-        AND c.embedding IS NOT NULL
-        AND j.embedding IS NOT NULL
-        ${hasPool ? "AND j.canonical_category = ANY($3)" : ""}
-      ORDER BY c.embedding <=> j.embedding
-      LIMIT $2
-      `,
-      hasPool ? [candidateId, limit, categoryPool] : [candidateId, limit],
-    );
+    const candidateVector = parseEmbedding(candidate.embedding);
+    if (candidateVector === null) {
+      return [];
+    }
 
-    return result.map((r: { jobId: number; similarity: string }) => ({
-      jobId: r.jobId,
-      similarity: Number.parseFloat(String(r.similarity)),
-    }));
+    const jobs = await this.externalJobRepo.jobsWithEmbedding(categoryPool);
+
+    return rankBySimilarity(
+      candidateVector,
+      jobs.map((job) => ({ id: job.id, embedding: job.embedding })),
+      limit,
+    ).map((row) => ({ jobId: row.id, similarity: row.similarity }));
   }
 
   private async findSimilarCandidatesByEmbedding(
-    externalJobId: number,
+    job: ExternalJob,
     limit: number,
   ): Promise<Array<{ candidateId: number; similarity: number }>> {
-    const result = await this.candidateRepo.query(
-      `
-      SELECT c.id AS "candidateId",
-             1 - (j.embedding <=> c.embedding) AS similarity
-      FROM cv_assistant_external_jobs j
-      CROSS JOIN cv_assistant_candidates c
-      WHERE j.id = $1
-        AND j.embedding IS NOT NULL
-        AND c.embedding IS NOT NULL
-      ORDER BY j.embedding <=> c.embedding
-      LIMIT $2
-      `,
-      [externalJobId, limit],
-    );
+    const jobVector = parseEmbedding(job.embedding);
+    if (jobVector === null) {
+      return [];
+    }
 
-    return result.map((r: { candidateId: number; similarity: string }) => ({
-      candidateId: r.candidateId,
-      similarity: Number.parseFloat(String(r.similarity)),
-    }));
+    const candidates = await this.candidateRepo.candidatesWithEmbedding();
+
+    return rankBySimilarity(
+      jobVector,
+      candidates.map((candidate) => ({ id: candidate.id, embedding: candidate.embedding })),
+      limit,
+    ).map((row) => ({ candidateId: row.id, similarity: row.similarity }));
   }
 
   private calculateSkillsOverlap(
@@ -445,20 +406,29 @@ export class CandidateJobMatchingService {
       ),
     };
 
-    const existing = await this.matchRepo.findOne({
-      where: { candidateId, externalJobId },
-    });
+    const existing = await this.matchRepo.findByCandidateAndJob(candidateId, externalJobId);
 
-    const match = existing ?? this.matchRepo.create({ candidateId, externalJobId });
-    match.similarityScore = embeddingSimilarity;
-    match.structuredScore =
+    const structuredScore =
       skillsResult.score * (WEIGHT_SKILLS / (1 - WEIGHT_EMBEDDING)) +
       experienceMatch * (WEIGHT_EXPERIENCE / (1 - WEIGHT_EMBEDDING)) +
       locationMatch * (WEIGHT_LOCATION / (1 - WEIGHT_EMBEDDING));
-    match.overallScore = overallScore;
-    match.matchDetails = matchDetails;
 
-    return this.matchRepo.save(match);
+    if (existing) {
+      existing.similarityScore = embeddingSimilarity;
+      existing.structuredScore = structuredScore;
+      existing.overallScore = overallScore;
+      existing.matchDetails = matchDetails;
+      return this.matchRepo.save(existing);
+    }
+
+    return this.matchRepo.create({
+      candidateId,
+      externalJobId,
+      similarityScore: embeddingSimilarity,
+      structuredScore,
+      overallScore,
+      matchDetails,
+    });
   }
 
   private calculateExperienceMatch(candidate: Candidate, _job: ExternalJob): number {
@@ -574,4 +544,53 @@ export class CandidateJobMatchingService {
 
     return parts.join(". ");
   }
+}
+
+function parseEmbedding(raw: string | null): number[] | null {
+  if (!raw) {
+    return null;
+  }
+  const trimmed = raw.trim().replace(/^\[/, "").replace(/\]$/, "");
+  if (trimmed.length === 0) {
+    return null;
+  }
+  const values = trimmed.split(",").map((part) => Number.parseFloat(part.trim()));
+  if (values.length === 0 || values.some((value) => Number.isNaN(value))) {
+    return null;
+  }
+  return values;
+}
+
+function cosineSimilarity(a: number[], b: number[]): number | null {
+  if (a.length === 0 || a.length !== b.length) {
+    return null;
+  }
+  const dot = a.reduce((sum, value, index) => sum + value * b[index], 0);
+  const magnitudeA = Math.sqrt(a.reduce((sum, value) => sum + value * value, 0));
+  const magnitudeB = Math.sqrt(b.reduce((sum, value) => sum + value * value, 0));
+  if (magnitudeA === 0 || magnitudeB === 0) {
+    return null;
+  }
+  return dot / (magnitudeA * magnitudeB);
+}
+
+function rankBySimilarity(
+  queryVector: number[],
+  rows: Array<{ id: number; embedding: string | null }>,
+  limit: number,
+): Array<{ id: number; similarity: number }> {
+  return rows
+    .flatMap((row) => {
+      const vector = parseEmbedding(row.embedding);
+      if (vector === null) {
+        return [];
+      }
+      const similarity = cosineSimilarity(queryVector, vector);
+      if (similarity === null) {
+        return [];
+      }
+      return [{ id: row.id, similarity }];
+    })
+    .sort((left, right) => right.similarity - left.similarity)
+    .slice(0, limit);
 }

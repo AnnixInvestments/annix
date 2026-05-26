@@ -1,11 +1,10 @@
 import * as crypto from "node:crypto";
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { formatDateZA, now } from "../lib/datetime";
 import { User } from "../user/entities/user.entity";
+import { AnonymousDraftRepository } from "./anonymous-draft.repository";
 import {
   AnonymousDraftFullResponseDto,
   AnonymousDraftResponseDto,
@@ -20,8 +19,7 @@ export class AnonymousDraftService {
   private readonly DRAFT_EXPIRY_DAYS = 7;
 
   constructor(
-    @InjectRepository(AnonymousDraft)
-    private readonly anonymousDraftRepo: Repository<AnonymousDraft>,
+    private readonly anonymousDraftRepo: AnonymousDraftRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {}
@@ -44,35 +42,29 @@ export class AnonymousDraftService {
       `Received globalSpecs keys: ${dto.globalSpecs ? Object.keys(dto.globalSpecs).join(", ") : "null"}`,
     );
 
-    let draft: AnonymousDraft | null = null;
+    const existingDraft = dto.customerEmail
+      ? await this.anonymousDraftRepo.findLatestUnclaimedByEmail(dto.customerEmail)
+      : null;
 
-    if (dto.customerEmail) {
-      draft = await this.anonymousDraftRepo.findOne({
-        where: {
-          customerEmail: dto.customerEmail,
-          isClaimed: false,
-        },
-        order: { createdAt: "DESC" },
-      });
-    }
+    let draft: AnonymousDraft;
 
-    if (draft) {
-      draft.currentStep = dto.currentStep;
-      draft.formData = dto.formData;
-      draft.globalSpecs = dto.globalSpecs;
-      draft.requiredProducts = dto.requiredProducts;
-      draft.entries = dto.entries;
-      draft.projectName = dto.projectName;
-      draft.expiresAt = this.calculateExpiryDate();
+    if (existingDraft) {
+      existingDraft.currentStep = dto.currentStep;
+      existingDraft.formData = dto.formData;
+      existingDraft.globalSpecs = dto.globalSpecs;
+      existingDraft.requiredProducts = dto.requiredProducts;
+      existingDraft.entries = dto.entries;
+      existingDraft.projectName = dto.projectName;
+      existingDraft.expiresAt = this.calculateExpiryDate();
 
       if (dto.browserFingerprint) {
-        draft.browserFingerprint = dto.browserFingerprint;
+        existingDraft.browserFingerprint = dto.browserFingerprint;
       }
 
-      await this.anonymousDraftRepo.save(draft);
+      draft = await this.anonymousDraftRepo.save(existingDraft);
       this.logger.log(`Updated anonymous draft ${draft.id} for ${dto.customerEmail}`);
     } else {
-      draft = this.anonymousDraftRepo.create({
+      draft = await this.anonymousDraftRepo.create({
         recoveryToken: this.generateRecoveryToken(),
         customerEmail: dto.customerEmail,
         projectName: dto.projectName,
@@ -85,7 +77,6 @@ export class AnonymousDraftService {
         expiresAt: this.calculateExpiryDate(),
       });
 
-      await this.anonymousDraftRepo.save(draft);
       this.logger.log(
         `Created new anonymous draft ${draft.id} for ${dto.customerEmail || "unknown email"}`,
       );
@@ -96,9 +87,7 @@ export class AnonymousDraftService {
 
   async draftByToken(token: string): Promise<AnonymousDraftFullResponseDto> {
     this.logger.log(`Getting draft by token: ${token.substring(0, 8)}...`);
-    const draft = await this.anonymousDraftRepo.findOne({
-      where: { recoveryToken: token },
-    });
+    const draft = await this.anonymousDraftRepo.findByRecoveryToken(token);
 
     if (!draft) {
       this.logger.warn(`Draft not found for token: ${token.substring(0, 8)}...`);
@@ -126,13 +115,7 @@ export class AnonymousDraftService {
   }
 
   async sendRecoveryEmail(customerEmail: string): Promise<RecoveryEmailResponseDto> {
-    const draft = await this.anonymousDraftRepo.findOne({
-      where: {
-        customerEmail,
-        isClaimed: false,
-      },
-      order: { createdAt: "DESC" },
-    });
+    const draft = await this.anonymousDraftRepo.findLatestUnclaimedByEmail(customerEmail);
 
     if (!draft) {
       return {
@@ -231,9 +214,7 @@ export class AnonymousDraftService {
   }
 
   async claimDraft(token: string, userId: number): Promise<{ message: string; draftId: number }> {
-    const draft = await this.anonymousDraftRepo.findOne({
-      where: { recoveryToken: token },
-    });
+    const draft = await this.anonymousDraftRepo.findByRecoveryToken(token);
 
     if (!draft) {
       throw new NotFoundException("Draft not found");
@@ -256,11 +237,8 @@ export class AnonymousDraftService {
   }
 
   async cleanupExpiredDrafts(): Promise<number> {
-    const result = await this.anonymousDraftRepo.delete({
-      expiresAt: LessThan(now().toJSDate()),
-    });
+    const deletedCount = await this.anonymousDraftRepo.deleteExpired(now().toJSDate());
 
-    const deletedCount = result.affected || 0;
     if (deletedCount > 0) {
       this.logger.log(`Cleaned up ${deletedCount} expired anonymous drafts`);
     }

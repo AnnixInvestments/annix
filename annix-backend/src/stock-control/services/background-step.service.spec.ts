@@ -1,13 +1,14 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { JobCard } from "../entities/job-card.entity";
-import { JobCardApproval } from "../entities/job-card-approval.entity";
 import { JobCardBackgroundCompletion } from "../entities/job-card-background-completion.entity";
 import {
   NotificationActionType,
   WorkflowNotification,
 } from "../entities/workflow-notification.entity";
+import { JobCardApprovalRepository } from "../repositories/job-card-approval.repository";
+import { JobCardBackgroundCompletionRepository } from "../repositories/job-card-background-completion.repository";
+import { WorkflowNotificationRepository } from "../repositories/workflow-notification.repository";
 import { BackgroundStepService } from "./background-step.service";
 import { JobCardWorkflowService } from "./job-card-workflow.service";
 import { JobFileService } from "./job-file.service";
@@ -19,31 +20,37 @@ import { WorkflowStepConfigService } from "./workflow-step-config.service";
 describe("BackgroundStepService", () => {
   let service: BackgroundStepService;
 
-  const mockCompletionRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest
-      .fn()
-      .mockImplementation((entity) =>
-        Promise.resolve(
-          Array.isArray(entity)
-            ? entity.map((e, i) => ({ id: i + 10, ...e }))
-            : { id: 1, ...entity },
-        ),
+  const completionFind = jest.fn();
+  const completionFindOne = jest.fn();
+  const completionSave = jest
+    .fn()
+    .mockImplementation((entity) =>
+      Promise.resolve(
+        Array.isArray(entity) ? entity.map((e, i) => ({ id: i + 10, ...e })) : { id: 1, ...entity },
       ),
-  };
+    );
 
-  const mockJobCardRepo = {
-    findOne: jest.fn(),
+  const mockCompletionRepo = {
+    find: completionFind,
+    findOne: completionFindOne,
+    findForJobCardAndCompany: completionFind,
+    findForJobCard: completionFind,
+    findForCompany: completionFind,
+    findOneByJobCardAndStep: completionFindOne,
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
+    buildMany: jest.fn().mockImplementation((rows) => rows.map((r: object) => ({ ...r }))),
+    save: completionSave,
+    saveMany: completionSave,
+    removeMany: jest.fn().mockResolvedValue(undefined),
+    deleteByJobCardCompanyStep: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockApprovalRepo = {
-    findOne: jest.fn(),
+    findLatestForStep: jest.fn(),
   };
 
   const mockNotificationRepo = {
-    find: jest.fn(),
+    findUnreadByActionTypeForUser: jest.fn(),
   };
 
   const mockStepConfigService = {
@@ -129,10 +136,9 @@ describe("BackgroundStepService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BackgroundStepService,
-        { provide: getRepositoryToken(JobCardBackgroundCompletion), useValue: mockCompletionRepo },
-        { provide: getRepositoryToken(JobCard), useValue: mockJobCardRepo },
-        { provide: getRepositoryToken(JobCardApproval), useValue: mockApprovalRepo },
-        { provide: getRepositoryToken(WorkflowNotification), useValue: mockNotificationRepo },
+        { provide: JobCardBackgroundCompletionRepository, useValue: mockCompletionRepo },
+        { provide: JobCardApprovalRepository, useValue: mockApprovalRepo },
+        { provide: WorkflowNotificationRepository, useValue: mockNotificationRepo },
         { provide: WorkflowStepConfigService, useValue: mockStepConfigService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
         { provide: JobCardWorkflowService, useValue: mockWorkflowService },
@@ -169,7 +175,7 @@ describe("BackgroundStepService", () => {
           completionType: "manual",
         }),
       );
-      expect(mockCompletionRepo.save).toHaveBeenCalled();
+      expect(mockCompletionRepo.create).toHaveBeenCalled();
       expect(result).toEqual(expect.objectContaining({ stepKey: "reception" }));
     });
 
@@ -379,21 +385,21 @@ describe("BackgroundStepService", () => {
           .mockResolvedValueOnce([receptionStep, requisitionStep, reqAuthStep, orderStep])
           .mockResolvedValueOnce([receptionStep, requisitionStep, reqAuthStep, orderStep]);
         mockCompletionRepo.findOne.mockResolvedValue(null);
-        mockApprovalRepo.findOne.mockResolvedValue({ outcomeKey: "soh" });
+        mockApprovalRepo.findLatestForStep.mockResolvedValue({ outcomeKey: "soh" });
         mockCompletionRepo.find.mockResolvedValue([]);
 
         await service.completeStep(1, 1, "reception", mockUser);
 
-        expect(mockCompletionRepo.save).toHaveBeenCalledTimes(2);
-        const secondSaveCall = mockCompletionRepo.save.mock.calls[1][0];
-        expect(secondSaveCall).toHaveLength(3);
-        expect(secondSaveCall[0]).toEqual(
+        expect(mockCompletionRepo.save).toHaveBeenCalledTimes(1);
+        const skipSaveCall = mockCompletionRepo.save.mock.calls[0][0];
+        expect(skipSaveCall).toHaveLength(3);
+        expect(skipSaveCall[0]).toEqual(
           expect.objectContaining({ stepKey: "requisition", completionType: "skipped" }),
         );
-        expect(secondSaveCall[1]).toEqual(
+        expect(skipSaveCall[1]).toEqual(
           expect.objectContaining({ stepKey: "req_auth", completionType: "skipped" }),
         );
-        expect(secondSaveCall[2]).toEqual(
+        expect(skipSaveCall[2]).toEqual(
           expect.objectContaining({ stepKey: "order_placement", completionType: "skipped" }),
         );
       });
@@ -402,11 +408,11 @@ describe("BackgroundStepService", () => {
         const receptionStep = makeStepConfig({ key: "reception", label: "Reception" });
         mockStepConfigService.backgroundSteps.mockResolvedValue([receptionStep]);
         mockCompletionRepo.findOne.mockResolvedValue(null);
-        mockApprovalRepo.findOne.mockResolvedValue({ outcomeKey: "fabricate" });
+        mockApprovalRepo.findLatestForStep.mockResolvedValue({ outcomeKey: "fabricate" });
 
         await service.completeStep(1, 1, "reception", mockUser);
 
-        expect(mockCompletionRepo.save).toHaveBeenCalledTimes(1);
+        expect(mockCompletionRepo.save).not.toHaveBeenCalled();
       });
 
       it("does not skip already-completed requisition steps", async () => {
@@ -417,12 +423,12 @@ describe("BackgroundStepService", () => {
           .mockResolvedValueOnce([receptionStep, requisitionStep])
           .mockResolvedValueOnce([receptionStep, requisitionStep]);
         mockCompletionRepo.findOne.mockResolvedValue(null);
-        mockApprovalRepo.findOne.mockResolvedValue({ outcomeKey: "soh" });
+        mockApprovalRepo.findLatestForStep.mockResolvedValue({ outcomeKey: "soh" });
         mockCompletionRepo.find.mockResolvedValue([makeCompletion({ stepKey: "requisition" })]);
 
         await service.completeStep(1, 1, "reception", mockUser);
 
-        expect(mockCompletionRepo.save).toHaveBeenCalledTimes(1);
+        expect(mockCompletionRepo.save).not.toHaveBeenCalled();
       });
     });
 
@@ -680,8 +686,8 @@ describe("BackgroundStepService", () => {
 
       await service.completeMultipleSteps(1, 1, ["step_a"], mockUser);
 
-      expect(mockCompletionRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ notes: null }),
+      expect(mockCompletionRepo.buildMany).toHaveBeenCalledWith(
+        expect.arrayContaining([expect.objectContaining({ notes: null })]),
       );
     });
   });
@@ -780,7 +786,7 @@ describe("BackgroundStepService", () => {
         }),
       ];
       const steps = [makeStepConfig({ key: "reception", label: "Reception" })];
-      mockNotificationRepo.find.mockResolvedValue(notifications);
+      mockNotificationRepo.findUnreadByActionTypeForUser.mockResolvedValue(notifications);
       mockStepConfigService.backgroundSteps.mockResolvedValue(steps);
       mockCompletionRepo.find.mockResolvedValue([]);
 
@@ -804,7 +810,7 @@ describe("BackgroundStepService", () => {
           message: "Background step [step:reception] is required",
         }),
       ];
-      mockNotificationRepo.find.mockResolvedValue(notifications);
+      mockNotificationRepo.findUnreadByActionTypeForUser.mockResolvedValue(notifications);
       mockStepConfigService.backgroundSteps.mockResolvedValue([
         makeStepConfig({ key: "reception", label: "Reception" }),
       ]);
@@ -818,7 +824,7 @@ describe("BackgroundStepService", () => {
     });
 
     it("returns empty array when user has no unread notifications", async () => {
-      mockNotificationRepo.find.mockResolvedValue([]);
+      mockNotificationRepo.findUnreadByActionTypeForUser.mockResolvedValue([]);
       mockStepConfigService.backgroundSteps.mockResolvedValue([]);
       mockCompletionRepo.find.mockResolvedValue([]);
 
@@ -835,7 +841,7 @@ describe("BackgroundStepService", () => {
           message: "Some notification without step key",
         }),
       ];
-      mockNotificationRepo.find.mockResolvedValue(notifications);
+      mockNotificationRepo.findUnreadByActionTypeForUser.mockResolvedValue(notifications);
       mockStepConfigService.backgroundSteps.mockResolvedValue([]);
       mockCompletionRepo.find.mockResolvedValue([]);
 
@@ -853,7 +859,7 @@ describe("BackgroundStepService", () => {
           createdAt: new Date("2026-01-15T10:00:00Z"),
         }),
       ];
-      mockNotificationRepo.find.mockResolvedValue(notifications);
+      mockNotificationRepo.findUnreadByActionTypeForUser.mockResolvedValue(notifications);
       mockStepConfigService.backgroundSteps.mockResolvedValue([]);
       mockCompletionRepo.find.mockResolvedValue([]);
 
@@ -884,7 +890,7 @@ describe("BackgroundStepService", () => {
         makeStepConfig({ key: "reception", label: "Reception" }),
         makeStepConfig({ key: "requisition", label: "Requisition" }),
       ];
-      mockNotificationRepo.find.mockResolvedValue(notifications);
+      mockNotificationRepo.findUnreadByActionTypeForUser.mockResolvedValue(notifications);
       mockStepConfigService.backgroundSteps.mockResolvedValue(steps);
       mockCompletionRepo.find.mockResolvedValue([]);
 

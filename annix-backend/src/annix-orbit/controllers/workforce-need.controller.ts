@@ -10,7 +10,6 @@ import {
   Put,
   UseGuards,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import {
   ArrayMaxSize,
   IsArray,
@@ -21,9 +20,8 @@ import {
   MaxLength,
   Min,
 } from "class-validator";
-import { Repository } from "typeorm";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
-import { Rfq } from "../../rfq/entities/rfq.entity";
+import { RfqRepository } from "../../rfq/rfq.repository";
 import { WorkforceNeedService } from "../services/workforce-need.service";
 
 class UpsertWorkforceNeedDto {
@@ -53,8 +51,7 @@ class UpsertWorkforceNeedDto {
 export class WorkforceNeedController {
   constructor(
     private readonly workforceNeedService: WorkforceNeedService,
-    @InjectRepository(Rfq)
-    private readonly rfqRepo: Repository<Rfq>,
+    private readonly rfqRepo: RfqRepository,
   ) {}
 
   @Get(":rfqId")
@@ -68,14 +65,14 @@ export class WorkforceNeedController {
 
   @Put(":rfqId")
   async upsert(@Param("rfqId", ParseIntPipe) rfqId: number, @Body() body: UpsertWorkforceNeedDto) {
-    const rfq = await this.rfqRepo.findOne({ where: { id: rfqId } });
+    const rfq = await this.rfqRepo.findById(rfqId);
     if (!rfq) {
       throw new NotFoundException("RFQ not found");
     }
     const projectLocationChanged =
       body.projectLocation !== undefined && body.projectLocation !== rfq.projectLocation;
 
-    await this.rfqRepo.update(rfqId, {
+    await this.rfqRepo.updateById(rfqId, {
       requiredTrades: body.requiredTrades,
       estimatedHeadcount: body.estimatedHeadcount ?? null,
       radiusKm: body.radiusKm ?? null,

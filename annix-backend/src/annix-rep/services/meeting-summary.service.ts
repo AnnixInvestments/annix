@@ -1,16 +1,16 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { formatDateLongZA, fromISO, fromJSDate } from "../../lib/datetime";
 import {
   Meeting,
   type MeetingAnalysis,
-  MeetingRecording,
   MeetingTranscript,
   type TranscriptSegment,
 } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { MeetingTranscriptRepository } from "../meeting-transcript.repository";
 
 export interface MeetingSummary {
   overview: string;
@@ -42,37 +42,27 @@ export class MeetingSummaryService {
   private readonly logger = new Logger(MeetingSummaryService.name);
 
   constructor(
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(MeetingRecording)
-    private readonly recordingRepo: Repository<MeetingRecording>,
-    @InjectRepository(MeetingTranscript)
-    private readonly transcriptRepo: Repository<MeetingTranscript>,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly recordingRepo: MeetingRecordingRepository,
+    private readonly transcriptRepo: MeetingTranscriptRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
   ) {}
 
   async generateSummary(meetingId: number): Promise<MeetingSummary> {
-    const meeting = await this.meetingRepo.findOne({
-      where: { id: meetingId },
-      relations: ["prospect"],
-    });
+    const meeting = await this.meetingRepo.findWithProspect(meetingId);
 
     if (!meeting) {
       throw new NotFoundException("Meeting not found");
     }
 
-    const recording = await this.recordingRepo.findOne({
-      where: { meetingId },
-    });
+    const recording = await this.recordingRepo.findByMeetingId(meetingId);
 
     if (!recording) {
       throw new BadRequestException("Meeting has no recording");
     }
 
-    const transcript = await this.transcriptRepo.findOne({
-      where: { recordingId: recording.id },
-    });
+    const transcript = await this.transcriptRepo.findByRecordingId(recording.id);
 
     if (!transcript) {
       throw new BadRequestException("Meeting has no transcript");
@@ -211,10 +201,7 @@ export class MeetingSummaryService {
   }
 
   async sendSummaryEmail(meetingId: number, dto: SendSummaryDto): Promise<SendSummaryResult> {
-    const meeting = await this.meetingRepo.findOne({
-      where: { id: meetingId },
-      relations: ["prospect"],
-    });
+    const meeting = await this.meetingRepo.findWithProspect(meetingId);
 
     if (!meeting) {
       throw new NotFoundException("Meeting not found");
@@ -297,10 +284,7 @@ export class MeetingSummaryService {
       companyName: string | null;
     };
   }> {
-    const meeting = await this.meetingRepo.findOne({
-      where: { id: meetingId },
-      relations: ["prospect"],
-    });
+    const meeting = await this.meetingRepo.findWithProspect(meetingId);
 
     if (!meeting) {
       throw new NotFoundException("Meeting not found");

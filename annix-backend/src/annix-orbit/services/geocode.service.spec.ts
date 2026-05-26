@@ -1,7 +1,6 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { CvGeocodeCache } from "../entities/cv-geocode-cache.entity";
+import { CvGeocodeCacheRepository } from "../repositories/cv-geocode-cache.repository";
 import { GeocodeService, haversineKm } from "./geocode.service";
 
 describe("haversineKm", () => {
@@ -27,15 +26,14 @@ describe("haversineKm", () => {
 
 describe("GeocodeService", () => {
   let service: GeocodeService;
-  let repo: { findOne: jest.Mock; save: jest.Mock; create: jest.Mock; clear: jest.Mock };
+  let repo: { findByAddress: jest.Mock; upsert: jest.Mock; clear: jest.Mock };
   let originalFetch: typeof global.fetch;
   let fetchMock: jest.Mock;
 
   beforeEach(async () => {
     repo = {
-      findOne: jest.fn(),
-      save: jest.fn(),
-      create: jest.fn((dto) => dto),
+      findByAddress: jest.fn(),
+      upsert: jest.fn(),
       clear: jest.fn(),
     };
     fetchMock = jest.fn();
@@ -45,7 +43,7 @@ describe("GeocodeService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GeocodeService,
-        { provide: getRepositoryToken(CvGeocodeCache), useValue: repo },
+        { provide: CvGeocodeCacheRepository, useValue: repo },
         {
           provide: ConfigService,
           useValue: {
@@ -66,7 +64,7 @@ describe("GeocodeService", () => {
   });
 
   it("returns cached coords without calling Google when address is cached", async () => {
-    repo.findOne.mockResolvedValue({ address: "sandton", lat: -26.1, lon: 28.05 });
+    repo.findByAddress.mockResolvedValue({ address: "sandton", lat: -26.1, lon: 28.05 });
 
     const result = await service.geocode("Sandton");
 
@@ -75,7 +73,7 @@ describe("GeocodeService", () => {
   });
 
   it("calls Google when not cached, rounds to 2 decimals, and writes the cache", async () => {
-    repo.findOne.mockResolvedValue(null);
+    repo.findByAddress.mockResolvedValue(null);
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -88,13 +86,13 @@ describe("GeocodeService", () => {
 
     expect(result).toEqual({ lat: -26.2, lon: 28.05 });
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(repo.save).toHaveBeenCalledWith(
+    expect(repo.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ address: "johannesburg", lat: -26.2, lon: 28.05 }),
     );
   });
 
   it("returns null and does NOT cache when Google returns ZERO_RESULTS", async () => {
-    repo.findOne.mockResolvedValue(null);
+    repo.findByAddress.mockResolvedValue(null);
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ status: "ZERO_RESULTS", results: [] }),
@@ -103,21 +101,21 @@ describe("GeocodeService", () => {
     const result = await service.geocode("Nowheresville-99");
 
     expect(result).toBeNull();
-    expect(repo.save).not.toHaveBeenCalled();
+    expect(repo.upsert).not.toHaveBeenCalled();
   });
 
   it("returns null when address is empty", async () => {
     const result = await service.geocode("   ");
     expect(result).toBeNull();
-    expect(repo.findOne).not.toHaveBeenCalled();
+    expect(repo.findByAddress).not.toHaveBeenCalled();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("normalises the address (lowercase + collapsed spaces) for cache lookup", async () => {
-    repo.findOne.mockResolvedValue({ address: "kathu", lat: -27.7, lon: 23.04 });
+    repo.findByAddress.mockResolvedValue({ address: "kathu", lat: -27.7, lon: 23.04 });
 
     await service.geocode("  Kathu   ");
 
-    expect(repo.findOne).toHaveBeenCalledWith({ where: { address: "kathu" } });
+    expect(repo.findByAddress).toHaveBeenCalledWith("kathu");
   });
 });

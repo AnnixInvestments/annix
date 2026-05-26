@@ -1,17 +1,19 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, EntityManager, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { IssuableProduct } from "../entities/issuable-product.entity";
-import {
+import type { TransactionContext } from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import type {
   StockMovementBatchConsumption,
-  type StockMovementKind,
+  StockMovementKind,
 } from "../entities/stock-movement-batch-consumption.entity";
-import {
-  StockPurchaseBatch,
-  type StockPurchaseBatchSourceType,
-  type StockPurchaseBatchStatus,
+import type {
+  StockPurchaseBatchSourceType,
+  StockPurchaseBatchStatus,
 } from "../entities/stock-purchase-batch.entity";
+import { StockPurchaseBatch } from "../entities/stock-purchase-batch.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { StockMovementBatchConsumptionRepository } from "../repositories/stock-movement-batch-consumption.repository";
+import { StockPurchaseBatchRepository } from "../repositories/stock-purchase-batch.repository";
 
 export interface CreateBatchInput {
   productId: number;
@@ -57,13 +59,10 @@ export class FifoBatchService {
   private readonly logger = new Logger(FifoBatchService.name);
 
   constructor(
-    @InjectRepository(StockPurchaseBatch)
-    private readonly batchRepo: Repository<StockPurchaseBatch>,
-    @InjectRepository(StockMovementBatchConsumption)
-    private readonly consumptionRepo: Repository<StockMovementBatchConsumption>,
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
-    private readonly dataSource: DataSource,
+    private readonly batchRepo: StockPurchaseBatchRepository,
+    private readonly consumptionRepo: StockMovementBatchConsumptionRepository,
+    private readonly productRepo: IssuableProductRepository,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
   async createBatch(companyId: number, input: CreateBatchInput): Promise<StockPurchaseBatch> {
@@ -73,13 +72,11 @@ export class FifoBatchService {
     if (input.costPerUnit < 0) {
       throw new BadRequestException("costPerUnit cannot be negative");
     }
-    const product = await this.productRepo.findOne({
-      where: { id: input.productId, companyId },
-    });
+    const product = await this.productRepo.findByIdForCompany(companyId, input.productId);
     if (!product) {
       throw new NotFoundException(`Product ${input.productId} not found for company ${companyId}`);
     }
-    const batch = this.batchRepo.create({
+    const batch = this.batchRepo.build({
       companyId,
       productId: input.productId,
       sourceType: input.sourceType,
@@ -103,29 +100,19 @@ export class FifoBatchService {
     if (input.quantity <= 0) {
       throw new BadRequestException("quantity must be greater than zero");
     }
-    return this.dataSource.transaction(async (manager) =>
-      this.consumeFifoInTransaction(manager, companyId, input),
-    );
+    return this.txRunner.run((context) => this.consumeFifoInTransaction(context, companyId, input));
   }
 
   async consumeFifoInTransaction(
-    manager: EntityManager,
+    context: TransactionContext,
     companyId: number,
     input: ConsumeFifoInput,
   ): Promise<ConsumeFifoResult> {
-    const batchRepo = manager.getRepository(StockPurchaseBatch);
-    const consumptionRepo = manager.getRepository(StockMovementBatchConsumption);
+    const batchRepo = this.batchRepo.withTransaction(context);
+    const consumptionRepo = this.consumptionRepo.withTransaction(context);
+    const productRepo = this.productRepo.withTransaction(context);
 
-    const activeBatches = await batchRepo
-      .createQueryBuilder("batch")
-      .where("batch.company_id = :companyId", { companyId })
-      .andWhere("batch.product_id = :productId", { productId: input.productId })
-      .andWhere("batch.status = :status", { status: "active" })
-      .andWhere("batch.quantity_remaining > 0")
-      .orderBy("batch.received_at", "ASC")
-      .addOrderBy("batch.id", "ASC")
-      .setLock("pessimistic_write")
-      .getMany();
+    const activeBatches = await batchRepo.findActiveForProductLocked(companyId, input.productId);
 
     let remainingToConsume = input.quantity;
     const consumptions: StockMovementBatchConsumption[] = [];
@@ -138,7 +125,7 @@ export class FifoBatchService {
       const consumeFromBatch = Math.min(batch.quantityRemaining, remainingToConsume);
       const consumptionCost = consumeFromBatch * batch.costPerUnit;
 
-      const consumption = consumptionRepo.create({
+      const consumption = consumptionRepo.build({
         companyId,
         purchaseBatchId: batch.id,
         productId: input.productId,
@@ -165,10 +152,7 @@ export class FifoBatchService {
     }
 
     if (remainingToConsume > 0) {
-      const product = await manager.getRepository(IssuableProduct).findOne({
-        where: { id: input.productId, companyId },
-        select: ["name", "sku"],
-      });
+      const product = await productRepo.findNameSkuForProduct(companyId, input.productId);
       const productLabel = product
         ? `${product.name} (${product.sku})`
         : `product ${input.productId}`;
@@ -183,69 +167,23 @@ export class FifoBatchService {
   }
 
   async valuationForProduct(companyId: number, productId: number): Promise<ProductValuation> {
-    const rows = await this.batchRepo
-      .createQueryBuilder("batch")
-      .select("SUM(batch.quantity_remaining)::numeric", "total_quantity")
-      .addSelect("SUM(batch.quantity_remaining * batch.cost_per_unit)::numeric", "total_value")
-      .addSelect(
-        "SUM(CASE WHEN batch.is_legacy_batch THEN batch.quantity_remaining ELSE 0 END)::numeric",
-        "legacy_quantity",
-      )
-      .addSelect(
-        "SUM(CASE WHEN batch.is_legacy_batch THEN batch.quantity_remaining * batch.cost_per_unit ELSE 0 END)::numeric",
-        "legacy_value",
-      )
-      .addSelect("COUNT(batch.id)", "active_count")
-      .where("batch.company_id = :companyId", { companyId })
-      .andWhere("batch.product_id = :productId", { productId })
-      .andWhere("batch.status = :status", { status: "active" })
-      .getRawOne<{
-        total_quantity: string | null;
-        total_value: string | null;
-        legacy_quantity: string | null;
-        legacy_value: string | null;
-        active_count: string | null;
-      }>();
-
-    const totalQuantity = Number(rows?.total_quantity ?? 0);
-    const totalValueR = Number(rows?.total_value ?? 0);
-    const legacyQuantity = Number(rows?.legacy_quantity ?? 0);
-    const legacyValueR = Number(rows?.legacy_value ?? 0);
+    const totals = await this.batchRepo.valuationForProduct(companyId, productId);
     return {
       productId,
-      totalQuantity,
-      totalValueR,
-      legacyQuantity,
-      legacyValueR,
-      realFifoQuantity: totalQuantity - legacyQuantity,
-      realFifoValueR: totalValueR - legacyValueR,
-      activeBatchCount: Number(rows?.active_count ?? 0),
+      totalQuantity: totals.totalQuantity,
+      totalValueR: totals.totalValueR,
+      legacyQuantity: totals.legacyQuantity,
+      legacyValueR: totals.legacyValueR,
+      realFifoQuantity: totals.totalQuantity - totals.legacyQuantity,
+      realFifoValueR: totals.totalValueR - totals.legacyValueR,
+      activeBatchCount: totals.activeBatchCount,
     };
   }
 
   async valuationForCompany(
     companyId: number,
   ): Promise<{ totalValueR: number; legacyValueR: number; activeBatchCount: number }> {
-    const row = await this.batchRepo
-      .createQueryBuilder("batch")
-      .select("SUM(batch.quantity_remaining * batch.cost_per_unit)::numeric", "total_value")
-      .addSelect(
-        "SUM(CASE WHEN batch.is_legacy_batch THEN batch.quantity_remaining * batch.cost_per_unit ELSE 0 END)::numeric",
-        "legacy_value",
-      )
-      .addSelect("COUNT(batch.id)", "active_count")
-      .where("batch.company_id = :companyId", { companyId })
-      .andWhere("batch.status = :status", { status: "active" })
-      .getRawOne<{
-        total_value: string | null;
-        legacy_value: string | null;
-        active_count: string | null;
-      }>();
-    return {
-      totalValueR: Number(row?.total_value ?? 0),
-      legacyValueR: Number(row?.legacy_value ?? 0),
-      activeBatchCount: Number(row?.active_count ?? 0),
-    };
+    return this.batchRepo.valuationForCompany(companyId);
   }
 
   async batchesForProduct(
@@ -253,21 +191,7 @@ export class FifoBatchService {
     productId: number,
     status?: StockPurchaseBatchStatus,
   ): Promise<StockPurchaseBatch[]> {
-    const where: {
-      companyId: number;
-      productId: number;
-      status?: StockPurchaseBatchStatus;
-    } = {
-      companyId,
-      productId,
-    };
-    if (status) {
-      where.status = status;
-    }
-    return this.batchRepo.find({
-      where,
-      order: { receivedAt: "ASC", id: "ASC" },
-    });
+    return this.batchRepo.findForProduct(companyId, productId, status);
   }
 
   async consumptionHistory(
@@ -275,11 +199,6 @@ export class FifoBatchService {
     productId: number,
     limit = 100,
   ): Promise<StockMovementBatchConsumption[]> {
-    return this.consumptionRepo.find({
-      where: { companyId, productId },
-      order: { consumedAt: "DESC", id: "DESC" },
-      take: limit,
-      relations: { purchaseBatch: true },
-    });
+    return this.consumptionRepo.findHistoryForProduct(companyId, productId, limit);
   }
 }

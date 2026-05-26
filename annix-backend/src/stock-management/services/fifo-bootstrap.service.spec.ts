@@ -1,7 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { IssuableProduct } from "../entities/issuable-product.entity";
-import { StockPurchaseBatch } from "../entities/stock-purchase-batch.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { StockPurchaseBatchRepository } from "../repositories/stock-purchase-batch.repository";
 import { FifoBatchService } from "./fifo-batch.service";
 import { FifoBootstrapService } from "./fifo-bootstrap.service";
 
@@ -9,11 +8,11 @@ describe("FifoBootstrapService", () => {
   let service: FifoBootstrapService;
 
   const mockProductRepo = {
-    find: jest.fn(),
+    findActiveForCompany: jest.fn(),
   };
 
   const mockBatchRepo = {
-    findOne: jest.fn(),
+    findLegacyForProduct: jest.fn(),
   };
 
   const mockFifoBatchService = {
@@ -24,14 +23,15 @@ describe("FifoBootstrapService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FifoBootstrapService,
-        { provide: getRepositoryToken(IssuableProduct), useValue: mockProductRepo },
-        { provide: getRepositoryToken(StockPurchaseBatch), useValue: mockBatchRepo },
+        { provide: IssuableProductRepository, useValue: mockProductRepo },
+        { provide: StockPurchaseBatchRepository, useValue: mockBatchRepo },
         { provide: FifoBatchService, useValue: mockFifoBatchService },
       ],
     }).compile();
 
     service = module.get<FifoBootstrapService>(FifoBootstrapService);
     jest.clearAllMocks();
+    mockFifoBatchService.createBatch.mockResolvedValue({ id: 1 });
   });
 
   it("should be defined", () => {
@@ -40,11 +40,11 @@ describe("FifoBootstrapService", () => {
 
   describe("bootstrapCompany", () => {
     it("creates a legacy batch for each product without an existing one", async () => {
-      mockProductRepo.find.mockResolvedValueOnce([
+      mockProductRepo.findActiveForCompany.mockResolvedValueOnce([
         { id: 1, quantity: 100, costPerUnit: 50 },
         { id: 2, quantity: 50, costPerUnit: 25 },
       ]);
-      mockBatchRepo.findOne.mockResolvedValue(null);
+      mockBatchRepo.findLegacyForProduct.mockResolvedValue(null);
 
       const result = await service.bootstrapCompany(1);
 
@@ -54,8 +54,10 @@ describe("FifoBootstrapService", () => {
     });
 
     it("skips products that already have a legacy batch", async () => {
-      mockProductRepo.find.mockResolvedValueOnce([{ id: 1, quantity: 100, costPerUnit: 50 }]);
-      mockBatchRepo.findOne.mockResolvedValueOnce({ id: 99, isLegacyBatch: true });
+      mockProductRepo.findActiveForCompany.mockResolvedValueOnce([
+        { id: 1, quantity: 100, costPerUnit: 50 },
+      ]);
+      mockBatchRepo.findLegacyForProduct.mockResolvedValueOnce({ id: 99, isLegacyBatch: true });
 
       const result = await service.bootstrapCompany(1);
 
@@ -65,8 +67,10 @@ describe("FifoBootstrapService", () => {
     });
 
     it("skips products with zero quantity", async () => {
-      mockProductRepo.find.mockResolvedValueOnce([{ id: 1, quantity: 0, costPerUnit: 50 }]);
-      mockBatchRepo.findOne.mockResolvedValue(null);
+      mockProductRepo.findActiveForCompany.mockResolvedValueOnce([
+        { id: 1, quantity: 0, costPerUnit: 50 },
+      ]);
+      mockBatchRepo.findLegacyForProduct.mockResolvedValue(null);
 
       const result = await service.bootstrapCompany(1);
 
@@ -75,8 +79,10 @@ describe("FifoBootstrapService", () => {
     });
 
     it("does not call createBatch in dry-run mode", async () => {
-      mockProductRepo.find.mockResolvedValueOnce([{ id: 1, quantity: 100, costPerUnit: 50 }]);
-      mockBatchRepo.findOne.mockResolvedValue(null);
+      mockProductRepo.findActiveForCompany.mockResolvedValueOnce([
+        { id: 1, quantity: 100, costPerUnit: 50 },
+      ]);
+      mockBatchRepo.findLegacyForProduct.mockResolvedValue(null);
 
       const result = await service.bootstrapCompany(1, true);
 

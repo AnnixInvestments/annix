@@ -8,17 +8,16 @@ import {
   NotFoundException,
   StreamableFile,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO, fromJSDate, now } from "../lib/datetime";
+import { AnonymousDraftRepository } from "../rfq/anonymous-draft.repository";
 import { CreateUnifiedRfqDto } from "../rfq/dto/create-unified-rfq.dto";
 import { RfqDraftResponseDto, SaveRfqDraftDto } from "../rfq/dto/rfq-draft.dto";
 import { AnonymousDraft } from "../rfq/entities/anonymous-draft.entity";
 import { Rfq } from "../rfq/entities/rfq.entity";
-import { RfqDocument } from "../rfq/entities/rfq-document.entity";
 import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
-import { RfqItem } from "../rfq/entities/rfq-item.entity";
 import { RfqService } from "../rfq/rfq.service";
+import { RfqDocumentRepository } from "../rfq/rfq-document.repository";
+import { RfqDraftRepository } from "../rfq/rfq-draft.repository";
 import { RfqDraftService } from "../rfq/rfq-draft.service";
 import {
   RfqDetailDto,
@@ -36,16 +35,9 @@ export class AdminRfqService {
   private readonly logger = new Logger(AdminRfqService.name);
 
   constructor(
-    @InjectRepository(Rfq)
-    private readonly rfqRepo: Repository<Rfq>,
-    @InjectRepository(RfqDraft)
-    private readonly rfqDraftRepo: Repository<RfqDraft>,
-    @InjectRepository(RfqItem)
-    private readonly rfqItemRepo: Repository<RfqItem>,
-    @InjectRepository(RfqDocument)
-    private readonly rfqDocumentRepo: Repository<RfqDocument>,
-    @InjectRepository(AnonymousDraft)
-    private readonly anonymousDraftRepo: Repository<AnonymousDraft>,
+    private readonly rfqDraftRepo: RfqDraftRepository,
+    private readonly rfqDocumentRepo: RfqDocumentRepository,
+    private readonly anonymousDraftRepo: AnonymousDraftRepository,
     @Inject(forwardRef(() => RfqService))
     private readonly rfqService: RfqService,
     private readonly rfqDraftService: RfqDraftService,
@@ -68,83 +60,35 @@ export class AdminRfqService {
       limit = 20,
     } = queryDto;
 
-    // Query registered customer drafts
-    const queryBuilder = this.rfqDraftRepo
-      .createQueryBuilder("draft")
-      .leftJoinAndSelect("draft.createdBy", "user");
+    const dateFromJs = dateFrom ? fromISO(dateFrom).toJSDate() : undefined;
+    const dateToJs = dateTo ? fromISO(dateTo).toJSDate() : undefined;
 
-    // Apply search filter
-    if (search) {
-      const escapedSearch = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
-      queryBuilder.andWhere(
-        "(draft.projectName ILIKE :search OR draft.draftNumber ILIKE :search OR user.email ILIKE :search)",
-        { search: `%${escapedSearch}%` },
-      );
-    }
-
-    // Apply status filter - map to currentStep for drafts
-    if (status && status !== RfqStatus.UNREGISTERED) {
-      // For drafts, status is based on completion/conversion
-      if (status === "DRAFT") {
-        queryBuilder.andWhere("draft.isConverted = false");
-      } else if (status === "PENDING") {
-        queryBuilder.andWhere("draft.isConverted = true");
-      }
-    }
-
-    // Apply customer filter
-    if (customerId) {
-      queryBuilder.andWhere("user.id = :customerId", { customerId });
-    }
-
-    // Apply date range filter
-    if (dateFrom && dateTo) {
-      queryBuilder.andWhere("draft.createdAt BETWEEN :dateFrom AND :dateTo", {
-        dateFrom: fromISO(dateFrom).toJSDate(),
-        dateTo: fromISO(dateTo).toJSDate(),
-      });
-    }
-
-    // Apply sorting
-    const sortField = sortBy === "projectName" ? "draft.projectName" : "draft.createdAt";
-    queryBuilder.orderBy(sortField, sortOrder);
-
-    // Get registered drafts (skip if filtering for UNREGISTERED only)
     let registeredDrafts: RfqDraft[] = [];
     let registeredTotal = 0;
     if (status !== RfqStatus.UNREGISTERED) {
-      registeredTotal = await queryBuilder.getCount();
-      registeredDrafts = await queryBuilder.getMany();
-    }
-
-    // Query anonymous (unregistered) drafts
-    const anonQueryBuilder = this.anonymousDraftRepo
-      .createQueryBuilder("anon")
-      .where("anon.isClaimed = false");
-
-    // Apply search filter for anonymous drafts
-    if (search) {
-      const escapedSearch = search.replace(/%/g, "\\%").replace(/_/g, "\\_");
-      anonQueryBuilder.andWhere(
-        "(anon.projectName ILIKE :search OR anon.customerEmail ILIKE :search)",
-        { search: `%${escapedSearch}%` },
-      );
-    }
-
-    // Apply date range filter for anonymous drafts
-    if (dateFrom && dateTo) {
-      anonQueryBuilder.andWhere("anon.createdAt BETWEEN :dateFrom AND :dateTo", {
-        dateFrom: fromISO(dateFrom).toJSDate(),
-        dateTo: fromISO(dateTo).toJSDate(),
+      const result = await this.rfqDraftRepo.searchPaginatedWithCreator({
+        search,
+        status,
+        customerId,
+        dateFrom: dateFromJs,
+        dateTo: dateToJs,
+        sortBy: sortBy === "projectName" ? "projectName" : "createdAt",
+        sortOrder,
       });
+      registeredDrafts = result.items;
+      registeredTotal = result.total;
     }
 
-    // Get anonymous drafts (skip if filtering for non-UNREGISTERED status)
     let anonymousDrafts: AnonymousDraft[] = [];
     let anonymousTotal = 0;
     if (!status || status === RfqStatus.UNREGISTERED || status === RfqStatus.DRAFT) {
-      anonymousTotal = await anonQueryBuilder.getCount();
-      anonymousDrafts = await anonQueryBuilder.getMany();
+      const result = await this.anonymousDraftRepo.searchUnclaimedPaginated({
+        search,
+        dateFrom: dateFromJs,
+        dateTo: dateToJs,
+      });
+      anonymousDrafts = result.items;
+      anonymousTotal = result.total;
     }
 
     // Map registered drafts to DTOs
@@ -224,9 +168,7 @@ export class AdminRfqService {
    */
   async rfqDetail(rfqId: number): Promise<RfqDetailDto> {
     if (rfqId < 0) {
-      const anonDraft = await this.anonymousDraftRepo.findOne({
-        where: { id: Math.abs(rfqId) },
-      });
+      const anonDraft = await this.anonymousDraftRepo.findById(Math.abs(rfqId));
 
       if (!anonDraft) {
         throw new NotFoundException(`Anonymous RFQ Draft with ID ${Math.abs(rfqId)} not found`);
@@ -249,10 +191,7 @@ export class AdminRfqService {
       };
     }
 
-    const draft = await this.rfqDraftRepo.findOne({
-      where: { id: rfqId },
-      relations: ["createdBy"],
-    });
+    const draft = await this.rfqDraftRepo.findByIdWithCreator(rfqId);
 
     if (!draft) {
       throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
@@ -285,9 +224,7 @@ export class AdminRfqService {
    */
   async rfqFullDraft(rfqId: number): Promise<RfqFullDraftDto> {
     if (rfqId < 0) {
-      const anonDraft = await this.anonymousDraftRepo.findOne({
-        where: { id: Math.abs(rfqId) },
-      });
+      const anonDraft = await this.anonymousDraftRepo.findById(Math.abs(rfqId));
 
       if (!anonDraft) {
         throw new NotFoundException(`Anonymous RFQ Draft with ID ${Math.abs(rfqId)} not found`);
@@ -311,9 +248,7 @@ export class AdminRfqService {
       };
     }
 
-    const draft = await this.rfqDraftRepo.findOne({
-      where: { id: rfqId },
-    });
+    const draft = await this.rfqDraftRepo.findById(rfqId);
 
     if (!draft) {
       throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
@@ -343,9 +278,7 @@ export class AdminRfqService {
    */
   async rfqItems(rfqId: number): Promise<RfqItemDetailDto[]> {
     if (rfqId < 0) {
-      const anonDraft = await this.anonymousDraftRepo.findOne({
-        where: { id: Math.abs(rfqId) },
-      });
+      const anonDraft = await this.anonymousDraftRepo.findById(Math.abs(rfqId));
 
       if (!anonDraft) {
         throw new NotFoundException(`Anonymous RFQ Draft with ID ${Math.abs(rfqId)} not found`);
@@ -364,9 +297,7 @@ export class AdminRfqService {
       }));
     }
 
-    const draft = await this.rfqDraftRepo.findOne({
-      where: { id: rfqId },
-    });
+    const draft = await this.rfqDraftRepo.findById(rfqId);
 
     if (!draft) {
       throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
@@ -390,10 +321,7 @@ export class AdminRfqService {
    * Get RFQ Draft documents (VIEW-ONLY)
    */
   async rfqDocuments(rfqId: number): Promise<RfqDocumentDto[]> {
-    const draft = await this.rfqDraftRepo.findOne({
-      where: { id: rfqId },
-      relations: ["createdBy"],
-    });
+    const draft = await this.rfqDraftRepo.findByIdWithCreator(rfqId);
 
     if (!draft) {
       throw new NotFoundException(`RFQ Draft with ID ${rfqId} not found`);
@@ -426,9 +354,7 @@ export class AdminRfqService {
     fileName: string;
     mimeType: string;
   }> {
-    const document = await this.rfqDocumentRepo.findOne({
-      where: { id: documentId },
-    });
+    const document = await this.rfqDocumentRepo.findById(documentId);
 
     if (!document) {
       throw new NotFoundException(`Document with ID ${documentId} not found`);
@@ -457,10 +383,7 @@ export class AdminRfqService {
   ): Promise<{ rfq: Rfq; itemsUpdated: number }> {
     this.logger.log(`Admin updating RFQ ${id}`);
 
-    const draft = await this.rfqDraftRepo.findOne({
-      where: { id },
-      relations: ["createdBy"],
-    });
+    const draft = await this.rfqDraftRepo.findByIdWithCreator(id);
 
     if (!draft) {
       throw new NotFoundException(`RFQ Draft with ID ${id} not found`);
@@ -481,10 +404,7 @@ export class AdminRfqService {
     this.logger.log(`Admin saving draft ${dto.draftId || "new"}`);
 
     if (dto.draftId) {
-      const draft = await this.rfqDraftRepo.findOne({
-        where: { id: dto.draftId },
-        relations: ["createdBy"],
-      });
+      const draft = await this.rfqDraftRepo.findByIdWithCreator(dto.draftId);
 
       if (!draft) {
         throw new NotFoundException(`RFQ Draft with ID ${dto.draftId} not found`);

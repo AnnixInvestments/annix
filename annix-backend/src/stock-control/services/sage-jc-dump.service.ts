@@ -1,12 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, Not, Repository } from "typeorm";
 import * as XLSX from "xlsx";
+import type { CrudRepository } from "../../lib/persistence/crud-repository";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { CpoStatus, CustomerPurchaseOrder } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
-import { JobCard, JobCardStatus } from "../entities/job-card.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { JobCardStatus } from "../entities/job-card.entity";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
+import { CustomerPurchaseOrderRepository } from "../repositories/customer-purchase-order.repository";
+import { CustomerPurchaseOrderItemRepository } from "../repositories/customer-purchase-order-item.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 
 const WORKFLOW_STATUS_DRAFT = "draft";
 
@@ -165,15 +168,11 @@ export class SageJcDumpService {
   private readonly logger = new Logger(SageJcDumpService.name);
 
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
-    @InjectRepository(CustomerPurchaseOrder)
-    private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
-    @InjectRepository(CustomerPurchaseOrderItem)
-    private readonly cpoItemRepo: Repository<CustomerPurchaseOrderItem>,
-    private readonly dataSource: DataSource,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly cpoRepo: CustomerPurchaseOrderRepository,
+    private readonly cpoItemRepo: CustomerPurchaseOrderItemRepository,
+    private readonly txRunner: TransactionRunner,
     private readonly qcMeasurementService: QcMeasurementService,
   ) {}
 
@@ -182,10 +181,7 @@ export class SageJcDumpService {
     companyId: number,
     cpoId: number,
   ): Promise<SageJcDumpParseResult> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
     if (!cpo) {
       throw new NotFoundException("CPO not found");
     }
@@ -295,14 +291,7 @@ export class SageJcDumpService {
     });
 
     const existingJtNumbers = await this.jobCardRepo
-      .find({
-        where: {
-          companyId,
-          jobNumber: cpo.jobNumber,
-          parentJobCardId: Not(IsNull()),
-        },
-        select: ["jtDnNumber"],
-      })
+      .findChildJobCardsByJobNumber(companyId, cpo.jobNumber)
       .then((jcs) => jcs.map((jc) => jc.jtDnNumber).filter((jt): jt is string => jt !== null));
 
     const existingJtSet = new Set(existingJtNumbers.map((jt) => jt.toUpperCase()));
@@ -332,21 +321,16 @@ export class SageJcDumpService {
     request: SageJcDumpConfirmRequest,
     userName: string | null,
   ): Promise<SageJcDumpImportResult> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: request.cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(request.cpoId, companyId);
     if (!cpo) {
       throw new NotFoundException("CPO not found");
     }
 
     const cpoJcNumber = this.extractJcNumber(cpo.cpoNumber);
 
-    let parentJc = await this.jobCardRepo.findOne({
-      where: { companyId, cpoId: cpo.id, parentJobCardId: IsNull() },
-    });
+    let parentJc = await this.jobCardRepo.findParentForCpo(cpo.id, companyId);
     if (!parentJc) {
-      const newJc = this.jobCardRepo.create({
+      const newJc = this.jobCardRepo.build({
         jobNumber: cpo.jobNumber,
         jcNumber: cpoJcNumber,
         jobName: cpo.jobName || cpo.cpoNumber,
@@ -382,14 +366,10 @@ export class SageJcDumpService {
 
     const parentJcId = parentJc.id;
 
-    const existingChildJcs = await this.jobCardRepo.find({
-      where: {
-        companyId,
-        jobNumber: parentJc.jobNumber,
-        parentJobCardId: Not(IsNull()),
-      },
-      select: ["id", "jtDnNumber"],
-    });
+    const existingChildJcs = await this.jobCardRepo.findChildJobCardsByJobNumber(
+      companyId,
+      parentJc.jobNumber,
+    );
     const existingJtMap = new Map<string, number>();
     existingChildJcs.forEach((jc) => {
       if (jc.jtDnNumber) {
@@ -424,32 +404,26 @@ export class SageJcDumpService {
     const createdJobCards: Array<{ id: number; jtNumber: string; itemCount: number }> = [];
     const mergedJobCards: Array<{ id: number; jtNumber: string; addedItemCount: number }> = [];
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
+    const transactionResult = await this.txRunner.run(async (ctx) => {
+      const jobCardTx = this.jobCardRepo.withTransaction(ctx);
+      const lineItemTx = this.lineItemRepo.withTransaction(ctx);
+      const cpoTx = this.cpoRepo.withTransaction(ctx);
+      const cpoItemTx = this.cpoItemRepo.withTransaction(ctx);
       const jtEntries = Object.entries(mergedGroups);
 
       for (const [jtNumber, items] of jtEntries) {
         const existingJcId = existingJtMap.get(jtNumber.toUpperCase());
         if (existingJcId) {
-          // Gate against the CPO so re-confirming the dump cannot re-pool items
-          // that are already fully called off (the duplicate-line-item bug). Only
-          // genuinely new quantity (up to the CPO ordered qty), or items that were
-          // never on the original CPO, are appended.
-          const gated = this.gateItemsByCpo(items, cpo, queryRunner);
+          const gated = await this.gateItemsByCpo(items, cpo, cpoItemTx);
           if (gated.length === 0) {
             this.logger.log(
               `Skipped JT ${jtNumber} for JC #${existingJcId}: all items already called off against CPO ${cpo.cpoNumber}`,
             );
             continue;
           }
-          const priorItemCount = await queryRunner.manager.count(JobCardLineItem, {
-            where: { jobCardId: existingJcId },
-          });
-          const appendedLineItems = gated.map(({ item, qty }, idx) =>
-            this.lineItemRepo.create({
+          const priorItemCount = await lineItemTx.count({ jobCardId: existingJcId });
+          const appendedLineItems = this.lineItemRepo.buildMany(
+            gated.map(({ item, qty }, idx) => ({
               jobCardId: existingJcId,
               itemCode: item.itemCode || null,
               itemDescription: item.itemDescription || null,
@@ -459,9 +433,11 @@ export class SageJcDumpService {
               sortOrder: priorItemCount + idx,
               companyId,
               notes: item.specNotes || null,
-            }),
+            })),
           );
-          await queryRunner.manager.save(JobCardLineItem, appendedLineItems);
+          for (const lineItem of appendedLineItems) {
+            await lineItemTx.save(lineItem);
+          }
           mergedJobCards.push({
             id: existingJcId,
             jtNumber,
@@ -473,7 +449,7 @@ export class SageJcDumpService {
           continue;
         }
 
-        const gated = this.gateItemsByCpo(items, cpo, queryRunner);
+        const gated = await this.gateItemsByCpo(items, cpo, cpoItemTx);
         if (gated.length === 0) {
           this.logger.log(
             `Skipped JT ${jtNumber}: all items already called off against CPO ${cpo.cpoNumber}`,
@@ -495,7 +471,7 @@ export class SageJcDumpService {
                 return raw ? deduplicateLines(raw) : null;
               })();
 
-        const deliveryJc = this.jobCardRepo.create({
+        const deliveryJc = this.jobCardRepo.build({
           jobNumber: parentJc.jobNumber,
           jcNumber: cpoJcNumber || parentJc.jcNumber || undefined,
           pageNumber,
@@ -516,10 +492,10 @@ export class SageJcDumpService {
           companyId,
         });
 
-        const savedJc = await queryRunner.manager.save(JobCard, deliveryJc);
+        const savedJc = await jobCardTx.save(deliveryJc);
 
-        const lineItemEntities = gated.map(({ item, qty }, idx) =>
-          this.lineItemRepo.create({
+        const lineItemEntities = this.lineItemRepo.buildMany(
+          gated.map(({ item, qty }, idx) => ({
             jobCardId: savedJc.id,
             itemCode: item.itemCode || null,
             itemDescription: item.itemDescription || null,
@@ -529,10 +505,12 @@ export class SageJcDumpService {
             sortOrder: idx,
             companyId,
             notes: item.specNotes || jtNotes,
-          }),
+          })),
         );
 
-        await queryRunner.manager.save(JobCardLineItem, lineItemEntities);
+        for (const lineItem of lineItemEntities) {
+          await lineItemTx.save(lineItem);
+        }
 
         createdJobCards.push({
           id: savedJc.id,
@@ -541,7 +519,7 @@ export class SageJcDumpService {
         });
 
         this.logger.log(
-          `Created delivery JC #${savedJc.id} for JT ${jtNumber} with ${lineItemEntities.length} items`,
+          `Created delivery JC #${savedJc.id} for JT ${jtNumber} with ${items.length} items`,
         );
       }
 
@@ -554,16 +532,13 @@ export class SageJcDumpService {
               Number(cpoItem.quantityFulfilled) + totalAllocated,
               Number(cpoItem.quantityOrdered),
             );
-            await queryRunner.manager.update(CustomerPurchaseOrderItem, alloc.cpoItemId, {
-              quantityFulfilled: newFulfilled,
-            });
+            cpoItem.quantityFulfilled = newFulfilled;
+            await cpoItemTx.save(cpoItem);
           }
         }
       }
 
-      const updatedItems = await queryRunner.manager.find(CustomerPurchaseOrderItem, {
-        where: { cpoId: cpo.id },
-      });
+      const updatedItems = await cpoItemTx.findManyWhere({ cpoId: cpo.id });
       const totalFulfilled = updatedItems.reduce(
         (sum, item) => sum + Number(item.quantityFulfilled),
         0,
@@ -573,25 +548,11 @@ export class SageJcDumpService {
         0,
       );
 
-      const updates: Partial<CustomerPurchaseOrder> = {
-        fulfilledQuantity: totalFulfilled,
-      };
+      cpo.fulfilledQuantity = totalFulfilled;
       if (totalFulfilled >= totalOrdered && totalOrdered > 0) {
-        updates.status = CpoStatus.FULFILLED;
+        cpo.status = CpoStatus.FULFILLED;
       }
-      await queryRunner.manager.update(CustomerPurchaseOrder, cpo.id, updates);
-
-      await queryRunner.commitTransaction();
-
-      for (const jc of createdJobCards) {
-        await this.qcMeasurementService
-          .propagateCpoQcpsToJobCard(companyId, cpo.id, jc.id)
-          .catch((err) => {
-            this.logger.warn(
-              `QCP propagation failed for JC ${jc.id}: ${err instanceof Error ? err.message : "Unknown"}`,
-            );
-          });
-      }
+      await cpoTx.save(cpo);
 
       return {
         createdJobCards,
@@ -599,12 +560,19 @@ export class SageJcDumpService {
         totalCreated: createdJobCards.length,
         totalMerged: mergedJobCards.length,
       };
-    } catch (error) {
-      await queryRunner.rollbackTransaction();
-      throw error;
-    } finally {
-      await queryRunner.release();
+    });
+
+    for (const jc of transactionResult.createdJobCards) {
+      await this.qcMeasurementService
+        .propagateCpoQcpsToJobCard(companyId, cpo.id, jc.id)
+        .catch((err) => {
+          this.logger.warn(
+            `QCP propagation failed for JC ${jc.id}: ${err instanceof Error ? err.message : "Unknown"}`,
+          );
+        });
     }
+
+    return transactionResult;
   }
 
   private parseExcelPages(buffer: Buffer): ParsedPage[] {
@@ -884,43 +852,29 @@ export class SageJcDumpService {
     return match ? match[1] : null;
   }
 
-  /**
-   * Decide how much of each parsed item may actually be turned into call-off line
-   * items, using the CPO as the source of truth, and advance CPO fulfilment by that
-   * amount. An item matched to a CPO line is capped at its remaining ordered quantity
-   * (so re-running the dump after it's fully called off adds nothing — the fix for the
-   * duplicate-line-item bug). Items not present on the original CPO are additional
-   * drop-ins and are always allowed. Mutates cpoItem.quantityFulfilled in memory and
-   * persists it within the supplied transaction.
-   */
-  private gateItemsByCpo(
+  private async gateItemsByCpo(
     items: SageJcDumpParsedItem[],
     cpo: CustomerPurchaseOrder,
-    queryRunner: any,
-  ): Array<{ item: SageJcDumpParsedItem; qty: number }> {
+    cpoItemTx: CrudRepository<CustomerPurchaseOrderItem>,
+  ): Promise<Array<{ item: SageJcDumpParsedItem; qty: number }>> {
     const gated: Array<{ item: SageJcDumpParsedItem; qty: number }> = [];
 
     for (const item of items) {
       const cpoItem = matchCpoItem(cpo.items, item.itemNoBase, item.itemDescription);
 
       if (!cpoItem) {
-        // Not on the original CPO — an additional item being dropped in; allow it.
         gated.push({ item, qty: item.quantity });
         continue;
       }
 
       const remaining = Number(cpoItem.quantityOrdered) - Number(cpoItem.quantityFulfilled);
       if (remaining <= 0) {
-        // Already fully called off against the CPO — skip (prevents re-import duplicates).
         continue;
       }
 
       const qty = Math.min(item.quantity, remaining);
-      const newFulfilled = Number(cpoItem.quantityFulfilled) + qty;
-      queryRunner.manager.update(CustomerPurchaseOrderItem, cpoItem.id, {
-        quantityFulfilled: newFulfilled,
-      });
-      cpoItem.quantityFulfilled = newFulfilled;
+      cpoItem.quantityFulfilled = Number(cpoItem.quantityFulfilled) + qty;
+      await cpoItemTx.save(cpoItem);
 
       gated.push({ item, qty });
     }

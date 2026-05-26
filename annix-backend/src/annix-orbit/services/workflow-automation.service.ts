@@ -1,11 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { CvEmailTemplateKind } from "../entities/annix-orbit-email-template.entity";
 import { Candidate, CandidateStatus, type MatchAnalysis } from "../entities/candidate.entity";
 import { JobPosting } from "../entities/job-posting.entity";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateService } from "./candidate.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
@@ -28,12 +27,8 @@ export class WorkflowAutomationService {
   private readonly logger = new Logger(WorkflowAutomationService.name);
 
   constructor(
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly companyRepo: Repository<AnnixOrbitCompany>,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
     private readonly cvExtractionService: CvExtractionService,
     private readonly jobMatchService: JobMatchService,
     private readonly candidateService: CandidateService,
@@ -47,10 +42,7 @@ export class WorkflowAutomationService {
   ) {}
 
   async processCandidateCv(candidateId: number): Promise<void> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobPosting(candidateId);
 
     if (!candidate) {
       this.logger.warn(`Candidate ${candidateId} not found`);
@@ -254,7 +246,7 @@ export class WorkflowAutomationService {
   }
 
   private async companyName(companyId: number): Promise<string> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     return company?.name || "the hiring team";
   }
 
@@ -287,10 +279,7 @@ export class WorkflowAutomationService {
     actorId: number | null = null,
     reason: string | null = null,
   ): Promise<void> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobPosting(candidateId);
 
     if (candidate?.jobPosting && candidate.jobPosting.companyId === companyId) {
       const jobPosting = candidate.jobPosting;
@@ -349,10 +338,7 @@ export class WorkflowAutomationService {
     actorId: number | null = null,
     reason: string | null = null,
   ): Promise<void> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting", "references"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobAndReferences(candidateId);
 
     if (candidate?.jobPosting && candidate.jobPosting.companyId === companyId) {
       const jobPosting = candidate.jobPosting;
@@ -407,10 +393,7 @@ export class WorkflowAutomationService {
     actorId: number | null = null,
     reason: string | null = null,
   ): Promise<void> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobPosting(candidateId);
 
     if (candidate?.jobPosting && candidate.jobPosting.companyId === companyId) {
       const jobPosting = candidate.jobPosting;

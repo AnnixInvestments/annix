@@ -1,8 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { EmailService } from "../../email/email.service";
@@ -11,6 +9,8 @@ import { ExtractionMetricService } from "../../metrics/extraction-metric.service
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { Candidate } from "../entities/candidate.entity";
 import { ExternalJob } from "../entities/external-job.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { EscoNormalisationService } from "./esco-normalisation.service";
 import { JobCategorizationService } from "./job-categorization.service";
 
@@ -37,10 +37,8 @@ export class EmbeddingService {
   private lastBackfillError: string | null = null;
 
   constructor(
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly externalJobRepo: ExternalJobRepository,
     private readonly aiUsageService: AiUsageService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
@@ -158,7 +156,7 @@ export class EmbeddingService {
   }
 
   async embedCandidate(candidateId: number): Promise<boolean> {
-    const candidate = await this.candidateRepo.findOne({ where: { id: candidateId } });
+    const candidate = await this.candidateRepo.findById(candidateId);
     if (!candidate) {
       return false;
     }
@@ -176,12 +174,7 @@ export class EmbeddingService {
       return false;
     }
 
-    await this.candidateRepo
-      .createQueryBuilder()
-      .update(Candidate)
-      .set({ embedding: () => `'[${embedding.join(",")}]'::vector` } as any)
-      .where("id = :id", { id: candidateId })
-      .execute();
+    await this.candidateRepo.setEmbeddingVector(candidateId, embedding.join(","));
 
     return true;
   }
@@ -196,7 +189,8 @@ export class EmbeddingService {
         certifications: extracted.certifications,
         qualifications: extracted.saQualifications,
       });
-      await this.candidateRepo.update(candidate.id, { targetCategories });
+      candidate.targetCategories = targetCategories;
+      await this.candidateRepo.save(candidate);
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(
@@ -206,7 +200,7 @@ export class EmbeddingService {
   }
 
   async embedExternalJob(jobId: number): Promise<boolean> {
-    const job = await this.externalJobRepo.findOne({ where: { id: jobId } });
+    const job = await this.externalJobRepo.findById(jobId);
     if (!job) {
       return false;
     }
@@ -221,22 +215,13 @@ export class EmbeddingService {
       return false;
     }
 
-    await this.externalJobRepo
-      .createQueryBuilder()
-      .update(ExternalJob)
-      .set({ embedding: () => `'[${embedding.join(",")}]'::vector` } as any)
-      .where("id = :id", { id: jobId })
-      .execute();
+    await this.externalJobRepo.setEmbeddingVector(jobId, embedding.join(","));
 
     return true;
   }
 
   async backfillCandidateEmbeddings(): Promise<{ processed: number; failed: number }> {
-    const candidates = await this.candidateRepo
-      .createQueryBuilder("c")
-      .where("c.embedding IS NULL")
-      .andWhere("(c.raw_cv_text IS NOT NULL OR c.extracted_data IS NOT NULL)")
-      .getMany();
+    const candidates = await this.candidateRepo.candidatesMissingEmbedding();
 
     const result = await candidates.reduce(
       async (accPromise, candidate) => {
@@ -256,10 +241,7 @@ export class EmbeddingService {
   }
 
   async backfillExternalJobEmbeddings(): Promise<{ processed: number; failed: number }> {
-    const jobs = await this.externalJobRepo
-      .createQueryBuilder("j")
-      .where("j.embedding IS NULL")
-      .getMany();
+    const jobs = await this.externalJobRepo.jobsMissingEmbedding();
 
     const result = await jobs.reduce(
       async (accPromise, job) => {
@@ -290,17 +272,13 @@ export class EmbeddingService {
     running: boolean;
     lastError: string | null;
   }> {
-    const [jobs] = await this.externalJobRepo.query(
-      "SELECT COUNT(*)::int AS total, COUNT(embedding)::int AS embedded FROM cv_assistant_external_jobs",
-    );
-    const [candidates] = await this.candidateRepo.query(
-      "SELECT COUNT(*)::int AS total, COUNT(embedding)::int AS embedded FROM cv_assistant_candidates",
-    );
+    const jobs = await this.externalJobRepo.embeddingCoverage();
+    const candidates = await this.candidateRepo.embeddingCoverage();
     return {
-      jobsTotal: Number(jobs.total),
-      jobsEmbedded: Number(jobs.embedded),
-      candidatesTotal: Number(candidates.total),
-      candidatesEmbedded: Number(candidates.embedded),
+      jobsTotal: jobs.total,
+      jobsEmbedded: jobs.embedded,
+      candidatesTotal: candidates.total,
+      candidatesEmbedded: candidates.embedded,
       running: this.backfillRunning,
       lastError: this.lastBackfillError ?? this.lastEmbedError,
     };

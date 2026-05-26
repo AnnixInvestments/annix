@@ -1,38 +1,35 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { DataSource } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { IssuableProduct } from "../entities/issuable-product.entity";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
 import { LocationClassificationService } from "./location-classification.service";
 
 describe("LocationClassificationService", () => {
   let service: LocationClassificationService;
 
   const mockProductRepo = {
-    find: jest.fn(),
-    update: jest.fn().mockResolvedValue({ affected: 1 }),
+    findUnassignedActive: jest.fn(),
+    updateLocation: jest.fn().mockResolvedValue(undefined),
+    updateLocationForIds: jest.fn().mockResolvedValue(0),
+    findStockControlLocationByName: jest.fn(),
+    insertStockControlLocation: jest.fn(),
   };
 
   const mockAiChatService = {
     chat: jest.fn(),
   };
 
-  const mockDataSource = {
-    query: jest.fn().mockResolvedValue([]),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LocationClassificationService,
-        { provide: getRepositoryToken(IssuableProduct), useValue: mockProductRepo },
+        { provide: IssuableProductRepository, useValue: mockProductRepo },
         { provide: AiChatService, useValue: mockAiChatService },
-        { provide: DataSource, useValue: mockDataSource },
       ],
     }).compile();
 
     service = module.get<LocationClassificationService>(LocationClassificationService);
     jest.clearAllMocks();
+    mockProductRepo.updateLocation.mockResolvedValue(undefined);
   });
 
   it("should be defined", () => {
@@ -46,13 +43,13 @@ describe("LocationClassificationService", () => {
     });
 
     it("returns empty list when no unassigned products exist", async () => {
-      mockProductRepo.find.mockResolvedValueOnce([]);
+      mockProductRepo.findUnassignedActive.mockResolvedValueOnce([]);
       const result = await service.classifyUnassignedProducts(1, [{ id: 1, name: "Paint Store" }]);
       expect(result).toEqual([]);
     });
 
     it("classifies products with token overlap to the matching location", async () => {
-      mockProductRepo.find.mockResolvedValueOnce([
+      mockProductRepo.findUnassignedActive.mockResolvedValueOnce([
         {
           id: 1,
           sku: "JOT-EPX",
@@ -79,7 +76,7 @@ describe("LocationClassificationService", () => {
         { productId: 3, locationId: null },
       ]);
       expect(result.updated).toBe(2);
-      expect(mockProductRepo.update).toHaveBeenCalledTimes(2);
+      expect(mockProductRepo.updateLocation).toHaveBeenCalledTimes(2);
     });
   });
 });

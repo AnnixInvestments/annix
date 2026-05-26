@@ -1,24 +1,13 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { CalculatePipeThicknessDto, PipeThicknessResultDto } from "./dto/pipe-sizing.dto";
-import { PipeNpsOd, PipeScheduleWall } from "./entities/pipe-schedule-wall.entity";
+import { PipeScheduleWall } from "./entities/pipe-schedule-wall.entity";
 import { PipeAllowableStress, PipeSteelGrade } from "./entities/steel-grade-stress.entity";
+import { PipeSizingRepository } from "./pipe-sizing.repository";
 
 @Injectable()
 export class PipeSizingService {
-  constructor(
-    @InjectRepository(PipeSteelGrade)
-    private readonly gradeRepo: Repository<PipeSteelGrade>,
-    @InjectRepository(PipeAllowableStress)
-    private readonly stressRepo: Repository<PipeAllowableStress>,
-    @InjectRepository(PipeScheduleWall)
-    private readonly scheduleWallRepo: Repository<PipeScheduleWall>,
-    @InjectRepository(PipeNpsOd)
-    private readonly npsOdRepo: Repository<PipeNpsOd>,
-  ) {}
+  constructor(private readonly pipeSizingRepository: PipeSizingRepository) {}
 
-  // Unit conversions
   private celsiusToFahrenheit(tempC: number): number {
     return tempC * 1.8 + 32;
   }
@@ -27,76 +16,50 @@ export class PipeSizingService {
     return bar * 14.5038;
   }
 
-  // Get all steel grades
-  async getAllSteelGrades(): Promise<PipeSteelGrade[]> {
-    return this.gradeRepo.find({
-      order: { code: "ASC" },
-    });
+  getAllSteelGrades(): Promise<PipeSteelGrade[]> {
+    return this.pipeSizingRepository.findAllGradesOrdered();
   }
 
-  // Get steel grade by code
-  async getSteelGradeByCode(code: string): Promise<PipeSteelGrade | null> {
-    return this.gradeRepo.findOne({ where: { code } });
+  getSteelGradeByCode(code: string): Promise<PipeSteelGrade | null> {
+    return this.pipeSizingRepository.findGradeByCode(code);
   }
 
-  // Get all NPS values with OD
-  async getAllNpsOd(): Promise<PipeNpsOd[]> {
-    return this.npsOdRepo.find({
-      order: { odInch: "ASC" },
-    });
+  getAllNpsOd() {
+    return this.pipeSizingRepository.findAllNpsOdOrdered();
   }
 
-  // Get schedules available for a given NPS
-  async getSchedulesForNps(nps: string): Promise<PipeScheduleWall[]> {
-    return this.scheduleWallRepo.find({
-      where: { nps },
-      order: { wallThicknessInch: "ASC" },
-    });
+  getSchedulesForNps(nps: string): Promise<PipeScheduleWall[]> {
+    return this.pipeSizingRepository.findScheduleWallsByNps(nps);
   }
 
-  // Get allowable stress for material at temperature (with interpolation)
   async getAllowableStress(materialCode: string, tempF: number): Promise<number | null> {
-    // First, check if this grade has an equivalent
-    const grade = await this.gradeRepo.findOne({
-      where: { code: materialCode },
-    });
+    const grade = await this.pipeSizingRepository.findGradeByCode(materialCode);
     if (!grade) return null;
 
     const actualCode = grade.equivalentGrade || materialCode;
     const actualGrade = grade.equivalentGrade
-      ? await this.gradeRepo.findOne({
-          where: { code: grade.equivalentGrade },
-        })
+      ? await this.pipeSizingRepository.findGradeByCode(grade.equivalentGrade)
       : grade;
 
     if (!actualGrade) return null;
 
-    // Get stress data for this grade
-    const stressData = await this.stressRepo.find({
-      where: { gradeId: actualGrade.id },
-      order: { temperatureF: "ASC" },
-    });
+    const stressData = await this.pipeSizingRepository.findStressesByGradeId(actualGrade.id);
 
     if (stressData.length === 0) return null;
 
-    // Exact match
     const exactMatch = stressData.find((s) => s.temperatureF === tempF);
     if (exactMatch) return Number(exactMatch.allowableStressKsi);
 
-    // Interpolate
     const temps = stressData.map((s) => s.temperatureF);
 
-    // Below minimum temp - use lowest
     if (tempF < temps[0]) {
       return Number(stressData[0].allowableStressKsi);
     }
 
-    // Above maximum temp - use highest (with warning)
     if (tempF > temps[temps.length - 1]) {
       return Number(stressData[stressData.length - 1].allowableStressKsi);
     }
 
-    // Find surrounding temps and interpolate
     for (let i = 0; i < temps.length - 1; i++) {
       if (temps[i] <= tempF && tempF <= temps[i + 1]) {
         const sLow = Number(stressData[i].allowableStressKsi);
@@ -109,16 +72,12 @@ export class PipeSizingService {
     return null;
   }
 
-  // Get next suitable schedule
   async getNextSuitableSchedule(
     nps: string,
     requiredThicknessInch: number,
     marginInch: number = 0,
   ): Promise<{ schedule: string; wallInch: number; warning?: string } | null> {
-    const schedules = await this.scheduleWallRepo.find({
-      where: { nps },
-      order: { wallThicknessInch: "ASC" },
-    });
+    const schedules = await this.pipeSizingRepository.findScheduleWallsByNps(nps);
 
     if (schedules.length === 0) return null;
 
@@ -133,7 +92,6 @@ export class PipeSizingService {
       }
     }
 
-    // None sufficient - return thickest with warning
     const maxSch = schedules[schedules.length - 1];
     return {
       schedule: maxSch.schedule,
@@ -142,7 +100,6 @@ export class PipeSizingService {
     };
   }
 
-  // Main calculation: Calculate pipe thickness per ASME B31.3
   async calculatePipeThickness(dto: CalculatePipeThicknessDto): Promise<PipeThicknessResultDto> {
     const {
       pressureBar,
@@ -156,26 +113,21 @@ export class PipeSizingService {
       corrosionAllowanceMm = 0,
     } = dto;
 
-    // Get OD for NPS
-    const npsOd = await this.npsOdRepo.findOne({ where: { nps } });
+    const npsOd = await this.pipeSizingRepository.findNpsOdByNps(nps);
     if (!npsOd) {
       throw new Error(`Invalid NPS: ${nps}`);
     }
 
-    // Convert units
     const pPsi = this.barToPsi(pressureBar);
     const tempF = this.celsiusToFahrenheit(temperatureC);
     const dInch = Number(npsOd.odInch);
     const corrosionInch = corrosionAllowanceMm / 25.4;
 
-    // Get allowable stress
     const sKsi = await this.getAllowableStress(materialCode, tempF);
     if (sKsi === null) {
       throw new Error(`No stress data for material: ${materialCode}`);
     }
 
-    // ASME B31.3 Para. 304.1.2 formula
-    // t = P * D / (2 * (S * E * W + P * Y))
     const e = jointEfficiency;
     const w = weldStrengthReduction;
     const y = yCoefficient;
@@ -191,11 +143,11 @@ export class PipeSizingService {
       notes: `E=${e} (joint efficiency), W=${w} (weld strength), Y=${y}. Add 12.5% mill tolerance for final schedule selection.`,
     };
 
-    // Check selected schedule
     if (selectedSchedule) {
-      const scheduleData = await this.scheduleWallRepo.findOne({
-        where: { nps, schedule: selectedSchedule },
-      });
+      const scheduleData = await this.pipeSizingRepository.findScheduleWallByNpsAndDesignation(
+        nps,
+        selectedSchedule,
+      );
 
       if (scheduleData) {
         const wallInch = Number(scheduleData.wallThicknessInch);
@@ -207,7 +159,6 @@ export class PipeSizingService {
       }
     }
 
-    // Get recommended schedule
     const recommended = await this.getNextSuitableSchedule(nps, tMInch);
     if (recommended) {
       result.recommendedSchedule = recommended.schedule;
@@ -218,7 +169,6 @@ export class PipeSizingService {
       }
     }
 
-    // Add creep warning for high temperatures
     if (tempF > 700) {
       result.notes +=
         " WARNING: Temperature > 700°F (370°C) - consider creep effects and use alloy steels.";
@@ -227,25 +177,16 @@ export class PipeSizingService {
     return result;
   }
 
-  // Get all stress data for a material
   async getStressTableForMaterial(materialCode: string): Promise<PipeAllowableStress[]> {
-    const grade = await this.gradeRepo.findOne({
-      where: { code: materialCode },
-    });
+    const grade = await this.pipeSizingRepository.findGradeByCode(materialCode);
     if (!grade) return [];
 
-    const actualCode = grade.equivalentGrade || materialCode;
     const actualGrade = grade.equivalentGrade
-      ? await this.gradeRepo.findOne({
-          where: { code: grade.equivalentGrade },
-        })
+      ? await this.pipeSizingRepository.findGradeByCode(grade.equivalentGrade)
       : grade;
 
     if (!actualGrade) return [];
 
-    return this.stressRepo.find({
-      where: { gradeId: actualGrade.id },
-      order: { temperatureF: "ASC" },
-    });
+    return this.pipeSizingRepository.findStressesByGradeId(actualGrade.id);
   }
 }

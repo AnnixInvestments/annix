@@ -1,11 +1,9 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { formatDateZA, now } from "../../lib/datetime";
 import { A4_PORTRAIT, createPdfDocument, PDF_FONTS } from "../../lib/pdf-builder";
-import { RubberAppProfile } from "../entities/rubber-app-profile.entity";
-import { RubberOrder } from "../entities/rubber-order.entity";
+import { RubberAppProfileRepository } from "../repositories/rubber-app-profile.repository";
+import { RubberOrderRepository } from "../repositories/rubber-order.repository";
 
 interface OrderConfirmationData {
   orderNumber: string;
@@ -48,10 +46,8 @@ export class RubberOrderConfirmationService {
   private readonly logger = new Logger(RubberOrderConfirmationService.name);
 
   constructor(
-    @InjectRepository(RubberOrder)
-    private readonly orderRepository: Repository<RubberOrder>,
-    @InjectRepository(RubberAppProfile)
-    private readonly appProfileRepository: Repository<RubberAppProfile>,
+    private readonly orderRepository: RubberOrderRepository,
+    private readonly appProfileRepository: RubberAppProfileRepository,
     private readonly emailService: EmailService,
   ) {}
 
@@ -97,16 +93,13 @@ export class RubberOrderConfirmationService {
   }
 
   private async confirmationData(orderId: number): Promise<OrderConfirmationData> {
-    const order = await this.orderRepository.findOne({
-      where: { id: orderId },
-      relations: ["company", "items", "items.product"],
-    });
+    const order = await this.orderRepository.findOneByIdWithRelations(orderId);
 
     if (!order) {
       throw new NotFoundException(`Order ${orderId} not found`);
     }
 
-    const profile = await this.appProfileRepository.findOne({ where: { id: 1 } });
+    const profile = await this.appProfileRepository.findById(1);
     const customer = order.company;
 
     let logoBuffer: Buffer | null = null;

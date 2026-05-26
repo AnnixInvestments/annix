@@ -5,10 +5,9 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { Company } from "../../platform/entities/company.entity";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import { CompanyRepository } from "../../platform/company.repository";
 import { CreateJobPostingDto, UpdateJobPostingDto } from "../dto/job-posting.dto";
 import { UpdateJobWizardDto } from "../dto/job-wizard.dto";
 import {
@@ -17,9 +16,10 @@ import {
   JobPostingStatus,
   WorkMode,
 } from "../entities/job-posting.entity";
-import { JobScreeningQuestion } from "../entities/job-screening-question.entity";
-import { JobSkill } from "../entities/job-skill.entity";
-import { JobSuccessMetric } from "../entities/job-success-metric.entity";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
+import { JobScreeningQuestionRepository } from "../repositories/job-screening-question.repository";
+import { JobSkillRepository } from "../repositories/job-skill.repository";
+import { JobSuccessMetricRepository } from "../repositories/job-success-metric.repository";
 import { PortalPostingOrchestrator } from "./portal-posting-orchestrator.service";
 
 const REF_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -53,18 +53,13 @@ export class JobPostingService {
   private readonly logger = new Logger(JobPostingService.name);
 
   constructor(
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(JobSkill)
-    private readonly jobSkillRepo: Repository<JobSkill>,
-    @InjectRepository(JobSuccessMetric)
-    private readonly jobSuccessMetricRepo: Repository<JobSuccessMetric>,
-    @InjectRepository(JobScreeningQuestion)
-    private readonly jobScreeningQuestionRepo: Repository<JobScreeningQuestion>,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly companyRepo: CompanyRepository,
+    private readonly jobSkillRepo: JobSkillRepository,
+    private readonly jobSuccessMetricRepo: JobSuccessMetricRepository,
+    private readonly jobScreeningQuestionRepo: JobScreeningQuestionRepository,
     private readonly portalPostingOrchestrator: PortalPostingOrchestrator,
-    private readonly dataSource: DataSource,
+    private readonly txRunner: TransactionRunner,
   ) {}
 
   /**
@@ -74,7 +69,7 @@ export class JobPostingService {
    */
   async createDraft(companyId: number): Promise<JobPosting> {
     const referenceNumber = await this.allocateReferenceNumber();
-    const draft = this.jobPostingRepo.create({
+    return this.jobPostingRepo.create({
       companyId,
       title: "Untitled draft",
       status: JobPostingStatus.DRAFT,
@@ -86,7 +81,6 @@ export class JobPostingService {
       enabledPortalCodes: [],
       benefits: [],
     });
-    return this.jobPostingRepo.save(draft);
   }
 
   /**
@@ -95,10 +89,7 @@ export class JobPostingService {
    * CLAUDE.md Neon network transfer budget).
    */
   async findWizardDraft(companyId: number, id: number): Promise<JobPosting> {
-    const draft = await this.jobPostingRepo.findOne({
-      where: { id, companyId },
-      relations: ["skills", "successMetrics", "screeningQuestions"],
-    });
+    const draft = await this.jobPostingRepo.findWizardDraft(id, companyId);
     if (!draft) {
       throw new NotFoundException("Job posting not found");
     }
@@ -115,9 +106,9 @@ export class JobPostingService {
     id: number,
     dto: UpdateJobWizardDto,
   ): Promise<JobPosting> {
-    return this.dataSource.transaction(async (manager) => {
-      const jobRepo = manager.getRepository(JobPosting);
-      const draft = await jobRepo.findOne({ where: { id, companyId } });
+    return this.txRunner.run(async (ctx) => {
+      const jobRepo = this.jobPostingRepo.withTransaction(ctx);
+      const draft = await jobRepo.findByIdForCompany(id, companyId);
       if (!draft) {
         throw new NotFoundException("Job posting not found");
       }
@@ -126,10 +117,10 @@ export class JobPostingService {
       await jobRepo.save(draft);
 
       if (dto.skills !== undefined) {
-        const skillRepo = manager.getRepository(JobSkill);
-        await skillRepo.delete({ jobPostingId: draft.id });
+        const skillRepo = this.jobSkillRepo.withTransaction(ctx);
+        await skillRepo.deleteByJobPosting(draft.id);
         if (dto.skills.length > 0) {
-          await skillRepo.save(
+          await Promise.all(
             dto.skills.map((s, index) =>
               skillRepo.create({
                 jobPostingId: draft.id,
@@ -147,10 +138,10 @@ export class JobPostingService {
       }
 
       if (dto.successMetrics !== undefined) {
-        const metricRepo = manager.getRepository(JobSuccessMetric);
-        await metricRepo.delete({ jobPostingId: draft.id });
+        const metricRepo = this.jobSuccessMetricRepo.withTransaction(ctx);
+        await metricRepo.deleteByJobPosting(draft.id);
         if (dto.successMetrics.length > 0) {
-          await metricRepo.save(
+          await Promise.all(
             dto.successMetrics.map((m, index) =>
               metricRepo.create({
                 jobPostingId: draft.id,
@@ -164,10 +155,10 @@ export class JobPostingService {
       }
 
       if (dto.screeningQuestions !== undefined) {
-        const questionRepo = manager.getRepository(JobScreeningQuestion);
-        await questionRepo.delete({ jobPostingId: draft.id });
+        const questionRepo = this.jobScreeningQuestionRepo.withTransaction(ctx);
+        await questionRepo.deleteByJobPosting(draft.id);
         if (dto.screeningQuestions.length > 0) {
-          await questionRepo.save(
+          await Promise.all(
             dto.screeningQuestions.map((q, index) =>
               questionRepo.create({
                 jobPostingId: draft.id,
@@ -183,10 +174,7 @@ export class JobPostingService {
         }
       }
 
-      const refreshed = await jobRepo.findOne({
-        where: { id: draft.id, companyId },
-        relations: ["skills", "successMetrics", "screeningQuestions"],
-      });
+      const refreshed = await jobRepo.findWizardDraft(draft.id, companyId);
       return refreshed as JobPosting;
     });
   }
@@ -282,7 +270,7 @@ export class JobPostingService {
 
   async create(companyId: number, dto: CreateJobPostingDto): Promise<JobPosting> {
     const referenceNumber = await this.allocateReferenceNumber();
-    const jobPosting = this.jobPostingRepo.create({
+    const jobPosting = await this.jobPostingRepo.create({
       ...dto,
       employmentType: (dto.employmentType ?? null) as EmploymentType | null,
       salaryCurrency: dto.salaryCurrency ?? "ZAR",
@@ -292,25 +280,15 @@ export class JobPostingService {
       companyId,
       status: JobPostingStatus.DRAFT,
     });
-    return this.jobPostingRepo.save(jobPosting);
+    return jobPosting;
   }
 
   async findAll(companyId: number, status?: string): Promise<JobPosting[]> {
-    const query: Record<string, unknown> = { companyId };
-    if (status) {
-      query.status = status;
-    }
-    return this.jobPostingRepo.find({
-      where: query,
-      order: { createdAt: "DESC" },
-    });
+    return this.jobPostingRepo.findByCompany(companyId, status);
   }
 
   async findById(companyId: number, id: number): Promise<JobPosting> {
-    const jobPosting = await this.jobPostingRepo.findOne({
-      where: { id, companyId },
-      relations: ["candidates"],
-    });
+    const jobPosting = await this.jobPostingRepo.findByIdForCompanyWithCandidates(id, companyId);
     if (!jobPosting) {
       throw new NotFoundException("Job posting not found");
     }
@@ -391,21 +369,15 @@ export class JobPostingService {
   }
 
   async activeJobPostingsForCompany(companyId: number): Promise<JobPosting[]> {
-    return this.jobPostingRepo.find({
-      where: { companyId, status: JobPostingStatus.ACTIVE },
-    });
+    return this.jobPostingRepo.activeForCompany(companyId);
   }
 
   async listActiveForFeed(): Promise<PublicJobPostingDto[]> {
-    const jobs = await this.jobPostingRepo.find({
-      where: { status: JobPostingStatus.ACTIVE },
-      order: { activatedAt: "DESC" },
-      take: 1000,
-    });
+    const jobs = await this.jobPostingRepo.activeForFeed();
     if (jobs.length === 0) return [];
 
     const companyIds = Array.from(new Set(jobs.map((j) => j.companyId)));
-    const companies = await this.companyRepo.find({ where: { id: In(companyIds) } });
+    const companies = await this.companyRepo.findByIds(companyIds);
     const companyById = new Map(companies.map((c) => [c.id, c]));
 
     return jobs.map((job) => {
@@ -435,12 +407,10 @@ export class JobPostingService {
 
   async publicByReferenceNumber(referenceNumber: string): Promise<PublicJobPostingDto | null> {
     const normalised = referenceNumber.trim().toUpperCase();
-    const jobPosting = await this.jobPostingRepo.findOne({
-      where: { referenceNumber: normalised, status: JobPostingStatus.ACTIVE },
-    });
+    const jobPosting = await this.jobPostingRepo.findActiveByReferenceNumber(normalised);
     if (!jobPosting) return null;
 
-    const company = await this.companyRepo.findOne({ where: { id: jobPosting.companyId } });
+    const company = await this.companyRepo.findById(jobPosting.companyId);
 
     return {
       referenceNumber: jobPosting.referenceNumber ?? normalised,
@@ -467,9 +437,7 @@ export class JobPostingService {
     const attempts = Array.from({ length: MAX_REF_ATTEMPTS });
     for (const _ of attempts) {
       const candidate = `JOB-${this.randomReferenceCore()}`;
-      const existing = await this.jobPostingRepo.findOne({
-        where: { referenceNumber: candidate },
-      });
+      const existing = await this.jobPostingRepo.findByReferenceNumber(candidate);
       if (!existing) return candidate;
     }
     throw new ConflictException(

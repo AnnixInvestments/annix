@@ -1,14 +1,13 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import {
   type IStorageService,
   STORAGE_SERVICE,
   StorageArea,
 } from "../../storage/storage.interface";
-import { StockControlSupplier } from "../entities/stock-control-supplier.entity";
 import { SupplierDocument, type SupplierDocumentType } from "../entities/supplier-document.entity";
+import { StockControlSupplierRepository } from "../repositories/stock-control-supplier.repository";
+import { SupplierDocumentRepository } from "../repositories/supplier-document.repository";
 
 const VALID_DOC_TYPES: SupplierDocumentType[] = [
   "bee_certificate",
@@ -56,10 +55,8 @@ export class SupplierDocumentService {
   private readonly logger = new Logger(SupplierDocumentService.name);
 
   constructor(
-    @InjectRepository(SupplierDocument)
-    private readonly docRepo: Repository<SupplierDocument>,
-    @InjectRepository(StockControlSupplier)
-    private readonly supplierRepo: Repository<StockControlSupplier>,
+    private readonly docRepo: SupplierDocumentRepository,
+    private readonly supplierRepo: StockControlSupplierRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -70,9 +67,7 @@ export class SupplierDocumentService {
     file: Express.Multer.File,
     user: UserContext,
   ): Promise<SupplierDocument> {
-    const supplier = await this.supplierRepo.findOne({
-      where: { id: dto.supplierId, companyId },
-    });
+    const supplier = await this.supplierRepo.findOneForCompany(dto.supplierId, companyId);
 
     if (!supplier) {
       throw new NotFoundException("Supplier not found");
@@ -91,7 +86,7 @@ export class SupplierDocumentService {
     const subPath = `${StorageArea.STOCK_CONTROL}/supplier-documents/${companyId}/${dto.supplierId}`;
     const storageResult = await this.storageService.upload(file, subPath);
 
-    const doc = this.docRepo.create({
+    const saved = await this.docRepo.create({
       companyId,
       supplierId: dto.supplierId,
       docType: dto.docType as SupplierDocumentType,
@@ -106,8 +101,6 @@ export class SupplierDocumentService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-
-    const saved = await this.docRepo.save(doc);
     this.logger.log(
       `Supplier document uploaded: type=${dto.docType} supplier=${supplier.name} by ${user.name}`,
     );
@@ -119,22 +112,10 @@ export class SupplierDocumentService {
     companyId: number,
     filters: SupplierDocumentFilters = {},
   ): Promise<SupplierDocumentWithUrl[]> {
-    const qb = this.docRepo
-      .createQueryBuilder("doc")
-      .leftJoinAndSelect("doc.supplier", "supplier")
-      .where("doc.companyId = :companyId", { companyId })
-      .orderBy("doc.expiresAt", "ASC", "NULLS LAST")
-      .addOrderBy("doc.createdAt", "DESC");
-
-    if (filters.supplierId) {
-      qb.andWhere("doc.supplierId = :supplierId", { supplierId: filters.supplierId });
-    }
-
-    if (filters.docType) {
-      qb.andWhere("doc.docType = :docType", { docType: filters.docType });
-    }
-
-    const docs = await qb.getMany();
+    const docs = await this.docRepo.findAllFilteredForCompany(companyId, {
+      supplierId: filters.supplierId,
+      docType: filters.docType,
+    });
     const withStatus = docs.map((doc) => this.withExpiryStatus(doc));
 
     if (filters.expiryStatus) {
@@ -145,10 +126,7 @@ export class SupplierDocumentService {
   }
 
   async findById(companyId: number, id: number): Promise<SupplierDocumentWithUrl> {
-    const doc = await this.docRepo.findOne({
-      where: { id, companyId },
-      relations: ["supplier"],
-    });
+    const doc = await this.docRepo.findOneForCompanyWithRelations(id, companyId, ["supplier"]);
 
     if (!doc) {
       throw new NotFoundException("Supplier document not found");
@@ -172,7 +150,7 @@ export class SupplierDocumentService {
         `Failed to delete storage file for supplier document ${id}: ${(err as Error).message}`,
       );
     }
-    await this.docRepo.delete({ id, companyId });
+    await this.docRepo.deleteByIdForCompany(id, companyId);
 
     this.logger.log(`Supplier document deleted: id=${id} type=${doc.docType}`);
   }
@@ -198,7 +176,7 @@ export class SupplierDocumentService {
       ...(updates.notes !== undefined ? { notes: updates.notes?.trim() || null } : {}),
     };
 
-    await this.docRepo.update({ id: existing.id, companyId }, patch);
+    await this.docRepo.updateByIdForCompany(existing.id, companyId, patch);
 
     return this.findById(companyId, id);
   }

@@ -1,8 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { type MineRecord, MineRegistryService } from "../mines/mine-registry.service";
-import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
+import { NixExtraction } from "./entities/nix-extraction.entity";
 import { MineInferenceService } from "./mine-inference.service";
+import { NixExtractionRepository } from "./nix-extraction.repository";
 
 function fakeMine(partial: Partial<MineRecord> = {}): MineRecord {
   return {
@@ -35,20 +35,16 @@ function fakeExtraction(
 describe("MineInferenceService", () => {
   let service: MineInferenceService;
   let mineRegistry: { allMines: jest.Mock };
-  let extractionRepo: { createQueryBuilder: jest.Mock };
-  let qbResult: NixExtraction | null;
+  let extractionRepo: {
+    findLatestCompletedByDocNumber: jest.Mock;
+    findById: jest.Mock;
+  };
 
   beforeEach(async () => {
-    qbResult = null;
-    const qb = {
-      where: jest.fn().mockReturnThis(),
-      andWhere: jest.fn().mockReturnThis(),
-      orderBy: jest.fn().mockReturnThis(),
-      addOrderBy: jest.fn().mockReturnThis(),
-      limit: jest.fn().mockReturnThis(),
-      getOne: jest.fn().mockImplementation(() => Promise.resolve(qbResult)),
+    extractionRepo = {
+      findLatestCompletedByDocNumber: jest.fn().mockResolvedValue(null),
+      findById: jest.fn().mockResolvedValue(null),
     };
-    extractionRepo = { createQueryBuilder: jest.fn().mockReturnValue(qb) };
     mineRegistry = { allMines: jest.fn().mockResolvedValue([]) };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -56,7 +52,7 @@ describe("MineInferenceService", () => {
         MineInferenceService,
         { provide: MineRegistryService, useValue: mineRegistry },
         {
-          provide: getRepositoryToken(NixExtraction),
+          provide: NixExtractionRepository,
           useValue: extractionRepo,
         },
       ],
@@ -247,54 +243,43 @@ describe("MineInferenceService", () => {
     it("returns null when documentNumber is empty", async () => {
       const result = await service.findExistingForMine(1, "");
       expect(result).toBeNull();
-      expect(extractionRepo.createQueryBuilder).not.toHaveBeenCalled();
+      expect(extractionRepo.findLatestCompletedByDocNumber).not.toHaveBeenCalled();
     });
 
     it("returns null when no completed extraction matches", async () => {
-      qbResult = null;
+      extractionRepo.findLatestCompletedByDocNumber.mockResolvedValue(null);
       const result = await service.findExistingForMine(1, "LHU-0000-EP-2701-012-00");
       expect(result).toBeNull();
     });
 
     it("returns the matching extraction when one is found", async () => {
-      qbResult = {
+      extractionRepo.findLatestCompletedByDocNumber.mockResolvedValue({
         id: 99,
         documentRevision: "03",
         mineId: 7,
-      } as unknown as NixExtraction;
+      } as unknown as NixExtraction);
       const result = await service.findExistingForMine(7, "LHU-0000-EP-2701-012-00");
       expect(result).toEqual({ extractionId: 99, revision: "03", mineId: 7 });
     });
 
-    it("scopes the query to mineId when one is provided", async () => {
-      qbResult = { id: 1, documentRevision: null, mineId: 5 } as unknown as NixExtraction;
+    it("scopes the lookup to mineId when one is provided", async () => {
+      extractionRepo.findLatestCompletedByDocNumber.mockResolvedValue({
+        id: 1,
+        documentRevision: null,
+        mineId: 5,
+      } as unknown as NixExtraction);
       await service.findExistingForMine(5, "DOC-001");
-      const qb = extractionRepo.createQueryBuilder.mock.results[0].value;
-      const mineFilter = qb.andWhere.mock.calls.find((c: unknown[]) =>
-        String(c[0]).includes("mineId"),
-      );
-      expect(mineFilter).toBeDefined();
+      expect(extractionRepo.findLatestCompletedByDocNumber).toHaveBeenCalledWith("DOC-001", 5);
     });
 
-    it("does NOT scope to mine when mineId is null (global lookup)", async () => {
-      qbResult = { id: 1, documentRevision: null, mineId: 5 } as unknown as NixExtraction;
+    it("does a global lookup when mineId is null", async () => {
+      extractionRepo.findLatestCompletedByDocNumber.mockResolvedValue({
+        id: 1,
+        documentRevision: null,
+        mineId: 5,
+      } as unknown as NixExtraction);
       await service.findExistingForMine(null, "DOC-001");
-      const qb = extractionRepo.createQueryBuilder.mock.results[0].value;
-      const mineFilter = qb.andWhere.mock.calls.find((c: unknown[]) =>
-        String(c[0]).includes("mineId"),
-      );
-      expect(mineFilter).toBeUndefined();
-    });
-
-    it("filters to completed extractions only", async () => {
-      qbResult = null;
-      await service.findExistingForMine(null, "DOC-001");
-      const qb = extractionRepo.createQueryBuilder.mock.results[0].value;
-      const statusCall = qb.andWhere.mock.calls.find(
-        (c: unknown[]) =>
-          (c[1] as { status?: ExtractionStatus })?.status === ExtractionStatus.COMPLETED,
-      );
-      expect(statusCall).toBeDefined();
+      expect(extractionRepo.findLatestCompletedByDocNumber).toHaveBeenCalledWith("DOC-001", null);
     });
   });
 

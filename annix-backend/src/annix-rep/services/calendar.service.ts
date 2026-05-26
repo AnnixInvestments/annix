@@ -1,9 +1,9 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
+import { CalendarConnectionRepository } from "../calendar-connection.repository";
+import { CalendarEventRepository } from "../calendar-event.repository";
 import {
   CalendarConnectionResponseDto,
   CalendarEventResponseDto,
@@ -40,10 +40,8 @@ export class CalendarService {
   private readonly encryptionKey: string;
 
   constructor(
-    @InjectRepository(CalendarConnection)
-    private readonly connectionRepo: Repository<CalendarConnection>,
-    @InjectRepository(CalendarEvent)
-    private readonly eventRepo: Repository<CalendarEvent>,
+    private readonly connectionRepo: CalendarConnectionRepository,
+    private readonly eventRepo: CalendarEventRepository,
     private readonly configService: ConfigService,
     private readonly googleProvider: GoogleCalendarProvider,
     private readonly outlookProvider: OutlookCalendarProvider,
@@ -133,9 +131,11 @@ export class CalendarService {
       accountName = userInfo.name;
     }
 
-    const existingConnection = await this.connectionRepo.findOne({
-      where: { userId, provider: dto.provider, accountEmail },
-    });
+    const existingConnection = await this.connectionRepo.findByUserProviderEmail(
+      userId,
+      dto.provider,
+      accountEmail,
+    );
 
     if (existingConnection) {
       existingConnection.accessTokenEncrypted = this.encryptToken(accessToken);
@@ -152,7 +152,7 @@ export class CalendarService {
       return this.toConnectionResponse(updated);
     }
 
-    const connection = this.connectionRepo.create({
+    const saved = await this.connectionRepo.create({
       userId,
       provider: dto.provider,
       accountEmail,
@@ -163,26 +163,19 @@ export class CalendarService {
       caldavUrl,
       syncStatus: CalendarSyncStatus.ACTIVE,
     });
-
-    const saved = await this.connectionRepo.save(connection);
     this.logger.log(`Calendar connected: ${saved.id} (${dto.provider}) for user ${userId}`);
 
     return this.toConnectionResponse(saved);
   }
 
   async listConnections(userId: number): Promise<CalendarConnectionResponseDto[]> {
-    const connections = await this.connectionRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-    });
+    const connections = await this.connectionRepo.findByUser(userId);
 
     return connections.map((c) => this.toConnectionResponse(c));
   }
 
   async connection(userId: number, connectionId: number): Promise<CalendarConnectionResponseDto> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Calendar connection not found");
@@ -196,9 +189,7 @@ export class CalendarService {
     connectionId: number,
     dto: UpdateCalendarConnectionDto,
   ): Promise<CalendarConnectionResponseDto> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Calendar connection not found");
@@ -209,7 +200,7 @@ export class CalendarService {
     }
 
     if (dto.isPrimary != null && dto.isPrimary) {
-      await this.connectionRepo.update({ userId }, { isPrimary: false });
+      await this.connectionRepo.clearPrimaryForUser(userId);
       connection.isPrimary = true;
     }
 
@@ -218,15 +209,13 @@ export class CalendarService {
   }
 
   async disconnectCalendar(userId: number, connectionId: number): Promise<void> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Calendar connection not found");
     }
 
-    await this.eventRepo.delete({ connectionId });
+    await this.eventRepo.deleteByConnection(connectionId);
     await this.connectionRepo.remove(connection);
 
     this.logger.log(`Calendar disconnected: ${connectionId} for user ${userId}`);
@@ -236,9 +225,7 @@ export class CalendarService {
     userId: number,
     connectionId: number,
   ): Promise<CalendarListResponseDto[]> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Calendar connection not found");
@@ -262,9 +249,7 @@ export class CalendarService {
     connectionId: number,
     dto?: SyncCalendarDto,
   ): Promise<SyncResult> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Calendar connection not found");
@@ -308,10 +293,7 @@ export class CalendarService {
 
     result.deleted = await syncResult.deletedEventIds.reduce(async (accPromise, deletedId) => {
       const acc = await accPromise;
-      await this.eventRepo.delete({
-        connectionId: connection.id,
-        externalId: deletedId,
-      });
+      await this.eventRepo.deleteByConnectionAndExternalId(connection.id, deletedId);
       return acc + 1;
     }, Promise.resolve(0));
 
@@ -340,9 +322,7 @@ export class CalendarService {
     startDate: Date,
     endDate: Date,
   ): Promise<CalendarEventResponseDto[]> {
-    const connections = await this.connectionRepo.find({
-      where: { userId, syncStatus: CalendarSyncStatus.ACTIVE },
-    });
+    const connections = await this.connectionRepo.findActiveByUser(userId);
 
     const connectionIds = connections.map((c) => c.id);
 
@@ -350,13 +330,11 @@ export class CalendarService {
       return [];
     }
 
-    const events = await this.eventRepo
-      .createQueryBuilder("event")
-      .where("event.connection_id IN (:...connectionIds)", { connectionIds })
-      .andWhere("event.start_time >= :startDate", { startDate })
-      .andWhere("event.end_time <= :endDate", { endDate })
-      .orderBy("event.start_time", "ASC")
-      .getMany();
+    const events = await this.eventRepo.findInRangeForConnections(
+      connectionIds,
+      startDate,
+      endDate,
+    );
 
     return events.map((e) => this.toEventResponse(e));
   }
@@ -421,12 +399,10 @@ export class CalendarService {
     connection: CalendarConnection,
     data: CalendarEventData,
   ): Promise<CalendarEvent> {
-    let event = await this.eventRepo.findOne({
-      where: {
-        connectionId: connection.id,
-        externalId: data.externalId,
-      },
-    });
+    const event = await this.eventRepo.findByConnectionAndExternalId(
+      connection.id,
+      data.externalId,
+    );
 
     const status = this.mapEventStatus(data.status);
 
@@ -447,31 +423,30 @@ export class CalendarService {
       event.recurrenceRule = data.recurrenceRule;
       event.rawData = data.rawData;
       event.etag = data.etag;
-    } else {
-      event = this.eventRepo.create({
-        connectionId: connection.id,
-        externalId: data.externalId,
-        calendarId: data.calendarId,
-        provider: connection.provider,
-        title: data.title,
-        description: data.description,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        isAllDay: data.isAllDay,
-        timezone: data.timezone,
-        location: data.location,
-        status,
-        attendees: data.attendees,
-        organizerEmail: data.organizerEmail,
-        meetingUrl: data.meetingUrl,
-        isRecurring: data.isRecurring,
-        recurrenceRule: data.recurrenceRule,
-        rawData: data.rawData,
-        etag: data.etag,
-      });
+      return this.eventRepo.save(event);
     }
 
-    return this.eventRepo.save(event);
+    return this.eventRepo.create({
+      connectionId: connection.id,
+      externalId: data.externalId,
+      calendarId: data.calendarId,
+      provider: connection.provider,
+      title: data.title,
+      description: data.description,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      isAllDay: data.isAllDay,
+      timezone: data.timezone,
+      location: data.location,
+      status,
+      attendees: data.attendees,
+      organizerEmail: data.organizerEmail,
+      meetingUrl: data.meetingUrl,
+      isRecurring: data.isRecurring,
+      recurrenceRule: data.recurrenceRule,
+      rawData: data.rawData,
+      etag: data.etag,
+    });
   }
 
   private mapEventStatus(status: "confirmed" | "tentative" | "cancelled"): CalendarEventStatus {

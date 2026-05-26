@@ -1,13 +1,13 @@
 import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
-import { RubberDimensionOverride } from "../entities/rubber-dimension-override.entity";
-import { StockItem } from "../entities/stock-item.entity";
-import { StockMovement } from "../entities/stock-movement.entity";
+
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import { StockControlRoleGuard } from "../guards/stock-control-role.guard";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
+import { RubberDimensionOverrideRepository } from "../repositories/rubber-dimension-override.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { CpoService } from "../services/cpo.service";
 import { DrawingExtractionService } from "../services/drawing-extraction.service";
@@ -93,19 +93,21 @@ describe("JobCardsController", () => {
     };
 
     stockItemRepo = {
-      find: jest.fn(),
-      findOne: jest.fn(),
+      findRubberInStockForCompanyOrdered: jest.fn().mockResolvedValue([]),
+      findOneWastageForCompany: jest.fn(),
       create: jest.fn(),
-      save: jest.fn(),
-      update: jest.fn(),
+      incrementQuantityById: jest.fn().mockResolvedValue(undefined),
     };
 
     dimensionOverrideRepo = {
-      createQueryBuilder: jest.fn(),
+      findBestSuggestions: jest.fn(),
+      findMatchingOverride: jest.fn(),
+      updateById: jest.fn(),
+      create: jest.fn(),
     };
 
     stockMovementRepo = {
-      create: jest.fn(),
+      build: jest.fn(),
       save: jest.fn(),
     };
 
@@ -146,12 +148,16 @@ describe("JobCardsController", () => {
           provide: WorkflowNotificationService,
           useValue: { notifyApprovalRequired: jest.fn() },
         },
-        { provide: getRepositoryToken(StockItem), useValue: stockItemRepo },
-        { provide: getRepositoryToken(RubberDimensionOverride), useValue: dimensionOverrideRepo },
-        { provide: getRepositoryToken(StockMovement), useValue: stockMovementRepo },
+        { provide: StockItemRepository, useValue: stockItemRepo },
+        { provide: RubberDimensionOverrideRepository, useValue: dimensionOverrideRepo },
+        { provide: StockMovementRepository, useValue: stockMovementRepo },
         {
-          provide: getRepositoryToken(JobCardLineItem),
-          useValue: { findOne: jest.fn(), create: jest.fn(), save: jest.fn(), remove: jest.fn() },
+          provide: JobCardLineItemRepository,
+          useValue: {
+            findOneForJobCard: jest.fn(),
+            create: jest.fn(),
+            remove: jest.fn(),
+          },
         },
         {
           provide: "STORAGE_SERVICE",
@@ -644,14 +650,7 @@ describe("JobCardsController", () => {
 
   describe("GET /rubber-dimension-suggestions", () => {
     it("should query dimension overrides with filters", async () => {
-      const mockQb = {
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        limit: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([{ id: 1 }]),
-      };
-      dimensionOverrideRepo.createQueryBuilder.mockReturnValue(mockQb);
+      dimensionOverrideRepo.findBestSuggestions.mockResolvedValue([{ id: 1 }]);
 
       const result = await controller.rubberDimensionSuggestions(mockReq(), {
         itemType: "straight",
@@ -661,8 +660,7 @@ describe("JobCardsController", () => {
         flangeConfig: "FF",
       });
 
-      expect(dimensionOverrideRepo.createQueryBuilder).toHaveBeenCalledWith("o");
-      expect(mockQb.getMany).toHaveBeenCalled();
+      expect(dimensionOverrideRepo.findBestSuggestions).toHaveBeenCalled();
       expect(result).toEqual([{ id: 1 }]);
     });
   });
@@ -678,20 +676,18 @@ describe("JobCardsController", () => {
       };
 
       const wastageItem = { id: 50, quantity: 5 };
-      stockItemRepo.findOne.mockResolvedValue(wastageItem);
-      stockItemRepo.update.mockResolvedValue(undefined);
+      stockItemRepo.findOneWastageForCompany.mockResolvedValue(wastageItem);
       const movementEntity = { id: 1 };
-      stockMovementRepo.create.mockReturnValue(movementEntity);
+      stockMovementRepo.build.mockReturnValue(movementEntity);
       stockMovementRepo.save.mockResolvedValue(movementEntity);
       const offcutItem = { id: 99 };
-      stockItemRepo.create.mockReturnValue(offcutItem);
-      stockItemRepo.save.mockResolvedValue(offcutItem);
+      stockItemRepo.create.mockResolvedValue(offcutItem);
 
       const result = await controller.markOffcutAsWastage(mockReq(), 5, dto as any);
 
-      expect(stockItemRepo.findOne).toHaveBeenCalled();
-      expect(stockItemRepo.update).toHaveBeenCalled();
-      expect(stockMovementRepo.create).toHaveBeenCalled();
+      expect(stockItemRepo.findOneWastageForCompany).toHaveBeenCalled();
+      expect(stockItemRepo.incrementQuantityById).toHaveBeenCalled();
+      expect(stockMovementRepo.build).toHaveBeenCalled();
       expect(stockMovementRepo.save).toHaveBeenCalled();
       expect(result.weightKg).toBeCloseTo(0.72);
       expect(result.stockItemId).toBe(50);
@@ -707,13 +703,11 @@ describe("JobCardsController", () => {
         color: "Red",
       };
 
-      stockItemRepo.findOne.mockResolvedValue(null);
+      stockItemRepo.findOneWastageForCompany.mockResolvedValue(null);
       const newItem = { id: 60, quantity: 0 };
       const offcutItem = { id: 101 };
-      stockItemRepo.create.mockReturnValueOnce(newItem).mockReturnValueOnce(offcutItem);
-      stockItemRepo.save.mockResolvedValueOnce(newItem).mockResolvedValueOnce(offcutItem);
-      stockItemRepo.update.mockResolvedValue(undefined);
-      stockMovementRepo.create.mockReturnValue({ id: 1 });
+      stockItemRepo.create.mockResolvedValueOnce(newItem).mockResolvedValueOnce(offcutItem);
+      stockMovementRepo.build.mockReturnValue({ id: 1 });
       stockMovementRepo.save.mockResolvedValue({ id: 1 });
 
       const result = await controller.markOffcutAsWastage(mockReq(), 5, dto as any);

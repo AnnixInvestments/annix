@@ -1,6 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
+import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository";
 import { BendDimensionController } from "./bend-dimension.controller";
 import { BendDimensionService } from "./bend-dimension.service";
 
@@ -9,7 +8,7 @@ describe("BendDimensionController", () => {
   let service: BendDimensionService;
 
   const mockLookupRepo = {
-    findOne: jest.fn(),
+    findOneWhere: jest.fn(),
   };
 
   const mockBendDimensionService = {
@@ -21,7 +20,7 @@ describe("BendDimensionController", () => {
       controllers: [BendDimensionController],
       providers: [
         { provide: BendDimensionService, useValue: mockBendDimensionService },
-        { provide: getRepositoryToken(NbNpsLookup), useValue: mockLookupRepo },
+        { provide: NbNpsLookupRepository, useValue: mockLookupRepo },
       ],
     }).compile();
 

@@ -1,15 +1,14 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { FlangeWeightTestCase, testScenarios } from "../test/flange-data-test-scenarios";
-import { RetainingRingWeight } from "./entities/retaining-ring-weight.entity";
+import { RetainingRingWeightRepository } from "./retaining-ring-weight.repository";
 import { RetainingRingWeightService } from "./retaining-ring-weight.service";
 
 describe("RetainingRingWeightService", () => {
   let service: RetainingRingWeightService;
 
   const mockRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAllOrdered: jest.fn(),
+    findByNominalBore: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -17,7 +16,7 @@ describe("RetainingRingWeightService", () => {
       providers: [
         RetainingRingWeightService,
         {
-          provide: getRepositoryToken(RetainingRingWeight),
+          provide: RetainingRingWeightRepository,
           useValue: mockRepository,
         },
       ],
@@ -37,21 +36,19 @@ describe("RetainingRingWeightService", () => {
       const mockData = [
         { id: 1, nominal_bore_mm: 50, weight_kg: 1.5 },
         { id: 2, nominal_bore_mm: 100, weight_kg: 3.2 },
-      ] as RetainingRingWeight[];
-      mockRepository.find.mockResolvedValue(mockData);
+      ] as any[];
+      mockRepository.findAllOrdered.mockResolvedValue(mockData);
 
       const result = await service.findAll();
 
       expect(result).toEqual(mockData);
-      expect(mockRepository.find).toHaveBeenCalledWith({
-        order: { nominal_bore_mm: "ASC" },
-      });
+      expect(mockRepository.findAllOrdered).toHaveBeenCalled();
     });
   });
 
   describe("retainingRingWeight", () => {
     it("should return weight when found in database", async () => {
-      mockRepository.findOne.mockResolvedValue({
+      mockRepository.findByNominalBore.mockResolvedValue({
         nominal_bore_mm: 100,
         weight_kg: 2.8,
       });
@@ -66,7 +63,7 @@ describe("RetainingRingWeightService", () => {
     });
 
     it("should return estimated weight when not found", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       const result = await service.retainingRingWeight(150);
 
@@ -77,7 +74,7 @@ describe("RetainingRingWeightService", () => {
     });
 
     it("should estimate based on steel density formula", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       const result50 = await service.retainingRingWeight(50);
       const result100 = await service.retainingRingWeight(100);
@@ -88,13 +85,11 @@ describe("RetainingRingWeightService", () => {
     });
 
     it("should query repository with correct NB", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       await service.retainingRingWeight(80);
 
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { nominal_bore_mm: 80 },
-      });
+      expect(mockRepository.findByNominalBore).toHaveBeenCalledWith(80);
     });
   });
 
@@ -106,7 +101,7 @@ describe("RetainingRingWeightService", () => {
     retainingRingScenarios.forEach((scenario: FlangeWeightTestCase) => {
       it(`should handle ${scenario.description}`, async () => {
         const input = scenario.input as { nb: number };
-        mockRepository.findOne.mockResolvedValue({
+        mockRepository.findByNominalBore.mockResolvedValue({
           nominal_bore_mm: input.nb,
           weight_kg: scenario.expectedValue,
         });
@@ -122,7 +117,7 @@ describe("RetainingRingWeightService", () => {
 
   describe("edge cases", () => {
     it("should handle very small NB values", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       const result = await service.retainingRingWeight(25);
 
@@ -131,7 +126,7 @@ describe("RetainingRingWeightService", () => {
     });
 
     it("should handle very large NB values", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       const result = await service.retainingRingWeight(1000);
 

@@ -1,8 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
 import { IsNotEmpty, IsString } from "class-validator";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import {
@@ -14,6 +12,8 @@ import {
   PlatformMeetingRecord,
   PlatformRecordingStatus,
 } from "../entities/platform-meeting-record.entity";
+import { MeetingPlatformConnectionRepository } from "../meeting-platform-connection.repository";
+import { PlatformMeetingRecordRepository } from "../platform-meeting-record.repository";
 import { GoogleMeetProvider } from "../providers/google-meet.provider";
 import type {
   IMeetingPlatformProvider,
@@ -82,10 +82,8 @@ export class MeetingPlatformService {
   private readonly encryptionKey: string;
 
   constructor(
-    @InjectRepository(MeetingPlatformConnection)
-    private readonly connectionRepo: Repository<MeetingPlatformConnection>,
-    @InjectRepository(PlatformMeetingRecord)
-    private readonly recordRepo: Repository<PlatformMeetingRecord>,
+    private readonly connectionRepo: MeetingPlatformConnectionRepository,
+    private readonly recordRepo: PlatformMeetingRecordRepository,
     private readonly configService: ConfigService,
     private readonly zoomProvider: ZoomMeetingProvider,
     private readonly teamsProvider: TeamsMeetingProvider,
@@ -128,9 +126,10 @@ export class MeetingPlatformService {
       ? now().plus({ seconds: tokens.expiresIn }).toJSDate()
       : null;
 
-    const existingConnection = await this.connectionRepo.findOne({
-      where: { userId, platform: dto.platform },
-    });
+    const existingConnection = await this.connectionRepo.findByUserAndPlatform(
+      userId,
+      dto.platform,
+    );
 
     if (existingConnection) {
       existingConnection.accountEmail = userInfo.email;
@@ -151,7 +150,7 @@ export class MeetingPlatformService {
       return this.toConnectionResponse(updated);
     }
 
-    const connection = this.connectionRepo.create({
+    const saved = await this.connectionRepo.create({
       userId,
       platform: dto.platform,
       accountEmail: userInfo.email,
@@ -163,26 +162,19 @@ export class MeetingPlatformService {
       tokenScope: tokens.scope,
       connectionStatus: PlatformConnectionStatus.ACTIVE,
     });
-
-    const saved = await this.connectionRepo.save(connection);
     this.logger.log(`Platform connected: ${saved.id} (${dto.platform}) for user ${userId}`);
 
     return this.toConnectionResponse(saved);
   }
 
   async listConnections(userId: number): Promise<PlatformConnectionResponseDto[]> {
-    const connections = await this.connectionRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-    });
+    const connections = await this.connectionRepo.findByUser(userId);
 
     return connections.map((c) => this.toConnectionResponse(c));
   }
 
   async connection(userId: number, connectionId: number): Promise<PlatformConnectionResponseDto> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Platform connection not found");
@@ -195,9 +187,7 @@ export class MeetingPlatformService {
     userId: number,
     platform: MeetingPlatform,
   ): Promise<MeetingPlatformConnection | null> {
-    return this.connectionRepo.findOne({
-      where: { userId, platform },
-    });
+    return this.connectionRepo.findByUserAndPlatform(userId, platform);
   }
 
   async updateConnection(
@@ -205,9 +195,7 @@ export class MeetingPlatformService {
     connectionId: number,
     dto: UpdatePlatformConnectionDto,
   ): Promise<PlatformConnectionResponseDto> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Platform connection not found");
@@ -230,15 +218,13 @@ export class MeetingPlatformService {
   }
 
   async disconnectPlatform(userId: number, connectionId: number): Promise<void> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Platform connection not found");
     }
 
-    await this.recordRepo.delete({ connectionId });
+    await this.recordRepo.deleteByConnection(connectionId);
     await this.connectionRepo.remove(connection);
 
     this.logger.log(`Platform disconnected: ${connectionId} for user ${userId}`);
@@ -298,9 +284,7 @@ export class MeetingPlatformService {
     connectionId: number,
     daysBack: number = 7,
   ): Promise<{ synced: number; recordings: number }> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Platform connection not found");
@@ -325,12 +309,10 @@ export class MeetingPlatformService {
       async (accPromise, meeting) => {
         const acc = await accPromise;
 
-        const existing = await this.recordRepo.findOne({
-          where: {
-            connectionId: connection.id,
-            platformMeetingId: meeting.platformMeetingId,
-          },
-        });
+        const existing = await this.recordRepo.findByConnectionAndPlatformMeeting(
+          connection.id,
+          meeting.platformMeetingId,
+        );
 
         if (existing) {
           existing.title = meeting.title;
@@ -353,7 +335,7 @@ export class MeetingPlatformService {
 
           return { synced: acc.synced + 1, recordings: acc.recordings + newRecordings };
         } else {
-          const record = this.recordRepo.create({
+          await this.recordRepo.create({
             connectionId: connection.id,
             platformMeetingId: meeting.platformMeetingId,
             title: meeting.title,
@@ -371,8 +353,6 @@ export class MeetingPlatformService {
             rawMeetingData: meeting.rawData,
             fetchedAt: now().toJSDate(),
           });
-
-          await this.recordRepo.save(record);
 
           return {
             synced: acc.synced + 1,
@@ -401,28 +381,19 @@ export class MeetingPlatformService {
     connectionId: number,
     limit: number = 50,
   ): Promise<PlatformMeetingRecordResponseDto[]> {
-    const connection = await this.connectionRepo.findOne({
-      where: { id: connectionId, userId },
-    });
+    const connection = await this.connectionRepo.findByIdAndUser(connectionId, userId);
 
     if (!connection) {
       throw new NotFoundException("Platform connection not found");
     }
 
-    const records = await this.recordRepo.find({
-      where: { connectionId },
-      order: { startTime: "DESC" },
-      take: limit,
-    });
+    const records = await this.recordRepo.findByConnection(connectionId, limit);
 
     return records.map((r) => this.toRecordResponse(r));
   }
 
   async meetingRecord(userId: number, recordId: number): Promise<PlatformMeetingRecordResponseDto> {
-    const record = await this.recordRepo.findOne({
-      where: { id: recordId },
-      relations: ["connection"],
-    });
+    const record = await this.recordRepo.findWithConnection(recordId);
 
     if (!record || record.connection.userId !== userId) {
       throw new NotFoundException("Meeting record not found");
@@ -432,32 +403,21 @@ export class MeetingPlatformService {
   }
 
   async recordsWithPendingRecordings(): Promise<PlatformMeetingRecord[]> {
-    return this.recordRepo.find({
-      where: { recordingStatus: PlatformRecordingStatus.PENDING },
-      relations: ["connection"],
-    });
+    return this.recordRepo.findPendingWithConnection();
   }
 
   async activeConnections(): Promise<MeetingPlatformConnection[]> {
-    return this.connectionRepo.find({
-      where: { connectionStatus: PlatformConnectionStatus.ACTIVE },
-    });
+    return this.connectionRepo.findActive();
   }
 
   async connectionsNeedingTokenRefresh(): Promise<MeetingPlatformConnection[]> {
     const expiresThreshold = now().plus({ hours: 1 }).toJSDate();
 
-    return this.connectionRepo
-      .createQueryBuilder("c")
-      .where("c.connection_status = :status", { status: PlatformConnectionStatus.ACTIVE })
-      .andWhere("c.token_expires_at IS NOT NULL")
-      .andWhere("c.token_expires_at < :threshold", { threshold: expiresThreshold })
-      .andWhere("c.refresh_token_encrypted IS NOT NULL")
-      .getMany();
+    return this.connectionRepo.findNeedingTokenRefresh(expiresThreshold);
   }
 
   async markConnectionError(connectionId: number, error: string): Promise<void> {
-    await this.connectionRepo.update(connectionId, {
+    await this.connectionRepo.markError(connectionId, {
       connectionStatus: PlatformConnectionStatus.ERROR,
       lastError: error,
       lastErrorAt: now().toJSDate(),

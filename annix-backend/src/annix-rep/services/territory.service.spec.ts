@@ -1,15 +1,15 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { Prospect } from "../entities/prospect.entity";
 import { Territory, TerritoryBounds } from "../entities/territory.entity";
+import { ProspectRepository } from "../prospect.repository";
+import { TerritoryRepository } from "../territory.repository";
 import { TerritoryService } from "./territory.service";
 
 describe("TerritoryService", () => {
   let service: TerritoryService;
-  let mockTerritoryRepo: Partial<Repository<Territory>>;
-  let mockProspectRepo: Partial<Repository<Prospect>>;
+  let mockTerritoryRepo: Partial<TerritoryRepository>;
+  let mockProspectRepo: Partial<ProspectRepository>;
 
   const bounds: TerritoryBounds = {
     north: -25.0,
@@ -83,25 +83,27 @@ describe("TerritoryService", () => {
     mockTerritoryRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      find: jest.fn(),
-      findOne: jest.fn(),
+      findByOrganization: jest.fn(),
+      findByIdWithRelations: jest.fn(),
+      findActiveByOrganization: jest.fn(),
+      findActiveByAssignedUser: jest.fn(),
       remove: jest.fn(),
     };
 
     mockProspectRepo = {
-      count: jest.fn(),
-      find: jest.fn(),
+      countByTerritory: jest.fn(),
+      findByTerritoryWithOwner: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TerritoryService,
         {
-          provide: getRepositoryToken(Territory),
+          provide: TerritoryRepository,
           useValue: mockTerritoryRepo,
         },
         {
-          provide: getRepositoryToken(Prospect),
+          provide: ProspectRepository,
           useValue: mockProspectRepo,
         },
       ],
@@ -117,8 +119,7 @@ describe("TerritoryService", () => {
 
   describe("create", () => {
     it("should create and save a territory", async () => {
-      (mockTerritoryRepo.create as jest.Mock).mockReturnValue(baseTerritory);
-      (mockTerritoryRepo.save as jest.Mock).mockResolvedValue(baseTerritory);
+      (mockTerritoryRepo.create as jest.Mock).mockResolvedValue(baseTerritory);
 
       const result = await service.create(10, {
         name: "Gauteng Region",
@@ -141,8 +142,7 @@ describe("TerritoryService", () => {
     });
 
     it("should default optional fields to null", async () => {
-      (mockTerritoryRepo.create as jest.Mock).mockReturnValue(baseTerritory);
-      (mockTerritoryRepo.save as jest.Mock).mockResolvedValue(baseTerritory);
+      (mockTerritoryRepo.create as jest.Mock).mockResolvedValue(baseTerritory);
 
       await service.create(10, { name: "Minimal Territory" });
 
@@ -160,22 +160,18 @@ describe("TerritoryService", () => {
 
   describe("findAll", () => {
     it("should return territories with prospect counts", async () => {
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([baseTerritory]);
-      (mockProspectRepo.count as jest.Mock).mockResolvedValue(5);
+      (mockTerritoryRepo.findByOrganization as jest.Mock).mockResolvedValue([baseTerritory]);
+      (mockProspectRepo.countByTerritory as jest.Mock).mockResolvedValue(5);
 
       const result = await service.findAll(10);
 
       expect(result).toHaveLength(1);
       expect(result[0].prospectCount).toBe(5);
-      expect(mockTerritoryRepo.find).toHaveBeenCalledWith({
-        where: { organizationId: 10 },
-        relations: ["assignedTo"],
-        order: { name: "ASC" },
-      });
+      expect(mockTerritoryRepo.findByOrganization).toHaveBeenCalledWith(10);
     });
 
     it("should return empty array for org with no territories", async () => {
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockTerritoryRepo.findByOrganization as jest.Mock).mockResolvedValue([]);
 
       const result = await service.findAll(10);
 
@@ -185,19 +181,16 @@ describe("TerritoryService", () => {
 
   describe("findOne", () => {
     it("should return territory when found", async () => {
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(baseTerritory);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(baseTerritory);
 
       const result = await service.findOne(1);
 
       expect(result).toEqual(baseTerritory);
-      expect(mockTerritoryRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ["assignedTo", "organization"],
-      });
+      expect(mockTerritoryRepo.findByIdWithRelations).toHaveBeenCalledWith(1);
     });
 
     it("should return null when not found", async () => {
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(null);
 
       const result = await service.findOne(999);
 
@@ -208,7 +201,7 @@ describe("TerritoryService", () => {
   describe("update", () => {
     it("should update territory fields", async () => {
       const territory = { ...baseTerritory };
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(territory);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(territory);
       (mockTerritoryRepo.save as jest.Mock).mockImplementation((t) => Promise.resolve(t));
 
       const result = await service.update(1, { name: "Updated Region" });
@@ -217,14 +210,14 @@ describe("TerritoryService", () => {
     });
 
     it("should throw NotFoundException when territory not found", async () => {
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(null);
 
       await expect(service.update(999, { name: "X" })).rejects.toThrow(NotFoundException);
     });
 
     it("should only update provided fields", async () => {
       const territory = { ...baseTerritory };
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(territory);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(territory);
       (mockTerritoryRepo.save as jest.Mock).mockImplementation((t) => Promise.resolve(t));
 
       await service.update(1, { description: "New desc" });
@@ -237,7 +230,7 @@ describe("TerritoryService", () => {
     it("should update all fields when all provided", async () => {
       const territory = { ...baseTerritory };
       const newBounds: TerritoryBounds = { north: -24.0, south: -28.0, east: 30.0, west: 26.0 };
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(territory);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(territory);
       (mockTerritoryRepo.save as jest.Mock).mockImplementation((t) => Promise.resolve(t));
 
       await service.update(1, {
@@ -260,7 +253,7 @@ describe("TerritoryService", () => {
 
   describe("delete", () => {
     it("should remove the territory", async () => {
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(baseTerritory);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(baseTerritory);
       (mockTerritoryRepo.remove as jest.Mock).mockResolvedValue(baseTerritory);
 
       await service.delete(1);
@@ -269,7 +262,7 @@ describe("TerritoryService", () => {
     });
 
     it("should throw NotFoundException when territory not found", async () => {
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(null);
 
       await expect(service.delete(999)).rejects.toThrow(NotFoundException);
     });
@@ -278,7 +271,7 @@ describe("TerritoryService", () => {
   describe("assign", () => {
     it("should assign territory to a user", async () => {
       const territory = { ...baseTerritory };
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(territory);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(territory);
       (mockTerritoryRepo.save as jest.Mock).mockImplementation((t) => Promise.resolve(t));
 
       const result = await service.assign(1, 200);
@@ -288,7 +281,7 @@ describe("TerritoryService", () => {
 
     it("should unassign territory when userId is null", async () => {
       const territory = { ...baseTerritory, assignedToId: 200 };
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(territory);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(territory);
       (mockTerritoryRepo.save as jest.Mock).mockImplementation((t) => Promise.resolve(t));
 
       const result = await service.assign(1, null);
@@ -297,7 +290,7 @@ describe("TerritoryService", () => {
     });
 
     it("should throw NotFoundException when territory not found", async () => {
-      (mockTerritoryRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockTerritoryRepo.findByIdWithRelations as jest.Mock).mockResolvedValue(null);
 
       await expect(service.assign(999, 200)).rejects.toThrow(NotFoundException);
     });
@@ -305,20 +298,16 @@ describe("TerritoryService", () => {
 
   describe("prospectsInTerritory", () => {
     it("should return prospects for a territory", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([baseProspect]);
+      (mockProspectRepo.findByTerritoryWithOwner as jest.Mock).mockResolvedValue([baseProspect]);
 
       const result = await service.prospectsInTerritory(1);
 
       expect(result).toEqual([baseProspect]);
-      expect(mockProspectRepo.find).toHaveBeenCalledWith({
-        where: { territoryId: 1 },
-        relations: ["owner"],
-        order: { createdAt: "DESC" },
-      });
+      expect(mockProspectRepo.findByTerritoryWithOwner).toHaveBeenCalledWith(1);
     });
 
     it("should return empty array when no prospects", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByTerritoryWithOwner as jest.Mock).mockResolvedValue([]);
 
       const result = await service.prospectsInTerritory(999);
 
@@ -328,7 +317,7 @@ describe("TerritoryService", () => {
 
   describe("findTerritoryForLocation", () => {
     it("should return territory when location is within bounds", async () => {
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([baseTerritory]);
+      (mockTerritoryRepo.findActiveByOrganization as jest.Mock).mockResolvedValue([baseTerritory]);
 
       const result = await service.findTerritoryForLocation(10, -26.2, 28.0);
 
@@ -336,7 +325,7 @@ describe("TerritoryService", () => {
     });
 
     it("should return null when location is outside all bounds", async () => {
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([baseTerritory]);
+      (mockTerritoryRepo.findActiveByOrganization as jest.Mock).mockResolvedValue([baseTerritory]);
 
       const result = await service.findTerritoryForLocation(10, -30.0, 28.0);
 
@@ -344,7 +333,7 @@ describe("TerritoryService", () => {
     });
 
     it("should return null when no territories exist", async () => {
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockTerritoryRepo.findActiveByOrganization as jest.Mock).mockResolvedValue([]);
 
       const result = await service.findTerritoryForLocation(10, -26.2, 28.0);
 
@@ -353,7 +342,7 @@ describe("TerritoryService", () => {
 
     it("should skip territories without bounds", async () => {
       const noBounds = { ...baseTerritory, bounds: null };
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([noBounds]);
+      (mockTerritoryRepo.findActiveByOrganization as jest.Mock).mockResolvedValue([noBounds]);
 
       const result = await service.findTerritoryForLocation(10, -26.2, 28.0);
 
@@ -362,7 +351,10 @@ describe("TerritoryService", () => {
 
     it("should return first matching territory when multiple match", async () => {
       const territory2 = { ...baseTerritory, id: 2, name: "Overlap Region" };
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([baseTerritory, territory2]);
+      (mockTerritoryRepo.findActiveByOrganization as jest.Mock).mockResolvedValue([
+        baseTerritory,
+        territory2,
+      ]);
 
       const result = await service.findTerritoryForLocation(10, -26.2, 28.0);
 
@@ -372,19 +364,16 @@ describe("TerritoryService", () => {
 
   describe("territoriesForUser", () => {
     it("should return active territories assigned to user", async () => {
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([baseTerritory]);
+      (mockTerritoryRepo.findActiveByAssignedUser as jest.Mock).mockResolvedValue([baseTerritory]);
 
       const result = await service.territoriesForUser(200);
 
       expect(result).toEqual([baseTerritory]);
-      expect(mockTerritoryRepo.find).toHaveBeenCalledWith({
-        where: { assignedToId: 200, isActive: true },
-        order: { name: "ASC" },
-      });
+      expect(mockTerritoryRepo.findActiveByAssignedUser).toHaveBeenCalledWith(200);
     });
 
     it("should return empty array when user has no territories", async () => {
-      (mockTerritoryRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockTerritoryRepo.findActiveByAssignedUser as jest.Mock).mockResolvedValue([]);
 
       const result = await service.territoriesForUser(999);
 

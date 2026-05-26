@@ -1,6 +1,4 @@
 import { Injectable, type OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { now } from "../lib/datetime";
 import type { SageExportFilterDto } from "../sage-export/dto/sage-export.dto";
 import type { SageExportInvoice, SageExportLineItem } from "../sage-export/interfaces/sage-invoice";
@@ -11,7 +9,8 @@ import type {
   SageInvoiceAdapter,
 } from "../sage-export/interfaces/sage-invoice-adapter.interface";
 import { SageAdapterRegistry } from "../sage-export/sage-adapter-registry.service";
-import { CocProcessingStatus, RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 
 const DEFAULT_VAT_RATE = 15;
 const DEFAULT_ACCOUNT_CODE = "5000";
@@ -19,8 +18,7 @@ const DEFAULT_ACCOUNT_CODE = "5000";
 @Injectable()
 export class RubberSageCocAdapterService implements SageInvoiceAdapter, OnModuleInit {
   constructor(
-    @InjectRepository(RubberSupplierCoc)
-    private readonly cocRepo: Repository<RubberSupplierCoc>,
+    private readonly cocRepo: RubberSupplierCocRepository,
     private readonly sageAdapterRegistry: SageAdapterRegistry,
   ) {}
 
@@ -60,28 +58,11 @@ export class RubberSageCocAdapterService implements SageInvoiceAdapter, OnModule
   async exportableCocs(
     filters: SageExportFilterDto,
   ): Promise<{ invoices: SageExportInvoice[]; cocIds: number[] }> {
-    const qb = this.cocRepo
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
-      .where("coc.processing_status IN (:...statuses)", {
-        statuses: [CocProcessingStatus.EXTRACTED, CocProcessingStatus.APPROVED],
-      });
-
-    if (filters.dateFrom) {
-      qb.andWhere("coc.created_at >= :dateFrom", { dateFrom: filters.dateFrom });
-    }
-
-    if (filters.dateTo) {
-      qb.andWhere("coc.created_at <= :dateTo", { dateTo: filters.dateTo });
-    }
-
-    if (filters.excludeExported) {
-      qb.andWhere("coc.exported_to_sage_at IS NULL");
-    }
-
-    qb.orderBy("coc.created_at", "ASC");
-
-    const entities = await qb.getMany();
+    const entities = await this.cocRepo.findExportable({
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      excludeExported: filters.excludeExported,
+    });
 
     const invoices = entities.map((entity) => toSageInvoice(entity));
     const cocIds = entities.map((entity) => entity.id);
@@ -94,12 +75,7 @@ export class RubberSageCocAdapterService implements SageInvoiceAdapter, OnModule
       return;
     }
 
-    await this.cocRepo
-      .createQueryBuilder()
-      .update(RubberSupplierCoc)
-      .set({ exportedToSageAt: now().toJSDate() } as unknown as RubberSupplierCoc)
-      .where({ id: In(cocIds) })
-      .execute();
+    await this.cocRepo.markExportedByIds(cocIds, now().toJSDate());
   }
 
   async cocPreviewCount(filters: SageExportFilterDto): Promise<{

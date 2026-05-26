@@ -1,13 +1,10 @@
 import { ForbiddenException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { fromJSDate, now } from "../lib/datetime";
 import { App } from "../rbac/entities/app.entity";
-import { AppRole } from "../rbac/entities/app-role.entity";
-import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
+import { AppRepository, AppRoleRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import {
   AUTH_CONSTANTS,
   AuthConfigService,
@@ -16,24 +13,20 @@ import {
   TokenService,
 } from "../shared/auth";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { AdminLoginDto, AdminLoginResponseDto, TokenResponseDto } from "./dto/admin-auth.dto";
-import { AdminSession } from "./entities/admin-session.entity";
+import { AdminSessionRepository } from "./repositories/admin-session.repository";
 
 @Injectable()
 export class AdminAuthService {
   private readonly logger = new Logger(AdminAuthService.name);
 
   constructor(
-    @InjectRepository(AdminSession)
-    private readonly adminSessionRepo: Repository<AdminSession>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(App)
-    private readonly appRepo: Repository<App>,
-    @InjectRepository(AppRole)
-    private readonly appRoleRepo: Repository<AppRole>,
-    @InjectRepository(UserAppAccess)
-    private readonly userAppAccessRepo: Repository<UserAppAccess>,
+    private readonly adminSessionRepo: AdminSessionRepository,
+    private readonly userRepo: UserRepository,
+    private readonly appRepo: AppRepository,
+    private readonly appRoleRepo: AppRoleRepository,
+    private readonly userAppAccessRepo: UserAppAccessRepository,
     private readonly auditService: AuditService,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
@@ -45,11 +38,7 @@ export class AdminAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AdminLoginResponseDto> {
-    const user = await this.userRepo
-      .createQueryBuilder("user")
-      .leftJoinAndSelect("user.roles", "roles")
-      .where("LOWER(user.email) = LOWER(:email)", { email: loginDto.email })
-      .getOne();
+    const user = await this.userRepo.findOneByEmailCaseInsensitiveWithRoles(loginDto.email);
 
     if (!user) {
       await this.auditService.log({
@@ -125,7 +114,7 @@ export class AdminAuthService {
     const sessionToken = uuidv4();
     const expiresAt = now().plus({ days: AUTH_CONSTANTS.ADMIN_SESSION_EXPIRY_DAYS }).toJSDate();
 
-    const session = this.adminSessionRepo.create({
+    await this.adminSessionRepo.create({
       userId: user.id,
       sessionToken,
       clientIp,
@@ -133,7 +122,6 @@ export class AdminAuthService {
       expiresAt,
       isRevoked: false,
     });
-    await this.adminSessionRepo.save(session);
 
     const payload: JwtTokenPayload = {
       sub: user.id,
@@ -196,7 +184,7 @@ export class AdminAuthService {
     const sessionToken = uuidv4();
     const expiresAt = now().plus({ days: AUTH_CONSTANTS.ADMIN_SESSION_EXPIRY_DAYS }).toJSDate();
 
-    const session = this.adminSessionRepo.create({
+    await this.adminSessionRepo.create({
       userId: user.id,
       sessionToken,
       clientIp,
@@ -204,7 +192,6 @@ export class AdminAuthService {
       expiresAt,
       isRevoked: false,
     });
-    await this.adminSessionRepo.save(session);
 
     const payload: JwtTokenPayload = {
       sub: user.id,
@@ -241,16 +228,14 @@ export class AdminAuthService {
     clientIp: string,
     userAgent?: string,
   ): Promise<void> {
-    const session = await this.adminSessionRepo.findOne({
-      where: { userId, sessionToken, isRevoked: false },
-    });
+    const session = await this.adminSessionRepo.findActiveByUserAndToken(userId, sessionToken);
 
     if (session) {
       session.isRevoked = true;
       session.revokedAt = now().toJSDate();
       await this.adminSessionRepo.save(session);
 
-      const user = await this.userRepo.findOne({ where: { id: userId } });
+      const user = await this.userRepo.findById(userId);
 
       await this.auditService.log({
         action: AuditAction.ADMIN_LOGOUT,
@@ -265,14 +250,10 @@ export class AdminAuthService {
   }
 
   async validateSession(sessionToken: string): Promise<User> {
-    const session = await this.adminSessionRepo.findOne({
-      where: {
-        sessionToken,
-        isRevoked: false,
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-      relations: ["user", "user.roles"],
-    });
+    const session = await this.adminSessionRepo.findActiveByTokenWithUser(
+      sessionToken,
+      now().toJSDate(),
+    );
 
     if (!session) {
       throw new UnauthorizedException("Invalid or expired session");
@@ -322,10 +303,7 @@ export class AdminAuthService {
   }
 
   async currentUser(userId: number): Promise<any> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByIdWithRoles(userId);
 
     if (!user) {
       throw new UnauthorizedException("User not found");
@@ -365,14 +343,12 @@ export class AdminAuthService {
       return { allowed: true, message: "" };
     }
 
-    const app = await this.appRepo.findOne({ where: { code: appCode, isActive: true } });
+    const app = await this.appRepo.findActiveByCode(appCode);
     if (!app) {
       return { allowed: false, message: `Application "${appCode}" not found or is inactive` };
     }
 
-    const userAccess = await this.userAppAccessRepo.findOne({
-      where: { userId, appId: app.id },
-    });
+    const userAccess = await this.userAppAccessRepo.findOneByUserAndApp(userId, app.id);
 
     if (!userAccess) {
       const shouldAutoAssignAdmin = await this.autoAssignFirstUserAsAdmin(userId, app);
@@ -396,17 +372,13 @@ export class AdminAuthService {
   }
 
   private async autoAssignFirstUserAsAdmin(userId: number, app: App): Promise<boolean> {
-    const existingAccessCount = await this.userAppAccessRepo.count({
-      where: { appId: app.id },
-    });
+    const existingAccessCount = await this.userAppAccessRepo.countByAppId(app.id);
 
     if (existingAccessCount > 0) {
       return false;
     }
 
-    const adminRole = await this.appRoleRepo.findOne({
-      where: { appId: app.id, code: "administrator" },
-    });
+    const adminRole = await this.appRoleRepo.findByAppIdAndCode(app.id, "administrator");
 
     if (!adminRole) {
       this.logger.warn(
@@ -415,14 +387,12 @@ export class AdminAuthService {
       return false;
     }
 
-    const newAccess = this.userAppAccessRepo.create({
+    await this.userAppAccessRepo.create({
       userId,
       appId: app.id,
       roleId: adminRole.id,
       grantedById: userId,
     });
-
-    await this.userAppAccessRepo.save(newAccess);
 
     this.logger.log(
       `Auto-assigned administrator role to first user (userId: ${userId}) for app ${app.code}`,

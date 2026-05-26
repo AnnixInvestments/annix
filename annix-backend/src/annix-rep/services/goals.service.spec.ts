@@ -1,24 +1,18 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
-import {
-  GoalPeriod,
-  Meeting,
-  MeetingStatus,
-  Prospect,
-  ProspectStatus,
-  SalesGoal,
-  Visit,
-} from "../entities";
+import { GoalPeriod, MeetingStatus, ProspectStatus, SalesGoal } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { ProspectRepository } from "../prospect.repository";
+import { SalesGoalRepository } from "../sales-goal.repository";
+import { VisitRepository } from "../visit.repository";
 import { GoalsService } from "./goals.service";
 
 describe("GoalsService", () => {
   let service: GoalsService;
-  let mockGoalRepo: Partial<Repository<SalesGoal>>;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
-  let mockVisitRepo: Partial<Repository<Visit>>;
-  let mockProspectRepo: Partial<Repository<Prospect>>;
+  let mockGoalRepo: Partial<SalesGoalRepository>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
+  let mockVisitRepo: Partial<VisitRepository>;
+  let mockProspectRepo: Partial<ProspectRepository>;
 
   const testDate = fromISO("2026-01-15T10:00:00Z").toJSDate();
 
@@ -40,42 +34,43 @@ describe("GoalsService", () => {
 
   beforeEach(async () => {
     mockGoalRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn().mockResolvedValue(null),
+      findByUser: jest.fn().mockResolvedValue([]),
+      findByUserAndPeriod: jest.fn().mockResolvedValue(null),
       create: jest.fn(),
       save: jest.fn(),
-      delete: jest.fn(),
+      deleteByUserAndPeriod: jest.fn(),
     };
 
     mockMeetingRepo = {
-      find: jest.fn().mockResolvedValue([]),
+      findCompletedInRange: jest.fn().mockResolvedValue([]),
     };
 
     mockVisitRepo = {
-      find: jest.fn().mockResolvedValue([]),
+      findBySalesRepStartedInRange: jest.fn().mockResolvedValue([]),
     };
 
     mockProspectRepo = {
-      find: jest.fn().mockResolvedValue([]),
+      findByOwnerCreatedInRange: jest.fn().mockResolvedValue([]),
+      findWonByOwnerUpdatedInRange: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         GoalsService,
         {
-          provide: getRepositoryToken(SalesGoal),
+          provide: SalesGoalRepository,
           useValue: mockGoalRepo,
         },
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
         },
         {
-          provide: getRepositoryToken(Visit),
+          provide: VisitRepository,
           useValue: mockVisitRepo,
         },
         {
-          provide: getRepositoryToken(Prospect),
+          provide: ProspectRepository,
           useValue: mockProspectRepo,
         },
       ],
@@ -95,19 +90,16 @@ describe("GoalsService", () => {
         mockGoal({ id: 1, period: GoalPeriod.MONTHLY }),
         mockGoal({ id: 2, period: GoalPeriod.WEEKLY }),
       ];
-      (mockGoalRepo.find as jest.Mock).mockResolvedValue(goals);
+      (mockGoalRepo.findByUser as jest.Mock).mockResolvedValue(goals);
 
       const result = await service.goals(100);
 
       expect(result).toHaveLength(2);
-      expect(mockGoalRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { period: "ASC" },
-      });
+      expect(mockGoalRepo.findByUser).toHaveBeenCalledWith(100);
     });
 
     it("should return empty array when user has no goals", async () => {
-      (mockGoalRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockGoalRepo.findByUser as jest.Mock).mockResolvedValue([]);
 
       const result = await service.goals(100);
 
@@ -118,18 +110,16 @@ describe("GoalsService", () => {
   describe("goalByPeriod", () => {
     it("should return the goal for the specified period", async () => {
       const goal = mockGoal();
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(goal);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(goal);
 
       const result = await service.goalByPeriod(100, GoalPeriod.MONTHLY);
 
       expect(result).toEqual(goal);
-      expect(mockGoalRepo.findOne).toHaveBeenCalledWith({
-        where: { userId: 100, period: GoalPeriod.MONTHLY },
-      });
+      expect(mockGoalRepo.findByUserAndPeriod).toHaveBeenCalledWith(100, GoalPeriod.MONTHLY);
     });
 
     it("should return null when no goal exists for the period", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
 
       const result = await service.goalByPeriod(100, GoalPeriod.QUARTERLY);
 
@@ -139,10 +129,9 @@ describe("GoalsService", () => {
 
   describe("createOrUpdateGoal", () => {
     it("should create a new goal when none exists for the period", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
       const created = mockGoal();
-      (mockGoalRepo.create as jest.Mock).mockReturnValue(created);
-      (mockGoalRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockGoalRepo.create as jest.Mock).mockResolvedValue(created);
 
       const result = await service.createOrUpdateGoal(100, {
         period: GoalPeriod.MONTHLY,
@@ -163,7 +152,7 @@ describe("GoalsService", () => {
 
     it("should update existing goal when one exists for the period", async () => {
       const existing = mockGoal({ meetingsTarget: 5 });
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(existing);
       (mockGoalRepo.save as jest.Mock).mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.createOrUpdateGoal(100, {
@@ -177,7 +166,7 @@ describe("GoalsService", () => {
 
     it("should preserve existing values when dto fields are not provided", async () => {
       const existing = mockGoal({ meetingsTarget: 10, visitsTarget: 20 });
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(existing);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(existing);
       (mockGoalRepo.save as jest.Mock).mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.createOrUpdateGoal(100, {
@@ -190,9 +179,8 @@ describe("GoalsService", () => {
     });
 
     it("should default null for unspecified targets on new goals", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockGoalRepo.create as jest.Mock).mockImplementation((data) => data);
-      (mockGoalRepo.save as jest.Mock).mockImplementation((entity) => Promise.resolve(entity));
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
+      (mockGoalRepo.create as jest.Mock).mockImplementation((data) => Promise.resolve(data));
 
       await service.createOrUpdateGoal(100, {
         period: GoalPeriod.WEEKLY,
@@ -213,7 +201,7 @@ describe("GoalsService", () => {
   describe("updateGoal", () => {
     it("should update specified fields on existing goal", async () => {
       const goal = mockGoal();
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(goal);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(goal);
       (mockGoalRepo.save as jest.Mock).mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.updateGoal(100, GoalPeriod.MONTHLY, {
@@ -226,7 +214,7 @@ describe("GoalsService", () => {
     });
 
     it("should return null when goal does not exist", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
 
       const result = await service.updateGoal(100, GoalPeriod.MONTHLY, { meetingsTarget: 25 });
 
@@ -235,7 +223,7 @@ describe("GoalsService", () => {
 
     it("should only update fields that are non-null in dto", async () => {
       const goal = mockGoal({ meetingsTarget: 10, visitsTarget: 20 });
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(goal);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(goal);
       (mockGoalRepo.save as jest.Mock).mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.updateGoal(100, GoalPeriod.MONTHLY, { meetingsTarget: 30 });
@@ -247,19 +235,16 @@ describe("GoalsService", () => {
 
   describe("deleteGoal", () => {
     it("should return true when goal is deleted", async () => {
-      (mockGoalRepo.delete as jest.Mock).mockResolvedValue({ affected: 1 });
+      (mockGoalRepo.deleteByUserAndPeriod as jest.Mock).mockResolvedValue(1);
 
       const result = await service.deleteGoal(100, GoalPeriod.MONTHLY);
 
       expect(result).toBe(true);
-      expect(mockGoalRepo.delete).toHaveBeenCalledWith({
-        userId: 100,
-        period: GoalPeriod.MONTHLY,
-      });
+      expect(mockGoalRepo.deleteByUserAndPeriod).toHaveBeenCalledWith(100, GoalPeriod.MONTHLY);
     });
 
     it("should return false when no goal was found to delete", async () => {
-      (mockGoalRepo.delete as jest.Mock).mockResolvedValue({ affected: 0 });
+      (mockGoalRepo.deleteByUserAndPeriod as jest.Mock).mockResolvedValue(0);
 
       const result = await service.deleteGoal(100, GoalPeriod.MONTHLY);
 
@@ -269,10 +254,11 @@ describe("GoalsService", () => {
 
   describe("progress", () => {
     it("should return progress with null percentages when no goal exists", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findCompletedInRange as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRepStartedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerCreatedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findWonByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.progress(100, GoalPeriod.MONTHLY);
 
@@ -295,7 +281,7 @@ describe("GoalsService", () => {
         revenueTarget: 100000,
         dealsWonTarget: 3,
       });
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(goal);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(goal);
 
       const meetings = Array.from({ length: 5 }, (_, i) => ({
         id: i + 1,
@@ -305,11 +291,10 @@ describe("GoalsService", () => {
       const newProspects = Array.from({ length: 2 }, (_, i) => ({ id: i + 1 }));
       const wonProspects = [{ id: 1, estimatedValue: 50000, status: ProspectStatus.WON }];
 
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue(meetings);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue(visits);
-      (mockProspectRepo.find as jest.Mock)
-        .mockResolvedValueOnce(newProspects)
-        .mockResolvedValueOnce(wonProspects);
+      (mockMeetingRepo.findCompletedInRange as jest.Mock).mockResolvedValue(meetings);
+      (mockVisitRepo.findBySalesRepStartedInRange as jest.Mock).mockResolvedValue(visits);
+      (mockProspectRepo.findByOwnerCreatedInRange as jest.Mock).mockResolvedValue(newProspects);
+      (mockProspectRepo.findWonByOwnerUpdatedInRange as jest.Mock).mockResolvedValue(wonProspects);
 
       const result = await service.progress(100, GoalPeriod.MONTHLY);
 
@@ -326,10 +311,11 @@ describe("GoalsService", () => {
     });
 
     it("should include period start and end dates", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findCompletedInRange as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRepStartedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerCreatedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findWonByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.progress(100, GoalPeriod.MONTHLY);
 
@@ -341,10 +327,11 @@ describe("GoalsService", () => {
 
     it("should return null percentage when target is zero", async () => {
       const goal = mockGoal({ meetingsTarget: 0 });
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(goal);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(goal);
+      (mockMeetingRepo.findCompletedInRange as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRepStartedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerCreatedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findWonByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.progress(100, GoalPeriod.MONTHLY);
 
@@ -352,10 +339,11 @@ describe("GoalsService", () => {
     });
 
     it("should handle weekly period", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findCompletedInRange as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRepStartedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerCreatedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findWonByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.progress(100, GoalPeriod.WEEKLY);
 
@@ -364,10 +352,11 @@ describe("GoalsService", () => {
     });
 
     it("should handle quarterly period", async () => {
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(null);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findCompletedInRange as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRepStartedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerCreatedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findWonByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.progress(100, GoalPeriod.QUARTERLY);
 
@@ -377,17 +366,16 @@ describe("GoalsService", () => {
 
     it("should sum revenue from won prospects estimated values", async () => {
       const goal = mockGoal({ revenueTarget: 200000 });
-      (mockGoalRepo.findOne as jest.Mock).mockResolvedValue(goal);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockGoalRepo.findByUserAndPeriod as jest.Mock).mockResolvedValue(goal);
+      (mockMeetingRepo.findCompletedInRange as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRepStartedInRange as jest.Mock).mockResolvedValue([]);
 
       const wonProspects = [
         { id: 1, estimatedValue: 50000, status: ProspectStatus.WON },
         { id: 2, estimatedValue: 75000, status: ProspectStatus.WON },
       ];
-      (mockProspectRepo.find as jest.Mock)
-        .mockResolvedValueOnce([])
-        .mockResolvedValueOnce(wonProspects);
+      (mockProspectRepo.findByOwnerCreatedInRange as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findWonByOwnerUpdatedInRange as jest.Mock).mockResolvedValue(wonProspects);
 
       const result = await service.progress(100, GoalPeriod.MONTHLY);
 

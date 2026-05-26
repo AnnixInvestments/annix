@@ -1,11 +1,10 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { now, nowISO } from "../../lib/datetime";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
-import { CandidateReference } from "../entities/candidate-reference.entity";
-import { JobPosting } from "../entities/job-posting.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { CvAuditService } from "./cv-audit.service";
 import { ReferenceService } from "./reference.service";
 
@@ -53,12 +52,9 @@ export class CandidateService {
   private readonly logger = new Logger(CandidateService.name);
 
   constructor(
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(CandidateReference)
-    private readonly referenceRepo: Repository<CandidateReference>,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly referenceRepo: CandidateReferenceRepository,
     private readonly cvAuditService: CvAuditService,
     private readonly auditService: AuditService,
     @Inject(forwardRef(() => ReferenceService))
@@ -66,12 +62,11 @@ export class CandidateService {
   ) {}
 
   async create(jobPostingId: number, data: Partial<Candidate>): Promise<Candidate> {
-    const candidate = this.candidateRepo.create({
+    return this.candidateRepo.create({
       ...data,
       jobPostingId,
       status: CandidateStatus.NEW,
     });
-    return this.candidateRepo.save(candidate);
   }
 
   async findByJobPosting(
@@ -79,30 +74,16 @@ export class CandidateService {
     jobPostingId: number,
     status?: string,
   ): Promise<Candidate[]> {
-    const jobPosting = await this.jobPostingRepo.findOne({
-      where: { id: jobPostingId, companyId },
-    });
+    const jobPosting = await this.jobPostingRepo.findByIdForCompany(jobPostingId, companyId);
     if (!jobPosting) {
       throw new NotFoundException("Job posting not found");
     }
 
-    const query: Record<string, unknown> = { jobPostingId };
-    if (status) {
-      query.status = status;
-    }
-
-    return this.candidateRepo.find({
-      where: query,
-      order: { matchScore: "DESC", createdAt: "DESC" },
-      relations: ["references"],
-    });
+    return this.candidateRepo.findByJobPosting(jobPostingId, status);
   }
 
   async findById(companyId: number, id: number): Promise<Candidate> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id },
-      relations: ["jobPosting", "references"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobAndReferences(id);
 
     if (!candidate || !candidate.jobPosting || candidate.jobPosting.companyId !== companyId) {
       throw new NotFoundException("Candidate not found");
@@ -115,26 +96,7 @@ export class CandidateService {
     companyId: number,
     filters?: { status?: string; jobPostingId?: number | null },
   ): Promise<Candidate[]> {
-    const queryBuilder = this.candidateRepo
-      .createQueryBuilder("candidate")
-      .innerJoinAndSelect("candidate.jobPosting", "jobPosting")
-      .leftJoinAndSelect("candidate.references", "references")
-      .where("jobPosting.companyId = :companyId", { companyId });
-
-    if (filters?.status) {
-      queryBuilder.andWhere("candidate.status = :status", { status: filters.status });
-    }
-
-    if (filters?.jobPostingId) {
-      queryBuilder.andWhere("candidate.jobPostingId = :jobPostingId", {
-        jobPostingId: filters.jobPostingId,
-      });
-    }
-
-    return queryBuilder
-      .orderBy("candidate.matchScore", "DESC", "NULLS LAST")
-      .addOrderBy("candidate.createdAt", "DESC")
-      .getMany();
+    return this.candidateRepo.findAllForCompany(companyId, filters);
   }
 
   async updateStatus(
@@ -173,7 +135,7 @@ export class CandidateService {
 
   async dataExport(companyId: number, candidateId: number): Promise<CandidateDataExport> {
     const candidate = await this.findById(companyId, candidateId);
-    const references = await this.referenceRepo.find({ where: { candidateId } });
+    const references = await this.referenceRepo.findByCandidate(candidateId);
 
     const auditLogs = await this.auditService.findByEntity("cv_candidate", candidateId);
     const screeningDecisions = auditLogs
@@ -251,7 +213,7 @@ export class CandidateService {
   }
 
   async updateExtractedData(id: number, data: Partial<Candidate>): Promise<Candidate> {
-    const candidate = await this.candidateRepo.findOne({ where: { id } });
+    const candidate = await this.candidateRepo.findById(id);
     if (!candidate) {
       throw new NotFoundException("Candidate not found");
     }
@@ -268,29 +230,15 @@ export class CandidateService {
   }
 
   async markRejectionSent(id: number): Promise<void> {
-    await this.candidateRepo.update(id, {
-      rejectionSentAt: now().toJSDate(),
-      status: CandidateStatus.REJECTED,
-    });
+    await this.candidateRepo.markRejectionSent(id, now().toJSDate());
   }
 
   async markAcceptanceSent(id: number): Promise<void> {
-    await this.candidateRepo.update(id, {
-      acceptanceSentAt: now().toJSDate(),
-    });
+    await this.candidateRepo.markAcceptanceSent(id, now().toJSDate());
   }
 
   async topCandidates(companyId: number, limit: number = 10): Promise<Candidate[]> {
-    return this.candidateRepo
-      .createQueryBuilder("candidate")
-      .innerJoinAndSelect("candidate.jobPosting", "jobPosting")
-      .where("jobPosting.companyId = :companyId", { companyId })
-      .andWhere("candidate.status NOT IN (:...excludedStatuses)", {
-        excludedStatuses: [CandidateStatus.REJECTED],
-      })
-      .orderBy("candidate.matchScore", "DESC", "NULLS LAST")
-      .limit(limit)
-      .getMany();
+    return this.candidateRepo.topCandidates(companyId, limit);
   }
 
   async stats(companyId: number): Promise<{

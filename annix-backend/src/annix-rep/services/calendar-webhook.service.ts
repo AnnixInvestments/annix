@@ -1,17 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
   MeetingPlatform,
   MeetingPlatformConnection,
-  PlatformConnectionStatus,
 } from "../entities/meeting-platform-connection.entity";
-import {
-  PlatformMeetingRecord,
-  PlatformRecordingStatus,
-} from "../entities/platform-meeting-record.entity";
+import { PlatformRecordingStatus } from "../entities/platform-meeting-record.entity";
+import { MeetingPlatformConnectionRepository } from "../meeting-platform-connection.repository";
+import { PlatformMeetingRecordRepository } from "../platform-meeting-record.repository";
 import type { WebhookEventPayload } from "../providers/meeting-platform-provider.interface";
 import { MeetingPlatformService } from "./meeting-platform.service";
 
@@ -28,10 +24,8 @@ export class CalendarWebhookService {
   private readonly zoomWebhookSecret: string;
 
   constructor(
-    @InjectRepository(MeetingPlatformConnection)
-    private readonly connectionRepo: Repository<MeetingPlatformConnection>,
-    @InjectRepository(PlatformMeetingRecord)
-    private readonly recordRepo: Repository<PlatformMeetingRecord>,
+    private readonly connectionRepo: MeetingPlatformConnectionRepository,
+    private readonly recordRepo: PlatformMeetingRecordRepository,
     private readonly platformService: MeetingPlatformService,
     private readonly configService: ConfigService,
   ) {
@@ -190,12 +184,10 @@ export class CalendarWebhookService {
       };
     }
 
-    const existingRecord = await this.recordRepo.findOne({
-      where: {
-        connectionId: connection.id,
-        platformMeetingId: event.meetingId,
-      },
-    });
+    const existingRecord = await this.recordRepo.findByConnectionAndPlatformMeeting(
+      connection.id,
+      event.meetingId,
+    );
 
     if (existingRecord) {
       existingRecord.recordingStatus = PlatformRecordingStatus.PENDING;
@@ -214,7 +206,7 @@ export class CalendarWebhookService {
       | Record<string, unknown>
       | undefined;
 
-    const record = this.recordRepo.create({
+    const saved = await this.recordRepo.create({
       connectionId: connection.id,
       platformMeetingId: event.meetingId,
       title: (meetingData?.topic as string) ?? "Meeting",
@@ -224,8 +216,6 @@ export class CalendarWebhookService {
       rawMeetingData: meetingData ?? null,
       fetchedAt: now().toJSDate(),
     });
-
-    const saved = await this.recordRepo.save(record);
 
     this.logger.log(`Created platform record ${saved.id} from webhook event`);
 
@@ -252,12 +242,10 @@ export class CalendarWebhookService {
       };
     }
 
-    const record = await this.recordRepo.findOne({
-      where: {
-        connectionId: connection.id,
-        platformMeetingId: event.meetingId,
-      },
-    });
+    const record = await this.recordRepo.findByConnectionAndPlatformMeeting(
+      connection.id,
+      event.meetingId,
+    );
 
     if (record) {
       if (record.recordingStatus === PlatformRecordingStatus.NO_RECORDING) {
@@ -278,7 +266,7 @@ export class CalendarWebhookService {
       | Record<string, unknown>
       | undefined;
 
-    const newRecord = this.recordRepo.create({
+    const saved = await this.recordRepo.create({
       connectionId: connection.id,
       platformMeetingId: event.meetingId,
       title: (recordingData?.topic as string) ?? "Recording",
@@ -287,8 +275,6 @@ export class CalendarWebhookService {
       rawRecordingData: recordingData ?? null,
       fetchedAt: now().toJSDate(),
     });
-
-    const saved = await this.recordRepo.save(newRecord);
 
     this.logger.log(`Created platform record ${saved.id} from recording completed webhook`);
 
@@ -308,13 +294,7 @@ export class CalendarWebhookService {
       return null;
     }
 
-    return this.connectionRepo.findOne({
-      where: {
-        platform,
-        accountId,
-        connectionStatus: PlatformConnectionStatus.ACTIVE,
-      },
-    });
+    return this.connectionRepo.findActiveByPlatformAccount(platform, accountId);
   }
 
   zoomUrlValidationResponse(plainToken: string): { plainToken: string; encryptedToken: string } {

@@ -8,10 +8,8 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { JobPosting } from "../entities/job-posting.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { AssistedPostingInstructions, PortalAdapter } from "../services/portal-adapter.interface";
 import { PortalAdapterRegistry } from "../services/portal-adapter-registry.service";
 
@@ -33,8 +31,7 @@ interface AssistedPostingPackEntry extends AssistedPostingInstructions {
 export class PortalAdaptersController {
   constructor(
     private readonly registry: PortalAdapterRegistry,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
+    private readonly jobPostingRepo: JobPostingRepository,
   ) {}
 
   @Get("portal-adapters")
@@ -56,7 +53,7 @@ export class PortalAdaptersController {
     @Request() req: { user: { companyId: number } },
     @Param("id", ParseIntPipe) id: number,
   ): Promise<AssistedPostingPackEntry[]> {
-    const job = await this.jobPostingRepo.findOne({ where: { id } });
+    const job = await this.jobPostingRepo.findById(id);
     if (!job) throw new NotFoundException("Job posting not found");
     if (job.companyId !== req.user.companyId) {
       throw new ForbiddenException("You can only view packs for your own jobs.");

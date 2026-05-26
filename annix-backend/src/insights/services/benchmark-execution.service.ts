@@ -1,11 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Asset } from "../entities/asset.entity";
-import { PaperHolding } from "../entities/paper-holding.entity";
 import { PaperPortfolio } from "../entities/paper-portfolio.entity";
-import { PaperTrade } from "../entities/paper-trade.entity";
-import { PriceHistory } from "../entities/price-history.entity";
+import { AssetRepository } from "../repositories/asset.repository";
+import { PaperHoldingRepository } from "../repositories/paper-holding.repository";
+import { PaperPortfolioRepository } from "../repositories/paper-portfolio.repository";
+import { PaperTradeRepository } from "../repositories/paper-trade.repository";
+import { PriceHistoryRepository } from "../repositories/price-history.repository";
 
 export interface BenchmarkExecutionResult {
   slug: string;
@@ -20,22 +19,15 @@ export class BenchmarkExecutionService {
   private readonly logger = new Logger(BenchmarkExecutionService.name);
 
   constructor(
-    @InjectRepository(PaperPortfolio)
-    private readonly portfolioRepo: Repository<PaperPortfolio>,
-    @InjectRepository(PaperHolding)
-    private readonly holdingRepo: Repository<PaperHolding>,
-    @InjectRepository(PaperTrade)
-    private readonly tradeRepo: Repository<PaperTrade>,
-    @InjectRepository(Asset)
-    private readonly assetRepo: Repository<Asset>,
-    @InjectRepository(PriceHistory)
-    private readonly historyRepo: Repository<PriceHistory>,
+    private readonly portfolioRepo: PaperPortfolioRepository,
+    private readonly holdingRepo: PaperHoldingRepository,
+    private readonly tradeRepo: PaperTradeRepository,
+    private readonly assetRepo: AssetRepository,
+    private readonly historyRepo: PriceHistoryRepository,
   ) {}
 
   async runAll(): Promise<BenchmarkExecutionResult[]> {
-    const portfolios = await this.portfolioRepo.find({
-      where: { isActive: true, executorStrategy: "buy-and-hold" },
-    });
+    const portfolios = await this.portfolioRepo.findActiveBuyAndHold();
     const results: BenchmarkExecutionResult[] = [];
     for (const portfolio of portfolios) {
       try {
@@ -69,7 +61,7 @@ export class BenchmarkExecutionService {
       };
     }
 
-    const asset = await this.assetRepo.findOne({ where: { symbol: fixed.symbol } });
+    const asset = await this.assetRepo.findBySymbol(fixed.symbol);
     if (!asset) {
       this.logger.warn(`Benchmark ${portfolio.slug}: asset ${fixed.symbol} not found.`);
       return {
@@ -81,10 +73,7 @@ export class BenchmarkExecutionService {
       };
     }
 
-    const latest = await this.historyRepo.findOne({
-      where: { assetId: asset.id },
-      order: { date: "DESC" },
-    });
+    const latest = await this.historyRepo.latestForAsset(asset.id);
     if (!latest) {
       this.logger.warn(
         `Benchmark ${portfolio.slug}: no price history for ${fixed.symbol} yet. Will retry on next cron.`,
@@ -122,9 +111,7 @@ export class BenchmarkExecutionService {
     }
     const cashDeployed = qty * closePrice;
 
-    const existingHolding = await this.holdingRepo.findOne({
-      where: { portfolioId: portfolio.id, assetId: asset.id },
-    });
+    const existingHolding = await this.holdingRepo.findByPortfolioAndAsset(portfolio.id, asset.id);
 
     if (existingHolding) {
       const existingQty = Number(existingHolding.quantity);
@@ -134,19 +121,16 @@ export class BenchmarkExecutionService {
       const newMarketValue = newQty * closePrice;
       const newUnrealised = newMarketValue - newQty * newAvg;
       const newUnrealisedPct = (newUnrealised / (newQty * newAvg)) * 100;
-      await this.holdingRepo.update(
-        { id: existingHolding.id },
-        {
-          quantity: newQty.toString(),
-          averageBuyPrice: newAvg.toFixed(6),
-          currentPrice: closePrice.toFixed(6),
-          marketValue: newMarketValue.toFixed(2),
-          unrealisedGainLoss: newUnrealised.toFixed(2),
-          unrealisedGainLossPercent: newUnrealisedPct.toFixed(4),
-        },
-      );
+      await this.holdingRepo.updateById(existingHolding.id, {
+        quantity: newQty.toString(),
+        averageBuyPrice: newAvg.toFixed(6),
+        currentPrice: closePrice.toFixed(6),
+        marketValue: newMarketValue.toFixed(2),
+        unrealisedGainLoss: newUnrealised.toFixed(2),
+        unrealisedGainLossPercent: newUnrealisedPct.toFixed(4),
+      });
     } else {
-      const holding = this.holdingRepo.create({
+      await this.holdingRepo.create({
         portfolioId: portfolio.id,
         assetId: asset.id,
         quantity: qty.toString(),
@@ -156,10 +140,9 @@ export class BenchmarkExecutionService {
         unrealisedGainLoss: "0",
         unrealisedGainLossPercent: "0",
       });
-      await this.holdingRepo.save(holding);
     }
 
-    const trade = this.tradeRepo.create({
+    await this.tradeRepo.create({
       portfolioId: portfolio.id,
       assetId: asset.id,
       action: "buy",
@@ -169,13 +152,11 @@ export class BenchmarkExecutionService {
       fees: "0",
       appReasoning: `Buy-and-hold benchmark — automatic deployment of available cash into ${fixed.symbol} at ${latest.date} close ${closePrice}. ${qty} units bought, ${(cashBalance - cashDeployed).toFixed(2)} cash remainder.`,
     });
-    await this.tradeRepo.save(trade);
 
     const newCash = cashBalance - cashDeployed;
-    await this.portfolioRepo.update(
-      { id: portfolio.id },
-      { currentCashBalance: newCash.toFixed(2) },
-    );
+    await this.portfolioRepo.updateById(portfolio.id, {
+      currentCashBalance: newCash.toFixed(2),
+    });
 
     return {
       slug: portfolio.slug,

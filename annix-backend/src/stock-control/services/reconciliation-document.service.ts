@@ -1,11 +1,10 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
   ReconciliationDocCategory,
   ReconciliationDocument,
 } from "../entities/reconciliation-document.entity";
+import { ReconciliationDocumentRepository } from "../repositories/reconciliation-document.repository";
 import { BackgroundStepService } from "./background-step.service";
 import { ReconciliationExtractionService } from "./reconciliation-extraction.service";
 
@@ -27,8 +26,7 @@ export class ReconciliationDocumentService {
   private readonly logger = new Logger(ReconciliationDocumentService.name);
 
   constructor(
-    @InjectRepository(ReconciliationDocument)
-    private readonly docRepo: Repository<ReconciliationDocument>,
+    private readonly docRepo: ReconciliationDocumentRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => BackgroundStepService))
@@ -40,10 +38,7 @@ export class ReconciliationDocumentService {
     companyId: number,
     jobCardId: number,
   ): Promise<ReconciliationDocument[]> {
-    return this.docRepo.find({
-      where: { companyId, jobCardId },
-      order: { documentCategory: "ASC", createdAt: "DESC" },
-    });
+    return this.docRepo.findForJobCardOrdered(companyId, jobCardId);
   }
 
   async upload(
@@ -56,7 +51,7 @@ export class ReconciliationDocumentService {
     const subPath = `stock-control/job-cards/${companyId}/${jobCardId}/reconciliation`;
     const result = await this.storageService.upload(file, subPath);
 
-    const doc = this.docRepo.create({
+    const saved = await this.docRepo.create({
       companyId,
       jobCardId,
       documentCategory: category,
@@ -68,8 +63,6 @@ export class ReconciliationDocumentService {
       uploadedByName: user.name,
     });
 
-    const saved = await this.docRepo.save(doc);
-
     this.extractionService.extractItems(saved.id).catch((err) => {
       this.logger.error(`Async extraction failed for doc ${saved.id}: ${err.message}`);
     });
@@ -80,7 +73,7 @@ export class ReconciliationDocumentService {
   }
 
   async deleteDocument(companyId: number, id: number): Promise<void> {
-    const doc = await this.docRepo.findOne({ where: { id, companyId } });
+    const doc = await this.docRepo.findOneForCompany(id, companyId);
     if (!doc) {
       throw new NotFoundException(`Document #${id} not found`);
     }
@@ -90,7 +83,7 @@ export class ReconciliationDocumentService {
   }
 
   async presignedUrl(companyId: number, id: number): Promise<string> {
-    const doc = await this.docRepo.findOne({ where: { id, companyId } });
+    const doc = await this.docRepo.findOneForCompany(id, companyId);
     if (!doc) {
       throw new NotFoundException(`Document #${id} not found`);
     }
@@ -101,7 +94,7 @@ export class ReconciliationDocumentService {
     companyId: number,
     id: number,
   ): Promise<{ buffer: Buffer; filename: string; mimeType: string }> {
-    const doc = await this.docRepo.findOne({ where: { id, companyId } });
+    const doc = await this.docRepo.findOneForCompany(id, companyId);
     if (!doc) {
       throw new NotFoundException(`Document #${id} not found`);
     }
@@ -127,9 +120,7 @@ export class ReconciliationDocumentService {
       extractionStatus: string | null;
     }>;
   }> {
-    const docs = await this.docRepo.find({
-      where: { companyId, jobCardId },
-    });
+    const docs = await this.docRepo.findForJobCard(companyId, jobCardId);
 
     const uploadedCategories = new Map(docs.map((d) => [d.documentCategory, d]));
 

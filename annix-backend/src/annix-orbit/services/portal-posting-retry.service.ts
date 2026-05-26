@@ -1,13 +1,8 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { JobPosting } from "../entities/job-posting.entity";
-import {
-  JobPostingPortalPosting,
-  JobPostingPortalStatus,
-} from "../entities/job-posting-portal-posting.entity";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
+import { JobPostingPortalPostingRepository } from "../repositories/job-posting-portal-posting.repository";
 import { PortalAdapterRegistry } from "./portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./portal-posting-orchestrator.service";
 
@@ -18,24 +13,15 @@ export class PortalPostingRetryService {
   private readonly logger = new Logger(PortalPostingRetryService.name);
 
   constructor(
-    @InjectRepository(JobPostingPortalPosting)
-    private readonly portalPostingRepo: Repository<JobPostingPortalPosting>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
+    private readonly portalPostingRepo: JobPostingPortalPostingRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
     private readonly registry: PortalAdapterRegistry,
     private readonly orchestrator: PortalPostingOrchestrator,
   ) {}
 
   @Cron("0 */6 * * *", { name: "annix-orbit:retry-portal-postings" })
   async sweep(): Promise<{ retried: number; succeeded: number; stillFailed: number }> {
-    const due = await this.portalPostingRepo.find({
-      where: {
-        status: JobPostingPortalStatus.FAILED,
-        nextRetryAt: LessThanOrEqual(now().toJSDate()),
-      },
-      take: RETRY_BATCH_SIZE,
-      order: { nextRetryAt: "ASC" },
-    });
+    const due = await this.portalPostingRepo.findRetryDue(now().toJSDate(), RETRY_BATCH_SIZE);
 
     if (due.length === 0) return { retried: 0, succeeded: 0, stillFailed: 0 };
 
@@ -54,7 +40,7 @@ export class PortalPostingRetryService {
         continue;
       }
 
-      const jobPosting = await this.jobPostingRepo.findOne({ where: { id: record.jobPostingId } });
+      const jobPosting = await this.jobPostingRepo.findById(record.jobPostingId);
       if (!jobPosting) {
         this.logger.warn(
           `Skipping retry for portal posting ${record.id}: job posting ${record.jobPostingId} no longer exists.`,

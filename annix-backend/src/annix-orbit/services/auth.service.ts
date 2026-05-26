@@ -8,21 +8,23 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThan, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
-import { Company } from "../../platform/entities/company.entity";
-import { App } from "../../rbac/entities/app.entity";
-import { AppRole } from "../../rbac/entities/app-role.entity";
-import { UserAppAccess } from "../../rbac/entities/user-app-access.entity";
+import { CompanyRepository } from "../../platform/company.repository";
+import {
+  AppRepository,
+  AppRoleRepository,
+  UserAppAccessRepository,
+} from "../../rbac/rbac.repository";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
@@ -31,20 +33,13 @@ export class AnnixOrbitAuthService {
   private readonly logger = new Logger(AnnixOrbitAuthService.name);
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(AnnixOrbitProfile)
-    private readonly profileRepo: Repository<AnnixOrbitProfile>,
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly cvCompanyRepo: Repository<AnnixOrbitCompany>,
-    @InjectRepository(App)
-    private readonly appRepo: Repository<App>,
-    @InjectRepository(AppRole)
-    private readonly appRoleRepo: Repository<AppRole>,
-    @InjectRepository(UserAppAccess)
-    private readonly userAppAccessRepo: Repository<UserAppAccess>,
+    private readonly userRepo: UserRepository,
+    private readonly profileRepo: AnnixOrbitProfileRepository,
+    private readonly companyRepo: CompanyRepository,
+    private readonly cvCompanyRepo: AnnixOrbitCompanyRepository,
+    private readonly appRepo: AppRepository,
+    private readonly appRoleRepo: AppRoleRepository,
+    private readonly userAppAccessRepo: UserAppAccessRepository,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
@@ -52,36 +47,24 @@ export class AnnixOrbitAuthService {
   ) {}
 
   private jwtSecret(): string {
-    return (
-      this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET") ??
-      this.configService.get<string>("CV_ASSISTANT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT)
-    );
+    return this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT);
   }
 
   /**
-   * The Annix Orbit module stores company FKs against `cv_assistant_companies`
+   * The CV Assistant module stores company FKs against `cv_assistant_companies`
    * (a CV-specific mirror table) rather than the shared `companies` table the
    * profile + registration use. To keep both consistent we INSERT a matching
    * row in `cv_assistant_companies` with the SAME id whenever a `companies`
    * row is created from this service. Idempotent — INSERT…ON CONFLICT.
    */
   private async mirrorIntoAnnixOrbitCompanies(id: number, name: string): Promise<void> {
-    await this.cvCompanyRepo.query(
-      `INSERT INTO cv_assistant_companies (id, name, created_at, updated_at)
-       VALUES ($1, $2, now(), now())
-       ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, updated_at = now()`,
-      [id, name],
-    );
-    await this.cvCompanyRepo.query(
-      `SELECT setval('cv_assistant_companies_id_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM cv_assistant_companies), $1))`,
-      [id],
-    );
+    await this.cvCompanyRepo.mirrorCompany(id, name);
   }
 
   /**
-   * Self-healing for legacy users who landed in Annix Orbit without a
+   * Self-healing for legacy users who landed in CV Assistant without a
    * complete `cv_assistant_profile` row (e.g. accounts created in another
-   * portal before Annix Orbit existed). On login we auto-provision a
+   * portal before CV Assistant existed). On login we auto-provision a
    * placeholder company so the wizard can save against a real companyId
    * instead of 500-ing on the not-null constraint.
    *
@@ -102,30 +85,29 @@ export class AnnixOrbitAuthService {
     const fallbackCompanyName =
       [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     this.logger.warn(
-      `User ${user.id} (${user.email}) has incomplete Annix Orbit profile — auto-provisioning placeholder company`,
+      `User ${user.id} (${user.email}) has incomplete CV Assistant profile — auto-provisioning placeholder company`,
     );
-    const company = this.companyRepo.create({
-      name: `${fallbackCompanyName}'s Company`,
+    const companyName = `${fallbackCompanyName}'s Company`;
+    const savedCompany = await this.companyRepo.create({
+      name: companyName,
       companyType: "CUSTOMER" as never,
       industry: null,
       companySize: null,
       province: null,
       city: null,
     });
-    const savedCompany = await this.companyRepo.save(company);
-    await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, company.name);
+    await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, companyName);
 
     if (profile) {
       profile.companyId = savedCompany.id;
       profile.userType = AnnixOrbitUserType.COMPANY;
       return this.profileRepo.save(profile);
     }
-    const created = this.profileRepo.create({
+    return this.profileRepo.create({
       userId: user.id,
       companyId: savedCompany.id,
       userType: AnnixOrbitUserType.COMPANY,
     });
-    return this.profileRepo.save(created);
   }
 
   async register(input: {
@@ -139,7 +121,7 @@ export class AnnixOrbitAuthService {
     city: string;
   }) {
     const { email, password, name, companyName, industry, companySize, province, city } = input;
-    const existing = await this.userRepo.findOne({ where: { email } });
+    const existing = await this.userRepo.findOneByEmail(email);
     if (existing) {
       throw new ConflictException("Email already registered");
     }
@@ -148,7 +130,7 @@ export class AnnixOrbitAuthService {
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
-    const company = this.companyRepo.create({
+    const savedCompany = await this.companyRepo.create({
       name: companyName,
       companyType: "CUSTOMER" as any,
       industry,
@@ -156,10 +138,9 @@ export class AnnixOrbitAuthService {
       province,
       city,
     });
-    const savedCompany = await this.companyRepo.save(company);
     await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, companyName);
 
-    const user = this.userRepo.create({
+    const savedUser = await this.userRepo.create({
       email,
       username: email,
       passwordHash,
@@ -170,14 +151,12 @@ export class AnnixOrbitAuthService {
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
     } as Partial<User>);
-    const savedUser = await this.userRepo.save(user);
 
-    const profile = this.profileRepo.create({
+    await this.profileRepo.create({
       userId: savedUser.id,
       companyId: savedCompany.id,
       userType: AnnixOrbitUserType.COMPANY,
     });
-    await this.profileRepo.save(profile);
 
     await this.bridgeToRbac(savedUser.id, "admin");
 
@@ -196,7 +175,7 @@ export class AnnixOrbitAuthService {
   }
 
   async registerIndividual(email: string, password: string, name: string) {
-    const existing = await this.userRepo.findOne({ where: { email } });
+    const existing = await this.userRepo.findOneByEmail(email);
     if (existing) {
       throw new ConflictException("Email already registered");
     }
@@ -205,7 +184,7 @@ export class AnnixOrbitAuthService {
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
-    const user = this.userRepo.create({
+    const savedUser = await this.userRepo.create({
       email,
       username: email,
       passwordHash,
@@ -216,14 +195,12 @@ export class AnnixOrbitAuthService {
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
     } as Partial<User>);
-    const savedUser = await this.userRepo.save(user);
 
-    const profile = this.profileRepo.create({
+    await this.profileRepo.create({
       userId: savedUser.id,
       companyId: null,
       userType: AnnixOrbitUserType.INDIVIDUAL,
     });
-    await this.profileRepo.save(profile);
 
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
@@ -240,7 +217,7 @@ export class AnnixOrbitAuthService {
   }
 
   async registerStudent(email: string, password: string, name: string) {
-    const existing = await this.userRepo.findOne({ where: { email } });
+    const existing = await this.userRepo.findOneByEmail(email);
     if (existing) {
       throw new ConflictException("Email already registered");
     }
@@ -249,7 +226,7 @@ export class AnnixOrbitAuthService {
     const verificationToken = uuidv4();
     const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
 
-    const user = this.userRepo.create({
+    const savedUser = await this.userRepo.create({
       email,
       username: email,
       passwordHash,
@@ -260,14 +237,12 @@ export class AnnixOrbitAuthService {
       emailVerificationToken: verificationToken,
       emailVerificationExpires: verificationExpires,
     } as Partial<User>);
-    const savedUser = await this.userRepo.save(user);
 
-    const profile = this.profileRepo.create({
+    await this.profileRepo.create({
       userId: savedUser.id,
       companyId: null,
       userType: AnnixOrbitUserType.STUDENT,
     });
-    await this.profileRepo.save(profile);
 
     await this.assignOrbitRbacRole(savedUser.id, "student");
 
@@ -287,34 +262,28 @@ export class AnnixOrbitAuthService {
 
   private async assignOrbitRbacRole(userId: number, roleCode: string): Promise<void> {
     try {
-      const app = await this.appRepo.findOne({ where: { code: "annix-orbit" } });
+      const app = await this.appRepo.findByCode("annix-orbit");
       if (!app) return;
 
-      const role = await this.appRoleRepo.findOne({ where: { appId: app.id, code: roleCode } });
+      const role = await this.appRoleRepo.findByAppIdAndCode(app.id, roleCode);
       if (!role) return;
 
-      const existing = await this.userAppAccessRepo.findOne({ where: { userId, appId: app.id } });
+      const existing = await this.userAppAccessRepo.findOneByUserAndApp(userId, app.id);
       if (existing) return;
 
-      const access = this.userAppAccessRepo.create({
+      await this.userAppAccessRepo.create({
         userId,
         appId: app.id,
         roleId: role.id,
         grantedAt: now().toJSDate(),
       });
-      await this.userAppAccessRepo.save(access);
     } catch (err) {
       this.logger.warn(`Failed to assign Annix Orbit role ${roleCode} to user ${userId}: ${err}`);
     }
   }
 
   async verifyEmail(token: string) {
-    const user = await this.userRepo.findOne({
-      where: {
-        emailVerificationToken: token,
-        emailVerificationExpires: MoreThan(now().toJSDate()),
-      },
-    });
+    const user = await this.userRepo.findByValidEmailVerificationToken(token, now().toJSDate());
 
     if (!user) {
       throw new BadRequestException(
@@ -328,7 +297,7 @@ export class AnnixOrbitAuthService {
     user.status = "active";
     await this.userRepo.save(user);
 
-    const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+    const profile = await this.profileRepo.findByUserId(user.id);
     const role = await this.resolveRole(user.id, profile);
     const tokens = this.generateTokens(user, profile, role);
 
@@ -342,7 +311,7 @@ export class AnnixOrbitAuthService {
   }
 
   async resendVerification(email: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOneByEmail(email);
 
     if (!user) {
       throw new NotFoundException("No account found with this email address.");
@@ -365,7 +334,7 @@ export class AnnixOrbitAuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOneByEmail(email);
 
     if (user?.emailVerified) {
       const resetToken = uuidv4();
@@ -384,12 +353,7 @@ export class AnnixOrbitAuthService {
   }
 
   async resetPassword(token: string, password: string) {
-    const user = await this.userRepo.findOne({
-      where: {
-        resetPasswordToken: token,
-        resetPasswordExpires: MoreThan(now().toJSDate()),
-      },
-    });
+    const user = await this.userRepo.findByValidResetPasswordToken(token, now().toJSDate());
 
     if (!user) {
       throw new BadRequestException("Invalid or expired reset link. Please request a new one.");
@@ -405,7 +369,7 @@ export class AnnixOrbitAuthService {
   }
 
   async login(email: string, password: string) {
-    const user = await this.userRepo.findOne({ where: { email } });
+    const user = await this.userRepo.findOneByEmail(email);
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -421,7 +385,7 @@ export class AnnixOrbitAuthService {
       );
     }
 
-    let profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+    let profile = await this.profileRepo.findByUserId(user.id);
     profile = await this.ensureCompanyProfile(user, profile);
     const role = await this.resolveRole(user.id, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
@@ -440,15 +404,12 @@ export class AnnixOrbitAuthService {
   }
 
   async currentUser(userId: number) {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
     if (!user) {
       throw new UnauthorizedException("User not found");
     }
 
-    const profile = await this.profileRepo.findOne({
-      where: { userId },
-      relations: ["company"],
-    });
+    const profile = await this.profileRepo.findByUserIdWithCompany(userId);
 
     const role = await this.resolveRole(userId, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
@@ -473,12 +434,12 @@ export class AnnixOrbitAuthService {
         throw new UnauthorizedException("Invalid token type");
       }
 
-      const user = await this.userRepo.findOne({ where: { id: payload.sub } });
+      const user = await this.userRepo.findById(payload.sub);
       if (!user) {
         throw new UnauthorizedException("User not found");
       }
 
-      const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+      const profile = await this.profileRepo.findByUserId(user.id);
       const role = await this.resolveRole(user.id, profile);
       const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
 
@@ -502,11 +463,7 @@ export class AnnixOrbitAuthService {
   }
 
   async teamMembers(companyId: number) {
-    const profiles = await this.profileRepo.find({
-      where: { companyId, userType: AnnixOrbitUserType.COMPANY },
-      relations: ["user"],
-      order: { createdAt: "ASC" },
-    });
+    const profiles = await this.profileRepo.teamMembers(companyId);
 
     const result: Array<{
       id: number;
@@ -532,7 +489,7 @@ export class AnnixOrbitAuthService {
 
   private async resolveRole(userId: number, profile?: AnnixOrbitProfile | null): Promise<string> {
     const resolvedProfile =
-      profile === undefined ? await this.profileRepo.findOne({ where: { userId } }) : profile;
+      profile === undefined ? await this.profileRepo.findByUserId(userId) : profile;
     if (resolvedProfile?.userType === AnnixOrbitUserType.STUDENT) {
       return AnnixOrbitRole.STUDENT;
     }
@@ -540,10 +497,7 @@ export class AnnixOrbitAuthService {
       return AnnixOrbitRole.INDIVIDUAL;
     }
 
-    const access = await this.userAppAccessRepo.findOne({
-      where: { userId, app: { code: "annix-orbit" } },
-      relations: ["role"],
-    });
+    const access = await this.userAppAccessRepo.findByUserAndAppCodeWithRole(userId, "annix-orbit");
 
     if (access?.role) {
       const roleMap: Record<string, string> = {
@@ -560,7 +514,7 @@ export class AnnixOrbitAuthService {
 
   private async bridgeToRbac(userId: number, cvRole: string): Promise<void> {
     try {
-      const app = await this.appRepo.findOne({ where: { code: "annix-orbit" } });
+      const app = await this.appRepo.findByCode("annix-orbit");
       if (!app) return;
 
       const roleMap: Record<string, string> = {
@@ -570,32 +524,33 @@ export class AnnixOrbitAuthService {
       };
       const rbacRoleCode = roleMap[cvRole] || "viewer";
 
-      const rbacRole = await this.appRoleRepo.findOne({
-        where: { appId: app.id, code: rbacRoleCode },
+      const rbacRole = await this.appRoleRepo.findOneWhere({
+        appId: app.id,
+        code: rbacRoleCode,
       });
       if (!rbacRole) return;
 
-      const existing = await this.userAppAccessRepo.findOne({
-        where: { userId, appId: app.id },
+      const existing = await this.userAppAccessRepo.findOneWhere({
+        userId,
+        appId: app.id,
       });
       if (existing) return;
 
-      const access = this.userAppAccessRepo.create({
+      await this.userAppAccessRepo.create({
         userId,
         appId: app.id,
         roleId: rbacRole.id,
         grantedAt: now().toJSDate(),
       });
-      await this.userAppAccessRepo.save(access);
     } catch (err) {
-      this.logger.warn(`Failed to bridge Annix Orbit user ${userId} to RBAC: ${err}`);
+      this.logger.warn(`Failed to bridge CV Assistant user ${userId} to RBAC: ${err}`);
     }
   }
 
   async issueTokensForAuthenticatedUser(
     user: User,
   ): Promise<{ accessToken: string; refreshToken: string }> {
-    const profile = await this.profileRepo.findOne({ where: { userId: user.id } });
+    const profile = await this.profileRepo.findByUserId(user.id);
     const role = await this.resolveRole(user.id, profile);
     return this.generateTokens(user, profile, role);
   }

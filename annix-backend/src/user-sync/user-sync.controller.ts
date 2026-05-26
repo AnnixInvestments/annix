@@ -1,8 +1,7 @@
 import { Body, Controller, Headers, Logger, Post, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 
 class SyncUserDto {
   email: string;
@@ -18,8 +17,7 @@ export class UserSyncController {
   private readonly syncKey: string | null;
 
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly userRepo: UserRepository,
     private readonly configService: ConfigService,
   ) {
     this.syncKey = this.configService.get<string>("PEER_SYNC_KEY") ?? null;
@@ -34,24 +32,20 @@ export class UserSyncController {
       throw new UnauthorizedException("Invalid sync key");
     }
 
-    const existing = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const existing = await this.userRepo.findOneByEmail(dto.email);
 
     if (existing) {
       this.logger.log(`User ${dto.email} already exists, skipping sync`);
       return { action: "already_exists", userId: existing.id };
     }
 
-    const user = this.userRepo.create({
+    const saved = await this.userRepo.create({
       email: dto.email,
       firstName: dto.firstName ?? undefined,
       lastName: dto.lastName ?? undefined,
       username: dto.username ?? dto.email,
       status: dto.status || "active",
     } as Partial<User>);
-
-    const saved = await this.userRepo.save(user);
     this.logger.log(`User ${dto.email} created via peer sync (id: ${saved.id})`);
 
     return { action: "created", userId: saved.id };

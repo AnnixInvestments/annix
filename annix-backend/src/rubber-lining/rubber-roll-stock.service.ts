@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { fromISO, generateUniqueId, now } from "../lib/datetime";
 import {
   CreateOpeningStockDto,
@@ -17,19 +15,24 @@ import {
   UpdateRollStockDto,
 } from "./dto/rubber-coc.dto";
 import { DOCUMENT_VERSION_STATUS_LABELS } from "./entities/document-version.types";
-import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
-import { RubberCompany } from "./entities/rubber-company.entity";
 import { BatchPassFailStatus, RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
-import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
 import {
   CocProcessingStatus,
   RubberSupplierCoc,
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
-import { RubberTaxInvoice, TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import { RubberTaxInvoice } from "./entities/rubber-tax-invoice.entity";
 import { canonicalRollNumber, isPrefixedRollNumber } from "./lib/canonical-roll-number";
+import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberCompoundBatchRepository } from "./repositories/rubber-compound-batch.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberRollStockRepository } from "./repositories/rubber-roll-stock.repository";
+import { RubberStockLocationRepository } from "./repositories/rubber-stock-location.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
+import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
 
 const ROLL_STATUS_LABELS: Record<RollStockStatus, string> = {
   [RollStockStatus.IN_STOCK]: "In Stock",
@@ -61,22 +64,14 @@ const BATCH_PASS_FAIL_LABELS: Record<BatchPassFailStatus, string> = {
 @Injectable()
 export class RubberRollStockService {
   constructor(
-    @InjectRepository(RubberRollStock)
-    private rollStockRepository: Repository<RubberRollStock>,
-    @InjectRepository(RubberCompoundBatch)
-    private compoundBatchRepository: Repository<RubberCompoundBatch>,
-    @InjectRepository(RubberSupplierCoc)
-    private supplierCocRepository: Repository<RubberSupplierCoc>,
-    @InjectRepository(RubberAuCoc)
-    private auCocRepository: Repository<RubberAuCoc>,
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
-    @InjectRepository(RubberStockLocation)
-    private stockLocationRepository: Repository<RubberStockLocation>,
-    @InjectRepository(RubberTaxInvoice)
-    private taxInvoiceRepository: Repository<RubberTaxInvoice>,
+    private rollStockRepository: RubberRollStockRepository,
+    private compoundBatchRepository: RubberCompoundBatchRepository,
+    private supplierCocRepository: RubberSupplierCocRepository,
+    private auCocRepository: RubberAuCocRepository,
+    private companyRepository: RubberCompanyRepository,
+    private productCodingRepository: RubberProductCodingRepository,
+    private stockLocationRepository: RubberStockLocationRepository,
+    private taxInvoiceRepository: RubberTaxInvoiceRepository,
   ) {}
 
   async allRollStock(filters?: {
@@ -84,64 +79,34 @@ export class RubberRollStockService {
     compoundCodingId?: number;
     soldToCompanyId?: number;
   }): Promise<RubberRollStockDto[]> {
-    const query = this.rollStockRepository
-      .createQueryBuilder("roll")
-      .leftJoinAndSelect("roll.compoundCoding", "coding")
-      .leftJoinAndSelect("roll.soldToCompany", "soldToCompany")
-      .orderBy("roll.created_at", "DESC");
-
-    if (filters?.status) {
-      query.andWhere("roll.status = :status", { status: filters.status });
-    }
-    if (filters?.compoundCodingId) {
-      query.andWhere("roll.compound_coding_id = :codingId", {
-        codingId: filters.compoundCodingId,
-      });
-    }
-    if (filters?.soldToCompanyId) {
-      query.andWhere("roll.sold_to_company_id = :companyId", {
-        companyId: filters.soldToCompanyId,
-      });
-    }
-
-    const rolls = await query.getMany();
+    const rolls = await this.rollStockRepository.findFilteredWithRelations(filters);
     return rolls.map((roll) => this.mapRollStockToDto(roll));
   }
 
   async rollById(id: number): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(id);
     return roll ? this.mapRollStockToDto(roll) : null;
   }
 
   async rollByNumber(rollNumber: string): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { rollNumber },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByRollNumberWithRelations(rollNumber);
     return roll ? this.mapRollStockToDto(roll) : null;
   }
 
   async createRollStock(dto: CreateRollStockDto): Promise<RubberRollStockDto> {
-    const existingRoll = await this.rollStockRepository.findOne({
-      where: { rollNumber: dto.rollNumber },
-    });
+    const existingRoll = await this.rollStockRepository.findOneByRollNumber(dto.rollNumber);
     if (existingRoll) {
       throw new BadRequestException(`Roll number ${dto.rollNumber} already exists`);
     }
 
     if (dto.compoundCodingId) {
-      const coding = await this.productCodingRepository.findOne({
-        where: { id: dto.compoundCodingId },
-      });
+      const coding = await this.productCodingRepository.findOneById(dto.compoundCodingId);
       if (!coding) {
         throw new BadRequestException("Compound coding not found");
       }
     }
 
-    const roll = this.rollStockRepository.create({
+    const roll = this.rollStockRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       rollNumber: dto.rollNumber,
       compoundCodingId: dto.compoundCodingId ?? null,
@@ -159,10 +124,7 @@ export class RubberRollStockService {
     });
 
     const saved = await this.rollStockRepository.save(roll);
-    const result = await this.rollStockRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const result = await this.rollStockRepository.findOneByIdWithRelations(saved.id);
     if (!result) {
       throw new BadRequestException("Failed to retrieve created roll stock");
     }
@@ -170,17 +132,12 @@ export class RubberRollStockService {
   }
 
   async updateRollStock(id: number, dto: UpdateRollStockDto): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!roll) return null;
 
     if (dto.compoundCodingId !== undefined) {
       if (dto.compoundCodingId !== null) {
-        const coding = await this.productCodingRepository.findOne({
-          where: { id: dto.compoundCodingId },
-        });
+        const coding = await this.productCodingRepository.findOneById(dto.compoundCodingId);
         if (!coding) {
           throw new BadRequestException("Compound coding not found");
         }
@@ -196,10 +153,7 @@ export class RubberRollStockService {
     if (dto.notes !== undefined) roll.notes = dto.notes;
 
     await this.rollStockRepository.save(roll);
-    const result = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const result = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!result) {
       throw new BadRequestException("Failed to retrieve updated roll stock");
     }
@@ -207,17 +161,14 @@ export class RubberRollStockService {
   }
 
   async reserveRoll(id: number, dto: ReserveRollDto): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!roll) return null;
 
     if (roll.status !== RollStockStatus.IN_STOCK) {
       throw new BadRequestException(`Roll is not in stock (current status: ${roll.status})`);
     }
 
-    const company = await this.companyRepository.findOne({ where: { id: dto.customerId } });
+    const company = await this.companyRepository.findById(dto.customerId);
     if (!company) {
       throw new BadRequestException("Customer company not found");
     }
@@ -228,10 +179,7 @@ export class RubberRollStockService {
     roll.reservedAt = now().toJSDate();
 
     await this.rollStockRepository.save(roll);
-    const result = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const result = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!result) {
       throw new BadRequestException("Failed to retrieve reserved roll stock");
     }
@@ -239,10 +187,7 @@ export class RubberRollStockService {
   }
 
   async unreserveRoll(id: number): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!roll) return null;
 
     if (roll.status !== RollStockStatus.RESERVED) {
@@ -255,10 +200,7 @@ export class RubberRollStockService {
     roll.reservedAt = null;
 
     await this.rollStockRepository.save(roll);
-    const result = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const result = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!result) {
       throw new BadRequestException("Failed to retrieve unreserved roll stock");
     }
@@ -266,17 +208,14 @@ export class RubberRollStockService {
   }
 
   async sellRoll(id: number, dto: SellRollDto): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!roll) return null;
 
     if (roll.status !== RollStockStatus.IN_STOCK && roll.status !== RollStockStatus.RESERVED) {
       throw new BadRequestException(`Roll cannot be sold (current status: ${roll.status})`);
     }
 
-    const company = await this.companyRepository.findOne({ where: { id: dto.customerId } });
+    const company = await this.companyRepository.findById(dto.customerId);
     if (!company) {
       throw new BadRequestException("Customer company not found");
     }
@@ -286,10 +225,7 @@ export class RubberRollStockService {
     roll.soldAt = now().toJSDate();
 
     await this.rollStockRepository.save(roll);
-    const result = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const result = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!result) {
       throw new BadRequestException("Failed to retrieve sold roll stock");
     }
@@ -297,10 +233,7 @@ export class RubberRollStockService {
   }
 
   async scrapRoll(id: number, notes?: string): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!roll) return null;
 
     if (roll.status === RollStockStatus.SOLD) {
@@ -317,49 +250,34 @@ export class RubberRollStockService {
   }
 
   async deleteRollStock(id: number): Promise<boolean> {
-    const roll = await this.rollStockRepository.findOne({ where: { id } });
+    const roll = await this.rollStockRepository.findById(id);
     if (roll && roll.status === RollStockStatus.SOLD) {
       throw new BadRequestException("Sold rolls cannot be deleted");
     }
-    const result = await this.rollStockRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.rollStockRepository.deleteById(id);
   }
 
   async rollTraceability(id: number): Promise<RollTraceabilityDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(id);
     if (!roll) return null;
 
     const batchRecords =
       roll.linkedBatchIds && roll.linkedBatchIds.length > 0
-        ? await this.compoundBatchRepository.find({
-            where: { id: In(roll.linkedBatchIds) },
-            relations: [
-              "supplierCoc",
-              "supplierCoc.supplierCompany",
-              "compoundStock",
-              "compoundStock.compoundCoding",
-            ],
-          })
+        ? await this.compoundBatchRepository.findByIdsWithRelations(roll.linkedBatchIds, [
+            "supplierCoc",
+            "supplierCoc.supplierCompany",
+            "compoundStock",
+            "compoundStock.compoundCoding",
+          ])
         : [];
 
     const cocIds = [...new Set(batchRecords.map((b) => b.supplierCocId))];
     const supplierCocs =
-      cocIds.length > 0
-        ? await this.supplierCocRepository.find({
-            where: { id: In(cocIds) },
-            relations: ["supplierCompany"],
-          })
-        : [];
+      cocIds.length > 0 ? await this.supplierCocRepository.findByIdsWithCompany(cocIds) : [];
 
     let auCoc: RubberAuCocDto | null = null;
     if (roll.auCocId) {
-      const auCocRecord = await this.auCocRepository.findOne({
-        where: { id: roll.auCocId },
-        relations: ["customerCompany"],
-      });
+      const auCocRecord = await this.auCocRepository.findById(roll.auCocId, ["customerCompany"]);
       if (auCocRecord) {
         auCoc = {
           id: auCocRecord.id,
@@ -398,22 +316,15 @@ export class RubberRollStockService {
   }
 
   async inStockCount(): Promise<number> {
-    return this.rollStockRepository.count({
-      where: { status: RollStockStatus.IN_STOCK },
-    });
+    return this.rollStockRepository.inStockCount();
   }
 
   async reservedCount(): Promise<number> {
-    return this.rollStockRepository.count({
-      where: { status: RollStockStatus.RESERVED },
-    });
+    return this.rollStockRepository.reservedCount();
   }
 
   async linkBatchesToRoll(rollId: number, batchIds: number[]): Promise<RubberRollStockDto | null> {
-    const roll = await this.rollStockRepository.findOne({
-      where: { id: rollId },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const roll = await this.rollStockRepository.findOneByIdWithRelations(rollId);
     if (!roll) return null;
 
     roll.linkedBatchIds = batchIds;
@@ -422,16 +333,12 @@ export class RubberRollStockService {
   }
 
   async createOpeningStock(dto: CreateOpeningStockDto): Promise<RubberRollStockDto> {
-    const existingRoll = await this.rollStockRepository.findOne({
-      where: { rollNumber: dto.rollNumber },
-    });
+    const existingRoll = await this.rollStockRepository.findOneByRollNumber(dto.rollNumber);
     if (existingRoll) {
       throw new BadRequestException(`Roll number ${dto.rollNumber} already exists`);
     }
 
-    const coding = await this.productCodingRepository.findOne({
-      where: { id: dto.compoundCodingId },
-    });
+    const coding = await this.productCodingRepository.findOneById(dto.compoundCodingId);
     if (!coding) {
       throw new BadRequestException("Compound not found");
     }
@@ -441,15 +348,13 @@ export class RubberRollStockService {
 
     let locationName: string | null = null;
     if (dto.locationId) {
-      const location = await this.stockLocationRepository.findOne({
-        where: { id: dto.locationId },
-      });
+      const location = await this.stockLocationRepository.findById(dto.locationId);
       if (location) {
         locationName = location.name;
       }
     }
 
-    const roll = this.rollStockRepository.create({
+    const roll = this.rollStockRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       rollNumber: dto.rollNumber,
       compoundCodingId: dto.compoundCodingId,
@@ -465,10 +370,7 @@ export class RubberRollStockService {
     });
 
     const saved = await this.rollStockRepository.save(roll);
-    const result = await this.rollStockRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const result = await this.rollStockRepository.findOneByIdWithRelations(saved.id);
     if (!result) {
       throw new BadRequestException("Failed to retrieve created opening stock");
     }
@@ -482,18 +384,16 @@ export class RubberRollStockService {
       errors: [],
     };
 
-    const compoundCodings = await this.productCodingRepository.find({
-      where: { codingType: ProductCodingType.COMPOUND },
-    });
+    const compoundCodings = await this.productCodingRepository.findByType(
+      ProductCodingType.COMPOUND,
+    );
     const codingByCode = new Map(compoundCodings.map((c) => [c.code.toUpperCase(), c]));
 
     const finalResult = await rows.reduce(async (accPromise, row, index) => {
       const acc = await accPromise;
       const rowNumber = index + 1;
 
-      const existingRoll = await this.rollStockRepository.findOne({
-        where: { rollNumber: row.rollNumber },
-      });
+      const existingRoll = await this.rollStockRepository.findOneByRollNumber(row.rollNumber);
       if (existingRoll) {
         return {
           ...acc,
@@ -524,7 +424,7 @@ export class RubberRollStockService {
       }
 
       try {
-        const roll = this.rollStockRepository.create({
+        const roll = this.rollStockRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           rollNumber: row.rollNumber,
           compoundCodingId: coding.id,
@@ -688,17 +588,17 @@ export class RubberRollStockService {
     if (!trimmed) {
       throw new BadRequestException("Cannot create product coding with empty code");
     }
-    const exact = await this.productCodingRepository.findOne({
-      where: { code: trimmed, codingType: ProductCodingType.COMPOUND },
-    });
+    const exact = await this.productCodingRepository.findOneByCodeAndType(
+      trimmed,
+      ProductCodingType.COMPOUND,
+    );
     if (exact) return exact;
-    const aliasMatch = await this.productCodingRepository
-      .createQueryBuilder("pc")
-      .where("pc.coding_type = :type", { type: ProductCodingType.COMPOUND })
-      .andWhere("pc.aliases @> :aliasJson::jsonb", { aliasJson: JSON.stringify([trimmed]) })
-      .getOne();
+    const aliasMatch = await this.productCodingRepository.findOneByAliasAndType(
+      trimmed,
+      ProductCodingType.COMPOUND,
+    );
     if (aliasMatch) return aliasMatch;
-    const coding = this.productCodingRepository.create({
+    return this.productCodingRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       codingType: ProductCodingType.COMPOUND,
       code: trimmed,
@@ -706,7 +606,6 @@ export class RubberRollStockService {
       aliases: [],
       needsReview: true,
     });
-    return this.productCodingRepository.save(coding);
   }
 
   async createRollsFromSupplierTaxInvoice(
@@ -734,9 +633,7 @@ export class RubberRollStockService {
           skipped += 1;
           continue;
         }
-        const existing = await this.rollStockRepository.findOne({
-          where: { rollNumber: canonicalNumber },
-        });
+        const existing = await this.rollStockRepository.findOneByRollNumber(canonicalNumber);
         if (existing) {
           const placeholderHasNoCosts =
             existing.tollCostR == null && existing.compoundCostR == null;
@@ -765,7 +662,7 @@ export class RubberRollStockService {
           skipped += 1;
           continue;
         }
-        const entity = this.rollStockRepository.create({
+        const entity = this.rollStockRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           rollNumber: canonicalNumber,
           compoundCodingId: coding ? coding.id : null,
@@ -825,9 +722,7 @@ export class RubberRollStockService {
 
     const existing =
       currentNumbers.size > 0
-        ? await this.rollStockRepository.find({
-            where: { rollNumber: In([...currentNumbers]) },
-          })
+        ? await this.rollStockRepository.findManyByRollNumbers([...currentNumbers])
         : [];
     const existingByNumber = new Map(existing.map((r) => [r.rollNumber, r]));
 
@@ -836,9 +731,10 @@ export class RubberRollStockService {
     ];
     const codings =
       compoundCodes.length > 0
-        ? await this.productCodingRepository.find({
-            where: { code: In(compoundCodes), codingType: ProductCodingType.COMPOUND },
-          })
+        ? await this.productCodingRepository.findManyByCodesAndType(
+            compoundCodes,
+            ProductCodingType.COMPOUND,
+          )
         : [];
     const codingByCode = new Map(codings.map((c) => [c.code, c]));
 
@@ -874,7 +770,7 @@ export class RubberRollStockService {
           skippedNoCompound += 1;
           continue;
         }
-        const newRoll = this.rollStockRepository.create({
+        const newRoll = this.rollStockRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           rollNumber: info.rollNumber,
           compoundCodingId: coding.id,
@@ -890,9 +786,8 @@ export class RubberRollStockService {
       }
     }
 
-    const previouslyLinked = await this.rollStockRepository.find({
-      where: { customerTaxInvoiceId },
-    });
+    const previouslyLinked =
+      await this.rollStockRepository.findManyByCustomerTaxInvoiceId(customerTaxInvoiceId);
     let unlinked = 0;
     for (const orphan of previouslyLinked) {
       if (!currentNumbers.has(orphan.rollNumber)) {
@@ -908,7 +803,7 @@ export class RubberRollStockService {
     }
 
     if (toSave.length > 0) {
-      await this.rollStockRepository.save(toSave);
+      await this.rollStockRepository.saveMany(toSave);
     }
 
     return { linked, created, unlinked, skippedNoCompound };
@@ -937,9 +832,7 @@ export class RubberRollStockService {
 
     const existing =
       currentNumbers.size > 0
-        ? await this.rollStockRepository.find({
-            where: { rollNumber: In([...currentNumbers]) },
-          })
+        ? await this.rollStockRepository.findManyByRollNumbers([...currentNumbers])
         : [];
     const existingByNumber = new Map(existing.map((r) => [r.rollNumber, r]));
 
@@ -948,9 +841,10 @@ export class RubberRollStockService {
     ];
     const codings =
       compoundCodes.length > 0
-        ? await this.productCodingRepository.find({
-            where: { code: In(compoundCodes), codingType: ProductCodingType.COMPOUND },
-          })
+        ? await this.productCodingRepository.findManyByCodesAndType(
+            compoundCodes,
+            ProductCodingType.COMPOUND,
+          )
         : [];
     const codingByCode = new Map(codings.map((c) => [c.code, c]));
 
@@ -986,7 +880,7 @@ export class RubberRollStockService {
           skippedNoCompound += 1;
           continue;
         }
-        const newRoll = this.rollStockRepository.create({
+        const newRoll = this.rollStockRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           rollNumber: info.rollNumber,
           compoundCodingId: coding.id,
@@ -1002,9 +896,8 @@ export class RubberRollStockService {
       }
     }
 
-    const previouslyLinked = await this.rollStockRepository.find({
-      where: { customerDeliveryNoteId },
-    });
+    const previouslyLinked =
+      await this.rollStockRepository.findManyByCustomerDeliveryNoteId(customerDeliveryNoteId);
     let unlinked = 0;
     for (const orphan of previouslyLinked) {
       if (!currentNumbers.has(orphan.rollNumber)) {
@@ -1020,7 +913,7 @@ export class RubberRollStockService {
     }
 
     if (toSave.length > 0) {
-      await this.rollStockRepository.save(toSave);
+      await this.rollStockRepository.saveMany(toSave);
     }
 
     return { linked, created, unlinked, skippedNoCompound };
@@ -1055,15 +948,16 @@ export class RubberRollStockService {
     ];
     const codings =
       compoundCodes.length > 0
-        ? await this.productCodingRepository.find({
-            where: { code: In(compoundCodes), codingType: ProductCodingType.COMPOUND },
-          })
+        ? await this.productCodingRepository.findManyByCodesAndType(
+            compoundCodes,
+            ProductCodingType.COMPOUND,
+          )
         : [];
     const codingByCode = new Map(codings.map((c) => [c.code, c]));
 
-    const existing = await this.rollStockRepository.find({
-      where: { rollNumber: In(rollInfo.map((r) => r.rollNumber)) },
-    });
+    const existing = await this.rollStockRepository.findManyByRollNumbers(
+      rollInfo.map((r) => r.rollNumber),
+    );
     const existingByNumber = new Map(existing.map((r) => [r.rollNumber, r]));
 
     const toSave: RubberRollStock[] = [];
@@ -1108,7 +1002,7 @@ export class RubberRollStockService {
         skipped += 1;
         continue;
       }
-      const newRoll = this.rollStockRepository.create({
+      const newRoll = this.rollStockRepository.build({
         firebaseUid: `pg_${generateUniqueId()}`,
         rollNumber: info.rollNumber,
         compoundCodingId: coding.id,
@@ -1125,9 +1019,8 @@ export class RubberRollStockService {
     }
 
     const currentNumbers = new Set(rollInfo.map((r) => r.rollNumber));
-    const previouslyLinked = await this.rollStockRepository.find({
-      where: { supplierDeliveryNoteId },
-    });
+    const previouslyLinked =
+      await this.rollStockRepository.findManyBySupplierDeliveryNoteId(supplierDeliveryNoteId);
     for (const orphan of previouslyLinked) {
       if (!currentNumbers.has(orphan.rollNumber)) {
         orphan.supplierDeliveryNoteId = null;
@@ -1136,7 +1029,7 @@ export class RubberRollStockService {
     }
 
     if (toSave.length > 0) {
-      await this.rollStockRepository.save(toSave);
+      await this.rollStockRepository.saveMany(toSave);
     }
 
     return { created, reconciled, skipped };
@@ -1152,9 +1045,7 @@ export class RubberRollStockService {
       .map((n) => canonicalRollNumber(n))
       .filter((n) => n.length > 0);
     if (canonicalNumbers.length === 0) return { marked: 0, missing: rollNumbers };
-    const rolls = await this.rollStockRepository.find({
-      where: { rollNumber: In(canonicalNumbers) },
-    });
+    const rolls = await this.rollStockRepository.findManyByRollNumbers(canonicalNumbers);
     const found = new Set(rolls.map((r) => r.rollNumber));
     const missing = canonicalNumbers.filter((n) => !found.has(n));
     const updates = rolls.map((r) => ({
@@ -1164,7 +1055,7 @@ export class RubberRollStockService {
       customerTaxInvoiceId,
       soldAt: now().toJSDate(),
     }));
-    await this.rollStockRepository.save(updates);
+    await this.rollStockRepository.saveMany(updates);
     return { marked: rolls.length, missing };
   }
 
@@ -1172,15 +1063,12 @@ export class RubberRollStockService {
     if (rollNumbers.length === 0) return [];
     const canonical = rollNumbers.map((n) => canonicalRollNumber(n)).filter((n) => n.length > 0);
     if (canonical.length === 0) return [];
-    const rolls = await this.rollStockRepository.find({
-      where: { rollNumber: In(canonical) },
-      relations: ["compoundCoding", "soldToCompany"],
-    });
+    const rolls = await this.rollStockRepository.findManyByRollNumbersWithRelations(canonical);
     return rolls.map((r) => this.mapRollStockToDto(r));
   }
 
   async cleanupPrefixedOrphanRolls(): Promise<{ deleted: number; merged: number }> {
-    const allRolls = await this.rollStockRepository.find();
+    const allRolls = await this.rollStockRepository.findAll();
     const byRollNumber = new Map(allRolls.map((r) => [r.rollNumber, r]));
     const toDelete: RubberRollStock[] = [];
     let merged = 0;
@@ -1202,48 +1090,36 @@ export class RubberRollStockService {
       toDelete.push(roll);
     }
     if (toDelete.length > 0) {
-      await this.rollStockRepository.remove(toDelete);
+      await this.rollStockRepository.removeMany(toDelete);
     }
     return { deleted: toDelete.length, merged };
   }
 
   async availableRollsForProductCode(productCode: string): Promise<RubberRollStockDto[]> {
-    const coding = await this.productCodingRepository.findOne({
-      where: { code: productCode, codingType: ProductCodingType.COMPOUND },
-    });
+    const coding = await this.productCodingRepository.findOneByCodeAndType(
+      productCode,
+      ProductCodingType.COMPOUND,
+    );
     if (!coding) return [];
-    const rolls = await this.rollStockRepository.find({
-      where: { compoundCodingId: coding.id, status: RollStockStatus.IN_STOCK },
-      relations: ["compoundCoding", "soldToCompany"],
-      order: { rollNumber: "ASC" },
-    });
+    const rolls = await this.rollStockRepository.findManyByCompoundCodingIdAndStatusOrdered(
+      coding.id,
+      RollStockStatus.IN_STOCK,
+    );
     return rolls.map((r) => this.mapRollStockToDto(r));
   }
 
   private async impiloCocForInvoice(invoice: RubberTaxInvoice): Promise<RubberSupplierCoc | null> {
     const orderNumber = invoice.extractedData?.orderNumber;
     if (!orderNumber) return null;
-    const cocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .andWhere("coc.supplier_company_id = :companyId", { companyId: invoice.companyId })
-      .andWhere("coc.extracted_data->>'orderNumber' = :order", { order: orderNumber })
-      .orderBy("coc.created_at", "DESC")
-      .limit(1)
-      .getMany();
-    return cocs.length > 0 ? cocs[0] : null;
+    return this.supplierCocRepository.findOneCalendererByCompanyAndExtractedOrder(
+      invoice.companyId,
+      orderNumber,
+    );
   }
 
   private async sNCocByBatchOverlap(batchNumbers: string[]): Promise<RubberSupplierCoc | null> {
     if (batchNumbers.length === 0) return null;
-    const cocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
-      .andWhere("coc.extracted_data->'batchNumbers' ?| :batches", { batches: batchNumbers })
-      .orderBy("coc.created_at", "DESC")
-      .limit(1)
-      .getMany();
-    return cocs.length > 0 ? cocs[0] : null;
+    return this.supplierCocRepository.findOneCompounderByBatchNumbersOverlap(batchNumbers);
   }
 
   private async sNInvoiceForCompound(
@@ -1251,14 +1127,7 @@ export class RubberRollStockService {
     compoundCode: string | null,
     productionDate: Date | string | null,
   ): Promise<{ invoice: RubberTaxInvoice; lineUnitPrice: number } | null> {
-    const candidates = await this.taxInvoiceRepository
-      .createQueryBuilder("inv")
-      .where("inv.company_id = :companyId", { companyId: snCompanyId })
-      .andWhere("inv.invoice_type = :type", { type: TaxInvoiceType.SUPPLIER })
-      .andWhere("inv.is_credit_note = false")
-      .orderBy("inv.invoice_date", "DESC")
-      .limit(50)
-      .getMany();
+    const candidates = await this.taxInvoiceRepository.findRecentSupplierInvoices(snCompanyId, 50);
     const shoreMatch = compoundCode ? compoundCode.match(/(\d{2})/) : null;
     const shore = shoreMatch ? shoreMatch[1] : null;
     const colourMatch = compoundCode ? compoundCode.match(/^([A-Z])/) : null;
@@ -1322,10 +1191,7 @@ export class RubberRollStockService {
   async resolveCompoundCostPerKgForImpiloInvoice(
     impiloInvoiceId: number,
   ): Promise<{ unitPrice: number; sourceInvoiceId: number; sourceCocId: number | null } | null> {
-    const invoice = await this.taxInvoiceRepository.findOne({
-      where: { id: impiloInvoiceId },
-      relations: ["company"],
-    });
+    const invoice = await this.taxInvoiceRepository.findOneByIdWithCompany(impiloInvoiceId);
     if (!invoice) return null;
     const impiloCoc = await this.impiloCocForInvoice(invoice);
     if (!impiloCoc) return null;
@@ -1355,9 +1221,7 @@ export class RubberRollStockService {
   ): Promise<{ updated: number; unitPrice: number | null }> {
     const resolved = await this.resolveCompoundCostPerKgForImpiloInvoice(impiloInvoiceId);
     if (!resolved) return { updated: 0, unitPrice: null };
-    const rolls = await this.rollStockRepository.find({
-      where: { supplierTaxInvoiceId: impiloInvoiceId },
-    });
+    const rolls = await this.rollStockRepository.findManyBySupplierTaxInvoiceId(impiloInvoiceId);
     const updates = rolls.map((r) => {
       const weight = Number(r.weightKg ?? 0);
       const compoundCost = Math.round(weight * resolved.unitPrice * 100) / 100;
@@ -1370,7 +1234,7 @@ export class RubberRollStockService {
         costZar: total,
       };
     });
-    if (updates.length > 0) await this.rollStockRepository.save(updates);
+    if (updates.length > 0) await this.rollStockRepository.saveMany(updates);
     return { updated: updates.length, unitPrice: resolved.unitPrice };
   }
 }

@@ -5,18 +5,16 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { CreateLeaveDto } from "../dto/staff-leave.dto";
 import { LeaveType, StaffLeaveRecord } from "../entities/staff-leave-record.entity";
+import { StaffLeaveRecordRepository } from "../staff-leave-record.repository";
 
 @Injectable()
 export class StaffLeaveService {
   constructor(
-    @InjectRepository(StaffLeaveRecord)
-    private readonly leaveRepo: Repository<StaffLeaveRecord>,
+    private readonly leaveRepo: StaffLeaveRecordRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -33,22 +31,11 @@ export class StaffLeaveService {
       throw new BadRequestException("Invalid year/month");
     }
 
-    return this.leaveRepo.find({
-      where: {
-        companyId,
-        startDate: LessThanOrEqual(monthEnd),
-        endDate: MoreThanOrEqual(monthStart),
-      },
-      relations: ["user"],
-      order: { startDate: "ASC" },
-    });
+    return this.leaveRepo.findForMonth(companyId, monthStart, monthEnd);
   }
 
   async recordsForUser(companyId: number, userId: number): Promise<StaffLeaveRecord[]> {
-    return this.leaveRepo.find({
-      where: { companyId, userId },
-      order: { startDate: "DESC" },
-    });
+    return this.leaveRepo.findForUser(companyId, userId);
   }
 
   async createRecord(
@@ -67,7 +54,7 @@ export class StaffLeaveService {
       throw new BadRequestException("End date must be on or after start date");
     }
 
-    const record = this.leaveRepo.create({
+    const record = this.leaveRepo.instantiate({
       companyId,
       userId,
       leaveType: dto.leaveType,
@@ -80,9 +67,7 @@ export class StaffLeaveService {
   }
 
   async deleteRecord(companyId: number, recordId: number, requestingUserId: number): Promise<void> {
-    const record = await this.leaveRepo.findOne({
-      where: { id: recordId, companyId },
-    });
+    const record = await this.leaveRepo.findByIdAndCompany(recordId, companyId);
 
     if (!record) {
       throw new NotFoundException("Leave record not found");
@@ -96,9 +81,7 @@ export class StaffLeaveService {
   }
 
   async adminDeleteRecord(companyId: number, recordId: number): Promise<void> {
-    const record = await this.leaveRepo.findOne({
-      where: { id: recordId, companyId },
-    });
+    const record = await this.leaveRepo.findByIdAndCompany(recordId, companyId);
 
     if (!record) {
       throw new NotFoundException("Leave record not found");
@@ -113,9 +96,7 @@ export class StaffLeaveService {
     userId: number,
     file: Express.Multer.File,
   ): Promise<StaffLeaveRecord> {
-    const record = await this.leaveRepo.findOne({
-      where: { id: recordId, companyId },
-    });
+    const record = await this.leaveRepo.findByIdAndCompany(recordId, companyId);
 
     if (!record) {
       throw new NotFoundException("Leave record not found");
@@ -139,9 +120,7 @@ export class StaffLeaveService {
   }
 
   async sickNotePresignedUrl(companyId: number, recordId: number): Promise<string> {
-    const record = await this.leaveRepo.findOne({
-      where: { id: recordId, companyId },
-    });
+    const record = await this.leaveRepo.findByIdAndCompany(recordId, companyId);
 
     if (!record) {
       throw new NotFoundException("Leave record not found");
@@ -164,14 +143,7 @@ export class StaffLeaveService {
       return null;
     }
 
-    return this.leaveRepo.findOne({
-      where: {
-        companyId,
-        userId,
-        startDate: LessThanOrEqual(dateStr),
-        endDate: MoreThanOrEqual(dateStr),
-      },
-    });
+    return this.leaveRepo.findActiveForUser(companyId, userId, dateStr);
   }
 
   async usersOnLeaveToday(companyId: number): Promise<number[]> {
@@ -180,15 +152,6 @@ export class StaffLeaveService {
       return [];
     }
 
-    const records = await this.leaveRepo.find({
-      where: {
-        companyId,
-        startDate: LessThanOrEqual(today),
-        endDate: MoreThanOrEqual(today),
-      },
-      select: ["userId"],
-    });
-
-    return records.map((r) => r.userId);
+    return this.leaveRepo.userIdsOnLeave(companyId, today);
   }
 }

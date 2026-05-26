@@ -5,7 +5,6 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import {
   generateAuthenticationOptions,
   generateRegistrationOptions,
@@ -18,12 +17,14 @@ import type {
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
 } from "@simplewebauthn/types";
-import { IsNull, LessThan, Repository } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { Passkey } from "./entities/passkey.entity";
-import { PasskeyChallenge } from "./entities/passkey-challenge.entity";
+import type { PasskeyChallengeType } from "./entities/passkey-challenge.entity";
 import { PasskeyConfig } from "./passkey.config";
+import { PasskeyRepository } from "./passkey.repository";
+import { PasskeyChallengeRepository } from "./passkey-challenge.repository";
 
 export interface PasskeyAuthenticationResult {
   user: User;
@@ -35,10 +36,9 @@ export class PasskeyService {
   private readonly logger = new Logger(PasskeyService.name);
 
   constructor(
-    @InjectRepository(Passkey) private readonly passkeyRepo: Repository<Passkey>,
-    @InjectRepository(PasskeyChallenge)
-    private readonly challengeRepo: Repository<PasskeyChallenge>,
-    @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly passkeyRepo: PasskeyRepository,
+    private readonly challengeRepo: PasskeyChallengeRepository,
+    private readonly userRepo: UserRepository,
     private readonly config: PasskeyConfig,
     private readonly auditService: AuditService,
   ) {}
@@ -66,13 +66,13 @@ export class PasskeyService {
     userId: number,
     requestHost?: string | null,
   ): Promise<PublicKeyCredentialCreationOptionsJSON> {
-    const user = await this.userRepo.findOne({ where: { id: userId } });
+    const user = await this.userRepo.findById(userId);
 
     if (!user) {
       throw new NotFoundException("User not found");
     }
 
-    const existing = await this.passkeyRepo.find({ where: { userId } });
+    const existing = await this.passkeyRepo.findByUserId(userId);
 
     const options = await generateRegistrationOptions({
       rpName: this.config.rpName(),
@@ -118,7 +118,7 @@ export class PasskeyService {
     const info = verification.registrationInfo;
     const credential = info.credential;
 
-    const passkey = this.passkeyRepo.create({
+    const saved = await this.passkeyRepo.create({
       userId,
       credentialId: credential.id,
       publicKey: Buffer.from(credential.publicKey).toString("base64url"),
@@ -129,7 +129,6 @@ export class PasskeyService {
       backupState: info.credentialBackedUp,
     });
 
-    const saved = await this.passkeyRepo.save(passkey);
     await this.audit(userId, "passkey-registered", {
       passkeyId: saved.id,
       deviceName: saved.deviceName,
@@ -142,10 +141,10 @@ export class PasskeyService {
     email: string | undefined,
     requestHost?: string | null,
   ): Promise<PublicKeyCredentialRequestOptionsJSON> {
-    const user = email ? await this.userRepo.findOne({ where: { email } }) : null;
+    const user = email ? await this.userRepo.findOneByEmail(email) : null;
 
     const allowCredentials = user
-      ? (await this.passkeyRepo.find({ where: { userId: user.id } })).map((passkey) => ({
+      ? (await this.passkeyRepo.findByUserId(user.id)).map((passkey) => ({
           id: passkey.credentialId,
           transports: this.normaliseTransports(passkey.transports),
         }))
@@ -166,9 +165,7 @@ export class PasskeyService {
     response: AuthenticationResponseJSON,
     requestHost?: string | null,
   ): Promise<PasskeyAuthenticationResult> {
-    const passkey = await this.passkeyRepo.findOne({
-      where: { credentialId: response.id },
-    });
+    const passkey = await this.passkeyRepo.findByCredentialId(response.id);
 
     if (!passkey) {
       throw new UnauthorizedException("Unknown credential");
@@ -213,10 +210,7 @@ export class PasskeyService {
     passkey.backupState = info.credentialBackedUp;
     await this.passkeyRepo.save(passkey);
 
-    const user = await this.userRepo.findOne({
-      where: { id: passkey.userId },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByIdWithRoles(passkey.userId);
 
     if (!user) {
       throw new UnauthorizedException("User no longer exists");
@@ -231,16 +225,11 @@ export class PasskeyService {
   }
 
   async listForUser(userId: number): Promise<Passkey[]> {
-    return this.passkeyRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-    });
+    return this.passkeyRepo.findByUserId(userId);
   }
 
   async rename(userId: number, passkeyId: number, deviceName: string): Promise<Passkey> {
-    const passkey = await this.passkeyRepo.findOne({
-      where: { id: passkeyId, userId },
-    });
+    const passkey = await this.passkeyRepo.findOneWhere({ id: passkeyId, userId });
 
     if (!passkey) {
       throw new NotFoundException("Passkey not found");
@@ -251,16 +240,14 @@ export class PasskeyService {
   }
 
   async revoke(userId: number, passkeyId: number): Promise<void> {
-    const passkey = await this.passkeyRepo.findOne({
-      where: { id: passkeyId, userId },
-    });
+    const passkey = await this.passkeyRepo.findOneWhere({ id: passkeyId, userId });
 
     if (!passkey) {
       throw new NotFoundException("Passkey not found");
     }
 
-    const user = await this.userRepo.findOne({ where: { id: userId } });
-    const remaining = await this.passkeyRepo.count({ where: { userId } });
+    const user = await this.userRepo.findById(userId);
+    const remaining = await this.passkeyRepo.countByUserId(userId);
     const hasPassword = !!user?.passwordHash;
 
     if (remaining <= 1 && !hasPassword) {
@@ -269,7 +256,7 @@ export class PasskeyService {
       );
     }
 
-    await this.passkeyRepo.delete({ id: passkeyId, userId });
+    await this.passkeyRepo.deleteByIdAndUserId(passkeyId, userId);
     await this.audit(userId, "passkey-revoked", {
       passkeyId,
       deviceName: passkey.deviceName,
@@ -277,65 +264,50 @@ export class PasskeyService {
   }
 
   async purgeExpiredChallenges(): Promise<number> {
-    const result = await this.challengeRepo.delete({
-      expiresAt: LessThan(new Date()),
-    });
-    return result.affected ?? 0;
+    return this.challengeRepo.deleteExpiredBefore(new Date());
   }
 
   private async storeChallenge(
     userId: number | null,
     challenge: string,
-    type: "registration" | "authentication",
+    type: PasskeyChallengeType,
   ): Promise<void> {
     const expiresAt = new Date(Date.now() + this.config.challengeTtlSeconds() * 1000);
-    await this.challengeRepo.save(
-      this.challengeRepo.create({ userId, challenge, type, expiresAt }),
-    );
+    await this.challengeRepo.create({ userId, challenge, type, expiresAt });
   }
 
   private async consumeChallenge(
     userId: number | null,
-    type: "registration" | "authentication",
+    type: PasskeyChallengeType,
   ): Promise<string> {
-    const where = userId !== null ? { userId, type } : { userId: IsNull(), type };
-    const challenge = await this.challengeRepo.findOne({
-      where,
-      order: { createdAt: "DESC" },
-    });
+    const challenge = await this.challengeRepo.findLatestForUserAndType(userId, type);
 
     if (!challenge) {
       throw new UnauthorizedException("No active challenge — restart the flow");
     }
 
     if (challenge.expiresAt.getTime() < Date.now()) {
-      await this.challengeRepo.delete({ id: challenge.id });
+      await this.challengeRepo.deleteById(challenge.id);
       throw new UnauthorizedException("Challenge expired");
     }
 
-    await this.challengeRepo.delete({ id: challenge.id });
+    await this.challengeRepo.deleteById(challenge.id);
     return challenge.challenge;
   }
 
   private async consumeAuthenticationChallenge(userId: number): Promise<string> {
-    const challenge = await this.challengeRepo.findOne({
-      where: [
-        { userId, type: "authentication" },
-        { userId: IsNull(), type: "authentication" },
-      ],
-      order: { createdAt: "DESC" },
-    });
+    const challenge = await this.challengeRepo.findLatestForAuthenticationByUserId(userId);
 
     if (!challenge) {
       throw new UnauthorizedException("No active challenge — restart the flow");
     }
 
     if (challenge.expiresAt.getTime() < Date.now()) {
-      await this.challengeRepo.delete({ id: challenge.id });
+      await this.challengeRepo.deleteById(challenge.id);
       throw new UnauthorizedException("Challenge expired");
     }
 
-    await this.challengeRepo.delete({ id: challenge.id });
+    await this.challengeRepo.deleteById(challenge.id);
     return challenge.challenge;
   }
 

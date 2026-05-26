@@ -1,15 +1,16 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { BaseCrudService } from "../lib/base-crud.service";
-import { NutMass } from "../nut-mass/entities/nut-mass.entity";
-import { Washer } from "../washer/entities/washer.entity";
+import { NutMassRepository } from "../nut-mass/nut-mass.repository";
+import { WasherRepository } from "../washer/washer.repository";
+import { BoltRepository } from "./bolt.repository";
 import { CreateBoltDto } from "./dto/create-bolt.dto";
 import { UpdateBoltDto } from "./dto/update-bolt.dto";
 import { Bolt } from "./entities/bolt.entity";
 import { PipeClampEntity } from "./entities/pipe-clamp.entity";
-import { ThreadedInsert } from "./entities/threaded-insert.entity";
 import { UBoltEntity } from "./entities/u-bolt.entity";
+import { PipeClampRepository } from "./pipe-clamp.repository";
+import { ThreadedInsertRepository } from "./threaded-insert.repository";
+import { UBoltRepository } from "./u-bolt.repository";
 
 export interface BoltFilters {
   grade?: string;
@@ -23,19 +24,14 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
   private unfilteredCache: Bolt[] | null = null;
 
   constructor(
-    @InjectRepository(Bolt) boltRepo: Repository<Bolt>,
-    @InjectRepository(UBoltEntity)
-    private readonly uBoltRepo: Repository<UBoltEntity>,
-    @InjectRepository(PipeClampEntity)
-    private readonly pipeClampRepo: Repository<PipeClampEntity>,
-    @InjectRepository(NutMass)
-    private readonly nutMassRepo: Repository<NutMass>,
-    @InjectRepository(Washer)
-    private readonly washerRepo: Repository<Washer>,
-    @InjectRepository(ThreadedInsert)
-    private readonly threadedInsertRepo: Repository<ThreadedInsert>,
+    private readonly boltRepository: BoltRepository,
+    private readonly uBoltRepository: UBoltRepository,
+    private readonly pipeClampRepository: PipeClampRepository,
+    private readonly nutMassRepo: NutMassRepository,
+    private readonly washerRepo: WasherRepository,
+    private readonly threadedInsertRepository: ThreadedInsertRepository,
   ) {
-    super(boltRepo, { entityName: "Bolt" });
+    super(boltRepository, { entityName: "Bolt" });
   }
 
   private invalidateCache(): void {
@@ -64,28 +60,7 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
       return this.unfilteredCache;
     }
 
-    const query = this.repo.createQueryBuilder("bolt");
-
-    if (filters?.grade) {
-      query.andWhere("bolt.grade = :grade", { grade: filters.grade });
-    }
-    if (filters?.material) {
-      query.andWhere("bolt.material ILIKE :material", {
-        material: `%${filters.material}%`,
-      });
-    }
-    if (filters?.headStyle) {
-      query.andWhere("bolt.head_style = :headStyle", {
-        headStyle: filters.headStyle,
-      });
-    }
-    if (filters?.size) {
-      query.andWhere("bolt.designation LIKE :size", {
-        size: `${filters.size}%`,
-      });
-    }
-
-    const result = await query.orderBy("bolt.designation", "ASC").getMany();
+    const result = await this.boltRepository.filteredBolts(filters ?? {});
 
     if (isUnfiltered) {
       this.unfilteredCache = result;
@@ -106,7 +81,7 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
       bolt.designation = dto.designation;
     }
 
-    const saved = await this.repo.save(bolt);
+    const saved = await this.repository.save(bolt);
     this.invalidateCache();
     return saved;
   }
@@ -117,87 +92,35 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
   }
 
   async uBolts(nbMm?: number): Promise<UBoltEntity[]> {
-    const query = this.uBoltRepo.createQueryBuilder("ub");
-
-    if (nbMm) {
-      query.andWhere("ub.nb_mm = :nbMm", { nbMm });
-    }
-
-    return query.orderBy("ub.nb_mm", "ASC").getMany();
+    return this.uBoltRepository.uBolts(nbMm);
   }
 
   async uBolt(nbMm: number, threadSize?: string): Promise<UBoltEntity | null> {
-    const query = this.uBoltRepo.createQueryBuilder("ub").where("ub.nb_mm = :nbMm", { nbMm });
-
-    if (threadSize) {
-      query.andWhere("ub.thread_size = :threadSize", { threadSize });
-    }
-
-    return query.getOne();
+    return this.uBoltRepository.uBolt(nbMm, threadSize);
   }
 
   async pipeClamps(clampType?: string, nbMm?: number): Promise<PipeClampEntity[]> {
-    const query = this.pipeClampRepo.createQueryBuilder("pc");
-
-    if (clampType) {
-      query.andWhere("pc.clamp_type = :clampType", { clampType });
-    }
-    if (nbMm) {
-      query.andWhere("pc.nb_mm = :nbMm", { nbMm });
-    }
-
-    return query.orderBy("pc.clamp_type", "ASC").addOrderBy("pc.nb_mm", "ASC").getMany();
+    return this.pipeClampRepository.pipeClamps(clampType, nbMm);
   }
 
   async pipeClamp(clampType: string, nbMm: number): Promise<PipeClampEntity | null> {
-    return this.pipeClampRepo.findOne({
-      where: { clampType, nbMm },
-    });
+    return this.pipeClampRepository.pipeClamp(clampType, nbMm);
   }
 
   async pipeClampTypes(): Promise<{ clampType: string; clampDescription: string }[]> {
-    const results = await this.pipeClampRepo
-      .createQueryBuilder("pc")
-      .select("pc.clamp_type", "clampType")
-      .addSelect("pc.clamp_description", "clampDescription")
-      .distinct(true)
-      .getRawMany();
-    return results;
+    return this.pipeClampRepository.pipeClampTypes();
   }
 
   async fastenerTypesGrouped(): Promise<
     Array<{ category: string; types: Array<{ type: string; count: number }> }>
   > {
-    const boltCategories = await this.repo
-      .createQueryBuilder("b")
-      .select("b.category", "type")
-      .addSelect("COUNT(*)", "count")
-      .where("b.category IS NOT NULL")
-      .groupBy("b.category")
-      .getRawMany();
+    const boltCategories = await this.boltRepository.boltCategoriesGrouped();
 
-    const nutTypes = await this.nutMassRepo
-      .createQueryBuilder("n")
-      .select("n.type", "type")
-      .addSelect("COUNT(*)", "count")
-      .where("n.type IS NOT NULL")
-      .groupBy("n.type")
-      .getRawMany();
+    const nutTypes = await this.nutMassRepo.typesGrouped();
 
-    const washerTypes = await this.washerRepo
-      .createQueryBuilder("w")
-      .select("w.type", "type")
-      .addSelect("COUNT(*)", "count")
-      .where("w.type IS NOT NULL")
-      .groupBy("w.type")
-      .getRawMany();
+    const washerTypes = await this.washerRepo.typesGrouped();
 
-    const insertTypes = await this.threadedInsertRepo
-      .createQueryBuilder("i")
-      .select("i.insert_type", "type")
-      .addSelect("COUNT(*)", "count")
-      .groupBy("i.insert_type")
-      .getRawMany();
+    const insertTypes = await this.threadedInsertRepository.insertTypesGrouped();
 
     return [
       { category: "bolt", types: boltCategories },
@@ -209,39 +132,13 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
 
   async fastenerSizesForType(category: string, type: string): Promise<Array<{ size: string }>> {
     if (category === "bolt") {
-      const results = await this.repo
-        .createQueryBuilder("b")
-        .select("DISTINCT b.designation", "size")
-        .where("b.category = :type", { type })
-        .orderBy("b.designation", "ASC")
-        .getRawMany();
-      return results;
+      return this.boltRepository.fastenerSizesForBolt(type);
     } else if (category === "nut") {
-      const results = await this.nutMassRepo
-        .createQueryBuilder("n")
-        .innerJoin("n.bolt", "b")
-        .select("DISTINCT b.designation", "size")
-        .where("n.type = :type", { type })
-        .orderBy("b.designation", "ASC")
-        .getRawMany();
-      return results;
+      return this.nutMassRepo.boltDesignationsForType(type);
     } else if (category === "washer") {
-      const results = await this.washerRepo
-        .createQueryBuilder("w")
-        .innerJoin("w.bolt", "b")
-        .select("DISTINCT b.designation", "size")
-        .where("w.type = :type", { type })
-        .orderBy("b.designation", "ASC")
-        .getRawMany();
-      return results;
+      return this.washerRepo.boltDesignationsForType(type);
     } else if (category === "insert") {
-      const results = await this.threadedInsertRepo
-        .createQueryBuilder("i")
-        .select("DISTINCT i.designation", "size")
-        .where("i.insert_type = :type", { type })
-        .orderBy("i.designation", "ASC")
-        .getRawMany();
-      return results;
+      return this.threadedInsertRepository.insertSizesForType(type);
     }
     return [];
   }
@@ -252,33 +149,11 @@ export class BoltService extends BaseCrudService<Bolt, CreateBoltDto, UpdateBolt
     size: string,
   ): Promise<Array<{ grade: string | null; material: string | null }>> {
     if (category === "bolt") {
-      const results = await this.repo
-        .createQueryBuilder("b")
-        .select("DISTINCT b.grade", "grade")
-        .addSelect("b.material", "material")
-        .where("b.category = :type AND b.designation LIKE :size", {
-          type,
-          size: `${size}%`,
-        })
-        .getRawMany();
-      return results;
+      return this.boltRepository.fastenerGradesForBolt(type, size);
     } else if (category === "nut") {
-      const results = await this.nutMassRepo
-        .createQueryBuilder("n")
-        .innerJoin("n.bolt", "b")
-        .select("DISTINCT n.grade", "grade")
-        .addSelect("'Carbon Steel'", "material")
-        .where("n.type = :type AND b.designation = :size", { type, size })
-        .getRawMany();
-      return results;
+      return this.nutMassRepo.gradesForTypeAndSize(type, size);
     } else if (category === "insert") {
-      const results = await this.threadedInsertRepo
-        .createQueryBuilder("i")
-        .select("DISTINCT i.material", "material")
-        .addSelect("NULL", "grade")
-        .where("i.insert_type = :type AND i.designation = :size", { type, size })
-        .getRawMany();
-      return results;
+      return this.threadedInsertRepository.insertGradesForTypeAndSize(type, size);
     }
     return [];
   }

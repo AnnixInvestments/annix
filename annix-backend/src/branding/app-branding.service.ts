@@ -1,7 +1,6 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { AppBrandingRepository } from "./app-branding.repository";
 import { type BrandCode, isBrandCode } from "./branding.constants";
 import { UpdateBrandingDto } from "./dto/update-branding.dto";
 import { AppBranding } from "./entities/app-branding.entity";
@@ -53,10 +52,7 @@ export class AppBrandingService {
   private readonly logger = new Logger(AppBrandingService.name);
 
   constructor(
-    @InjectRepository(AppBranding)
-    private readonly brandingRepo: Repository<AppBranding>,
-    @InjectRepository(AppBrandingImage)
-    private readonly imageRepo: Repository<AppBrandingImage>,
+    private readonly brandingRepo: AppBrandingRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -70,7 +66,7 @@ export class AppBrandingService {
 
   async entity(brand: string): Promise<AppBranding> {
     const code = this.assertBrand(brand);
-    const row = await this.brandingRepo.findOne({ where: { brandCode: code } });
+    const row = await this.brandingRepo.findByBrandCode(code);
     if (!row) {
       throw new NotFoundException(`Branding for ${code} not found. Run migrations to seed it.`);
     }
@@ -175,10 +171,7 @@ export class AppBrandingService {
 
   async listImages(brand: string): Promise<BrandingImageView[]> {
     const code = this.assertBrand(brand);
-    const rows = await this.imageRepo.find({
-      where: { brandCode: code },
-      order: { sortOrder: "ASC", createdAt: "ASC" },
-    });
+    const rows = await this.brandingRepo.listImages(code);
     return rows.map((row) => ({ id: row.id, label: row.label }));
   }
 
@@ -189,26 +182,21 @@ export class AppBrandingService {
   ): Promise<BrandingImageView> {
     const code = this.assertBrand(brand);
     const uploaded = await this.storageService.upload(file, `branding/${code}/gallery`);
-    const maxRow = await this.imageRepo.findOne({
-      where: { brandCode: code },
-      order: { sortOrder: "DESC" },
-    });
-    const nextOrder = maxRow ? maxRow.sortOrder + 1 : 0;
-    const saved = await this.imageRepo.save(
-      this.imageRepo.create({
-        brandCode: code,
-        label: label.trim().slice(0, 200),
-        path: uploaded.path,
-        sortOrder: nextOrder,
-      }),
-    );
+    const nextOrder = await this.brandingRepo.nextImageSortOrder(code);
+    const image = {
+      brandCode: code,
+      label: label.trim().slice(0, 200),
+      path: uploaded.path,
+      sortOrder: nextOrder,
+    } as AppBrandingImage;
+    const saved = await this.brandingRepo.saveImage(image);
     this.logger.log(`Branding gallery image added for ${code}: ${saved.id}`);
     return { id: saved.id, label: saved.label };
   }
 
   async deleteImage(brand: string, id: string): Promise<void> {
     const code = this.assertBrand(brand);
-    const row = await this.imageRepo.findOne({ where: { id, brandCode: code } });
+    const row = await this.brandingRepo.findImage(code, id);
     if (!row) {
       throw new NotFoundException(`Gallery image ${id} not found for ${code}`);
     }
@@ -216,7 +204,7 @@ export class AppBrandingService {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Failed to delete gallery file for ${id}: ${message}`);
     });
-    await this.imageRepo.delete({ id: row.id });
+    await this.brandingRepo.deleteImage(row.id);
   }
 
   async galleryImageBytes(
@@ -224,7 +212,7 @@ export class AppBrandingService {
     id: string,
   ): Promise<{ buffer: Buffer; mimeType: string }> {
     const code = this.assertBrand(brand);
-    const row = await this.imageRepo.findOne({ where: { id, brandCode: code } });
+    const row = await this.brandingRepo.findImage(code, id);
     if (!row) {
       throw new NotFoundException(`Gallery image ${id} not found for ${code}`);
     }

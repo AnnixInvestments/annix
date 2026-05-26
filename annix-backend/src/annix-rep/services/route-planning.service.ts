@@ -1,9 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, In, Not, Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
-import { Meeting, MeetingStatus, Prospect, ProspectStatus, Visit } from "../entities";
+import { Meeting, Prospect, ProspectStatus } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { ProspectRepository } from "../prospect.repository";
 import { RepProfileService } from "../rep-profile/rep-profile.service";
+import { VisitRepository } from "../visit.repository";
 
 export interface TravelInfo {
   distanceKm: number;
@@ -69,12 +70,9 @@ export class RoutePlanningService {
   private readonly EARTH_RADIUS_KM = 6371;
 
   constructor(
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
-    @InjectRepository(Visit)
-    private readonly visitRepo: Repository<Visit>,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly prospectRepo: ProspectRepository,
+    private readonly visitRepo: VisitRepository,
     private readonly repProfileService: RepProfileService,
   ) {}
 
@@ -103,15 +101,11 @@ export class RoutePlanningService {
       })
       .toJSDate();
 
-    const meetings = await this.meetingRepo.find({
-      where: {
-        salesRepId: userId,
-        scheduledStart: Between(dayStart, dayEnd),
-        status: In([MeetingStatus.SCHEDULED, MeetingStatus.IN_PROGRESS]),
-      },
-      relations: ["prospect"],
-      order: { scheduledStart: "ASC" },
-    });
+    const meetings = await this.meetingRepo.findScheduledOrInProgressWithProspect(
+      userId,
+      dayStart,
+      dayEnd,
+    );
 
     const gaps: ScheduleGap[] = [];
 
@@ -235,15 +229,10 @@ export class RoutePlanningService {
 
     const activeStatuses = [ProspectStatus.NEW, ProspectStatus.CONTACTED, ProspectStatus.QUALIFIED];
 
-    const prospects = await this.prospectRepo.find({
-      where: {
-        ownerId: userId,
-        status: In(activeStatuses),
-        latitude: Not(null as unknown as number),
-        longitude: Not(null as unknown as number),
-      },
-      order: { priority: "DESC", lastContactedAt: "ASC" },
-    });
+    const prospects = await this.prospectRepo.findActiveWithLocationForOwner(
+      userId,
+      activeStatuses,
+    );
 
     if (prospects.length === 0) {
       return [];
@@ -329,7 +318,7 @@ export class RoutePlanningService {
     await stops.reduce(async (accPromise, stop) => {
       const acc = await accPromise;
       if (stop.type === "prospect") {
-        const prospect = await this.prospectRepo.findOne({ where: { id: stop.id } });
+        const prospect = await this.prospectRepo.findById(stop.id);
         if (prospect?.latitude && prospect.longitude) {
           acc.push({
             type: "prospect",
@@ -342,10 +331,7 @@ export class RoutePlanningService {
           });
         }
       } else if (stop.type === "meeting") {
-        const meeting = await this.meetingRepo.findOne({
-          where: { id: stop.id },
-          relations: ["prospect"],
-        });
+        const meeting = await this.meetingRepo.findWithProspect(stop.id);
         if (meeting?.latitude && meeting.longitude) {
           const durationMinutes = fromJSDate(meeting.scheduledEnd).diff(
             fromJSDate(meeting.scheduledStart),
@@ -394,17 +380,11 @@ export class RoutePlanningService {
       .set({ hour: this.WORKING_END_HOUR, minute: 0, second: 0, millisecond: 0 })
       .toJSDate();
 
-    const meetings = await this.meetingRepo.find({
-      where: {
-        salesRepId: userId,
-        scheduledStart: Between(dayStart, dayEnd),
-        status: MeetingStatus.SCHEDULED,
-        latitude: Not(null as unknown as number),
-        longitude: Not(null as unknown as number),
-      },
-      relations: ["prospect"],
-      order: { scheduledStart: "ASC" },
-    });
+    const meetings = await this.meetingRepo.findScheduledWithLocationForRoute(
+      userId,
+      dayStart,
+      dayEnd,
+    );
 
     const stops: Array<{ id: number; type: "prospect" | "meeting" }> = meetings.map((m) => ({
       id: m.id,

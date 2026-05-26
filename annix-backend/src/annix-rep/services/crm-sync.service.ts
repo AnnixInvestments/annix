@@ -1,8 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import { decrypt, encrypt } from "../../secure-documents/crypto.util";
 import {
@@ -14,6 +12,8 @@ import {
 } from "../adapters";
 import type { CrmAdapterConfig, CrmContactData } from "../adapters/crm-adapter.interface";
 import { isAnnixRepCronEnabled } from "../annix-rep-cron.config";
+import { CrmConfigRepository } from "../crm-config.repository";
+import { CrmSyncLogRepository } from "../crm-sync-log.repository";
 import {
   ConflictResolutionStrategy,
   CrmConfig,
@@ -25,6 +25,7 @@ import {
   type SyncErrorDetail,
   SyncStatus,
 } from "../entities";
+import { ProspectRepository } from "../prospect.repository";
 import {
   HubSpotOAuthProvider,
   PipedriveOAuthProvider,
@@ -56,12 +57,9 @@ export class CrmSyncService {
   private readonly encryptionKey: string;
 
   constructor(
-    @InjectRepository(CrmConfig)
-    private readonly crmConfigRepo: Repository<CrmConfig>,
-    @InjectRepository(CrmSyncLog)
-    private readonly syncLogRepo: Repository<CrmSyncLog>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
+    private readonly crmConfigRepo: CrmConfigRepository,
+    private readonly syncLogRepo: CrmSyncLogRepository,
+    private readonly prospectRepo: ProspectRepository,
     private readonly configService: ConfigService,
     private readonly salesforceProvider: SalesforceOAuthProvider,
     private readonly hubspotProvider: HubSpotOAuthProvider,
@@ -76,9 +74,7 @@ export class CrmSyncService {
 
     this.logger.log("Running scheduled CRM sync");
 
-    const activeConfigs = await this.crmConfigRepo.find({
-      where: { isActive: true },
-    });
+    const activeConfigs = await this.crmConfigRepo.findActive();
 
     const oauthConfigs = activeConfigs.filter((config) =>
       [CrmType.SALESFORCE, CrmType.HUBSPOT, CrmType.PIPEDRIVE].includes(config.crmType),
@@ -96,7 +92,7 @@ export class CrmSyncService {
   }
 
   async syncIncrementally(configId: number): Promise<CrmSyncLog> {
-    const config = await this.crmConfigRepo.findOne({ where: { id: configId } });
+    const config = await this.crmConfigRepo.findById(configId);
     if (!config) {
       throw new NotFoundException(`CRM config ${configId} not found`);
     }
@@ -152,7 +148,7 @@ export class CrmSyncService {
   }
 
   async pullAllContacts(configId: number): Promise<CrmSyncLog> {
-    const config = await this.crmConfigRepo.findOne({ where: { id: configId } });
+    const config = await this.crmConfigRepo.findById(configId);
     if (!config) {
       throw new NotFoundException(`CRM config ${configId} not found`);
     }
@@ -195,18 +191,11 @@ export class CrmSyncService {
     limit: number = 20,
     offset: number = 0,
   ): Promise<{ logs: CrmSyncLog[]; total: number }> {
-    const [logs, total] = await this.syncLogRepo.findAndCount({
-      where: { configId },
-      order: { startedAt: "DESC" },
-      take: limit,
-      skip: offset,
-    });
-
-    return { logs, total };
+    return this.syncLogRepo.findByConfigPaginated(configId, limit, offset);
   }
 
   async refreshTokenIfNeeded(configId: number): Promise<void> {
-    const config = await this.crmConfigRepo.findOne({ where: { id: configId } });
+    const config = await this.crmConfigRepo.findById(configId);
     if (!config) {
       throw new NotFoundException(`CRM config ${configId} not found`);
     }
@@ -266,7 +255,7 @@ export class CrmSyncService {
   }
 
   private async createSyncLog(configId: number, direction: SyncDirection): Promise<CrmSyncLog> {
-    const syncLog = this.syncLogRepo.create({
+    return this.syncLogRepo.create({
       configId,
       direction,
       status: SyncStatus.IN_PROGRESS,
@@ -274,14 +263,12 @@ export class CrmSyncService {
       recordsSucceeded: 0,
       recordsFailed: 0,
     });
-
-    return this.syncLogRepo.save(syncLog);
   }
 
   private async oauthAdapterForConfig(config: CrmConfig): Promise<OAuthAdapter> {
     await this.refreshTokenIfNeeded(config.id);
 
-    const reloadedConfig = await this.crmConfigRepo.findOne({ where: { id: config.id } });
+    const reloadedConfig = await this.crmConfigRepo.findById(config.id);
     if (!reloadedConfig) {
       throw new Error("Config not found after token refresh");
     }
@@ -346,9 +333,7 @@ export class CrmSyncService {
 
         try {
           const existingProspect = contact.externalId
-            ? await this.prospectRepo.findOne({
-                where: { crmExternalId: contact.externalId, ownerId: config.userId },
-              })
+            ? await this.prospectRepo.findByCrmExternalId(contact.externalId, config.userId)
             : null;
 
           if (existingProspect) {
@@ -445,7 +430,7 @@ export class CrmSyncService {
     userId: number,
     contact: CrmContactData,
   ): Promise<Prospect> {
-    const prospect = this.prospectRepo.create({
+    return this.prospectRepo.create({
       ownerId: userId,
       companyName: contact.companyName,
       contactName: contact.contactName,
@@ -462,8 +447,6 @@ export class CrmSyncService {
       crmSyncStatus: "synced",
       crmLastSyncedAt: now().toJSDate(),
     });
-
-    return this.prospectRepo.save(prospect);
   }
 
   private mapContactStatusToProspectStatus(status: string): ProspectStatus {

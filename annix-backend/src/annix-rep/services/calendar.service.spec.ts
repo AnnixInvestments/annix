@@ -1,9 +1,9 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
+import { CalendarConnectionRepository } from "../calendar-connection.repository";
+import { CalendarEventRepository } from "../calendar-event.repository";
 import {
   CalendarConnection,
   CalendarEvent,
@@ -25,8 +25,8 @@ jest.mock("../../secure-documents/crypto.util", () => ({
 
 describe("CalendarService", () => {
   let service: CalendarService;
-  let mockConnectionRepo: Partial<Repository<CalendarConnection>>;
-  let mockEventRepo: Partial<Repository<CalendarEvent>>;
+  let mockConnectionRepo: Partial<CalendarConnectionRepository>;
+  let mockEventRepo: Partial<CalendarEventRepository>;
   let mockConfigService: Partial<ConfigService>;
   let mockGoogleProvider: Partial<GoogleCalendarProvider>;
   let mockOutlookProvider: Partial<OutlookCalendarProvider>;
@@ -90,26 +90,23 @@ describe("CalendarService", () => {
 
   beforeEach(async () => {
     mockConnectionRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockImplementation((data) => ({ id: 1, ...data })),
+      findByUser: jest.fn().mockResolvedValue([]),
+      findActiveByUser: jest.fn().mockResolvedValue([]),
+      findByIdAndUser: jest.fn().mockResolvedValue(null),
+      findByUserProviderEmail: jest.fn().mockResolvedValue(null),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-      update: jest.fn().mockResolvedValue(undefined),
+      clearPrimaryForUser: jest.fn().mockResolvedValue(undefined),
       remove: jest.fn().mockResolvedValue(undefined),
     };
 
     mockEventRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn().mockImplementation((data) => ({ id: 1, ...data })),
+      findByConnectionAndExternalId: jest.fn().mockResolvedValue(null),
+      findInRangeForConnections: jest.fn().mockResolvedValue([]),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-      delete: jest.fn().mockResolvedValue({ affected: 1 }),
-      createQueryBuilder: jest.fn().mockReturnValue({
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue([]),
-      }),
+      deleteByConnection: jest.fn().mockResolvedValue(undefined),
+      deleteByConnectionAndExternalId: jest.fn().mockResolvedValue(undefined),
     };
 
     mockConfigService = {
@@ -181,8 +178,8 @@ describe("CalendarService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CalendarService,
-        { provide: getRepositoryToken(CalendarConnection), useValue: mockConnectionRepo },
-        { provide: getRepositoryToken(CalendarEvent), useValue: mockEventRepo },
+        { provide: CalendarConnectionRepository, useValue: mockConnectionRepo },
+        { provide: CalendarEventRepository, useValue: mockEventRepo },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: GoogleCalendarProvider, useValue: mockGoogleProvider },
         { provide: OutlookCalendarProvider, useValue: mockOutlookProvider },
@@ -237,7 +234,6 @@ describe("CalendarService", () => {
       );
       expect(mockGoogleProvider.userInfo).toHaveBeenCalled();
       expect(mockConnectionRepo.create).toHaveBeenCalled();
-      expect(mockConnectionRepo.save).toHaveBeenCalled();
       expect(result).toHaveProperty("id");
       expect(result).toHaveProperty("provider");
     });
@@ -266,7 +262,9 @@ describe("CalendarService", () => {
 
     it("should update existing connection if one already exists", async () => {
       const existingConnection = { ...mockConnection };
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(existingConnection);
+      (mockConnectionRepo.findByUserProviderEmail as jest.Mock).mockResolvedValue(
+        existingConnection,
+      );
 
       const dto = {
         provider: CalendarProvider.GOOGLE,
@@ -285,16 +283,13 @@ describe("CalendarService", () => {
 
   describe("listConnections", () => {
     it("should return connections for user", async () => {
-      (mockConnectionRepo.find as jest.Mock).mockResolvedValue([mockConnection]);
+      (mockConnectionRepo.findByUser as jest.Mock).mockResolvedValue([mockConnection]);
 
       const result = await service.listConnections(100);
 
       expect(result).toHaveLength(1);
       expect(result[0].accountEmail).toBe("user@example.com");
-      expect(mockConnectionRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { createdAt: "DESC" },
-      });
+      expect(mockConnectionRepo.findByUser).toHaveBeenCalledWith(100);
     });
 
     it("should return empty array when no connections exist", async () => {
@@ -306,7 +301,7 @@ describe("CalendarService", () => {
 
   describe("connection", () => {
     it("should return a single connection", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(mockConnection);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockConnection);
 
       const result = await service.connection(100, 1);
 
@@ -321,7 +316,7 @@ describe("CalendarService", () => {
 
   describe("updateConnection", () => {
     it("should update selected calendars", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue({ ...mockConnection });
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue({ ...mockConnection });
 
       const result = await service.updateConnection(100, 1, {
         selectedCalendars: ["primary", "work"],
@@ -332,11 +327,11 @@ describe("CalendarService", () => {
     });
 
     it("should set connection as primary and clear other primaries", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue({ ...mockConnection });
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue({ ...mockConnection });
 
       await service.updateConnection(100, 1, { isPrimary: true });
 
-      expect(mockConnectionRepo.update).toHaveBeenCalledWith({ userId: 100 }, { isPrimary: false });
+      expect(mockConnectionRepo.clearPrimaryForUser).toHaveBeenCalledWith(100);
     });
 
     it("should throw NotFoundException when connection does not exist", async () => {
@@ -348,11 +343,11 @@ describe("CalendarService", () => {
 
   describe("disconnectCalendar", () => {
     it("should delete events and remove connection", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(mockConnection);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockConnection);
 
       await service.disconnectCalendar(100, 1);
 
-      expect(mockEventRepo.delete).toHaveBeenCalledWith({ connectionId: 1 });
+      expect(mockEventRepo.deleteByConnection).toHaveBeenCalledWith(1);
       expect(mockConnectionRepo.remove).toHaveBeenCalledWith(mockConnection);
     });
 
@@ -363,7 +358,7 @@ describe("CalendarService", () => {
 
   describe("listAvailableCalendars", () => {
     it("should list calendars from provider", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue(mockConnection);
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue(mockConnection);
 
       const result = await service.listAvailableCalendars(100, 1);
 
@@ -383,7 +378,7 @@ describe("CalendarService", () => {
 
   describe("syncConnection", () => {
     it("should sync events for a connection", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue({
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue({
         ...mockConnection,
         selectedCalendars: ["primary"],
       });
@@ -399,7 +394,7 @@ describe("CalendarService", () => {
     });
 
     it("should auto-discover calendars when none are selected", async () => {
-      (mockConnectionRepo.findOne as jest.Mock).mockResolvedValue({
+      (mockConnectionRepo.findByIdAndUser as jest.Mock).mockResolvedValue({
         ...mockConnection,
         selectedCalendars: [],
       });
@@ -412,9 +407,8 @@ describe("CalendarService", () => {
 
   describe("eventsInRange", () => {
     it("should return events within date range", async () => {
-      (mockConnectionRepo.find as jest.Mock).mockResolvedValue([mockConnection]);
-      const qb = (mockEventRepo.createQueryBuilder as jest.Mock)();
-      qb.getMany.mockResolvedValue([mockEvent]);
+      (mockConnectionRepo.findActiveByUser as jest.Mock).mockResolvedValue([mockConnection]);
+      (mockEventRepo.findInRangeForConnections as jest.Mock).mockResolvedValue([mockEvent]);
 
       const start = fromISO("2026-01-15T00:00:00Z").toJSDate();
       const end = fromISO("2026-01-15T23:59:59Z").toJSDate();

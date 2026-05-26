@@ -1,8 +1,6 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
-import { User } from "../../user/entities/user.entity";
+import { BookingLinkRepository } from "../booking-link.repository";
 import {
   AvailableSlotDto,
   BookingConfirmationDto,
@@ -11,23 +9,20 @@ import {
   PublicBookingLinkDto,
   UpdateBookingLinkDto,
 } from "../dto/booking.dto";
-import { BookingLink, Meeting, MeetingStatus } from "../entities";
+import { BookingLink, MeetingStatus } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
 
 @Injectable()
 export class BookingService {
   private readonly logger = new Logger(BookingService.name);
 
   constructor(
-    @InjectRepository(BookingLink)
-    private readonly bookingLinkRepo: Repository<BookingLink>,
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly bookingLinkRepo: BookingLinkRepository,
+    private readonly meetingRepo: MeetingRepository,
   ) {}
 
   async createLink(userId: number, dto: CreateBookingLinkDto): Promise<BookingLink> {
-    const link = this.bookingLinkRepo.create({
+    const saved = await this.bookingLinkRepo.create({
       userId,
       name: dto.name,
       meetingDurationMinutes: dto.meetingDurationMinutes ?? 30,
@@ -42,8 +37,6 @@ export class BookingService {
       location: dto.location ?? null,
       description: dto.description ?? null,
     });
-
-    const saved = await this.bookingLinkRepo.save(link);
     this.logger.log(`Booking link created: ${saved.id} (slug: ${saved.slug}) by user ${userId}`);
     return saved;
   }
@@ -53,9 +46,7 @@ export class BookingService {
     linkId: number,
     dto: UpdateBookingLinkDto,
   ): Promise<BookingLink> {
-    const link = await this.bookingLinkRepo.findOne({
-      where: { id: linkId, userId },
-    });
+    const link = await this.bookingLinkRepo.findByIdAndUser(linkId, userId);
 
     if (!link) {
       throw new NotFoundException(`Booking link ${linkId} not found`);
@@ -80,9 +71,7 @@ export class BookingService {
   }
 
   async deleteLink(userId: number, linkId: number): Promise<void> {
-    const link = await this.bookingLinkRepo.findOne({
-      where: { id: linkId, userId },
-    });
+    const link = await this.bookingLinkRepo.findByIdAndUser(linkId, userId);
 
     if (!link) {
       throw new NotFoundException(`Booking link ${linkId} not found`);
@@ -93,16 +82,11 @@ export class BookingService {
   }
 
   async userLinks(userId: number): Promise<BookingLink[]> {
-    return this.bookingLinkRepo.find({
-      where: { userId },
-      order: { createdAt: "DESC" },
-    });
+    return this.bookingLinkRepo.findByUser(userId);
   }
 
   async linkById(userId: number, linkId: number): Promise<BookingLink> {
-    const link = await this.bookingLinkRepo.findOne({
-      where: { id: linkId, userId },
-    });
+    const link = await this.bookingLinkRepo.findByIdAndUser(linkId, userId);
 
     if (!link) {
       throw new NotFoundException(`Booking link ${linkId} not found`);
@@ -112,10 +96,7 @@ export class BookingService {
   }
 
   async publicLinkDetails(slug: string): Promise<PublicBookingLinkDto> {
-    const link = await this.bookingLinkRepo.findOne({
-      where: { slug, isActive: true },
-      relations: ["user"],
-    });
+    const link = await this.bookingLinkRepo.findActiveBySlugWithUser(slug);
 
     if (!link) {
       throw new NotFoundException("Booking link not found or inactive");
@@ -139,9 +120,7 @@ export class BookingService {
   }
 
   async availableSlots(slug: string, date: string): Promise<AvailableSlotDto[]> {
-    const link = await this.bookingLinkRepo.findOne({
-      where: { slug, isActive: true },
-    });
+    const link = await this.bookingLinkRepo.findActiveBySlug(slug);
 
     if (!link) {
       throw new NotFoundException("Booking link not found or inactive");
@@ -162,17 +141,11 @@ export class BookingService {
       return [];
     }
 
-    const existingMeetings = await this.meetingRepo.find({
-      where: {
-        salesRepId: link.userId,
-        scheduledStart: Between(
-          targetDate.startOf("day").toJSDate(),
-          targetDate.endOf("day").toJSDate(),
-        ),
-        status: MeetingStatus.SCHEDULED,
-      },
-      select: ["scheduledStart", "scheduledEnd"],
-    });
+    const existingMeetings = await this.meetingRepo.findScheduledInDayTimes(
+      link.userId,
+      targetDate.startOf("day").toJSDate(),
+      targetDate.endOf("day").toJSDate(),
+    );
 
     const busySlots = existingMeetings.map((m) => ({
       start: fromISO(m.scheduledStart.toISOString()),
@@ -229,10 +202,7 @@ export class BookingService {
   }
 
   async bookSlot(slug: string, dto: BookSlotDto): Promise<BookingConfirmationDto> {
-    const link = await this.bookingLinkRepo.findOne({
-      where: { slug, isActive: true },
-      relations: ["user"],
-    });
+    const link = await this.bookingLinkRepo.findActiveBySlugWithUser(slug);
 
     if (!link) {
       throw new NotFoundException("Booking link not found or inactive");
@@ -241,16 +211,11 @@ export class BookingService {
     const startTime = fromISO(dto.startTime);
     const endTime = startTime.plus({ minutes: link.meetingDurationMinutes });
 
-    const conflictingMeeting = await this.meetingRepo.findOne({
-      where: {
-        salesRepId: link.userId,
-        status: MeetingStatus.SCHEDULED,
-        scheduledStart: Between(
-          startTime.minus({ minutes: link.bufferBeforeMinutes }).toJSDate(),
-          endTime.plus({ minutes: link.bufferAfterMinutes }).toJSDate(),
-        ),
-      },
-    });
+    const conflictingMeeting = await this.meetingRepo.findScheduledConflict(
+      link.userId,
+      startTime.minus({ minutes: link.bufferBeforeMinutes }).toJSDate(),
+      endTime.plus({ minutes: link.bufferAfterMinutes }).toJSDate(),
+    );
 
     if (conflictingMeeting) {
       throw new BadRequestException("This time slot is no longer available");
@@ -262,7 +227,7 @@ export class BookingService {
           .join("\n")
       : "";
 
-    const meeting = this.meetingRepo.create({
+    const saved = await this.meetingRepo.create({
       salesRepId: link.userId,
       title: `Meeting with ${dto.name}`,
       description: [
@@ -280,8 +245,6 @@ export class BookingService {
       location: link.location,
       attendees: [dto.email],
     });
-
-    const saved = await this.meetingRepo.save(meeting);
 
     this.logger.log(`Meeting booked via link ${link.id}: meeting ${saved.id} by ${dto.email}`);
 

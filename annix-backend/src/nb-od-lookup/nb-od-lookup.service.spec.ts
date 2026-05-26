@@ -1,39 +1,34 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { FlangeWeightTestCase, testScenarios } from "../test/flange-data-test-scenarios";
 import { NbOdLookup } from "./entities/nb-od-lookup.entity";
+import { NbOdLookupRepository } from "./nb-od-lookup.repository";
 import { NbOdLookupService } from "./nb-od-lookup.service";
 
 describe("NbOdLookupService", () => {
   let service: NbOdLookupService;
 
-  const mockQueryBuilder = {
-    select: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    getRawMany: jest.fn(),
-  };
-
-  const mockRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(() => mockQueryBuilder),
-  };
+  const mockRepository: jest.Mocked<NbOdLookupRepository> = {
+    findAllOrdered: jest.fn(),
+    findByNominalBore: jest.fn(),
+    allNominalBores: jest.fn(),
+    create: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
+    save: jest.fn(),
+    remove: jest.fn(),
+    count: jest.fn(),
+  } as jest.Mocked<NbOdLookupRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        NbOdLookupService,
-        {
-          provide: getRepositoryToken(NbOdLookup),
-          useValue: mockRepository,
-        },
-      ],
+      providers: [NbOdLookupService, { provide: NbOdLookupRepository, useValue: mockRepository }],
     }).compile();
 
     service = module.get<NbOdLookupService>(NbOdLookupService);
 
     jest.clearAllMocks();
-    mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
   });
 
   it("should be defined", () => {
@@ -46,23 +41,21 @@ describe("NbOdLookupService", () => {
         { id: 1, nominal_bore_mm: 15, outside_diameter_mm: 21.3 },
         { id: 2, nominal_bore_mm: 20, outside_diameter_mm: 26.9 },
       ] as NbOdLookup[];
-      mockRepository.find.mockResolvedValue(mockData);
+      mockRepository.findAllOrdered.mockResolvedValue(mockData);
 
       const result = await service.findAll();
 
       expect(result).toEqual(mockData);
-      expect(mockRepository.find).toHaveBeenCalledWith({
-        order: { nominal_bore_mm: "ASC" },
-      });
+      expect(mockRepository.findAllOrdered).toHaveBeenCalled();
     });
   });
 
   describe("nbToOd", () => {
     it("should return OD when found in database", async () => {
-      mockRepository.findOne.mockResolvedValue({
+      mockRepository.findByNominalBore.mockResolvedValue({
         nominal_bore_mm: 50,
         outside_diameter_mm: 60.3,
-      });
+      } as NbOdLookup);
 
       const result = await service.nbToOd(50);
 
@@ -74,7 +67,7 @@ describe("NbOdLookupService", () => {
     });
 
     it("should return estimated OD when not found", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       const result = await service.nbToOd(75);
 
@@ -87,23 +80,21 @@ describe("NbOdLookupService", () => {
     });
 
     it("should query repository with correct NB", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       await service.nbToOd(100);
 
-      expect(mockRepository.findOne).toHaveBeenCalledWith({
-        where: { nominal_bore_mm: 100 },
-      });
+      expect(mockRepository.findByNominalBore).toHaveBeenCalledWith(100);
     });
 
     it("should handle common NB values", async () => {
       const commonNBs = [15, 20, 25, 32, 40, 50, 65, 80, 100, 150, 200, 250, 300];
 
       for (const nb of commonNBs) {
-        mockRepository.findOne.mockResolvedValue({
+        mockRepository.findByNominalBore.mockResolvedValue({
           nominal_bore_mm: nb,
           outside_diameter_mm: nb * 1.2,
-        });
+        } as NbOdLookup);
 
         const result = await service.nbToOd(nb);
         expect(result.found).toBe(true);
@@ -114,7 +105,7 @@ describe("NbOdLookupService", () => {
 
   describe("availableNominalBores", () => {
     it("should return distinct nominal bore values", async () => {
-      mockQueryBuilder.getRawMany.mockResolvedValue([
+      mockRepository.allNominalBores.mockResolvedValue([
         { nominalBoreMm: 15 },
         { nominalBoreMm: 20 },
         { nominalBoreMm: 25 },
@@ -135,10 +126,10 @@ describe("NbOdLookupService", () => {
     nbOdScenarios.forEach((scenario: FlangeWeightTestCase) => {
       it(`should handle ${scenario.description}`, async () => {
         const input = scenario.input as { nb: number };
-        mockRepository.findOne.mockResolvedValue({
+        mockRepository.findByNominalBore.mockResolvedValue({
           nominal_bore_mm: input.nb,
           outside_diameter_mm: scenario.expectedValue,
-        });
+        } as NbOdLookup);
 
         const result = await service.nbToOd(input.nb);
 
@@ -151,7 +142,7 @@ describe("NbOdLookupService", () => {
 
   describe("edge cases", () => {
     it("should estimate OD for non-standard NB", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       const result = await service.nbToOd(45);
 
@@ -160,7 +151,7 @@ describe("NbOdLookupService", () => {
     });
 
     it("should handle very large NB values", async () => {
-      mockRepository.findOne.mockResolvedValue(null);
+      mockRepository.findByNominalBore.mockResolvedValue(null);
 
       const result = await service.nbToOd(1000);
 

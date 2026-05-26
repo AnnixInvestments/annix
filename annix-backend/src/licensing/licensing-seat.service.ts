@@ -1,7 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { LicensingService } from "./licensing.service";
 import { LicensingCatalogService } from "./licensing-catalog.service";
 
@@ -18,8 +16,7 @@ export interface SeatUsage {
 @Injectable()
 export class LicensingSeatService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly userRepo: UserRepository,
     private readonly licensingService: LicensingService,
     private readonly catalogService: LicensingCatalogService,
   ) {}
@@ -29,7 +26,7 @@ export class LicensingSeatService {
     const catalog = await this.catalogService.effectiveCatalog(moduleKey);
     const tier = catalog.tiers.find((candidate) => candidate.key === license.tier);
     const includedSeats = tier ? tier.includedSeats : 0;
-    const usedSeats = await this.userRepo.count({ where: { companyId } });
+    const usedSeats = await this.userRepo.countByCompanyId(companyId);
     const overageSeats = Math.max(0, usedSeats - includedSeats);
     return {
       companyId,

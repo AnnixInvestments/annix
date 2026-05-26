@@ -1,20 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
   ClarificationStatus,
   ClarificationType,
   InvoiceClarification,
   SuggestedMatch,
 } from "../entities/invoice-clarification.entity";
-import { InvoiceExtractionCorrection } from "../entities/invoice-extraction-correction.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { PriceChangeReason, StockPriceHistory } from "../entities/stock-price-history.entity";
+import { PriceChangeReason } from "../entities/stock-price-history.entity";
 import {
   ExtractedInvoiceData,
   ExtractedLineItem,
@@ -25,7 +21,16 @@ import {
   InvoiceItemMatchStatus,
   SupplierInvoiceItem,
 } from "../entities/supplier-invoice-item.entity";
-import { STOCK_ITEM_MATCH_SELECT } from "../lib/stock-item-select";
+import {
+  type DeliveryNoteAutoLinkRow,
+  DeliveryNoteRepository,
+} from "../repositories/delivery-note.repository";
+import { InvoiceClarificationRepository } from "../repositories/invoice-clarification.repository";
+import { InvoiceExtractionCorrectionRepository } from "../repositories/invoice-extraction-correction.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockPriceHistoryRepository } from "../repositories/stock-price-history.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
+import { SupplierInvoiceItemRepository } from "../repositories/supplier-invoice-item.repository";
 import { validateInvoiceExtraction, validPositiveNumber } from "./extraction-validation";
 
 const INVOICE_EXTRACTION_PROMPT = `You are an industrial supplier invoice parser. Extract line items from scanned invoices.
@@ -209,20 +214,13 @@ export class InvoiceExtractionService {
   private readonly logger = new Logger(InvoiceExtractionService.name);
 
   constructor(
-    @InjectRepository(SupplierInvoice)
-    private readonly invoiceRepo: Repository<SupplierInvoice>,
-    @InjectRepository(SupplierInvoiceItem)
-    private readonly invoiceItemRepo: Repository<SupplierInvoiceItem>,
-    @InjectRepository(InvoiceClarification)
-    private readonly clarificationRepo: Repository<InvoiceClarification>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockPriceHistory)
-    private readonly priceHistoryRepo: Repository<StockPriceHistory>,
-    @InjectRepository(DeliveryNote)
-    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
-    @InjectRepository(InvoiceExtractionCorrection)
-    private readonly correctionRepo: Repository<InvoiceExtractionCorrection>,
+    private readonly invoiceRepo: SupplierInvoiceRepository,
+    private readonly invoiceItemRepo: SupplierInvoiceItemRepository,
+    private readonly clarificationRepo: InvoiceClarificationRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly priceHistoryRepo: StockPriceHistoryRepository,
+    private readonly deliveryNoteRepo: DeliveryNoteRepository,
+    private readonly correctionRepo: InvoiceExtractionCorrectionRepository,
     private readonly aiUsageService: AiUsageService,
     private readonly aiChatService: AiChatService,
   ) {}
@@ -232,15 +230,15 @@ export class InvoiceExtractionService {
     imageBase64: string,
     mediaType: "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf",
   ): Promise<SupplierInvoice> {
-    const invoice = await this.invoiceRepo.findOne({ where: { id: invoiceId } });
+    const invoice = await this.invoiceRepo.findOneById(invoiceId);
     if (!invoice) {
       throw new Error(`Invoice ${invoiceId} not found`);
     }
 
     const previousExtractedData = invoice.extractedData;
 
-    await this.clarificationRepo.delete({ invoiceId });
-    await this.invoiceItemRepo.delete({ invoiceId });
+    await this.clarificationRepo.deleteForInvoice(invoiceId);
+    await this.invoiceItemRepo.deleteByInvoice(invoiceId);
 
     invoice.extractionStatus = InvoiceExtractionStatus.PROCESSING;
     await this.invoiceRepo.save(invoice);
@@ -315,9 +313,10 @@ export class InvoiceExtractionService {
         await this.createClarifications(invoiceId);
       }
 
-      const pendingClarifications = await this.clarificationRepo.count({
-        where: { invoiceId, status: ClarificationStatus.PENDING },
-      });
+      const pendingClarifications = await this.clarificationRepo.countByInvoiceAndStatus(
+        invoiceId,
+        ClarificationStatus.PENDING,
+      );
 
       invoice.extractionStatus =
         pendingClarifications > 0
@@ -328,7 +327,7 @@ export class InvoiceExtractionService {
     } catch (error) {
       this.logger.error(`Invoice extraction failed for ${invoiceId}: ${error.message}`);
       try {
-        await this.invoiceRepo.update(invoiceId, {
+        await this.invoiceRepo.updateById(invoiceId, {
           extractionStatus: InvoiceExtractionStatus.FAILED,
           extractedData: {
             ...previousExtractedData,
@@ -340,7 +339,7 @@ export class InvoiceExtractionService {
           `Failed to save error status for invoice ${invoiceId}: ${saveError.message}`,
         );
       }
-      return this.invoiceRepo.findOne({ where: { id: invoiceId } }) as Promise<SupplierInvoice>;
+      return this.invoiceRepo.findOneById(invoiceId) as Promise<SupplierInvoice>;
     }
   }
 
@@ -384,10 +383,7 @@ export class InvoiceExtractionService {
     invoice: SupplierInvoice,
     extractedData: ExtractedInvoiceData,
   ): Promise<void> {
-    const candidates = await this.deliveryNoteRepo.find({
-      where: { companyId: invoice.companyId },
-      select: { id: true, deliveryNumber: true, supplierName: true, receivedDate: true },
-    });
+    const candidates = await this.deliveryNoteRepo.findAutoLinkCandidates(invoice.companyId);
 
     if (candidates.length === 0) return;
 
@@ -418,9 +414,9 @@ export class InvoiceExtractionService {
   private findDeliveryNoteMatches(
     invoice: SupplierInvoice,
     dnNumbers: string[],
-    candidates: DeliveryNote[],
-  ): DeliveryNote[] {
-    const matched: DeliveryNote[] = [];
+    candidates: DeliveryNoteAutoLinkRow[],
+  ): DeliveryNoteAutoLinkRow[] {
+    const matched: DeliveryNoteAutoLinkRow[] = [];
     const matchedIds = new Set<number>();
 
     dnNumbers.forEach((rawDnNumber) => {
@@ -473,18 +469,13 @@ export class InvoiceExtractionService {
   }
 
   async autoLinkAllUnlinked(companyId: number): Promise<{ linked: number; details: string[] }> {
-    const unlinked = await this.invoiceRepo.find({
-      where: { companyId, deliveryNoteId: IsNull() },
-    });
+    const unlinked = await this.invoiceRepo.findUnlinkedForCompany(companyId);
 
     if (unlinked.length === 0) {
       return { linked: 0, details: [] };
     }
 
-    const candidates = await this.deliveryNoteRepo.find({
-      where: { companyId },
-      select: { id: true, deliveryNumber: true, supplierName: true, receivedDate: true },
-    });
+    const candidates = await this.deliveryNoteRepo.findAutoLinkCandidates(companyId);
 
     const { linked, details } = await unlinked.reduce(
       async (accPromise, invoice) => {
@@ -518,29 +509,31 @@ export class InvoiceExtractionService {
   ): Promise<void> {
     const consolidated = consolidateRollLineItems(lineItems);
 
-    const itemEntities = consolidated.map((item) => {
-      const cleanedDescription = this.cleanExtractedDescription(
-        item.description || "",
-        item.sku || "",
-      );
-      return this.invoiceItemRepo.create({
-        invoiceId: invoice.id,
-        companyId: invoice.companyId,
-        lineNumber: item.lineNumber,
-        extractedDescription: cleanedDescription,
-        extractedSku: item.sku || null,
-        quantity: validPositiveNumber(item.quantity, 1),
-        unitPrice: validPositiveNumber(item.unitPrice, 0),
-        unitType: item.unitType || null,
-        discountPercent: validPositiveNumber(item.discountPercent, 0),
-        isPartA: item.isPaintPartA || false,
-        isPartB: item.isPaintPartB || false,
-        matchStatus: InvoiceItemMatchStatus.UNMATCHED,
-        rollNumbers: item.rollNumbers && item.rollNumbers.length > 0 ? item.rollNumbers : null,
-      });
-    });
+    const itemEntities = this.invoiceItemRepo.buildMany(
+      consolidated.map((item) => {
+        const cleanedDescription = this.cleanExtractedDescription(
+          item.description || "",
+          item.sku || "",
+        );
+        return {
+          invoiceId: invoice.id,
+          companyId: invoice.companyId,
+          lineNumber: item.lineNumber,
+          extractedDescription: cleanedDescription,
+          extractedSku: item.sku || null,
+          quantity: validPositiveNumber(item.quantity, 1),
+          unitPrice: validPositiveNumber(item.unitPrice, 0),
+          unitType: item.unitType || null,
+          discountPercent: validPositiveNumber(item.discountPercent, 0),
+          isPartA: item.isPaintPartA || false,
+          isPartB: item.isPaintPartB || false,
+          matchStatus: InvoiceItemMatchStatus.UNMATCHED,
+          rollNumbers: item.rollNumbers && item.rollNumbers.length > 0 ? item.rollNumbers : null,
+        };
+      }),
+    );
 
-    await this.invoiceItemRepo.save(itemEntities);
+    await this.invoiceItemRepo.saveMany(itemEntities);
   }
 
   private cleanExtractedDescription(description: string, sku: string): string {
@@ -563,14 +556,11 @@ export class InvoiceExtractionService {
   }
 
   async matchItemsToStock(invoiceId: number): Promise<void> {
-    const invoice = await this.invoiceRepo.findOne({ where: { id: invoiceId } });
+    const invoice = await this.invoiceRepo.findOneById(invoiceId);
     if (!invoice) return;
 
-    const items = await this.invoiceItemRepo.find({ where: { invoiceId } });
-    const stockItems = await this.stockItemRepo.find({
-      where: { companyId: invoice.companyId },
-      select: STOCK_ITEM_MATCH_SELECT,
-    });
+    const items = await this.invoiceItemRepo.findByInvoice(invoiceId);
+    const stockItems = await this.stockItemRepo.findForCompanySelectMatch(invoice.companyId);
 
     await items.reduce(async (prev, item) => {
       await prev;
@@ -635,7 +625,7 @@ export class InvoiceExtractionService {
   }
 
   async linkPartABItems(invoiceId: number): Promise<void> {
-    const items = await this.invoiceItemRepo.find({ where: { invoiceId } });
+    const items = await this.invoiceItemRepo.findByInvoice(invoiceId);
 
     const partAItems = items.filter((item) => item.isPartA);
     const partBItems = items.filter((item) => item.isPartB);
@@ -678,18 +668,12 @@ export class InvoiceExtractionService {
   }
 
   async createClarifications(invoiceId: number): Promise<void> {
-    const invoice = await this.invoiceRepo.findOne({ where: { id: invoiceId } });
+    const invoice = await this.invoiceRepo.findOneById(invoiceId);
     if (!invoice) return;
 
-    const items = await this.invoiceItemRepo.find({
-      where: { invoiceId },
-      relations: ["stockItem"],
-    });
+    const items = await this.invoiceItemRepo.findByInvoiceWithRelations(invoiceId, ["stockItem"]);
 
-    const stockItems = await this.stockItemRepo.find({
-      where: { companyId: invoice.companyId },
-      select: STOCK_ITEM_MATCH_SELECT,
-    });
+    const stockItems = await this.stockItemRepo.findForCompanySelectMatch(invoice.companyId);
 
     await items.reduce(async (prev, item) => {
       await prev;
@@ -849,10 +833,7 @@ export class InvoiceExtractionService {
     },
     userId: number,
   ): Promise<InvoiceClarification> {
-    const clarification = await this.clarificationRepo.findOne({
-      where: { id: clarificationId },
-      relations: ["invoiceItem", "invoice"],
-    });
+    const clarification = await this.clarificationRepo.findOneByIdWithRelations(clarificationId);
 
     if (!clarification) {
       throw new Error(`Clarification ${clarificationId} not found`);
@@ -866,9 +847,7 @@ export class InvoiceExtractionService {
         clarification.invoiceItem.stockItemId = response.selectedStockItemId;
         clarification.invoiceItem.matchStatus = InvoiceItemMatchStatus.MANUALLY_MATCHED;
 
-        const stockItem = await this.stockItemRepo.findOne({
-          where: { id: response.selectedStockItemId },
-        });
+        const stockItem = await this.stockItemRepo.findById(response.selectedStockItemId);
         if (stockItem) {
           clarification.invoiceItem.previousPrice = Number(stockItem.costPerUnit) || null;
         }
@@ -876,14 +855,12 @@ export class InvoiceExtractionService {
         await this.invoiceItemRepo.save(clarification.invoiceItem);
       }
     } else if (response.createNewItem) {
-      const newStockItem = this.stockItemRepo.create({
+      const savedItem = await this.stockItemRepo.create({
         ...response.createNewItem,
         companyId: clarification.companyId,
         quantity: 0,
         costPerUnit: clarification.invoiceItem?.unitPrice || 0,
       });
-
-      const savedItem = await this.stockItemRepo.save(newStockItem);
 
       clarification.selectedStockItemId = savedItem.id;
       clarification.status = ClarificationStatus.ANSWERED;
@@ -913,7 +890,7 @@ export class InvoiceExtractionService {
   }
 
   async skipClarification(clarificationId: number, userId: number): Promise<InvoiceClarification> {
-    const clarification = await this.clarificationRepo.findOne({ where: { id: clarificationId } });
+    const clarification = await this.clarificationRepo.findById(clarificationId);
 
     if (!clarification) {
       throw new Error(`Clarification ${clarificationId} not found`);
@@ -933,9 +910,10 @@ export class InvoiceExtractionService {
     invoiceItemId: number,
     userId: number | null,
   ): Promise<void> {
-    const pending = await this.clarificationRepo.find({
-      where: { invoiceItemId, status: ClarificationStatus.PENDING },
-    });
+    const pending = await this.clarificationRepo.findByInvoiceItemAndStatus(
+      invoiceItemId,
+      ClarificationStatus.PENDING,
+    );
 
     if (pending.length === 0) return;
 
@@ -947,13 +925,14 @@ export class InvoiceExtractionService {
       return c;
     });
 
-    await this.clarificationRepo.save(resolved);
+    await this.clarificationRepo.saveMany(resolved);
   }
 
   async resolveAndApprove(invoiceId: number, userId: number): Promise<SupplierInvoice> {
-    const pending = await this.clarificationRepo.find({
-      where: { invoiceId, status: ClarificationStatus.PENDING },
-    });
+    const pending = await this.clarificationRepo.findByInvoiceAndStatus(
+      invoiceId,
+      ClarificationStatus.PENDING,
+    );
 
     const skipped = pending.map((c) => {
       c.status = ClarificationStatus.SKIPPED;
@@ -964,7 +943,7 @@ export class InvoiceExtractionService {
     });
 
     if (skipped.length > 0) {
-      await this.clarificationRepo.save(skipped);
+      await this.clarificationRepo.saveMany(skipped);
     }
 
     await this.updateInvoiceStatus(invoiceId);
@@ -973,11 +952,12 @@ export class InvoiceExtractionService {
   }
 
   private async updateInvoiceStatus(invoiceId: number): Promise<void> {
-    const pendingCount = await this.clarificationRepo.count({
-      where: { invoiceId, status: ClarificationStatus.PENDING },
-    });
+    const pendingCount = await this.clarificationRepo.countByInvoiceAndStatus(
+      invoiceId,
+      ClarificationStatus.PENDING,
+    );
 
-    const invoice = await this.invoiceRepo.findOne({ where: { id: invoiceId } });
+    const invoice = await this.invoiceRepo.findOneById(invoiceId);
     if (!invoice) return;
 
     invoice.extractionStatus =
@@ -989,22 +969,17 @@ export class InvoiceExtractionService {
   }
 
   async applyPriceUpdates(invoiceId: number, approvedBy: number): Promise<SupplierInvoice> {
-    const invoice = await this.invoiceRepo.findOne({
-      where: { id: invoiceId },
-      relations: ["items", "items.stockItem"],
-    });
+    const invoice = await this.invoiceRepo.findOneByIdWithRelations(invoiceId, [
+      "items",
+      "items.stockItem",
+    ]);
 
     if (!invoice) {
       throw new Error(`Invoice ${invoiceId} not found`);
     }
 
-    const skippedPriceClarifications = await this.clarificationRepo.find({
-      where: {
-        invoiceId,
-        clarificationType: ClarificationType.PRICE_CONFIRMATION,
-        status: ClarificationStatus.SKIPPED,
-      },
-    });
+    const skippedPriceClarifications =
+      await this.clarificationRepo.findSkippedPriceForInvoice(invoiceId);
     const skippedItemIds = new Set(skippedPriceClarifications.map((c) => c.invoiceItemId));
 
     await invoice.items
@@ -1018,15 +993,13 @@ export class InvoiceExtractionService {
       )
       .reduce(async (prev, item) => {
         await prev;
-        const stockItem =
-          item.stockItem ||
-          (await this.stockItemRepo.findOne({ where: { id: item.stockItemId! } }));
+        const stockItem = item.stockItem || (await this.stockItemRepo.findById(item.stockItemId!));
 
         if (stockItem) {
           const oldPrice = Number(stockItem.costPerUnit) || null;
           const newPrice = Number(item.unitPrice);
 
-          const priceHistory = this.priceHistoryRepo.create({
+          await this.priceHistoryRepo.create({
             stockItemId: stockItem.id,
             companyId: invoice.companyId,
             oldPrice,
@@ -1037,8 +1010,6 @@ export class InvoiceExtractionService {
             supplierName: invoice.supplierName,
             changedBy: approvedBy,
           });
-
-          await this.priceHistoryRepo.save(priceHistory);
 
           stockItem.costPerUnit = newPrice;
 
@@ -1070,11 +1041,7 @@ export class InvoiceExtractionService {
   }
 
   async pendingClarifications(invoiceId: number): Promise<InvoiceClarification[]> {
-    return this.clarificationRepo.find({
-      where: { invoiceId, status: ClarificationStatus.PENDING },
-      relations: ["invoiceItem"],
-      order: { createdAt: "ASC" },
-    });
+    return this.clarificationRepo.findPendingForInvoiceWithItem(invoiceId);
   }
 
   extractVolumeFromDescription(description: string): number | null {
@@ -1112,10 +1079,9 @@ export class InvoiceExtractionService {
     },
     userId: number | null,
   ): Promise<SupplierInvoiceItem> {
-    const item = await this.invoiceItemRepo.findOne({
-      where: { id: itemId, invoiceId },
-      relations: ["invoice"],
-    });
+    const item = await this.invoiceItemRepo.findOneByIdAndInvoiceWithRelations(itemId, invoiceId, [
+      "invoice",
+    ]);
 
     if (!item) {
       throw new Error(`Invoice item ${itemId} not found on invoice ${invoiceId}`);
@@ -1165,10 +1131,7 @@ export class InvoiceExtractionService {
     }
 
     if (descriptionChanged) {
-      const stockItems = await this.stockItemRepo.find({
-        where: { companyId: item.companyId },
-        select: STOCK_ITEM_MATCH_SELECT,
-      });
+      const stockItems = await this.stockItemRepo.findForCompanySelectMatch(item.companyId);
       const match = this.fuzzyMatchStockItem(
         item.extractedDescription || "",
         item.extractedSku || "",
@@ -1196,8 +1159,8 @@ export class InvoiceExtractionService {
     await this.updateInvoiceStatus(invoiceId);
 
     if (corrections.length > 0 && item.invoice?.supplierName) {
-      const correctionEntities = corrections.map((c) =>
-        this.correctionRepo.create({
+      await this.correctionRepo.createMany(
+        corrections.map((c) => ({
           companyId: item.companyId,
           supplierName: item.invoice.supplierName,
           invoiceItemId: item.id,
@@ -1206,18 +1169,15 @@ export class InvoiceExtractionService {
           correctedValue: c.corrected,
           extractedDescription: item.extractedDescription,
           correctedBy: userId,
-        }),
+        })),
       );
-      await this.correctionRepo.save(correctionEntities);
     }
 
     return savedItem;
   }
 
   async removeItem(invoiceId: number, itemId: number): Promise<void> {
-    const item = await this.invoiceItemRepo.findOne({
-      where: { id: itemId, invoiceId },
-    });
+    const item = await this.invoiceItemRepo.findOneByIdAndInvoice(itemId, invoiceId);
 
     if (!item) {
       throw new Error(`Invoice item ${itemId} not found on invoice ${invoiceId}`);
@@ -1232,18 +1192,15 @@ export class InvoiceExtractionService {
     stockItemId: number,
     userId: number | null,
   ): Promise<SupplierInvoiceItem> {
-    const item = await this.invoiceItemRepo.findOne({
-      where: { id: itemId, invoiceId },
-      relations: ["invoice"],
-    });
+    const item = await this.invoiceItemRepo.findOneByIdAndInvoiceWithRelations(itemId, invoiceId, [
+      "invoice",
+    ]);
 
     if (!item) {
       throw new Error(`Invoice item ${itemId} not found on invoice ${invoiceId}`);
     }
 
-    const stockItem = await this.stockItemRepo.findOne({
-      where: { id: stockItemId, companyId: item.companyId },
-    });
+    const stockItem = await this.stockItemRepo.findOneForCompany(stockItemId, item.companyId);
 
     if (!stockItem) {
       throw new Error(`Stock item ${stockItemId} not found`);
@@ -1261,18 +1218,16 @@ export class InvoiceExtractionService {
     await this.updateInvoiceStatus(invoiceId);
 
     if (item.invoice?.supplierName && previousStockItemId !== stockItemId) {
-      await this.correctionRepo.save(
-        this.correctionRepo.create({
-          companyId: item.companyId,
-          supplierName: item.invoice.supplierName,
-          invoiceItemId: item.id,
-          fieldName: "stockItemMatch",
-          originalValue: String(previousStockItemId || "unmatched"),
-          correctedValue: `${stockItem.id}:${stockItem.sku || stockItem.name}`,
-          extractedDescription: item.extractedDescription,
-          correctedBy: userId,
-        }),
-      );
+      await this.correctionRepo.create({
+        companyId: item.companyId,
+        supplierName: item.invoice.supplierName,
+        invoiceItemId: item.id,
+        fieldName: "stockItemMatch",
+        originalValue: String(previousStockItemId || "unmatched"),
+        correctedValue: `${stockItem.id}:${stockItem.sku || stockItem.name}`,
+        extractedDescription: item.extractedDescription,
+        correctedBy: userId,
+      });
     }
 
     return savedItem;
@@ -1284,11 +1239,11 @@ export class InvoiceExtractionService {
   ): Promise<string | null> {
     if (!supplierName) return null;
 
-    const recentCorrections = await this.correctionRepo.find({
-      where: { companyId, supplierName },
-      order: { createdAt: "DESC" },
-      take: 30,
-    });
+    const recentCorrections = await this.correctionRepo.findRecentForSupplier(
+      companyId,
+      supplierName,
+      30,
+    );
 
     if (recentCorrections.length === 0) return null;
 

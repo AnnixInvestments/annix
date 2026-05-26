@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, MoreThanOrEqual, Repository } from "typeorm";
 import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import {
   CreateRecurringMeetingDto,
@@ -9,6 +7,7 @@ import {
   UpdateMeetingDto,
 } from "../dto";
 import { Meeting, MeetingStatus, MeetingType } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
 
 interface RRuleComponents {
   freq: string;
@@ -23,10 +22,7 @@ interface RRuleComponents {
 export class RecurringMeetingService {
   private readonly logger = new Logger(RecurringMeetingService.name);
 
-  constructor(
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-  ) {}
+  constructor(private readonly meetingRepo: MeetingRepository) {}
 
   buildRRule(options: RecurrenceOptionsDto): string {
     const parts: string[] = [];
@@ -184,7 +180,7 @@ export class RecurringMeetingService {
   async createRecurring(salesRepId: number, dto: CreateRecurringMeetingDto): Promise<Meeting> {
     const recurrenceRule = this.buildRRule(dto.recurrence);
 
-    const parentMeeting = this.meetingRepo.create({
+    const saved = await this.meetingRepo.create({
       salesRepId,
       prospectId: dto.prospectId ?? null,
       title: dto.title,
@@ -202,8 +198,6 @@ export class RecurringMeetingService {
       recurringParentId: null,
       recurrenceExceptionDates: null,
     });
-
-    const saved = await this.meetingRepo.save(parentMeeting);
     this.logger.log(`Recurring meeting series created: ${saved.id} by user ${salesRepId}`);
 
     return saved;
@@ -214,23 +208,12 @@ export class RecurringMeetingService {
     startDate: Date,
     endDate: Date,
   ): Promise<Meeting[]> {
-    const recurringParents = await this.meetingRepo.find({
-      where: {
-        salesRepId,
-        isRecurring: true,
-        recurringParentId: null as unknown as number,
-      },
-      relations: ["prospect"],
-    });
+    const recurringParents = await this.meetingRepo.findRecurringParents(salesRepId);
 
-    const childMeetings = await this.meetingRepo.find({
-      where: {
-        salesRepId,
-        isRecurring: false,
-        recurringParentId: In(recurringParents.map((m) => m.id)),
-      },
-      relations: ["prospect"],
-    });
+    const childMeetings = await this.meetingRepo.findRecurringChildren(
+      salesRepId,
+      recurringParents.map((m) => m.id),
+    );
 
     const virtualMeetings = recurringParents.flatMap((parent) => {
       const instances = this.generateInstances(parent, startDate, endDate);
@@ -274,9 +257,7 @@ export class RecurringMeetingService {
     dto: UpdateMeetingDto,
     scope: RecurrenceUpdateScope,
   ): Promise<Meeting> {
-    const meeting = await this.meetingRepo.findOne({
-      where: { id: meetingId, salesRepId },
-    });
+    const meeting = await this.meetingRepo.findOneForSalesRep(salesRepId, meetingId);
 
     if (!meeting) {
       throw new NotFoundException(`Meeting ${meetingId} not found`);
@@ -287,9 +268,7 @@ export class RecurringMeetingService {
       throw new BadRequestException("Meeting is not part of a recurring series");
     }
 
-    const parent = await this.meetingRepo.findOne({
-      where: { id: parentId, salesRepId },
-    });
+    const parent = await this.meetingRepo.findOneForSalesRep(salesRepId, parentId);
 
     if (!parent) {
       throw new NotFoundException("Parent meeting not found");
@@ -321,7 +300,7 @@ export class RecurringMeetingService {
     parent.recurrenceExceptionDates = this.formatExceptionDates(exceptions);
     await this.meetingRepo.save(parent);
 
-    const newInstance = this.meetingRepo.create({
+    return this.meetingRepo.create({
       salesRepId,
       prospectId: dto.prospectId ?? meeting.prospectId,
       title: dto.title ?? meeting.title,
@@ -343,8 +322,6 @@ export class RecurringMeetingService {
       isRecurring: false,
       recurringParentId: parent.id,
     });
-
-    return this.meetingRepo.save(newInstance);
   }
 
   private async updateFutureInstances(
@@ -412,13 +389,7 @@ export class RecurringMeetingService {
     Object.assign(parent, this.applyDtoToMeeting(parent, dto));
     const savedParent = await this.meetingRepo.save(parent);
 
-    const children = await this.meetingRepo.find({
-      where: {
-        recurringParentId: parent.id,
-        salesRepId,
-        status: MeetingStatus.SCHEDULED,
-      },
-    });
+    const children = await this.meetingRepo.findScheduledChildren(parent.id, salesRepId);
 
     const updatedChildren = children.map((child) => ({
       ...child,
@@ -431,7 +402,7 @@ export class RecurringMeetingService {
     }));
 
     if (updatedChildren.length > 0) {
-      await this.meetingRepo.save(updatedChildren);
+      await this.meetingRepo.saveMany(updatedChildren);
     }
 
     return savedParent;
@@ -463,9 +434,7 @@ export class RecurringMeetingService {
     meetingId: number,
     scope: RecurrenceUpdateScope,
   ): Promise<void> {
-    const meeting = await this.meetingRepo.findOne({
-      where: { id: meetingId, salesRepId },
-    });
+    const meeting = await this.meetingRepo.findOneForSalesRep(salesRepId, meetingId);
 
     if (!meeting) {
       throw new NotFoundException(`Meeting ${meetingId} not found`);
@@ -477,9 +446,7 @@ export class RecurringMeetingService {
       if (meeting.recurringParentId && meeting.id > 0) {
         await this.meetingRepo.remove(meeting);
       } else if (parentId) {
-        const parent = await this.meetingRepo.findOne({
-          where: { id: parentId },
-        });
+        const parent = await this.meetingRepo.findById(parentId);
         if (parent) {
           const instanceDate = fromJSDate(meeting.scheduledStart).toFormat("yyyy-MM-dd");
           const exceptions = this.parseExceptionDates(parent.recurrenceExceptionDates);
@@ -493,9 +460,7 @@ export class RecurringMeetingService {
         throw new BadRequestException("Meeting is not part of a recurring series");
       }
 
-      const parent = await this.meetingRepo.findOne({
-        where: { id: parentId },
-      });
+      const parent = await this.meetingRepo.findById(parentId);
 
       if (parent?.recurrenceRule) {
         const cutoffStr = `${fromJSDate(meeting.scheduledStart).minus({ days: 1 }).toFormat("yyyyMMdd")}T235959Z`;
@@ -508,24 +473,15 @@ export class RecurringMeetingService {
         await this.meetingRepo.save(parent);
       }
 
-      await this.meetingRepo.delete({
-        recurringParentId: parentId,
-        salesRepId,
-        scheduledStart: MoreThanOrEqual(meeting.scheduledStart),
-      });
+      await this.meetingRepo.deleteFutureChildren(parentId, salesRepId, meeting.scheduledStart);
     } else {
       if (!parentId) {
         throw new BadRequestException("Meeting is not part of a recurring series");
       }
 
-      await this.meetingRepo.delete({
-        recurringParentId: parentId,
-        salesRepId,
-      });
+      await this.meetingRepo.deleteAllChildren(parentId, salesRepId);
 
-      const parent = await this.meetingRepo.findOne({
-        where: { id: parentId },
-      });
+      const parent = await this.meetingRepo.findById(parentId);
 
       if (parent) {
         await this.meetingRepo.remove(parent);
@@ -536,10 +492,7 @@ export class RecurringMeetingService {
   }
 
   async seriesInstances(salesRepId: number, parentId: number): Promise<Meeting[]> {
-    const parent = await this.meetingRepo.findOne({
-      where: { id: parentId, salesRepId, isRecurring: true },
-      relations: ["prospect"],
-    });
+    const parent = await this.meetingRepo.findRecurringSeriesParent(parentId, salesRepId);
 
     if (!parent) {
       throw new NotFoundException(`Recurring meeting series ${parentId} not found`);
@@ -548,14 +501,7 @@ export class RecurringMeetingService {
     const startDate = parent.scheduledStart;
     const endDate = now().plus({ years: 1 }).toJSDate();
 
-    const childMeetings = await this.meetingRepo.find({
-      where: {
-        recurringParentId: parentId,
-        salesRepId,
-      },
-      relations: ["prospect"],
-      order: { scheduledStart: "ASC" },
-    });
+    const childMeetings = await this.meetingRepo.findChildrenOrdered(parentId, salesRepId);
 
     const instances = this.generateInstances(parent, startDate, endDate, 52);
     const duration = fromJSDate(parent.scheduledEnd).diff(

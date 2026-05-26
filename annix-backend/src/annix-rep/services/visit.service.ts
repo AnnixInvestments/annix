@@ -1,74 +1,51 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, IsNull, Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import { CheckInDto, CheckOutDto, CreateVisitDto, UpdateVisitDto } from "../dto";
-import { Prospect, Visit, VisitType } from "../entities";
+import { Visit, VisitType } from "../entities";
+import { ProspectRepository } from "../prospect.repository";
+import { VisitRepository } from "../visit.repository";
 
 @Injectable()
 export class VisitService {
   private readonly logger = new Logger(VisitService.name);
 
   constructor(
-    @InjectRepository(Visit)
-    private readonly visitRepo: Repository<Visit>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
+    private readonly visitRepo: VisitRepository,
+    private readonly prospectRepo: ProspectRepository,
   ) {}
 
   async create(salesRepId: number, dto: CreateVisitDto): Promise<Visit> {
-    const prospect = await this.prospectRepo.findOne({
-      where: { id: dto.prospectId },
-    });
+    const prospect = await this.prospectRepo.findById(dto.prospectId);
 
     if (!prospect) {
       throw new NotFoundException(`Prospect ${dto.prospectId} not found`);
     }
 
-    const visit = this.visitRepo.create({
+    const saved = await this.visitRepo.create({
       prospectId: dto.prospectId,
       salesRepId,
       visitType: dto.visitType ?? VisitType.SCHEDULED,
       scheduledAt: dto.scheduledAt ? fromISO(dto.scheduledAt).toJSDate() : null,
       notes: dto.notes ?? null,
     });
-
-    const saved = await this.visitRepo.save(visit);
     this.logger.log(`Visit created: ${saved.id} for prospect ${dto.prospectId}`);
     return saved;
   }
 
   async findAll(salesRepId: number): Promise<Visit[]> {
-    return this.visitRepo.find({
-      where: { salesRepId },
-      relations: ["prospect"],
-      order: { createdAt: "DESC" },
-    });
+    return this.visitRepo.findAllForSalesRep(salesRepId);
   }
 
   async findByProspect(prospectId: number): Promise<Visit[]> {
-    return this.visitRepo.find({
-      where: { prospectId },
-      order: { createdAt: "DESC" },
-    });
+    return this.visitRepo.findByProspect(prospectId);
   }
 
   async findByDateRange(salesRepId: number, startDate: Date, endDate: Date): Promise<Visit[]> {
-    return this.visitRepo.find({
-      where: {
-        salesRepId,
-        scheduledAt: Between(startDate, endDate),
-      },
-      relations: ["prospect"],
-      order: { scheduledAt: "ASC" },
-    });
+    return this.visitRepo.findByDateRange(salesRepId, startDate, endDate);
   }
 
   async findOne(salesRepId: number, id: number): Promise<Visit> {
-    const visit = await this.visitRepo.findOne({
-      where: { id, salesRepId },
-      relations: ["prospect"],
-    });
+    const visit = await this.visitRepo.findOneForSalesRep(salesRepId, id);
 
     if (!visit) {
       throw new NotFoundException(`Visit ${id} not found`);
@@ -142,15 +119,13 @@ export class VisitService {
     latitude: number,
     longitude: number,
   ): Promise<Visit> {
-    const prospect = await this.prospectRepo.findOne({
-      where: { id: prospectId },
-    });
+    const prospect = await this.prospectRepo.findById(prospectId);
 
     if (!prospect) {
       throw new NotFoundException(`Prospect ${prospectId} not found`);
     }
 
-    const visit = this.visitRepo.create({
+    const saved = await this.visitRepo.create({
       prospectId,
       salesRepId,
       visitType: VisitType.COLD_CALL,
@@ -158,8 +133,6 @@ export class VisitService {
       checkInLatitude: latitude,
       checkInLongitude: longitude,
     });
-
-    const saved = await this.visitRepo.save(visit);
     this.logger.log(`Cold call visit started: ${saved.id} for prospect ${prospectId}`);
     return saved;
   }
@@ -174,24 +147,14 @@ export class VisitService {
     const today = now().startOf("day").toJSDate();
     const tomorrow = now().plus({ days: 1 }).startOf("day").toJSDate();
 
-    return this.visitRepo.find({
-      where: {
-        salesRepId,
-        scheduledAt: Between(today, tomorrow),
-      },
-      relations: ["prospect"],
-      order: { scheduledAt: "ASC" },
-    });
+    return this.visitRepo.findTodaysSchedule(salesRepId, today, tomorrow);
   }
 
   async activeVisit(salesRepId: number): Promise<Visit | null> {
-    return this.visitRepo.findOne({
-      where: {
-        salesRepId,
-        startedAt: Between(now().minus({ hours: 12 }).toJSDate(), now().toJSDate()),
-        endedAt: IsNull(),
-      },
-      relations: ["prospect"],
-    });
+    return this.visitRepo.findActive(
+      salesRepId,
+      now().minus({ hours: 12 }).toJSDate(),
+      now().toJSDate(),
+    );
   }
 }

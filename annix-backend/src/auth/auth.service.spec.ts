@@ -2,19 +2,19 @@ import { UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { PasswordService } from "../shared/auth/password.service";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { AuthService } from "./auth.service";
 
 describe("AuthService", () => {
   let service: AuthService;
-  let userRepo: jest.Mocked<Repository<User>>;
+  let userRepo: jest.Mocked<UserRepository>;
   let jwtService: jest.Mocked<JwtService>;
 
   const mockUserRepo = {
-    findOne: jest.fn(),
+    findByEmailWithRoles: jest.fn(),
+    findByIdWithRoles: jest.fn(),
   };
 
   const mockJwtService = {
@@ -37,7 +37,7 @@ describe("AuthService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AuthService,
-        { provide: getRepositoryToken(User), useValue: mockUserRepo },
+        { provide: UserRepository, useValue: mockUserRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PasswordService, useValue: mockPasswordService },
@@ -45,7 +45,7 @@ describe("AuthService", () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    userRepo = module.get(getRepositoryToken(User));
+    userRepo = module.get(UserRepository);
     jwtService = module.get(JwtService);
 
     jest.resetAllMocks();
@@ -61,7 +61,7 @@ describe("AuthService", () => {
         roles: [{ id: 1, name: "employee" }],
       } as User;
 
-      mockUserRepo.findOne.mockResolvedValue(user);
+      mockUserRepo.findByEmailWithRoles.mockResolvedValue(user);
       mockPasswordService.verify.mockResolvedValue(true);
 
       const result = await service.validateUser("john@example.com", "123456");
@@ -75,7 +75,7 @@ describe("AuthService", () => {
     });
 
     it("should throw UnauthorizedException if user is not found", async () => {
-      mockUserRepo.findOne.mockResolvedValue(null);
+      mockUserRepo.findByEmailWithRoles.mockResolvedValue(null);
       await expect(service.validateUser("nonexistent@example.com", "123456")).rejects.toThrow(
         UnauthorizedException,
       );
@@ -90,7 +90,7 @@ describe("AuthService", () => {
         roles: [{ id: 1, name: "employee" }],
       } as User;
 
-      mockUserRepo.findOne.mockResolvedValue(user);
+      mockUserRepo.findByEmailWithRoles.mockResolvedValue(user);
       mockPasswordService.verify.mockResolvedValue(false);
 
       await expect(service.validateUser("john@example.com", "123456")).rejects.toThrow(

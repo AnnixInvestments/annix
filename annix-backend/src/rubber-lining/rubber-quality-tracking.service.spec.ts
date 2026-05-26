@@ -1,16 +1,17 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
-import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import {
   QualityAlertSeverity,
   QualityAlertType,
   RubberQualityAlert,
 } from "./entities/rubber-quality-alert.entity";
-import { RubberSupplierCoc } from "./entities/rubber-supplier-coc.entity";
+import { RubberCompoundBatchRepository } from "./repositories/rubber-compound-batch.repository";
+import { RubberCompoundQualityConfigRepository } from "./repositories/rubber-compound-quality-config.repository";
+import { RubberQualityAlertRepository } from "./repositories/rubber-quality-alert.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 import { RubberQualityTrackingService } from "./rubber-quality-tracking.service";
 
 describe("RubberQualityTrackingService", () => {
@@ -19,10 +20,20 @@ describe("RubberQualityTrackingService", () => {
   const mockRepo = () => ({
     find: jest.fn(),
     findOne: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
     count: jest.fn(),
+    countActiveByCompoundCode: jest.fn(),
     save: jest.fn(),
+    saveMany: jest.fn(),
     create: jest.fn((data: unknown) => data),
+    build: jest.fn((data: unknown) => data),
     createQueryBuilder: jest.fn(),
+    completeBatchesForCompound: jest.fn(),
+    findOneByCompoundCode: jest.fn(),
+    findActiveOrdered: jest.fn(),
+    findByCompoundCodeOrdered: jest.fn(),
+    distinctCompoundCodesByCocType: jest.fn(),
   });
 
   const mockBatchRepo = mockRepo();
@@ -36,10 +47,10 @@ describe("RubberQualityTrackingService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberQualityTrackingService,
-        { provide: getRepositoryToken(RubberCompoundBatch), useValue: mockBatchRepo },
-        { provide: getRepositoryToken(RubberSupplierCoc), useValue: mockCocRepo },
-        { provide: getRepositoryToken(RubberCompoundQualityConfig), useValue: mockConfigRepo },
-        { provide: getRepositoryToken(RubberQualityAlert), useValue: mockAlertRepo },
+        { provide: RubberCompoundBatchRepository, useValue: mockBatchRepo },
+        { provide: RubberSupplierCocRepository, useValue: mockCocRepo },
+        { provide: RubberCompoundQualityConfigRepository, useValue: mockConfigRepo },
+        { provide: RubberQualityAlertRepository, useValue: mockAlertRepo },
         { provide: EmailService, useValue: mockEmailService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
@@ -381,19 +392,12 @@ describe("RubberQualityTrackingService", () => {
     });
 
     const setupBatchQueryBuilder = (batches: Partial<RubberCompoundBatch>[]) => {
-      const qb = {
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue(batches),
-      };
-      mockBatchRepo.createQueryBuilder.mockReturnValue(qb);
+      mockBatchRepo.completeBatchesForCompound.mockResolvedValue(batches);
     };
 
     it("should return no alerts when fewer than 3 batches", async () => {
       setupBatchQueryBuilder([mockBatch(), mockBatch({ id: 2 })]);
-      mockConfigRepo.findOne.mockResolvedValue(null);
+      mockConfigRepo.findOneByCompoundCode.mockResolvedValue(null);
 
       const result = await service.checkCompoundQuality("TEST");
 
@@ -407,8 +411,8 @@ describe("RubberQualityTrackingService", () => {
       );
       const latest = mockBatch({ id: 1, batchNumber: "B100", shoreAHardness: 60 });
       setupBatchQueryBuilder([latest, ...historical]);
-      mockConfigRepo.findOne.mockResolvedValue(null);
-      mockAlertRepo.save.mockImplementation((alerts: unknown[]) =>
+      mockConfigRepo.findOneByCompoundCode.mockResolvedValue(null);
+      mockAlertRepo.saveMany.mockImplementation((alerts: unknown[]) =>
         (alerts as Partial<RubberQualityAlert>[]).map((a, i) => ({
           ...a,
           id: i + 1,

@@ -1,11 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, Repository } from "typeorm";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { JobCard, JobCardStatus } from "../../stock-control/entities/job-card.entity";
 import { JobCardLineItem } from "../../stock-control/entities/job-card-line-item.entity";
 import { ConvertToJobCardDto, ConvertToJobCardResponseDto } from "../dto/convert-to-job-card.dto";
 import { QuotePdfPoolDto, QuotePdfSnapshotDto } from "../dto/quote-pdf.dto";
 import { NixExtractionSession } from "../entities/nix-extraction-session.entity";
+import { NixExtractionSessionRepository } from "../nix-extraction-session.repository";
 import { NixExtractionSessionService } from "./nix-extraction-session.service";
 
 /**
@@ -29,13 +33,17 @@ export class QuoteToJobCardService {
   private readonly logger = new Logger(QuoteToJobCardService.name);
 
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
     private readonly sessionService: NixExtractionSessionService,
-    private readonly dataSource: DataSource,
+    private readonly sessionRepository: NixExtractionSessionRepository,
+    private readonly txRunner: TransactionRunner,
   ) {}
+
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("Quote-to-job-card conversion requires a TypeOrmTransactionContext");
+    }
+    return context.manager;
+  }
 
   async convert(params: {
     sessionId: number;
@@ -62,7 +70,8 @@ export class QuoteToJobCardService {
       );
     }
 
-    return await this.dataSource.transaction(async (manager) => {
+    return await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
       const jobCardRepo = manager.getRepository(JobCard);
       const jobCardEntity: Partial<JobCard> = {
         companyId,
@@ -86,12 +95,7 @@ export class QuoteToJobCardService {
       );
       await lineItemRepo.save(items);
 
-      // Flip the FK on the session in the same transaction so a partial
-      // failure can't leave a JC without its session link (which would
-      // re-enable the convert button and let the user create a duplicate).
-      await manager.getRepository(NixExtractionSession).update(sessionId, {
-        jobCardId: savedJobCard.id,
-      });
+      await this.sessionRepository.withTransaction(ctx).setJobCardId(sessionId, savedJobCard.id);
 
       this.logger.log(
         `Converted Nix session ${sessionId} → JobCard ${savedJobCard.id} (${savedJobCard.jobNumber}) with ${items.length} line items`,

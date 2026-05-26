@@ -1,8 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { BoltMass } from "../../bolt-mass/entities/bolt-mass.entity";
-import { NutMass } from "../../nut-mass/entities/nut-mass.entity";
+import { BoltMassRepository } from "../../bolt-mass/bolt-mass.repository";
+import { NutMassRepository } from "../../nut-mass/nut-mass.repository";
 import { PipeDimension } from "../../pipe-dimension/entities/pipe-dimension.entity";
 import { BendCalculationResultDto } from "../dto/bend-calculation-result.dto";
 import { CreateBendRfqDto } from "../dto/create-bend-rfq.dto";
@@ -30,10 +28,8 @@ export class RfqCalculationService {
   private readonly logger = new Logger(RfqCalculationService.name);
 
   constructor(
-    @InjectRepository(BoltMass)
-    private boltMassRepository: Repository<BoltMass>,
-    @InjectRepository(NutMass)
-    private nutMassRepository: Repository<NutMass>,
+    private boltMassRepository: BoltMassRepository,
+    private nutMassRepository: NutMassRepository,
     private referenceDataCache: ReferenceDataCacheService,
   ) {}
 
@@ -158,21 +154,17 @@ export class RfqCalculationService {
           if (flangeDimension.bolt) {
             const estimatedBoltLengthMm = Math.max(50, flangeDimension.b * 3);
 
-            const boltMass = await this.boltMassRepository
-              .createQueryBuilder("bm")
-              .where("bm.bolt = :boltId", { boltId: flangeDimension.bolt.id })
-              .andWhere("bm.length_mm >= :minLength", { minLength: estimatedBoltLengthMm })
-              .orderBy("bm.length_mm", "ASC")
-              .getOne();
+            const boltMass = await this.boltMassRepository.findClosestByBoltAndMinLength(
+              flangeDimension.bolt.id,
+              estimatedBoltLengthMm,
+            );
 
             if (boltMass) {
               const totalBolts = numberOfFlanges * flangeDimension.num_holes;
               totalBoltWeight = totalBolts * boltMass.mass_kg;
             }
 
-            const nutMass = await this.nutMassRepository.findOne({
-              where: { bolt: { id: flangeDimension.bolt.id } },
-            });
+            const nutMass = await this.nutMassRepository.findByBoltId(flangeDimension.bolt.id);
 
             if (nutMass) {
               const totalNuts = numberOfFlanges * flangeDimension.num_holes;

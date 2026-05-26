@@ -1,6 +1,4 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { InboundEmailAttachment } from "../../inbound-email/entities/inbound-email-attachment.entity";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { ClassificationResult } from "../../inbound-email/interfaces/document-classifier.interface";
@@ -28,6 +26,9 @@ import {
   TaxInvoiceStatus,
   TaxInvoiceType,
 } from "../entities/rubber-tax-invoice.entity";
+import { RubberCompanyRepository } from "../repositories/rubber-company.repository";
+import { RubberDeliveryNoteRepository } from "../repositories/rubber-delivery-note.repository";
+import { RubberTaxInvoiceRepository } from "../repositories/rubber-tax-invoice.repository";
 import { RubberInboundEmailService } from "../rubber-inbound-email.service";
 import { RubberExtractionOrchestratorService } from "./rubber-extraction-orchestrator.service";
 
@@ -100,12 +101,9 @@ export class ArEmailAdapterService implements EmailAppAdapter, OnModuleInit {
   constructor(
     private readonly registry: InboundEmailRegistry,
     private readonly aiChatService: AiChatService,
-    @InjectRepository(RubberDeliveryNote)
-    private readonly deliveryNoteRepo: Repository<RubberDeliveryNote>,
-    @InjectRepository(RubberTaxInvoice)
-    private readonly taxInvoiceRepo: Repository<RubberTaxInvoice>,
-    @InjectRepository(RubberCompany)
-    private readonly companyRepo: Repository<RubberCompany>,
+    private readonly deliveryNoteRepo: RubberDeliveryNoteRepository,
+    private readonly taxInvoiceRepo: RubberTaxInvoiceRepository,
+    private readonly companyRepo: RubberCompanyRepository,
     private readonly extractionOrchestrator: RubberExtractionOrchestratorService,
     private readonly rubberInboundEmailService: RubberInboundEmailService,
   ) {}
@@ -399,9 +397,7 @@ Respond ONLY with JSON:
       return null;
     }
 
-    const companies = await this.companyRepo.find({
-      where: { isCompoundOwner: false },
-    });
+    const companies = await this.companyRepo.findByCompoundOwner(false);
 
     return (
       companies.find((c) => {

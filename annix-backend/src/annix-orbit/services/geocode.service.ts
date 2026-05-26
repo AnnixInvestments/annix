@@ -1,8 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { CvGeocodeCache } from "../entities/cv-geocode-cache.entity";
+import { CvGeocodeCacheRepository } from "../repositories/cv-geocode-cache.repository";
 
 const GEOCODE_URL = "https://maps.googleapis.com/maps/api/geocode/json";
 const COORD_PRECISION = 2;
@@ -18,8 +16,7 @@ export class GeocodeService {
   private readonly apiKey: string | null;
 
   constructor(
-    @InjectRepository(CvGeocodeCache)
-    private readonly cacheRepo: Repository<CvGeocodeCache>,
+    private readonly cacheRepo: CvGeocodeCacheRepository,
     private readonly configService: ConfigService,
   ) {
     const fromGeocodeEnv = this.configService.get<string>("GOOGLE_GEOCODE_API_KEY");
@@ -37,7 +34,7 @@ export class GeocodeService {
     const address = normaliseAddress(rawAddress);
     if (address.length === 0) return null;
 
-    const cached = await this.cacheRepo.findOne({ where: { address } });
+    const cached = await this.cacheRepo.findByAddress(address);
     if (cached) {
       return { lat: cached.lat, lon: cached.lon };
     }
@@ -53,14 +50,12 @@ export class GeocodeService {
     };
 
     try {
-      await this.cacheRepo.save(
-        this.cacheRepo.create({
-          address,
-          lat: rounded.lat,
-          lon: rounded.lon,
-          provider: "google",
-        }),
-      );
+      await this.cacheRepo.upsert({
+        address,
+        lat: rounded.lat,
+        lon: rounded.lon,
+        provider: "google",
+      });
     } catch (err) {
       this.logger.warn(
         `Geocode cache write failed for "${address}": ${err instanceof Error ? err.message : String(err)}`,

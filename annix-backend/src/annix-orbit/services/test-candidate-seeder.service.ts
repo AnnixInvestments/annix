@@ -1,6 +1,4 @@
 import { ForbiddenException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
   Candidate,
@@ -9,6 +7,8 @@ import {
   type MatchAnalysis,
 } from "../entities/candidate.entity";
 import { JobPosting } from "../entities/job-posting.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 
 interface FixtureProfile {
   label: "strong" | "borderline" | "weak" | "disqualified";
@@ -121,10 +121,8 @@ export class TestCandidateSeederService {
   private readonly logger = new Logger(TestCandidateSeederService.name);
 
   constructor(
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly candidateRepo: CandidateRepository,
   ) {}
 
   async seedForJobPosting(
@@ -152,7 +150,7 @@ export class TestCandidateSeederService {
       const name = extractedData.candidateName ?? `Test Candidate ${i + 1}`;
       const email = extractedData.email ?? `candidate-${jobPostingId}-${i}@example.com`;
 
-      const candidate = this.candidateRepo.create({
+      const candidate = await this.candidateRepo.create({
         email,
         name,
         cvFilePath: null,
@@ -173,8 +171,6 @@ export class TestCandidateSeederService {
       byProfile[profile.label] += 1;
     }
 
-    await this.candidateRepo.save(candidates);
-
     this.logger.log(
       `Seeded ${candidates.length} test candidates for job ${jobPostingId} (${JSON.stringify(byProfile)})`,
     );
@@ -184,18 +180,12 @@ export class TestCandidateSeederService {
 
   async clearForJobPosting(companyId: number, jobPostingId: number): Promise<{ deleted: number }> {
     const job = await this.loadTestJob(companyId, jobPostingId);
-    const result = await this.candidateRepo.delete({
-      jobPostingId: job.id,
-      isTestFixture: true,
-    });
-    return { deleted: result.affected ?? 0 };
+    const deleted = await this.candidateRepo.deleteTestFixturesForJob(job.id);
+    return { deleted };
   }
 
   private async loadTestJob(companyId: number, jobPostingId: number): Promise<JobPosting> {
-    const job = await this.jobPostingRepo.findOne({
-      where: { id: jobPostingId, companyId },
-      relations: ["skills"],
-    });
+    const job = await this.jobPostingRepo.findByIdForCompanyWithSkills(jobPostingId, companyId);
     if (!job) {
       throw new NotFoundException("Job posting not found");
     }

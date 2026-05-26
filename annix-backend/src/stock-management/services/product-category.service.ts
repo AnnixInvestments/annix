@@ -1,11 +1,10 @@
 import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import type {
   CreateProductCategoryDto,
   UpdateProductCategoryDto,
 } from "../dto/product-category.dto";
 import { ProductCategory, type ProductCategoryType } from "../entities/product-category.entity";
+import { ProductCategoryRepository } from "../repositories/product-category.repository";
 
 interface SeedCategory {
   productType: ProductCategoryType;
@@ -146,27 +145,17 @@ const SEED_CATEGORIES: ReadonlyArray<SeedCategory> = [
 
 @Injectable()
 export class ProductCategoryService {
-  constructor(
-    @InjectRepository(ProductCategory)
-    private readonly categoryRepo: Repository<ProductCategory>,
-  ) {}
+  constructor(private readonly categoryRepo: ProductCategoryRepository) {}
 
   async listForCompany(
     companyId: number,
     productType?: ProductCategoryType,
   ): Promise<ProductCategory[]> {
-    const where: { companyId: number; productType?: ProductCategoryType } = { companyId };
-    if (productType) {
-      where.productType = productType;
-    }
-    return this.categoryRepo.find({
-      where,
-      order: { productType: "ASC", sortOrder: "ASC", name: "ASC" },
-    });
+    return this.categoryRepo.findForCompany(companyId, productType);
   }
 
   async byId(companyId: number, id: number): Promise<ProductCategory> {
-    const category = await this.categoryRepo.findOne({ where: { id, companyId } });
+    const category = await this.categoryRepo.findOneForCompany(companyId, id);
     if (!category) {
       throw new NotFoundException(`Product category ${id} not found`);
     }
@@ -174,15 +163,17 @@ export class ProductCategoryService {
   }
 
   async create(companyId: number, dto: CreateProductCategoryDto): Promise<ProductCategory> {
-    const existing = await this.categoryRepo.findOne({
-      where: { companyId, productType: dto.productType, slug: dto.slug },
-    });
+    const existing = await this.categoryRepo.findOneByTypeSlug(
+      companyId,
+      dto.productType,
+      dto.slug,
+    );
     if (existing) {
       throw new ConflictException(
         `Category with slug "${dto.slug}" already exists for product type "${dto.productType}"`,
       );
     }
-    const created = this.categoryRepo.create({
+    const created = this.categoryRepo.build({
       companyId,
       productType: dto.productType,
       slug: dto.slug,
@@ -218,7 +209,7 @@ export class ProductCategoryService {
   }
 
   async ensureSeedDataForCompany(companyId: number): Promise<number> {
-    const existing = await this.categoryRepo.find({ where: { companyId } });
+    const existing = await this.categoryRepo.findAllForCompany(companyId);
     const existingKeys = new Set(existing.map((c) => `${c.productType}:${c.slug}`));
     const toCreate = SEED_CATEGORIES.filter(
       (seed) => !existingKeys.has(`${seed.productType}:${seed.slug}`),
@@ -227,7 +218,7 @@ export class ProductCategoryService {
       return 0;
     }
     const records = toCreate.map((seed) =>
-      this.categoryRepo.create({
+      this.categoryRepo.build({
         companyId,
         productType: seed.productType,
         slug: seed.slug,
@@ -238,7 +229,7 @@ export class ProductCategoryService {
         workflowHints: {},
       }),
     );
-    await this.categoryRepo.save(records);
+    await this.categoryRepo.saveMany(records);
     return records.length;
   }
 }

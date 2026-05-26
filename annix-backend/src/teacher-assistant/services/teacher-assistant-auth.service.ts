@@ -1,11 +1,10 @@
 import { ConflictException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AUTH_CONSTANTS } from "../../shared/auth/auth.constants";
 import { PasswordService } from "../../shared/auth/password.service";
 import { TeacherAssistantUser } from "../entities/teacher-assistant-user.entity";
+import { TeacherAssistantUserRepository } from "../teacher-assistant-user.repository";
 
 const TOKEN_TTL_SECONDS = AUTH_CONSTANTS.SESSION_EXPIRY_HOURS * 60 * 60;
 const TOKEN_TYPE = "teacher-assistant";
@@ -36,8 +35,7 @@ export class TeacherAssistantAuthService {
   private readonly logger = new Logger(TeacherAssistantAuthService.name);
 
   constructor(
-    @InjectRepository(TeacherAssistantUser)
-    private readonly userRepo: Repository<TeacherAssistantUser>,
+    private readonly userRepo: TeacherAssistantUserRepository,
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
@@ -50,24 +48,23 @@ export class TeacherAssistantAuthService {
     schoolName?: string | null;
   }): Promise<TeacherAssistantAuthResult> {
     const email = normaliseEmail(input.email);
-    const existing = await this.userRepo.findOne({ where: { email } });
+    const existing = await this.userRepo.findByEmail(email);
     if (existing) {
       throw new ConflictException("An account with that email already exists.");
     }
     const passwordHash = await this.passwordService.hashSimple(input.password);
-    const user = this.userRepo.create({
+    const saved = await this.userRepo.create({
       email,
       passwordHash,
       name: input.name.trim(),
       schoolName: input.schoolName?.trim() || null,
     });
-    const saved = await this.userRepo.save(user);
     this.logger.log(`Registered new teacher: ${saved.email} (id=${saved.id})`);
     return this.tokenFor(saved);
   }
 
   async login(email: string, password: string): Promise<TeacherAssistantAuthResult> {
-    const user = await this.userRepo.findOne({ where: { email: normaliseEmail(email) } });
+    const user = await this.userRepo.findByEmail(normaliseEmail(email));
     if (!user) {
       throw new UnauthorizedException("Invalid email or password.");
     }
@@ -79,7 +76,7 @@ export class TeacherAssistantAuthService {
   }
 
   async findById(id: number): Promise<TeacherAssistantUser | null> {
-    return this.userRepo.findOne({ where: { id } });
+    return this.userRepo.findById(id);
   }
 
   verifyToken(token: string): { sub: number; email: string; name: string; type: string } {

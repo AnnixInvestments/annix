@@ -1,6 +1,4 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
 import { AiChatService } from "./ai-providers/ai-chat.service";
@@ -13,9 +11,12 @@ import {
 } from "./entities/nix-clarification.entity";
 import { DocumentType, ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
 import { LearningSource, LearningType, NixLearning } from "./entities/nix-learning.entity";
-import { NixUserPreference } from "./entities/nix-user-preference.entity";
 import { MineInferenceService } from "./mine-inference.service";
 import { NixService } from "./nix.service";
+import { NixClarificationRepository } from "./nix-clarification.repository";
+import { NixExtractionRepository } from "./nix-extraction.repository";
+import { NixLearningRepository } from "./nix-learning.repository";
+import { NixUserPreferenceRepository } from "./nix-user-preference.repository";
 import { NixExtractionProfileRegistry } from "./profiles";
 import { RevisionTrackingService } from "./revision-tracking.service";
 import { ExcelExtractorService } from "./services/excel-extractor.service";
@@ -24,9 +25,9 @@ import { WordExtractorService } from "./services/word-extractor.service";
 
 describe("NixService", () => {
   let service: NixService;
-  let extractionRepo: jest.Mocked<Repository<NixExtraction>>;
-  let learningRepo: jest.Mocked<Repository<NixLearning>>;
-  let clarificationRepo: jest.Mocked<Repository<NixClarification>>;
+  let extractionRepo: jest.Mocked<NixExtractionRepository>;
+  let learningRepo: jest.Mocked<NixLearningRepository>;
+  let clarificationRepo: jest.Mocked<NixClarificationRepository>;
   let pdfExtractor: jest.Mocked<PdfExtractorService>;
   let excelExtractor: jest.Mocked<ExcelExtractorService>;
   let aiExtractor: jest.Mocked<AiExtractionService>;
@@ -78,28 +79,34 @@ describe("NixService", () => {
     const mockExtractionRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
+      findById: jest.fn(),
+      findByIdWithUserAndRfq: jest.fn(),
+      findBySessionOrderedAsc: jest.fn(),
+      findLatestSameSessionDuplicate: jest.fn(),
+      findRecentForUser: jest.fn(),
+      findUsableSessionSiblings: jest.fn().mockResolvedValue([]),
+      findUsableSourceSiblings: jest.fn().mockResolvedValue([]),
     };
 
     const mockLearningRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
+      findCorrectionByPatternKey: jest.fn(),
+      findActiveRelevanceRules: jest.fn(),
+      findAdminSeededOrdered: jest.fn(),
     };
 
     const mockPreferenceRepo = {
-      findOne: jest.fn(),
+      findOneWhere: jest.fn(),
       save: jest.fn(),
     };
 
     const mockClarificationRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
-      count: jest.fn(),
+      findByIdWithExtraction: jest.fn(),
+      findPendingForExtractionOrdered: jest.fn(),
+      countPendingForExtraction: jest.fn(),
     };
 
     const mockPdfExtractor = {
@@ -136,10 +143,10 @@ describe("NixService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NixService,
-        { provide: getRepositoryToken(NixExtraction), useValue: mockExtractionRepo },
-        { provide: getRepositoryToken(NixLearning), useValue: mockLearningRepo },
-        { provide: getRepositoryToken(NixUserPreference), useValue: mockPreferenceRepo },
-        { provide: getRepositoryToken(NixClarification), useValue: mockClarificationRepo },
+        { provide: NixExtractionRepository, useValue: mockExtractionRepo },
+        { provide: NixLearningRepository, useValue: mockLearningRepo },
+        { provide: NixUserPreferenceRepository, useValue: mockPreferenceRepo },
+        { provide: NixClarificationRepository, useValue: mockClarificationRepo },
         { provide: PdfExtractorService, useValue: mockPdfExtractor },
         { provide: ExcelExtractorService, useValue: mockExcelExtractor },
         { provide: WordExtractorService, useValue: mockWordExtractor },
@@ -174,9 +181,9 @@ describe("NixService", () => {
     }).compile();
 
     service = module.get<NixService>(NixService);
-    extractionRepo = module.get(getRepositoryToken(NixExtraction));
-    learningRepo = module.get(getRepositoryToken(NixLearning));
-    clarificationRepo = module.get(getRepositoryToken(NixClarification));
+    extractionRepo = module.get(NixExtractionRepository);
+    learningRepo = module.get(NixLearningRepository);
+    clarificationRepo = module.get(NixClarificationRepository);
     pdfExtractor = module.get(PdfExtractorService);
     excelExtractor = module.get(ExcelExtractorService);
     aiExtractor = module.get(AiExtractionService);
@@ -188,10 +195,10 @@ describe("NixService", () => {
 
   describe("processDocument", () => {
     beforeEach(() => {
-      extractionRepo.create.mockReturnValue(mockExtraction);
+      extractionRepo.create.mockResolvedValue(mockExtraction);
       extractionRepo.save.mockResolvedValue(mockExtraction);
-      learningRepo.find.mockResolvedValue([]);
-      clarificationRepo.create.mockReturnValue(mockClarification);
+      learningRepo.findActiveRelevanceRules.mockResolvedValue([]);
+      clarificationRepo.create.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
     });
 
@@ -410,7 +417,7 @@ describe("NixService", () => {
 
   describe("submitClarification", () => {
     it("should return success false when clarification not found", async () => {
-      clarificationRepo.findOne.mockResolvedValue(null);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(null);
 
       const result = await service.submitClarification({
         clarificationId: 999,
@@ -422,12 +429,12 @@ describe("NixService", () => {
     });
 
     it("should submit clarification successfully", async () => {
-      clarificationRepo.findOne.mockResolvedValue(mockClarification);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
-      clarificationRepo.count.mockResolvedValue(0);
+      clarificationRepo.countPendingForExtraction.mockResolvedValue(0);
       extractionRepo.save.mockResolvedValue(mockExtraction);
-      learningRepo.findOne.mockResolvedValue(null);
-      learningRepo.create.mockReturnValue(mockLearning);
+      learningRepo.findCorrectionByPatternKey.mockResolvedValue(null);
+      learningRepo.create.mockResolvedValue(mockLearning);
       learningRepo.save.mockResolvedValue(mockLearning);
 
       const result = await service.submitClarification({
@@ -446,15 +453,15 @@ describe("NixService", () => {
     });
 
     it("should update extraction status to completed when no remaining clarifications", async () => {
-      clarificationRepo.findOne.mockResolvedValue(mockClarification);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
-      clarificationRepo.count.mockResolvedValue(0);
+      clarificationRepo.countPendingForExtraction.mockResolvedValue(0);
       extractionRepo.save.mockResolvedValue({
         ...mockExtraction,
         status: ExtractionStatus.COMPLETED,
       });
-      learningRepo.findOne.mockResolvedValue(null);
-      learningRepo.create.mockReturnValue(mockLearning);
+      learningRepo.findCorrectionByPatternKey.mockResolvedValue(null);
+      learningRepo.create.mockResolvedValue(mockLearning);
       learningRepo.save.mockResolvedValue(mockLearning);
 
       const result = await service.submitClarification({
@@ -467,9 +474,9 @@ describe("NixService", () => {
     });
 
     it("should skip learning when allowLearning is false", async () => {
-      clarificationRepo.findOne.mockResolvedValue(mockClarification);
+      clarificationRepo.findByIdWithExtraction.mockResolvedValue(mockClarification);
       clarificationRepo.save.mockResolvedValue(mockClarification);
-      clarificationRepo.count.mockResolvedValue(0);
+      clarificationRepo.countPendingForExtraction.mockResolvedValue(0);
       extractionRepo.save.mockResolvedValue(mockExtraction);
 
       await service.submitClarification({
@@ -479,25 +486,22 @@ describe("NixService", () => {
         allowLearning: false,
       });
 
-      expect(learningRepo.findOne).not.toHaveBeenCalled();
+      expect(learningRepo.findCorrectionByPatternKey).not.toHaveBeenCalled();
     });
   });
 
   describe("extraction", () => {
     it("should return extraction when found", async () => {
-      extractionRepo.findOne.mockResolvedValue(mockExtraction);
+      extractionRepo.findByIdWithUserAndRfq.mockResolvedValue(mockExtraction);
 
       const result = await service.extraction(1);
 
       expect(result).toEqual(mockExtraction);
-      expect(extractionRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ["user", "rfq"],
-      });
+      expect(extractionRepo.findByIdWithUserAndRfq).toHaveBeenCalledWith(1);
     });
 
     it("should return null when extraction not found", async () => {
-      extractionRepo.findOne.mockResolvedValue(null);
+      extractionRepo.findByIdWithUserAndRfq.mockResolvedValue(null);
 
       const result = await service.extraction(999);
 
@@ -507,40 +511,30 @@ describe("NixService", () => {
 
   describe("pendingClarifications", () => {
     it("should return pending clarifications for extraction", async () => {
-      clarificationRepo.find.mockResolvedValue([mockClarification]);
+      clarificationRepo.findPendingForExtractionOrdered.mockResolvedValue([mockClarification]);
 
       const result = await service.pendingClarifications(1);
 
       expect(result).toEqual([mockClarification]);
-      expect(clarificationRepo.find).toHaveBeenCalledWith({
-        where: {
-          extractionId: 1,
-          status: ClarificationStatus.PENDING,
-        },
-        order: { createdAt: "ASC" },
-      });
+      expect(clarificationRepo.findPendingForExtractionOrdered).toHaveBeenCalledWith(1);
     });
   });
 
   describe("userExtractions", () => {
     it("should return user extractions", async () => {
-      extractionRepo.find.mockResolvedValue([mockExtraction]);
+      extractionRepo.findRecentForUser.mockResolvedValue([mockExtraction]);
 
       const result = await service.userExtractions(100);
 
       expect(result).toEqual([mockExtraction]);
-      expect(extractionRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { createdAt: "DESC" },
-        take: 50,
-      });
+      expect(extractionRepo.findRecentForUser).toHaveBeenCalledWith(100);
     });
   });
 
   describe("recordCorrection", () => {
     it("should create new learning rule for new correction", async () => {
-      learningRepo.findOne.mockResolvedValue(null);
-      learningRepo.create.mockReturnValue(mockLearning);
+      learningRepo.findCorrectionByPatternKey.mockResolvedValue(null);
+      learningRepo.create.mockResolvedValue(mockLearning);
       learningRepo.save.mockResolvedValue(mockLearning);
 
       const result = await service.recordCorrection({
@@ -563,7 +557,7 @@ describe("NixService", () => {
 
     it("should update existing learning rule with same value", async () => {
       const existingRule = { ...mockLearning, learnedValue: "Carbon Steel", confirmationCount: 1 };
-      learningRepo.findOne.mockResolvedValue(existingRule);
+      learningRepo.findCorrectionByPatternKey.mockResolvedValue(existingRule);
       learningRepo.save.mockResolvedValue(existingRule);
 
       await service.recordCorrection({
@@ -587,7 +581,7 @@ describe("NixService", () => {
         confirmationCount: 3,
         confidence: 0.9,
       };
-      learningRepo.findOne.mockResolvedValue(existingRule);
+      learningRepo.findCorrectionByPatternKey.mockResolvedValue(existingRule);
       learningRepo.save.mockResolvedValue(existingRule);
 
       await service.recordCorrection({
@@ -609,7 +603,7 @@ describe("NixService", () => {
 
   describe("seedAdminRule", () => {
     it("should create admin learning rule", async () => {
-      learningRepo.create.mockReturnValue(mockLearning);
+      learningRepo.create.mockResolvedValue(mockLearning);
       learningRepo.save.mockResolvedValue(mockLearning);
 
       const result = await service.seedAdminRule("material", "API 5L", "Carbon Steel", ["pipe"]);
@@ -631,15 +625,12 @@ describe("NixService", () => {
 
   describe("adminLearningRules", () => {
     it("should return admin seeded learning rules", async () => {
-      learningRepo.find.mockResolvedValue([mockLearning]);
+      learningRepo.findAdminSeededOrdered.mockResolvedValue([mockLearning]);
 
       const result = await service.adminLearningRules();
 
       expect(result).toEqual([mockLearning]);
-      expect(learningRepo.find).toHaveBeenCalledWith({
-        where: { source: LearningSource.ADMIN_SEEDED },
-        order: { createdAt: "DESC" },
-      });
+      expect(learningRepo.findAdminSeededOrdered).toHaveBeenCalled();
     });
   });
 
@@ -699,9 +690,9 @@ describe("NixService", () => {
         });
       }
 
-      extractionRepo.create.mockReturnValue({ ...mockExtraction, documentType: expectedType });
+      extractionRepo.create.mockResolvedValue({ ...mockExtraction, documentType: expectedType });
       extractionRepo.save.mockResolvedValue({ ...mockExtraction, documentType: expectedType });
-      learningRepo.find.mockResolvedValue([]);
+      learningRepo.findActiveRelevanceRules.mockResolvedValue([]);
 
       await service.processDocument({
         documentPath: `/path/to/${filename}`,

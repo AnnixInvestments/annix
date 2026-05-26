@@ -1,30 +1,30 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
-import { Meeting, MeetingRecording, MeetingTranscript } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { MeetingTranscriptRepository } from "../meeting-transcript.repository";
 import { MeetingSummaryService } from "./meeting-summary.service";
 
 describe("MeetingSummaryService", () => {
   let service: MeetingSummaryService;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
-  let mockRecordingRepo: Partial<Repository<MeetingRecording>>;
-  let mockTranscriptRepo: Partial<Repository<MeetingTranscript>>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
+  let mockRecordingRepo: Partial<MeetingRecordingRepository>;
+  let mockTranscriptRepo: Partial<MeetingTranscriptRepository>;
   let mockEmailService: Partial<EmailService>;
 
   beforeEach(async () => {
     mockMeetingRepo = {
-      findOne: jest.fn(),
+      findWithProspect: jest.fn(),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
     };
 
     mockRecordingRepo = {
-      findOne: jest.fn(),
+      findByMeetingId: jest.fn(),
     };
 
     mockTranscriptRepo = {
-      findOne: jest.fn(),
+      findByRecordingId: jest.fn(),
     };
 
     mockEmailService = {
@@ -35,15 +35,15 @@ describe("MeetingSummaryService", () => {
       providers: [
         MeetingSummaryService,
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
         },
         {
-          provide: getRepositoryToken(MeetingRecording),
+          provide: MeetingRecordingRepository,
           useValue: mockRecordingRepo,
         },
         {
-          provide: getRepositoryToken(MeetingTranscript),
+          provide: MeetingTranscriptRepository,
           useValue: mockTranscriptRepo,
         },
         {
@@ -69,7 +69,7 @@ describe("MeetingSummaryService", () => {
 
   describe("generateSummary", () => {
     it("should throw when meeting is not found", async () => {
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findWithProspect as jest.Mock).mockResolvedValue(null);
 
       await expect(service.generateSummary(999)).rejects.toThrow();
     });
@@ -82,8 +82,8 @@ describe("MeetingSummaryService", () => {
         scheduledEnd: new Date("2026-01-15T11:00:00Z"),
       };
 
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(mockMeeting);
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findWithProspect as jest.Mock).mockResolvedValue(mockMeeting);
+      (mockRecordingRepo.findByMeetingId as jest.Mock).mockResolvedValue(null);
 
       await expect(service.generateSummary(1)).rejects.toThrow();
     });
@@ -133,9 +133,9 @@ describe("MeetingSummaryService", () => {
         },
       };
 
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(mockMeeting);
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(mockRecording);
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(mockTranscript);
+      (mockMeetingRepo.findWithProspect as jest.Mock).mockResolvedValue(mockMeeting);
+      (mockRecordingRepo.findByMeetingId as jest.Mock).mockResolvedValue(mockRecording);
+      (mockTranscriptRepo.findByRecordingId as jest.Mock).mockResolvedValue(mockTranscript);
 
       const result = await service.generateSummary(1);
 
@@ -150,7 +150,7 @@ describe("MeetingSummaryService", () => {
 
   describe("previewSummary", () => {
     it("should throw when meeting is not found", async () => {
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findWithProspect as jest.Mock).mockResolvedValue(null);
 
       await expect(service.previewSummary(999)).rejects.toThrow();
     });

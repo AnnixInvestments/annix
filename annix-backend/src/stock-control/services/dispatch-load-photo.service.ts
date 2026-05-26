@@ -1,22 +1,18 @@
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DispatchLoadPhoto } from "../entities/dispatch-load-photo.entity";
-import { JobCard } from "../entities/job-card.entity";
-import { JobCardJobFile } from "../entities/job-card-job-file.entity";
+import { DispatchLoadPhotoRepository } from "../repositories/dispatch-load-photo.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
 
 @Injectable()
 export class DispatchLoadPhotoService {
   private readonly logger = new Logger(DispatchLoadPhotoService.name);
 
   constructor(
-    @InjectRepository(DispatchLoadPhoto)
-    private readonly photoRepo: Repository<DispatchLoadPhoto>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardJobFile)
-    private readonly jobFileRepo: Repository<JobCardJobFile>,
+    private readonly photoRepo: DispatchLoadPhotoRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly jobFileRepo: JobCardJobFileRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -28,9 +24,7 @@ export class DispatchLoadPhotoService {
     user: { id: number; name: string },
     caption: string | null = null,
   ): Promise<DispatchLoadPhoto> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard) {
       throw new NotFoundException(`Job card ${jobCardId} not found`);
@@ -39,7 +33,7 @@ export class DispatchLoadPhotoService {
     const storagePath = `${StorageArea.STOCK_CONTROL}/dispatch-load-photos/company-${companyId}/jc-${jobCardId}`;
     const stored = await this.storageService.upload(file, storagePath);
 
-    const photo = this.photoRepo.create({
+    const saved = await this.photoRepo.create({
       jobCardId,
       companyId,
       filePath: stored.path,
@@ -49,8 +43,6 @@ export class DispatchLoadPhotoService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-
-    const saved = await this.photoRepo.save(photo);
 
     this.storeInJobFile(companyId, jobCardId, file, stored.path, user).catch((err) => {
       const message = err instanceof Error ? err.message : "Unknown error";
@@ -62,10 +54,7 @@ export class DispatchLoadPhotoService {
   }
 
   async photosForJobCard(companyId: number, jobCardId: number): Promise<DispatchLoadPhoto[]> {
-    const photos = await this.photoRepo.find({
-      where: { jobCardId, companyId },
-      order: { createdAt: "DESC" },
-    });
+    const photos = await this.photoRepo.findForJobCard(companyId, jobCardId);
 
     return Promise.all(
       photos.map(async (photo) => {
@@ -76,9 +65,7 @@ export class DispatchLoadPhotoService {
   }
 
   async deletePhoto(companyId: number, photoId: number): Promise<void> {
-    const photo = await this.photoRepo.findOne({
-      where: { id: photoId, companyId },
-    });
+    const photo = await this.photoRepo.findOneForCompany(photoId, companyId);
 
     if (!photo) {
       throw new NotFoundException(`Load photo ${photoId} not found`);
@@ -88,9 +75,7 @@ export class DispatchLoadPhotoService {
   }
 
   async hasPhotos(companyId: number, jobCardId: number): Promise<boolean> {
-    const count = await this.photoRepo.count({
-      where: { jobCardId, companyId },
-    });
+    const count = await this.photoRepo.count({ jobCardId, companyId });
     return count > 0;
   }
 
@@ -102,7 +87,7 @@ export class DispatchLoadPhotoService {
     user: { id: number; name: string },
   ): Promise<void> {
     const extension = file.originalname.split(".").pop() || "";
-    const jobFile = this.jobFileRepo.create({
+    await this.jobFileRepo.create({
       jobCardId,
       companyId,
       filePath,
@@ -114,6 +99,5 @@ export class DispatchLoadPhotoService {
       uploadedById: user.id,
       uploadedByName: user.name,
     });
-    await this.jobFileRepo.save(jobFile);
   }
 }

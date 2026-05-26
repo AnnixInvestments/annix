@@ -1,15 +1,14 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
-import { StockControlCompany } from "../entities/stock-control-company.entity";
 import {
   StockControlInvitation,
   StockControlInvitationStatus,
 } from "../entities/stock-control-invitation.entity";
-import { StockControlUser } from "../entities/stock-control-user.entity";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockControlInvitationRepository } from "../repositories/stock-control-invitation.repository";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
 
 const INVITATION_EXPIRY_DAYS = 7;
 
@@ -18,12 +17,9 @@ export class StockControlInvitationService {
   private readonly logger = new Logger(StockControlInvitationService.name);
 
   constructor(
-    @InjectRepository(StockControlInvitation)
-    private readonly invitationRepo: Repository<StockControlInvitation>,
-    @InjectRepository(StockControlUser)
-    private readonly userRepo: Repository<StockControlUser>,
-    @InjectRepository(StockControlCompany)
-    private readonly companyRepo: Repository<StockControlCompany>,
+    private readonly invitationRepo: StockControlInvitationRepository,
+    private readonly userRepo: StockControlUserRepository,
+    private readonly companyRepo: StockControlCompanyRepository,
     private readonly emailService: EmailService,
   ) {}
 
@@ -33,14 +29,15 @@ export class StockControlInvitationService {
     email: string,
     role: string,
   ): Promise<StockControlInvitation> {
-    const existingUser = await this.userRepo.findOne({ where: { email, companyId } });
+    const existingUser = await this.userRepo.findOneByEmailAndCompany(email, companyId);
     if (existingUser) {
       throw new ConflictException("User is already a member of this company");
     }
 
-    const existingPending = await this.invitationRepo.findOne({
-      where: { companyId, email, status: StockControlInvitationStatus.PENDING },
-    });
+    const existingPending = await this.invitationRepo.findOnePendingForCompanyByEmail(
+      companyId,
+      email,
+    );
     if (existingPending) {
       throw new ConflictException("An invitation is already pending for this email");
     }
@@ -48,7 +45,7 @@ export class StockControlInvitationService {
     const token = uuidv4();
     const expiresAt = now().plus({ days: INVITATION_EXPIRY_DAYS }).toJSDate();
 
-    const invitation = this.invitationRepo.create({
+    const saved = await this.invitationRepo.create({
       companyId,
       invitedById,
       email,
@@ -58,10 +55,8 @@ export class StockControlInvitationService {
       expiresAt,
     });
 
-    const saved = await this.invitationRepo.save(invitation);
-
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
-    const inviter = await this.userRepo.findOne({ where: { id: invitedById } });
+    const company = await this.companyRepo.findById(companyId);
+    const inviter = await this.userRepo.findById(invitedById);
 
     await this.emailService.sendStockControlInvitationEmail(
       email,
@@ -76,11 +71,7 @@ export class StockControlInvitationService {
   }
 
   async findByCompany(companyId: number): Promise<StockControlInvitation[]> {
-    const pending = await this.invitationRepo.find({
-      where: { companyId, status: StockControlInvitationStatus.PENDING },
-      relations: ["invitedBy"],
-      order: { createdAt: "DESC" },
-    });
+    const pending = await this.invitationRepo.findPendingForCompanyWithInviter(companyId);
 
     if (pending.length === 0) {
       return [];
@@ -88,7 +79,7 @@ export class StockControlInvitationService {
 
     const pendingEmails = pending.map((inv) => inv.email.toLowerCase());
     const matchingUsers = await Promise.all(
-      pendingEmails.map((email) => this.userRepo.findOne({ where: { email } })),
+      pendingEmails.map((email) => this.userRepo.findOneByEmail(email)),
     );
 
     const resolvedInvitationIds = new Set<number>();
@@ -119,10 +110,7 @@ export class StockControlInvitationService {
   }
 
   async findByToken(token: string): Promise<StockControlInvitation | null> {
-    const invitation = await this.invitationRepo.findOne({
-      where: { token },
-      relations: ["company"],
-    });
+    const invitation = await this.invitationRepo.findOneByTokenWithCompany(token);
 
     if (
       invitation &&
@@ -137,9 +125,7 @@ export class StockControlInvitationService {
   }
 
   async cancel(companyId: number, invitationId: number): Promise<void> {
-    const invitation = await this.invitationRepo.findOne({
-      where: { id: invitationId, companyId },
-    });
+    const invitation = await this.invitationRepo.findOneForCompany(invitationId, companyId);
     if (!invitation) {
       throw new NotFoundException("Invitation not found");
     }
@@ -154,10 +140,10 @@ export class StockControlInvitationService {
   }
 
   async resend(companyId: number, invitationId: number): Promise<StockControlInvitation> {
-    const invitation = await this.invitationRepo.findOne({
-      where: { id: invitationId, companyId },
-      relations: ["invitedBy"],
-    });
+    const invitation = await this.invitationRepo.findOneForCompanyWithInviter(
+      invitationId,
+      companyId,
+    );
     if (!invitation) {
       throw new NotFoundException("Invitation not found");
     }
@@ -171,7 +157,7 @@ export class StockControlInvitationService {
 
     const saved = await this.invitationRepo.save(invitation);
 
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
 
     await this.emailService.sendStockControlInvitationEmail(
       invitation.email,

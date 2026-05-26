@@ -1,11 +1,10 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { EmailService } from "../../email/email.service";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
-import { Candidate } from "../entities/candidate.entity";
-import { ExternalJob } from "../entities/external-job.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { EmbeddingService } from "./embedding.service";
 import { EscoNormalisationService } from "./esco-normalisation.service";
 import { JobCategorizationService } from "./job-categorization.service";
@@ -26,8 +25,8 @@ describe("EmbeddingService.embedding cost guard", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EmbeddingService,
-        { provide: getRepositoryToken(Candidate), useValue: {} },
-        { provide: getRepositoryToken(ExternalJob), useValue: {} },
+        { provide: CandidateRepository, useValue: {} },
+        { provide: ExternalJobRepository, useValue: {} },
         { provide: AiUsageService, useValue: aiUsageService },
         { provide: EmailService, useValue: emailService },
         {

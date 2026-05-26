@@ -1,9 +1,14 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
+import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import { UserLocationAssignment } from "../entities/user-location-assignment.entity";
 import { WorkflowNotificationRecipient } from "../entities/workflow-notification-recipient.entity";
 import { WorkflowStepAssignment } from "../entities/workflow-step-assignment.entity";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
+import { UserLocationAssignmentRepository } from "../repositories/user-location-assignment.repository";
+import { WorkflowNotificationRecipientRepository } from "../repositories/workflow-notification-recipient.repository";
+import { WorkflowStepAssignmentRepository } from "../repositories/workflow-step-assignment.repository";
 import { WorkflowAssignmentService } from "./workflow-assignment.service";
 
 const COMPANY_ID = 1;
@@ -64,44 +69,52 @@ describe("WorkflowAssignmentService", () => {
     save: jest.fn(),
   };
 
+  const mockTxRunner = {
+    run: jest
+      .fn()
+      .mockImplementation((cb) => cb(new TypeOrmTransactionContext(mockManager as never))),
+  };
+
   const mockAssignmentRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    count: jest.fn(),
-    delete: jest.fn(),
-    create: jest.fn().mockImplementation((data) => data),
-    save: jest.fn(),
-    manager: {
-      transaction: jest.fn().mockImplementation(async (cb) => cb(mockManager)),
-    },
+    findForCompanyWithUser: jest.fn(),
+    findForStepWithUser: jest.fn(),
+    findOnePrimaryForStepWithSecondaryUser: jest.fn(),
+    findUserIdsForStep: jest.fn(),
+    findForStepWithUserRelation: jest.fn(),
+    countForStep: jest.fn(),
   };
 
   const mockUserRepo = {
-    find: jest.fn(),
+    findIdsByIdsForCompany: jest.fn(),
+    findForCompanyByRoles: jest.fn(),
+    findForCompanyByRolesOrdered: jest.fn(),
   };
 
   const mockRecipientRepo = {
-    find: jest.fn(),
-    delete: jest.fn(),
-    create: jest.fn().mockImplementation((data) => data),
-    save: jest.fn(),
+    findForCompanyOrdered: jest.fn(),
+    findForStepOrdered: jest.fn(),
+    deleteForStep: jest.fn(),
+    buildMany: jest.fn().mockImplementation((rows) => rows),
+    saveMany: jest.fn(),
   };
 
   const mockUserLocationRepo = {
-    find: jest.fn(),
-    delete: jest.fn(),
-    create: jest.fn().mockImplementation((data) => data),
-    save: jest.fn(),
+    findForCompanyWithRelations: jest.fn(),
+    findForUser: jest.fn(),
+    deleteForUser: jest.fn(),
+    buildMany: jest.fn().mockImplementation((rows) => rows),
+    saveMany: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WorkflowAssignmentService,
-        { provide: getRepositoryToken(WorkflowStepAssignment), useValue: mockAssignmentRepo },
-        { provide: getRepositoryToken(StockControlUser), useValue: mockUserRepo },
-        { provide: getRepositoryToken(WorkflowNotificationRecipient), useValue: mockRecipientRepo },
-        { provide: getRepositoryToken(UserLocationAssignment), useValue: mockUserLocationRepo },
+        { provide: WorkflowStepAssignmentRepository, useValue: mockAssignmentRepo },
+        { provide: StockControlUserRepository, useValue: mockUserRepo },
+        { provide: WorkflowNotificationRecipientRepository, useValue: mockRecipientRepo },
+        { provide: UserLocationAssignmentRepository, useValue: mockUserLocationRepo },
+        { provide: TransactionRunner, useValue: mockTxRunner },
       ],
     }).compile();
 
@@ -118,7 +131,7 @@ describe("WorkflowAssignmentService", () => {
       const user1 = createUser({ id: 10, name: "Alice", email: "alice@example.com" });
       const user2 = createUser({ id: 20, name: "Bob", email: "bob@example.com" });
 
-      mockAssignmentRepo.find.mockResolvedValue([
+      mockAssignmentRepo.findForCompanyWithUser.mockResolvedValue([
         createAssignment({
           workflowStep: "reception",
           userId: 10,
@@ -186,7 +199,7 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should return empty array when no assignments exist", async () => {
-      mockAssignmentRepo.find.mockResolvedValue([]);
+      mockAssignmentRepo.findForCompanyWithUser.mockResolvedValue([]);
 
       const result = await service.allAssignments(COMPANY_ID);
 
@@ -194,15 +207,11 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should pass correct query options to repository", async () => {
-      mockAssignmentRepo.find.mockResolvedValue([]);
+      mockAssignmentRepo.findForCompanyWithUser.mockResolvedValue([]);
 
       await service.allAssignments(COMPANY_ID);
 
-      expect(mockAssignmentRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID },
-        relations: ["user"],
-        order: { workflowStep: "ASC", isPrimary: "DESC" },
-      });
+      expect(mockAssignmentRepo.findForCompanyWithUser).toHaveBeenCalledWith(COMPANY_ID);
     });
   });
 
@@ -212,20 +221,16 @@ describe("WorkflowAssignmentService", () => {
         createAssignment({ isPrimary: true }),
         createAssignment({ id: 2, userId: 20, isPrimary: false }),
       ];
-      mockAssignmentRepo.find.mockResolvedValue(assignments);
+      mockAssignmentRepo.findForStepWithUser.mockResolvedValue(assignments);
 
       const result = await service.assignmentsForStep(COMPANY_ID, "reception");
 
       expect(result).toEqual(assignments);
-      expect(mockAssignmentRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, workflowStep: "reception" },
-        relations: ["user"],
-        order: { isPrimary: "DESC" },
-      });
+      expect(mockAssignmentRepo.findForStepWithUser).toHaveBeenCalledWith(COMPANY_ID, "reception");
     });
 
     it("should return empty array when no assignments exist for step", async () => {
-      mockAssignmentRepo.find.mockResolvedValue([]);
+      mockAssignmentRepo.findForStepWithUser.mockResolvedValue([]);
 
       const result = await service.assignmentsForStep(COMPANY_ID, "nonexistent");
 
@@ -235,7 +240,7 @@ describe("WorkflowAssignmentService", () => {
 
   describe("updateAssignments", () => {
     it("should delete existing and create new assignments", async () => {
-      mockUserRepo.find.mockResolvedValue([{ id: 10 }, { id: 20 }]);
+      mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([{ id: 10 }, { id: 20 }]);
       mockManager.delete.mockResolvedValue({ affected: 1 });
       mockManager.save.mockResolvedValue([]);
 
@@ -264,7 +269,7 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should only delete when userIds is empty", async () => {
-      mockUserRepo.find.mockResolvedValue([]);
+      mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([]);
       mockManager.delete.mockResolvedValue({ affected: 1 });
 
       await service.updateAssignments(COMPANY_ID, "reception", []);
@@ -278,7 +283,7 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should set isPrimary false for non-primary users", async () => {
-      mockUserRepo.find.mockResolvedValue([{ id: 10 }]);
+      mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([{ id: 10 }]);
       mockManager.delete.mockResolvedValue({ affected: 0 });
       mockManager.save.mockResolvedValue([]);
 
@@ -294,7 +299,7 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should set secondaryUserId to null when not provided", async () => {
-      mockUserRepo.find.mockResolvedValue([{ id: 10 }]);
+      mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([{ id: 10 }]);
       mockManager.delete.mockResolvedValue({ affected: 0 });
       mockManager.save.mockResolvedValue([]);
 
@@ -313,7 +318,7 @@ describe("WorkflowAssignmentService", () => {
   describe("secondaryUserForStep", () => {
     it("should return secondary user when primary assignment has one", async () => {
       const secondaryUser = createUser({ id: 20, name: "Secondary" });
-      mockAssignmentRepo.findOne.mockResolvedValue(
+      mockAssignmentRepo.findOnePrimaryForStepWithSecondaryUser.mockResolvedValue(
         createAssignment({
           isPrimary: true,
           secondaryUserId: 20,
@@ -324,14 +329,14 @@ describe("WorkflowAssignmentService", () => {
       const result = await service.secondaryUserForStep(COMPANY_ID, "reception");
 
       expect(result).toEqual(secondaryUser);
-      expect(mockAssignmentRepo.findOne).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, workflowStep: "reception", isPrimary: true },
-        relations: ["secondaryUser"],
-      });
+      expect(mockAssignmentRepo.findOnePrimaryForStepWithSecondaryUser).toHaveBeenCalledWith(
+        COMPANY_ID,
+        "reception",
+      );
     });
 
     it("should return null when no primary assignment exists", async () => {
-      mockAssignmentRepo.findOne.mockResolvedValue(null);
+      mockAssignmentRepo.findOnePrimaryForStepWithSecondaryUser.mockResolvedValue(null);
 
       const result = await service.secondaryUserForStep(COMPANY_ID, "reception");
 
@@ -339,7 +344,7 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should return null when primary has no secondary user", async () => {
-      mockAssignmentRepo.findOne.mockResolvedValue(
+      mockAssignmentRepo.findOnePrimaryForStepWithSecondaryUser.mockResolvedValue(
         createAssignment({ isPrimary: true, secondaryUserId: null }),
       );
 
@@ -353,7 +358,7 @@ describe("WorkflowAssignmentService", () => {
     it("should return users from assignments when they exist", async () => {
       const user1 = createUser({ id: 10 });
       const user2 = createUser({ id: 20 });
-      mockAssignmentRepo.find.mockResolvedValue([
+      mockAssignmentRepo.findForStepWithUser.mockResolvedValue([
         createAssignment({ userId: 10, user: user1 }),
         createAssignment({ id: 2, userId: 20, user: user2 }),
       ]);
@@ -364,34 +369,36 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should fall back to role-based lookup when no assignments exist", async () => {
-      mockAssignmentRepo.find.mockResolvedValue([]);
+      mockAssignmentRepo.findForStepWithUser.mockResolvedValue([]);
       const fallbackUsers = [createUser({ id: 30, role: StockControlRole.ADMIN })];
-      mockUserRepo.find.mockResolvedValue(fallbackUsers);
+      mockUserRepo.findForCompanyByRoles.mockResolvedValue(fallbackUsers);
 
       const result = await service.usersForStep(COMPANY_ID, "reception");
 
       expect(result).toEqual(fallbackUsers);
-      expect(mockUserRepo.find).toHaveBeenCalledWith({
-        where: expect.arrayContaining([expect.objectContaining({ companyId: COMPANY_ID })]),
-      });
+      expect(mockUserRepo.findForCompanyByRoles).toHaveBeenCalledWith(
+        COMPANY_ID,
+        expect.any(Array),
+      );
     });
   });
 
   describe("assignedUserIdsForStep", () => {
     it("should return user ids for assigned users", async () => {
-      mockAssignmentRepo.find.mockResolvedValue([{ userId: 10 }, { userId: 20 }, { userId: 30 }]);
+      mockAssignmentRepo.findUserIdsForStep.mockResolvedValue([
+        { userId: 10 },
+        { userId: 20 },
+        { userId: 30 },
+      ]);
 
       const result = await service.assignedUserIdsForStep(COMPANY_ID, "reception");
 
       expect(result).toEqual([10, 20, 30]);
-      expect(mockAssignmentRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, workflowStep: "reception" },
-        select: ["userId"],
-      });
+      expect(mockAssignmentRepo.findUserIdsForStep).toHaveBeenCalledWith(COMPANY_ID, "reception");
     });
 
     it("should return empty array when no assignments exist", async () => {
-      mockAssignmentRepo.find.mockResolvedValue([]);
+      mockAssignmentRepo.findUserIdsForStep.mockResolvedValue([]);
 
       const result = await service.assignedUserIdsForStep(COMPANY_ID, "reception");
 
@@ -401,18 +408,16 @@ describe("WorkflowAssignmentService", () => {
 
   describe("hasExplicitAssignments", () => {
     it("should return true when assignments exist", async () => {
-      mockAssignmentRepo.count.mockResolvedValue(3);
+      mockAssignmentRepo.countForStep.mockResolvedValue(3);
 
       const result = await service.hasExplicitAssignments(COMPANY_ID, "reception");
 
       expect(result).toBe(true);
-      expect(mockAssignmentRepo.count).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, workflowStep: "reception" },
-      });
+      expect(mockAssignmentRepo.countForStep).toHaveBeenCalledWith(COMPANY_ID, "reception");
     });
 
     it("should return false when no assignments exist", async () => {
-      mockAssignmentRepo.count.mockResolvedValue(0);
+      mockAssignmentRepo.countForStep.mockResolvedValue(0);
 
       const result = await service.hasExplicitAssignments(COMPANY_ID, "reception");
 
@@ -431,7 +436,7 @@ describe("WorkflowAssignmentService", () => {
         }),
         createUser({ id: 20, name: "Bob", email: "bob@example.com", role: StockControlRole.ADMIN }),
       ];
-      mockUserRepo.find.mockResolvedValue(users);
+      mockUserRepo.findForCompanyByRolesOrdered.mockResolvedValue(users);
 
       const result = await service.eligibleUsersForStep(COMPANY_ID, "reception");
 
@@ -439,14 +444,14 @@ describe("WorkflowAssignmentService", () => {
         { id: 10, name: "Alice", email: "alice@example.com", role: StockControlRole.MANAGER },
         { id: 20, name: "Bob", email: "bob@example.com", role: StockControlRole.ADMIN },
       ]);
-      expect(mockUserRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, role: expect.anything() },
-        order: { name: "ASC" },
-      });
+      expect(mockUserRepo.findForCompanyByRolesOrdered).toHaveBeenCalledWith(
+        COMPANY_ID,
+        expect.any(Array),
+      );
     });
 
     it("should return empty array when no eligible users exist", async () => {
-      mockUserRepo.find.mockResolvedValue([]);
+      mockUserRepo.findForCompanyByRolesOrdered.mockResolvedValue([]);
 
       const result = await service.eligibleUsersForStep(COMPANY_ID, "reception");
 
@@ -456,7 +461,7 @@ describe("WorkflowAssignmentService", () => {
 
   describe("allNotificationRecipients", () => {
     it("should return recipients grouped by step", async () => {
-      mockRecipientRepo.find.mockResolvedValue([
+      mockRecipientRepo.findForCompanyOrdered.mockResolvedValue([
         createRecipient({ workflowStep: "reception", email: "a@example.com" }),
         createRecipient({ id: 2, workflowStep: "reception", email: "b@example.com" }),
         createRecipient({ id: 3, workflowStep: "inspection", email: "c@example.com" }),
@@ -471,7 +476,7 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should return empty array when no recipients exist", async () => {
-      mockRecipientRepo.find.mockResolvedValue([]);
+      mockRecipientRepo.findForCompanyOrdered.mockResolvedValue([]);
 
       const result = await service.allNotificationRecipients(COMPANY_ID);
 
@@ -479,20 +484,17 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should pass correct query options to repository", async () => {
-      mockRecipientRepo.find.mockResolvedValue([]);
+      mockRecipientRepo.findForCompanyOrdered.mockResolvedValue([]);
 
       await service.allNotificationRecipients(COMPANY_ID);
 
-      expect(mockRecipientRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID },
-        order: { workflowStep: "ASC", email: "ASC" },
-      });
+      expect(mockRecipientRepo.findForCompanyOrdered).toHaveBeenCalledWith(COMPANY_ID);
     });
   });
 
   describe("notificationRecipientsForStep", () => {
     it("should return sorted emails for a step", async () => {
-      mockRecipientRepo.find.mockResolvedValue([
+      mockRecipientRepo.findForStepOrdered.mockResolvedValue([
         createRecipient({ email: "alpha@example.com" }),
         createRecipient({ id: 2, email: "beta@example.com" }),
       ]);
@@ -500,14 +502,11 @@ describe("WorkflowAssignmentService", () => {
       const result = await service.notificationRecipientsForStep(COMPANY_ID, "reception");
 
       expect(result).toEqual(["alpha@example.com", "beta@example.com"]);
-      expect(mockRecipientRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, workflowStep: "reception" },
-        order: { email: "ASC" },
-      });
+      expect(mockRecipientRepo.findForStepOrdered).toHaveBeenCalledWith(COMPANY_ID, "reception");
     });
 
     it("should return empty array when no recipients exist for step", async () => {
-      mockRecipientRepo.find.mockResolvedValue([]);
+      mockRecipientRepo.findForStepOrdered.mockResolvedValue([]);
 
       const result = await service.notificationRecipientsForStep(COMPANY_ID, "reception");
 
@@ -517,48 +516,36 @@ describe("WorkflowAssignmentService", () => {
 
   describe("updateNotificationRecipients", () => {
     it("should delete existing and create new recipients", async () => {
-      mockRecipientRepo.delete.mockResolvedValue({ affected: 1 });
-      mockRecipientRepo.save.mockResolvedValue([]);
+      mockRecipientRepo.deleteForStep.mockResolvedValue(undefined);
+      mockRecipientRepo.saveMany.mockResolvedValue([]);
 
       await service.updateNotificationRecipients(COMPANY_ID, "reception", [
         "a@example.com",
         "b@example.com",
       ]);
 
-      expect(mockRecipientRepo.delete).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-      });
-      expect(mockRecipientRepo.create).toHaveBeenCalledTimes(2);
-      expect(mockRecipientRepo.create).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-        email: "a@example.com",
-      });
-      expect(mockRecipientRepo.create).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-        email: "b@example.com",
-      });
-      expect(mockRecipientRepo.save).toHaveBeenCalledTimes(1);
+      expect(mockRecipientRepo.deleteForStep).toHaveBeenCalledWith(COMPANY_ID, "reception");
+      const built = mockRecipientRepo.buildMany.mock.calls[0][0];
+      expect(built).toEqual([
+        { companyId: COMPANY_ID, workflowStep: "reception", email: "a@example.com" },
+        { companyId: COMPANY_ID, workflowStep: "reception", email: "b@example.com" },
+      ]);
+      expect(mockRecipientRepo.saveMany).toHaveBeenCalledTimes(1);
     });
 
     it("should only delete when emails array is empty", async () => {
-      mockRecipientRepo.delete.mockResolvedValue({ affected: 1 });
+      mockRecipientRepo.deleteForStep.mockResolvedValue(undefined);
 
       await service.updateNotificationRecipients(COMPANY_ID, "reception", []);
 
-      expect(mockRecipientRepo.delete).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-      });
-      expect(mockRecipientRepo.create).not.toHaveBeenCalled();
-      expect(mockRecipientRepo.save).not.toHaveBeenCalled();
+      expect(mockRecipientRepo.deleteForStep).toHaveBeenCalledWith(COMPANY_ID, "reception");
+      expect(mockRecipientRepo.buildMany).not.toHaveBeenCalled();
+      expect(mockRecipientRepo.saveMany).not.toHaveBeenCalled();
     });
 
     it("should deduplicate emails and normalize to lowercase", async () => {
-      mockRecipientRepo.delete.mockResolvedValue({ affected: 0 });
-      mockRecipientRepo.save.mockResolvedValue([]);
+      mockRecipientRepo.deleteForStep.mockResolvedValue(undefined);
+      mockRecipientRepo.saveMany.mockResolvedValue([]);
 
       await service.updateNotificationRecipients(COMPANY_ID, "reception", [
         "Test@Example.com",
@@ -566,12 +553,10 @@ describe("WorkflowAssignmentService", () => {
         "  TEST@EXAMPLE.COM  ",
       ]);
 
-      expect(mockRecipientRepo.create).toHaveBeenCalledTimes(1);
-      expect(mockRecipientRepo.create).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-        email: "test@example.com",
-      });
+      const built = mockRecipientRepo.buildMany.mock.calls[0][0];
+      expect(built).toEqual([
+        { companyId: COMPANY_ID, workflowStep: "reception", email: "test@example.com" },
+      ]);
     });
   });
 
@@ -590,7 +575,7 @@ describe("WorkflowAssignmentService", () => {
         role: StockControlRole.STOREMAN,
       });
 
-      mockUserLocationRepo.find.mockResolvedValue([
+      mockUserLocationRepo.findForCompanyWithRelations.mockResolvedValue([
         createLocationAssignment({ userId: 10, locationId: 100, user: user1 }),
         createLocationAssignment({ id: 2, userId: 10, locationId: 200, user: user1 }),
         createLocationAssignment({ id: 3, userId: 20, locationId: 100, user: user2 }),
@@ -617,7 +602,7 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should return empty array when no assignments exist", async () => {
-      mockUserLocationRepo.find.mockResolvedValue([]);
+      mockUserLocationRepo.findForCompanyWithRelations.mockResolvedValue([]);
 
       const result = await service.allUserLocationAssignments(COMPANY_ID);
 
@@ -625,69 +610,54 @@ describe("WorkflowAssignmentService", () => {
     });
 
     it("should pass correct query options to repository", async () => {
-      mockUserLocationRepo.find.mockResolvedValue([]);
+      mockUserLocationRepo.findForCompanyWithRelations.mockResolvedValue([]);
 
       await service.allUserLocationAssignments(COMPANY_ID);
 
-      expect(mockUserLocationRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID },
-        relations: ["user", "location"],
-        order: { userId: "ASC" },
-      });
+      expect(mockUserLocationRepo.findForCompanyWithRelations).toHaveBeenCalledWith(COMPANY_ID);
     });
   });
 
   describe("updateUserLocations", () => {
     it("should delete existing and create new location assignments", async () => {
-      mockUserLocationRepo.delete.mockResolvedValue({ affected: 1 });
-      mockUserLocationRepo.save.mockResolvedValue([]);
+      mockUserLocationRepo.deleteForUser.mockResolvedValue(undefined);
+      mockUserLocationRepo.saveMany.mockResolvedValue([]);
 
       await service.updateUserLocations(COMPANY_ID, 10, [100, 200]);
 
-      expect(mockUserLocationRepo.delete).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        userId: 10,
-      });
-      expect(mockUserLocationRepo.create).toHaveBeenCalledTimes(2);
-      expect(mockUserLocationRepo.create).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        userId: 10,
-        locationId: 100,
-      });
-      expect(mockUserLocationRepo.create).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        userId: 10,
-        locationId: 200,
-      });
-      expect(mockUserLocationRepo.save).toHaveBeenCalledTimes(1);
+      expect(mockUserLocationRepo.deleteForUser).toHaveBeenCalledWith(COMPANY_ID, 10);
+      const built = mockUserLocationRepo.buildMany.mock.calls[0][0];
+      expect(built).toEqual([
+        { companyId: COMPANY_ID, userId: 10, locationId: 100 },
+        { companyId: COMPANY_ID, userId: 10, locationId: 200 },
+      ]);
+      expect(mockUserLocationRepo.saveMany).toHaveBeenCalledTimes(1);
     });
 
     it("should only delete when locationIds is empty", async () => {
-      mockUserLocationRepo.delete.mockResolvedValue({ affected: 1 });
+      mockUserLocationRepo.deleteForUser.mockResolvedValue(undefined);
 
       await service.updateUserLocations(COMPANY_ID, 10, []);
 
-      expect(mockUserLocationRepo.delete).toHaveBeenCalledWith({
-        companyId: COMPANY_ID,
-        userId: 10,
-      });
-      expect(mockUserLocationRepo.create).not.toHaveBeenCalled();
-      expect(mockUserLocationRepo.save).not.toHaveBeenCalled();
+      expect(mockUserLocationRepo.deleteForUser).toHaveBeenCalledWith(COMPANY_ID, 10);
+      expect(mockUserLocationRepo.buildMany).not.toHaveBeenCalled();
+      expect(mockUserLocationRepo.saveMany).not.toHaveBeenCalled();
     });
 
     it("should deduplicate location ids", async () => {
-      mockUserLocationRepo.delete.mockResolvedValue({ affected: 0 });
-      mockUserLocationRepo.save.mockResolvedValue([]);
+      mockUserLocationRepo.deleteForUser.mockResolvedValue(undefined);
+      mockUserLocationRepo.saveMany.mockResolvedValue([]);
 
       await service.updateUserLocations(COMPANY_ID, 10, [100, 100, 200, 200]);
 
-      expect(mockUserLocationRepo.create).toHaveBeenCalledTimes(2);
+      const built = mockUserLocationRepo.buildMany.mock.calls[0][0];
+      expect(built).toHaveLength(2);
     });
   });
 
   describe("locationIdsForUser", () => {
     it("should return location ids for the user", async () => {
-      mockUserLocationRepo.find.mockResolvedValue([
+      mockUserLocationRepo.findForUser.mockResolvedValue([
         { locationId: 100 },
         { locationId: 200 },
         { locationId: 300 },
@@ -696,14 +666,11 @@ describe("WorkflowAssignmentService", () => {
       const result = await service.locationIdsForUser(COMPANY_ID, 10);
 
       expect(result).toEqual([100, 200, 300]);
-      expect(mockUserLocationRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, userId: 10 },
-        select: ["locationId"],
-      });
+      expect(mockUserLocationRepo.findForUser).toHaveBeenCalledWith(COMPANY_ID, 10);
     });
 
     it("should return empty array when user has no location assignments", async () => {
-      mockUserLocationRepo.find.mockResolvedValue([]);
+      mockUserLocationRepo.findForUser.mockResolvedValue([]);
 
       const result = await service.locationIdsForUser(COMPANY_ID, 10);
 

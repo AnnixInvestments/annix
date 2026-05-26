@@ -1,14 +1,17 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
 import { CreateRepProfileDto, UpdateRepProfileDto } from "./rep-profile.dto";
 import { RepProfile } from "./rep-profile.entity";
+import { RepProfileRepository } from "./rep-profile.repository";
 import { RepProfileService } from "./rep-profile.service";
 
 describe("RepProfileService", () => {
   let service: RepProfileService;
-  let repository: jest.Mocked<Repository<RepProfile>>;
+  let repository: {
+    findByUserId: jest.Mock;
+    create: jest.Mock;
+    save: jest.Mock;
+  };
 
   const mockProfile: RepProfile = {
     id: 1,
@@ -44,20 +47,17 @@ describe("RepProfileService", () => {
 
   beforeEach(async () => {
     const mockRepository = {
-      findOne: jest.fn(),
+      findByUserId: jest.fn(),
       create: jest.fn(),
       save: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        RepProfileService,
-        { provide: getRepositoryToken(RepProfile), useValue: mockRepository },
-      ],
+      providers: [RepProfileService, { provide: RepProfileRepository, useValue: mockRepository }],
     }).compile();
 
     service = module.get<RepProfileService>(RepProfileService);
-    repository = module.get(getRepositoryToken(RepProfile));
+    repository = module.get(RepProfileRepository);
   });
 
   it("should be defined", () => {
@@ -66,18 +66,16 @@ describe("RepProfileService", () => {
 
   describe("profileByUserId", () => {
     it("should return profile when found", async () => {
-      repository.findOne.mockResolvedValue(mockProfile);
+      repository.findByUserId.mockResolvedValue(mockProfile);
 
       const result = await service.profileByUserId(100);
 
       expect(result).toEqual(mockProfile);
-      expect(repository.findOne).toHaveBeenCalledWith({
-        where: { userId: 100 },
-      });
+      expect(repository.findByUserId).toHaveBeenCalledWith(100);
     });
 
     it("should return null when profile not found", async () => {
-      repository.findOne.mockResolvedValue(null);
+      repository.findByUserId.mockResolvedValue(null);
 
       const result = await service.profileByUserId(999);
 
@@ -87,7 +85,7 @@ describe("RepProfileService", () => {
 
   describe("setupStatus", () => {
     it("should return setupCompleted true when profile exists and is complete", async () => {
-      repository.findOne.mockResolvedValue(mockProfile);
+      repository.findByUserId.mockResolvedValue(mockProfile);
 
       const result = await service.setupStatus(100);
 
@@ -99,7 +97,7 @@ describe("RepProfileService", () => {
 
     it("should return setupCompleted false when profile exists but not complete", async () => {
       const incompleteProfile = { ...mockProfile, setupCompleted: false };
-      repository.findOne.mockResolvedValue(incompleteProfile);
+      repository.findByUserId.mockResolvedValue(incompleteProfile);
 
       const result = await service.setupStatus(100);
 
@@ -110,7 +108,7 @@ describe("RepProfileService", () => {
     });
 
     it("should return setupCompleted false when profile does not exist", async () => {
-      repository.findOne.mockResolvedValue(null);
+      repository.findByUserId.mockResolvedValue(null);
 
       const result = await service.setupStatus(999);
 
@@ -137,9 +135,8 @@ describe("RepProfileService", () => {
     };
 
     it("should create new profile when none exists", async () => {
-      repository.findOne.mockResolvedValue(null);
-      repository.create.mockReturnValue(mockProfile);
-      repository.save.mockResolvedValue(mockProfile);
+      repository.findByUserId.mockResolvedValue(null);
+      repository.create.mockResolvedValue(mockProfile);
 
       const result = await service.createProfile(100, createDto);
 
@@ -162,12 +159,11 @@ describe("RepProfileService", () => {
           setupCompletedAt: expect.any(Date),
         }),
       );
-      expect(repository.save).toHaveBeenCalled();
     });
 
     it("should update existing profile instead of creating new one", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockResolvedValue(existingProfile);
 
       const result = await service.createProfile(100, createDto);
@@ -183,9 +179,8 @@ describe("RepProfileService", () => {
         subIndustries: ["automotive"],
         productCategories: ["bearings"],
       };
-      repository.findOne.mockResolvedValue(null);
-      repository.create.mockReturnValue(mockProfile);
-      repository.save.mockResolvedValue(mockProfile);
+      repository.findByUserId.mockResolvedValue(null);
+      repository.create.mockResolvedValue(mockProfile);
 
       await service.createProfile(100, dtoWithoutRadius);
 
@@ -202,9 +197,8 @@ describe("RepProfileService", () => {
         subIndustries: ["automotive"],
         productCategories: ["bearings"],
       };
-      repository.findOne.mockResolvedValue(null);
-      repository.create.mockReturnValue(mockProfile);
-      repository.save.mockResolvedValue(mockProfile);
+      repository.findByUserId.mockResolvedValue(null);
+      repository.create.mockResolvedValue(mockProfile);
 
       await service.createProfile(100, minimalDto);
 
@@ -230,7 +224,7 @@ describe("RepProfileService", () => {
 
     it("should update existing profile", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockResolvedValue({ ...existingProfile, ...updateDto });
 
       const result = await service.updateProfile(100, updateDto);
@@ -241,7 +235,7 @@ describe("RepProfileService", () => {
     });
 
     it("should create new profile if none exists", async () => {
-      repository.findOne.mockResolvedValue(null);
+      repository.findByUserId.mockResolvedValue(null);
       const newProfile = {
         ...mockProfile,
         id: 2,
@@ -249,24 +243,25 @@ describe("RepProfileService", () => {
         industry: "technology",
         setupCompleted: false,
       };
-      repository.create.mockReturnValue(newProfile);
-      repository.save.mockResolvedValue(newProfile);
+      repository.create.mockResolvedValue(newProfile);
 
       const result = await service.updateProfile(100, updateDto);
 
-      expect(repository.create).toHaveBeenCalledWith({
-        userId: 100,
-        industry: "technology",
-        subIndustries: [],
-        productCategories: [],
-        setupCompleted: false,
-      });
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 100,
+          industry: "technology",
+          subIndustries: [],
+          productCategories: [],
+          setupCompleted: false,
+        }),
+      );
       expect(result).toEqual(newProfile);
     });
 
     it("should only update provided fields", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const partialDto: UpdateRepProfileDto = { companyName: "New Name" };
@@ -279,7 +274,7 @@ describe("RepProfileService", () => {
 
     it("should update subIndustries when provided", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, {
@@ -291,7 +286,7 @@ describe("RepProfileService", () => {
 
     it("should update productCategories when provided", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, {
@@ -303,7 +298,7 @@ describe("RepProfileService", () => {
 
     it("should update location fields when provided", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, {
@@ -319,7 +314,7 @@ describe("RepProfileService", () => {
 
     it("should update targetCustomerProfile when provided", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const newProfile = { businessTypes: ["Retailer"] };
@@ -332,7 +327,7 @@ describe("RepProfileService", () => {
 
     it("should update customSearchTerms when provided", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, {
@@ -344,7 +339,7 @@ describe("RepProfileService", () => {
 
     it("should set setupCompletedAt when marking setup as completed", async () => {
       const existingProfile = { ...mockProfile, setupCompleted: false, setupCompletedAt: null };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, { setupCompleted: true });
@@ -360,7 +355,7 @@ describe("RepProfileService", () => {
         setupCompleted: true,
         setupCompletedAt: originalDate,
       };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, { setupCompleted: true });
@@ -370,7 +365,7 @@ describe("RepProfileService", () => {
 
     it("should not update companyName when undefined is passed", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, { companyName: undefined });
@@ -380,7 +375,7 @@ describe("RepProfileService", () => {
 
     it("should preserve companyName when null is passed", async () => {
       const existingProfile = { ...mockProfile };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.updateProfile(100, { companyName: null as unknown as string });
@@ -392,7 +387,7 @@ describe("RepProfileService", () => {
   describe("completeSetup", () => {
     it("should mark setup as complete and set timestamp", async () => {
       const existingProfile = { ...mockProfile, setupCompleted: false, setupCompletedAt: null };
-      repository.findOne.mockResolvedValue(existingProfile);
+      repository.findByUserId.mockResolvedValue(existingProfile);
       repository.save.mockImplementation((profile) => Promise.resolve(profile as RepProfile));
 
       const result = await service.completeSetup(100);
@@ -403,7 +398,7 @@ describe("RepProfileService", () => {
     });
 
     it("should throw error when profile not found", async () => {
-      repository.findOne.mockResolvedValue(null);
+      repository.findByUserId.mockResolvedValue(null);
 
       await expect(service.completeSetup(999)).rejects.toThrow(
         "Profile not found. Please create a profile first.",
@@ -413,7 +408,7 @@ describe("RepProfileService", () => {
 
   describe("searchTermsForUser", () => {
     it("should return custom search terms when profile exists", async () => {
-      repository.findOne.mockResolvedValue(mockProfile);
+      repository.findByUserId.mockResolvedValue(mockProfile);
 
       const result = await service.searchTermsForUser(100);
 
@@ -421,7 +416,7 @@ describe("RepProfileService", () => {
     });
 
     it("should return empty array when profile does not exist", async () => {
-      repository.findOne.mockResolvedValue(null);
+      repository.findByUserId.mockResolvedValue(null);
 
       const result = await service.searchTermsForUser(999);
 
@@ -430,7 +425,7 @@ describe("RepProfileService", () => {
 
     it("should return empty array when customSearchTerms is null", async () => {
       const profileWithoutTerms = { ...mockProfile, customSearchTerms: null };
-      repository.findOne.mockResolvedValue(profileWithoutTerms);
+      repository.findByUserId.mockResolvedValue(profileWithoutTerms);
 
       const result = await service.searchTermsForUser(100);
 
@@ -439,7 +434,7 @@ describe("RepProfileService", () => {
 
     it("should return empty array when customSearchTerms is empty", async () => {
       const profileWithEmptyTerms = { ...mockProfile, customSearchTerms: [] };
-      repository.findOne.mockResolvedValue(profileWithEmptyTerms);
+      repository.findByUserId.mockResolvedValue(profileWithEmptyTerms);
 
       const result = await service.searchTermsForUser(100);
 

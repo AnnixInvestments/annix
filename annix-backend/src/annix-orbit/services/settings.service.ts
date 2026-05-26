@@ -1,7 +1,6 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { InboundEmailService } from "../../inbound-email/inbound-email.service";
+import { CompanyRepository } from "../../platform/company.repository";
 import { Company } from "../../platform/entities/company.entity";
 import { UpdateCompanyDto, UpdateImapSettingsDto } from "../dto/settings.dto";
 
@@ -35,13 +34,12 @@ export class SettingsService {
   private readonly logger = new Logger(SettingsService.name);
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
+    private readonly companyRepo: CompanyRepository,
     private readonly inboundEmailService: InboundEmailService,
   ) {}
 
   async companySettings(companyId: number): Promise<CvCompanySettingsResponse> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) {
       throw new NotFoundException("Company not found");
     }
@@ -94,7 +92,7 @@ export class SettingsService {
     });
 
     if (dto.emailFromAddress != null) {
-      const company = await this.companyRepo.findOne({ where: { id: companyId } });
+      const company = await this.companyRepo.findById(companyId);
       if (company) {
         company.email = dto.emailFromAddress;
         await this.companyRepo.save(company);
@@ -105,7 +103,7 @@ export class SettingsService {
   }
 
   async updateCompany(companyId: number, dto: UpdateCompanyDto): Promise<Company> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) {
       throw new NotFoundException("Company not found");
     }

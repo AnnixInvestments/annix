@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { Prospect } from "../entities/prospect.entity";
-import { ProspectActivity, ProspectActivityType } from "../entities/prospect-activity.entity";
+import { ProspectActivityType } from "../entities/prospect-activity.entity";
+import { ProspectRepository } from "../prospect.repository";
+import { ProspectActivityRepository } from "../prospect-activity.repository";
 import { TeamActivityService } from "./team-activity.service";
 
 export interface HandoffHistory {
@@ -21,10 +21,8 @@ export class ProspectHandoffService {
   private readonly logger = new Logger(ProspectHandoffService.name);
 
   constructor(
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
-    @InjectRepository(ProspectActivity)
-    private readonly activityRepo: Repository<ProspectActivity>,
+    private readonly prospectRepo: ProspectRepository,
+    private readonly activityRepo: ProspectActivityRepository,
     private readonly teamActivityService: TeamActivityService,
   ) {}
 
@@ -34,10 +32,7 @@ export class ProspectHandoffService {
     toUserId: number,
     reason?: string,
   ): Promise<Prospect> {
-    const prospect = await this.prospectRepo.findOne({
-      where: { id: prospectId },
-      relations: ["owner"],
-    });
+    const prospect = await this.prospectRepo.findWithOwner(prospectId);
 
     if (!prospect) {
       throw new NotFoundException("Prospect not found");
@@ -46,20 +41,21 @@ export class ProspectHandoffService {
     const previousOwnerId = prospect.ownerId;
     prospect.ownerId = toUserId;
 
-    const activity = this.activityRepo.create({
-      prospectId,
-      userId: fromUserId,
-      activityType: ProspectActivityType.OWNERSHIP_CHANGED,
-      description: reason ?? `Handed off from user ${fromUserId} to user ${toUserId}`,
-      metadata: {
-        previousOwnerId,
-        newOwnerId: toUserId,
-        handoffBy: fromUserId,
-        reason,
-      },
-    });
-
-    await Promise.all([this.prospectRepo.save(prospect), this.activityRepo.save(activity)]);
+    await Promise.all([
+      this.prospectRepo.save(prospect),
+      this.activityRepo.create({
+        prospectId,
+        userId: fromUserId,
+        activityType: ProspectActivityType.OWNERSHIP_CHANGED,
+        description: reason ?? `Handed off from user ${fromUserId} to user ${toUserId}`,
+        metadata: {
+          previousOwnerId,
+          newOwnerId: toUserId,
+          handoffBy: fromUserId,
+          reason,
+        },
+      }),
+    ]);
 
     if (prospect.organizationId) {
       await this.teamActivityService.logProspectHandoff(
@@ -85,9 +81,7 @@ export class ProspectHandoffService {
     toUserId: number,
     reason?: string,
   ): Promise<Prospect[]> {
-    const prospects = await this.prospectRepo.find({
-      where: { id: In(prospectIds) },
-    });
+    const prospects = await this.prospectRepo.findByIds(prospectIds);
 
     if (prospects.length === 0) {
       throw new NotFoundException("No prospects found");
@@ -99,14 +93,10 @@ export class ProspectHandoffService {
   }
 
   async handoffHistory(prospectId: number): Promise<HandoffHistory[]> {
-    const activities = await this.activityRepo.find({
-      where: {
-        prospectId,
-        activityType: ProspectActivityType.OWNERSHIP_CHANGED,
-      },
-      relations: ["user"],
-      order: { createdAt: "DESC" },
-    });
+    const activities = await this.activityRepo.findByProspectAndType(
+      prospectId,
+      ProspectActivityType.OWNERSHIP_CHANGED,
+    );
 
     return activities.map((activity) => {
       const meta = activity.metadata as {

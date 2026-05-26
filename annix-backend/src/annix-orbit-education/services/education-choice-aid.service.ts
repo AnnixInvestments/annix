@@ -1,8 +1,7 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
-import { EducationProgramme } from "../entities/education-programme.entity";
 import { EducationProgrammeOutcomeSignal } from "../entities/education-programme-outcome-signal.entity";
+import { EducationProgrammeRepository } from "../repositories/education-programme.repository";
+import { EducationProgrammeOutcomeSignalRepository } from "../repositories/education-programme-outcome-signal.repository";
 import { EducationProfileService } from "./education-profile.service";
 import { EducationRecommendationService } from "./education-recommendation.service";
 
@@ -45,10 +44,8 @@ export class EducationChoiceAidService {
   constructor(
     private readonly recommendationService: EducationRecommendationService,
     private readonly profileService: EducationProfileService,
-    @InjectRepository(EducationProgramme)
-    private readonly programmeRepo: Repository<EducationProgramme>,
-    @InjectRepository(EducationProgrammeOutcomeSignal)
-    private readonly outcomeSignalRepo: Repository<EducationProgrammeOutcomeSignal>,
+    private readonly programmeRepo: EducationProgrammeRepository,
+    private readonly outcomeSignalRepo: EducationProgrammeOutcomeSignalRepository,
   ) {}
 
   async compareOptions(userId: number, intakeYear: number): Promise<ProgrammeChoiceOption[]> {
@@ -62,13 +59,10 @@ export class EducationChoiceAidService {
     const targetCategories = new Set(profile?.targetCategories ?? []);
 
     const programmeIds = eligible.map((rec) => rec.programmeId);
-    const programmes = await this.programmeRepo.find({ where: { id: In(programmeIds) } });
+    const programmes = await this.programmeRepo.findByIds(programmeIds);
     const clusterById = new Map(programmes.map((p) => [p.id, p.careerCluster]));
 
-    const signals = await this.outcomeSignalRepo.find({
-      where: { programmeId: In(programmeIds) },
-      order: { asOf: "DESC" },
-    });
+    const signals = await this.outcomeSignalRepo.forProgrammeIds(programmeIds);
     const signalsByProgramme = signals.reduce((map, signal) => {
       const list = map.get(signal.programmeId) ?? [];
       list.push(signal);

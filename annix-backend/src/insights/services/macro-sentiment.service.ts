@@ -1,6 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import {
@@ -8,6 +6,8 @@ import {
   MacroSentimentSnapshot,
 } from "../entities/macro-sentiment-snapshot.entity";
 import { NewsItem } from "../entities/news-item.entity";
+import { MacroSentimentSnapshotRepository } from "../repositories/macro-sentiment-snapshot.repository";
+import { NewsItemRepository } from "../repositories/news-item.repository";
 
 const METRIC_CATEGORY = "insights-macro-sentiment";
 const LOOKBACK_HOURS = 48;
@@ -33,9 +33,8 @@ export class MacroSentimentService {
   private readonly logger = new Logger(MacroSentimentService.name);
 
   constructor(
-    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
-    @InjectRepository(MacroSentimentSnapshot)
-    private readonly snapshotRepo: Repository<MacroSentimentSnapshot>,
+    private readonly newsRepo: NewsItemRepository,
+    private readonly snapshotRepo: MacroSentimentSnapshotRepository,
     private readonly metrics: ExtractionMetricService,
   ) {}
 
@@ -46,12 +45,7 @@ export class MacroSentimentService {
       async () => {
         const todayIso = now().toISODate() ?? "";
         const cutoff = now().minus({ hours: LOOKBACK_HOURS }).toJSDate();
-        const rows = await this.newsRepo
-          .createQueryBuilder("n")
-          .where("n.feed_type = :feedType", { feedType: "macro" })
-          .andWhere("n.extraction_status = :status", { status: "extracted" })
-          .andWhere("(n.published_at >= :cutoff OR n.created_at >= :cutoff)", { cutoff })
-          .getMany();
+        const rows = await this.newsRepo.findExtractedMacro(cutoff);
 
         const accumulator = this.accumulate(rows);
         const overallScore =
@@ -60,22 +54,18 @@ export class MacroSentimentService {
         const sectorBreakdown = mapToBreakdown(accumulator.sectorAccum);
         const commodityBreakdown = mapToBreakdown(accumulator.commodityAccum);
 
-        const existing = await this.snapshotRepo.findOne({
-          where: { snapshotDate: todayIso },
-        });
+        const existing = await this.snapshotRepo.findByDate(todayIso);
         if (existing) {
-          await this.snapshotRepo.delete({ id: existing.id });
+          await this.snapshotRepo.deleteById(existing.id);
         }
-        const saved = await this.snapshotRepo.save(
-          this.snapshotRepo.create({
-            snapshotDate: todayIso,
-            overallScore: clampSentiment(overallScore).toFixed(4),
-            articleCount: accumulator.articleCount,
-            highImpactCount: accumulator.highImpactCount,
-            sectorBreakdown,
-            commodityBreakdown,
-          }),
-        );
+        const saved = await this.snapshotRepo.create({
+          snapshotDate: todayIso,
+          overallScore: clampSentiment(overallScore).toFixed(4),
+          articleCount: accumulator.articleCount,
+          highImpactCount: accumulator.highImpactCount,
+          sectorBreakdown,
+          commodityBreakdown,
+        });
         this.logger.log(
           `Macro sentiment for ${todayIso}: score=${overallScore.toFixed(3)}, ${accumulator.articleCount} articles (${accumulator.highImpactCount} high-impact).`,
         );
@@ -87,14 +77,11 @@ export class MacroSentimentService {
 
   async today(): Promise<MacroSentimentSnapshot | null> {
     const todayIso = now().toISODate() ?? "";
-    return this.snapshotRepo.findOne({ where: { snapshotDate: todayIso } });
+    return this.snapshotRepo.findByDate(todayIso);
   }
 
   async history(limit = 30): Promise<MacroSentimentSnapshot[]> {
-    const rows = await this.snapshotRepo.find({
-      order: { snapshotDate: "DESC" },
-      take: limit,
-    });
+    const rows = await this.snapshotRepo.recentHistory(limit);
     return rows.reverse();
   }
 

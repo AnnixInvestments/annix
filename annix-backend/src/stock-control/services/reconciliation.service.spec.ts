@@ -1,6 +1,5 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import {
   ReconciliationEvent,
   ReconciliationEventType,
@@ -10,6 +9,8 @@ import {
   ReconciliationSourceType,
   ReconciliationStatus,
 } from "../entities/reconciliation-item.entity";
+import { ReconciliationEventRepository } from "../repositories/reconciliation-event.repository";
+import { ReconciliationItemRepository } from "../repositories/reconciliation-item.repository";
 import { ReconciliationService } from "./reconciliation.service";
 
 const COMPANY_ID = 1;
@@ -60,19 +61,21 @@ const createEvent = (overrides: Partial<ReconciliationEvent> = {}): Reconciliati
 describe("ReconciliationService", () => {
   let service: ReconciliationService;
 
+  const itemFind = jest.fn();
   const mockItemRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    find: itemFind,
+    findForJobCardOrdered: itemFind,
+    findForJobCard: itemFind,
+    findOneForCompany: jest.fn(),
+    maxSortOrder: jest.fn().mockResolvedValue(-1),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
     remove: jest.fn().mockResolvedValue(null),
-    createQueryBuilder: jest.fn(),
   };
 
   const mockEventRepo = {
-    find: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    findForItemsOrdered: jest.fn(),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
   };
 
   beforeEach(async () => {
@@ -81,14 +84,8 @@ describe("ReconciliationService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ReconciliationService,
-        {
-          provide: getRepositoryToken(ReconciliationItem),
-          useValue: mockItemRepo,
-        },
-        {
-          provide: getRepositoryToken(ReconciliationEvent),
-          useValue: mockEventRepo,
-        },
+        { provide: ReconciliationItemRepository, useValue: mockItemRepo },
+        { provide: ReconciliationEventRepository, useValue: mockEventRepo },
       ],
     }).compile();
 
@@ -105,17 +102,14 @@ describe("ReconciliationService", () => {
       ];
 
       mockItemRepo.find.mockResolvedValue(items);
-      mockEventRepo.find.mockResolvedValue(events);
+      mockEventRepo.findForItemsOrdered.mockResolvedValue(events);
 
       const result = await service.itemsForJobCard(COMPANY_ID, JOB_CARD_ID);
 
       expect(result).toHaveLength(2);
       expect(result[0].events).toHaveLength(2);
       expect(result[1].events).toHaveLength(1);
-      expect(mockItemRepo.find).toHaveBeenCalledWith({
-        where: { companyId: COMPANY_ID, jobCardId: JOB_CARD_ID },
-        order: { sortOrder: "ASC", createdAt: "ASC" },
-      });
+      expect(mockItemRepo.findForJobCardOrdered).toHaveBeenCalledWith(COMPANY_ID, JOB_CARD_ID);
     });
 
     it("should return empty array when no items exist", async () => {
@@ -124,13 +118,13 @@ describe("ReconciliationService", () => {
       const result = await service.itemsForJobCard(COMPANY_ID, JOB_CARD_ID);
 
       expect(result).toEqual([]);
-      expect(mockEventRepo.find).not.toHaveBeenCalled();
+      expect(mockEventRepo.findForItemsOrdered).not.toHaveBeenCalled();
     });
 
     it("should return items with empty events when no events exist", async () => {
       const items = [createItem({ id: 1 })];
       mockItemRepo.find.mockResolvedValue(items);
-      mockEventRepo.find.mockResolvedValue([]);
+      mockEventRepo.findForItemsOrdered.mockResolvedValue([]);
 
       const result = await service.itemsForJobCard(COMPANY_ID, JOB_CARD_ID);
 
@@ -141,12 +135,7 @@ describe("ReconciliationService", () => {
 
   describe("addItem", () => {
     it("should create a new item with correct sort order", async () => {
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({ maxSort: 2 }),
-      };
-      mockItemRepo.createQueryBuilder.mockReturnValue(mockQb);
+      mockItemRepo.maxSortOrder.mockResolvedValue(2);
 
       const data = {
         itemDescription: "Steel Pipe 8in",
@@ -166,17 +155,12 @@ describe("ReconciliationService", () => {
         reconciliationStatus: ReconciliationStatus.PENDING,
         sortOrder: 3,
       });
-      expect(mockItemRepo.save).toHaveBeenCalled();
+      expect(mockItemRepo.create).toHaveBeenCalled();
       expect(result).toBeDefined();
     });
 
     it("should default sort order to 0 when no items exist", async () => {
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue({ maxSort: null }),
-      };
-      mockItemRepo.createQueryBuilder.mockReturnValue(mockQb);
+      mockItemRepo.maxSortOrder.mockResolvedValue(-1);
 
       const data = {
         itemDescription: "Flange 6in",
@@ -189,13 +173,8 @@ describe("ReconciliationService", () => {
       expect(mockItemRepo.create).toHaveBeenCalledWith(expect.objectContaining({ sortOrder: 0 }));
     });
 
-    it("should default sort order to 0 when getRawOne returns null", async () => {
-      const mockQb = {
-        select: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        getRawOne: jest.fn().mockResolvedValue(null),
-      };
-      mockItemRepo.createQueryBuilder.mockReturnValue(mockQb);
+    it("should default sort order to 0 when maxSortOrder returns -1", async () => {
+      mockItemRepo.maxSortOrder.mockResolvedValue(-1);
 
       const data = {
         itemDescription: "Flange 6in",
@@ -212,7 +191,7 @@ describe("ReconciliationService", () => {
   describe("updateItem", () => {
     it("should update an existing item", async () => {
       const existing = createItem({ id: 5 });
-      mockItemRepo.findOne.mockResolvedValue(existing);
+      mockItemRepo.findOneForCompany.mockResolvedValue(existing);
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.updateItem(COMPANY_ID, 5, {
@@ -225,7 +204,7 @@ describe("ReconciliationService", () => {
 
     it("should recalculate status to PARTIAL when released > 0", async () => {
       const existing = createItem({ id: 5, quantityOrdered: 10, quantityReleased: 3 });
-      mockItemRepo.findOne.mockResolvedValue(existing);
+      mockItemRepo.findOneForCompany.mockResolvedValue(existing);
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.updateItem(COMPANY_ID, 5, { notes: "updated" });
@@ -234,7 +213,7 @@ describe("ReconciliationService", () => {
     });
 
     it("should throw NotFoundException when item does not exist", async () => {
-      mockItemRepo.findOne.mockResolvedValue(null);
+      mockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(
         service.updateItem(COMPANY_ID, 999, { itemDescription: "Nope" }),
@@ -245,7 +224,7 @@ describe("ReconciliationService", () => {
   describe("deleteItem", () => {
     it("should delete an existing item", async () => {
       const existing = createItem({ id: 5 });
-      mockItemRepo.findOne.mockResolvedValue(existing);
+      mockItemRepo.findOneForCompany.mockResolvedValue(existing);
 
       await service.deleteItem(COMPANY_ID, 5);
 
@@ -253,7 +232,7 @@ describe("ReconciliationService", () => {
     });
 
     it("should throw NotFoundException when item does not exist", async () => {
-      mockItemRepo.findOne.mockResolvedValue(null);
+      mockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.deleteItem(COMPANY_ID, 999)).rejects.toThrow(NotFoundException);
     });
@@ -267,8 +246,8 @@ describe("ReconciliationService", () => {
         quantityReleased: 0,
         quantityShipped: 0,
       });
-      mockItemRepo.findOne.mockResolvedValue(item);
-      mockEventRepo.save.mockImplementation((entity) => Promise.resolve({ id: 50, ...entity }));
+      mockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockEventRepo.create.mockImplementation((entity) => Promise.resolve({ id: 50, ...entity }));
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.recordEvent(
@@ -300,8 +279,8 @@ describe("ReconciliationService", () => {
         quantityReleased: 0,
         quantityShipped: 0,
       });
-      mockItemRepo.findOne.mockResolvedValue(item);
-      mockEventRepo.save.mockImplementation((entity) => Promise.resolve({ id: 51, ...entity }));
+      mockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockEventRepo.create.mockImplementation((entity) => Promise.resolve({ id: 51, ...entity }));
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       await service.recordEvent(
@@ -326,8 +305,8 @@ describe("ReconciliationService", () => {
         quantityShipped: 0,
         quantityMps: 0,
       });
-      mockItemRepo.findOne.mockResolvedValue(item);
-      mockEventRepo.save.mockImplementation((entity) => Promise.resolve({ id: 52, ...entity }));
+      mockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockEventRepo.create.mockImplementation((entity) => Promise.resolve({ id: 52, ...entity }));
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       await service.recordEvent(
@@ -350,8 +329,8 @@ describe("ReconciliationService", () => {
         quantityReleased: 10,
         quantityShipped: 5,
       });
-      mockItemRepo.findOne.mockResolvedValue(item);
-      mockEventRepo.save.mockImplementation((entity) => Promise.resolve({ id: 53, ...entity }));
+      mockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockEventRepo.create.mockImplementation((entity) => Promise.resolve({ id: 53, ...entity }));
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       await service.recordEvent(
@@ -375,8 +354,8 @@ describe("ReconciliationService", () => {
         quantityReleased: 10,
         quantityShipped: 8,
       });
-      mockItemRepo.findOne.mockResolvedValue(item);
-      mockEventRepo.save.mockImplementation((entity) => Promise.resolve({ id: 54, ...entity }));
+      mockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockEventRepo.create.mockImplementation((entity) => Promise.resolve({ id: 54, ...entity }));
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       await service.recordEvent(
@@ -400,8 +379,8 @@ describe("ReconciliationService", () => {
         quantityReleased: 8,
         quantityShipped: 0,
       });
-      mockItemRepo.findOne.mockResolvedValue(item);
-      mockEventRepo.save.mockImplementation((entity) => Promise.resolve({ id: 55, ...entity }));
+      mockItemRepo.findOneForCompany.mockResolvedValue(item);
+      mockEventRepo.create.mockImplementation((entity) => Promise.resolve({ id: 55, ...entity }));
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       await service.recordEvent(
@@ -432,8 +411,8 @@ describe("ReconciliationService", () => {
         quantityShipped: 0,
       });
 
-      mockItemRepo.findOne.mockResolvedValueOnce(item1).mockResolvedValueOnce(item2);
-      mockEventRepo.save.mockImplementation((entity) => Promise.resolve({ id: 60, ...entity }));
+      mockItemRepo.findOneForCompany.mockResolvedValueOnce(item1).mockResolvedValueOnce(item2);
+      mockEventRepo.create.mockImplementation((entity) => Promise.resolve({ id: 60, ...entity }));
       mockItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
 
       const result = await service.recordEvent(
@@ -455,7 +434,7 @@ describe("ReconciliationService", () => {
     });
 
     it("should throw NotFoundException when item does not exist", async () => {
-      mockItemRepo.findOne.mockResolvedValue(null);
+      mockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(
         service.recordEvent(

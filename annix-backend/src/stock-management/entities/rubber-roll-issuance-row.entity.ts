@@ -69,4 +69,12 @@ export class RubberRollIssuanceRow {
 
   @Column({ name: "status", type: "varchar", length: 32, default: "active" })
   status: RubberRollIssuanceRowStatus;
+
+  get id(): number {
+    return this.rowId;
+  }
+
+  set id(value: number) {
+    this.rowId = value;
+  }
 }

@@ -1,17 +1,12 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { PaperHolding } from "../entities/paper-holding.entity";
 import { PaperPortfolio } from "../entities/paper-portfolio.entity";
-import { PaperPortfolioSnapshot } from "../entities/paper-portfolio-snapshot.entity";
-import { PaperTrade } from "../entities/paper-trade.entity";
-import { PriceHistory } from "../entities/price-history.entity";
+import { PaperHoldingRepository } from "../repositories/paper-holding.repository";
+import { PaperPortfolioRepository } from "../repositories/paper-portfolio.repository";
+import { PaperPortfolioSnapshotRepository } from "../repositories/paper-portfolio-snapshot.repository";
+import { PaperTradeRepository } from "../repositories/paper-trade.repository";
+import { PriceHistoryRepository } from "../repositories/price-history.repository";
 
-// Holdings are derived state; the trade ledger (consistent with cash) is the
-// source of truth. Quantities have desynced before (a portfolio silently read
-// -99% while its trades said otherwise), so each snapshot reconciles holdings
-// back to the ledger and corrects any drift beyond this epsilon.
 const QUANTITY_DRIFT_EPSILON = 1e-6;
 
 export interface SnapshotResult {
@@ -33,20 +28,15 @@ export class PortfolioSnapshotService {
   private readonly logger = new Logger(PortfolioSnapshotService.name);
 
   constructor(
-    @InjectRepository(PaperPortfolio)
-    private readonly portfolioRepo: Repository<PaperPortfolio>,
-    @InjectRepository(PaperHolding)
-    private readonly holdingRepo: Repository<PaperHolding>,
-    @InjectRepository(PaperPortfolioSnapshot)
-    private readonly snapshotRepo: Repository<PaperPortfolioSnapshot>,
-    @InjectRepository(PriceHistory)
-    private readonly historyRepo: Repository<PriceHistory>,
-    @InjectRepository(PaperTrade)
-    private readonly tradeRepo: Repository<PaperTrade>,
+    private readonly portfolioRepo: PaperPortfolioRepository,
+    private readonly holdingRepo: PaperHoldingRepository,
+    private readonly snapshotRepo: PaperPortfolioSnapshotRepository,
+    private readonly historyRepo: PriceHistoryRepository,
+    private readonly tradeRepo: PaperTradeRepository,
   ) {}
 
   async captureForAll(): Promise<SnapshotResult[]> {
-    const portfolios = await this.portfolioRepo.find({ where: { isActive: true } });
+    const portfolios = await this.portfolioRepo.findActive();
     const results: SnapshotResult[] = [];
     for (const portfolio of portfolios) {
       try {
@@ -69,17 +59,13 @@ export class PortfolioSnapshotService {
     const totalReturnPercent =
       startingCapital > 0 ? ((totalValue - startingCapital) / startingCapital) * 100 : 0;
 
-    await this.portfolioRepo.update(
-      { id: portfolio.id },
-      { currentPortfolioValue: investedValue.toFixed(2) },
-    );
+    await this.portfolioRepo.updateById(portfolio.id, {
+      currentPortfolioValue: investedValue.toFixed(2),
+    });
 
     const snapshotDate = now().toISODate() ?? "";
 
-    const previousSnapshot = await this.snapshotRepo.findOne({
-      where: { portfolioId: portfolio.id },
-      order: { snapshotDate: "DESC" },
-    });
+    const previousSnapshot = await this.snapshotRepo.latestForPortfolio(portfolio.id);
 
     const previousTotal = previousSnapshot ? Number(previousSnapshot.totalValue) : startingCapital;
     const dailyReturnPercent =
@@ -88,26 +74,22 @@ export class PortfolioSnapshotService {
     const maxDrawdownPercent = await this.computeRollingDrawdown(portfolio.id, totalValue);
     const volatilityScore = await this.computeAnnualisedVolatility(portfolio.id);
 
-    const existing = await this.snapshotRepo.findOne({
-      where: { portfolioId: portfolio.id, snapshotDate },
-    });
+    const existing = await this.snapshotRepo.findByPortfolioAndDate(portfolio.id, snapshotDate);
     if (existing) {
-      await this.snapshotRepo.delete({ id: existing.id });
+      await this.snapshotRepo.deleteById(existing.id);
     }
 
-    await this.snapshotRepo.save(
-      this.snapshotRepo.create({
-        portfolioId: portfolio.id,
-        snapshotDate,
-        totalValue: totalValue.toFixed(2),
-        cashBalance: cashBalance.toFixed(2),
-        investedValue: investedValue.toFixed(2),
-        dailyReturnPercent: dailyReturnPercent.toFixed(4),
-        totalReturnPercent: totalReturnPercent.toFixed(4),
-        maxDrawdownPercent: maxDrawdownPercent.toFixed(4),
-        volatilityScore: volatilityScore.toFixed(4),
-      }),
-    );
+    await this.snapshotRepo.create({
+      portfolioId: portfolio.id,
+      snapshotDate,
+      totalValue: totalValue.toFixed(2),
+      cashBalance: cashBalance.toFixed(2),
+      investedValue: investedValue.toFixed(2),
+      dailyReturnPercent: dailyReturnPercent.toFixed(4),
+      totalReturnPercent: totalReturnPercent.toFixed(4),
+      maxDrawdownPercent: maxDrawdownPercent.toFixed(4),
+      volatilityScore: volatilityScore.toFixed(4),
+    });
 
     return {
       slug: portfolio.slug,
@@ -121,18 +103,9 @@ export class PortfolioSnapshotService {
   }
 
   private async reconcileHoldingsFromLedger(portfolio: PaperPortfolio): Promise<void> {
-    const ledger = await this.tradeRepo
-      .createQueryBuilder("t")
-      .select("t.asset_id", "assetId")
-      .addSelect("SUM(CASE WHEN t.action = 'buy' THEN t.quantity ELSE 0 END)", "buyQty")
-      .addSelect("SUM(CASE WHEN t.action = 'sell' THEN t.quantity ELSE 0 END)", "sellQty")
-      .addSelect("SUM(CASE WHEN t.action = 'buy' THEN t.quantity * t.price ELSE 0 END)", "buyCost")
-      .where("t.portfolio_id = :pid", { pid: portfolio.id })
-      .andWhere("t.asset_id IS NOT NULL")
-      .groupBy("t.asset_id")
-      .getRawMany<{ assetId: string; buyQty: string; sellQty: string; buyCost: string }>();
+    const ledger = await this.tradeRepo.ledgerNetByAsset(portfolio.id);
 
-    const holdings = await this.holdingRepo.find({ where: { portfolioId: portfolio.id } });
+    const holdings = await this.holdingRepo.findByPortfolio(portfolio.id);
     const holdingByAsset = new Map(holdings.map((h) => [h.assetId, h]));
 
     for (const row of ledger) {
@@ -143,7 +116,7 @@ export class PortfolioSnapshotService {
 
       if (netQty <= QUANTITY_DRIFT_EPSILON) {
         if (existing) {
-          await this.holdingRepo.delete({ id: existing.id });
+          await this.holdingRepo.deleteById(existing.id);
           this.logger.error(
             `${portfolio.slug}: holdings desync corrected — ${row.assetId} ledger net 0 but holding had ${existing.quantity}; removed.`,
           );
@@ -153,18 +126,16 @@ export class PortfolioSnapshotService {
 
       const avgBuyPrice = buyQty > 0 ? Number(row.buyCost) / buyQty : 0;
       if (!existing) {
-        await this.holdingRepo.save(
-          this.holdingRepo.create({
-            portfolioId: portfolio.id,
-            assetId: row.assetId,
-            quantity: netQty.toString(),
-            averageBuyPrice: avgBuyPrice.toFixed(6),
-            currentPrice: avgBuyPrice.toFixed(6),
-            marketValue: (netQty * avgBuyPrice).toFixed(2),
-            unrealisedGainLoss: "0",
-            unrealisedGainLossPercent: "0",
-          }),
-        );
+        await this.holdingRepo.create({
+          portfolioId: portfolio.id,
+          assetId: row.assetId,
+          quantity: netQty.toString(),
+          averageBuyPrice: avgBuyPrice.toFixed(6),
+          currentPrice: avgBuyPrice.toFixed(6),
+          marketValue: (netQty * avgBuyPrice).toFixed(2),
+          unrealisedGainLoss: "0",
+          unrealisedGainLossPercent: "0",
+        });
         this.logger.error(
           `${portfolio.slug}: holdings desync corrected — ${row.assetId} ledger net ${netQty} but no holding existed; recreated.`,
         );
@@ -175,15 +146,15 @@ export class PortfolioSnapshotService {
         this.logger.error(
           `${portfolio.slug}: holdings desync corrected — ${row.assetId} holding qty ${existing.quantity} != ledger net ${netQty}; rebuilt from ledger.`,
         );
-        await this.holdingRepo.update(
-          { id: existing.id },
-          { quantity: netQty.toString(), averageBuyPrice: avgBuyPrice.toFixed(6) },
-        );
+        await this.holdingRepo.updateById(existing.id, {
+          quantity: netQty.toString(),
+          averageBuyPrice: avgBuyPrice.toFixed(6),
+        });
       }
     }
 
     for (const orphan of holdingByAsset.values()) {
-      await this.holdingRepo.delete({ id: orphan.id });
+      await this.holdingRepo.deleteById(orphan.id);
       this.logger.error(
         `${portfolio.slug}: holdings desync corrected — ${orphan.assetId} held ${orphan.quantity} with no trade ledger entries; removed.`,
       );
@@ -191,15 +162,10 @@ export class PortfolioSnapshotService {
   }
 
   private async markToMarket(portfolio: PaperPortfolio): Promise<number> {
-    const holdings = await this.holdingRepo.find({
-      where: { portfolioId: portfolio.id },
-    });
+    const holdings = await this.holdingRepo.findByPortfolio(portfolio.id);
     let totalInvested = 0;
     for (const holding of holdings) {
-      const latest = await this.historyRepo.findOne({
-        where: { assetId: holding.assetId },
-        order: { date: "DESC" },
-      });
+      const latest = await this.historyRepo.latestForAsset(holding.assetId);
       if (!latest) {
         totalInvested += Number(holding.marketValue);
         continue;
@@ -210,28 +176,19 @@ export class PortfolioSnapshotService {
       const marketValue = qty * currentPrice;
       const unrealised = marketValue - qty * avgBuy;
       const unrealisedPct = avgBuy > 0 ? (unrealised / (qty * avgBuy)) * 100 : 0;
-      await this.holdingRepo.update(
-        { id: holding.id },
-        {
-          currentPrice: currentPrice.toFixed(6),
-          marketValue: marketValue.toFixed(2),
-          unrealisedGainLoss: unrealised.toFixed(2),
-          unrealisedGainLossPercent: unrealisedPct.toFixed(4),
-        },
-      );
+      await this.holdingRepo.updateById(holding.id, {
+        currentPrice: currentPrice.toFixed(6),
+        marketValue: marketValue.toFixed(2),
+        unrealisedGainLoss: unrealised.toFixed(2),
+        unrealisedGainLossPercent: unrealisedPct.toFixed(4),
+      });
       totalInvested += marketValue;
     }
     return totalInvested;
   }
 
   private async computeRollingDrawdown(portfolioId: string, currentTotal: number): Promise<number> {
-    const recent = await this.snapshotRepo
-      .createQueryBuilder("s")
-      .select("s.total_value", "total_value")
-      .where("s.portfolio_id = :portfolioId", { portfolioId })
-      .orderBy("s.snapshot_date", "DESC")
-      .limit(ROLLING_DRAWDOWN_DAYS)
-      .getRawMany<{ total_value: string }>();
+    const recent = await this.snapshotRepo.recentTotalValues(portfolioId, ROLLING_DRAWDOWN_DAYS);
     const recentValues = recent.map((r) => Number(r.total_value));
     if (recentValues.length === 0) return 0;
     const allValues = [...recentValues, currentTotal];
@@ -242,13 +199,7 @@ export class PortfolioSnapshotService {
   }
 
   private async computeAnnualisedVolatility(portfolioId: string): Promise<number> {
-    const recent = await this.snapshotRepo
-      .createQueryBuilder("s")
-      .select("s.daily_return_percent", "daily_return_percent")
-      .where("s.portfolio_id = :portfolioId", { portfolioId })
-      .orderBy("s.snapshot_date", "DESC")
-      .limit(VOLATILITY_DAYS)
-      .getRawMany<{ daily_return_percent: string }>();
+    const recent = await this.snapshotRepo.recentDailyReturns(portfolioId, VOLATILITY_DAYS);
     const returns = recent.map((r) => Number(r.daily_return_percent));
     if (returns.length < 2) return 0;
     const mean = returns.reduce((a, b) => a + b, 0) / returns.length;

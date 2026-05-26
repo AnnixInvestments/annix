@@ -1,13 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import type { Repository } from "typeorm";
-import { BotswanaMine } from "./entities/botswana-mine.entity";
+import { BotswanaMineRepository } from "./botswana-mine.repository";
 import type { CountryMineBase } from "./entities/country-mine.base";
-import { MozambiqueMine } from "./entities/mozambique-mine.entity";
-import { NamibiaMine } from "./entities/namibia-mine.entity";
 import { SaMine } from "./entities/sa-mine.entity";
-import { ZambiaMine } from "./entities/zambia-mine.entity";
-import { ZimbabweMine } from "./entities/zimbabwe-mine.entity";
+import { MozambiqueMineRepository } from "./mozambique-mine.repository";
+import { NamibiaMineRepository } from "./namibia-mine.repository";
+import { SaMineRepository } from "./sa-mine.repository";
+import { ZambiaMineRepository } from "./zambia-mine.repository";
+import { ZimbabweMineRepository } from "./zimbabwe-mine.repository";
 
 export type Country =
   | "South Africa"
@@ -67,12 +66,12 @@ export class MineRegistryService {
   private cache: { data: MineRecord[]; at: number } | null = null;
 
   constructor(
-    @InjectRepository(SaMine) private readonly saRepo: Repository<SaMine>,
-    @InjectRepository(BotswanaMine) private readonly bwRepo: Repository<BotswanaMine>,
-    @InjectRepository(NamibiaMine) private readonly naRepo: Repository<NamibiaMine>,
-    @InjectRepository(ZimbabweMine) private readonly zwRepo: Repository<ZimbabweMine>,
-    @InjectRepository(ZambiaMine) private readonly zmRepo: Repository<ZambiaMine>,
-    @InjectRepository(MozambiqueMine) private readonly mzRepo: Repository<MozambiqueMine>,
+    private readonly saRepo: SaMineRepository,
+    private readonly bwRepo: BotswanaMineRepository,
+    private readonly naRepo: NamibiaMineRepository,
+    private readonly zwRepo: ZimbabweMineRepository,
+    private readonly zmRepo: ZambiaMineRepository,
+    private readonly mzRepo: MozambiqueMineRepository,
   ) {}
 
   async allMines(): Promise<MineRecord[]> {
@@ -80,12 +79,12 @@ export class MineRegistryService {
       return this.cache.data;
     }
     const [sa, bw, na, zw, zm, mz] = await Promise.all([
-      this.saRepo.find(),
-      this.bwRepo.find(),
-      this.naRepo.find(),
-      this.zwRepo.find(),
-      this.zmRepo.find(),
-      this.mzRepo.find(),
+      this.saRepo.findAll(),
+      this.bwRepo.findAll(),
+      this.naRepo.findAll(),
+      this.zwRepo.findAll(),
+      this.zmRepo.findAll(),
+      this.mzRepo.findAll(),
     ]);
     const data: MineRecord[] = [
       ...sa.map((m) => toRecord("South Africa", m)),

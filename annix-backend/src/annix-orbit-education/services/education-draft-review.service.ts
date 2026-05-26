@@ -1,13 +1,12 @@
 import { Inject, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { type IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { EducationExtractionCorrection } from "../entities/education-extraction-correction.entity";
 import {
   EducationRequirementDraft,
   type RequirementDraftStatus,
 } from "../entities/education-requirement-draft.entity";
+import { EducationExtractionCorrectionRepository } from "../repositories/education-extraction-correction.repository";
+import { EducationRequirementDraftRepository } from "../repositories/education-requirement-draft.repository";
 
 export interface DraftView {
   id: string;
@@ -41,26 +40,14 @@ export interface ProgrammeRequirements {
 @Injectable()
 export class EducationDraftReviewService {
   constructor(
-    @InjectRepository(EducationRequirementDraft)
-    private readonly draftRepo: Repository<EducationRequirementDraft>,
-    @InjectRepository(EducationExtractionCorrection)
-    private readonly correctionRepo: Repository<EducationExtractionCorrection>,
+    private readonly draftRepo: EducationRequirementDraftRepository,
+    private readonly correctionRepo: EducationExtractionCorrectionRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storage: IStorageService,
   ) {}
 
   async list(filter: DraftFilter): Promise<DraftView[]> {
-    const where: Record<string, unknown> = {};
-    if (filter.programmeId) {
-      where.programmeId = filter.programmeId;
-    }
-    if (filter.institutionId) {
-      where.institutionId = filter.institutionId;
-    }
-    if (filter.status) {
-      where.status = filter.status;
-    }
-    const drafts = await this.draftRepo.find({ where, order: { fetchedAt: "DESC" } });
+    const drafts = await this.draftRepo.findMatching(filter);
     return Promise.all(drafts.map((draft) => this.toView(draft)));
   }
 
@@ -79,15 +66,13 @@ export class EducationDraftReviewService {
     approvedById: number | null,
   ): Promise<DraftView> {
     const draft = await this.require(id);
-    await this.correctionRepo.save(
-      this.correctionRepo.create({
-        institutionId: draft.institutionId,
-        fieldKey: draft.fieldKey,
-        extractedValue: draft.extractedValue,
-        correctedValue,
-        sourceUrl: draft.sourceUrl,
-      }),
-    );
+    await this.correctionRepo.create({
+      institutionId: draft.institutionId,
+      fieldKey: draft.fieldKey,
+      extractedValue: draft.extractedValue,
+      correctedValue,
+      sourceUrl: draft.sourceUrl,
+    });
     draft.approvedValue = correctedValue;
     draft.status = "approved";
     draft.approvedById = approvedById;
@@ -105,7 +90,7 @@ export class EducationDraftReviewService {
     programmeId: string,
     intakeYear: number,
   ): Promise<ProgrammeRequirements> {
-    const drafts = await this.draftRepo.find({ where: { programmeId, intakeYear } });
+    const drafts = await this.draftRepo.findForProgrammeYear(programmeId, intakeYear);
     const approved = drafts.filter((draft) => draft.status === "approved");
     const pendingCount = drafts.filter(
       (draft) => draft.status === "draft" || draft.status === "changed",
@@ -119,7 +104,7 @@ export class EducationDraftReviewService {
   }
 
   private async require(id: string): Promise<EducationRequirementDraft> {
-    const draft = await this.draftRepo.findOne({ where: { id } });
+    const draft = await this.draftRepo.findById(id);
     if (!draft) {
       throw new NotFoundException(`Requirement draft ${id} not found`);
     }

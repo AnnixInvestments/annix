@@ -138,4 +138,12 @@ export class PaintProduct {
 
   @Column({ name: "component_role", type: "varchar", length: 50, nullable: true })
   componentRole: string | null;
+
+  get id(): number {
+    return this.productId;
+  }
+
+  set id(value: number) {
+    this.productId = value;
+  }
 }

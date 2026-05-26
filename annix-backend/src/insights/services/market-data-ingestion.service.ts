@@ -1,10 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { Asset } from "../entities/asset.entity";
 import { PriceHistory } from "../entities/price-history.entity";
+import { AssetRepository } from "../repositories/asset.repository";
+import { PriceHistoryRepository } from "../repositories/price-history.repository";
 import { YahooDailyBar, YahooMarketDataService } from "./yahoo-market-data.service";
 
 export interface IngestResult {
@@ -24,14 +24,14 @@ export class MarketDataIngestionService {
   private readonly logger = new Logger(MarketDataIngestionService.name);
 
   constructor(
-    @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
-    @InjectRepository(PriceHistory) private readonly historyRepo: Repository<PriceHistory>,
+    private readonly assetRepo: AssetRepository,
+    private readonly historyRepo: PriceHistoryRepository,
     private readonly yahoo: YahooMarketDataService,
     private readonly metrics: ExtractionMetricService,
   ) {}
 
   async backfillBySymbol(symbol: string, from?: Date): Promise<IngestResult> {
-    const asset = await this.assetRepo.findOne({ where: { symbol } });
+    const asset = await this.assetRepo.findBySymbol(symbol);
     if (!asset) {
       throw new Error(`Asset ${symbol} not found in insights_assets`);
     }
@@ -56,10 +56,7 @@ export class MarketDataIngestionService {
       METRIC_CATEGORY,
       "daily-snapshot",
       async () => {
-        const latestRow = await this.historyRepo.findOne({
-          where: { assetId: asset.id },
-          order: { date: "DESC" },
-        });
+        const latestRow = await this.historyRepo.latestForAsset(asset.id);
         const today = now().toISODate();
         if (latestRow && today !== null && latestRow.date >= today) {
           return {
@@ -79,7 +76,7 @@ export class MarketDataIngestionService {
   }
 
   async runDailySnapshot(): Promise<{ totalInserted: number; failed: string[] }> {
-    const assets = await this.assetRepo.find({ where: { isActive: true } });
+    const assets = await this.assetRepo.findActive();
     let totalInserted = 0;
     const failed: string[] = [];
     for (const asset of assets) {
@@ -103,29 +100,23 @@ export class MarketDataIngestionService {
 
   async refreshTrailingPE(asset: Asset): Promise<number | null> {
     const trailingPe = await this.yahoo.fetchTrailingPE(asset.symbol);
-    await this.assetRepo.update(
-      { id: asset.id },
-      {
-        trailingPe: trailingPe !== null ? trailingPe.toFixed(4) : null,
-        peUpdatedAt: now().toJSDate(),
-      },
-    );
+    await this.assetRepo.updateById(asset.id, {
+      trailingPe: trailingPe !== null ? trailingPe.toFixed(4) : null,
+      peUpdatedAt: now().toJSDate(),
+    });
     return trailingPe;
   }
 
   async historyForSymbol(symbol: string, from?: string): Promise<PriceHistory[]> {
-    const asset = await this.assetRepo.findOne({ where: { symbol } });
+    const asset = await this.assetRepo.findBySymbol(symbol);
     if (!asset) return [];
-    return this.historyRepo.find({
-      where: from ? { assetId: asset.id, date: MoreThanOrEqual(from) } : { assetId: asset.id },
-      order: { date: "ASC" },
-    });
+    return this.historyRepo.historyForAssetAsc(asset.id, from);
   }
 
   async rowCountForSymbol(symbol: string): Promise<number> {
-    const asset = await this.assetRepo.findOne({ where: { symbol } });
+    const asset = await this.assetRepo.findBySymbol(symbol);
     if (!asset) return 0;
-    return this.historyRepo.count({ where: { assetId: asset.id } });
+    return this.historyRepo.countForAsset(asset.id);
   }
 
   private async persistBars(asset: Asset, bars: YahooDailyBar[]): Promise<IngestResult> {
@@ -140,12 +131,7 @@ export class MarketDataIngestionService {
     }
 
     const dates = bars.map((b) => b.date);
-    const existing = await this.historyRepo
-      .createQueryBuilder("h")
-      .select("h.date", "date")
-      .where("h.asset_id = :assetId", { assetId: asset.id })
-      .andWhere("h.date IN (:...dates)", { dates })
-      .getRawMany<{ date: string }>();
+    const existing = await this.historyRepo.existingDates(asset.id, dates);
     const existingDates = new Set(existing.map((r) => normaliseDate(r.date)));
 
     const fresh = bars.filter((b) => !existingDates.has(b.date));
@@ -160,20 +146,18 @@ export class MarketDataIngestionService {
       };
     }
 
-    const rows = fresh.map((b) =>
-      this.historyRepo.create({
-        assetId: asset.id,
-        date: b.date,
-        open: b.open.toString(),
-        high: b.high.toString(),
-        low: b.low.toString(),
-        close: b.close.toString(),
-        adjClose: b.adjClose !== null ? b.adjClose.toString() : null,
-        volume: b.volume !== null ? b.volume.toString() : null,
-      }),
-    );
+    const rows = fresh.map((b) => ({
+      assetId: asset.id,
+      date: b.date,
+      open: b.open.toString(),
+      high: b.high.toString(),
+      low: b.low.toString(),
+      close: b.close.toString(),
+      adjClose: b.adjClose !== null ? b.adjClose.toString() : null,
+      volume: b.volume !== null ? b.volume.toString() : null,
+    }));
 
-    await this.historyRepo.createQueryBuilder().insert().values(rows).orIgnore().execute();
+    await this.historyRepo.insertIgnoringConflicts(rows);
 
     const sortedFresh = [...fresh].sort((a, b) => (a.date < b.date ? -1 : 1));
     return {

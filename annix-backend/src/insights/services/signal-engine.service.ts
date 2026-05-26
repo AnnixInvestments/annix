@@ -1,17 +1,16 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { sectorTrendEtf } from "../config/sector-etf-map";
 import { Asset } from "../entities/asset.entity";
-import { NewsItem } from "../entities/news-item.entity";
-import { PriceHistory } from "../entities/price-history.entity";
 import {
   type SignalComponentBreakdown,
-  SignalSnapshot,
   type ValuationSource,
 } from "../entities/signal-snapshot.entity";
+import { AssetRepository } from "../repositories/asset.repository";
+import { NewsItemRepository } from "../repositories/news-item.repository";
+import { PriceHistoryRepository } from "../repositories/price-history.repository";
+import { SignalSnapshotRepository } from "../repositories/signal-snapshot.repository";
 
 const METRIC_CATEGORY = "insights-signal-engine";
 const NEWS_LOOKBACK_HOURS = 48;
@@ -56,11 +55,10 @@ export class SignalEngineService {
   private readonly logger = new Logger(SignalEngineService.name);
 
   constructor(
-    @InjectRepository(Asset) private readonly assetRepo: Repository<Asset>,
-    @InjectRepository(PriceHistory) private readonly historyRepo: Repository<PriceHistory>,
-    @InjectRepository(SignalSnapshot)
-    private readonly signalRepo: Repository<SignalSnapshot>,
-    @InjectRepository(NewsItem) private readonly newsRepo: Repository<NewsItem>,
+    private readonly assetRepo: AssetRepository,
+    private readonly historyRepo: PriceHistoryRepository,
+    private readonly signalRepo: SignalSnapshotRepository,
+    private readonly newsRepo: NewsItemRepository,
     private readonly metrics: ExtractionMetricService,
   ) {}
 
@@ -69,7 +67,7 @@ export class SignalEngineService {
       METRIC_CATEGORY,
       "daily-score",
       async () => {
-        const assets = await this.assetRepo.find({ where: { isActive: true } });
+        const assets = await this.assetRepo.findActive();
         const sectorMedians = computeSectorMedians(assets);
         let scored = 0;
         let skipped = 0;
@@ -91,11 +89,7 @@ export class SignalEngineService {
   }
 
   private async scoreOne(asset: Asset, sectorMedians: SectorMedians): Promise<boolean> {
-    const history = await this.historyRepo.find({
-      where: { assetId: asset.id },
-      order: { date: "DESC" },
-      take: 260,
-    });
+    const history = await this.historyRepo.historyForAssetDesc(asset.id, 260);
     if (history.length < 21) {
       this.logger.warn(
         `Skipping ${asset.symbol}: only ${history.length} price-history rows (need >= 21).`,
@@ -141,29 +135,25 @@ export class SignalEngineService {
     };
 
     const snapshotDate = now().toISODate() ?? "";
-    const existing = await this.signalRepo.findOne({
-      where: { assetId: asset.id, snapshotDate },
-    });
+    const existing = await this.signalRepo.findByAssetAndDate(asset.id, snapshotDate);
     if (existing) {
-      await this.signalRepo.delete({ id: existing.id });
+      await this.signalRepo.deleteById(existing.id);
     }
 
-    await this.signalRepo.save(
-      this.signalRepo.create({
-        assetId: asset.id,
-        snapshotDate,
-        momentumScore: momentum.score.toFixed(2),
-        valuationScore: valuation.score.toFixed(2),
-        newsSentimentScore: newsSentiment.score.toFixed(2),
-        sectorTrendScore: sectorTrend.score.toFixed(2),
-        drawdownRiskScore: drawdownRisk.score.toFixed(2),
-        opportunityScore: clamp01to100(opportunityScore).toFixed(2),
-        riskScore: clamp01to100(riskScore).toFixed(2),
-        confidenceScore: clamp01to100(confidenceScore).toFixed(2),
-        componentBreakdownJson: breakdown,
-        marketRegime: "unknown",
-      }),
-    );
+    await this.signalRepo.create({
+      assetId: asset.id,
+      snapshotDate,
+      momentumScore: momentum.score.toFixed(2),
+      valuationScore: valuation.score.toFixed(2),
+      newsSentimentScore: newsSentiment.score.toFixed(2),
+      sectorTrendScore: sectorTrend.score.toFixed(2),
+      drawdownRiskScore: drawdownRisk.score.toFixed(2),
+      opportunityScore: clamp01to100(opportunityScore).toFixed(2),
+      riskScore: clamp01to100(riskScore).toFixed(2),
+      confidenceScore: clamp01to100(confidenceScore).toFixed(2),
+      componentBreakdownJson: breakdown,
+      marketRegime: "unknown",
+    });
 
     return true;
   }
@@ -258,16 +248,7 @@ export class SignalEngineService {
 
   private async newsSentiment(symbol: string): Promise<ComputedSignals["newsSentiment"]> {
     const cutoff = now().minus({ hours: NEWS_LOOKBACK_HOURS }).toJSDate();
-    const items = await this.newsRepo
-      .createQueryBuilder("n")
-      .where("n.extraction_status = :status", { status: "extracted" })
-      .andWhere("(n.published_at >= :cutoff OR n.created_at >= :cutoff)", { cutoff })
-      .andWhere("n.related_symbols ILIKE :symbolPattern", {
-        symbolPattern: `%${symbol}%`,
-      })
-      .orderBy("n.published_at", "DESC")
-      .limit(NEWS_MAX_ARTICLES)
-      .getMany();
+    const items = await this.newsRepo.findExtractedForSymbol(symbol, cutoff, NEWS_MAX_ARTICLES);
 
     const matched = items.filter((item) => matchesSymbol(item.relatedSymbols, symbol));
     if (matched.length === 0) {
@@ -303,15 +284,11 @@ export class SignalEngineService {
     if (!etfSymbol) {
       return { score: 50, sector, etf: null, etfRoc20: null };
     }
-    const etfAsset = await this.assetRepo.findOne({ where: { symbol: etfSymbol } });
+    const etfAsset = await this.assetRepo.findBySymbol(etfSymbol);
     if (!etfAsset) {
       return { score: 50, sector, etf: etfSymbol, etfRoc20: null };
     }
-    const etfHistory = await this.historyRepo.find({
-      where: { assetId: etfAsset.id },
-      order: { date: "DESC" },
-      take: 21,
-    });
+    const etfHistory = await this.historyRepo.historyForAssetDesc(etfAsset.id, 21);
     if (etfHistory.length < 21) {
       return { score: 50, sector, etf: etfSymbol, etfRoc20: null };
     }

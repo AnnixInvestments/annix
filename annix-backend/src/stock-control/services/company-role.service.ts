@@ -1,7 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { StockControlCompanyRole } from "../entities/stock-control-company-role.entity";
+import { StockControlCompanyRoleRepository } from "../repositories/stock-control-company-role.repository";
 
 const DEFAULT_ROLES = [
   { key: "viewer", label: "Viewer", sortOrder: 0 },
@@ -22,16 +21,10 @@ export interface CompanyRoleDto {
 
 @Injectable()
 export class CompanyRoleService {
-  constructor(
-    @InjectRepository(StockControlCompanyRole)
-    private readonly roleRepo: Repository<StockControlCompanyRole>,
-  ) {}
+  constructor(private readonly roleRepo: StockControlCompanyRoleRepository) {}
 
   async rolesForCompany(companyId: number): Promise<CompanyRoleDto[]> {
-    const existing = await this.roleRepo.find({
-      where: { companyId },
-      order: { sortOrder: "ASC", id: "ASC" },
-    });
+    const existing = await this.roleRepo.findForCompanyOrdered(companyId);
 
     if (existing.length > 0) {
       return existing.map((r) => ({
@@ -65,31 +58,23 @@ export class CompanyRoleService {
       throw new BadRequestException("Invalid role key");
     }
 
-    const existing = await this.roleRepo.findOne({
-      where: { companyId, key: sanitizedKey },
-    });
+    const existing = await this.roleRepo.findOneForCompanyByKey(companyId, sanitizedKey);
 
     if (existing) {
       throw new BadRequestException("A role with this key already exists");
     }
 
-    const maxSort = await this.roleRepo
-      .createQueryBuilder("r")
-      .select("MAX(r.sort_order)", "max")
-      .where("r.company_id = :companyId", { companyId })
-      .getRawOne();
+    const maxSort = await this.roleRepo.maxSortOrderForCompany(companyId);
 
-    const nextSort = (maxSort?.max ?? 0) + 1;
+    const nextSort = (maxSort ?? 0) + 1;
 
-    const role = this.roleRepo.create({
+    const saved = await this.roleRepo.create({
       companyId,
       key: sanitizedKey,
       label: label.trim().slice(0, 50),
       isSystem: false,
       sortOrder: nextSort,
     });
-
-    const saved = await this.roleRepo.save(role);
 
     return {
       id: saved.id,
@@ -101,7 +86,7 @@ export class CompanyRoleService {
   }
 
   async updateRole(id: number, companyId: number, label: string): Promise<CompanyRoleDto> {
-    const role = await this.roleRepo.findOne({ where: { id, companyId } });
+    const role = await this.roleRepo.findOneForCompany(id, companyId);
 
     if (!role) {
       throw new BadRequestException("Role not found");
@@ -120,7 +105,7 @@ export class CompanyRoleService {
   }
 
   async deleteRole(id: number, companyId: number): Promise<void> {
-    const role = await this.roleRepo.findOne({ where: { id, companyId } });
+    const role = await this.roleRepo.findOneForCompany(id, companyId);
 
     if (!role) {
       throw new BadRequestException("Role not found");
@@ -134,7 +119,7 @@ export class CompanyRoleService {
   }
 
   async reorderRoles(companyId: number, orderedIds: number[]): Promise<CompanyRoleDto[]> {
-    const allRoles = await this.roleRepo.find({ where: { companyId } });
+    const allRoles = await this.roleRepo.findAllForCompany(companyId);
 
     const adminRole = allRoles.find((r) => r.key === "admin");
     if (adminRole && orderedIds[orderedIds.length - 1] !== adminRole.id) {
@@ -150,22 +135,22 @@ export class CompanyRoleService {
       return role;
     });
 
-    await this.roleRepo.save(updates);
+    await this.roleRepo.saveMany(updates);
 
     return this.rolesForCompany(companyId);
   }
 
   private async seedDefaults(companyId: number): Promise<StockControlCompanyRole[]> {
-    const entities = DEFAULT_ROLES.map((r) =>
-      this.roleRepo.create({
+    const entities = this.roleRepo.buildMany(
+      DEFAULT_ROLES.map((r) => ({
         companyId,
         key: r.key,
         label: r.label,
         isSystem: true,
         sortOrder: r.sortOrder,
-      }),
+      })),
     );
 
-    return this.roleRepo.save(entities);
+    return this.roleRepo.saveMany(entities);
   }
 }

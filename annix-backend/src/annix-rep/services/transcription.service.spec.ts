@@ -1,15 +1,14 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { MeetingRecording, MeetingTranscript } from "../entities";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { MeetingTranscriptRepository } from "../meeting-transcript.repository";
 import { TranscriptionService } from "./transcription.service";
 
 describe("TranscriptionService", () => {
   let service: TranscriptionService;
-  let mockRecordingRepo: Partial<Repository<MeetingRecording>>;
-  let mockTranscriptRepo: Partial<Repository<MeetingTranscript>>;
+  let mockRecordingRepo: Partial<MeetingRecordingRepository>;
+  let mockTranscriptRepo: Partial<MeetingTranscriptRepository>;
 
   const mockConfigService = {
     get: jest.fn((key: string) => {
@@ -23,14 +22,16 @@ describe("TranscriptionService", () => {
 
   beforeEach(async () => {
     mockRecordingRepo = {
-      findOne: jest.fn(),
+      findById: jest.fn(),
+      findByMeetingId: jest.fn(),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
     };
 
     mockTranscriptRepo = {
-      create: jest.fn().mockImplementation((data) => ({ id: 1, ...data })),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
       save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-      findOne: jest.fn(),
+      findByRecordingId: jest.fn(),
+      findWithRecordingMeeting: jest.fn(),
       remove: jest.fn(),
     };
 
@@ -38,11 +39,11 @@ describe("TranscriptionService", () => {
       providers: [
         TranscriptionService,
         {
-          provide: getRepositoryToken(MeetingRecording),
+          provide: MeetingRecordingRepository,
           useValue: mockRecordingRepo,
         },
         {
-          provide: getRepositoryToken(MeetingTranscript),
+          provide: MeetingTranscriptRepository,
           useValue: mockTranscriptRepo,
         },
         {
@@ -62,7 +63,7 @@ describe("TranscriptionService", () => {
 
   describe("transcribeRecording", () => {
     it("should throw NotFoundException when recording does not exist", async () => {
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRecordingRepo.findById as jest.Mock).mockResolvedValue(null);
 
       await expect(service.transcribeRecording(999)).rejects.toThrow(NotFoundException);
       await expect(service.transcribeRecording(999)).rejects.toThrow("Recording 999 not found");
@@ -72,8 +73,8 @@ describe("TranscriptionService", () => {
       const mockRecording = { id: 1, storagePath: "test.webm" };
       const mockTranscript = { id: 10, recordingId: 1, fullText: "Hello world" };
 
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(mockRecording);
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(mockTranscript);
+      (mockRecordingRepo.findById as jest.Mock).mockResolvedValue(mockRecording);
+      (mockTranscriptRepo.findByRecordingId as jest.Mock).mockResolvedValue(mockTranscript);
 
       const result = await service.transcribeRecording(1);
 
@@ -100,7 +101,7 @@ describe("TranscriptionService", () => {
     };
 
     it("should throw NotFoundException when transcript does not exist", async () => {
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockTranscriptRepo.findWithRecordingMeeting as jest.Mock).mockResolvedValue(null);
 
       await expect(service.updateSegments(100, 999, { segments: [] })).rejects.toThrow(
         NotFoundException,
@@ -108,7 +109,7 @@ describe("TranscriptionService", () => {
     });
 
     it("should throw NotFoundException when user is not the meeting owner", async () => {
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(mockTranscript);
+      (mockTranscriptRepo.findWithRecordingMeeting as jest.Mock).mockResolvedValue(mockTranscript);
 
       await expect(service.updateSegments(200, 1, { segments: [] })).rejects.toThrow(
         NotFoundException,
@@ -116,7 +117,7 @@ describe("TranscriptionService", () => {
     });
 
     it("should throw BadRequestException for invalid segment indices", async () => {
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(mockTranscript);
+      (mockTranscriptRepo.findWithRecordingMeeting as jest.Mock).mockResolvedValue(mockTranscript);
 
       await expect(
         service.updateSegments(100, 1, {
@@ -126,7 +127,7 @@ describe("TranscriptionService", () => {
     });
 
     it("should throw BadRequestException for negative segment indices", async () => {
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(mockTranscript);
+      (mockTranscriptRepo.findWithRecordingMeeting as jest.Mock).mockResolvedValue(mockTranscript);
 
       await expect(
         service.updateSegments(100, 1, {
@@ -136,7 +137,9 @@ describe("TranscriptionService", () => {
     });
 
     it("should update segment speaker labels", async () => {
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue({ ...mockTranscript });
+      (mockTranscriptRepo.findWithRecordingMeeting as jest.Mock).mockResolvedValue({
+        ...mockTranscript,
+      });
       (mockTranscriptRepo.save as jest.Mock).mockImplementation((entity) =>
         Promise.resolve({ ...entity }),
       );
@@ -150,7 +153,9 @@ describe("TranscriptionService", () => {
     });
 
     it("should update segment text", async () => {
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue({ ...mockTranscript });
+      (mockTranscriptRepo.findWithRecordingMeeting as jest.Mock).mockResolvedValue({
+        ...mockTranscript,
+      });
       (mockTranscriptRepo.save as jest.Mock).mockImplementation((entity) =>
         Promise.resolve({ ...entity }),
       );
@@ -167,7 +172,7 @@ describe("TranscriptionService", () => {
   describe("deleteTranscript", () => {
     it("should remove transcript if it exists", async () => {
       const mockTranscript = { id: 1, recordingId: 1 };
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(mockTranscript);
+      (mockTranscriptRepo.findByRecordingId as jest.Mock).mockResolvedValue(mockTranscript);
 
       await service.deleteTranscript(1);
 
@@ -175,7 +180,7 @@ describe("TranscriptionService", () => {
     });
 
     it("should do nothing if transcript does not exist", async () => {
-      (mockTranscriptRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockTranscriptRepo.findByRecordingId as jest.Mock).mockResolvedValue(null);
 
       await service.deleteTranscript(1);
 

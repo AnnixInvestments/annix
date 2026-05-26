@@ -104,4 +104,12 @@ export class RubberRoll {
 
   @Column({ name: "legacy_rubber_roll_id", type: "integer", nullable: true })
   legacyRubberRollId: number | null;
+
+  get id(): number {
+    return this.productId;
+  }
+
+  set id(value: number) {
+    this.productId = value;
+  }
 }

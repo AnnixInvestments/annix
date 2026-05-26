@@ -1,6 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { DeliveryNoteRepository } from "./delivery-note.repository";
 import type {
   CreateDeliveryNoteDto,
   DeliveryNoteFilterDto,
@@ -24,16 +23,10 @@ export interface DeliveryNotePage {
 export class DeliveryNoteService {
   private readonly logger = new Logger(DeliveryNoteService.name);
 
-  constructor(
-    @InjectRepository(PlatformDeliveryNote)
-    private readonly dnRepo: Repository<PlatformDeliveryNote>,
-  ) {}
+  constructor(private readonly dnRepo: DeliveryNoteRepository) {}
 
   async findById(companyId: number, id: number): Promise<PlatformDeliveryNote> {
-    const dn = await this.dnRepo.findOne({
-      where: { id, companyId },
-      relations: ["items", "supplierContact"],
-    });
+    const dn = await this.dnRepo.findByCompanyAndId(companyId, id, ["items", "supplierContact"]);
 
     if (!dn) {
       throw new NotFoundException(`Delivery note ${id} not found`);
@@ -42,51 +35,12 @@ export class DeliveryNoteService {
     return dn;
   }
 
-  async search(companyId: number, filters: DeliveryNoteFilterDto): Promise<DeliveryNotePage> {
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 20;
-    const skip = (page - 1) * limit;
-
-    const qb = this.dnRepo
-      .createQueryBuilder("dn")
-      .leftJoinAndSelect("dn.supplierContact", "supplier")
-      .where("dn.company_id = :companyId", { companyId })
-      .andWhere("dn.version_status = :versionStatus", { versionStatus: "ACTIVE" });
-
-    if (filters.sourceModule) {
-      qb.andWhere("dn.source_module = :sourceModule", { sourceModule: filters.sourceModule });
-    }
-
-    if (filters.deliveryNoteType) {
-      qb.andWhere("dn.delivery_note_type = :dnType", { dnType: filters.deliveryNoteType });
-    }
-
-    if (filters.status) {
-      qb.andWhere("dn.status = :status", { status: filters.status });
-    }
-
-    if (filters.supplierContactId) {
-      qb.andWhere("dn.supplier_contact_id = :supplierId", {
-        supplierId: filters.supplierContactId,
-      });
-    }
-
-    if (filters.search) {
-      qb.andWhere(
-        "(dn.delivery_number ILIKE :search OR dn.supplier_name ILIKE :search OR dn.customer_reference ILIKE :search)",
-        { search: `%${filters.search}%` },
-      );
-    }
-
-    qb.orderBy("dn.created_at", "DESC");
-
-    const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
-
-    return { data, total, page, limit };
+  search(companyId: number, filters: DeliveryNoteFilterDto): Promise<DeliveryNotePage> {
+    return this.dnRepo.search(companyId, filters);
   }
 
   async create(companyId: number, dto: CreateDeliveryNoteDto): Promise<PlatformDeliveryNote> {
-    const dn = this.dnRepo.create({
+    return this.dnRepo.create({
       companyId,
       sourceModule: dto.sourceModule,
       deliveryNumber: dto.deliveryNumber,
@@ -100,8 +54,6 @@ export class DeliveryNoteService {
       receivedBy: dto.receivedBy ?? null,
       createdBy: dto.createdBy ?? null,
     });
-
-    return this.dnRepo.save(dn);
   }
 
   async update(
@@ -118,7 +70,7 @@ export class DeliveryNoteService {
     id: number,
     extractedData: Record<string, unknown>,
   ): Promise<PlatformDeliveryNote> {
-    const dn = await this.dnRepo.findOneBy({ id });
+    const dn = await this.dnRepo.findById(id);
     if (!dn) {
       throw new NotFoundException(`Delivery note ${id} not found`);
     }
@@ -145,15 +97,11 @@ export class DeliveryNoteService {
     await this.dnRepo.remove(dn);
   }
 
-  async findByLegacyScId(scDeliveryNoteId: number): Promise<PlatformDeliveryNote | null> {
-    return this.dnRepo.findOne({
-      where: { legacyScDeliveryNoteId: scDeliveryNoteId },
-    });
+  findByLegacyScId(scDeliveryNoteId: number): Promise<PlatformDeliveryNote | null> {
+    return this.dnRepo.findByLegacyScId(scDeliveryNoteId);
   }
 
-  async findByLegacyRubberId(rubberDeliveryNoteId: number): Promise<PlatformDeliveryNote | null> {
-    return this.dnRepo.findOne({
-      where: { legacyRubberDeliveryNoteId: rubberDeliveryNoteId },
-    });
+  findByLegacyRubberId(rubberDeliveryNoteId: number): Promise<PlatformDeliveryNote | null> {
+    return this.dnRepo.findByLegacyRubberId(rubberDeliveryNoteId);
   }
 }

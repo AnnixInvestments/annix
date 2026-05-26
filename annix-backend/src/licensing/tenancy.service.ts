@@ -1,12 +1,10 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Company } from "../platform/entities/company.entity";
+import { CompanyRepository } from "../platform/company.repository";
 import { RbacService } from "../rbac/rbac.service";
-import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import type { CreateTenantDto, InviteTenantUserDto, TransferOwnerDto } from "./dto/tenancy.dto";
-import { ModuleLicense } from "./entities/module-license.entity";
 import { LicensingService } from "./licensing.service";
+import { ModuleLicenseRepository } from "./repositories/module-license.repository";
 
 export interface TenantSummary {
   companyId: number;
@@ -21,22 +19,19 @@ export class TenancyService {
   private readonly logger = new Logger(TenancyService.name);
 
   constructor(
-    @InjectRepository(Company)
-    private readonly companyRepo: Repository<Company>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(ModuleLicense)
-    private readonly licenseRepo: Repository<ModuleLicense>,
+    private readonly companyRepo: CompanyRepository,
+    private readonly userRepo: UserRepository,
+    private readonly licenseRepo: ModuleLicenseRepository,
     private readonly rbacService: RbacService,
     private readonly licensingService: LicensingService,
   ) {}
 
   async listTenants(moduleKey: string): Promise<TenantSummary[]> {
-    const licences = await this.licenseRepo.find({ where: { moduleKey } });
+    const licences = await this.licenseRepo.findByModule(moduleKey);
     return Promise.all(
       licences.map(async (licence) => {
-        const company = await this.companyRepo.findOne({ where: { id: licence.companyId } });
-        const userCount = await this.userRepo.count({ where: { companyId: licence.companyId } });
+        const company = await this.companyRepo.findById(licence.companyId);
+        const userCount = await this.userRepo.count({ companyId: licence.companyId });
         return {
           companyId: licence.companyId,
           name: company?.name ?? "(unknown)",
@@ -53,7 +48,7 @@ export class TenancyService {
     dto: CreateTenantDto,
     grantedById: number,
   ): Promise<TenantSummary> {
-    const company = await this.companyRepo.save(this.companyRepo.create({ name: dto.companyName }));
+    const company = await this.companyRepo.create({ name: dto.companyName });
     const invite = await this.rbacService.inviteUser(
       {
         email: dto.ownerEmail,
@@ -64,7 +59,7 @@ export class TenancyService {
       },
       grantedById,
     );
-    await this.userRepo.update(invite.userId, { companyId: company.id });
+    await this.userRepo.updateCompanyId(invite.userId, company.id);
     company.ownerUserId = invite.userId;
     await this.companyRepo.save(company);
     await this.licensingService.setTier(company.id, moduleKey, dto.tier);
@@ -84,7 +79,7 @@ export class TenancyService {
     dto: InviteTenantUserDto,
     grantedById: number,
   ): Promise<{ userId: number; email: string }> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) {
       throw new NotFoundException(`Tenant ${companyId} not found`);
     }
@@ -98,25 +93,23 @@ export class TenancyService {
       },
       grantedById,
     );
-    await this.userRepo.update(invite.userId, { companyId });
+    await this.userRepo.updateCompanyId(invite.userId, companyId);
     return { userId: invite.userId, email: invite.email };
   }
 
   async transferOwnership(companyId: number, dto: TransferOwnerDto): Promise<TenantSummary> {
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) {
       throw new NotFoundException(`Tenant ${companyId} not found`);
     }
-    const newOwner = await this.userRepo.findOne({ where: { id: dto.newOwnerUserId } });
+    const newOwner = await this.userRepo.findById(dto.newOwnerUserId);
     if (!newOwner || newOwner.companyId !== companyId) {
       throw new BadRequestException("The new owner must be a user that belongs to this tenant.");
     }
     company.ownerUserId = dto.newOwnerUserId;
     await this.companyRepo.save(company);
-    const userCount = await this.userRepo.count({ where: { companyId } });
-    const licence = await this.licenseRepo.findOne({
-      where: { companyId, moduleKey: "au-rubber" },
-    });
+    const userCount = await this.userRepo.count({ companyId });
+    const licence = await this.licenseRepo.findByCompanyAndModule(companyId, "au-rubber");
     return {
       companyId,
       name: company.name,

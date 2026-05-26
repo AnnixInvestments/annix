@@ -1,23 +1,19 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import {
-  CalendarConnection,
-  CalendarEvent,
-  Meeting,
-  MeetingStatus,
-  SyncConflict,
-} from "../entities";
+import { CalendarConnectionRepository } from "../calendar-connection.repository";
+import { CalendarEventRepository } from "../calendar-event.repository";
+import { MeetingStatus } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { SyncConflictRepository } from "../sync-conflict.repository";
 import { CalendarService } from "./calendar.service";
 import { CalendarSyncService } from "./calendar-sync.service";
 
 describe("CalendarSyncService", () => {
   let service: CalendarSyncService;
-  let mockConnectionRepo: Partial<Repository<CalendarConnection>>;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
-  let mockCalendarEventRepo: Partial<Repository<CalendarEvent>>;
-  let mockConflictRepo: Partial<Repository<SyncConflict>>;
+  let mockConnectionRepo: Partial<CalendarConnectionRepository>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
+  let mockCalendarEventRepo: Partial<CalendarEventRepository>;
+  let mockConflictRepo: Partial<SyncConflictRepository>;
   let mockCalendarService: Partial<CalendarService>;
   const originalCronFlag = process.env.ANNIX_REP_CRON_ENABLED;
 
@@ -35,27 +31,27 @@ describe("CalendarSyncService", () => {
 
   beforeEach(async () => {
     mockConnectionRepo = {
-      find: jest.fn().mockResolvedValue([]),
+      findBySyncStatuses: jest.fn().mockResolvedValue([]),
+      save: jest.fn(),
     };
 
     mockMeetingRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn(),
-      save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+      findFutureForOverlapDetection: jest.fn().mockResolvedValue([]),
+      updateStatus: jest.fn(),
     };
 
     mockCalendarEventRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn(),
-      remove: jest.fn(),
+      findOverlapsForUser: jest.fn().mockResolvedValue([]),
+      deleteById: jest.fn(),
     };
 
     mockConflictRepo = {
-      find: jest.fn().mockResolvedValue([]),
-      findOne: jest.fn(),
-      create: jest.fn().mockImplementation((data) => ({ id: 1, ...data })),
+      findPendingForUser: jest.fn().mockResolvedValue([]),
+      findPendingForPair: jest.fn().mockResolvedValue(null),
+      findByIdAndUser: jest.fn(),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
       save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-      count: jest.fn().mockResolvedValue(0),
+      countPendingForUser: jest.fn().mockResolvedValue(0),
     };
 
     mockCalendarService = {
@@ -67,19 +63,19 @@ describe("CalendarSyncService", () => {
       providers: [
         CalendarSyncService,
         {
-          provide: getRepositoryToken(CalendarConnection),
+          provide: CalendarConnectionRepository,
           useValue: mockConnectionRepo,
         },
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
         },
         {
-          provide: getRepositoryToken(CalendarEvent),
+          provide: CalendarEventRepository,
           useValue: mockCalendarEventRepo,
         },
         {
-          provide: getRepositoryToken(SyncConflict),
+          provide: SyncConflictRepository,
           useValue: mockConflictRepo,
         },
         {
@@ -103,22 +99,22 @@ describe("CalendarSyncService", () => {
 
       await service.syncActiveConnections();
 
-      expect(mockConnectionRepo.find).not.toHaveBeenCalled();
+      expect(mockConnectionRepo.findBySyncStatuses).not.toHaveBeenCalled();
     });
 
     it("should process active connections", async () => {
-      (mockConnectionRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockConnectionRepo.findBySyncStatuses as jest.Mock).mockResolvedValue([]);
 
       await service.syncActiveConnections();
 
-      expect(mockConnectionRepo.find).toHaveBeenCalled();
+      expect(mockConnectionRepo.findBySyncStatuses).toHaveBeenCalled();
     });
   });
 
   describe("detectTimeOverlaps", () => {
     it("should return empty array when no meetings exist", async () => {
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockCalendarEventRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findFutureForOverlapDetection as jest.Mock).mockResolvedValue([]);
+      (mockCalendarEventRepo.findOverlapsForUser as jest.Mock).mockResolvedValue([]);
 
       const result = await service.detectTimeOverlaps(1);
 
@@ -146,9 +142,9 @@ describe("CalendarSyncService", () => {
         },
       ];
 
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue(meetings);
-      (mockCalendarEventRepo.find as jest.Mock).mockResolvedValue(calendarEvents);
-      (mockConflictRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findFutureForOverlapDetection as jest.Mock).mockResolvedValue(meetings);
+      (mockCalendarEventRepo.findOverlapsForUser as jest.Mock).mockResolvedValue(calendarEvents);
+      (mockConflictRepo.findPendingForUser as jest.Mock).mockResolvedValue([]);
 
       const result = await service.detectTimeOverlaps(1);
 
@@ -159,18 +155,18 @@ describe("CalendarSyncService", () => {
   describe("pendingConflicts", () => {
     it("should return unresolved conflicts for user", async () => {
       const conflicts = [{ id: 1, userId: 1, resolution: "pending", resolvedAt: null }];
-      (mockConflictRepo.find as jest.Mock).mockResolvedValue(conflicts);
+      (mockConflictRepo.findPendingForUser as jest.Mock).mockResolvedValue(conflicts);
 
       const result = await service.pendingConflicts(1);
 
       expect(result).toBeDefined();
-      expect(mockConflictRepo.find).toHaveBeenCalled();
+      expect(mockConflictRepo.findPendingForUser).toHaveBeenCalled();
     });
   });
 
   describe("conflictCount", () => {
     it("should return count of pending conflicts", async () => {
-      (mockConflictRepo.count as jest.Mock).mockResolvedValue(3);
+      (mockConflictRepo.countPendingForUser as jest.Mock).mockResolvedValue(3);
 
       const result = await service.conflictCount(1);
 
@@ -180,7 +176,7 @@ describe("CalendarSyncService", () => {
 
   describe("resolveConflict", () => {
     it("should throw NotFoundException when conflict does not exist", async () => {
-      (mockConflictRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockConflictRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.resolveConflict(1, 999, "dismissed")).rejects.toThrow(NotFoundException);
     });

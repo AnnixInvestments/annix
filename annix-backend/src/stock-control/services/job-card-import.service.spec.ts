@@ -1,13 +1,13 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
-import { JobCard, JobCardStatus } from "../entities/job-card.entity";
-import { JobCardExtractionCorrection } from "../entities/job-card-extraction-correction.entity";
-import { JobCardImportMapping } from "../entities/job-card-import-mapping.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
+import { JobCardStatus } from "../entities/job-card.entity";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
+import { CustomerPurchaseOrderItemRepository } from "../repositories/customer-purchase-order-item.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardExtractionCorrectionRepository } from "../repositories/job-card-extraction-correction.repository";
+import { JobCardImportMappingRepository } from "../repositories/job-card-import-mapping.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 import { JobCardImportRow, JobCardImportService } from "./job-card-import.service";
@@ -16,38 +16,47 @@ import { JobCardVersionService } from "./job-card-version.service";
 describe("JobCardImportService", () => {
   let service: JobCardImportService;
 
+  const jobCardFindOne = jest.fn();
+  const jobCardFind = jest.fn();
   const mockJobCardRepo = {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findOne: jobCardFindOne,
+    findOneForCompany: jobCardFindOne,
+    findById: jobCardFindOne,
+    find: jobCardFind,
+    findChildJobCardsByJobNumber: jobCardFind,
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
+  const lineItemFind = jest.fn().mockResolvedValue([]);
+  const lineItemSave = jest.fn().mockImplementation((entity) => Promise.resolve(entity));
   const mockLineItemRepo = {
-    find: jest.fn().mockResolvedValue([]),
-    save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
-    create: jest
-      .fn()
-      .mockImplementation((data) =>
-        Array.isArray(data) ? data.map((d) => ({ ...d })) : { ...data },
-      ),
-    delete: jest.fn().mockResolvedValue({ affected: 0 }),
+    find: lineItemFind,
+    findForJobCardAndCompany: lineItemFind,
+    findForJobCardOrderedBySort: lineItemFind,
+    findOne: jest.fn(),
+    findOneByIdAndJobCard: jest.fn(),
+    countForJobCard: jest.fn().mockResolvedValue(0),
+    save: lineItemSave,
+    saveMany: lineItemSave,
+    buildMany: jest.fn().mockImplementation((rows) => rows.map((r: object) => ({ ...r }))),
+    deleteForJobCard: jest.fn().mockResolvedValue(undefined),
   };
 
   const mockMappingRepo = {
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findForCompany: jest.fn(),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
   };
 
   const mockCpoItemRepo = {
-    find: jest.fn().mockResolvedValue([]),
-    findOne: jest.fn(),
-    update: jest.fn(),
+    findForCpoOrdered: jest.fn().mockResolvedValue([]),
+    findOneForCpo: jest.fn(),
+    updateById: jest.fn(),
   };
 
   const mockCorrectionRepo = {
-    find: jest.fn().mockResolvedValue([]),
+    findRecentForCompany: jest.fn().mockResolvedValue([]),
   };
 
   const mockAiChatService = {
@@ -74,11 +83,11 @@ describe("JobCardImportService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobCardImportService,
-        { provide: getRepositoryToken(JobCard), useValue: mockJobCardRepo },
-        { provide: getRepositoryToken(JobCardLineItem), useValue: mockLineItemRepo },
-        { provide: getRepositoryToken(JobCardImportMapping), useValue: mockMappingRepo },
-        { provide: getRepositoryToken(CustomerPurchaseOrderItem), useValue: mockCpoItemRepo },
-        { provide: getRepositoryToken(JobCardExtractionCorrection), useValue: mockCorrectionRepo },
+        { provide: JobCardRepository, useValue: mockJobCardRepo },
+        { provide: JobCardLineItemRepository, useValue: mockLineItemRepo },
+        { provide: JobCardImportMappingRepository, useValue: mockMappingRepo },
+        { provide: CustomerPurchaseOrderItemRepository, useValue: mockCpoItemRepo },
+        { provide: JobCardExtractionCorrectionRepository, useValue: mockCorrectionRepo },
         { provide: AiChatService, useValue: mockAiChatService },
         { provide: DrawingExtractionService, useValue: mockDrawingExtractionService },
         { provide: CpoService, useValue: mockCpoService },
@@ -94,17 +103,16 @@ describe("JobCardImportService", () => {
     service = module.get<JobCardImportService>(JobCardImportService);
     jest.resetAllMocks();
 
-    mockJobCardRepo.create.mockImplementation((data) => ({ ...data }));
+    mockJobCardRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
     mockJobCardRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
-    mockLineItemRepo.find.mockResolvedValue([]);
-    mockLineItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
-    mockLineItemRepo.create.mockImplementation((data) =>
-      Array.isArray(data) ? data.map((d) => ({ ...d })) : { ...data },
-    );
-    mockLineItemRepo.delete.mockResolvedValue({ affected: 0 });
-    mockMappingRepo.create.mockImplementation((data) => ({ ...data }));
+    lineItemFind.mockResolvedValue([]);
+    lineItemSave.mockImplementation((entity) => Promise.resolve(entity));
+    mockLineItemRepo.buildMany.mockImplementation((rows) => rows.map((r: object) => ({ ...r })));
+    mockLineItemRepo.countForJobCard.mockResolvedValue(0);
+    mockLineItemRepo.deleteForJobCard.mockResolvedValue(undefined);
+    mockMappingRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
     mockMappingRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
-    mockCpoItemRepo.find.mockResolvedValue([]);
+    mockCpoItemRepo.findForCpoOrdered.mockResolvedValue([]);
     mockCpoService.matchJobCardToCpo.mockResolvedValue(null);
     mockVersionService.archiveCurrentVersion.mockResolvedValue(null);
     mockVersionService.resetWorkflow.mockResolvedValue(null);
@@ -117,7 +125,7 @@ describe("JobCardImportService", () => {
   describe("importJobCards", () => {
     it("creates a new job card when none exists with same job number", async () => {
       mockJobCardRepo.findOne.mockResolvedValue(null);
-      mockJobCardRepo.save.mockResolvedValue({ id: 10, jobNumber: "JOB-001" });
+      mockJobCardRepo.create.mockResolvedValue({ id: 10, jobNumber: "JOB-001" });
 
       const rows: JobCardImportRow[] = [
         {
@@ -305,7 +313,7 @@ describe("JobCardImportService", () => {
 
   describe("saveMapping and mapping", () => {
     it("creates new mapping when none exists", async () => {
-      mockMappingRepo.findOne.mockResolvedValue(null);
+      mockMappingRepo.findForCompany.mockResolvedValue(null);
 
       const config = {
         jobNumber: { column: 0, startRow: 0, endRow: 0 },
@@ -339,7 +347,7 @@ describe("JobCardImportService", () => {
 
     it("updates existing mapping", async () => {
       const existing = { id: 5, companyId: 1, mappingConfig: {} };
-      mockMappingRepo.findOne.mockResolvedValue(existing);
+      mockMappingRepo.findForCompany.mockResolvedValue(existing);
 
       const config = {
         jobNumber: { column: 1, startRow: 0, endRow: 0 },
@@ -437,7 +445,7 @@ describe("JobCardImportService", () => {
 
       await service.confirmDeliveryMatches(1, 999, []);
 
-      expect(mockCpoItemRepo.update).not.toHaveBeenCalled();
+      expect(mockCpoItemRepo.updateById).not.toHaveBeenCalled();
     });
   });
 });

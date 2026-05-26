@@ -1,6 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import {
+  CoatingEnvironmentRepository,
+  CoatingSpecificationRepository,
+  CoatingStandardRepository,
+} from "./coating-specification.repository";
 import { CoatingEnvironment } from "./entities/coating-environment.entity";
 import { CoatingSpecification } from "./entities/coating-specification.entity";
 import { CoatingStandard } from "./entities/coating-standard.entity";
@@ -8,102 +11,60 @@ import { CoatingStandard } from "./entities/coating-standard.entity";
 @Injectable()
 export class CoatingSpecificationService {
   constructor(
-    @InjectRepository(CoatingStandard)
-    private readonly standardRepo: Repository<CoatingStandard>,
-    @InjectRepository(CoatingEnvironment)
-    private readonly environmentRepo: Repository<CoatingEnvironment>,
-    @InjectRepository(CoatingSpecification)
-    private readonly specificationRepo: Repository<CoatingSpecification>,
+    private readonly standardRepository: CoatingStandardRepository,
+    private readonly environmentRepository: CoatingEnvironmentRepository,
+    private readonly specificationRepository: CoatingSpecificationRepository,
   ) {}
 
   async findAllStandards(): Promise<CoatingStandard[]> {
-    return this.standardRepo.find({
-      order: { code: "ASC" },
-    });
+    return this.standardRepository.findAllOrderedByCode();
   }
 
   async findStandardByCode(code: string): Promise<CoatingStandard | null> {
-    return this.standardRepo.findOne({
-      where: { code },
-      relations: ["environments", "environments.specifications"],
-    });
+    return this.standardRepository.findByCodeWithRelations(code);
   }
 
   async findAllEnvironments(): Promise<CoatingEnvironment[]> {
-    return this.environmentRepo.find({
-      relations: ["standard"],
-      order: { standardId: "ASC", category: "ASC" },
-    });
+    return this.environmentRepository.findAllWithStandard();
   }
 
   async findEnvironmentsByStandard(standardCode: string): Promise<CoatingEnvironment[]> {
-    return this.environmentRepo.find({
-      where: { standard: { code: standardCode } },
-      relations: ["standard"],
-      order: { category: "ASC" },
-    });
+    return this.environmentRepository.findByStandardCode(standardCode);
   }
 
   async findEnvironmentByCategory(
     standardCode: string,
     category: string,
   ): Promise<CoatingEnvironment | null> {
-    return this.environmentRepo.findOne({
-      where: {
-        standard: { code: standardCode },
-        category,
-      },
-      relations: ["standard", "specifications"],
-    });
+    return this.environmentRepository.findByCategoryWithRelations(standardCode, category);
   }
 
   async findSpecificationsByEnvironment(environmentId: number): Promise<CoatingSpecification[]> {
-    return this.specificationRepo.find({
-      where: { environmentId },
-      order: { coatingType: "ASC", lifespan: "ASC" },
-    });
+    return this.specificationRepository.findByEnvironmentId(environmentId);
   }
 
-  /**
-   * Get recommended coating specifications for a given environment and type
-   */
   async getRecommendedCoatings(
     standardCode: string,
     category: string,
     coatingType: "external" | "internal",
     lifespan?: string,
   ): Promise<CoatingSpecification[]> {
-    const environment = await this.environmentRepo.findOne({
-      where: {
-        standard: { code: standardCode },
-        category,
-      },
-      relations: ["standard"],
-    });
+    const environment = await this.environmentRepository.findByStandardCodeAndCategory(
+      standardCode,
+      category,
+    );
 
     if (!environment) {
       return [];
     }
 
-    const whereClause: any = {
-      environmentId: environment.id,
+    return this.specificationRepository.findByEnvironmentAndType(
+      environment.id,
       coatingType,
-    };
-
-    if (lifespan) {
-      whereClause.lifespan = lifespan;
-    }
-
-    return this.specificationRepo.find({
-      where: whereClause,
-      relations: ["environment", "environment.standard"],
-      order: { lifespan: "ASC" },
-    });
+      lifespan,
+    );
   }
 
-  /**
-   * Get complete coating information for a category
-   */
   async getCompleteCoatingInfo(
     standardCode: string,
     category: string,
@@ -113,17 +74,12 @@ export class CoatingSpecificationService {
     externalSpecs: CoatingSpecification[];
     internalSpecs: CoatingSpecification[];
   }> {
-    const standard = await this.standardRepo.findOne({
-      where: { code: standardCode },
-    });
+    const standard = await this.standardRepository.findByCode(standardCode);
 
-    const environment = await this.environmentRepo.findOne({
-      where: {
-        standard: { code: standardCode },
-        category,
-      },
-      relations: ["standard"],
-    });
+    const environment = await this.environmentRepository.findByStandardCodeAndCategory(
+      standardCode,
+      category,
+    );
 
     if (!environment) {
       return {
@@ -135,14 +91,8 @@ export class CoatingSpecificationService {
     }
 
     const [externalSpecs, internalSpecs] = await Promise.all([
-      this.specificationRepo.find({
-        where: { environmentId: environment.id, coatingType: "external" },
-        order: { lifespan: "ASC" },
-      }),
-      this.specificationRepo.find({
-        where: { environmentId: environment.id, coatingType: "internal" },
-        order: { lifespan: "ASC" },
-      }),
+      this.specificationRepository.findByEnvironmentAndExternalType(environment.id),
+      this.specificationRepository.findByEnvironmentAndInternalType(environment.id),
     ]);
 
     return {
@@ -153,9 +103,6 @@ export class CoatingSpecificationService {
     };
   }
 
-  /**
-   * Get all available lifespan options
-   */
   getLifespanOptions(): { value: string; label: string; years: string }[] {
     return [
       { value: "Low", label: "Low", years: "2-7 years" },
@@ -165,14 +112,8 @@ export class CoatingSpecificationService {
     ];
   }
 
-  /**
-   * Get all corrosivity categories for ISO 12944
-   */
   async getCorrosivityCategories(): Promise<{ category: string; description: string }[]> {
-    const environments = await this.environmentRepo.find({
-      where: { standard: { code: "ISO 12944" } },
-      order: { category: "ASC" },
-    });
+    const environments = await this.environmentRepository.findAllForStandardCode("ISO 12944");
 
     return environments.map((env) => ({
       category: env.category,
@@ -180,11 +121,6 @@ export class CoatingSpecificationService {
     }));
   }
 
-  /**
-   * Get paint systems filtered by category and durability (ISO 12944-5:2018)
-   * Returns the LOWEST (simplest) spec that meets the durability requirement
-   * Sorted by minimum DFT to recommend the most economical option
-   */
   async systemsByDurability(
     category: string,
     durability: "L" | "M" | "H" | "VH",
@@ -192,24 +128,18 @@ export class CoatingSpecificationService {
     recommended: CoatingSpecification | null;
     alternatives: CoatingSpecification[];
   }> {
-    const environment = await this.environmentRepo.findOne({
-      where: {
-        standard: { code: "ISO 12944" },
-        category,
-      },
-    });
+    const environment = await this.environmentRepository.findByStandardAndCategory(
+      "ISO 12944",
+      category,
+    );
 
     if (!environment) {
       return { recommended: null, alternatives: [] };
     }
 
-    const allSpecs = await this.specificationRepo.find({
-      where: {
-        environmentId: environment.id,
-        coatingType: "external",
-      },
-      relations: ["environment", "environment.standard"],
-    });
+    const allSpecs = await this.specificationRepository.findByEnvironmentAndExternalType(
+      environment.id,
+    );
 
     const matchingSpecs = allSpecs.filter((spec) => {
       const durabilities = spec.supportedDurabilities?.split(",") || [];
@@ -233,34 +163,19 @@ export class CoatingSpecificationService {
     return { recommended, alternatives };
   }
 
-  /**
-   * Get all paint systems for a category (ISO 12944-5:2018)
-   */
   async systemsByCategory(category: string): Promise<CoatingSpecification[]> {
-    const environment = await this.environmentRepo.findOne({
-      where: {
-        standard: { code: "ISO 12944" },
-        category,
-      },
-    });
+    const environment = await this.environmentRepository.findByStandardAndCategory(
+      "ISO 12944",
+      category,
+    );
 
     if (!environment) {
       return [];
     }
 
-    return this.specificationRepo.find({
-      where: {
-        environmentId: environment.id,
-        coatingType: "external",
-      },
-      relations: ["environment", "environment.standard"],
-      order: { systemCode: "ASC" },
-    });
+    return this.specificationRepository.findByEnvironmentAndExternalType(environment.id);
   }
 
-  /**
-   * Get available durability options for a category
-   */
   async availableDurabilitiesForCategory(
     category: string,
   ): Promise<{ code: string; label: string; years: string }[]> {
@@ -291,13 +206,7 @@ export class CoatingSpecificationService {
       }));
   }
 
-  /**
-   * Get a specific paint system by its ISO code
-   */
   async systemByCode(systemCode: string): Promise<CoatingSpecification | null> {
-    return this.specificationRepo.findOne({
-      where: { systemCode },
-      relations: ["environment", "environment.standard"],
-    });
+    return this.specificationRepository.findBySystemCode(systemCode);
   }
 }

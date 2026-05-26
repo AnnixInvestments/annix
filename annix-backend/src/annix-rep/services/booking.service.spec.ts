@@ -1,18 +1,17 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO } from "../../lib/datetime";
 import { User } from "../../user/entities/user.entity";
+import { BookingLinkRepository } from "../booking-link.repository";
 import { BookingLink } from "../entities/booking-link.entity";
-import { Meeting, MeetingStatus, MeetingType } from "../entities/meeting.entity";
+import { MeetingStatus, MeetingType } from "../entities/meeting.entity";
+import { MeetingRepository } from "../meeting.repository";
 import { BookingService } from "./booking.service";
 
 describe("BookingService", () => {
   let service: BookingService;
-  let mockBookingLinkRepo: Partial<Repository<BookingLink>>;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
-  let mockUserRepo: Partial<Repository<User>>;
+  let mockBookingLinkRepo: Partial<BookingLinkRepository>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
 
   const testDate = fromISO("2026-01-15T10:00:00Z").toJSDate();
 
@@ -49,36 +48,30 @@ describe("BookingService", () => {
     mockBookingLinkRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
+      findByIdAndUser: jest.fn(),
+      findByUser: jest.fn(),
+      findActiveBySlug: jest.fn(),
+      findActiveBySlugWithUser: jest.fn(),
       remove: jest.fn(),
     };
 
     mockMeetingRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      find: jest.fn(),
-      findOne: jest.fn(),
-    };
-
-    mockUserRepo = {
-      findOne: jest.fn(),
+      findScheduledInDayTimes: jest.fn().mockResolvedValue([]),
+      findScheduledConflict: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         BookingService,
         {
-          provide: getRepositoryToken(BookingLink),
+          provide: BookingLinkRepository,
           useValue: mockBookingLinkRepo,
         },
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
-        },
-        {
-          provide: getRepositoryToken(User),
-          useValue: mockUserRepo,
         },
       ],
     }).compile();
@@ -99,8 +92,7 @@ describe("BookingService", () => {
         meetingType: MeetingType.VIDEO,
       };
       const created = mockBookingLink({ name: "Discovery Call", meetingDurationMinutes: 45 });
-      (mockBookingLinkRepo.create as jest.Mock).mockReturnValue(created);
-      (mockBookingLinkRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockBookingLinkRepo.create as jest.Mock).mockResolvedValue(created);
 
       const result = await service.createLink(100, dto);
 
@@ -117,8 +109,7 @@ describe("BookingService", () => {
     it("should use default values when optional fields are not provided", async () => {
       const dto = { name: "Quick Chat" };
       const created = mockBookingLink({ name: "Quick Chat" });
-      (mockBookingLinkRepo.create as jest.Mock).mockReturnValue(created);
-      (mockBookingLinkRepo.save as jest.Mock).mockResolvedValue(created);
+      (mockBookingLinkRepo.create as jest.Mock).mockResolvedValue(created);
 
       await service.createLink(100, dto as any);
 
@@ -139,7 +130,7 @@ describe("BookingService", () => {
   describe("updateLink", () => {
     it("should update link fields and return updated link", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(link);
       (mockBookingLinkRepo.save as jest.Mock).mockResolvedValue({
         ...link,
         name: "Updated Name",
@@ -152,7 +143,7 @@ describe("BookingService", () => {
     });
 
     it("should throw NotFoundException when link does not exist", async () => {
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.updateLink(100, 999, { name: "Updated" })).rejects.toThrow(
         NotFoundException,
@@ -161,7 +152,7 @@ describe("BookingService", () => {
 
     it("should only update fields that are provided in dto", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(link);
       (mockBookingLinkRepo.save as jest.Mock).mockImplementation((entity) =>
         Promise.resolve(entity),
       );
@@ -174,7 +165,7 @@ describe("BookingService", () => {
 
     it("should update isActive flag", async () => {
       const link = mockBookingLink({ isActive: true });
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(link);
       (mockBookingLinkRepo.save as jest.Mock).mockImplementation((entity) =>
         Promise.resolve(entity),
       );
@@ -188,7 +179,7 @@ describe("BookingService", () => {
   describe("deleteLink", () => {
     it("should delete the booking link", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(link);
       (mockBookingLinkRepo.remove as jest.Mock).mockResolvedValue(link);
 
       await service.deleteLink(100, 1);
@@ -197,7 +188,7 @@ describe("BookingService", () => {
     });
 
     it("should throw NotFoundException when link does not exist", async () => {
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.deleteLink(100, 999)).rejects.toThrow(NotFoundException);
     });
@@ -206,19 +197,16 @@ describe("BookingService", () => {
   describe("userLinks", () => {
     it("should return all links for the user ordered by createdAt DESC", async () => {
       const links = [mockBookingLink({ id: 2 }), mockBookingLink({ id: 1 })];
-      (mockBookingLinkRepo.find as jest.Mock).mockResolvedValue(links);
+      (mockBookingLinkRepo.findByUser as jest.Mock).mockResolvedValue(links);
 
       const result = await service.userLinks(100);
 
       expect(result).toHaveLength(2);
-      expect(mockBookingLinkRepo.find).toHaveBeenCalledWith({
-        where: { userId: 100 },
-        order: { createdAt: "DESC" },
-      });
+      expect(mockBookingLinkRepo.findByUser).toHaveBeenCalledWith(100);
     });
 
     it("should return empty array when user has no links", async () => {
-      (mockBookingLinkRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockBookingLinkRepo.findByUser as jest.Mock).mockResolvedValue([]);
 
       const result = await service.userLinks(100);
 
@@ -229,18 +217,16 @@ describe("BookingService", () => {
   describe("linkById", () => {
     it("should return the link when found", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(link);
 
       const result = await service.linkById(100, 1);
 
       expect(result.id).toBe(1);
-      expect(mockBookingLinkRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1, userId: 100 },
-      });
+      expect(mockBookingLinkRepo.findByIdAndUser).toHaveBeenCalledWith(1, 100);
     });
 
     it("should throw NotFoundException when link does not exist", async () => {
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findByIdAndUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.linkById(100, 999)).rejects.toThrow(NotFoundException);
     });
@@ -249,7 +235,7 @@ describe("BookingService", () => {
   describe("publicLinkDetails", () => {
     it("should return public details for an active link", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(link);
 
       const result = await service.publicLinkDetails("abc-123");
 
@@ -260,7 +246,7 @@ describe("BookingService", () => {
     });
 
     it("should throw NotFoundException for inactive or missing link", async () => {
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(null);
 
       await expect(service.publicLinkDetails("nonexistent")).rejects.toThrow(NotFoundException);
     });
@@ -274,7 +260,7 @@ describe("BookingService", () => {
           email: "john@example.com",
         } as User,
       });
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(link);
 
       const result = await service.publicLinkDetails("abc-123");
 
@@ -284,7 +270,7 @@ describe("BookingService", () => {
 
   describe("availableSlots", () => {
     it("should throw NotFoundException when link is not found", async () => {
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findActiveBySlug as jest.Mock).mockResolvedValue(null);
 
       await expect(service.availableSlots("nonexistent", "2026-01-20")).rejects.toThrow(
         NotFoundException,
@@ -293,7 +279,7 @@ describe("BookingService", () => {
 
     it("should return empty array when requested day is not in available days", async () => {
       const link = mockBookingLink({ availableDays: "1,2,3,4,5" });
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
+      (mockBookingLinkRepo.findActiveBySlug as jest.Mock).mockResolvedValue(link);
 
       const result = await service.availableSlots("abc-123", "2026-01-18");
 
@@ -304,8 +290,8 @@ describe("BookingService", () => {
   describe("bookSlot", () => {
     it("should create a meeting for the booked slot", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(link);
+      (mockMeetingRepo.findScheduledConflict as jest.Mock).mockResolvedValue(null);
 
       const createdMeeting = {
         id: 42,
@@ -315,8 +301,7 @@ describe("BookingService", () => {
         scheduledStart: fromISO("2026-01-20T10:00:00Z").toJSDate(),
         scheduledEnd: fromISO("2026-01-20T10:30:00Z").toJSDate(),
       };
-      (mockMeetingRepo.create as jest.Mock).mockReturnValue(createdMeeting);
-      (mockMeetingRepo.save as jest.Mock).mockResolvedValue(createdMeeting);
+      (mockMeetingRepo.create as jest.Mock).mockResolvedValue(createdMeeting);
 
       const result = await service.bookSlot("abc-123", {
         startTime: "2026-01-20T10:00:00Z",
@@ -332,7 +317,7 @@ describe("BookingService", () => {
     });
 
     it("should throw NotFoundException when booking link is not found", async () => {
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.bookSlot("nonexistent", {
@@ -345,8 +330,8 @@ describe("BookingService", () => {
 
     it("should throw BadRequestException when time slot conflicts", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue({ id: 99 });
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(link);
+      (mockMeetingRepo.findScheduledConflict as jest.Mock).mockResolvedValue({ id: 99 });
 
       await expect(
         service.bookSlot("abc-123", {
@@ -359,12 +344,11 @@ describe("BookingService", () => {
 
     it("should include custom answers in meeting description", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(link);
+      (mockMeetingRepo.findScheduledConflict as jest.Mock).mockResolvedValue(null);
 
       const createdMeeting = { id: 42, title: "Meeting with Test User" };
-      (mockMeetingRepo.create as jest.Mock).mockReturnValue(createdMeeting);
-      (mockMeetingRepo.save as jest.Mock).mockResolvedValue(createdMeeting);
+      (mockMeetingRepo.create as jest.Mock).mockResolvedValue(createdMeeting);
 
       await service.bookSlot("abc-123", {
         startTime: "2026-01-20T10:00:00Z",
@@ -379,12 +363,11 @@ describe("BookingService", () => {
 
     it("should include notes in meeting description when provided", async () => {
       const link = mockBookingLink();
-      (mockBookingLinkRepo.findOne as jest.Mock).mockResolvedValue(link);
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockBookingLinkRepo.findActiveBySlugWithUser as jest.Mock).mockResolvedValue(link);
+      (mockMeetingRepo.findScheduledConflict as jest.Mock).mockResolvedValue(null);
 
       const createdMeeting = { id: 42, title: "Meeting with Test User" };
-      (mockMeetingRepo.create as jest.Mock).mockReturnValue(createdMeeting);
-      (mockMeetingRepo.save as jest.Mock).mockResolvedValue(createdMeeting);
+      (mockMeetingRepo.create as jest.Mock).mockResolvedValue(createdMeeting);
 
       await service.bookSlot("abc-123", {
         startTime: "2026-01-20T10:00:00Z",

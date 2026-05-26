@@ -1,5 +1,14 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from "@nestjs/common";
+import { InjectConnection } from "@nestjs/mongoose";
+import type { Connection, Model } from "mongoose";
 import { Brackets, DataSource } from "typeorm";
+import { isMongoDriver } from "../lib/persistence/database-driver";
 import {
   ColumnSchema,
   EntitySchemaResponse,
@@ -130,10 +139,48 @@ const CATEGORY_RULES: ReadonlyArray<[RegExp, string]> = [
 export class AdminReferenceDataService {
   private readonly logger = new Logger(AdminReferenceDataService.name);
 
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @Optional() private readonly dataSource: DataSource,
+    @Optional() @InjectConnection() private readonly connection: Connection,
+  ) {}
 
   private isAllowed(entityName: string): boolean {
     return ALLOWED_ENTITIES.has(entityName);
+  }
+
+  private mongoModel(entityName: string): Model<Record<string, unknown>> {
+    if (!this.isAllowed(entityName)) {
+      throw new NotFoundException(`Entity "${entityName}" not found or not accessible`);
+    }
+    const model = this.connection?.models[entityName];
+    if (!model) {
+      throw new NotFoundException(`Entity "${entityName}" not found or not accessible`);
+    }
+    return model as Model<Record<string, unknown>>;
+  }
+
+  private schemaPaths(
+    model: Model<Record<string, unknown>>,
+  ): Array<{ path: string; instance: string; isRequired?: boolean }> {
+    return Object.values(model.schema.paths) as Array<{
+      path: string;
+      instance: string;
+      isRequired?: boolean;
+    }>;
+  }
+
+  private mongoStringPaths(model: Model<Record<string, unknown>>): string[] {
+    return this.schemaPaths(model)
+      .filter((p) => p.instance === "String")
+      .map((p) => p.path);
+  }
+
+  private fromMongoDoc(doc: Record<string, unknown> | null): Record<string, any> | null {
+    if (!doc) {
+      return null;
+    }
+    const { _id, __v, ...rest } = doc as Record<string, unknown> & { _id: unknown; __v?: unknown };
+    return { id: _id, ...rest };
   }
 
   private entityMetadata(entityName: string) {
@@ -160,6 +207,29 @@ export class AdminReferenceDataService {
   }
 
   async registeredModules(): Promise<ReferenceDataModuleInfo[]> {
+    if (isMongoDriver()) {
+      const names = [...ALLOWED_ENTITIES].filter((name) => this.connection?.models[name]);
+      const modules = await Promise.all(
+        names.map(async (name) => {
+          const model = this.mongoModel(name);
+          const collectionName = model.collection.collectionName;
+          const recordCount = await model.estimatedDocumentCount().exec();
+          return {
+            entityName: name,
+            tableName: collectionName,
+            displayName: this.displayNameFromEntity(name),
+            category: this.categoryForTable(collectionName),
+            columnCount: Object.keys(model.schema.paths).length,
+            recordCount,
+          };
+        }),
+      );
+      return modules.sort(
+        (a, b) =>
+          a.category.localeCompare(b.category) || a.displayName.localeCompare(b.displayName),
+      );
+    }
+
     const modules = await Promise.all(
       this.dataSource.entityMetadatas
         .filter((m) => this.isAllowed(m.name))
@@ -184,6 +254,22 @@ export class AdminReferenceDataService {
   }
 
   entitySchema(entityName: string): EntitySchemaResponse {
+    if (isMongoDriver()) {
+      const model = this.mongoModel(entityName);
+      const columns: ColumnSchema[] = this.schemaPaths(model).map((p) => {
+        const isPrimary = p.path === "_id";
+        return {
+          propertyName: isPrimary ? "id" : p.path,
+          databaseName: p.path,
+          type: String(p.instance ?? "Mixed").toLowerCase(),
+          nullable: isPrimary ? false : !p.isRequired,
+          isPrimary,
+          isGenerated: isPrimary,
+        };
+      });
+      return { columns, relations: [] };
+    }
+
     const metadata = this.entityMetadata(entityName);
 
     const columns: ColumnSchema[] = metadata.columns.map((col) => ({
@@ -211,11 +297,56 @@ export class AdminReferenceDataService {
     entityName: string,
     query: ReferenceDataQueryDto,
   ): Promise<PaginatedReferenceDataResponse> {
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 25;
+
+    if (isMongoDriver()) {
+      const model = this.mongoModel(entityName);
+      const sortBy = query.sortBy && query.sortBy !== "id" ? query.sortBy : "_id";
+      const sortDir = (query.sortOrder ?? "ASC") === "DESC" ? -1 : 1;
+
+      const filter: Record<string, unknown> = {};
+      if (query.search) {
+        const stringPaths = this.mongoStringPaths(model);
+        if (stringPaths.length > 0) {
+          const pattern = query.search.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+          filter.$or = stringPaths.map((path) => ({
+            [path]: { $regex: pattern, $options: "i" },
+          }));
+        }
+      }
+
+      const [docs, total] = await Promise.all([
+        model
+          .find(filter)
+          .sort({ [sortBy]: sortDir })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean()
+          .exec(),
+        model.countDocuments(filter).exec(),
+      ]);
+
+      const items = docs.map((doc) => {
+        const { _id, __v, ...rest } = doc as Record<string, unknown> & {
+          _id: unknown;
+          __v?: unknown;
+        };
+        return { id: _id, ...rest };
+      });
+
+      return {
+        items,
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    }
+
     const metadata = this.entityMetadata(entityName);
     const repo = this.dataSource.getRepository(metadata.target);
 
-    const page = query.page ?? 1;
-    const limit = query.limit ?? 25;
     const sortBy = query.sortBy ?? "id";
     const sortOrder = query.sortOrder ?? "ASC";
 
@@ -278,6 +409,16 @@ export class AdminReferenceDataService {
   }
 
   async record(entityName: string, id: number): Promise<Record<string, any>> {
+    if (isMongoDriver()) {
+      const model = this.mongoModel(entityName);
+      const doc = await model.findById(id).lean().exec();
+      const mapped = this.fromMongoDoc(doc as Record<string, unknown> | null);
+      if (!mapped) {
+        throw new NotFoundException(`Record with id ${id} not found in ${entityName}`);
+      }
+      return mapped;
+    }
+
     const metadata = this.entityMetadata(entityName);
     const repo = this.dataSource.getRepository(metadata.target);
 
@@ -370,6 +511,17 @@ export class AdminReferenceDataService {
   }
 
   async createRecord(entityName: string, data: Record<string, any>): Promise<Record<string, any>> {
+    if (isMongoDriver()) {
+      const model = this.mongoModel(entityName);
+      const { id: _ignoredId, ...rest } = data;
+      const highest = (await model.findOne().sort({ _id: -1 }).lean().exec()) as {
+        _id?: number;
+      } | null;
+      const nextId = highest?._id ? Number(highest._id) + 1 : 1;
+      const created = await model.create({ _id: nextId, ...rest });
+      return this.fromMongoDoc(created.toObject()) as Record<string, any>;
+    }
+
     const metadata = this.entityMetadata(entityName);
     const repo = this.dataSource.getRepository(metadata.target);
 
@@ -383,6 +535,20 @@ export class AdminReferenceDataService {
     id: number,
     data: Record<string, any>,
   ): Promise<Record<string, any>> {
+    if (isMongoDriver()) {
+      const model = this.mongoModel(entityName);
+      const { id: _ignoredId, ...rest } = data;
+      const updated = await model
+        .findByIdAndUpdate(id, { $set: rest }, { new: true })
+        .lean()
+        .exec();
+      const mapped = this.fromMongoDoc(updated as Record<string, unknown> | null);
+      if (!mapped) {
+        throw new NotFoundException(`Record with id ${id} not found in ${entityName}`);
+      }
+      return mapped;
+    }
+
     const metadata = this.entityMetadata(entityName);
     const repo = this.dataSource.getRepository(metadata.target);
 
@@ -400,6 +566,15 @@ export class AdminReferenceDataService {
     entityName: string,
     id: number,
   ): Promise<{ success: boolean; message: string }> {
+    if (isMongoDriver()) {
+      const model = this.mongoModel(entityName);
+      const result = await model.deleteOne({ _id: id }).exec();
+      if (!result.deletedCount) {
+        throw new NotFoundException(`Record with id ${id} not found in ${entityName}`);
+      }
+      return { success: true, message: `Record ${id} deleted from ${entityName}` };
+    }
+
     const metadata = this.entityMetadata(entityName);
     const repo = this.dataSource.getRepository(metadata.target);
 

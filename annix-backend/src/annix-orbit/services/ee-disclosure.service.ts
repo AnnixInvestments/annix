@@ -9,8 +9,6 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, LessThan, MoreThan, Repository } from "typeorm";
 import { DateTime, now } from "../../lib/datetime";
 import {
   EeConsentSource,
@@ -20,12 +18,14 @@ import {
   EePopulationGroup,
   EePurpose,
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
-import { AnnixOrbitCompany } from "../entities/annix-orbit-company.entity";
 import { AnnixOrbitEeConsentTextVersion } from "../entities/annix-orbit-ee-consent-text-version.entity";
 import { AnnixOrbitEeDisclosureInvite } from "../entities/annix-orbit-ee-disclosure-invite.entity";
 import { CvEmailTemplateKind } from "../entities/annix-orbit-email-template.entity";
-import { Candidate } from "../entities/candidate.entity";
-import { JobPosting } from "../entities/job-posting.entity";
+import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-orbit-ee-consent-text-version.repository";
+import { AnnixOrbitEeDisclosureInviteRepository } from "../repositories/annix-orbit-ee-disclosure-invite.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { EmailTemplateService } from "./email-template.service";
 import { PopiaService } from "./popia.service";
 
@@ -55,16 +55,11 @@ export class EeDisclosureService {
   private readonly logger = new Logger(EeDisclosureService.name);
 
   constructor(
-    @InjectRepository(AnnixOrbitEeDisclosureInvite)
-    private readonly inviteRepo: Repository<AnnixOrbitEeDisclosureInvite>,
-    @InjectRepository(AnnixOrbitEeConsentTextVersion)
-    private readonly consentTextVersionRepo: Repository<AnnixOrbitEeConsentTextVersion>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(AnnixOrbitCompany)
-    private readonly companyRepo: Repository<AnnixOrbitCompany>,
+    private readonly inviteRepo: AnnixOrbitEeDisclosureInviteRepository,
+    private readonly consentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly companyRepo: AnnixOrbitCompanyRepository,
     private readonly popiaService: PopiaService,
     private readonly emailTemplateService: EmailTemplateService,
     private readonly configService: ConfigService,
@@ -74,41 +69,33 @@ export class EeDisclosureService {
     candidateId: number,
     jobPostingId: number,
   ): Promise<AnnixOrbitEeDisclosureInvite> {
-    const candidate = await this.candidateRepo.findOne({ where: { id: candidateId } });
+    const candidate = await this.candidateRepo.findById(candidateId);
     if (!candidate) throw new NotFoundException("Candidate not found");
 
-    const job = await this.jobPostingRepo.findOne({ where: { id: jobPostingId } });
+    const job = await this.jobPostingRepo.findById(jobPostingId);
     if (!job) throw new NotFoundException("Job posting not found");
 
-    const existing = await this.inviteRepo.findOne({
-      where: {
-        candidateId,
-        jobPostingId,
-        usedAt: IsNull(),
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-      order: { createdAt: "DESC" },
-    });
+    const existing = await this.inviteRepo.findActiveInvite(
+      candidateId,
+      jobPostingId,
+      now().toJSDate(),
+    );
     if (existing) return existing;
 
     const token = randomBytes(INVITE_TOKEN_BYTES).toString("base64url");
     const expiresAt = DateTime.now().plus({ days: INVITE_TOKEN_TTL_DAYS }).toJSDate();
 
-    const invite = this.inviteRepo.create({
+    return this.inviteRepo.create({
       candidateId,
       jobPostingId,
       token,
       expiresAt,
       usedAt: null,
     });
-    return this.inviteRepo.save(invite);
   }
 
   async lookupByToken(token: string): Promise<DisclosureLookupResult> {
-    const invite = await this.inviteRepo.findOne({
-      where: { token },
-      relations: ["candidate", "jobPosting"],
-    });
+    const invite = await this.inviteRepo.findByTokenWithRelations(token);
     if (!invite) throw new NotFoundException("Disclosure invite not found");
     if (invite.expiresAt.getTime() < now().toMillis()) {
       throw new GoneException("Disclosure invite has expired");
@@ -134,7 +121,7 @@ export class EeDisclosureService {
   }
 
   async submitDisclosure(token: string, input: SubmitDisclosureInput): Promise<void> {
-    const invite = await this.inviteRepo.findOne({ where: { token } });
+    const invite = await this.inviteRepo.findByToken(token);
     if (!invite) throw new NotFoundException("Disclosure invite not found");
     if (invite.expiresAt.getTime() < now().toMillis()) {
       throw new GoneException("Disclosure invite has expired");
@@ -161,17 +148,14 @@ export class EeDisclosureService {
       actorId: null,
     });
 
-    await this.inviteRepo.update(invite.id, { usedAt: now().toJSDate() });
+    await this.inviteRepo.markUsed(invite.id, now().toJSDate());
   }
 
   async sendInviteForCandidate(
     companyId: number,
     candidateId: number,
   ): Promise<{ sent: boolean; disclosureLink: string; alreadyUsed: boolean }> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobPosting(candidateId);
     if (!candidate) throw new NotFoundException("Candidate not found");
     const jobPosting = candidate.jobPosting;
     if (!jobPosting || jobPosting.companyId !== companyId) {
@@ -181,7 +165,7 @@ export class EeDisclosureService {
       throw new BadRequestException("Candidate has no email address on file.");
     }
 
-    const company = await this.companyRepo.findOne({ where: { id: companyId } });
+    const company = await this.companyRepo.findById(companyId);
     if (!company) throw new NotFoundException("Company not found");
     if (!company.isDesignatedEmployer) {
       throw new BadRequestException(
@@ -230,13 +214,7 @@ export class EeDisclosureService {
 
   private async activeConsentText(): Promise<AnnixOrbitEeConsentTextVersion> {
     const activeNow = now().toJSDate();
-    const active = await this.consentTextVersionRepo.findOne({
-      where: [
-        { effectiveFrom: LessThan(activeNow), effectiveTo: IsNull() },
-        { effectiveFrom: LessThan(activeNow), effectiveTo: MoreThan(activeNow) },
-      ],
-      order: { effectiveFrom: "DESC" },
-    });
+    const active = await this.consentTextVersionRepo.activeAt(activeNow);
     if (!active) {
       throw new NotFoundException(
         "No active EE consent text version configured; seed one before enabling EE disclosure",

@@ -1,16 +1,10 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import {
-  GoalPeriod,
-  Meeting,
-  MeetingStatus,
-  Prospect,
-  ProspectStatus,
-  SalesGoal,
-  Visit,
-} from "../entities";
+import { GoalPeriod, SalesGoal } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { ProspectRepository } from "../prospect.repository";
+import { SalesGoalRepository } from "../sales-goal.repository";
+import { VisitRepository } from "../visit.repository";
 
 export interface GoalProgress {
   period: GoalPeriod;
@@ -64,31 +58,22 @@ export interface UpdateGoalDto {
 @Injectable()
 export class GoalsService {
   constructor(
-    @InjectRepository(SalesGoal)
-    private readonly goalRepo: Repository<SalesGoal>,
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(Visit)
-    private readonly visitRepo: Repository<Visit>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
+    private readonly goalRepo: SalesGoalRepository,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly visitRepo: VisitRepository,
+    private readonly prospectRepo: ProspectRepository,
   ) {}
 
   async goals(userId: number): Promise<SalesGoal[]> {
-    return this.goalRepo.find({
-      where: { userId },
-      order: { period: "ASC" },
-    });
+    return this.goalRepo.findByUser(userId);
   }
 
   async goalByPeriod(userId: number, period: GoalPeriod): Promise<SalesGoal | null> {
-    return this.goalRepo.findOne({ where: { userId, period } });
+    return this.goalRepo.findByUserAndPeriod(userId, period);
   }
 
   async createOrUpdateGoal(userId: number, dto: CreateGoalDto): Promise<SalesGoal> {
-    const existing = await this.goalRepo.findOne({
-      where: { userId, period: dto.period },
-    });
+    const existing = await this.goalRepo.findByUserAndPeriod(userId, dto.period);
 
     if (existing) {
       Object.assign(existing, {
@@ -101,7 +86,7 @@ export class GoalsService {
       return this.goalRepo.save(existing);
     }
 
-    const goal = this.goalRepo.create({
+    return this.goalRepo.create({
       userId,
       period: dto.period,
       meetingsTarget: dto.meetingsTarget ?? null,
@@ -110,7 +95,6 @@ export class GoalsService {
       revenueTarget: dto.revenueTarget ?? null,
       dealsWonTarget: dto.dealsWonTarget ?? null,
     });
-    return this.goalRepo.save(goal);
   }
 
   async updateGoal(
@@ -118,7 +102,7 @@ export class GoalsService {
     period: GoalPeriod,
     dto: UpdateGoalDto,
   ): Promise<SalesGoal | null> {
-    const goal = await this.goalRepo.findOne({ where: { userId, period } });
+    const goal = await this.goalRepo.findByUserAndPeriod(userId, period);
     if (!goal) return null;
 
     if (dto.meetingsTarget != null) goal.meetingsTarget = dto.meetingsTarget;
@@ -132,8 +116,8 @@ export class GoalsService {
   }
 
   async deleteGoal(userId: number, period: GoalPeriod): Promise<boolean> {
-    const result = await this.goalRepo.delete({ userId, period });
-    return (result.affected ?? 0) > 0;
+    const affected = await this.goalRepo.deleteByUserAndPeriod(userId, period);
+    return affected > 0;
   }
 
   async progress(userId: number, period: GoalPeriod): Promise<GoalProgress> {
@@ -141,32 +125,10 @@ export class GoalsService {
     const { start, end } = this.periodRange(period);
 
     const [meetings, visits, prospects, wonProspects] = await Promise.all([
-      this.meetingRepo.find({
-        where: {
-          salesRepId: userId,
-          scheduledStart: Between(start.toJSDate(), end.toJSDate()),
-          status: MeetingStatus.COMPLETED,
-        },
-      }),
-      this.visitRepo.find({
-        where: {
-          salesRepId: userId,
-          startedAt: Between(start.toJSDate(), end.toJSDate()),
-        },
-      }),
-      this.prospectRepo.find({
-        where: {
-          ownerId: userId,
-          createdAt: Between(start.toJSDate(), end.toJSDate()),
-        },
-      }),
-      this.prospectRepo.find({
-        where: {
-          ownerId: userId,
-          status: ProspectStatus.WON,
-          updatedAt: Between(start.toJSDate(), end.toJSDate()),
-        },
-      }),
+      this.meetingRepo.findCompletedInRange(userId, start.toJSDate(), end.toJSDate()),
+      this.visitRepo.findBySalesRepStartedInRange(userId, start.toJSDate(), end.toJSDate()),
+      this.prospectRepo.findByOwnerCreatedInRange(userId, start.toJSDate(), end.toJSDate()),
+      this.prospectRepo.findWonByOwnerUpdatedInRange(userId, start.toJSDate(), end.toJSDate()),
     ]);
 
     const completedMeetings = meetings.length;

@@ -1,11 +1,12 @@
 import { Injectable } from "@nestjs/common";
-import { ObjectLiteral, Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { now } from "../../lib/datetime";
+import type { DeepPartial, PersistedEntity } from "../../lib/persistence/crud-repository";
 import { AUTH_CONSTANTS } from "./auth.constants";
+import type { AuthSessionRepository } from "./auth-session.repository";
 
 export interface CreateSessionResult<T> {
-  session: T;
+  sessionData: DeepPartial<T>;
   sessionToken: string;
   refreshToken: string;
 }
@@ -20,15 +21,14 @@ export interface SessionCreateData<TProfileId extends string> {
 
 @Injectable()
 export class SessionService {
-  createSession<T extends ObjectLiteral, TProfileId extends string>(
-    repo: Repository<T>,
+  createSession<T extends PersistedEntity, TProfileId extends string>(
     data: SessionCreateData<TProfileId>,
   ): CreateSessionResult<T> {
     const sessionToken = uuidv4();
     const refreshToken = uuidv4();
     const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
-    const sessionData: Record<string, any> = {
+    const sessionData: Record<string, unknown> = {
       [data.profileIdField]: data.profileId,
       sessionToken,
       refreshToken,
@@ -40,25 +40,20 @@ export class SessionService {
       lastActivity: now().toJSDate(),
     };
 
-    const session = repo.create(sessionData as T);
-
-    return { session, sessionToken, refreshToken };
+    return { sessionData: sessionData as DeepPartial<T>, sessionToken, refreshToken };
   }
 
-  async validateSession<T extends ObjectLiteral>(
-    repo: Repository<T>,
+  async validateSession<T extends PersistedEntity>(
+    repo: AuthSessionRepository<T>,
     sessionToken: string,
     relations?: string[],
   ): Promise<T | null> {
-    const session = await repo.findOne({
-      where: { sessionToken, isActive: true } as any,
-      relations,
-    });
+    const session = await repo.findActiveByToken(sessionToken, relations);
 
     if (!session) return null;
 
-    const sessionAny = session as any;
-    if (now().toJSDate() > sessionAny.expiresAt) {
+    const sessionAny = session as Record<string, unknown>;
+    if (now().toJSDate() > (sessionAny.expiresAt as Date)) {
       sessionAny.isActive = false;
       sessionAny.invalidatedAt = now().toJSDate();
       sessionAny.invalidationReason = "EXPIRED";
@@ -72,33 +67,28 @@ export class SessionService {
     return session;
   }
 
-  async invalidateAllSessions<T extends ObjectLiteral>(
-    repo: Repository<T>,
+  async invalidateAllSessions<T extends PersistedEntity>(
+    repo: AuthSessionRepository<T>,
     profileId: number,
     profileIdField: string,
     reason: string,
   ): Promise<void> {
-    await repo.update(
-      { [profileIdField]: profileId, isActive: true } as any,
-      {
-        isActive: false,
-        invalidatedAt: now().toJSDate(),
-        invalidationReason: reason,
-      } as any,
-    );
+    await repo.updateActiveByProfile(profileIdField, profileId, {
+      isActive: false,
+      invalidatedAt: now().toJSDate(),
+      invalidationReason: reason,
+    } as unknown as DeepPartial<T>);
   }
 
-  async invalidateSession<T extends ObjectLiteral>(
-    repo: Repository<T>,
+  async invalidateSession<T extends PersistedEntity>(
+    repo: AuthSessionRepository<T>,
     sessionToken: string,
     reason: string,
   ): Promise<T | null> {
-    const session = await repo.findOne({
-      where: { sessionToken, isActive: true } as any,
-    });
+    const session = await repo.findActiveByToken(sessionToken);
 
     if (session) {
-      const sessionAny = session as any;
+      const sessionAny = session as Record<string, unknown>;
       sessionAny.isActive = false;
       sessionAny.invalidatedAt = now().toJSDate();
       sessionAny.invalidationReason = reason;
@@ -108,21 +98,18 @@ export class SessionService {
     return session;
   }
 
-  async updateSessionToken<T extends ObjectLiteral>(
-    repo: Repository<T>,
+  async updateSessionToken<T extends PersistedEntity>(
+    repo: AuthSessionRepository<T>,
     profileId: number,
     profileIdField: string,
     newSessionToken: string,
   ): Promise<void> {
     const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
-    await repo.update(
-      { [profileIdField]: profileId, isActive: true } as any,
-      {
-        sessionToken: newSessionToken,
-        lastActivity: now().toJSDate(),
-        expiresAt,
-      } as any,
-    );
+    await repo.updateActiveByProfile(profileIdField, profileId, {
+      sessionToken: newSessionToken,
+      lastActivity: now().toJSDate(),
+      expiresAt,
+    } as unknown as DeepPartial<T>);
   }
 }

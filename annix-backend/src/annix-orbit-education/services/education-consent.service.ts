@@ -1,7 +1,6 @@
 import { ForbiddenException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { AnnixOrbitEeConsentTextVersion } from "../../annix-orbit/entities/annix-orbit-ee-consent-text-version.entity";
+import { AnnixOrbitEeConsentTextVersionRepository } from "../../annix-orbit/repositories/annix-orbit-ee-consent-text-version.repository";
 import { fromISO, now } from "../../lib/datetime";
 import {
   ORBIT_EDUCATION_ACTIVE_JURISDICTIONS,
@@ -11,6 +10,7 @@ import {
 } from "../annix-orbit-education.constants";
 import { EducationConsent } from "../entities/education-consent.entity";
 import { EducationProfile } from "../entities/education-profile.entity";
+import { EducationConsentRepository } from "../repositories/education-consent.repository";
 
 /** Country → consent jurisdiction. POPIA + GDPR live (D4); US (FERPA/COPPA) is
  *  slot-ready but NOT active, so US profiles fall back to POPIA processing rules
@@ -27,10 +27,8 @@ export class EducationConsentService {
   private readonly logger = new Logger(EducationConsentService.name);
 
   constructor(
-    @InjectRepository(EducationConsent)
-    private readonly consentRepo: Repository<EducationConsent>,
-    @InjectRepository(AnnixOrbitEeConsentTextVersion)
-    private readonly consentTextVersionRepo: Repository<AnnixOrbitEeConsentTextVersion>,
+    private readonly consentRepo: EducationConsentRepository,
+    private readonly consentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
   ) {}
 
   jurisdictionForCountry(country: string | null): OrbitEducationJurisdiction {
@@ -55,9 +53,7 @@ export class EducationConsentService {
   }
 
   async hasValidConsent(educationProfileId: string): Promise<boolean> {
-    const active = await this.consentRepo.findOne({
-      where: { educationProfileId, revokedAt: IsNull() },
-    });
+    const active = await this.consentRepo.activeForProfile(educationProfileId);
     return active != null;
   }
 
@@ -87,16 +83,14 @@ export class EducationConsentService {
       );
     }
     const textVersion = await this.activeConsentTextVersion();
-    const saved = await this.consentRepo.save(
-      this.consentRepo.create({
-        educationProfileId: input.educationProfileId,
-        consentTextVersionId: textVersion ? textVersion.id : null,
-        jurisdiction: input.jurisdiction,
-        grantedByUserId: input.grantedByUserId,
-        grantedByRole: input.grantedByRole,
-        grantedAt: now().toJSDate(),
-      }),
-    );
+    const saved = await this.consentRepo.create({
+      educationProfileId: input.educationProfileId,
+      consentTextVersionId: textVersion ? textVersion.id : null,
+      jurisdiction: input.jurisdiction,
+      grantedByUserId: input.grantedByUserId,
+      grantedByRole: input.grantedByRole,
+      grantedAt: now().toJSDate(),
+    });
     this.logger.log(
       `Recorded ${input.jurisdiction} consent for education profile ${input.educationProfileId}`,
     );
@@ -104,17 +98,10 @@ export class EducationConsentService {
   }
 
   async revokeConsent(educationProfileId: string): Promise<number> {
-    const result = await this.consentRepo.update(
-      { educationProfileId, revokedAt: IsNull() },
-      { revokedAt: now().toJSDate() },
-    );
-    return result.affected ?? 0;
+    return this.consentRepo.revokeActiveForProfile(educationProfileId, now().toJSDate());
   }
 
   private async activeConsentTextVersion(): Promise<AnnixOrbitEeConsentTextVersion | null> {
-    return this.consentTextVersionRepo.findOne({
-      where: { effectiveTo: IsNull() },
-      order: { effectiveFrom: "DESC" },
-    });
+    return this.consentTextVersionRepo.latestOpenEnded();
   }
 }

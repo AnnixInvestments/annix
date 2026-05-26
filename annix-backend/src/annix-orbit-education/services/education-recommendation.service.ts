@@ -8,15 +8,13 @@ import {
   type SubjectRole,
 } from "@annix/product-data/orbit-education";
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { AcademicResult } from "../entities/academic-result.entity";
-import { EducationFaculty } from "../entities/education-faculty.entity";
-import { EducationInstitution } from "../entities/education-institution.entity";
 import type { EducationProfile } from "../entities/education-profile.entity";
-import { EducationProgramme } from "../entities/education-programme.entity";
-import { EducationRecommendationSnapshot } from "../entities/education-recommendation-snapshot.entity";
-import { EducationRequirementVersion } from "../entities/education-requirement-version.entity";
+import { AcademicResultRepository } from "../repositories/academic-result.repository";
+import { EducationFacultyRepository } from "../repositories/education-faculty.repository";
+import { EducationInstitutionRepository } from "../repositories/education-institution.repository";
+import { EducationProgrammeRepository } from "../repositories/education-programme.repository";
+import { EducationRecommendationSnapshotRepository } from "../repositories/education-recommendation-snapshot.repository";
+import { EducationRequirementVersionRepository } from "../repositories/education-requirement-version.repository";
 import { EducationConsentService } from "./education-consent.service";
 import { EducationProfileService } from "./education-profile.service";
 
@@ -38,35 +36,29 @@ const BAND_ORDER: Record<string, number> = { safe: 0, match: 1, reach: 2, below:
 @Injectable()
 export class EducationRecommendationService {
   constructor(
-    @InjectRepository(EducationProgramme)
-    private readonly programmeRepo: Repository<EducationProgramme>,
-    @InjectRepository(EducationFaculty)
-    private readonly facultyRepo: Repository<EducationFaculty>,
-    @InjectRepository(EducationInstitution)
-    private readonly institutionRepo: Repository<EducationInstitution>,
-    @InjectRepository(EducationRequirementVersion)
-    private readonly requirementVersionRepo: Repository<EducationRequirementVersion>,
-    @InjectRepository(EducationRecommendationSnapshot)
-    private readonly snapshotRepo: Repository<EducationRecommendationSnapshot>,
-    @InjectRepository(AcademicResult)
-    private readonly resultRepo: Repository<AcademicResult>,
+    private readonly programmeRepo: EducationProgrammeRepository,
+    private readonly facultyRepo: EducationFacultyRepository,
+    private readonly institutionRepo: EducationInstitutionRepository,
+    private readonly requirementVersionRepo: EducationRequirementVersionRepository,
+    private readonly snapshotRepo: EducationRecommendationSnapshotRepository,
+    private readonly resultRepo: AcademicResultRepository,
     private readonly profileService: EducationProfileService,
     private readonly consentService: EducationConsentService,
   ) {}
 
   /** Resolve a programme's effective spec: requirement version → faculty default → institution default. */
   async resolveSpec(programmeId: string, intakeYear: number): Promise<ResolvedSpec | null> {
-    const version = await this.requirementVersionRepo.findOne({
-      where: { programmeId, intakeYear },
-      order: { createdAt: "DESC" },
-    });
+    const version = await this.requirementVersionRepo.latestForProgrammeAndYear(
+      programmeId,
+      intakeYear,
+    );
     if (version) {
       return { spec: version.spec as unknown as RequirementSpec, requirementVersionId: version.id };
     }
-    const programme = await this.programmeRepo.findOne({ where: { id: programmeId } });
+    const programme = await this.programmeRepo.findById(programmeId);
     if (!programme) return null;
     if (programme.facultyId) {
-      const faculty = await this.facultyRepo.findOne({ where: { id: programme.facultyId } });
+      const faculty = await this.facultyRepo.findById(programme.facultyId);
       if (faculty?.defaultRequirementSpec) {
         return {
           spec: faculty.defaultRequirementSpec as unknown as RequirementSpec,
@@ -74,9 +66,7 @@ export class EducationRecommendationService {
         };
       }
     }
-    const institution = await this.institutionRepo.findOne({
-      where: { id: programme.institutionId },
-    });
+    const institution = await this.institutionRepo.findById(programme.institutionId);
     if (institution?.defaultRequirementSpec) {
       return {
         spec: institution.defaultRequirementSpec as unknown as RequirementSpec,
@@ -87,9 +77,7 @@ export class EducationRecommendationService {
   }
 
   async applicantProfileFor(educationProfile: EducationProfile): Promise<ApplicantProfile> {
-    const results = await this.resultRepo.find({
-      where: { educationProfileId: educationProfile.id },
-    });
+    const results = await this.resultRepo.forProfile(educationProfile.id);
     const subjects: ApplicantSubjectResult[] = results.map((r) => {
       const capability = nscCapabilityForSubject(r.subject);
       const percentSource = r.mark ?? r.predictedMark;
@@ -126,22 +114,20 @@ export class EducationRecommendationService {
     await this.consentService.assertProcessingAllowed(educationProfile);
     const resolved = await this.resolveSpec(programmeId, intakeYear);
     if (!resolved) return null;
-    const programme = await this.programmeRepo.findOne({ where: { id: programmeId } });
+    const programme = await this.programmeRepo.findById(programmeId);
     if (!programme) return null;
 
     const profileApplicant = applicant ?? (await this.applicantProfileFor(educationProfile));
     const result = evaluateRequirement(profileApplicant, resolved.spec);
 
-    await this.snapshotRepo.save(
-      this.snapshotRepo.create({
-        educationProfileId: educationProfile.id,
-        programmeId,
-        intakeYear,
-        requirementVersionId: resolved.requirementVersionId,
-        band: result.competitiveness.band,
-        result: result as unknown as Record<string, unknown>,
-      }),
-    );
+    await this.snapshotRepo.create({
+      educationProfileId: educationProfile.id,
+      programmeId,
+      intakeYear,
+      requirementVersionId: resolved.requirementVersionId,
+      band: result.competitiveness.band,
+      result: result as unknown as Record<string, unknown>,
+    });
 
     return {
       programmeId,
@@ -162,20 +148,16 @@ export class EducationRecommendationService {
     if (!educationProfile) return [];
     await this.consentService.assertProcessingAllowed(educationProfile);
 
-    const programmes = await this.programmeRepo.find({ take: 200 });
+    const programmes = await this.programmeRepo.page(200);
     if (programmes.length === 0) return [];
 
     const applicant = await this.applicantProfileFor(educationProfile);
-    const recommendations: ProgrammeRecommendation[] = [];
-    for (const programme of programmes) {
-      const rec = await this.evaluateProgramme(
-        educationProfile,
-        programme.id,
-        intakeYear,
-        applicant,
-      );
-      if (rec) recommendations.push(rec);
-    }
+    const evaluated = await Promise.all(
+      programmes.map((programme) =>
+        this.evaluateProgramme(educationProfile, programme.id, intakeYear, applicant),
+      ),
+    );
+    const recommendations = evaluated.filter((rec): rec is ProgrammeRecommendation => rec !== null);
 
     return recommendations.sort((a, b) => {
       const bandDiff = (BAND_ORDER[a.band] ?? 9) - (BAND_ORDER[b.band] ?? 9);

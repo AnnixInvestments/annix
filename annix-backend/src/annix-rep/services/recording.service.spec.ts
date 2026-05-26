@@ -1,16 +1,15 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { Meeting } from "../entities/meeting.entity";
-import { MeetingRecording, RecordingProcessingStatus } from "../entities/meeting-recording.entity";
+import { RecordingProcessingStatus } from "../entities/meeting-recording.entity";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
 import { RecordingService } from "./recording.service";
 
 describe("RecordingService", () => {
   let service: RecordingService;
-  let mockRecordingRepo: Partial<Repository<MeetingRecording>>;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
+  let mockRecordingRepo: Partial<MeetingRecordingRepository>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
   let mockStorageService: Partial<IStorageService>;
 
   const mockConfigService = {
@@ -21,13 +20,14 @@ describe("RecordingService", () => {
     mockRecordingRepo = {
       create: jest.fn(),
       save: jest.fn(),
-      findOne: jest.fn(),
-      find: jest.fn(),
+      findByMeetingId: jest.fn(),
+      findWithMeeting: jest.fn(),
+      findById: jest.fn(),
       remove: jest.fn(),
     };
 
     mockMeetingRepo = {
-      findOne: jest.fn(),
+      findOneForSalesRep: jest.fn(),
     };
 
     mockStorageService = {
@@ -43,11 +43,11 @@ describe("RecordingService", () => {
       providers: [
         RecordingService,
         {
-          provide: getRepositoryToken(MeetingRecording),
+          provide: MeetingRecordingRepository,
           useValue: mockRecordingRepo,
         },
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
         },
         {
@@ -83,9 +83,8 @@ describe("RecordingService", () => {
         processingStatus: RecordingProcessingStatus.UPLOADING,
       };
 
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(mockMeeting);
-      (mockRecordingRepo.create as jest.Mock).mockReturnValue(mockRecording);
-      (mockRecordingRepo.save as jest.Mock).mockResolvedValue(mockRecording);
+      (mockMeetingRepo.findOneForSalesRep as jest.Mock).mockResolvedValue(mockMeeting);
+      (mockRecordingRepo.create as jest.Mock).mockResolvedValue(mockRecording);
 
       const result = await service.initiateUpload(100, {
         meetingId: 1,
@@ -104,7 +103,7 @@ describe("RecordingService", () => {
     });
 
     it("should throw error if meeting not found", async () => {
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findOneForSalesRep as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.initiateUpload(100, {
@@ -116,7 +115,7 @@ describe("RecordingService", () => {
     });
 
     it("should throw error if user does not own meeting (meeting not found due to salesRepId filter)", async () => {
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockMeetingRepo.findOneForSalesRep as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.initiateUpload(100, {
@@ -139,7 +138,7 @@ describe("RecordingService", () => {
         meeting: { salesRepId: 100 },
       };
 
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(mockRecording);
+      (mockRecordingRepo.findWithMeeting as jest.Mock).mockResolvedValue(mockRecording);
       (mockStorageService.exists as jest.Mock).mockResolvedValue(true);
       (mockStorageService.presignedUrl as jest.Mock).mockResolvedValue(
         "https://s3.example.com/presigned-url",
@@ -159,7 +158,7 @@ describe("RecordingService", () => {
     });
 
     it("should return null if recording not found", async () => {
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRecordingRepo.findWithMeeting as jest.Mock).mockResolvedValue(null);
 
       const result = await service.audioStream(100, 999);
 
@@ -167,7 +166,7 @@ describe("RecordingService", () => {
     });
 
     it("should return null if user does not own recording", async () => {
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue({
+      (mockRecordingRepo.findWithMeeting as jest.Mock).mockResolvedValue({
         id: 1,
         meeting: { salesRepId: 999 },
       });
@@ -178,7 +177,7 @@ describe("RecordingService", () => {
     });
 
     it("should return null if file does not exist in S3", async () => {
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue({
+      (mockRecordingRepo.findWithMeeting as jest.Mock).mockResolvedValue({
         id: 1,
         storagePath: "fieldflow/recordings/1/test.webm",
         meeting: { salesRepId: 100 },
@@ -199,7 +198,7 @@ describe("RecordingService", () => {
         meeting: { salesRepId: 100 },
       };
 
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(mockRecording);
+      (mockRecordingRepo.findWithMeeting as jest.Mock).mockResolvedValue(mockRecording);
       (mockStorageService.delete as jest.Mock).mockResolvedValue(undefined);
       (mockRecordingRepo.remove as jest.Mock).mockResolvedValue(mockRecording);
 
@@ -216,7 +215,7 @@ describe("RecordingService", () => {
         meeting: { salesRepId: 100 },
       };
 
-      (mockRecordingRepo.findOne as jest.Mock).mockResolvedValue(mockRecording);
+      (mockRecordingRepo.findWithMeeting as jest.Mock).mockResolvedValue(mockRecording);
       (mockStorageService.delete as jest.Mock).mockRejectedValue(new Error("S3 error"));
       (mockRecordingRepo.remove as jest.Mock).mockResolvedValue(mockRecording);
 

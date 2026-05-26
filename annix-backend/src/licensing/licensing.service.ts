@@ -1,38 +1,34 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../lib/datetime";
-import { ModuleCatalogOverride } from "./entities/module-catalog-override.entity";
 import { ModuleLicense } from "./entities/module-license.entity";
 import { FeatureRegistry } from "./feature-registry.service";
 import type { LicenseSnapshot } from "./licensing.types";
+import { ModuleCatalogOverrideRepository } from "./repositories/module-catalog-override.repository";
+import { ModuleLicenseRepository } from "./repositories/module-license.repository";
 
 @Injectable()
 export class LicensingService {
   private readonly logger = new Logger(LicensingService.name);
 
   constructor(
-    @InjectRepository(ModuleLicense)
-    private readonly licenseRepo: Repository<ModuleLicense>,
-    @InjectRepository(ModuleCatalogOverride)
-    private readonly overrideRepo: Repository<ModuleCatalogOverride>,
+    private readonly licenseRepo: ModuleLicenseRepository,
+    private readonly overrideRepo: ModuleCatalogOverrideRepository,
     private readonly registry: FeatureRegistry,
   ) {}
 
   async ensureLicense(companyId: number, moduleKey: string): Promise<ModuleLicense> {
-    const existing = await this.licenseRepo.findOne({ where: { companyId, moduleKey } });
+    const existing = await this.licenseRepo.findByCompanyAndModule(companyId, moduleKey);
     if (existing) {
       return existing;
     }
     const definition = this.registry.module(moduleKey);
-    const created = this.licenseRepo.create({
+    return this.licenseRepo.create({
       companyId,
       moduleKey,
       tier: definition.defaultTier,
       featureOverrides: {},
       active: true,
     });
-    return this.licenseRepo.save(created);
   }
 
   async isFeatureEnabled(
@@ -56,7 +52,7 @@ export class LicensingService {
     tier: string,
     featureKey: string,
   ): Promise<boolean> {
-    const catalogOverride = await this.overrideRepo.findOne({ where: { moduleKey } });
+    const catalogOverride = await this.overrideRepo.findByModuleKey(moduleKey);
     const tierFeatures = catalogOverride ? catalogOverride.tierFeatures[tier] : undefined;
     if (Array.isArray(tierFeatures)) {
       return tierFeatures.includes(featureKey);

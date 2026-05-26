@@ -4,16 +4,13 @@ import {
   Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import {
-  AnnixOrbitIndividualDocument,
-  IndividualDocumentKind,
-} from "../entities/annix-orbit-individual-document.entity";
-import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
+import { AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import {
   calendarAdvisoryPrompt,
   type NixCalendarAdvisoryConflict,
@@ -57,18 +54,16 @@ export class NixSeekerAssistService {
   private readonly logger = new Logger(NixSeekerAssistService.name);
 
   constructor(
-    @InjectRepository(AnnixOrbitProfile)
-    private readonly profileRepo: Repository<AnnixOrbitProfile>,
-    @InjectRepository(AnnixOrbitIndividualDocument)
-    private readonly documentRepo: Repository<AnnixOrbitIndividualDocument>,
+    private readonly profileRepo: AnnixOrbitProfileRepository,
+    private readonly documentRepo: AnnixOrbitIndividualDocumentRepository,
     private readonly aiChatService: AiChatService,
     private readonly metrics: ExtractionMetricService,
   ) {}
 
   async cvImprovements(userId: number): Promise<NixSeekerCvAssessmentResponse> {
-    const profile = await this.profileRepo.findOne({ where: { userId } });
+    const profile = await this.profileRepo.findByUserId(userId);
     if (!profile) {
-      throw new BadRequestException("Annix Orbit profile not found");
+      throw new BadRequestException("CV Assistant profile not found");
     }
     if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix Wizard CV review is only for individual job seekers.");
@@ -84,10 +79,7 @@ export class NixSeekerAssistService {
       );
     }
 
-    const documents = await this.documentRepo.find({
-      where: { profileId: profile.id },
-      order: { uploadedAt: "DESC" },
-    });
+    const documents = await this.documentRepo.findByProfileOrdered(profile.id);
 
     const supportingDocuments = documents
       .filter(
@@ -127,9 +119,9 @@ export class NixSeekerAssistService {
   }
 
   async generateCv(userId: number): Promise<NixGeneratedCv> {
-    const profile = await this.profileRepo.findOne({ where: { userId } });
+    const profile = await this.profileRepo.findByUserId(userId);
     if (!profile) {
-      throw new BadRequestException("Annix Orbit profile not found");
+      throw new BadRequestException("CV Assistant profile not found");
     }
     if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix CV builder is only for individual job seekers.");
@@ -145,10 +137,7 @@ export class NixSeekerAssistService {
       );
     }
 
-    const documents = await this.documentRepo.find({
-      where: { profileId: profile.id },
-      order: { uploadedAt: "DESC" },
-    });
+    const documents = await this.documentRepo.findByProfileOrdered(profile.id);
 
     const supportingDocuments = documents
       .filter(
@@ -197,18 +186,18 @@ export class NixSeekerAssistService {
   async generatedCv(
     userId: number,
   ): Promise<{ cv: NixGeneratedCv | null; generatedAt: string | null }> {
-    const profile = await this.profileRepo.findOne({ where: { userId } });
+    const profile = await this.profileRepo.findByUserId(userId);
     if (!profile) {
-      throw new BadRequestException("Annix Orbit profile not found");
+      throw new BadRequestException("CV Assistant profile not found");
     }
     const generatedAt = profile.nixGeneratedCvAt ? profile.nixGeneratedCvAt.toISOString() : null;
     return { cv: profile.nixGeneratedCv, generatedAt };
   }
 
   async updateGeneratedCv(userId: number, cv: NixGeneratedCv): Promise<NixGeneratedCv> {
-    const profile = await this.profileRepo.findOne({ where: { userId } });
+    const profile = await this.profileRepo.findByUserId(userId);
     if (!profile) {
-      throw new BadRequestException("Annix Orbit profile not found");
+      throw new BadRequestException("CV Assistant profile not found");
     }
     if (profile.userType !== AnnixOrbitUserType.INDIVIDUAL) {
       throw new BadRequestException("Nix CV builder is only for individual job seekers.");

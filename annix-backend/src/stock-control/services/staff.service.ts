@@ -1,10 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
 import { nowMillis } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { StaffMember } from "../entities/staff-member.entity";
+import { StaffMemberRepository } from "../repositories/staff-member.repository";
 
 const PRESIGNED_URL_TTL_MS = 50 * 60 * 1000;
 
@@ -16,8 +15,7 @@ export class StaffService {
   private readonly findAllActiveCache = new Map<number, StaffMember[]>();
 
   constructor(
-    @InjectRepository(StaffMember)
-    private readonly staffRepo: Repository<StaffMember>,
+    private readonly staffRepo: StaffMemberRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -40,31 +38,7 @@ export class StaffService {
       }
     }
 
-    const where: Record<string, unknown>[] = [];
-
-    const baseWhere: Record<string, unknown> = { companyId };
-
-    if (filters?.active === "true") {
-      baseWhere.active = true;
-    } else if (filters?.active === "false") {
-      baseWhere.active = false;
-    }
-
-    if (filters?.search) {
-      const pattern = ILike(`%${filters.search}%`);
-      where.push(
-        { ...baseWhere, name: pattern },
-        { ...baseWhere, employeeNumber: pattern },
-        { ...baseWhere, department: pattern },
-      );
-    } else {
-      where.push(baseWhere);
-    }
-
-    const members = await this.staffRepo.find({
-      where,
-      order: { name: "ASC" },
-    });
+    const members = await this.staffRepo.findAllForCompanyOrdered(companyId, filters);
 
     if (isUnfiltered) {
       this.findAllCache.set(companyId, members);
@@ -83,21 +57,17 @@ export class StaffService {
     if (cached) {
       return this.withPresignedPhotoUrls(cached);
     }
-    const members = await this.staffRepo.find({
-      where: { companyId, active: true },
-      order: { name: "ASC" },
-    });
+    const members = await this.staffRepo.findActiveForCompanyOrdered(companyId);
     this.findAllActiveCache.set(companyId, members);
     return this.withPresignedPhotoUrls(members);
   }
 
   async create(companyId: number, data: Partial<StaffMember>): Promise<StaffMember> {
-    const member = this.staffRepo.create({
+    const saved = await this.staffRepo.create({
       ...data,
       companyId,
       qrToken: randomUUID(),
     });
-    const saved = await this.staffRepo.save(member);
     this.invalidateListCaches(companyId);
     return this.withPresignedPhotoUrl(saved);
   }
@@ -119,9 +89,7 @@ export class StaffService {
   }
 
   private async findByIdInternal(companyId: number, id: number): Promise<StaffMember> {
-    const member = await this.staffRepo.findOne({
-      where: { id, companyId },
-    });
+    const member = await this.staffRepo.findOneForCompany(id, companyId);
 
     if (!member) {
       throw new NotFoundException(`Staff member ${id} not found`);
@@ -135,7 +103,7 @@ export class StaffService {
     id: number,
     file: Express.Multer.File,
   ): Promise<StaffMember> {
-    const member = await this.staffRepo.findOne({ where: { id, companyId } });
+    const member = await this.staffRepo.findOneForCompany(id, companyId);
     if (!member) {
       throw new NotFoundException(`Staff member ${id} not found`);
     }

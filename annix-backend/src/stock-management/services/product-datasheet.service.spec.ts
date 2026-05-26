@@ -1,8 +1,7 @@
 import { BadRequestException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { ProductDatasheet } from "../entities/product-datasheet.entity";
+import { ProductDatasheetRepository } from "../repositories/product-datasheet.repository";
 import { DatasheetExtractionService } from "./datasheet-extraction.service";
 import { ProductDatasheetService } from "./product-datasheet.service";
 import { RubberCompoundService } from "./rubber-compound.service";
@@ -11,12 +10,14 @@ describe("ProductDatasheetService", () => {
   let service: ProductDatasheetService;
 
   const mockDatasheetRepo = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    findOneOrFail: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findActiveByOwner: jest.fn(),
+    findActiveForCompany: jest.fn(),
+    findOneForCompany: jest.fn(),
+    findByIdOrFail: jest.fn(),
+    updateActiveFlagForIds: jest.fn().mockResolvedValue(undefined),
+    updateById: jest.fn().mockResolvedValue(undefined),
+    build: jest.fn().mockImplementation((data) => ({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    update: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
   const mockStorage = {
@@ -40,7 +41,7 @@ describe("ProductDatasheetService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ProductDatasheetService,
-        { provide: getRepositoryToken(ProductDatasheet), useValue: mockDatasheetRepo },
+        { provide: ProductDatasheetRepository, useValue: mockDatasheetRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorage },
         { provide: DatasheetExtractionService, useValue: mockExtractionService },
         { provide: RubberCompoundService, useValue: mockCompoundService },

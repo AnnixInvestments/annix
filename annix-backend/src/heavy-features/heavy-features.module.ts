@@ -4,6 +4,7 @@ import { AnnixOrbitModule } from "../annix-orbit/annix-orbit.module";
 import { AnnixOrbitEducationModule } from "../annix-orbit-education/annix-orbit-education.module";
 import { AnnixOrbitEducationAdminModule } from "../annix-orbit-education/annix-orbit-education-admin.module";
 import { AnnixRepModule } from "../annix-rep/annix-rep.module";
+import { isMongoDriver } from "../lib/persistence/database-driver";
 import { MinesModule } from "../mines/mines.module";
 import { NixModule } from "../nix/nix.module";
 import { PumpOrderModule } from "../pump-order/pump-order.module";
@@ -28,7 +29,7 @@ import { ThermalModule } from "../thermal/thermal.module";
     PumpProductModule,
     PumpOrderModule,
     MinesModule,
-    ThermalModule,
+    ...(isMongoDriver() ? [] : [ThermalModule]),
     NixModule,
     SecureDocumentsModule,
     SurfaceProtectionModule,
@@ -45,7 +46,7 @@ import { ThermalModule } from "../thermal/thermal.module";
     PumpProductModule,
     PumpOrderModule,
     MinesModule,
-    ThermalModule,
+    ...(isMongoDriver() ? [] : [ThermalModule]),
     NixModule,
     SecureDocumentsModule,
     SurfaceProtectionModule,

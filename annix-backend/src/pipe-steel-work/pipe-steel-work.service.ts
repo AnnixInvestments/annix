@@ -1,8 +1,8 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { STEEL_DENSITY_KG_M3 as STEEL_DENSITY } from "../lib/steel-constants";
 import { BracketCompatibilityService } from "./bracket-compatibility.service";
+import { BracketDimensionBySizeRepository } from "./bracket-dimension-by-size.repository";
+import { BracketTypeRepository } from "./bracket-type.repository";
 import {
   BatchCalculationDto,
   BatchCalculationResponseDto,
@@ -47,10 +47,9 @@ import {
   VibrationAnalysisResponseDto,
 } from "./dto/pipe-steel-work.dto";
 import { BracketDimensionBySizeEntity } from "./entities/bracket-dimension-by-size.entity";
-import { BracketTypeEntity } from "./entities/bracket-type.entity";
 import { PipeSteelWorkConfigEntity } from "./entities/pipe-steel-work-config.entity";
-import { PipeSupportSpacing } from "./entities/pipe-support-spacing.entity";
 import { ReinforcementPadStandardEntity } from "./entities/reinforcement-pad-standard.entity";
+import { PipeSteelWorkConfigRepository } from "./pipe-steel-work-config.repository";
 import {
   estimatePipeWeightPerMeter,
   estimateWallThickness,
@@ -62,6 +61,8 @@ import {
   THERMAL_EXPANSION_COEFFICIENTS,
   WELD_STRENGTH_FACTORS,
 } from "./pipe-steel-work-data";
+import { PipeSupportSpacingRepository } from "./pipe-support-spacing.repository";
+import { ReinforcementPadStandardRepository } from "./reinforcement-pad-standard.repository";
 import { SupportSpacingService } from "./support-spacing.service";
 
 @Injectable()
@@ -71,16 +72,11 @@ export class PipeSteelWorkService {
   private configCache: Map<string, string> = new Map();
 
   constructor(
-    @InjectRepository(PipeSupportSpacing)
-    private readonly supportSpacingRepo: Repository<PipeSupportSpacing>,
-    @InjectRepository(BracketTypeEntity)
-    private readonly bracketTypeRepo: Repository<BracketTypeEntity>,
-    @InjectRepository(ReinforcementPadStandardEntity)
-    private readonly padStandardRepo: Repository<ReinforcementPadStandardEntity>,
-    @InjectRepository(BracketDimensionBySizeEntity)
-    private readonly bracketDimensionRepo: Repository<BracketDimensionBySizeEntity>,
-    @InjectRepository(PipeSteelWorkConfigEntity)
-    private readonly configRepo: Repository<PipeSteelWorkConfigEntity>,
+    private readonly supportSpacingRepo: PipeSupportSpacingRepository,
+    private readonly bracketTypeRepo: BracketTypeRepository,
+    private readonly padStandardRepo: ReinforcementPadStandardRepository,
+    private readonly bracketDimensionRepo: BracketDimensionBySizeRepository,
+    private readonly configRepo: PipeSteelWorkConfigRepository,
     private readonly bracketCompatibilityService: BracketCompatibilityService,
     private readonly supportSpacingService: SupportSpacingService,
   ) {}
@@ -90,9 +86,7 @@ export class PipeSteelWorkService {
       return this.configCache.get(key) || defaultValue || null;
     }
 
-    const config = await this.configRepo.findOne({
-      where: { configKey: key },
-    });
+    const config = await this.configRepo.findByConfigKey(key);
     if (config) {
       this.configCache.set(key, config.configValue);
       return config.configValue;
@@ -103,20 +97,13 @@ export class PipeSteelWorkService {
 
   async allConfigs(category?: string): Promise<PipeSteelWorkConfigEntity[]> {
     if (category) {
-      return this.configRepo.find({
-        where: { category },
-        order: { configKey: "ASC" },
-      });
+      return this.configRepo.findByCategoryOrdered(category);
     }
-    return this.configRepo.find({
-      order: { category: "ASC", configKey: "ASC" },
-    });
+    return this.configRepo.findAllOrdered();
   }
 
   async updateConfig(key: string, value: string): Promise<PipeSteelWorkConfigEntity | null> {
-    const config = await this.configRepo.findOne({
-      where: { configKey: key },
-    });
+    const config = await this.configRepo.findByConfigKey(key);
     if (!config) {
       return null;
     }
@@ -129,9 +116,7 @@ export class PipeSteelWorkService {
     branchNbMm: number,
     headerNbMm: number,
   ): Promise<ReinforcementPadStandardEntity | null> {
-    return this.padStandardRepo.findOne({
-      where: { branchNbMm, headerNbMm },
-    });
+    return this.padStandardRepo.findByBranchAndHeader(branchNbMm, headerNbMm);
   }
 
   async bracketDimension(

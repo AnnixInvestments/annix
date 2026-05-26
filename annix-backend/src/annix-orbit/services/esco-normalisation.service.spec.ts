@@ -1,6 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { CvEscoSkill } from "../entities/cv-esco-skill.entity";
+import { CvEscoSkillRepository } from "../repositories/cv-esco-skill.repository";
 import { EscoNormalisationService } from "./esco-normalisation.service";
 
 function fakeSkill(id: number, preferred: string, alts: string[]): CvEscoSkill {
@@ -16,11 +16,11 @@ function fakeSkill(id: number, preferred: string, alts: string[]): CvEscoSkill {
 
 describe("EscoNormalisationService", () => {
   let service: EscoNormalisationService;
-  let repo: { find: jest.Mock };
+  let repo: { findAll: jest.Mock };
 
   beforeEach(async () => {
     repo = {
-      find: jest
+      findAll: jest
         .fn()
         .mockResolvedValue([
           fakeSkill(1, "PostgreSQL", ["Postgres", "psql", "Postgres database"]),
@@ -35,10 +35,7 @@ describe("EscoNormalisationService", () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        EscoNormalisationService,
-        { provide: getRepositoryToken(CvEscoSkill), useValue: repo },
-      ],
+      providers: [EscoNormalisationService, { provide: CvEscoSkillRepository, useValue: repo }],
     }).compile();
     service = module.get(EscoNormalisationService);
     await service.invalidateCache();

@@ -1,15 +1,16 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
 import { Meeting, MeetingStatus, Prospect, ProspectStatus, Visit } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { ProspectRepository } from "../prospect.repository";
+import { VisitRepository } from "../visit.repository";
 import { AnalyticsService } from "./analytics.service";
 
 describe("AnalyticsService", () => {
   let service: AnalyticsService;
-  let mockProspectRepo: Partial<Repository<Prospect>>;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
-  let mockVisitRepo: Partial<Repository<Visit>>;
+  let mockProspectRepo: Partial<ProspectRepository>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
+  let mockVisitRepo: Partial<VisitRepository>;
 
   const testDate = fromISO("2026-01-15T10:00:00Z").toJSDate();
   const testDateEarlier = fromISO("2026-01-01T10:00:00Z").toJSDate();
@@ -49,30 +50,33 @@ describe("AnalyticsService", () => {
 
   beforeEach(async () => {
     mockProspectRepo = {
-      find: jest.fn().mockResolvedValue([]),
+      findAllByOwner: jest.fn().mockResolvedValue([]),
+      findByOwnerUpdatedInRange: jest.fn().mockResolvedValue([]),
+      findByOwnerOrderedByValue: jest.fn().mockResolvedValue([]),
     };
 
     mockMeetingRepo = {
-      find: jest.fn().mockResolvedValue([]),
+      findAllBySalesRep: jest.fn().mockResolvedValue([]),
+      findMeetingsOverTime: jest.fn().mockResolvedValue([]),
     };
 
     mockVisitRepo = {
-      find: jest.fn().mockResolvedValue([]),
+      findBySalesRep: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnalyticsService,
         {
-          provide: getRepositoryToken(Prospect),
+          provide: ProspectRepository,
           useValue: mockProspectRepo,
         },
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
         },
         {
-          provide: getRepositoryToken(Visit),
+          provide: VisitRepository,
           useValue: mockVisitRepo,
         },
       ],
@@ -88,9 +92,9 @@ describe("AnalyticsService", () => {
 
   describe("summary", () => {
     it("should return zeros when no data exists", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.summary(100);
 
@@ -113,9 +117,9 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 5, status: ProspectStatus.WON }),
         mockProspect({ id: 6, status: ProspectStatus.LOST }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue(prospects);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.summary(100);
 
@@ -130,9 +134,9 @@ describe("AnalyticsService", () => {
         mockMeeting({ id: 3, status: MeetingStatus.SCHEDULED }),
         mockMeeting({ id: 4, status: MeetingStatus.CANCELLED }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue(meetings);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue(meetings);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.summary(100);
 
@@ -147,9 +151,9 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 3, status: ProspectStatus.WON, estimatedValue: 50000 }),
         mockProspect({ id: 4, status: ProspectStatus.LOST, estimatedValue: 30000 }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue(prospects);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.summary(100);
 
@@ -163,9 +167,9 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 3, status: ProspectStatus.WON }),
         mockProspect({ id: 4, status: ProspectStatus.LOST }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue(prospects);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.summary(100);
 
@@ -177,9 +181,9 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 1, status: ProspectStatus.NEW }),
         mockProspect({ id: 2, status: ProspectStatus.CONTACTED }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue(prospects);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.summary(100);
 
@@ -201,9 +205,9 @@ describe("AnalyticsService", () => {
           updatedAt: fromISO("2026-01-21T10:00:00Z").toJSDate(),
         }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue(prospects);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.summary(100);
 
@@ -212,9 +216,9 @@ describe("AnalyticsService", () => {
 
     it("should count total visits", async () => {
       const visits = [mockVisit({ id: 1 }), mockVisit({ id: 2 }), mockVisit({ id: 3 })];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue(visits);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findAllBySalesRep as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue(visits);
 
       const result = await service.summary(100);
 
@@ -230,7 +234,7 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 3, status: ProspectStatus.QUALIFIED, estimatedValue: 50000 }),
         mockProspect({ id: 4, status: ProspectStatus.WON, estimatedValue: 75000 }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.prospectFunnel(100);
 
@@ -241,7 +245,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should return zero counts for statuses with no prospects", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue([]);
 
       const result = await service.prospectFunnel(100);
 
@@ -254,7 +258,7 @@ describe("AnalyticsService", () => {
 
   describe("meetingsOverTime", () => {
     it("should return correct number of periods", async () => {
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findMeetingsOverTime as jest.Mock).mockResolvedValue([]);
 
       const result = await service.meetingsOverTime(100, "week", 4);
 
@@ -267,7 +271,7 @@ describe("AnalyticsService", () => {
         mockMeeting({ id: 2, status: MeetingStatus.CANCELLED }),
         mockMeeting({ id: 3, status: MeetingStatus.SCHEDULED }),
       ];
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue(meetings);
+      (mockMeetingRepo.findMeetingsOverTime as jest.Mock).mockResolvedValue(meetings);
 
       const result = await service.meetingsOverTime(100, "week", 1);
 
@@ -278,7 +282,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should use month format labels when period is month", async () => {
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findMeetingsOverTime as jest.Mock).mockResolvedValue([]);
 
       const result = await service.meetingsOverTime(100, "month", 2);
 
@@ -289,7 +293,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should use week format labels when period is week", async () => {
-      (mockMeetingRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockMeetingRepo.findMeetingsOverTime as jest.Mock).mockResolvedValue([]);
 
       const result = await service.meetingsOverTime(100, "week", 2);
 
@@ -302,7 +306,7 @@ describe("AnalyticsService", () => {
 
   describe("winLossRateTrends", () => {
     it("should return correct number of months", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.winLossRateTrends(100, 3);
 
@@ -316,7 +320,7 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 3, status: ProspectStatus.LOST }),
         mockProspect({ id: 4, status: ProspectStatus.CONTACTED }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockProspectRepo.findByOwnerUpdatedInRange as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.winLossRateTrends(100, 1);
 
@@ -326,7 +330,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should return zero win rate when no won or lost prospects", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.winLossRateTrends(100, 1);
 
@@ -334,7 +338,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should use month abbreviation as period label", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerUpdatedInRange as jest.Mock).mockResolvedValue([]);
 
       const result = await service.winLossRateTrends(100, 2);
 
@@ -346,7 +350,7 @@ describe("AnalyticsService", () => {
 
   describe("activityHeatmap", () => {
     it("should return cells for all day/hour combinations (7 days x 14 hours)", async () => {
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.activityHeatmap(100);
 
@@ -362,7 +366,7 @@ describe("AnalyticsService", () => {
         mockVisit({ id: 1, startedAt: recentVisitTime }),
         mockVisit({ id: 2, startedAt: recentVisitTime }),
       ];
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue(visits);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue(visits);
 
       const result = await service.activityHeatmap(100);
 
@@ -371,7 +375,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should return sorted results by day and hour", async () => {
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.activityHeatmap(100);
 
@@ -381,7 +385,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should only include hours between 6 and 19", async () => {
-      (mockVisitRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockVisitRepo.findBySalesRep as jest.Mock).mockResolvedValue([]);
 
       const result = await service.activityHeatmap(100);
 
@@ -394,7 +398,7 @@ describe("AnalyticsService", () => {
 
   describe("revenuePipeline", () => {
     it("should return pipeline statuses only (new, contacted, qualified, proposal)", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue([]);
 
       const result = await service.revenuePipeline(100);
 
@@ -413,7 +417,7 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 1, status: ProspectStatus.NEW, estimatedValue: 10000 }),
         mockProspect({ id: 2, status: ProspectStatus.NEW, estimatedValue: 30000 }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.revenuePipeline(100);
 
@@ -424,7 +428,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should return zero avgValue when no prospects in a status", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findAllByOwner as jest.Mock).mockResolvedValue([]);
 
       const result = await service.revenuePipeline(100);
 
@@ -441,7 +445,7 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 2, estimatedValue: 50000 }),
         mockProspect({ id: 3, estimatedValue: 75000 }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockProspectRepo.findByOwnerOrderedByValue as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.topProspects(100);
 
@@ -453,7 +457,7 @@ describe("AnalyticsService", () => {
       const prospects = Array.from({ length: 5 }, (_, i) =>
         mockProspect({ id: i + 1, estimatedValue: (5 - i) * 10000 }),
       );
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockProspectRepo.findByOwnerOrderedByValue as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.topProspects(100, 3);
 
@@ -466,7 +470,7 @@ describe("AnalyticsService", () => {
         mockProspect({ id: 2, estimatedValue: null }),
         mockProspect({ id: 3, estimatedValue: 0 }),
       ];
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue(prospects);
+      (mockProspectRepo.findByOwnerOrderedByValue as jest.Mock).mockResolvedValue(prospects);
 
       const result = await service.topProspects(100);
 
@@ -483,7 +487,7 @@ describe("AnalyticsService", () => {
         estimatedValue: 80000,
         lastContactedAt: testDate,
       });
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([prospect]);
+      (mockProspectRepo.findByOwnerOrderedByValue as jest.Mock).mockResolvedValue([prospect]);
 
       const result = await service.topProspects(100);
 
@@ -498,7 +502,7 @@ describe("AnalyticsService", () => {
     });
 
     it("should return empty array when no prospects have value", async () => {
-      (mockProspectRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockProspectRepo.findByOwnerOrderedByValue as jest.Mock).mockResolvedValue([]);
 
       const result = await service.topProspects(100);
 

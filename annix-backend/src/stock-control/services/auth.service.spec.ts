@@ -8,23 +8,25 @@ import {
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
+import { DataSource } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
+import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
-import { User } from "../../user/entities/user.entity";
-import { PushSubscription } from "../entities/push-subscription.entity";
-import { StaffMember } from "../entities/staff-member.entity";
-import { StockControlAdminTransfer } from "../entities/stock-control-admin-transfer.entity";
-import { BrandingType, StockControlCompany } from "../entities/stock-control-company.entity";
-import {
-  StockControlInvitation,
-  StockControlInvitationStatus,
-} from "../entities/stock-control-invitation.entity";
-import { StockControlProfile } from "../entities/stock-control-profile.entity";
+import { UserRepository } from "../../user/user.repository";
+import { BrandingType } from "../entities/stock-control-company.entity";
+import { StockControlInvitationStatus } from "../entities/stock-control-invitation.entity";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
+import { PushSubscriptionRepository } from "../repositories/push-subscription.repository";
+import { StaffMemberRepository } from "../repositories/staff-member.repository";
+import { StockControlAdminTransferRepository } from "../repositories/stock-control-admin-transfer.repository";
+import { StockControlCompanyRepository } from "../repositories/stock-control-company.repository";
+import { StockControlInvitationRepository } from "../repositories/stock-control-invitation.repository";
+import { StockControlProfileRepository } from "../repositories/stock-control-profile.repository";
+import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
 import { StockControlAuthService } from "./auth.service";
 import { CompanyRoleService } from "./company-role.service";
 import { PublicBrandingService } from "./public-branding.service";
@@ -44,29 +46,56 @@ describe("StockControlAuthService", () => {
     execute: jest.fn().mockResolvedValue({ affected: 1 }),
   };
 
+  const userFindOne = jest.fn();
+  const userFind = jest.fn();
+  const userCount = jest.fn();
   const mockUserRepo = {
-    findOne: jest.fn(),
-    find: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findOne: userFindOne,
+    find: userFind,
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-    count: jest.fn(),
+    count: userCount,
     update: jest.fn().mockResolvedValue({ affected: 1 }),
-    createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
+    remove: jest.fn().mockResolvedValue(undefined),
+    findById: (id: number) => userFindOne({ where: { id } }),
+    findOneByEmail: (email: string) => userFindOne({ where: { email } }),
+    findOneByEmailCaseInsensitive: (email: string) => userFindOne({ where: { email } }),
+    findOneByEmailAndCompany: (email: string, companyId: number) =>
+      userFindOne({ where: { email, companyId } }),
+    findOneByEmailVerificationToken: (token: string) =>
+      userFindOne({ where: { emailVerificationToken: token } }),
+    findOneByResetToken: (token: string) => userFindOne({ where: { resetPasswordToken: token } }),
+    findOneForCompany: (id: number, companyId: number) => userFindOne({ where: { id, companyId } }),
+    findOneForCompanyWithCompany: (id: number, companyId: number) =>
+      userFindOne({ where: { id, companyId } }),
+    findOneByIdWithCompany: (id: number) => userFindOne({ where: { id } }),
+    findForCompanyOrderedByCreated: (companyId: number) => userFind({ where: { companyId } }),
+    findAllForCompany: (companyId: number) => userFind({ where: { companyId } }),
+    countAdminsForCompany: (companyId: number) => userCount({ where: { companyId } }),
+    countForCompany: (companyId: number) => userCount({ where: { companyId } }),
   };
 
+  const companyFindOne = jest.fn();
   const mockCompanyRepo = {
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findOne: companyFindOne,
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 10, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 10, ...entity })),
+    findById: (id: number) => companyFindOne({ where: { id } }),
+    updateById: jest.fn().mockResolvedValue(undefined),
   };
 
+  const invitationFindOne = jest.fn();
   const mockInvitationRepo = {
-    findOne: jest.fn(),
+    findOne: invitationFindOne,
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+    findOneByTokenAndStatus: (token: string) => invitationFindOne({ where: { token } }),
+    findOneByEmailAndStatus: (email: string) => invitationFindOne({ where: { email } }),
   };
 
+  const staffFindOne = jest.fn();
   const mockStaffRepo = {
-    findOne: jest.fn(),
+    findOne: staffFindOne,
+    findActiveByIdForUnifiedCompany: staffFindOne,
   };
 
   const mockJwtService = {
@@ -92,9 +121,14 @@ describe("StockControlAuthService", () => {
     clearIconCache: jest.fn(),
   };
 
+  const adminTransferFindOne = jest.fn();
   const mockAdminTransferRepo = {
-    findOne: jest.fn(),
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
+    findOne: adminTransferFindOne,
+    findPendingForCompany: adminTransferFindOne,
+    findPendingForCompanyWithInitiator: adminTransferFindOne,
+    findPendingByIdForCompany: adminTransferFindOne,
+    findByStatusToken: adminTransferFindOne,
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
     remove: jest.fn().mockResolvedValue(undefined),
   };
@@ -108,22 +142,45 @@ describe("StockControlAuthService", () => {
     verify: jest.fn().mockResolvedValue(true),
   };
 
+  const unifiedUserFindOne = jest.fn();
   const mockUnifiedUserRepo = {
-    findOne: jest.fn(),
+    findOne: unifiedUserFindOne,
+    findOneByEmail: unifiedUserFindOne,
+    findOneByEmailCaseInsensitive: unifiedUserFindOne,
+    findById: unifiedUserFindOne,
+    instantiate: jest.fn().mockImplementation((data: any) => ({ ...data })),
     create: jest.fn().mockImplementation((data: any) => ({ ...data })),
     save: jest.fn().mockImplementation((entity: any) => Promise.resolve({ id: 1, ...entity })),
+    updateByEmailCaseInsensitive: jest.fn().mockResolvedValue(undefined),
     createQueryBuilder: jest.fn().mockReturnValue(mockQueryBuilder),
   };
 
+  const profileFindOne = jest.fn();
   const mockProfileRepo = {
-    findOne: jest.fn(),
+    findOne: profileFindOne,
     findOneOrFail: jest.fn(),
-    create: jest.fn().mockImplementation((data: any) => ({ ...data })),
+    create: jest.fn().mockImplementation((data: any) => Promise.resolve(data)),
     save: jest.fn().mockImplementation((entity: any) => Promise.resolve(entity)),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
-    manager: {
-      query: jest.fn().mockResolvedValue([{ unified_company_id: 1 }]),
-    },
+    updateByUserId: jest.fn().mockResolvedValue(undefined),
+    findOneByUserId: (userId: number) => profileFindOne({ where: { userId } }),
+    findOneByUserIdWithRelations: (userId: number) => profileFindOne({ where: { userId } }),
+    findOneOrFailByUserId: jest.fn(),
+  };
+
+  const mockDataSource = {
+    query: jest.fn().mockResolvedValue([{ unified_company_id: 1 }]),
+  };
+
+  const mockManager = {
+    query: jest.fn().mockResolvedValue([]),
+    delete: jest.fn().mockResolvedValue({ affected: 1 }),
+  };
+
+  const mockTxRunner = {
+    run: jest
+      .fn()
+      .mockImplementation((cb: any) => cb(new TypeOrmTransactionContext(mockManager as never))),
   };
 
   const baseUnifiedUser = {
@@ -251,20 +308,22 @@ describe("StockControlAuthService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         StockControlAuthService,
-        { provide: getRepositoryToken(StockControlUser), useValue: mockUserRepo },
-        { provide: getRepositoryToken(StockControlCompany), useValue: mockCompanyRepo },
-        { provide: getRepositoryToken(StockControlInvitation), useValue: mockInvitationRepo },
-        { provide: getRepositoryToken(StockControlAdminTransfer), useValue: mockAdminTransferRepo },
-        { provide: getRepositoryToken(StaffMember), useValue: mockStaffRepo },
+        { provide: StockControlUserRepository, useValue: mockUserRepo },
+        { provide: StockControlCompanyRepository, useValue: mockCompanyRepo },
+        { provide: StockControlInvitationRepository, useValue: mockInvitationRepo },
+        { provide: StockControlAdminTransferRepository, useValue: mockAdminTransferRepo },
+        { provide: StaffMemberRepository, useValue: mockStaffRepo },
         {
-          provide: getRepositoryToken(PushSubscription),
+          provide: PushSubscriptionRepository,
           useValue: {
-            find: jest.fn().mockResolvedValue([]),
-            delete: jest.fn().mockResolvedValue(null),
+            findForUser: jest.fn().mockResolvedValue([]),
+            deleteForCompany: jest.fn().mockResolvedValue(null),
           },
         },
-        { provide: getRepositoryToken(User), useValue: mockUnifiedUserRepo },
-        { provide: getRepositoryToken(StockControlProfile), useValue: mockProfileRepo },
+        { provide: UserRepository, useValue: mockUnifiedUserRepo },
+        { provide: StockControlProfileRepository, useValue: mockProfileRepo },
+        { provide: DataSource, useValue: mockDataSource },
+        { provide: TransactionRunner, useValue: mockTxRunner },
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: S3StorageService, useValue: mockS3StorageService },
@@ -316,7 +375,6 @@ describe("StockControlAuthService", () => {
       );
 
       expect(mockCompanyRepo.create).toHaveBeenCalledWith({ name: "My Company" });
-      expect(mockCompanyRepo.save).toHaveBeenCalled();
       expect(result.user.role).toBe(StockControlRole.ADMIN);
       expect(result.isInvitedUser).toBe(false);
       expect(mockEmailService.sendStockControlVerificationEmail).toHaveBeenCalledWith(
@@ -827,14 +885,14 @@ describe("StockControlAuthService", () => {
 
       const result = await service.updateLinkedStaff(100, 20, 5);
 
-      expect(mockProfileRepo.update).toHaveBeenCalledWith({ userId: 100 }, { linkedStaffId: 5 });
+      expect(mockProfileRepo.updateByUserId).toHaveBeenCalledWith(100, { linkedStaffId: 5 });
       expect(result.linkedStaffId).toBe(5);
     });
 
     it("unlinks staff member when null", async () => {
       const result = await service.updateLinkedStaff(100, 20, null);
 
-      expect(mockProfileRepo.update).toHaveBeenCalledWith({ userId: 100 }, { linkedStaffId: null });
+      expect(mockProfileRepo.updateByUserId).toHaveBeenCalledWith(100, { linkedStaffId: null });
       expect(result.linkedStaffId).toBeNull();
     });
 
@@ -851,7 +909,7 @@ describe("StockControlAuthService", () => {
     it("updates tooltip preference", async () => {
       const result = await service.updateTooltipPreference(100, true);
 
-      expect(mockProfileRepo.update).toHaveBeenCalledWith({ userId: 100 }, { hideTooltips: true });
+      expect(mockProfileRepo.updateByUserId).toHaveBeenCalledWith(100, { hideTooltips: true });
       expect(result.hideTooltips).toBe(true);
     });
   });

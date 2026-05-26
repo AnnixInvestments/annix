@@ -1,10 +1,9 @@
 import { createHash } from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { RubberCuttingTraining } from "../entities/rubber-cutting-training.entity";
+import { RubberCuttingTrainingRepository } from "../repositories/rubber-cutting-training.repository";
 
 interface PanelDimension {
   widthMm: number;
@@ -27,8 +26,7 @@ export class RubberCuttingTrainingService {
   private readonly logger = new Logger(RubberCuttingTrainingService.name);
 
   constructor(
-    @InjectRepository(RubberCuttingTraining)
-    private readonly trainingRepo: Repository<RubberCuttingTraining>,
+    private readonly trainingRepo: RubberCuttingTrainingRepository,
     private readonly aiChatService: AiChatService,
   ) {}
 
@@ -125,15 +123,13 @@ export class RubberCuttingTrainingService {
       const autoWastePct = input.autoPlanSnapshot.wastePercentage || 0;
       const manualWastePct = this.wastePercentageFromManualRolls(input.manualRolls);
 
-      const existing = await this.trainingRepo.findOne({
-        where: {
-          companyId: input.companyId,
-          panelFingerprint: fingerprint,
-        },
-      });
+      const existing = await this.trainingRepo.findOneForCompanyByFingerprint(
+        input.companyId,
+        fingerprint,
+      );
 
       if (existing) {
-        await this.trainingRepo.update(existing.id, {
+        await this.trainingRepo.updateById(existing.id, {
           jobCardId: input.jobCardId,
           manualPlan: { rolls: input.manualRolls },
           autoPlanSnapshot: input.autoPlanSnapshot,
@@ -148,10 +144,10 @@ export class RubberCuttingTrainingService {
           `Updated cutting training #${existing.id} (fingerprint=${fingerprint}, usage=${existing.usageCount + 1})`,
         );
 
-        return this.trainingRepo.findOneBy({ id: existing.id });
+        return this.trainingRepo.findById(existing.id);
       }
 
-      const training = this.trainingRepo.create({
+      const saved = await this.trainingRepo.create({
         companyId: input.companyId,
         jobCardId: input.jobCardId,
         panelFingerprint: fingerprint,
@@ -167,7 +163,6 @@ export class RubberCuttingTrainingService {
         lastUsedAt: now().toJSDate(),
       });
 
-      const saved = await this.trainingRepo.save(training);
       this.logger.log(
         `Created cutting training #${saved.id} (fingerprint=${fingerprint}, panels=${panelCount})`,
       );
@@ -189,14 +184,7 @@ export class RubberCuttingTrainingService {
 
     const fingerprint = this.panelFingerprint(panels);
 
-    const exactMatches = await this.trainingRepo
-      .createQueryBuilder("t")
-      .where("t.company_id = :companyId", { companyId })
-      .andWhere("t.panel_fingerprint = :fingerprint", { fingerprint })
-      .orderBy("t.feedback_score", "DESC")
-      .addOrderBy("t.usage_count", "DESC")
-      .limit(3)
-      .getMany();
+    const exactMatches = await this.trainingRepo.findExactMatches(companyId, fingerprint);
 
     if (exactMatches.length > 0) {
       await this.incrementSuggested(exactMatches.map((m) => m.id));
@@ -207,14 +195,7 @@ export class RubberCuttingTrainingService {
     const minCount = Math.max(1, panelCount - 2);
     const maxCount = panelCount + 2;
 
-    const similar = await this.trainingRepo
-      .createQueryBuilder("t")
-      .where("t.company_id = :companyId", { companyId })
-      .andWhere("t.panel_count BETWEEN :minCount AND :maxCount", { minCount, maxCount })
-      .orderBy("t.feedback_score", "DESC")
-      .addOrderBy("t.usage_count", "DESC")
-      .limit(5)
-      .getMany();
+    const similar = await this.trainingRepo.findSimilarByPanelCount(companyId, minCount, maxCount);
 
     if (similar.length === 0) return { exact: [], aiSuggestion: null };
 
@@ -313,16 +294,10 @@ export class RubberCuttingTrainingService {
 
   private async incrementSuggested(ids: number[]): Promise<void> {
     if (ids.length === 0) return;
-    await this.trainingRepo
-      .createQueryBuilder()
-      .update()
-      .set({ timesSuggested: () => "times_suggested + 1" })
-      .whereInIds(ids)
-      .execute()
-      .catch((err) => {
-        const message = err instanceof Error ? err.message : "Unknown error";
-        this.logger.warn(`Failed to increment times_suggested: ${message}`);
-      });
+    await this.trainingRepo.incrementTimesSuggested(ids).catch((err) => {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      this.logger.warn(`Failed to increment times_suggested: ${message}`);
+    });
   }
 
   async recordFeedback(
@@ -330,9 +305,7 @@ export class RubberCuttingTrainingService {
     trainingId: number,
     outcome: "applied" | "applied_modified" | "ignored",
   ): Promise<void> {
-    const training = await this.trainingRepo.findOne({
-      where: { id: trainingId, companyId },
-    });
+    const training = await this.trainingRepo.findOneForCompanyById(companyId, trainingId);
     if (!training) return;
 
     const updates: Partial<RubberCuttingTraining> = {};
@@ -355,7 +328,7 @@ export class RubberCuttingTrainingService {
       updates.feedbackScore = Math.round(score * 100) / 100;
     }
 
-    await this.trainingRepo.update(training.id, updates);
+    await this.trainingRepo.updateById(training.id, updates);
     this.logger.log(
       `Recorded feedback "${outcome}" for training #${trainingId} (score=${updates.feedbackScore})`,
     );

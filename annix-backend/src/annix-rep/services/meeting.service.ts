@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
 import { fromISO, now } from "../../lib/datetime";
+import { CalendarConnectionRepository } from "../calendar-connection.repository";
+import { CalendarEventRepository } from "../calendar-event.repository";
 import {
   CreateMeetingDto,
   CreateMeetingFromCalendarDto,
@@ -11,47 +11,40 @@ import {
   UpdateMeetingDto,
 } from "../dto";
 import {
-  CalendarConnection,
   CalendarEvent,
   Meeting,
   MeetingRecording,
   MeetingStatus,
   MeetingTranscript,
   MeetingType,
-  Prospect,
-  RecordingProcessingStatus,
 } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { MeetingTranscriptRepository } from "../meeting-transcript.repository";
+import { ProspectRepository } from "../prospect.repository";
 
 @Injectable()
 export class MeetingService {
   private readonly logger = new Logger(MeetingService.name);
 
   constructor(
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(MeetingRecording)
-    private readonly recordingRepo: Repository<MeetingRecording>,
-    @InjectRepository(MeetingTranscript)
-    private readonly transcriptRepo: Repository<MeetingTranscript>,
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
-    @InjectRepository(CalendarEvent)
-    private readonly calendarEventRepo: Repository<CalendarEvent>,
-    @InjectRepository(CalendarConnection)
-    private readonly calendarConnectionRepo: Repository<CalendarConnection>,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly recordingRepo: MeetingRecordingRepository,
+    private readonly transcriptRepo: MeetingTranscriptRepository,
+    private readonly prospectRepo: ProspectRepository,
+    private readonly calendarEventRepo: CalendarEventRepository,
+    private readonly calendarConnectionRepo: CalendarConnectionRepository,
   ) {}
 
   async create(salesRepId: number, dto: CreateMeetingDto): Promise<Meeting> {
     if (dto.prospectId) {
-      const prospect = await this.prospectRepo.findOne({
-        where: { id: dto.prospectId },
-      });
+      const prospect = await this.prospectRepo.findById(dto.prospectId);
       if (!prospect) {
         throw new NotFoundException(`Prospect ${dto.prospectId} not found`);
       }
     }
 
-    const meeting = this.meetingRepo.create({
+    const saved = await this.meetingRepo.create({
       salesRepId,
       prospectId: dto.prospectId ?? null,
       title: dto.title,
@@ -65,52 +58,27 @@ export class MeetingService {
       attendees: dto.attendees ?? null,
       agenda: dto.agenda ?? null,
     });
-
-    const saved = await this.meetingRepo.save(meeting);
     this.logger.log(`Meeting created: ${saved.id} by user ${salesRepId}`);
     return saved;
   }
 
   async findAll(salesRepId: number, limit: number = 500): Promise<Meeting[]> {
-    return this.meetingRepo.find({
-      where: { salesRepId },
-      relations: ["prospect"],
-      order: { scheduledStart: "DESC" },
-      take: limit,
-    });
+    return this.meetingRepo.findAllForSalesRep(salesRepId, limit);
   }
 
   async findUpcoming(salesRepId: number, days: number = 7): Promise<Meeting[]> {
     const startDate = now().toJSDate();
     const endDate = now().plus({ days }).toJSDate();
 
-    return this.meetingRepo.find({
-      where: {
-        salesRepId,
-        scheduledStart: Between(startDate, endDate),
-        status: MeetingStatus.SCHEDULED,
-      },
-      relations: ["prospect"],
-      order: { scheduledStart: "ASC" },
-    });
+    return this.meetingRepo.findUpcoming(salesRepId, startDate, endDate);
   }
 
   async findByDateRange(salesRepId: number, startDate: Date, endDate: Date): Promise<Meeting[]> {
-    return this.meetingRepo.find({
-      where: {
-        salesRepId,
-        scheduledStart: Between(startDate, endDate),
-      },
-      relations: ["prospect"],
-      order: { scheduledStart: "ASC" },
-    });
+    return this.meetingRepo.findByDateRange(salesRepId, startDate, endDate);
   }
 
   async findOne(salesRepId: number, id: number): Promise<Meeting> {
-    const meeting = await this.meetingRepo.findOne({
-      where: { id, salesRepId },
-      relations: ["prospect"],
-    });
+    const meeting = await this.meetingRepo.findOneForSalesRep(salesRepId, id);
 
     if (!meeting) {
       throw new NotFoundException(`Meeting ${id} not found`);
@@ -129,15 +97,11 @@ export class MeetingService {
   }> {
     const meeting = await this.findOne(salesRepId, id);
 
-    const recording = await this.recordingRepo.findOne({
-      where: { meetingId: id },
-    });
+    const recording = await this.recordingRepo.findByMeetingId(id);
 
     let transcript: MeetingTranscript | null = null;
     if (recording) {
-      transcript = await this.transcriptRepo.findOne({
-        where: { recordingId: recording.id },
-      });
+      transcript = await this.transcriptRepo.findByRecordingId(recording.id);
     }
 
     return { meeting, recording, transcript };
@@ -148,9 +112,7 @@ export class MeetingService {
 
     if (dto.prospectId != null) {
       if (dto.prospectId) {
-        const prospect = await this.prospectRepo.findOne({
-          where: { id: dto.prospectId },
-        });
+        const prospect = await this.prospectRepo.findById(dto.prospectId);
         if (!prospect) {
           throw new NotFoundException(`Prospect ${dto.prospectId} not found`);
         }
@@ -277,30 +239,15 @@ export class MeetingService {
     const today = now().startOf("day").toJSDate();
     const tomorrow = now().plus({ days: 1 }).startOf("day").toJSDate();
 
-    return this.meetingRepo.find({
-      where: {
-        salesRepId,
-        scheduledStart: Between(today, tomorrow),
-      },
-      relations: ["prospect"],
-      order: { scheduledStart: "ASC" },
-    });
+    return this.meetingRepo.findTodays(salesRepId, today, tomorrow);
   }
 
   async activeMeeting(salesRepId: number): Promise<Meeting | null> {
-    return this.meetingRepo.findOne({
-      where: {
-        salesRepId,
-        status: MeetingStatus.IN_PROGRESS,
-      },
-      relations: ["prospect"],
-    });
+    return this.meetingRepo.findActive(salesRepId);
   }
 
   async meetingsWithRecordings(salesRepId: number): Promise<Meeting[]> {
-    const recordings = await this.recordingRepo.find({
-      select: ["meetingId"],
-    });
+    const recordings = await this.recordingRepo.findAllSelectMeetingId();
 
     const meetingIds = recordings.map((r) => r.meetingId);
 
@@ -308,26 +255,15 @@ export class MeetingService {
       return [];
     }
 
-    return this.meetingRepo
-      .createQueryBuilder("meeting")
-      .where("meeting.sales_rep_id = :salesRepId", { salesRepId })
-      .andWhere("meeting.id IN (:...meetingIds)", { meetingIds })
-      .leftJoinAndSelect("meeting.prospect", "prospect")
-      .orderBy("meeting.scheduled_start", "DESC")
-      .getMany();
+    return this.meetingRepo.findWithProspectInIds(salesRepId, meetingIds);
   }
 
   async meetingsPendingTranscription(salesRepId: number): Promise<Meeting[]> {
-    const completedRecordings = await this.recordingRepo.find({
-      where: { processingStatus: RecordingProcessingStatus.COMPLETED },
-      select: ["id", "meetingId"],
-    });
+    const completedRecordings = await this.recordingRepo.findCompletedSelectIdMeetingId();
 
-    const transcribedRecordingIds = (
-      await this.transcriptRepo.find({
-        select: ["recordingId"],
-      })
-    ).map((t) => t.recordingId);
+    const transcribedRecordingIds = (await this.transcriptRepo.findAllSelectRecordingId()).map(
+      (t) => t.recordingId,
+    );
 
     const pendingMeetingIds = completedRecordings
       .filter((r) => !transcribedRecordingIds.includes(r.id))
@@ -337,13 +273,7 @@ export class MeetingService {
       return [];
     }
 
-    return this.meetingRepo
-      .createQueryBuilder("meeting")
-      .where("meeting.sales_rep_id = :salesRepId", { salesRepId })
-      .andWhere("meeting.id IN (:...pendingMeetingIds)", { pendingMeetingIds })
-      .leftJoinAndSelect("meeting.prospect", "prospect")
-      .orderBy("meeting.scheduled_start", "DESC")
-      .getMany();
+    return this.meetingRepo.findWithProspectInIds(salesRepId, pendingMeetingIds);
   }
 
   async createFromCalendarEvent(
@@ -351,26 +281,19 @@ export class MeetingService {
     calendarEventId: number,
     dto: CreateMeetingFromCalendarDto,
   ): Promise<{ meeting: Meeting; calendarProvider: string; meetingUrl: string | null }> {
-    const calendarEvent = await this.calendarEventRepo.findOne({
-      where: { id: calendarEventId },
-      relations: ["connection"],
-    });
+    const calendarEvent = await this.calendarEventRepo.findWithConnection(calendarEventId);
 
     if (!calendarEvent) {
       throw new NotFoundException(`Calendar event ${calendarEventId} not found`);
     }
 
-    const connection = await this.calendarConnectionRepo.findOne({
-      where: { id: calendarEvent.connectionId },
-    });
+    const connection = await this.calendarConnectionRepo.findById(calendarEvent.connectionId);
 
     if (!connection || connection.userId !== salesRepId) {
       throw new NotFoundException(`Calendar event ${calendarEventId} not found or not accessible`);
     }
 
-    const existingMeeting = await this.meetingRepo.findOne({
-      where: { calendarEventId },
-    });
+    const existingMeeting = await this.meetingRepo.findByCalendarEventId(calendarEventId);
 
     if (existingMeeting) {
       throw new BadRequestException(
@@ -379,9 +302,7 @@ export class MeetingService {
     }
 
     if (dto.prospectId) {
-      const prospect = await this.prospectRepo.findOne({
-        where: { id: dto.prospectId },
-      });
+      const prospect = await this.prospectRepo.findById(dto.prospectId);
       if (!prospect) {
         throw new NotFoundException(`Prospect ${dto.prospectId} not found`);
       }
@@ -391,7 +312,7 @@ export class MeetingService {
 
     const allAttendees = [...(calendarEvent.attendees ?? []), ...(dto.additionalAttendees ?? [])];
 
-    const meeting = this.meetingRepo.create({
+    const saved = await this.meetingRepo.create({
       salesRepId,
       prospectId: dto.prospectId ?? null,
       calendarEventId,
@@ -403,8 +324,6 @@ export class MeetingService {
       location: calendarEvent.location,
       attendees: allAttendees.length > 0 ? allAttendees : null,
     });
-
-    const saved = await this.meetingRepo.save(meeting);
     this.logger.log(
       `Meeting ${saved.id} created from calendar event ${calendarEventId} by user ${salesRepId}`,
     );

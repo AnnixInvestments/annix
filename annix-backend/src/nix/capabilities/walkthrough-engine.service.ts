@@ -1,12 +1,11 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { nowISO } from "../../lib/datetime";
 import {
   NixChatSession,
   type WalkthroughEndReason,
   type WalkthroughState,
 } from "../entities/nix-chat-session.entity";
+import { NixChatSessionRepository } from "../nix-chat-session.repository";
 import { NixCapabilityRegistry } from "./nix-capability-registry.service";
 import { NixGuideLoader, type ParsedGuide } from "./nix-guide-loader.service";
 
@@ -40,8 +39,7 @@ export class WalkthroughEngine {
   private readonly logger = new Logger(WalkthroughEngine.name);
 
   constructor(
-    @InjectRepository(NixChatSession)
-    private readonly sessionRepo: Repository<NixChatSession>,
+    private readonly sessionRepo: NixChatSessionRepository,
     private readonly registry: NixCapabilityRegistry,
     private readonly guideLoader: NixGuideLoader,
   ) {}
@@ -261,7 +259,7 @@ export class WalkthroughEngine {
   }
 
   private async session(sessionId: number): Promise<NixChatSession> {
-    const session = await this.sessionRepo.findOne({ where: { id: sessionId } });
+    const session = await this.sessionRepo.findById(sessionId);
     if (!session) {
       throw new NotFoundException(`NixChatSession ${sessionId} not found`);
     }

@@ -49,4 +49,12 @@ export class PaintIssuanceRow {
 
   @Column({ name: "cpo_pro_rata_split", type: "jsonb", nullable: true })
   cpoProRataSplit: Record<string, number> | null;
+
+  get id(): number {
+    return this.rowId;
+  }
+
+  set id(value: number) {
+    this.rowId = value;
+  }
 }

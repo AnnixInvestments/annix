@@ -6,19 +6,25 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { DataSource, IsNull, LessThan, MoreThan, Repository } from "typeorm";
+import { type EntityManager } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
+import {
+  type TransactionContext,
+  TypeOrmTransactionContext,
+} from "../../lib/persistence/transaction-context";
+import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { PaginatedResponse } from "../../shared/dto/api-response.dto";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { JobCardCoatingAnalysis } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { JobCardJobFile } from "../entities/job-card-job-file.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
+import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
 import { RequisitionService } from "./requisition.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
@@ -27,31 +33,29 @@ export class JobCardService {
   private readonly logger = new Logger(JobCardService.name);
 
   constructor(
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(StockAllocation)
-    private readonly allocationRepo: Repository<StockAllocation>,
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
-    @InjectRepository(StockMovement)
-    private readonly movementRepo: Repository<StockMovement>,
-    @InjectRepository(JobCardCoatingAnalysis)
-    private readonly coatingAnalysisRepo: Repository<JobCardCoatingAnalysis>,
-    @InjectRepository(JobCardJobFile)
-    private readonly jobFileRepo: Repository<JobCardJobFile>,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly allocationRepo: StockAllocationRepository,
+    private readonly coatingAnalysisRepo: JobCardCoatingAnalysisRepository,
+    private readonly jobFileRepo: JobCardJobFileRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
     @Inject(forwardRef(() => WorkflowNotificationService))
     private readonly notificationService: WorkflowNotificationService,
-    private readonly dataSource: DataSource,
+    private readonly txRunner: TransactionRunner,
     private readonly auditService: AuditService,
   ) {}
 
+  private transactionManager(context: TransactionContext) {
+    if (!(context instanceof TypeOrmTransactionContext)) {
+      throw new Error("JobCardService transactions require a TypeOrmTransactionContext");
+    }
+    return context.manager;
+  }
+
   async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
-    const jobCard = this.jobCardRepo.create({ ...data, companyId });
-    return this.jobCardRepo.save(jobCard);
+    return this.jobCardRepo.create({ ...data, companyId });
   }
 
   async findAll(
@@ -60,36 +64,17 @@ export class JobCardService {
     page: number = 1,
     limit: number = 50,
   ): Promise<JobCard[]> {
-    const qb = this.jobCardRepo
-      .createQueryBuilder("jc")
-      .where("jc.companyId = :companyId", { companyId })
-      .andWhere("jc.supersededById IS NULL")
-      .andWhere("(jc.parentJobCardId IS NULL OR jc.cpoId IS NOT NULL)")
-      .andWhere(
-        "jc.id NOT IN (SELECT parent_job_card_id FROM job_cards WHERE parent_job_card_id IS NOT NULL)",
-      )
-      .orderBy("jc.createdAt", "DESC")
-      .take(limit)
-      .skip((page - 1) * limit);
-
-    if (status) {
-      qb.andWhere("jc.status = :status", { status });
-    }
-    const jobCards = await qb.getMany();
+    const jobCards = await this.jobCardRepo.findForCompanyByListPage(
+      companyId,
+      status,
+      page,
+      limit,
+    );
 
     const idsWithoutJtDn = jobCards.filter((jc) => !jc.jtDnNumber).map((jc) => jc.id);
 
     if (idsWithoutJtDn.length > 0) {
-      const jtRows: { jobCardId: number; jtNumbers: string }[] = await this.dataSource.query(
-        `SELECT li.job_card_id AS "jobCardId",
-                  STRING_AGG(DISTINCT li.jt_no, ', ' ORDER BY li.jt_no) AS "jtNumbers"
-           FROM job_card_line_items li
-           WHERE li.job_card_id = ANY($1)
-             AND li.jt_no IS NOT NULL
-             AND li.jt_no <> ''
-           GROUP BY li.job_card_id`,
-        [idsWithoutJtDn],
-      );
+      const jtRows = await this.jobCardRepo.jtNumbersForJobCards(idsWithoutJtDn);
 
       const jtMap = new Map(jtRows.map((r) => [r.jobCardId, r.jtNumbers]));
       return jobCards.map((jc) => {
@@ -104,19 +89,16 @@ export class JobCardService {
   }
 
   async findById(companyId: number, id: number): Promise<JobCard> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id, companyId },
-      relations: ["lineItems"],
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompanyWithLineItems(id, companyId);
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
 
     if (!jobCard.notes && jobCard.parentJobCardId) {
-      const parent = await this.jobCardRepo.findOne({
-        where: { id: jobCard.parentJobCardId, companyId },
-        select: ["id", "notes"],
-      });
+      const parent = await this.jobCardRepo.findOneForCompanySelectIdNotes(
+        jobCard.parentJobCardId,
+        companyId,
+      );
       if (parent?.notes) {
         jobCard.notes = parent.notes;
       }
@@ -129,40 +111,16 @@ export class JobCardService {
     companyId: number,
     id: number,
   ): Promise<{ previousId: number | null; nextId: number | null }> {
-    const current = await this.jobCardRepo.findOne({
-      where: { id, companyId },
-      select: ["id"],
-    });
+    const current = await this.jobCardRepo.findOneForCompanySelectId(id, companyId);
     if (!current) {
       throw new NotFoundException("Job card not found");
     }
 
-    const baseWhere = { companyId, supersededById: IsNull() };
-
-    const previous = await this.jobCardRepo.findOne({
-      where: { ...baseWhere, id: LessThan(current.id) },
-      order: { id: "DESC" },
-      select: ["id"],
-    });
-
-    const next = await this.jobCardRepo.findOne({
-      where: { ...baseWhere, id: MoreThan(current.id) },
-      order: { id: "ASC" },
-      select: ["id"],
-    });
-
-    return {
-      previousId: previous?.id || null,
-      nextId: next?.id || null,
-    };
+    return this.jobCardRepo.adjacentIds(current.id, companyId);
   }
 
   async deliveryJobCards(companyId: number, parentJobCardId: number): Promise<JobCard[]> {
-    return this.jobCardRepo.find({
-      where: { companyId, parentJobCardId },
-      relations: ["lineItems"],
-      order: { createdAt: "DESC" },
-    });
+    return this.jobCardRepo.findDeliveryJobCards(companyId, parentJobCardId);
   }
 
   async update(companyId: number, id: number, data: Partial<JobCard>): Promise<JobCard> {
@@ -178,7 +136,8 @@ export class JobCardService {
     this.logger.log(
       `Found job card ${jobCard.jobNumber} (id=${numericId}), proceeding with delete`,
     );
-    await this.dataSource.transaction(async (em) => {
+    await this.txRunner.run(async (ctx) => {
+      const em = this.transactionManager(ctx);
       await em.query("DELETE FROM stock_returns WHERE job_card_id = $1 AND company_id = $2", [
         numericId,
         companyId,
@@ -215,13 +174,10 @@ export class JobCardService {
       staffMemberId?: number;
     },
   ): Promise<StockAllocation> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
+    const outcome = await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
       const { stockItem, jobCard } = await this.validateAllocationEntities(
-        queryRunner,
+        manager,
         companyId,
         data.stockItemId,
         data.jobCardId,
@@ -236,7 +192,7 @@ export class JobCardService {
       );
 
       if (overAllocationCheck.requiresApproval) {
-        const saved = await this.createAllocationRecord(queryRunner, {
+        const saved = await this.createAllocationRecord(manager, {
           stockItem,
           jobCard,
           data,
@@ -244,25 +200,14 @@ export class JobCardService {
           pendingApproval: true,
           allowedLitres: overAllocationCheck.allowedLitres,
         });
-        await queryRunner.commitTransaction();
 
-        await this.notificationService.notifyOverAllocationApproval(
-          companyId,
-          data.jobCardId,
-          saved.id,
-          stockItem.name,
-          data.quantityUsed,
-          overAllocationCheck.allowedLitres ?? 0,
-          overAllocationCheck.alreadyAllocated,
-        );
-
-        return saved;
+        return { saved, pendingApproval: true as const, stockItem, overAllocationCheck };
       }
 
       stockItem.quantity = stockItem.quantity - data.quantityUsed;
-      await queryRunner.manager.save(StockItem, stockItem);
+      await manager.save(StockItem, stockItem);
 
-      const saved = await this.createAllocationRecord(queryRunner, {
+      const saved = await this.createAllocationRecord(manager, {
         stockItem,
         jobCard,
         data,
@@ -271,7 +216,7 @@ export class JobCardService {
         allowedLitres: overAllocationCheck.allowedLitres,
       });
 
-      const movement = queryRunner.manager.create(StockMovement, {
+      const movement = manager.create(StockMovement, {
         stockItem,
         movementType: MovementType.OUT,
         quantity: data.quantityUsed,
@@ -281,29 +226,38 @@ export class JobCardService {
         createdBy: data.allocatedBy || null,
         companyId,
       });
-      await queryRunner.manager.save(StockMovement, movement);
+      await manager.save(StockMovement, movement);
 
-      await queryRunner.commitTransaction();
+      return { saved, pendingApproval: false as const, stockItem, overAllocationCheck };
+    });
 
-      this.triggerPostAllocationSideEffects(companyId, stockItem, saved, data);
+    if (outcome.pendingApproval) {
+      await this.notificationService.notifyOverAllocationApproval(
+        companyId,
+        data.jobCardId,
+        outcome.saved.id,
+        outcome.stockItem.name,
+        data.quantityUsed,
+        outcome.overAllocationCheck.allowedLitres ?? 0,
+        outcome.overAllocationCheck.alreadyAllocated,
+      );
 
-      return saved;
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
+      return outcome.saved;
     }
+
+    this.triggerPostAllocationSideEffects(companyId, outcome.stockItem, outcome.saved, data);
+
+    return outcome.saved;
   }
 
   private async validateAllocationEntities(
-    queryRunner: any,
+    manager: EntityManager,
     companyId: number,
     stockItemId: number,
     jobCardId: number,
     quantityUsed: number,
   ): Promise<{ stockItem: StockItem; jobCard: JobCard }> {
-    const stockItem = await queryRunner.manager.findOne(StockItem, {
+    const stockItem = await manager.findOne(StockItem, {
       where: { id: stockItemId, companyId },
       lock: { mode: "pessimistic_write" },
     });
@@ -311,7 +265,7 @@ export class JobCardService {
       throw new NotFoundException("Stock item not found");
     }
 
-    const jobCard = await queryRunner.manager.findOne(JobCard, {
+    const jobCard = await manager.findOne(JobCard, {
       where: { id: jobCardId, companyId },
     });
     if (!jobCard) {
@@ -328,7 +282,7 @@ export class JobCardService {
   }
 
   private async createAllocationRecord(
-    queryRunner: any,
+    manager: EntityManager,
     params: {
       stockItem: StockItem;
       jobCard: JobCard;
@@ -344,7 +298,7 @@ export class JobCardService {
       allowedLitres: number | null | undefined;
     },
   ): Promise<StockAllocation> {
-    const allocation = queryRunner.manager.create(StockAllocation, {
+    const allocation = manager.create(StockAllocation, {
       stockItem: params.stockItem,
       jobCard: params.jobCard,
       quantityUsed: params.data.quantityUsed,
@@ -356,7 +310,7 @@ export class JobCardService {
       pendingApproval: params.pendingApproval,
       allowedLitres: params.allowedLitres,
     });
-    return queryRunner.manager.save(StockAllocation, allocation);
+    return manager.save(StockAllocation, allocation);
   }
 
   private triggerPostAllocationSideEffects(
@@ -398,9 +352,7 @@ export class JobCardService {
     allowedLitres: number | null;
     alreadyAllocated: number;
   }> {
-    const coatingAnalysis = await this.coatingAnalysisRepo.findOne({
-      where: { jobCardId, companyId },
-    });
+    const coatingAnalysis = await this.coatingAnalysisRepo.findOneForJobCard(companyId, jobCardId);
 
     if (!coatingAnalysis?.coats || coatingAnalysis.coats.length === 0) {
       return { requiresApproval: false, allowedLitres: null, alreadyAllocated: 0 };
@@ -411,15 +363,11 @@ export class JobCardService {
       return { requiresApproval: false, allowedLitres: null, alreadyAllocated: 0 };
     }
 
-    const existingAllocations = await this.allocationRepo.find({
-      where: {
-        jobCard: { id: jobCardId },
-        stockItem: { id: stockItem.id },
-        companyId,
-        pendingApproval: false,
-        rejectedAt: IsNull(),
-      },
-    });
+    const existingAllocations = await this.allocationRepo.findActiveExistingByJobAndStockItem(
+      companyId,
+      jobCardId,
+      stockItem.id,
+    );
 
     const alreadyAllocated = existingAllocations.reduce(
       (sum, alloc) => sum + Number(alloc.quantityUsed),
@@ -459,12 +407,9 @@ export class JobCardService {
     allocationId: number,
     managerId: number,
   ): Promise<StockAllocation> {
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const allocation = await queryRunner.manager.findOne(StockAllocation, {
+    const { saved, stockItem } = await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
+      const allocation = await manager.findOne(StockAllocation, {
         where: { id: allocationId, companyId, pendingApproval: true },
         relations: ["stockItem", "jobCard"],
       });
@@ -473,7 +418,7 @@ export class JobCardService {
         throw new NotFoundException("Pending allocation not found");
       }
 
-      const stockItem = await queryRunner.manager.findOne(StockItem, {
+      const stockItem = await manager.findOne(StockItem, {
         where: { id: allocation.stockItemId, companyId },
         lock: { mode: "pessimistic_write" },
       });
@@ -489,14 +434,14 @@ export class JobCardService {
       }
 
       stockItem.quantity = stockItem.quantity - allocation.quantityUsed;
-      await queryRunner.manager.save(StockItem, stockItem);
+      await manager.save(StockItem, stockItem);
 
       allocation.pendingApproval = false;
       allocation.approvedByManagerId = managerId;
       allocation.approvedAt = now().toJSDate();
-      const saved = await queryRunner.manager.save(StockAllocation, allocation);
+      const saved = await manager.save(StockAllocation, allocation);
 
-      const movement = queryRunner.manager.create(StockMovement, {
+      const movement = manager.create(StockMovement, {
         stockItem,
         movementType: MovementType.OUT,
         quantity: allocation.quantityUsed,
@@ -506,36 +451,29 @@ export class JobCardService {
         createdBy: allocation.allocatedBy || null,
         companyId,
       });
-      await queryRunner.manager.save(StockMovement, movement);
+      await manager.save(StockMovement, movement);
 
-      await queryRunner.commitTransaction();
+      return { saved, stockItem };
+    });
 
-      if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
-        this.requisitionService
-          .createReorderRequisition(companyId, stockItem.id)
-          .catch((err) =>
-            this.logger.error(`Failed to create reorder requisition: ${err.message}`),
-          );
-      }
-
-      this.auditService
-        .log({
-          entityType: "stock_allocation",
-          entityId: saved.id,
-          action: AuditAction.APPROVE,
-          oldValues: { pendingApproval: true },
-          newValues: { pendingApproval: false, approvedByManagerId: managerId },
-        })
-        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
-
-      this.logger.log(`Over-allocation ${allocationId} approved by manager ${managerId}`);
-      return saved;
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
+    if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
+      this.requisitionService
+        .createReorderRequisition(companyId, stockItem.id)
+        .catch((err) => this.logger.error(`Failed to create reorder requisition: ${err.message}`));
     }
+
+    this.auditService
+      .log({
+        entityType: "stock_allocation",
+        entityId: saved.id,
+        action: AuditAction.APPROVE,
+        oldValues: { pendingApproval: true },
+        newValues: { pendingApproval: false, approvedByManagerId: managerId },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
+
+    this.logger.log(`Over-allocation ${allocationId} approved by manager ${managerId}`);
+    return saved;
   }
 
   async rejectOverAllocation(
@@ -543,9 +481,7 @@ export class JobCardService {
     allocationId: number,
     reason: string,
   ): Promise<StockAllocation> {
-    const allocation = await this.allocationRepo.findOne({
-      where: { id: allocationId, companyId, pendingApproval: true },
-    });
+    const allocation = await this.allocationRepo.findOnePendingForCompany(allocationId, companyId);
 
     if (!allocation) {
       throw new NotFoundException("Pending allocation not found");
@@ -560,19 +496,11 @@ export class JobCardService {
   }
 
   async pendingAllocations(companyId: number): Promise<StockAllocation[]> {
-    return this.allocationRepo.find({
-      where: { companyId, pendingApproval: true },
-      relations: ["stockItem", "jobCard"],
-      order: { createdAt: "DESC" },
-    });
+    return this.allocationRepo.findPendingForCompany(companyId);
   }
 
   async offcutsUsedOnJobCard(companyId: number, jobCardId: number): Promise<StockAllocation[]> {
-    const allocations = await this.allocationRepo.find({
-      where: { jobCard: { id: jobCardId }, companyId },
-      relations: ["stockItem", "stockItem.sourceJobCard"],
-      order: { createdAt: "ASC" },
-    });
+    const allocations = await this.allocationRepo.findForJobCardWithRelations(companyId, jobCardId);
 
     return allocations.filter((a) => a.stockItem?.isLeftover === true);
   }
@@ -583,13 +511,12 @@ export class JobCardService {
     page = 1,
     limit = 20,
   ): Promise<PaginatedResponse<StockAllocation>> {
-    const [data, total] = await this.allocationRepo.findAndCount({
-      where: { jobCard: { id: jobCardId }, companyId },
-      relations: ["stockItem", "staffMember"],
-      order: { createdAt: "DESC" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
+    const [data, total] = await this.allocationRepo.findForJobCardPaginated(
+      companyId,
+      jobCardId,
+      page,
+      limit,
+    );
 
     return {
       data,
@@ -605,10 +532,11 @@ export class JobCardService {
     allocationId: number,
     user: { id: number; name: string },
   ): Promise<StockAllocation> {
-    const allocation = await this.allocationRepo.findOne({
-      where: { id: allocationId, companyId },
-      relations: ["stockItem", "jobCard"],
-    });
+    const allocation = await this.allocationRepo.findOneForCompanyWithRelations(
+      allocationId,
+      companyId,
+      ["stockItem", "jobCard"],
+    );
 
     if (!allocation) {
       throw new NotFoundException(`Allocation ${allocationId} not found`);
@@ -622,12 +550,9 @@ export class JobCardService {
       throw new BadRequestException("Cannot undo a pending allocation. Reject it instead.");
     }
 
-    const queryRunner = this.dataSource.createQueryRunner();
-    await queryRunner.connect();
-    await queryRunner.startTransaction();
-
-    try {
-      const stockItem = await queryRunner.manager.findOne(StockItem, {
+    await this.txRunner.run(async (ctx) => {
+      const manager = this.transactionManager(ctx);
+      const stockItem = await manager.findOne(StockItem, {
         where: { id: allocation.stockItemId, companyId },
         lock: { mode: "pessimistic_write" },
       });
@@ -637,14 +562,14 @@ export class JobCardService {
       }
 
       stockItem.quantity = Number(stockItem.quantity) + Number(allocation.quantityUsed);
-      await queryRunner.manager.save(StockItem, stockItem);
+      await manager.save(StockItem, stockItem);
 
       allocation.undone = true;
       allocation.undoneAt = now().toJSDate();
       allocation.undoneByName = user.name;
-      await queryRunner.manager.save(StockAllocation, allocation);
+      await manager.save(StockAllocation, allocation);
 
-      const reverseMovement = queryRunner.manager.create(StockMovement, {
+      const reverseMovement = manager.create(StockMovement, {
         stockItem: { id: stockItem.id },
         movementType: MovementType.IN,
         quantity: allocation.quantityUsed,
@@ -654,27 +579,20 @@ export class JobCardService {
         createdBy: user.name,
         companyId,
       });
-      await queryRunner.manager.save(StockMovement, reverseMovement);
+      await manager.save(StockMovement, reverseMovement);
+    });
 
-      await queryRunner.commitTransaction();
+    this.auditService
+      .log({
+        entityType: "stock_allocation",
+        entityId: allocation.id,
+        action: AuditAction.DELETE,
+        oldValues: { stockItemId: allocation.stockItemId, quantity: allocation.quantityUsed },
+        newValues: { undoneBy: user.name },
+      })
+      .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
 
-      this.auditService
-        .log({
-          entityType: "stock_allocation",
-          entityId: allocation.id,
-          action: AuditAction.DELETE,
-          oldValues: { stockItemId: allocation.stockItemId, quantity: allocation.quantityUsed },
-          newValues: { undoneBy: user.name },
-        })
-        .catch((err) => this.logger.error(`Audit log failed: ${err.message}`, err.stack));
-
-      return allocation;
-    } catch (err) {
-      await queryRunner.rollbackTransaction();
-      throw err;
-    } finally {
-      await queryRunner.release();
-    }
+    return allocation;
   }
 
   async uploadAllocationPhoto(
@@ -682,10 +600,11 @@ export class JobCardService {
     allocationId: number,
     file: Express.Multer.File,
   ): Promise<StockAllocation> {
-    const allocation = await this.allocationRepo.findOne({
-      where: { id: allocationId, companyId },
-      relations: ["stockItem"],
-    });
+    const allocation = await this.allocationRepo.findOneForCompanyWithRelations(
+      allocationId,
+      companyId,
+      ["stockItem"],
+    );
     if (!allocation) {
       throw new NotFoundException("Allocation not found");
     }
@@ -695,39 +614,7 @@ export class JobCardService {
   }
 
   async deduplicateJobCards(companyId: number): Promise<{ merged: number; groups: number }> {
-    const allCards = await this.jobCardRepo.find({
-      where: { companyId, supersededById: IsNull() },
-      order: { createdAt: "DESC" },
-      select: {
-        id: true,
-        jobNumber: true,
-        jcNumber: true,
-        pageNumber: true,
-        jobName: true,
-        customerName: true,
-        description: true,
-        poNumber: true,
-        siteLocation: true,
-        contactPerson: true,
-        dueDate: true,
-        notes: true,
-        reference: true,
-        status: true,
-        workflowStatus: true,
-        versionNumber: true,
-        sourceFilePath: true,
-        sourceFileName: true,
-        cpoId: true,
-        isCpoCalloff: true,
-        parentJobCardId: true,
-        jtDnNumber: true,
-        supersededById: true,
-        workflowCeiling: true,
-        companyId: true,
-        createdAt: true,
-        updatedAt: true,
-      },
-    });
+    const allCards = await this.jobCardRepo.findActiveJobCardsWithDedupeFields(companyId);
 
     const groups = new Map<string, JobCard[]>();
     allCards.forEach((jc) => {
@@ -773,7 +660,7 @@ export class JobCardService {
 
         if (loser.sourceFilePath) {
           try {
-            const jobFile = this.jobFileRepo.create({
+            await this.jobFileRepo.create({
               jobCardId: winner.id,
               companyId,
               filePath: loser.sourceFilePath,
@@ -784,7 +671,6 @@ export class JobCardService {
               fileSizeBytes: 0,
               uploadedByName: "System (deduplication)",
             });
-            await this.jobFileRepo.save(jobFile);
           } catch (err) {
             this.logger.warn(
               `Failed to archive source file for JC #${loser.id}: ${err instanceof Error ? err.message : err}`,

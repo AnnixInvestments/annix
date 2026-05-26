@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EducationAdmissionDistribution } from "../entities/education-admission-distribution.entity";
 import { EducationFaculty } from "../entities/education-faculty.entity";
 import { EducationInstitution } from "../entities/education-institution.entity";
@@ -8,6 +6,13 @@ import { EducationProgramme } from "../entities/education-programme.entity";
 import { EducationProgrammeOutcomeSignal } from "../entities/education-programme-outcome-signal.entity";
 import { EducationRequirementVersion } from "../entities/education-requirement-version.entity";
 import { EducationScholarship } from "../entities/education-scholarship.entity";
+import { EducationAdmissionDistributionRepository } from "../repositories/education-admission-distribution.repository";
+import { EducationFacultyRepository } from "../repositories/education-faculty.repository";
+import { EducationInstitutionRepository } from "../repositories/education-institution.repository";
+import { EducationProgrammeRepository } from "../repositories/education-programme.repository";
+import { EducationProgrammeOutcomeSignalRepository } from "../repositories/education-programme-outcome-signal.repository";
+import { EducationRequirementVersionRepository } from "../repositories/education-requirement-version.repository";
+import { EducationScholarshipRepository } from "../repositories/education-scholarship.repository";
 
 export interface InstitutionInput {
   code: string;
@@ -89,42 +94,33 @@ export interface ScholarshipInput {
 @Injectable()
 export class EducationCatalogAdminService {
   constructor(
-    @InjectRepository(EducationInstitution)
-    private readonly institutionRepo: Repository<EducationInstitution>,
-    @InjectRepository(EducationFaculty)
-    private readonly facultyRepo: Repository<EducationFaculty>,
-    @InjectRepository(EducationProgramme)
-    private readonly programmeRepo: Repository<EducationProgramme>,
-    @InjectRepository(EducationRequirementVersion)
-    private readonly requirementVersionRepo: Repository<EducationRequirementVersion>,
-    @InjectRepository(EducationAdmissionDistribution)
-    private readonly distributionRepo: Repository<EducationAdmissionDistribution>,
-    @InjectRepository(EducationProgrammeOutcomeSignal)
-    private readonly outcomeSignalRepo: Repository<EducationProgrammeOutcomeSignal>,
-    @InjectRepository(EducationScholarship)
-    private readonly scholarshipRepo: Repository<EducationScholarship>,
+    private readonly institutionRepo: EducationInstitutionRepository,
+    private readonly facultyRepo: EducationFacultyRepository,
+    private readonly programmeRepo: EducationProgrammeRepository,
+    private readonly requirementVersionRepo: EducationRequirementVersionRepository,
+    private readonly distributionRepo: EducationAdmissionDistributionRepository,
+    private readonly outcomeSignalRepo: EducationProgrammeOutcomeSignalRepository,
+    private readonly scholarshipRepo: EducationScholarshipRepository,
   ) {}
 
   institutions(): Promise<EducationInstitution[]> {
-    return this.institutionRepo.find({ order: { name: "ASC" } });
+    return this.institutionRepo.allOrderedByName();
   }
 
   async createInstitution(input: InstitutionInput): Promise<EducationInstitution> {
-    return this.institutionRepo.save(
-      this.institutionRepo.create({
-        code: input.code,
-        name: input.name,
-        country: input.country ?? null,
-        defaultRequirementSpec: input.defaultRequirementSpec ?? null,
-      }),
-    );
+    return this.institutionRepo.create({
+      code: input.code,
+      name: input.name,
+      country: input.country ?? null,
+      defaultRequirementSpec: input.defaultRequirementSpec ?? null,
+    });
   }
 
   async updateInstitution(
     id: string,
     input: Partial<InstitutionInput>,
   ): Promise<EducationInstitution> {
-    const institution = await this.institutionRepo.findOne({ where: { id } });
+    const institution = await this.institutionRepo.findById(id);
     if (!institution) throw new NotFoundException(`Institution ${id} not found`);
     if (input.name != null) institution.name = input.name;
     if (input.country !== undefined) institution.country = input.country;
@@ -135,41 +131,36 @@ export class EducationCatalogAdminService {
   }
 
   faculties(institutionId: string): Promise<EducationFaculty[]> {
-    return this.facultyRepo.find({ where: { institutionId }, order: { name: "ASC" } });
+    return this.facultyRepo.forInstitutionOrderedByName(institutionId);
   }
 
   async createFaculty(input: FacultyInput): Promise<EducationFaculty> {
     await this.institutionOrThrow(input.institutionId);
-    return this.facultyRepo.save(
-      this.facultyRepo.create({
-        institutionId: input.institutionId,
-        code: input.code,
-        name: input.name,
-        defaultRequirementSpec: input.defaultRequirementSpec ?? null,
-      }),
-    );
+    return this.facultyRepo.create({
+      institutionId: input.institutionId,
+      code: input.code,
+      name: input.name,
+      defaultRequirementSpec: input.defaultRequirementSpec ?? null,
+    });
   }
 
   programmes(institutionId?: string): Promise<EducationProgramme[]> {
-    const where = institutionId ? { institutionId } : {};
-    return this.programmeRepo.find({ where, order: { name: "ASC" }, take: 500 });
+    return this.programmeRepo.listForInstitution(institutionId ?? null, 500);
   }
 
   async createProgramme(input: ProgrammeInput): Promise<EducationProgramme> {
     await this.institutionOrThrow(input.institutionId);
-    return this.programmeRepo.save(
-      this.programmeRepo.create({
-        institutionId: input.institutionId,
-        facultyId: input.facultyId ?? null,
-        code: input.code,
-        name: input.name,
-        careerCluster: input.careerCluster ?? null,
-      }),
-    );
+    return this.programmeRepo.create({
+      institutionId: input.institutionId,
+      facultyId: input.facultyId ?? null,
+      code: input.code,
+      name: input.name,
+      careerCluster: input.careerCluster ?? null,
+    });
   }
 
   async updateProgramme(id: string, input: Partial<ProgrammeInput>): Promise<EducationProgramme> {
-    const programme = await this.programmeRepo.findOne({ where: { id } });
+    const programme = await this.programmeRepo.findById(id);
     if (!programme) throw new NotFoundException(`Programme ${id} not found`);
     if (input.name != null) programme.name = input.name;
     if (input.facultyId !== undefined) programme.facultyId = input.facultyId;
@@ -178,69 +169,56 @@ export class EducationCatalogAdminService {
   }
 
   requirementVersions(programmeId: string): Promise<EducationRequirementVersion[]> {
-    return this.requirementVersionRepo.find({
-      where: { programmeId },
-      order: { intakeYear: "DESC", createdAt: "DESC" },
-    });
+    return this.requirementVersionRepo.forProgrammeOrdered(programmeId);
   }
 
   /** Append-only: always creates a NEW immutable version. */
   async createRequirementVersion(
     input: RequirementVersionInput,
   ): Promise<EducationRequirementVersion> {
-    const programme = await this.programmeRepo.findOne({ where: { id: input.programmeId } });
+    const programme = await this.programmeRepo.findById(input.programmeId);
     if (!programme) throw new NotFoundException(`Programme ${input.programmeId} not found`);
-    return this.requirementVersionRepo.save(
-      this.requirementVersionRepo.create({
-        programmeId: input.programmeId,
-        intakeYear: input.intakeYear,
-        spec: input.spec,
-        validFrom: input.validFrom,
-        validTo: input.validTo ?? null,
-        confidence: input.confidence ?? "NEEDS_REVIEW",
-        verificationStatus: input.verificationStatus ?? "NEEDS_REVIEW",
-      }),
-    );
+    return this.requirementVersionRepo.create({
+      programmeId: input.programmeId,
+      intakeYear: input.intakeYear,
+      spec: input.spec,
+      validFrom: input.validFrom,
+      validTo: input.validTo ?? null,
+      confidence: input.confidence ?? "NEEDS_REVIEW",
+      verificationStatus: input.verificationStatus ?? "NEEDS_REVIEW",
+    });
   }
 
   distributions(programmeId: string): Promise<EducationAdmissionDistribution[]> {
-    return this.distributionRepo.find({
-      where: { programmeId },
-      order: { intakeYear: "DESC" },
-    });
+    return this.distributionRepo.forProgrammeOrderedByYear(programmeId);
   }
 
   async createDistribution(
     input: AdmissionDistributionInput,
   ): Promise<EducationAdmissionDistribution> {
-    const programme = await this.programmeRepo.findOne({ where: { id: input.programmeId } });
+    const programme = await this.programmeRepo.findById(input.programmeId);
     if (!programme) throw new NotFoundException(`Programme ${input.programmeId} not found`);
     const toNumeric = (value: number | null | undefined): string | null =>
       value != null ? value.toFixed(2) : null;
-    return this.distributionRepo.save(
-      this.distributionRepo.create({
-        programmeId: input.programmeId,
-        intakeYear: input.intakeYear,
-        minAdmitted: toNumeric(input.minAdmitted),
-        medianAdmitted: toNumeric(input.medianAdmitted),
-        p25Admitted: toNumeric(input.p25Admitted),
-        p75Admitted: toNumeric(input.p75Admitted),
-        seats: input.seats ?? null,
-        source: input.source ?? null,
-        asOf: input.asOf ?? null,
-      }),
-    );
-  }
-
-  outcomeSignals(programmeId: string): Promise<EducationProgrammeOutcomeSignal[]> {
-    return this.outcomeSignalRepo.find({
-      where: { programmeId },
-      order: { asOf: "DESC", createdAt: "DESC" },
+    return this.distributionRepo.create({
+      programmeId: input.programmeId,
+      intakeYear: input.intakeYear,
+      minAdmitted: toNumeric(input.minAdmitted),
+      medianAdmitted: toNumeric(input.medianAdmitted),
+      p25Admitted: toNumeric(input.p25Admitted),
+      p75Admitted: toNumeric(input.p75Admitted),
+      seats: input.seats ?? null,
+      source: input.source ?? null,
+      asOf: input.asOf ?? null,
     });
   }
 
+  outcomeSignals(programmeId: string): Promise<EducationProgrammeOutcomeSignal[]> {
+    return this.outcomeSignalRepo.forProgrammeOrdered(programmeId);
+  }
+
   async createOutcomeSignal(input: OutcomeSignalInput): Promise<EducationProgrammeOutcomeSignal> {
-    const programme = await this.programmeRepo.findOne({ where: { id: input.programmeId } });
+    const programme = await this.programmeRepo.findById(input.programmeId);
     if (!programme) throw new NotFoundException(`Programme ${input.programmeId} not found`);
     // Firewall: never store license-restricted ranking data (QS/THE) — #309.
     const sourceLower = input.source.toLowerCase();
@@ -249,46 +227,42 @@ export class EducationCatalogAdminService {
         "QS / Times Higher Education rankings are license-restricted and must not be stored.",
       );
     }
-    return this.outcomeSignalRepo.save(
-      this.outcomeSignalRepo.create({
-        programmeId: input.programmeId,
-        source: input.source,
-        metric: input.metric,
-        value: input.value.toFixed(2),
-        unit: input.unit,
-        asOf: input.asOf ?? null,
-        confidence: input.confidence ?? "NEEDS_REVIEW",
-        verificationStatus: input.verificationStatus ?? "NEEDS_REVIEW",
-        sourceUrl: input.sourceUrl ?? null,
-      }),
-    );
+    return this.outcomeSignalRepo.create({
+      programmeId: input.programmeId,
+      source: input.source,
+      metric: input.metric,
+      value: input.value.toFixed(2),
+      unit: input.unit,
+      asOf: input.asOf ?? null,
+      confidence: input.confidence ?? "NEEDS_REVIEW",
+      verificationStatus: input.verificationStatus ?? "NEEDS_REVIEW",
+      sourceUrl: input.sourceUrl ?? null,
+    });
   }
 
   scholarships(): Promise<EducationScholarship[]> {
-    return this.scholarshipRepo.find({ order: { name: "ASC" } });
+    return this.scholarshipRepo.allOrderedByName();
   }
 
   async createScholarship(input: ScholarshipInput): Promise<EducationScholarship> {
-    return this.scholarshipRepo.save(
-      this.scholarshipRepo.create({
-        name: input.name,
-        provider: input.provider,
-        country: input.country ?? null,
-        amountDisplay: input.amountDisplay ?? null,
-        criteria: input.criteria ?? null,
-        url: input.url ?? null,
-        careerCluster: input.careerCluster ?? null,
-        lastVerifiedAt: input.lastVerifiedAt ?? null,
-        active: input.active ?? true,
-      }),
-    );
+    return this.scholarshipRepo.create({
+      name: input.name,
+      provider: input.provider,
+      country: input.country ?? null,
+      amountDisplay: input.amountDisplay ?? null,
+      criteria: input.criteria ?? null,
+      url: input.url ?? null,
+      careerCluster: input.careerCluster ?? null,
+      lastVerifiedAt: input.lastVerifiedAt ?? null,
+      active: input.active ?? true,
+    });
   }
 
   async updateScholarship(
     id: string,
     input: Partial<ScholarshipInput>,
   ): Promise<EducationScholarship> {
-    const scholarship = await this.scholarshipRepo.findOne({ where: { id } });
+    const scholarship = await this.scholarshipRepo.findById(id);
     if (!scholarship) throw new NotFoundException(`Scholarship ${id} not found`);
     if (input.name != null) scholarship.name = input.name;
     if (input.provider != null) scholarship.provider = input.provider;
@@ -303,7 +277,7 @@ export class EducationCatalogAdminService {
   }
 
   private async institutionOrThrow(id: string): Promise<EducationInstitution> {
-    const institution = await this.institutionRepo.findOne({ where: { id } });
+    const institution = await this.institutionRepo.findById(id);
     if (!institution) throw new NotFoundException(`Institution ${id} not found`);
     return institution;
   }

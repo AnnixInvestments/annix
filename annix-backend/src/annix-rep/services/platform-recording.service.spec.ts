@@ -1,41 +1,43 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { Meeting, MeetingRecording } from "../entities";
 import {
   PlatformMeetingRecord,
   PlatformRecordingStatus,
 } from "../entities/platform-meeting-record.entity";
+import { MeetingRepository } from "../meeting.repository";
+import { MeetingRecordingRepository } from "../meeting-recording.repository";
+import { PlatformMeetingRecordRepository } from "../platform-meeting-record.repository";
 import { MeetingPlatformService } from "./meeting-platform.service";
 import { PlatformRecordingService } from "./platform-recording.service";
 
 describe("PlatformRecordingService", () => {
   let service: PlatformRecordingService;
-  let mockRecordRepo: Partial<Repository<PlatformMeetingRecord>>;
-  let mockMeetingRecordingRepo: Partial<Repository<MeetingRecording>>;
-  let mockMeetingRepo: Partial<Repository<Meeting>>;
+  let mockRecordRepo: Partial<PlatformMeetingRecordRepository>;
+  let mockMeetingRecordingRepo: Partial<MeetingRecordingRepository>;
+  let mockMeetingRepo: Partial<MeetingRepository>;
   let mockPlatformService: Partial<MeetingPlatformService>;
   let mockS3Storage: Partial<S3StorageService>;
 
   beforeEach(async () => {
     mockRecordRepo = {
-      find: jest.fn(),
-      findOne: jest.fn(),
+      findPendingWithConnectionLimited: jest.fn().mockResolvedValue([]),
+      findDownloadedForTranscription: jest.fn().mockResolvedValue([]),
+      findById: jest.fn(),
       save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
     };
 
     mockMeetingRecordingRepo = {
-      create: jest.fn().mockImplementation((data) => ({ id: 1, ...data })),
-      save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-      findOne: jest.fn(),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
+      findByMeetingId: jest.fn(),
     };
 
     mockMeetingRepo = {
-      findOne: jest.fn(),
-      save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
-      createQueryBuilder: jest.fn(),
+      findById: jest.fn(),
+      findByMeetingUrlForSalesRep: jest.fn(),
+      findByTitleWindowForSalesRep: jest.fn(),
+      create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     };
 
     mockPlatformService = {
@@ -52,15 +54,15 @@ describe("PlatformRecordingService", () => {
       providers: [
         PlatformRecordingService,
         {
-          provide: getRepositoryToken(PlatformMeetingRecord),
+          provide: PlatformMeetingRecordRepository,
           useValue: mockRecordRepo,
         },
         {
-          provide: getRepositoryToken(MeetingRecording),
+          provide: MeetingRecordingRepository,
           useValue: mockMeetingRecordingRepo,
         },
         {
-          provide: getRepositoryToken(Meeting),
+          provide: MeetingRepository,
           useValue: mockMeetingRepo,
         },
         {
@@ -166,8 +168,8 @@ describe("PlatformRecordingService", () => {
         connection: Promise.resolve({ userId: 100 }),
       } as unknown as PlatformMeetingRecord;
 
-      (mockMeetingRepo.findOne as jest.Mock).mockResolvedValue(mockMeeting);
-      (mockMeetingRecordingRepo.findOne as jest.Mock).mockResolvedValue(existingRecording);
+      (mockMeetingRepo.findById as jest.Mock).mockResolvedValue(mockMeeting);
+      (mockMeetingRecordingRepo.findByMeetingId as jest.Mock).mockResolvedValue(existingRecording);
 
       const result = await service.createMeetingRecording(record);
 
@@ -184,7 +186,7 @@ describe("PlatformRecordingService", () => {
         recordingStatus: PlatformRecordingStatus.PROCESSING,
       } as PlatformMeetingRecord;
 
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue(record);
+      (mockRecordRepo.findById as jest.Mock).mockResolvedValue(record);
 
       await service.markRecordingComplete(1);
 
@@ -193,7 +195,7 @@ describe("PlatformRecordingService", () => {
     });
 
     it("should do nothing when record is not found", async () => {
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue(null);
+      (mockRecordRepo.findById as jest.Mock).mockResolvedValue(null);
 
       await service.markRecordingComplete(999);
 
@@ -208,7 +210,7 @@ describe("PlatformRecordingService", () => {
         recordingStatus: PlatformRecordingStatus.PROCESSING,
       } as PlatformMeetingRecord;
 
-      (mockRecordRepo.findOne as jest.Mock).mockResolvedValue(record);
+      (mockRecordRepo.findById as jest.Mock).mockResolvedValue(record);
 
       await service.markRecordingFailed(1, "Download timeout");
 
@@ -225,24 +227,18 @@ describe("PlatformRecordingService", () => {
         { id: 2, recordingStatus: PlatformRecordingStatus.DOWNLOADED },
       ];
 
-      (mockRecordRepo.find as jest.Mock).mockResolvedValue(records);
+      (mockRecordRepo.findDownloadedForTranscription as jest.Mock).mockResolvedValue(records);
 
       const result = await service.downloadedRecordingsForTranscription();
 
       expect(result).toEqual(records);
-      expect(mockRecordRepo.find).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { recordingStatus: PlatformRecordingStatus.DOWNLOADED },
-          order: { downloadedAt: "ASC" },
-          take: 10,
-        }),
-      );
+      expect(mockRecordRepo.findDownloadedForTranscription).toHaveBeenCalled();
     });
   });
 
   describe("processPendingRecordings", () => {
     it("should return empty array when no pending records exist", async () => {
-      (mockRecordRepo.find as jest.Mock).mockResolvedValue([]);
+      (mockRecordRepo.findPendingWithConnectionLimited as jest.Mock).mockResolvedValue([]);
 
       const results = await service.processPendingRecordings();
 

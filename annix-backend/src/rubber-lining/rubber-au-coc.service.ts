@@ -2,11 +2,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { BadRequestException, Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
 import PDFMerger from "pdf-merger-js";
 import { pdfToPng } from "pdf-to-png-converter";
 import sharp from "sharp";
-import { In, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { formatDateZA, generateUniqueId, now, nowISO } from "../lib/datetime";
 import { createPdfDocument } from "../lib/pdf-builder";
@@ -25,18 +23,24 @@ import {
   RubberAuCoc,
 } from "./entities/rubber-au-coc.entity";
 import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
-import { RubberCompany } from "./entities/rubber-company.entity";
-import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
 import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import { RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
-import { RubberDeliveryNoteItem } from "./entities/rubber-delivery-note-item.entity";
-import { RubberRollRejection } from "./entities/rubber-roll-rejection.entity";
 import { RollStockStatus, RubberRollStock } from "./entities/rubber-roll-stock.entity";
 import {
   ExtractedCocData,
   RubberSupplierCoc,
   SupplierCocType,
 } from "./entities/rubber-supplier-coc.entity";
+import { RubberAuCocRepository } from "./repositories/rubber-au-coc.repository";
+import { RubberAuCocItemRepository } from "./repositories/rubber-au-coc-item.repository";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberCompoundBatchRepository } from "./repositories/rubber-compound-batch.repository";
+import { RubberCompoundQualityConfigRepository } from "./repositories/rubber-compound-quality-config.repository";
+import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
+import { RubberDeliveryNoteItemRepository } from "./repositories/rubber-delivery-note-item.repository";
+import { RubberRollRejectionRepository } from "./repositories/rubber-roll-rejection.repository";
+import { RubberRollStockRepository } from "./repositories/rubber-roll-stock.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 
 const AU_COC_STATUS_LABELS: Record<AuCocStatus, string> = {
   [AuCocStatus.DRAFT]: "Draft",
@@ -45,8 +49,6 @@ const AU_COC_STATUS_LABELS: Record<AuCocStatus, string> = {
   [AuCocStatus.SENT]: "Sent",
 };
 
-// Every AU Certificate of Conformance emailed to a customer is also BCC'd here
-// so AU Industries keeps a copy of everything that goes out.
 const AU_COC_ARCHIVE_BCC = "info@auind.co.za";
 
 interface BatchTestData {
@@ -69,14 +71,8 @@ interface CocPdfData {
   rollNumbers: string[];
   qualityConfig: RubberCompoundQualityConfig | null;
   graphPdfPath?: string | null;
-  // Set when the delivery note declares a compound but no supplier CoC of a
-  // matching compound (with batch data) could be found. A CoC must NOT be
-  // generated in this state — printing it would either leave the lab table
-  // empty or, worse, fill it from a wrong-compound CoC. generatePdf() refuses.
   sourceIncomplete?: boolean;
-  incompleteReason?: string;
-  // The supplier CoCs the generator actually resolved — surfaced so the
-  // readiness check can report the same source the PDF would use.
+  incompleteReason?: string | null;
   resolvedSupplierCocId?: number | null;
   resolvedCompounderCocId?: number | null;
 }
@@ -86,26 +82,16 @@ export class RubberAuCocService {
   private readonly logger = new Logger(RubberAuCocService.name);
 
   constructor(
-    @InjectRepository(RubberAuCoc)
-    private auCocRepository: Repository<RubberAuCoc>,
-    @InjectRepository(RubberAuCocItem)
-    private auCocItemRepository: Repository<RubberAuCocItem>,
-    @InjectRepository(RubberRollStock)
-    private rollStockRepository: Repository<RubberRollStock>,
-    @InjectRepository(RubberCompoundBatch)
-    private compoundBatchRepository: Repository<RubberCompoundBatch>,
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberCompoundQualityConfig)
-    private qualityConfigRepository: Repository<RubberCompoundQualityConfig>,
-    @InjectRepository(RubberSupplierCoc)
-    private supplierCocRepository: Repository<RubberSupplierCoc>,
-    @InjectRepository(RubberDeliveryNote)
-    private deliveryNoteRepository: Repository<RubberDeliveryNote>,
-    @InjectRepository(RubberDeliveryNoteItem)
-    private deliveryNoteItemRepository: Repository<RubberDeliveryNoteItem>,
-    @InjectRepository(RubberRollRejection)
-    private rollRejectionRepository: Repository<RubberRollRejection>,
+    private auCocRepository: RubberAuCocRepository,
+    private auCocItemRepository: RubberAuCocItemRepository,
+    private rollStockRepository: RubberRollStockRepository,
+    private compoundBatchRepository: RubberCompoundBatchRepository,
+    private companyRepository: RubberCompanyRepository,
+    private qualityConfigRepository: RubberCompoundQualityConfigRepository,
+    private supplierCocRepository: RubberSupplierCocRepository,
+    private deliveryNoteRepository: RubberDeliveryNoteRepository,
+    private deliveryNoteItemRepository: RubberDeliveryNoteItemRepository,
+    private rollRejectionRepository: RubberRollRejectionRepository,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private readonly configService: ConfigService,
@@ -116,50 +102,21 @@ export class RubberAuCocService {
     status?: AuCocStatus;
     customerCompanyId?: number;
   }): Promise<RubberAuCocDto[]> {
-    const query = this.auCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.customerCompany", "customer")
-      .addSelect(
-        (sub) =>
-          sub
-            .select("COUNT(item.id)")
-            .from("rubber_au_coc_items", "item")
-            .where("item.au_coc_id = coc.id"),
-        "item_count",
-      )
-      .orderBy("coc.created_at", "DESC");
-
-    if (filters?.status) {
-      query.andWhere("coc.status = :status", { status: filters.status });
-    }
-    if (filters?.customerCompanyId) {
-      query.andWhere("coc.customer_company_id = :companyId", {
-        companyId: filters.customerCompanyId,
-      });
-    }
-
-    const rawResults = await query.getRawAndEntities();
-    return rawResults.entities.map((coc, idx) => {
-      const linkedItemCount = parseInt(rawResults.raw[idx]?.item_count || "0", 10);
-      const extractedRollCount = coc.extractedRollData?.length || 0;
-      return this.mapAuCocToDto(coc, Math.max(linkedItemCount, extractedRollCount));
+    const rows = await this.auCocRepository.findWithItemCounts(filters);
+    return rows.map((row) => {
+      const extractedRollCount = row.coc.extractedRollData?.length || 0;
+      return this.mapAuCocToDto(row.coc, Math.max(row.linkedItemCount, extractedRollCount));
     });
   }
 
   async auCocById(id: number): Promise<RubberAuCocDto | null> {
     try {
       this.logger.debug(`Fetching AU CoC with id: ${id}`);
-      const coc = await this.auCocRepository.findOne({
-        where: { id },
-        relations: ["customerCompany"],
-      });
+      const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
       if (!coc) return null;
 
       this.logger.debug(`Found AU CoC: ${coc.cocNumber}, fetching items...`);
-      const items = await this.auCocItemRepository.find({
-        where: { auCocId: id },
-        relations: ["rollStock", "rollStock.compoundCoding"],
-      });
+      const items = await this.auCocItemRepository.findByAuCocIdWithRolls(id);
 
       this.logger.debug(`Found ${items.length} items, mapping to DTO...`);
       const extractedRollCount = coc.extractedRollData?.length || 0;
@@ -173,17 +130,12 @@ export class RubberAuCocService {
   }
 
   async createAuCoc(dto: CreateAuCocDto, createdBy?: string): Promise<RubberAuCocDto> {
-    const customer = await this.companyRepository.findOne({
-      where: { id: dto.customerCompanyId },
-    });
+    const customer = await this.companyRepository.findById(dto.customerCompanyId);
     if (!customer) {
       throw new BadRequestException("Customer company not found");
     }
 
-    const rolls = await this.rollStockRepository.find({
-      where: { id: In(dto.rollIds) },
-      relations: ["compoundCoding"],
-    });
+    const rolls = await this.rollStockRepository.findManyByIdsWithCoding(dto.rollIds);
 
     if (rolls.length !== dto.rollIds.length) {
       throw new BadRequestException("Some roll IDs not found");
@@ -200,7 +152,7 @@ export class RubberAuCocService {
 
     const cocNumber = await this.generateCocNumber();
 
-    const auCoc = this.auCocRepository.create({
+    const auCoc = this.auCocRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       cocNumber,
       customerCompanyId: dto.customerCompanyId,
@@ -215,26 +167,20 @@ export class RubberAuCocService {
     const savedCoc = await this.auCocRepository.save(auCoc);
 
     const items = rolls.map((roll) =>
-      this.auCocItemRepository.create({
+      this.auCocItemRepository.build({
         firebaseUid: `pg_${generateUniqueId()}`,
         auCocId: savedCoc.id,
         rollStockId: roll.id,
       }),
     );
 
-    await this.auCocItemRepository.save(items);
+    await this.auCocItemRepository.saveMany(items);
 
-    await this.rollStockRepository.update({ id: In(dto.rollIds) }, { auCocId: savedCoc.id });
+    await this.rollStockRepository.setAuCocIdForRollIds(dto.rollIds, savedCoc.id);
 
-    const result = await this.auCocRepository.findOne({
-      where: { id: savedCoc.id },
-      relations: ["customerCompany"],
-    });
+    const result = await this.auCocRepository.findById(savedCoc.id, ["customerCompany"]);
 
-    const savedItems = await this.auCocItemRepository.find({
-      where: { auCocId: savedCoc.id },
-      relations: ["rollStock", "rollStock.compoundCoding"],
-    });
+    const savedItems = await this.auCocItemRepository.findByAuCocIdWithRolls(savedCoc.id);
 
     const cocDto = this.mapAuCocToDto(result!);
     cocDto.items = savedItems.map((item) => this.mapAuCocItemToDto(item));
@@ -245,10 +191,9 @@ export class RubberAuCocService {
     deliveryNoteId: number,
     createdBy?: string,
   ): Promise<RubberAuCocDto> {
-    const deliveryNote = await this.deliveryNoteRepository.findOne({
-      where: { id: deliveryNoteId },
-      relations: ["supplierCompany"],
-    });
+    const deliveryNote = await this.deliveryNoteRepository.findById(deliveryNoteId, [
+      "supplierCompany",
+    ]);
 
     if (!deliveryNote) {
       throw new BadRequestException("Delivery note not found");
@@ -264,9 +209,7 @@ export class RubberAuCocService {
       throw new BadRequestException("Delivery note has no customer assigned");
     }
 
-    const customer = await this.companyRepository.findOne({
-      where: { id: deliveryNote.supplierCompanyId },
-    });
+    const customer = await this.companyRepository.findById(deliveryNote.supplierCompanyId);
 
     if (!customer) {
       throw new BadRequestException("Customer company not found");
@@ -286,7 +229,7 @@ export class RubberAuCocService {
 
     const cocNumber = await this.generateCocNumber();
 
-    const auCoc = this.auCocRepository.create({
+    const auCoc = this.auCocRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       cocNumber,
       customerCompanyId: deliveryNote.supplierCompanyId,
@@ -300,10 +243,7 @@ export class RubberAuCocService {
 
     const savedCoc = await this.auCocRepository.save(auCoc);
 
-    const result = await this.auCocRepository.findOne({
-      where: { id: savedCoc.id },
-      relations: ["customerCompany"],
-    });
+    const result = await this.auCocRepository.findById(savedCoc.id, ["customerCompany"]);
 
     this.logger.log(
       `Created AU CoC ${cocNumber} from delivery note ${deliveryNote.deliveryNoteNumber} with ${extractedRollData.length} rolls`,
@@ -312,12 +252,6 @@ export class RubberAuCocService {
     return this.mapAuCocToDto(result!);
   }
 
-  /**
-   * Read-only readiness probe that runs the SAME source resolution generatePdf
-   * uses, so the readiness check can never disagree with what the PDF would
-   * actually produce. Returns whether a complete CoC is buildable, the resolved
-   * supplier CoCs, batch count and whether a graph is present.
-   */
   async generationReadiness(id: number): Promise<{
     ready: boolean;
     sourceIncomplete: boolean;
@@ -340,13 +274,10 @@ export class RubberAuCocService {
       resolvedCompounderCocId: null,
       reason,
     });
-    const coc = await this.auCocRepository.findOne({ where: { id } });
+    const coc = await this.auCocRepository.findById(id);
     if (!coc) return miss("AU CoC not found");
 
-    const items = await this.auCocItemRepository.find({
-      where: { auCocId: id },
-      relations: ["rollStock", "rollStock.compoundCoding"],
-    });
+    const items = await this.auCocItemRepository.findByAuCocIdWithRolls(id);
     let hasExtractedRollData = (coc.extractedRollData?.length ?? 0) > 0;
     if (items.length === 0 && !hasExtractedRollData && coc.sourceDeliveryNoteId) {
       await this.populateRollDataFromDeliveryNote(coc);
@@ -384,32 +315,21 @@ export class RubberAuCocService {
   async generatePdf(id: number): Promise<{ buffer: Buffer; filename: string }> {
     try {
       this.logger.debug(`Generating PDF for AU CoC ${id}...`);
-      const coc = await this.auCocRepository.findOne({
-        where: { id },
-        relations: ["customerCompany"],
-      });
+      const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
       if (!coc) {
         throw new BadRequestException("AU CoC not found");
       }
 
       this.logger.debug(`Found CoC ${coc.cocNumber}, fetching items...`);
-      const items = await this.auCocItemRepository.find({
-        where: { auCocId: id },
-        relations: ["rollStock", "rollStock.compoundCoding"],
-      });
+      const items = await this.auCocItemRepository.findByAuCocIdWithRolls(id);
 
-      // Regenerate = rebuild from the CURRENT delivery-note data. When this CoC
-      // is built from the DN roll snapshot (i.e. it has no roll-stock items),
-      // always re-pull that snapshot from the source DN first, so a roll number
-      // or dimension corrected on the CDN (e.g. via the line-item editor) shows
-      // up on the regenerated certificate — not only when the snapshot is empty.
-      // populateRollDataFromDeliveryNote no-ops when the DN has no roll data, so
-      // an existing snapshot is preserved rather than wiped.
-      if (items.length === 0 && coc.sourceDeliveryNoteId) {
+      let hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
+
+      if (items.length === 0 && !hasExtractedRollData && coc.sourceDeliveryNoteId) {
         await this.populateRollDataFromDeliveryNote(coc);
+        hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
       }
 
-      const hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
       if (items.length === 0 && !hasExtractedRollData) {
         throw new BadRequestException("No rolls found for this CoC");
       }
@@ -422,11 +342,6 @@ export class RubberAuCocService {
           ? await this.preparePdfData(coc, items)
           : await this.preparePdfDataFromExtractedRolls(coc);
 
-      // Hard stop: a customer CoC must not be generated when the source data to
-      // fill it isn't in the system. Printing it would leave the lab table
-      // empty or — worse — fill it from a wrong-compound supplier CoC (the
-      // BSCA38-on-a-BBSCC50 failure). Refuse loudly so the operator knows which
-      // documents are still missing instead of shipping a bad certificate.
       if (pdfData.sourceIncomplete) {
         const reason = pdfData.incompleteReason || "required supplier CoC / batch data missing";
         this.logger.warn(`AU CoC ${coc.cocNumber}: refusing to generate — ${reason}`);
@@ -476,13 +391,10 @@ export class RubberAuCocService {
 
       coc.status = AuCocStatus.GENERATED;
       coc.generatedPdfPath = upload.path;
-      // A successfully generated CoC is no longer waiting for any source
-      // document — clear its readiness to AUTO_GENERATED regardless of the
-      // prior state. The order-prefix readiness check can report
-      // WAITING_FOR_CALENDERER for bare-ticket rolls even when the generator's
-      // fallback match found everything; without this, that stale "Waiting"
-      // badge sticks around on already-generated/sent CoCs.
-      if (coc.readinessStatus !== AuCocReadinessStatus.AUTO_GENERATED) {
+      if (
+        coc.readinessStatus === AuCocReadinessStatus.GENERATION_FAILED ||
+        coc.readinessStatus === AuCocReadinessStatus.READY_FOR_GENERATION
+      ) {
         coc.readinessStatus = AuCocReadinessStatus.AUTO_GENERATED;
         coc.readinessDetails = {
           calendererCocId: coc.readinessDetails?.calendererCocId ?? null,
@@ -504,12 +416,6 @@ export class RubberAuCocService {
     }
   }
 
-  /**
-   * Targeted: regenerate ONLY the given CoC ids, regardless of status. Use
-   * when the operator has identified a specific batch that needs fixing
-   * (e.g. PDFs that printed without the lab table) and wants to refresh
-   * just those without touching the rest of the SENT pool.
-   */
   async regenerateCocsByIds(cocIds: number[]): Promise<{
     regenerated: number;
     failed: number;
@@ -519,10 +425,7 @@ export class RubberAuCocService {
     if (cocIds.length === 0) {
       return { regenerated: 0, failed: 0, total: 0, errors: [] };
     }
-    const cocs = await this.auCocRepository.find({
-      where: { id: In(cocIds) },
-      order: { id: "ASC" },
-    });
+    const cocs = await this.auCocRepository.findByIdsOrderedById(cocIds);
     const initial = { regenerated: 0, failed: 0, total: cocs.length, errors: [] as string[] };
     return cocs.reduce(async (accPromise, coc) => {
       const acc = await accPromise;
@@ -537,13 +440,6 @@ export class RubberAuCocService {
     }, Promise.resolve(initial));
   }
 
-  /**
-   * Targeted: resend ONLY the given CoC ids. Each must be SENT or
-   * GENERATED — the existing send pipeline runs, the customer gets the
-   * latest stored PDF. Use after a targeted regenerate when the operator
-   * wants to push just the fixed subset to the customer (instead of
-   * Resend All).
-   */
   async resendCocsByIds(cocIds: number[]): Promise<{
     sent: number;
     skipped: number;
@@ -554,11 +450,7 @@ export class RubberAuCocService {
     if (cocIds.length === 0) {
       return { sent: 0, skipped: 0, failed: 0, total: 0, errors: [] };
     }
-    const cocs = await this.auCocRepository.find({
-      where: { id: In(cocIds) },
-      relations: ["customerCompany"],
-      order: { id: "ASC" },
-    });
+    const cocs = await this.auCocRepository.findByIdsWithCustomerOrderedById(cocIds);
     const initial = {
       sent: 0,
       skipped: 0,
@@ -596,22 +488,14 @@ export class RubberAuCocService {
     skippedSent: number;
     errors: string[];
   }> {
-    // Default: don't touch SENT CoCs — the customer already has the previous
-    // PDF in their inbox, and silently overwriting the stored copy creates
-    // drift between what we say we sent and what they actually have. Pass
-    // includeSent=true via the controller query param if you really need to
-    // refresh everything (e.g. after a global template change).
     const includeSent = options?.includeSent === true;
     const statuses = includeSent
       ? [AuCocStatus.GENERATED, AuCocStatus.SENT]
       : [AuCocStatus.GENERATED];
     const skippedSent = includeSent
       ? 0
-      : await this.auCocRepository.count({ where: { status: AuCocStatus.SENT } });
-    const cocs = await this.auCocRepository.find({
-      where: statuses.map((status) => ({ status })),
-      order: { id: "ASC" },
-    });
+      : await this.auCocRepository.count({ status: AuCocStatus.SENT });
+    const cocs = await this.auCocRepository.findByStatusesOrderedById(statuses);
 
     const initial = {
       regenerated: 0,
@@ -639,10 +523,7 @@ export class RubberAuCocService {
   }
 
   async pdfBuffer(id: number): Promise<{ buffer: Buffer; filename: string }> {
-    const coc = await this.auCocRepository.findOne({
-      where: { id },
-      relations: ["customerCompany"],
-    });
+    const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
     if (!coc) {
       throw new BadRequestException("AU CoC not found");
     }
@@ -660,10 +541,7 @@ export class RubberAuCocService {
       }
     }
 
-    const items = await this.auCocItemRepository.find({
-      where: { auCocId: id },
-      relations: ["rollStock", "rollStock.compoundCoding"],
-    });
+    const items = await this.auCocItemRepository.findByAuCocIdWithRolls(id);
 
     const hasExtractedRollData = coc.extractedRollData && coc.extractedRollData.length > 0;
 
@@ -696,24 +574,19 @@ export class RubberAuCocService {
     return { buffer, filename };
   }
 
-  // Always copy AU Industries on outgoing CoCs. Merges the archive address into
-  // any operator-supplied BCC (comma-separated for nodemailer), de-duplicated.
   private withArchiveBcc(bcc?: string | null): string {
     const parts = (bcc || "")
       .split(/[,;]+/)
       .map((s) => s.trim())
       .filter(Boolean);
     if (!parts.some((p) => p.toLowerCase() === AU_COC_ARCHIVE_BCC.toLowerCase())) {
-      parts.push(AU_COC_ARCHIVE_BCC);
+      return [...parts, AU_COC_ARCHIVE_BCC].join(", ");
     }
     return parts.join(", ");
   }
 
   async sendToCustomer(id: number, dto: SendAuCocDto): Promise<RubberAuCocDto> {
-    const coc = await this.auCocRepository.findOne({
-      where: { id },
-      relations: ["customerCompany"],
-    });
+    const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
     if (!coc) {
       throw new BadRequestException("AU CoC not found");
     }
@@ -759,11 +632,9 @@ export class RubberAuCocService {
   async bulkSendToCustomer(
     dto: SendAuCocDto,
   ): Promise<{ sent: number; total: number; cocNumbers: string[] }> {
-    const generatedCocs = await this.auCocRepository.find({
-      where: { status: AuCocStatus.GENERATED },
-      relations: ["customerCompany"],
-      order: { cocNumber: "ASC" },
-    });
+    const generatedCocs = await this.auCocRepository.findByStatusWithCustomerOrderedByCocNumber(
+      AuCocStatus.GENERATED,
+    );
 
     if (generatedCocs.length === 0) {
       throw new BadRequestException("No generated CoCs to send");
@@ -806,7 +677,7 @@ export class RubberAuCocService {
       coc.sentAt = sentAt;
       coc.status = AuCocStatus.SENT;
     }
-    await this.auCocRepository.save(generatedCocs);
+    await this.auCocRepository.saveMany(generatedCocs);
 
     this.logger.log(
       `Bulk sent ${generatedCocs.length} AU CoCs to ${dto.email}: ${cocNumbers.join(", ")}`,
@@ -816,27 +687,21 @@ export class RubberAuCocService {
   }
 
   async deleteAuCoc(id: number): Promise<boolean> {
-    const coc = await this.auCocRepository.findOne({
-      where: { id },
-    });
+    const coc = await this.auCocRepository.findById(id);
     if (!coc) return false;
 
     if (coc.status === AuCocStatus.SENT) {
       throw new BadRequestException("Sent CoCs cannot be deleted");
     }
 
-    await this.rollStockRepository.update({ auCocId: id }, { auCocId: null });
+    await this.rollStockRepository.clearAuCocId(id);
 
-    await this.auCocItemRepository.delete({ auCocId: id });
-    const result = await this.auCocRepository.delete(id);
-    return (result.affected || 0) > 0;
+    await this.auCocItemRepository.deleteByAuCocId(id);
+    return this.auCocRepository.deleteById(id);
   }
 
   private async generateCocNumber(): Promise<string> {
-    const result = await this.auCocRepository.query(
-      `SELECT nextval('rubber_au_coc_number_seq') as seq`,
-    );
-    const seq = result[0]?.seq || 1;
+    const seq = await this.auCocRepository.nextCocSequence();
     return `AU-COC-${String(seq).padStart(4, "0")}`;
   }
 
@@ -865,19 +730,13 @@ export class RubberAuCocService {
 
     const batches =
       uniqueBatchIds.length > 0
-        ? await this.compoundBatchRepository.find({
-            where: { id: In(uniqueBatchIds) },
-            relations: ["supplierCoc"],
-            order: { batchNumber: "ASC" },
-          })
+        ? await this.compoundBatchRepository.findByIdsWithSupplierCocOrdered(uniqueBatchIds)
         : [];
 
     const compoundCode = batches[0]?.supplierCoc?.compoundCode || compoundCoding?.code || "Unknown";
 
     const qualityConfig: RubberCompoundQualityConfig | null = compoundCode
-      ? await this.qualityConfigRepository.findOne({
-          where: { compoundCode },
-        })
+      ? await this.qualityConfigRepository.findOneByCompoundCode(compoundCode)
       : null;
 
     const rollStocks = items
@@ -942,21 +801,14 @@ export class RubberAuCocService {
       resolvedCompounderCocId: null as number | null,
     };
 
-    // The delivery note's own line items declare the compound the customer
-    // ordered — the authoritative product identity for this CoC. We use it to
-    // reject wrong-compound supplier-CoC matches and to refuse generation when
-    // no matching-compound source exists.
     const dnItemsForCompound = coc.sourceDeliveryNoteId
-      ? await this.deliveryNoteItemRepository.find({
-          where: { deliveryNoteId: coc.sourceDeliveryNoteId },
+      ? await this.deliveryNoteItemRepository.findManyWhere({
+          deliveryNoteId: coc.sourceDeliveryNoteId,
         })
       : [];
     const expectedCompound =
       dnItemsForCompound.map((i) => (i.compoundType || "").trim()).find((c) => c.length > 0) ||
       null;
-    // The compound guard only engages when the expected compound has a parseable
-    // hardness grade — otherwise we have no reliable axis to compare on and would
-    // wrongly reject every candidate. When inactive, behaviour is unchanged.
     const compoundGuardActive = !!expectedCompound && !!this.compoundHardness(expectedCompound);
 
     const {
@@ -974,10 +826,7 @@ export class RubberAuCocService {
       }
 
       const sourceDeliveryNote: RubberDeliveryNote | null = coc.sourceDeliveryNoteId
-        ? await this.deliveryNoteRepository.findOne({
-            where: { id: coc.sourceDeliveryNoteId },
-            relations: ["linkedCoc"],
-          })
+        ? await this.deliveryNoteRepository.findById(coc.sourceDeliveryNoteId, ["linkedCoc"])
         : null;
 
       const supplierCocCandidates: RubberSupplierCoc[] = await (async () => {
@@ -989,19 +838,11 @@ export class RubberAuCocService {
         }
 
         if (sourceDeliveryNote) {
-          const siblingDn = await this.deliveryNoteRepository
-            .createQueryBuilder("dn")
-            .leftJoinAndSelect("dn.linkedCoc", "coc")
-            .where("dn.linked_coc_id IS NOT NULL")
-            .andWhere("dn.id != :id", { id: sourceDeliveryNote.id })
-            .andWhere("dn.supplier_company_id = :supplierId", {
-              supplierId: sourceDeliveryNote.supplierCompanyId,
-            })
-            .andWhere("dn.customer_reference = :custRef", {
-              custRef: sourceDeliveryNote.customerReference,
-            })
-            .orderBy("dn.created_at", "DESC")
-            .getOne();
+          const siblingDn = await this.deliveryNoteRepository.findSiblingLinkedDeliveryNote(
+            sourceDeliveryNote.id,
+            sourceDeliveryNote.supplierCompanyId,
+            sourceDeliveryNote.customerReference,
+          );
 
           if (siblingDn?.linkedCoc) {
             this.logger.log(
@@ -1011,32 +852,10 @@ export class RubberAuCocService {
           }
         }
 
-        // Customer-side fallback: when the source DN is a CDN (outbound to
-        // a customer), the supplier CoC isn't on the CDN itself — the CDN's
-        // rolls trace back through the rubber_roll_stock table to the
-        // originating SDN, which carries the linked_coc_id. Walk that
-        // chain by joining the CDN's line-item roll numbers against
-        // roll_stock. This works regardless of whether
-        // roll_stock.customer_delivery_note_id has been backfilled for
-        // this CDN — the join key is the roll number, which is durable.
         if (sourceDeliveryNote && candidates.length === 0) {
-          const upstreamCocs = await this.supplierCocRepository
-            .createQueryBuilder("coc")
-            .innerJoin(
-              "rubber_delivery_notes",
-              "sdn",
-              "sdn.linked_coc_id = coc.id AND sdn.version_status NOT IN ('REJECTED','SUPERSEDED')",
-            )
-            .innerJoin("rubber_roll_stock", "rs", "rs.supplier_delivery_note_id = sdn.id")
-            .innerJoin(
-              "rubber_delivery_note_items",
-              "dni",
-              "dni.roll_number = rs.roll_number AND dni.delivery_note_id = :cdnId",
-              { cdnId: sourceDeliveryNote.id },
-            )
-            .where("coc.version_status NOT IN ('REJECTED','SUPERSEDED')")
-            .orderBy("coc.id", "DESC")
-            .getMany();
+          const upstreamCocs = await this.supplierCocRepository.findUpstreamCocsByCdnRollTrace(
+            sourceDeliveryNote.id,
+          );
           if (upstreamCocs.length > 0) {
             this.logger.log(
               `Found ${upstreamCocs.length} upstream supplier CoC(s) via roll-number trace from CDN ${sourceDeliveryNote.id} for AU CoC ${coc.cocNumber}`,
@@ -1045,40 +864,24 @@ export class RubberAuCocService {
           }
         }
 
-        // Roll-number-in-coc-number fallback. Most supplier CoCs encode the
-        // batch / roll numbers directly in the coc_number text — e.g.
-        // "198-42206-42207, 42436-42447" lists order 198 with rolls 42206,
-        // 42207, 42436, 42437, ..., 42447. When the CDN's line-item roll
-        // numbers (e.g. "42436", "42440") appear in any SCoC's coc_number,
-        // that SCoC is the source. Expands hyphen-ranges so "42436-42447"
-        // matches every roll in that span.
         if (sourceDeliveryNote && candidates.length === 0) {
-          const cdnItems = await this.deliveryNoteItemRepository.find({
-            where: { deliveryNoteId: sourceDeliveryNote.id },
+          const cdnItems = await this.deliveryNoteItemRepository.findManyWhere({
+            deliveryNoteId: sourceDeliveryNote.id,
           });
           const cdnRollNums = Array.from(
             new Set(cdnItems.map((i) => (i.rollNumber || "").trim()).filter((rn) => rn.length > 0)),
           );
           if (cdnRollNums.length > 0) {
-            const allScocsForMatch = await this.supplierCocRepository
-              .createQueryBuilder("coc")
-              .where("coc.coc_number IS NOT NULL")
-              .andWhere("coc.version_status NOT IN ('REJECTED','SUPERSEDED')")
-              .orderBy("coc.id", "DESC")
-              .getMany();
+            const allScocsForMatch =
+              await this.supplierCocRepository.findActiveWithCocNumberOrderedByIdDesc();
             const expandRollNumbers = (cocNumber: string): Set<string> => {
               const out = new Set<string>();
-              // Match every numeric token (4–6 digit roll numbers). Also
-              // expand "42436-42447" range tokens.
               const parts = cocNumber.split(/[,\s]+/);
               for (const part of parts) {
                 const rangeMatch = part.match(/^(\d{3,6})-(\d{3,6})$/);
                 if (rangeMatch) {
                   const start = Number(rangeMatch[1]);
                   const end = Number(rangeMatch[2]);
-                  // Only expand if it actually looks like a roll range
-                  // (small span, ascending). Skip "198-42206" type tokens
-                  // where the left side is an order number.
                   if (end > start && end - start <= 200) {
                     for (let n = start; n <= end; n++) out.add(String(n));
                     continue;
@@ -1104,19 +907,11 @@ export class RubberAuCocService {
           }
         }
 
-        const allSupplierCocs = await this.supplierCocRepository
-          .createQueryBuilder("coc")
-          .where("coc.order_number IS NOT NULL")
-          .orderBy("coc.id", "DESC")
-          .getMany();
+        const allSupplierCocs =
+          await this.supplierCocRepository.findWithOrderNumberOrderedByIdDesc();
 
         if (extractedRolls.length > 0) {
           const rollNums = extractedRolls.map((r) => r.rollNumber).filter(Boolean) as string[];
-          // Only roll numbers shaped like "ORDER-ROLL" (e.g. "201-3") carry a
-          // supplier order prefix. Bare sequence numbers like "1"/"2" on a
-          // customer DN do NOT — deriving an "order number" from them and
-          // substring-matching it against real orders ("1" ⊂ "182") is exactly
-          // what pulled an unrelated BSCA38 CoC onto AU-COC-0052.
           const orderNumbers = [
             ...new Set(
               rollNums
@@ -1182,10 +977,9 @@ export class RubberAuCocService {
         return true;
       });
 
-      const rejections = await this.rollRejectionRepository.find({
-        where: deduplicatedCandidates.map((sc) => ({ originalSupplierCocId: sc.id })),
-        select: ["originalSupplierCocId", "replacementSupplierCocId"],
-      });
+      const rejections = await this.rollRejectionRepository.findReplacementRefsByCocIds(
+        deduplicatedCandidates.map((sc) => sc.id),
+      );
       const rejectedCocIds = new Set(rejections.map((r) => r.originalSupplierCocId));
       const replacementCocIds = rejections
         .filter((r) => r.replacementSupplierCocId !== null)
@@ -1193,7 +987,7 @@ export class RubberAuCocService {
 
       const replacementCocs =
         replacementCocIds.length > 0
-          ? await this.supplierCocRepository.find({ where: { id: In(replacementCocIds) } })
+          ? await this.supplierCocRepository.findByIds(replacementCocIds)
           : [];
 
       const uniqueCandidates = deduplicatedCandidates.reduce<RubberSupplierCoc[]>((acc, sc) => {
@@ -1216,12 +1010,6 @@ export class RubberAuCocService {
         return [...acc, sc];
       }, []);
 
-      // Compound guard: when the delivery note declares a compound, drop every
-      // candidate whose compound is incompatible (different hardness grade, or
-      // NBR vs non-NBR). This is what stops a BBSCC50 (C50) CDN from ever
-      // printing a BSCA38 (A38) CoC's data — the AU-COC-0052 failure. It is a
-      // rejection filter, not a matcher: if it empties the list we generate
-      // nothing rather than fall back to a wrong-compound source.
       const compatibleCandidates =
         compoundGuardActive && uniqueCandidates.length > 0
           ? uniqueCandidates.filter((sc) =>
@@ -1246,9 +1034,7 @@ export class RubberAuCocService {
             if (best) return best;
 
             const hasBatches =
-              (await this.compoundBatchRepository.count({
-                where: { supplierCocId: candidate.id },
-              })) > 0;
+              (await this.compoundBatchRepository.countBySupplierCocId(candidate.id)) > 0;
             if (hasBatches) return candidate;
 
             const extractedBatches = candidate.extractedData?.batches || [];
@@ -1257,9 +1043,7 @@ export class RubberAuCocService {
             const compounder = await this.findCompounderForCandidate(candidate);
             if (compounder) {
               const compounderHasBatches =
-                (await this.compoundBatchRepository.count({
-                  where: { supplierCocId: compounder.id },
-                })) > 0;
+                (await this.compoundBatchRepository.countBySupplierCocId(compounder.id)) > 0;
               if (compounderHasBatches) return candidate;
 
               const compounderExtracted = compounder.extractedData?.batches || [];
@@ -1303,9 +1087,7 @@ export class RubberAuCocService {
       const linkedCompounderIds = supplierCoc.extractedData?.linkedCompounderCocIds || [];
       const compounderCoc: RubberSupplierCoc | null = await (async () => {
         if (linkedCompounderIds.length > 0) {
-          const linked = await this.supplierCocRepository.findOne({
-            where: { id: linkedCompounderIds[0] },
-          });
+          const linked = await this.supplierCocRepository.findById(linkedCompounderIds[0]);
           if (linked) {
             this.logger.log(
               `Found linked compounder CoC ${linked.id} for calenderer ${supplierCoc.id}`,
@@ -1315,13 +1097,10 @@ export class RubberAuCocService {
         }
 
         if (supplierCoc.orderNumber) {
-          const byOrder = await this.supplierCocRepository.findOne({
-            where: {
-              cocType: SupplierCocType.COMPOUNDER,
-              orderNumber: supplierCoc.orderNumber,
-            },
-            order: { id: "DESC" },
-          });
+          const byOrder = await this.supplierCocRepository.findOneByCocTypeAndOrderNumberLatest(
+            SupplierCocType.COMPOUNDER,
+            supplierCoc.orderNumber,
+          );
           if (byOrder) {
             this.logger.log(
               `Matched compounder CoC ${byOrder.id} (${byOrder.compoundCode}) by shared order number ${supplierCoc.orderNumber} for calenderer ${supplierCoc.id}`,
@@ -1348,9 +1127,8 @@ export class RubberAuCocService {
       const resolvedQualityConfig: RubberCompoundQualityConfig | null = await (async () => {
         if (!resolvedCompoundCode || resolvedCompoundCode === "Per Supplier CoC") return null;
 
-        const config = await this.qualityConfigRepository.findOne({
-          where: { compoundCode: resolvedCompoundCode },
-        });
+        const config =
+          await this.qualityConfigRepository.findOneByCompoundCode(resolvedCompoundCode);
         if (config) return config;
 
         const sourceCoc = compounderCoc || supplierCoc;
@@ -1394,10 +1172,8 @@ export class RubberAuCocService {
           : defaults.compoundDescription;
 
       const batchSourceCocId = compounderCoc?.id || supplierCoc.id;
-      const batches = await this.compoundBatchRepository.find({
-        where: { supplierCocId: batchSourceCocId },
-        order: { batchNumber: "ASC" },
-      });
+      const batches =
+        await this.compoundBatchRepository.findBySupplierCocIdOrdered(batchSourceCocId);
 
       const resolvedBatchTestData: BatchTestData[] = (() => {
         if (batches.length > 0) {
@@ -1444,11 +1220,6 @@ export class RubberAuCocService {
       };
     })();
 
-    // A CDN-sourced CoC whose delivery note declares a compound MUST resolve to
-    // matching-compound source data with a populated lab table. If it didn't —
-    // no compound resolved, a wrong compound resolved, or no batches — the
-    // source documents aren't all in the system yet. Flag it so generatePdf()
-    // refuses rather than printing an empty/garbage certificate.
     const sourceIncomplete =
       compoundGuardActive &&
       !!coc.sourceDeliveryNoteId &&
@@ -1463,7 +1234,7 @@ export class RubberAuCocService {
             .filter(Boolean)
             .join(", ") || "(none)"
         }`
-      : undefined;
+      : null;
 
     return {
       coc,
@@ -1485,54 +1256,27 @@ export class RubberAuCocService {
   private async populateRollDataFromDeliveryNote(coc: RubberAuCoc): Promise<void> {
     if (!coc.sourceDeliveryNoteId) return;
 
-    const deliveryNote = await this.deliveryNoteRepository.findOne({
-      where: { id: coc.sourceDeliveryNoteId },
-    });
+    const deliveryNote = await this.deliveryNoteRepository.findById(coc.sourceDeliveryNoteId);
 
     if (!deliveryNote) return;
 
-    // CDNs created via the legacy extract path stash rolls on
-    // deliveryNote.extractedData.rolls. CDNs created via the
-    // analyze-and-create modal flow skip the extractedData JSON and
-    // populate rubber_delivery_note_items rows directly. Read whichever
-    // store has data — items first, since they're the canonical source
-    // once they exist.
-    const items = await this.deliveryNoteItemRepository.find({
-      where: { deliveryNoteId: coc.sourceDeliveryNoteId },
-    });
-    const extractedRollData: ExtractedRollData[] =
-      items.length > 0
-        ? items
-            .filter((item) => item.rollNumber !== null && item.rollNumber !== undefined)
-            .map((item) => {
-              const widthMm = item.widthMm ? Number(item.widthMm) : null;
-              const lengthM = item.lengthM ? Number(item.lengthM) : null;
-              return {
-                rollNumber: item.rollNumber ?? "",
-                thicknessMm: item.thicknessMm ? Number(item.thicknessMm) : null,
-                widthMm,
-                lengthM,
-                weightKg: item.rollWeightKg ? Number(item.rollWeightKg) : null,
-                areaSqM: widthMm && lengthM ? (widthMm * lengthM) / 1000 : null,
-              };
-            })
-        : (deliveryNote.extractedData?.rolls || []).map((roll) => ({
-            rollNumber: roll.rollNumber ?? "",
-            thicknessMm: roll.thicknessMm ?? null,
-            widthMm: roll.widthMm ?? null,
-            lengthM: roll.lengthM ?? null,
-            weightKg: roll.weightKg ?? null,
-            areaSqM: roll.areaSqM ?? null,
-          }));
+    const rolls = deliveryNote.extractedData?.rolls || [];
+    if (rolls.length === 0) return;
 
-    if (extractedRollData.length === 0) return;
+    const extractedRollData: ExtractedRollData[] = rolls.map((roll) => ({
+      rollNumber: roll.rollNumber ?? "",
+      thicknessMm: roll.thicknessMm ?? null,
+      widthMm: roll.widthMm ?? null,
+      lengthM: roll.lengthM ?? null,
+      weightKg: roll.weightKg ?? null,
+      areaSqM: roll.areaSqM ?? null,
+    }));
 
     coc.extractedRollData = extractedRollData;
-    await this.auCocRepository.update(coc.id, { extractedRollData });
+    await this.auCocRepository.updateById(coc.id, { extractedRollData });
 
-    const source = items.length > 0 ? "delivery_note_items" : "extracted_data.rolls";
     this.logger.log(
-      `Populated ${extractedRollData.length} rolls (source: ${source}) from DN ${deliveryNote.deliveryNoteNumber} for AU CoC ${coc.cocNumber}`,
+      `Populated ${extractedRollData.length} rolls from DN ${deliveryNote.deliveryNoteNumber} for AU CoC ${coc.cocNumber}`,
     );
   }
 
@@ -1541,20 +1285,15 @@ export class RubberAuCocService {
   ): Promise<RubberSupplierCoc | null> {
     const linkedIds = candidate.extractedData?.linkedCompounderCocIds || [];
     if (linkedIds.length > 0) {
-      const linked = await this.supplierCocRepository.findOne({
-        where: { id: linkedIds[0] },
-      });
+      const linked = await this.supplierCocRepository.findById(linkedIds[0]);
       if (linked) return linked;
     }
 
     if (candidate.orderNumber) {
-      const byOrder = await this.supplierCocRepository.findOne({
-        where: {
-          cocType: SupplierCocType.COMPOUNDER,
-          orderNumber: candidate.orderNumber,
-        },
-        order: { id: "DESC" },
-      });
+      const byOrder = await this.supplierCocRepository.findOneByCocTypeAndOrderNumberLatest(
+        SupplierCocType.COMPOUNDER,
+        candidate.orderNumber,
+      );
       if (byOrder) return byOrder;
     }
 
@@ -1580,12 +1319,8 @@ export class RubberAuCocService {
       `Looking for compounder by compound code candidates: ${JSON.stringify(candidates)} (from calenderer ${calendererCompoundCode})`,
     );
 
-    const compounderCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
-      .andWhere("coc.compound_code IN (:...codes)", { codes: candidates })
-      .orderBy("coc.id", "DESC")
-      .getMany();
+    const compounderCocs =
+      await this.supplierCocRepository.findCompoundersByCompoundCodes(candidates);
 
     if (compounderCocs.length === 0) return null;
 
@@ -1593,9 +1328,6 @@ export class RubberAuCocService {
     return withGraph || compounderCocs[0];
   }
 
-  // The hardness grade is the first 2–3 digit run in a compound code
-  // ("BBSCC50" → 50, "BSCA38" → 38, "AUC50BBSC" → 50). It is the single most
-  // reliable, OCR-stable discriminator between compound families.
   private compoundHardness(code: string | null | undefined): string | null {
     if (!code) return null;
     const m = code
@@ -1609,12 +1341,6 @@ export class RubberAuCocService {
     return !!code && /NBR/i.test(code);
   }
 
-  // Two compound codes name the same product family when they share a hardness
-  // grade AND agree on NBR-vs-non-NBR. Compound codes arrive in many vendor/OCR
-  // spellings ("BBSCC50" customer-side, "AUC50BBSC"/"AU-C50BBSC" supplier-side),
-  // so we deliberately compare on the stable axes rather than string equality.
-  // This is a SAFETY FILTER: it rejects egregious cross-compound matches (e.g. a
-  // C50 delivery note pulling an A38 CoC), it is not the primary matcher.
   private compoundsCompatible(a: string | null | undefined, b: string | null | undefined): boolean {
     if (!a || !b) return false;
     const ha = this.compoundHardness(a);
@@ -1999,9 +1725,7 @@ export class RubberAuCocService {
     matchedSupplierCocs: { id: number; cocNumber: string | null; orderNumber: string | null }[];
     message: string;
   }> {
-    const deliveryNote = await this.deliveryNoteRepository.findOne({
-      where: { id: deliveryNoteId },
-    });
+    const deliveryNote = await this.deliveryNoteRepository.findById(deliveryNoteId);
 
     if (!deliveryNote) {
       return { auCoc: null, matchedSupplierCocs: [], message: "Delivery note not found" };
@@ -2015,9 +1739,8 @@ export class RubberAuCocService {
       };
     }
 
-    const deliveryNoteItems = await this.deliveryNoteItemRepository.find({
-      where: { deliveryNoteId },
-    });
+    const deliveryNoteItems =
+      await this.deliveryNoteItemRepository.findByDeliveryNoteId(deliveryNoteId);
 
     if (deliveryNoteItems.length === 0) {
       return { auCoc: null, matchedSupplierCocs: [], message: "No items in delivery note" };
@@ -2037,11 +1760,9 @@ export class RubberAuCocService {
 
     this.logger.log(`Searching for supplier COCs matching roll numbers: ${rollNumbers.join(", ")}`);
 
-    const calendererCocs = await this.supplierCocRepository
-      .createQueryBuilder("coc")
-      .leftJoinAndSelect("coc.supplierCompany", "company")
-      .where("coc.coc_type = :type", { type: SupplierCocType.CALENDARER })
-      .getMany();
+    const calendererCocs = await this.supplierCocRepository.findByCocTypeWithCompany(
+      SupplierCocType.CALENDARER,
+    );
 
     const matchedCocs = rollNumbers.reduce<RubberSupplierCoc[]>((acc, rollNumber) => {
       const normalizedRoll = rollNumber.trim().toUpperCase();
@@ -2094,9 +1815,7 @@ export class RubberAuCocService {
         ?.compoundDescription ?? "";
     const graphPdfPath = matchedCocs.find((coc) => coc.graphPdfPath)?.graphPdfPath ?? null;
 
-    const customer = await this.companyRepository.findOne({
-      where: { id: customerCompanyId },
-    });
+    const customer = await this.companyRepository.findById(customerCompanyId);
 
     if (!customer) {
       return {
@@ -2112,7 +1831,7 @@ export class RubberAuCocService {
 
     const cocNumber = await this.generateCocNumber();
 
-    const auCoc = this.auCocRepository.create({
+    const auCoc = this.auCocRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       cocNumber,
       customerCompanyId,
@@ -2126,10 +1845,7 @@ export class RubberAuCocService {
 
     const savedCoc = await this.auCocRepository.save(auCoc);
 
-    const result = await this.auCocRepository.findOne({
-      where: { id: savedCoc.id },
-      relations: ["customerCompany"],
-    });
+    const result = await this.auCocRepository.findById(savedCoc.id, ["customerCompany"]);
 
     const auCocDto = this.mapAuCocToDto(result!);
 
@@ -2154,9 +1870,7 @@ export class RubberAuCocService {
       return { buffer: cocBuffer, filename };
     }
 
-    const supplierCoc = await this.supplierCocRepository.findOne({
-      where: { id: supplierCocId },
-    });
+    const supplierCoc = await this.supplierCocRepository.findById(supplierCocId);
 
     if (!supplierCoc?.graphPdfPath) {
       this.logger.warn(`No graph PDF found for supplier COC ${supplierCocId}`);
@@ -2244,10 +1958,7 @@ export class RubberAuCocService {
   }
 
   async approveAuCoc(id: number, approvedByName: string): Promise<RubberAuCocDto> {
-    const coc = await this.auCocRepository.findOne({
-      where: { id },
-      relations: ["customerCompany"],
-    });
+    const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
     if (!coc) throw new BadRequestException("AU CoC not found");
     if (coc.status !== AuCocStatus.GENERATED) {
       throw new BadRequestException(
@@ -2263,26 +1974,15 @@ export class RubberAuCocService {
   }
 
   async sendApprovedAuCocToCustomer(id: number, overrideEmail?: string): Promise<RubberAuCocDto> {
-    const coc = await this.auCocRepository.findOne({
-      where: { id },
-      relations: ["customerCompany"],
-    });
+    const coc = await this.auCocRepository.findById(id, ["customerCompany"]);
     if (!coc) throw new BadRequestException("AU CoC not found");
     if (coc.status !== AuCocStatus.APPROVED) {
       throw new BadRequestException(
         `AU CoC must be APPROVED before sending (current: ${coc.status})`,
       );
     }
-    // Recipient priority: explicit override (the Send modal's "To") → the
-    // customer's AU-CoC-specific recipient → the general Outgoing COC Email.
-    // That last fallback is what the customer-profile help text promises
-    // ("falls back to Outgoing COC Email if blank") but the code omitted.
-    const company = coc.customerCompany;
-    const recipientEmail =
-      overrideEmail ||
-      company?.auCocRecipientEmail ||
-      company?.emailConfig?.outgoingCocEmail ||
-      null;
+    const customerEmail = coc.customerCompany ? coc.customerCompany.auCocRecipientEmail : null;
+    const recipientEmail = overrideEmail || customerEmail;
     if (!recipientEmail) {
       throw new BadRequestException(
         `No recipient email configured for customer "${coc.customerCompany ? coc.customerCompany.name : "(unknown)"}". ` +

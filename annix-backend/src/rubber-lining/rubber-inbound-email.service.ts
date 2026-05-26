@@ -1,7 +1,5 @@
 import { createHash } from "node:crypto";
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { generateUniqueId, nowMillis } from "../lib/datetime";
 import { SharedDocumentType } from "../lib/document-classification/document-types";
 import {
@@ -17,6 +15,8 @@ import { DeliveryNoteStatus, DeliveryNoteType } from "./entities/rubber-delivery
 import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
 import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
 import { TaxInvoiceType } from "./entities/rubber-tax-invoice.entity";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
@@ -153,10 +153,8 @@ export class RubberInboundEmailService {
   private readonly logger = new Logger(RubberInboundEmailService.name);
 
   constructor(
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
+    private companyRepository: RubberCompanyRepository,
+    private productCodingRepository: RubberProductCodingRepository,
     @Inject(STORAGE_SERVICE)
     private storageService: IStorageService,
     private cocService: RubberCocService,
@@ -589,7 +587,7 @@ export class RubberInboundEmailService {
     fromEmail: string,
     subject: string,
   ): Promise<SupplierMapping | null> {
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
     const pdfTextLower = pdfText.toLowerCase();
     const filenameLower = filename.toLowerCase();
     const fromEmailLower = fromEmail.toLowerCase();
@@ -1012,9 +1010,7 @@ ${truncatedText}`;
             explicitCompanyId ??
             (await this.detectCompanyFromPdf(file.buffer, file.originalname, invoiceType));
 
-          const company = await this.companyRepository.findOne({
-            where: { id: resolvedCompanyId },
-          });
+          const company = await this.companyRepository.findById(resolvedCompanyId);
           const subPath = `au-rubber/tax-invoices/${resolvedCompanyId}`;
           const storageResult = await this.storageService.upload(file, subPath);
 
@@ -1124,7 +1120,7 @@ ${truncatedText}`;
 
   async analyzeFiles(files: Express.Multer.File[]): Promise<AnalyzeFilesResult> {
     this.logger.log(`Analyzing ${files.length} files for CoC data...`);
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
 
     const analyzedFiles: AnalyzedFile[] = await Promise.all(
       files.map(async (file, i) => {
@@ -1395,7 +1391,7 @@ ${truncatedText}`;
     const pdfTextLower = pdfText.toLowerCase();
     const filenameLower = filename.toLowerCase();
 
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
     const candidates = companies.filter((c) => String(c.companyType) === String(targetType));
 
     const named = candidates.find((c) => {
@@ -1460,7 +1456,7 @@ ${truncatedText}`;
   }
 
   private async detectSupplierFromPdf(pdfBuffer: Buffer, filename: string): Promise<number> {
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
     const pdfText = await extractTextFromPdf(pdfBuffer);
 
     const fromText = this.matchSupplierByKeyword(pdfText, filename, companies);
@@ -1519,7 +1515,7 @@ ${truncatedText}`;
     pdfText: string,
     filename: string,
   ): Promise<{ cocType: SupplierCocType; companyId?: number; documentType?: string } | null> {
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
     const filenameLower = filename.toLowerCase();
     const pdfTextLower = pdfText.toLowerCase();
 
@@ -1988,12 +1984,10 @@ ${truncatedText}`;
     const fullCode = `${parsedCode.brand}${parsedCode.grade}${parsedCode.shoreHardness}${parsedCode.color}${parsedCode.curingMethod}`;
     const fullName = `${parsedCode.rubberType} ${parsedCode.grade}-Grade ${parsedCode.shoreHardness} Shore ${parsedCode.colorName} ${parsedCode.curingMethodName}`;
 
-    const existingCoding = await this.productCodingRepository.findOne({
-      where: {
-        codingType: ProductCodingType.COMPOUND,
-        code: fullCode,
-      },
-    });
+    const existingCoding = await this.productCodingRepository.findOneByCodeAndType(
+      fullCode,
+      ProductCodingType.COMPOUND,
+    );
 
     if (existingCoding) {
       this.logger.log(
@@ -2002,11 +1996,10 @@ ${truncatedText}`;
       return existingCoding;
     }
 
-    const aliasMatch = await this.productCodingRepository
-      .createQueryBuilder("pc")
-      .where("pc.coding_type = :type", { type: ProductCodingType.COMPOUND })
-      .andWhere("pc.aliases @> :aliasJson::jsonb", { aliasJson: JSON.stringify([fullCode]) })
-      .getOne();
+    const aliasMatch = await this.productCodingRepository.findOneByAliasAndType(
+      fullCode,
+      ProductCodingType.COMPOUND,
+    );
     if (aliasMatch) {
       this.logger.log(
         `Resolved compound coding via alias: ${fullCode} → ${aliasMatch.code} (${aliasMatch.name})`,
@@ -2015,7 +2008,7 @@ ${truncatedText}`;
     }
 
     this.logger.log(`Creating new compound coding: ${fullCode} - ${fullName} (needs review)`);
-    const coding = this.productCodingRepository.create({
+    return this.productCodingRepository.create({
       firebaseUid: `pg_${generateUniqueId()}`,
       codingType: ProductCodingType.COMPOUND,
       code: fullCode,
@@ -2023,9 +2016,6 @@ ${truncatedText}`;
       aliases: [],
       needsReview: true,
     });
-    await this.productCodingRepository.save(coding);
-
-    return coding;
   }
 
   async processCompoundCodeFromFilename(filename: string): Promise<{
@@ -2059,7 +2049,7 @@ ${truncatedText}`;
     files: Express.Multer.File[],
   ): Promise<AnalyzeCustomerDnsResult> {
     this.logger.log(`Analyzing ${files.length} customer delivery note files...`);
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
     const customerCompanies = companies.filter((c) => c.companyType === "CUSTOMER");
     this.logger.log(`Found ${customerCompanies.length} customer companies for matching`);
 
@@ -2568,7 +2558,7 @@ ${truncatedText}`;
           // are different from the original analysis (no-op).
           try {
             const customerName =
-              (await this.companyRepository.findOne({ where: { id: customerId } }))?.name ??
+              (await this.companyRepository.findById(customerId))?.name ??
               group.customerName ??
               null;
             await this.deliveryNoteService.recordCdnAnalysisCorrections({

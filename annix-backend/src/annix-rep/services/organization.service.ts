@@ -1,9 +1,9 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { Organization, OrganizationPlan } from "../entities/organization.entity";
-import { TeamMember, TeamMemberStatus, TeamRole } from "../entities/team-member.entity";
+import { TeamMemberStatus, TeamRole } from "../entities/team-member.entity";
+import { OrganizationRepository } from "../organization.repository";
+import { TeamMemberRepository } from "../team-member.repository";
 
 export interface CreateOrganizationDto {
   name: string;
@@ -32,10 +32,8 @@ export class OrganizationService {
   private readonly logger = new Logger(OrganizationService.name);
 
   constructor(
-    @InjectRepository(Organization)
-    private readonly organizationRepo: Repository<Organization>,
-    @InjectRepository(TeamMember)
-    private readonly teamMemberRepo: Repository<TeamMember>,
+    private readonly organizationRepo: OrganizationRepository,
+    private readonly teamMemberRepo: TeamMemberRepository,
   ) {}
 
   async create(ownerId: number, dto: CreateOrganizationDto): Promise<Organization> {
@@ -45,12 +43,12 @@ export class OrganizationService {
     }
 
     const slug = this.generateSlug(dto.name);
-    const existingSlug = await this.organizationRepo.findOne({ where: { slug } });
+    const existingSlug = await this.organizationRepo.findBySlug(slug);
     if (existingSlug) {
       throw new ConflictException("Organization name already taken");
     }
 
-    const organization = this.organizationRepo.create({
+    const savedOrg = await this.organizationRepo.create({
       name: dto.name,
       slug,
       ownerId,
@@ -61,40 +59,28 @@ export class OrganizationService {
       isActive: true,
     });
 
-    const savedOrg = await this.organizationRepo.save(organization);
-
-    const ownerMember = this.teamMemberRepo.create({
+    await this.teamMemberRepo.create({
       organizationId: savedOrg.id,
       userId: ownerId,
       role: TeamRole.ADMIN,
       status: TeamMemberStatus.ACTIVE,
       joinedAt: now().toJSDate(),
     });
-    await this.teamMemberRepo.save(ownerMember);
 
     this.logger.log(`Organization created: ${savedOrg.name} (${savedOrg.slug}) by user ${ownerId}`);
     return savedOrg;
   }
 
   async findOne(id: number): Promise<Organization | null> {
-    return this.organizationRepo.findOne({
-      where: { id },
-      relations: ["owner"],
-    });
+    return this.organizationRepo.findWithOwner(id);
   }
 
   async findBySlug(slug: string): Promise<Organization | null> {
-    return this.organizationRepo.findOne({
-      where: { slug },
-      relations: ["owner"],
-    });
+    return this.organizationRepo.findBySlugWithOwner(slug);
   }
 
   async findByUser(userId: number): Promise<Organization | null> {
-    const member = await this.teamMemberRepo.findOne({
-      where: { userId },
-      relations: ["organization"],
-    });
+    const member = await this.teamMemberRepo.findByUserWithOrganization(userId);
     return member?.organization ?? null;
   }
 
@@ -138,9 +124,7 @@ export class OrganizationService {
   }
 
   async memberCount(orgId: number): Promise<number> {
-    return this.teamMemberRepo.count({
-      where: { organizationId: orgId, status: TeamMemberStatus.ACTIVE },
-    });
+    return this.teamMemberRepo.countActiveByOrganization(orgId);
   }
 
   async canAddMembers(orgId: number): Promise<boolean> {
@@ -154,13 +138,9 @@ export class OrganizationService {
   }
 
   async stats(orgId: number): Promise<OrganizationStats> {
-    const memberCount = await this.teamMemberRepo.count({
-      where: { organizationId: orgId },
-    });
+    const memberCount = await this.teamMemberRepo.countByOrganization(orgId);
 
-    const activeMembers = await this.teamMemberRepo.count({
-      where: { organizationId: orgId, status: TeamMemberStatus.ACTIVE },
-    });
+    const activeMembers = await this.teamMemberRepo.countActiveByOrganization(orgId);
 
     return {
       memberCount,

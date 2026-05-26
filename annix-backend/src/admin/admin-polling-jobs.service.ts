@@ -1,10 +1,9 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { DateTime } from "../lib/datetime";
 import { isSAPublicHoliday } from "../lib/sa-public-holidays";
 import { PollingJobOverride } from "./entities/polling-job-override.entity";
-import { PollingJobsGlobalSettings } from "./entities/polling-jobs-global-settings.entity";
+import { PollingJobOverrideRepository } from "./repositories/polling-job-override.repository";
+import { PollingJobsGlobalSettingsRepository } from "./repositories/polling-jobs-global-settings.repository";
 
 export type NightSuspensionHours = 6 | 8 | 12 | null;
 
@@ -127,17 +126,13 @@ export class AdminPollingJobsService implements OnApplicationBootstrap {
   private overridesByJob = new Map<string, PollingJobOverride>();
 
   constructor(
-    @InjectRepository(PollingJobOverride)
-    private readonly overrideRepo: Repository<PollingJobOverride>,
-    @InjectRepository(PollingJobsGlobalSettings)
-    private readonly globalSettingsRepo: Repository<PollingJobsGlobalSettings>,
+    private readonly overrideRepo: PollingJobOverrideRepository,
+    private readonly globalSettingsRepo: PollingJobsGlobalSettingsRepository,
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
     await this.reloadOverrides();
-    const globalSettings = await this.globalSettingsRepo.findOne({
-      where: { settingsKey: "default" },
-    });
+    const globalSettings = await this.globalSettingsRepo.findByKey("default");
     this.suspendOnWeekendsAndHolidays = globalSettings?.suspendOnWeekendsAndHolidays ?? true;
     this.logger.log(
       `Loaded ${this.overridesByJob.size} polling-job overrides. Weekend/holiday suspension: ${this.suspendOnWeekendsAndHolidays ? "ENABLED" : "DISABLED"}`,
@@ -145,7 +140,7 @@ export class AdminPollingJobsService implements OnApplicationBootstrap {
   }
 
   private async reloadOverrides(): Promise<void> {
-    const rows = await this.overrideRepo.find();
+    const rows = await this.overrideRepo.findAll();
     this.overridesByJob = new Map(rows.map((row) => [row.jobName, row]));
   }
 

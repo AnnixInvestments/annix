@@ -1,8 +1,8 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
+import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository";
 import { PipePressure } from "./entities/pipe-pressure.entity";
+import { PipePressureRepository } from "./pipe-pressure.repository";
 import { PipePressureService } from "./pipe-pressure.service";
 
 describe("PipePressureService", () => {
@@ -11,28 +11,27 @@ describe("PipePressureService", () => {
   const mockPressureRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     remove: jest.fn(),
-    delete: jest.fn(),
+    count: jest.fn(),
+    deleteById: jest.fn(),
+    findDuplicateForCreate: jest.fn(),
+    findDuplicateForUpdate: jest.fn(),
   };
 
   const mockDimensionRepo = {
-    findOne: jest.fn(),
+    findById: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PipePressureService,
-        {
-          provide: getRepositoryToken(PipePressure),
-          useValue: mockPressureRepo,
-        },
-        {
-          provide: getRepositoryToken(PipeDimension),
-          useValue: mockDimensionRepo,
-        },
+        { provide: PipePressureRepository, useValue: mockPressureRepo },
+        { provide: PipeDimensionRepository, useValue: mockDimensionRepo },
       ],
     }).compile();
 
@@ -48,29 +47,24 @@ describe("PipePressureService", () => {
   describe("findAll", () => {
     it("should return array of pipe pressures", async () => {
       const result = [{ id: 1 }] as PipePressure[];
-      mockPressureRepo.find.mockResolvedValue(result);
+      mockPressureRepo.findAll.mockResolvedValue(result);
 
       expect(await service.findAll()).toEqual(result);
-      expect(mockPressureRepo.find).toHaveBeenCalledWith({
-        relations: ["pipeDimension"],
-      });
+      expect(mockPressureRepo.findAll).toHaveBeenCalledWith(["pipeDimension"]);
     });
   });
 
   describe("findOne", () => {
     it("should return a pipe pressure by id", async () => {
       const result = { id: 1 } as PipePressure;
-      mockPressureRepo.findOne.mockResolvedValue(result);
+      mockPressureRepo.findById.mockResolvedValue(result);
 
       expect(await service.findOne(1)).toEqual(result);
-      expect(mockPressureRepo.findOne).toHaveBeenCalledWith({
-        where: { id: 1 },
-        relations: ["pipeDimension"],
-      });
+      expect(mockPressureRepo.findById).toHaveBeenCalledWith(1, ["pipeDimension"]);
     });
 
     it("should throw NotFoundException if pipe pressure not found", async () => {
-      mockPressureRepo.findOne.mockResolvedValue(undefined);
+      mockPressureRepo.findById.mockResolvedValue(null);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
     });
@@ -78,14 +72,14 @@ describe("PipePressureService", () => {
 
   describe("remove", () => {
     it("should delete a pipe pressure", async () => {
-      mockPressureRepo.delete.mockResolvedValue({ affected: 1 });
+      mockPressureRepo.deleteById.mockResolvedValue(1);
 
       await expect(service.remove(1)).resolves.toBeUndefined();
-      expect(mockPressureRepo.delete).toHaveBeenCalledWith(1);
+      expect(mockPressureRepo.deleteById).toHaveBeenCalledWith(1);
     });
 
     it("should throw NotFoundException if pipe pressure not found", async () => {
-      mockPressureRepo.delete.mockResolvedValue({ affected: 0 });
+      mockPressureRepo.deleteById.mockResolvedValue(0);
 
       await expect(service.remove(1)).rejects.toThrow(NotFoundException);
     });

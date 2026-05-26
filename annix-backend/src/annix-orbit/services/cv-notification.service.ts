@@ -1,21 +1,18 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, MoreThan, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
 import { WebPushChannel, WebPushSendResult } from "../../notifications/channels/web-push.channel";
 import { NotificationDispatcherService } from "../../notifications/notification-dispatcher.service";
-import { User } from "../../user/entities/user.entity";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
-import { AnnixOrbitProfile } from "../entities/annix-orbit-profile.entity";
-import { AnnixOrbitUser } from "../entities/annix-orbit-user.entity";
-import { Candidate } from "../entities/candidate.entity";
-import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
-import { CvPushSubscription } from "../entities/cv-push-subscription.entity";
-import { ExternalJob } from "../entities/external-job.entity";
-import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
+import { AnnixOrbitUserRepository } from "../repositories/annix-orbit-user.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
+import { CvPushSubscriptionRepository } from "../repositories/cv-push-subscription.repository";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 
 interface PushPayload {
   title: string;
@@ -29,22 +26,13 @@ export class CvNotificationService {
   private readonly logger = new Logger(CvNotificationService.name);
 
   constructor(
-    @InjectRepository(AnnixOrbitProfile)
-    private readonly profileRepo: Repository<AnnixOrbitProfile>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(CvPushSubscription)
-    private readonly pushSubRepo: Repository<CvPushSubscription>,
-    @InjectRepository(CandidateJobMatch)
-    private readonly matchRepo: Repository<CandidateJobMatch>,
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
-    @InjectRepository(AnnixOrbitUser)
-    private readonly cvUserRepo: Repository<AnnixOrbitUser>,
+    private readonly profileRepo: AnnixOrbitProfileRepository,
+    private readonly pushSubRepo: CvPushSubscriptionRepository,
+    private readonly matchRepo: CandidateJobMatchRepository,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly externalJobRepo: ExternalJobRepository,
+    private readonly cvUserRepo: AnnixOrbitUserRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly dispatcher: NotificationDispatcherService,
@@ -60,9 +48,7 @@ export class CvNotificationService {
     companyId: number,
     subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
   ): Promise<void> {
-    const existing = await this.pushSubRepo.findOne({
-      where: { endpoint: subscription.endpoint },
-    });
+    const existing = await this.pushSubRepo.findByEndpoint(subscription.endpoint);
 
     if (existing) {
       existing.userId = userId;
@@ -71,26 +57,24 @@ export class CvNotificationService {
       existing.keyAuth = subscription.keys.auth;
       await this.pushSubRepo.save(existing);
     } else {
-      await this.pushSubRepo.save(
-        this.pushSubRepo.create({
-          userId,
-          companyId,
-          endpoint: subscription.endpoint,
-          keyP256dh: subscription.keys.p256dh,
-          keyAuth: subscription.keys.auth,
-        }),
-      );
+      await this.pushSubRepo.create({
+        userId,
+        companyId,
+        endpoint: subscription.endpoint,
+        keyP256dh: subscription.keys.p256dh,
+        keyAuth: subscription.keys.auth,
+      });
     }
 
-    await this.profileRepo.update({ userId }, { pushEnabled: true });
+    await this.profileRepo.setPushEnabledForUser(userId, true);
   }
 
   async unsubscribe(userId: number, endpoint: string): Promise<void> {
-    await this.pushSubRepo.delete({ userId, endpoint });
+    await this.pushSubRepo.deleteByUserEndpoint(userId, endpoint);
 
-    const remaining = await this.pushSubRepo.count({ where: { userId } });
+    const remaining = await this.pushSubRepo.countForUser(userId);
     if (remaining === 0) {
-      await this.profileRepo.update({ userId }, { pushEnabled: false });
+      await this.profileRepo.setPushEnabledForUser(userId, false);
     }
   }
 
@@ -99,7 +83,7 @@ export class CvNotificationService {
       return;
     }
 
-    const subscriptions = await this.pushSubRepo.find({ where: { userId } });
+    const subscriptions = await this.pushSubRepo.findByUser(userId);
     if (subscriptions.length === 0) {
       return;
     }
@@ -127,7 +111,7 @@ export class CvNotificationService {
         .filter((sub) => pushResult.staleEndpoints.includes(sub.endpoint))
         .map((sub) => sub.id);
       if (staleIds.length > 0) {
-        await this.pushSubRepo.delete(staleIds);
+        await this.pushSubRepo.deleteByIds(staleIds);
       }
     }
   }
@@ -136,19 +120,13 @@ export class CvNotificationService {
     candidateId: number,
     matches: Array<{ externalJobId: number; overallScore: number }>,
   ): Promise<void> {
-    const candidate = await this.candidateRepo.findOne({
-      where: { id: candidateId },
-      relations: ["jobPosting"],
-    });
+    const candidate = await this.candidateRepo.findByIdWithJobPosting(candidateId);
 
     if (!candidate || !candidate.jobPosting) {
       return;
     } else {
       const companyId = candidate.jobPosting.companyId;
-      const profiles = await this.profileRepo.find({
-        where: { companyId },
-        relations: ["user"],
-      });
+      const profiles = await this.profileRepo.findByCompanyWithUser(companyId);
       const highMatches = matches.filter((m) => m.overallScore >= 0.5);
 
       await Promise.all(
@@ -165,9 +143,7 @@ export class CvNotificationService {
               m.overallScore > best.overallScore ? m : best,
             );
 
-            const job = await this.externalJobRepo.findOne({
-              where: { id: topMatch.externalJobId },
-            });
+            const job = await this.externalJobRepo.findById(topMatch.externalJobId);
             const scorePct = Math.round(topMatch.overallScore * 100);
             const userName =
               [profile.user.firstName, profile.user.lastName].filter(Boolean).join(" ") ||
@@ -201,53 +177,36 @@ export class CvNotificationService {
     if (!isAnnixOrbitCronEnabled()) return;
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
 
-    const companies = await this.profileRepo
-      .createQueryBuilder("profile")
-      .select("DISTINCT profile.company_id", "companyId")
-      .where("profile.digest_enabled = true")
-      .getRawMany();
+    const companyIds = await this.profileRepo.digestEnabledCompanyIds();
 
     const companyCounts = await Promise.all(
-      companies.map(async ({ companyId }) => {
-        const jobPostings = await this.jobPostingRepo.find({
-          where: { companyId, status: JobPostingStatus.ACTIVE },
-        });
+      companyIds.map(async (companyId) => {
+        const jobPostings = await this.jobPostingRepo.activeForCompany(companyId);
 
         if (jobPostings.length === 0) {
           return 0;
         } else {
-          const recruiterProfiles = await this.profileRepo.find({
-            where: { companyId, digestEnabled: true },
-            relations: ["user"],
-          });
+          const recruiterProfiles = await this.profileRepo.findDigestEnabledForCompany(companyId);
           const recruiters = recruiterProfiles.map((p) => ({
             email: p.user.email,
             name: [p.user.firstName, p.user.lastName].filter(Boolean).join(" ") || p.user.email,
           }));
 
           const jobPostingIds = jobPostings.map((jp) => jp.id);
-          const candidates = await this.candidateRepo.find({
-            where: { jobPostingId: In(jobPostingIds), createdAt: MoreThan(sevenDaysAgo) },
-          });
+          const newCandidates = await this.candidateRepo.countNewForJobsSince(
+            jobPostingIds,
+            sevenDaysAgo,
+          );
 
-          const recentMatches = await this.matchRepo
-            .createQueryBuilder("match")
-            .leftJoinAndSelect("match.externalJob", "job")
-            .leftJoinAndSelect("match.candidate", "candidate")
-            .where("match.created_at > :since", { since: sevenDaysAgo })
-            .andWhere(
-              "match.candidate_id IN (SELECT id FROM cv_assistant_candidates WHERE job_posting_id IN (:...ids))",
-              { ids: jobPostingIds },
-            )
-            .andWhere("match.overall_score >= 0.7")
-            .orderBy("match.overallScore", "DESC")
-            .take(10)
-            .getMany();
+          const recentMatches = await this.matchRepo.weeklyDigestMatches(
+            jobPostingIds,
+            sevenDaysAgo,
+          );
 
           const results = await Promise.all(
             recruiters.map((recruiter) =>
               this.emailService.sendAnnixOrbitWeeklyDigestEmail(recruiter.email, recruiter.name, {
-                newCandidates: candidates.length,
+                newCandidates,
                 topMatches: recentMatches.map((m) => ({
                   candidateName: m.candidate?.name ?? "Unknown",
                   jobTitle: m.externalJob?.title ?? "Unknown job",
@@ -279,11 +238,9 @@ export class CvNotificationService {
   async dispatchCandidateJobAlerts(): Promise<{ sent: number }> {
     const oneDayAgo = DateTime.now().minus({ days: 1 }).toJSDate();
 
-    const optedInCandidates = await this.candidateRepo.find({
-      where: { jobAlertsOptIn: true, popiaConsent: true },
-    });
+    const optedInCandidates = await this.candidateRepo.jobAlertCandidates();
 
-    const seekerUsers = await this.cvUserRepo.find();
+    const seekerUsers = await this.cvUserRepo.findAll();
     const userByEmail = new Map(seekerUsers.map((u) => [u.email.toLowerCase(), u] as const));
 
     const results = await Promise.all(
@@ -301,16 +258,11 @@ export class CvNotificationService {
           const thresholdPct = seekerUser ? seekerUser.matchAlertThreshold : 60;
           const thresholdFraction = Math.max(0, Math.min(100, thresholdPct)) / 100;
 
-          const recentMatches = await this.matchRepo
-            .createQueryBuilder("match")
-            .leftJoinAndSelect("match.externalJob", "job")
-            .where("match.candidate_id = :candidateId", { candidateId: candidate.id })
-            .andWhere("match.created_at > :since", { since: oneDayAgo })
-            .andWhere("match.overall_score >= :threshold", { threshold: thresholdFraction })
-            .andWhere("match.dismissed = false")
-            .orderBy("match.overallScore", "DESC")
-            .take(5)
-            .getMany();
+          const recentMatches = await this.matchRepo.recentMatchesForCandidate(
+            candidate.id,
+            oneDayAgo,
+            thresholdFraction,
+          );
 
           if (recentMatches.length === 0) {
             return 0;

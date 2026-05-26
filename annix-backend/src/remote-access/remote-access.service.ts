@@ -6,13 +6,12 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, MoreThan, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { FeatureFlagsService } from "../feature-flags/feature-flags.service";
 import { DateTime, now } from "../lib/datetime";
-import { RfqDraft } from "../rfq/entities/rfq-draft.entity";
+import { RfqDraftRepository } from "../rfq/rfq-draft.repository";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import {
   AccessStatusResponseDto,
   CreateRemoteAccessRequestDto,
@@ -25,6 +24,7 @@ import {
   RemoteAccessRequest,
   RemoteAccessStatus,
 } from "./entities/remote-access-request.entity";
+import { RemoteAccessRequestRepository } from "./remote-access.repository";
 
 @Injectable()
 export class RemoteAccessService {
@@ -32,12 +32,9 @@ export class RemoteAccessService {
   private readonly accessExpiryHours = 24;
 
   constructor(
-    @InjectRepository(RemoteAccessRequest)
-    private readonly accessRequestRepo: Repository<RemoteAccessRequest>,
-    @InjectRepository(RfqDraft)
-    private readonly rfqDraftRepo: Repository<RfqDraft>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly accessRequestRepo: RemoteAccessRequestRepository,
+    private readonly rfqDraftRepo: RfqDraftRepository,
+    private readonly userRepo: UserRepository,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     private readonly featureFlagsService: FeatureFlagsService,
@@ -55,7 +52,7 @@ export class RemoteAccessService {
       throw new BadRequestException("Remote access feature is disabled");
     }
 
-    const admin = await this.userRepo.findOne({ where: { id: adminId } });
+    const admin = await this.userRepo.findById(adminId);
     if (!admin) {
       throw new NotFoundException("Admin user not found");
     }
@@ -65,28 +62,22 @@ export class RemoteAccessService {
       throw new NotFoundException("Document owner not found");
     }
 
-    const existingRequest = await this.accessRequestRepo.findOne({
-      where: {
-        requestedBy: { id: adminId },
-        documentType: dto.documentType,
-        documentId: dto.documentId,
-        status: RemoteAccessStatus.PENDING,
-      },
-    });
+    const existingRequest = await this.accessRequestRepo.findPendingForAdmin(
+      adminId,
+      dto.documentType,
+      dto.documentId,
+    );
 
     if (existingRequest) {
       throw new BadRequestException("A pending access request already exists for this document");
     }
 
-    const existingApproval = await this.accessRequestRepo.findOne({
-      where: {
-        requestedBy: { id: adminId },
-        documentType: dto.documentType,
-        documentId: dto.documentId,
-        status: RemoteAccessStatus.APPROVED,
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-    });
+    const existingApproval = await this.accessRequestRepo.findApprovedForAdmin(
+      adminId,
+      dto.documentType,
+      dto.documentId,
+      now().toJSDate(),
+    );
 
     if (existingApproval) {
       return this.mapToResponse(existingApproval);
@@ -94,7 +85,7 @@ export class RemoteAccessService {
 
     const expiresAt = now().plus({ hours: this.accessExpiryHours }).toJSDate();
 
-    const request = this.accessRequestRepo.create({
+    const savedRequest = await this.accessRequestRepo.create({
       requestType: dto.requestType,
       documentType: dto.documentType,
       documentId: dto.documentId,
@@ -104,8 +95,6 @@ export class RemoteAccessService {
       expiresAt,
       status: RemoteAccessStatus.PENDING,
     });
-
-    const savedRequest = await this.accessRequestRepo.save(request);
 
     await this.sendAccessRequestEmail(savedRequest);
 
@@ -128,15 +117,12 @@ export class RemoteAccessService {
       };
     }
 
-    const approvedRequest = await this.accessRequestRepo.findOne({
-      where: {
-        requestedBy: { id: adminId },
-        documentType,
-        documentId,
-        status: RemoteAccessStatus.APPROVED,
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-    });
+    const approvedRequest = await this.accessRequestRepo.findApprovedForAdmin(
+      adminId,
+      documentType,
+      documentId,
+      now().toJSDate(),
+    );
 
     if (approvedRequest) {
       return {
@@ -147,17 +133,13 @@ export class RemoteAccessService {
       };
     }
 
-    const pendingRequest = await this.accessRequestRepo.findOne({
-      where: {
-        requestedBy: { id: adminId },
-        documentType,
-        documentId,
-        status: RemoteAccessStatus.PENDING,
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-    });
+    const pendingRequest = await this.accessRequestRepo.findPendingForAdmin(
+      adminId,
+      documentType,
+      documentId,
+    );
 
-    if (pendingRequest) {
+    if (pendingRequest && pendingRequest.expiresAt > now().toJSDate()) {
       return {
         hasAccess: false,
         status: RemoteAccessStatus.PENDING,
@@ -174,29 +156,15 @@ export class RemoteAccessService {
   }
 
   async requestStatus(requestId: number): Promise<RemoteAccessRequestResponseDto> {
-    const request = await this.accessRequestRepo.findOne({
-      where: { id: requestId },
-      relations: ["requestedBy", "documentOwner"],
-    });
-
+    const request = await this.accessRequestRepo.findWithRelations(requestId);
     if (!request) {
       throw new NotFoundException("Access request not found");
     }
-
     return this.mapToResponse(request);
   }
 
   async pendingRequestsForOwner(ownerId: number): Promise<PendingAccessRequestsResponseDto> {
-    const requests = await this.accessRequestRepo.find({
-      where: {
-        documentOwner: { id: ownerId },
-        status: RemoteAccessStatus.PENDING,
-        expiresAt: MoreThan(now().toJSDate()),
-      },
-      relations: ["requestedBy", "documentOwner"],
-      order: { requestedAt: "DESC" },
-    });
-
+    const requests = await this.accessRequestRepo.findPendingByOwner(ownerId, now().toJSDate());
     return {
       requests: requests.map((r) => this.mapToResponse(r)),
       count: requests.length,
@@ -208,11 +176,7 @@ export class RemoteAccessService {
     requestId: number,
     dto: RespondToAccessRequestDto,
   ): Promise<RemoteAccessRequestResponseDto> {
-    const request = await this.accessRequestRepo.findOne({
-      where: { id: requestId },
-      relations: ["requestedBy", "documentOwner"],
-    });
-
+    const request = await this.accessRequestRepo.findWithRelations(requestId);
     if (!request) {
       throw new NotFoundException("Access request not found");
     }
@@ -250,16 +214,9 @@ export class RemoteAccessService {
   }
 
   async cleanupExpiredRequests(): Promise<void> {
-    const result = await this.accessRequestRepo.update(
-      {
-        status: RemoteAccessStatus.PENDING,
-        expiresAt: LessThan(now().toJSDate()),
-      },
-      { status: RemoteAccessStatus.EXPIRED },
-    );
-
-    if (result.affected && result.affected > 0) {
-      this.logger.log(`Marked ${result.affected} expired access requests`);
+    const affected = await this.accessRequestRepo.markExpiredRequests(now().toJSDate());
+    if (affected > 0) {
+      this.logger.log(`Marked ${affected} expired access requests`);
     }
   }
 
@@ -268,10 +225,7 @@ export class RemoteAccessService {
     documentId: number,
   ): Promise<User | null> {
     if (documentType === RemoteAccessDocumentType.RFQ) {
-      const draft = await this.rfqDraftRepo.findOne({
-        where: { id: documentId },
-        relations: ["createdBy"],
-      });
+      const draft = await this.rfqDraftRepo.findByIdWithCreator(documentId);
       return draft?.createdBy || null;
     }
 
@@ -350,9 +304,7 @@ export class RemoteAccessService {
     documentId: number,
   ): Promise<string> {
     if (documentType === RemoteAccessDocumentType.RFQ) {
-      const draft = await this.rfqDraftRepo.findOne({
-        where: { id: documentId },
-      });
+      const draft = await this.rfqDraftRepo.findById(documentId);
       return draft?.projectName || draft?.draftNumber || `RFQ #${documentId}`;
     }
     return `${documentType} #${documentId}`;

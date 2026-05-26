@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, Repository } from "typeorm";
 import { fromISO, generateUniqueId, now } from "../lib/datetime";
 import {
   AdjustCompoundDto,
@@ -31,10 +29,15 @@ import {
   RubberCompoundOrderStatus,
 } from "./entities/rubber-compound-order.entity";
 import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
-import { RubberProduct } from "./entities/rubber-product.entity";
-import { ProductCodingType, RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { ProductCodingType } from "./entities/rubber-product-coding.entity";
 import { RubberProduction, RubberProductionStatus } from "./entities/rubber-production.entity";
-import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
+import { RubberCompoundMovementRepository } from "./repositories/rubber-compound-movement.repository";
+import { RubberCompoundOrderRepository } from "./repositories/rubber-compound-order.repository";
+import { RubberCompoundStockRepository } from "./repositories/rubber-compound-stock.repository";
+import { RubberProductRepository } from "./repositories/rubber-product.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberProductionRepository } from "./repositories/rubber-production.repository";
+import { RubberStockLocationRepository } from "./repositories/rubber-stock-location.repository";
 
 const PRODUCTION_STATUS_LABELS: Record<RubberProductionStatus, string> = {
   [RubberProductionStatus.PENDING]: "Pending",
@@ -54,54 +57,42 @@ const COMPOUND_ORDER_STATUS_LABELS: Record<RubberCompoundOrderStatus, string> = 
 @Injectable()
 export class RubberStockService {
   constructor(
-    @InjectRepository(RubberCompoundStock)
-    private compoundStockRepository: Repository<RubberCompoundStock>,
-    @InjectRepository(RubberCompoundMovement)
-    private movementRepository: Repository<RubberCompoundMovement>,
-    @InjectRepository(RubberProduction)
-    private productionRepository: Repository<RubberProduction>,
-    @InjectRepository(RubberCompoundOrder)
-    private compoundOrderRepository: Repository<RubberCompoundOrder>,
-    @InjectRepository(RubberProductCoding)
-    private productCodingRepository: Repository<RubberProductCoding>,
-    @InjectRepository(RubberProduct)
-    private productRepository: Repository<RubberProduct>,
-    @InjectRepository(RubberStockLocation)
-    private stockLocationRepository: Repository<RubberStockLocation>,
+    private compoundStockRepository: RubberCompoundStockRepository,
+    private movementRepository: RubberCompoundMovementRepository,
+    private productionRepository: RubberProductionRepository,
+    private compoundOrderRepository: RubberCompoundOrderRepository,
+    private productCodingRepository: RubberProductCodingRepository,
+    private productRepository: RubberProductRepository,
+    private stockLocationRepository: RubberStockLocationRepository,
   ) {}
 
   async allCompoundStocks(): Promise<RubberCompoundStockDto[]> {
-    const stocks = await this.compoundStockRepository.find({
-      relations: ["compoundCoding"],
-      order: { id: "ASC" },
-    });
+    const stocks = await this.compoundStockRepository.findAllWithCodingOrderedById();
     return stocks.map((s) => this.mapCompoundStockToDto(s));
   }
 
   async compoundStockById(id: number): Promise<RubberCompoundStockDto | null> {
-    const stock = await this.compoundStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding"],
-    });
+    const stock = await this.compoundStockRepository.findOneByIdWithCoding(id);
     return stock ? this.mapCompoundStockToDto(stock) : null;
   }
 
   async createCompoundStock(dto: CreateRubberCompoundStockDto): Promise<RubberCompoundStockDto> {
-    const coding = await this.productCodingRepository.findOne({
-      where: { id: dto.compoundCodingId, codingType: ProductCodingType.COMPOUND },
-    });
+    const coding = await this.productCodingRepository.findOneByIdAndType(
+      dto.compoundCodingId,
+      ProductCodingType.COMPOUND,
+    );
     if (!coding) {
       throw new BadRequestException("Invalid compound coding ID or coding is not a COMPOUND type");
     }
 
-    const existing = await this.compoundStockRepository.findOne({
-      where: { compoundCodingId: dto.compoundCodingId },
-    });
+    const existing = await this.compoundStockRepository.findOneByCompoundCodingId(
+      dto.compoundCodingId,
+    );
     if (existing) {
       throw new BadRequestException("A stock entry already exists for this compound");
     }
 
-    const stock = this.compoundStockRepository.create({
+    const stock = this.compoundStockRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       compoundCodingId: dto.compoundCodingId,
       quantityKg: dto.quantityKg ?? 0,
@@ -112,10 +103,7 @@ export class RubberStockService {
       batchNumber: dto.batchNumber ?? null,
     });
     const saved = await this.compoundStockRepository.save(stock);
-    const result = await this.compoundStockRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundCoding"],
-    });
+    const result = await this.compoundStockRepository.findOneByIdWithCoding(saved.id);
     return this.mapCompoundStockToDto(result!);
   }
 
@@ -123,16 +111,14 @@ export class RubberStockService {
     id: number,
     dto: UpdateRubberCompoundStockDto,
   ): Promise<RubberCompoundStockDto | null> {
-    const stock = await this.compoundStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding"],
-    });
+    const stock = await this.compoundStockRepository.findOneByIdWithCoding(id);
     if (!stock) return null;
 
     if (dto.compoundCodingId !== undefined) {
-      const coding = await this.productCodingRepository.findOne({
-        where: { id: dto.compoundCodingId, codingType: ProductCodingType.COMPOUND },
-      });
+      const coding = await this.productCodingRepository.findOneByIdAndType(
+        dto.compoundCodingId,
+        ProductCodingType.COMPOUND,
+      );
       if (!coding) {
         throw new BadRequestException(
           "Invalid compound coding ID or coding is not a COMPOUND type",
@@ -148,25 +134,16 @@ export class RubberStockService {
     if (dto.batchNumber !== undefined) stock.batchNumber = dto.batchNumber ?? null;
 
     await this.compoundStockRepository.save(stock);
-    const result = await this.compoundStockRepository.findOne({
-      where: { id },
-      relations: ["compoundCoding"],
-    });
+    const result = await this.compoundStockRepository.findOneByIdWithCoding(id);
     return this.mapCompoundStockToDto(result!);
   }
 
   async deleteCompoundStock(id: number): Promise<boolean> {
-    const result = await this.compoundStockRepository.delete(id);
-    return (result.affected || 0) > 0;
+    return this.compoundStockRepository.deleteById(id);
   }
 
   async lowStockCompounds(): Promise<RubberCompoundStockDto[]> {
-    const stocks = await this.compoundStockRepository
-      .createQueryBuilder("stock")
-      .leftJoinAndSelect("stock.compoundCoding", "coding")
-      .where("stock.quantity_kg < stock.reorder_point_kg")
-      .orderBy("stock.quantity_kg", "ASC")
-      .getMany();
+    const stocks = await this.compoundStockRepository.findLowStockWithCodingOrdered();
     return stocks.map((s) => this.mapCompoundStockToDto(s));
   }
 
@@ -175,25 +152,7 @@ export class RubberStockService {
     movementType?: CompoundMovementType;
     referenceType?: CompoundMovementReferenceType;
   }): Promise<RubberCompoundMovementDto[]> {
-    const query = this.movementRepository
-      .createQueryBuilder("movement")
-      .leftJoinAndSelect("movement.compoundStock", "stock")
-      .leftJoinAndSelect("stock.compoundCoding", "coding")
-      .orderBy("movement.created_at", "DESC");
-
-    if (filters?.compoundStockId) {
-      query.andWhere("movement.compound_stock_id = :stockId", {
-        stockId: filters.compoundStockId,
-      });
-    }
-    if (filters?.movementType) {
-      query.andWhere("movement.movement_type = :type", { type: filters.movementType });
-    }
-    if (filters?.referenceType) {
-      query.andWhere("movement.reference_type = :refType", { refType: filters.referenceType });
-    }
-
-    const movements = await query.getMany();
+    const movements = await this.movementRepository.findAllWithRelationsFiltered(filters);
     return movements.map((m) => this.mapMovementToDto(m));
   }
 
@@ -202,10 +161,7 @@ export class RubberStockService {
   }
 
   async receiveCompound(dto: ReceiveCompoundDto): Promise<RubberCompoundMovementDto> {
-    const stock = await this.compoundStockRepository.findOne({
-      where: { id: dto.compoundStockId },
-      relations: ["compoundCoding"],
-    });
+    const stock = await this.compoundStockRepository.findOneByIdWithCoding(dto.compoundStockId);
     if (!stock) {
       throw new NotFoundException("Compound stock not found");
     }
@@ -216,7 +172,7 @@ export class RubberStockService {
     }
     await this.compoundStockRepository.save(stock);
 
-    const movement = this.movementRepository.create({
+    const movement = this.movementRepository.build({
       compoundStockId: dto.compoundStockId,
       movementType: CompoundMovementType.IN,
       quantityKg: dto.quantityKg,
@@ -226,32 +182,28 @@ export class RubberStockService {
     });
     const saved = await this.movementRepository.save(movement);
 
-    const result = await this.movementRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const result = await this.movementRepository.findOneByIdWithRelations(saved.id);
     return this.mapMovementToDto(result!);
   }
 
   async createCompoundOpeningStock(
     dto: CreateCompoundOpeningStockDto,
   ): Promise<RubberCompoundStockDto> {
-    const coding = await this.productCodingRepository.findOne({
-      where: { id: dto.compoundCodingId, codingType: ProductCodingType.COMPOUND },
-    });
+    const coding = await this.productCodingRepository.findOneByIdAndType(
+      dto.compoundCodingId,
+      ProductCodingType.COMPOUND,
+    );
     if (!coding) {
       throw new BadRequestException("Invalid compound coding ID or coding is not a COMPOUND type");
     }
 
-    const existing = await this.compoundStockRepository.findOne({
-      where: { compoundCodingId: dto.compoundCodingId },
-    });
+    const existing = await this.compoundStockRepository.findOneByCompoundCodingId(
+      dto.compoundCodingId,
+    );
 
     let locationName: string | null = null;
     if (dto.locationId) {
-      const location = await this.stockLocationRepository.findOne({
-        where: { id: dto.locationId },
-      });
+      const location = await this.stockLocationRepository.findById(dto.locationId);
       if (location) {
         locationName = location.name;
       }
@@ -273,7 +225,7 @@ export class RubberStockService {
       await this.compoundStockRepository.save(existing);
       stockId = existing.id;
     } else {
-      const stock = this.compoundStockRepository.create({
+      const stock = this.compoundStockRepository.build({
         firebaseUid: `pg_${generateUniqueId()}`,
         compoundCodingId: dto.compoundCodingId,
         quantityKg: dto.quantityKg,
@@ -288,7 +240,7 @@ export class RubberStockService {
       stockId = savedStock.id;
     }
 
-    const movement = this.movementRepository.create({
+    const movement = this.movementRepository.build({
       compoundStockId: stockId,
       movementType: CompoundMovementType.IN,
       quantityKg: dto.quantityKg,
@@ -299,10 +251,7 @@ export class RubberStockService {
     });
     await this.movementRepository.save(movement);
 
-    const result = await this.compoundStockRepository.findOne({
-      where: { id: stockId },
-      relations: ["compoundCoding"],
-    });
+    const result = await this.compoundStockRepository.findOneByIdWithCoding(stockId);
     return this.mapCompoundStockToDto(result!);
   }
 
@@ -316,9 +265,7 @@ export class RubberStockService {
       errors: [],
     };
 
-    const codings = await this.productCodingRepository.find({
-      where: { codingType: ProductCodingType.COMPOUND },
-    });
+    const codings = await this.productCodingRepository.findByType(ProductCodingType.COMPOUND);
     const codingMap = new Map(codings.map((c) => [c.code.toLowerCase(), c]));
 
     const totals = await rows.reduce(
@@ -355,9 +302,7 @@ export class RubberStockService {
           };
         }
 
-        const existing = await this.compoundStockRepository.findOne({
-          where: { compoundCodingId: coding.id },
-        });
+        const existing = await this.compoundStockRepository.findOneByCompoundCodingId(coding.id);
 
         if (existing) {
           existing.quantityKg = Number(existing.quantityKg) + row.quantityKg;
@@ -378,7 +323,7 @@ export class RubberStockService {
           }
           await this.compoundStockRepository.save(existing);
 
-          const movement = this.movementRepository.create({
+          const movement = this.movementRepository.build({
             compoundStockId: existing.id,
             movementType: CompoundMovementType.IN,
             quantityKg: row.quantityKg,
@@ -391,7 +336,7 @@ export class RubberStockService {
           return { ...acc, updated: acc.updated + 1 };
         }
 
-        const stock = this.compoundStockRepository.create({
+        const stock = this.compoundStockRepository.build({
           firebaseUid: `pg_${generateUniqueId()}`,
           compoundCodingId: coding.id,
           quantityKg: row.quantityKg,
@@ -403,7 +348,7 @@ export class RubberStockService {
         });
         const savedStock = await this.compoundStockRepository.save(stock);
 
-        const movement = this.movementRepository.create({
+        const movement = this.movementRepository.build({
           compoundStockId: savedStock.id,
           movementType: CompoundMovementType.IN,
           quantityKg: row.quantityKg,
@@ -427,10 +372,7 @@ export class RubberStockService {
   }
 
   async manualAdjustment(dto: AdjustCompoundDto): Promise<RubberCompoundMovementDto> {
-    const stock = await this.compoundStockRepository.findOne({
-      where: { id: dto.compoundStockId },
-      relations: ["compoundCoding"],
-    });
+    const stock = await this.compoundStockRepository.findOneByIdWithCoding(dto.compoundStockId);
     if (!stock) {
       throw new NotFoundException("Compound stock not found");
     }
@@ -443,7 +385,7 @@ export class RubberStockService {
     const movementType =
       difference >= 0 ? CompoundMovementType.IN : CompoundMovementType.ADJUSTMENT;
 
-    const movement = this.movementRepository.create({
+    const movement = this.movementRepository.build({
       compoundStockId: dto.compoundStockId,
       movementType,
       quantityKg: Math.abs(difference),
@@ -456,53 +398,36 @@ export class RubberStockService {
 
     await this.checkAndCreateAutoOrder(stock);
 
-    const result = await this.movementRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const result = await this.movementRepository.findOneByIdWithRelations(saved.id);
     return this.mapMovementToDto(result!);
   }
 
   async allProductions(status?: RubberProductionStatus): Promise<RubberProductionDto[]> {
-    const where = status !== undefined ? { status } : {};
-    const productions = await this.productionRepository.find({
-      where,
-      relations: ["product", "compoundStock", "compoundStock.compoundCoding"],
-      order: { createdAt: "DESC" },
-    });
+    const productions = await this.productionRepository.findFilteredWithRelations(status);
     return productions.map((p) => this.mapProductionToDto(p));
   }
 
   async productionById(id: number): Promise<RubberProductionDto | null> {
-    const production = await this.productionRepository.findOne({
-      where: { id },
-      relations: ["product", "compoundStock", "compoundStock.compoundCoding"],
-    });
+    const production = await this.productionRepository.findOneByIdWithRelations(id);
     return production ? this.mapProductionToDto(production) : null;
   }
 
   async createProduction(dto: CreateRubberProductionDto): Promise<RubberProductionDto> {
-    const product = await this.productRepository.findOne({ where: { id: dto.productId } });
+    const product = await this.productRepository.findById(dto.productId);
     if (!product) {
       throw new BadRequestException("Product not found");
     }
 
-    const stock = await this.compoundStockRepository.findOne({
-      where: { id: dto.compoundStockId },
-      relations: ["compoundCoding"],
-    });
+    const stock = await this.compoundStockRepository.findOneByIdWithCoding(dto.compoundStockId);
     if (!stock) {
       throw new BadRequestException("Compound stock not found");
     }
 
-    const lastProduction = await this.productionRepository
-      .createQueryBuilder("production")
-      .orderBy("production.id", "DESC")
-      .getOne();
+    const lastProduction = await this.productionRepository.findLatest();
     const nextNumber = (lastProduction?.id || 0) + 1;
     const productionNumber = `PRD-${String(nextNumber).padStart(5, "0")}`;
 
-    const production = this.productionRepository.create({
+    const production = this.productionRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       productionNumber,
       productId: dto.productId,
@@ -517,18 +442,12 @@ export class RubberStockService {
     });
     const saved = await this.productionRepository.save(production);
 
-    const result = await this.productionRepository.findOne({
-      where: { id: saved.id },
-      relations: ["product", "compoundStock", "compoundStock.compoundCoding"],
-    });
+    const result = await this.productionRepository.findOneByIdWithRelations(saved.id);
     return this.mapProductionToDto(result!);
   }
 
   async startProduction(id: number): Promise<RubberProductionDto> {
-    const production = await this.productionRepository.findOne({
-      where: { id },
-      relations: ["product", "compoundStock", "compoundStock.compoundCoding"],
-    });
+    const production = await this.productionRepository.findOneByIdWithRelations(id);
     if (!production) {
       throw new NotFoundException("Production not found");
     }
@@ -543,10 +462,7 @@ export class RubberStockService {
   }
 
   async completeProduction(id: number): Promise<RubberProductionDto> {
-    const production = await this.productionRepository.findOne({
-      where: { id },
-      relations: ["product", "compoundStock", "compoundStock.compoundCoding"],
-    });
+    const production = await this.productionRepository.findOneByIdWithRelations(id);
     if (!production) {
       throw new NotFoundException("Production not found");
     }
@@ -573,7 +489,7 @@ export class RubberStockService {
     stock.quantityKg = Number(stock.quantityKg) - compoundRequired;
     await this.compoundStockRepository.save(stock);
 
-    const movement = this.movementRepository.create({
+    const movement = this.movementRepository.build({
       compoundStockId: production.compoundStockId,
       movementType: CompoundMovementType.OUT,
       quantityKg: compoundRequired,
@@ -589,10 +505,7 @@ export class RubberStockService {
   }
 
   async cancelProduction(id: number): Promise<RubberProductionDto> {
-    const production = await this.productionRepository.findOne({
-      where: { id },
-      relations: ["product", "compoundStock", "compoundStock.compoundCoding"],
-    });
+    const production = await this.productionRepository.findOneByIdWithRelations(id);
     if (!production) {
       throw new NotFoundException("Production not found");
     }
@@ -609,7 +522,7 @@ export class RubberStockService {
   async calculateCompoundRequired(
     dto: CalculateCompoundDto,
   ): Promise<CompoundCalculationResultDto> {
-    const product = await this.productRepository.findOne({ where: { id: dto.productId } });
+    const product = await this.productRepository.findById(dto.productId);
     if (!product) {
       throw new NotFoundException("Product not found");
     }
@@ -633,40 +546,26 @@ export class RubberStockService {
   }
 
   async allCompoundOrders(status?: RubberCompoundOrderStatus): Promise<RubberCompoundOrderDto[]> {
-    const where = status !== undefined ? { status } : {};
-    const orders = await this.compoundOrderRepository.find({
-      where,
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-      order: { createdAt: "DESC" },
-    });
+    const orders = await this.compoundOrderRepository.findByStatusWithRelations(status);
     return orders.map((o) => this.mapCompoundOrderToDto(o));
   }
 
   async compoundOrderById(id: number): Promise<RubberCompoundOrderDto | null> {
-    const order = await this.compoundOrderRepository.findOne({
-      where: { id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const order = await this.compoundOrderRepository.findOneByIdWithRelations(id);
     return order ? this.mapCompoundOrderToDto(order) : null;
   }
 
   async createCompoundOrder(dto: CreateRubberCompoundOrderDto): Promise<RubberCompoundOrderDto> {
-    const stock = await this.compoundStockRepository.findOne({
-      where: { id: dto.compoundStockId },
-      relations: ["compoundCoding"],
-    });
+    const stock = await this.compoundStockRepository.findOneByIdWithCoding(dto.compoundStockId);
     if (!stock) {
       throw new BadRequestException("Compound stock not found");
     }
 
-    const lastOrder = await this.compoundOrderRepository
-      .createQueryBuilder("order")
-      .orderBy("order.id", "DESC")
-      .getOne();
+    const lastOrder = await this.compoundOrderRepository.findLastById();
     const nextNumber = (lastOrder?.id || 0) + 1;
     const orderNumber = `CPO-${String(nextNumber).padStart(5, "0")}`;
 
-    const order = this.compoundOrderRepository.create({
+    const order = this.compoundOrderRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       orderNumber,
       compoundStockId: dto.compoundStockId,
@@ -679,10 +578,7 @@ export class RubberStockService {
     });
     const saved = await this.compoundOrderRepository.save(order);
 
-    const result = await this.compoundOrderRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const result = await this.compoundOrderRepository.findOneByIdWithRelations(saved.id);
     return this.mapCompoundOrderToDto(result!);
   }
 
@@ -690,10 +586,7 @@ export class RubberStockService {
     id: number,
     dto: UpdateRubberCompoundOrderStatusDto,
   ): Promise<RubberCompoundOrderDto> {
-    const order = await this.compoundOrderRepository.findOne({
-      where: { id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const order = await this.compoundOrderRepository.findOneByIdWithRelations(id);
     if (!order) {
       throw new NotFoundException("Compound order not found");
     }
@@ -707,10 +600,7 @@ export class RubberStockService {
     id: number,
     dto: ReceiveCompoundOrderDto,
   ): Promise<RubberCompoundOrderDto> {
-    const order = await this.compoundOrderRepository.findOne({
-      where: { id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const order = await this.compoundOrderRepository.findOneByIdWithRelations(id);
     if (!order) {
       throw new NotFoundException("Compound order not found");
     }
@@ -729,7 +619,7 @@ export class RubberStockService {
     }
     await this.compoundStockRepository.save(stock);
 
-    const movement = this.movementRepository.create({
+    const movement = this.movementRepository.build({
       compoundStockId: order.compoundStockId,
       movementType: CompoundMovementType.IN,
       quantityKg: dto.actualQuantityKg,
@@ -754,22 +644,21 @@ export class RubberStockService {
     referenceId: number | null,
     notes: string | null,
   ): Promise<RubberCompoundMovementDto> {
-    const coding = await this.productCodingRepository.findOne({
-      where: { id: compoundCodingId, codingType: ProductCodingType.COMPOUND },
-    });
+    const coding = await this.productCodingRepository.findOneByIdAndType(
+      compoundCodingId,
+      ProductCodingType.COMPOUND,
+    );
     if (!coding) {
       throw new NotFoundException("Compound coding not found");
     }
 
-    const existingStock = await this.compoundStockRepository.findOne({
-      where: { compoundCodingId },
-      relations: ["compoundCoding"],
-    });
+    const existingStock =
+      await this.compoundStockRepository.findOneByCompoundCodingIdWithCoding(compoundCodingId);
 
     const stock = existingStock
       ? existingStock
       : await this.compoundStockRepository.save(
-          this.compoundStockRepository.create({
+          this.compoundStockRepository.build({
             firebaseUid: `pg_${generateUniqueId()}`,
             compoundCodingId,
             quantityKg: 0,
@@ -785,7 +674,7 @@ export class RubberStockService {
     }
     await this.compoundStockRepository.save(stock);
 
-    const movement = this.movementRepository.create({
+    const movement = this.movementRepository.build({
       compoundStockId: stock.id,
       movementType: CompoundMovementType.IN,
       quantityKg,
@@ -795,10 +684,7 @@ export class RubberStockService {
     });
     const saved = await this.movementRepository.save(movement);
 
-    const result = await this.movementRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const result = await this.movementRepository.findOneByIdWithRelations(saved.id);
     return this.mapMovementToDto(result!);
   }
 
@@ -809,16 +695,14 @@ export class RubberStockService {
     referenceId: number | null,
     notes: string | null,
   ): Promise<RubberCompoundMovementDto | null> {
-    const stock = await this.compoundStockRepository.findOne({
-      where: { compoundCodingId },
-      relations: ["compoundCoding"],
-    });
+    const stock =
+      await this.compoundStockRepository.findOneByCompoundCodingIdWithCoding(compoundCodingId);
     if (!stock) return null;
 
     stock.quantityKg = Number(stock.quantityKg) - quantityKg;
     await this.compoundStockRepository.save(stock);
 
-    const movement = this.movementRepository.create({
+    const movement = this.movementRepository.build({
       compoundStockId: stock.id,
       movementType: CompoundMovementType.OUT,
       quantityKg,
@@ -830,10 +714,7 @@ export class RubberStockService {
 
     await this.checkAndCreateAutoOrder(stock);
 
-    const result = await this.movementRepository.findOne({
-      where: { id: saved.id },
-      relations: ["compoundStock", "compoundStock.compoundCoding"],
-    });
+    const result = await this.movementRepository.findOneByIdWithRelations(saved.id);
     return this.mapMovementToDto(result!);
   }
 
@@ -841,9 +722,7 @@ export class RubberStockService {
     referenceType: CompoundMovementReferenceType,
     referenceId: number,
   ): Promise<boolean> {
-    const count = await this.movementRepository.count({
-      where: { referenceType, referenceId },
-    });
+    const count = await this.movementRepository.countByReference(referenceType, referenceId);
     return count > 0;
   }
 
@@ -851,10 +730,10 @@ export class RubberStockService {
     referenceType: CompoundMovementReferenceType,
     referenceId: number,
   ): Promise<void> {
-    const movements = await this.movementRepository.find({
-      where: { referenceType, referenceId },
-      relations: ["compoundStock"],
-    });
+    const movements = await this.movementRepository.findByReferenceWithStock(
+      referenceType,
+      referenceId,
+    );
 
     for (const movement of movements) {
       const stock = movement.compoundStock;
@@ -877,30 +756,18 @@ export class RubberStockService {
 
     if (currentQty >= reorderPoint) return;
 
-    const existingActiveOrder = await this.compoundOrderRepository.findOne({
-      where: {
-        compoundStockId: stock.id,
-        status: In([
-          RubberCompoundOrderStatus.PENDING,
-          RubberCompoundOrderStatus.APPROVED,
-          RubberCompoundOrderStatus.ORDERED,
-        ]),
-      },
-    });
+    const existingActiveOrder = await this.compoundOrderRepository.findOneActiveForStock(stock.id);
 
     if (existingActiveOrder) return;
 
     const orderQty = minStockLevel - currentQty;
     if (orderQty <= 0) return;
 
-    const lastOrder = await this.compoundOrderRepository
-      .createQueryBuilder("order")
-      .orderBy("order.id", "DESC")
-      .getOne();
+    const lastOrder = await this.compoundOrderRepository.findLastById();
     const nextNumber = (lastOrder?.id || 0) + 1;
     const orderNumber = `CPO-${String(nextNumber).padStart(5, "0")}`;
 
-    const autoOrder = this.compoundOrderRepository.create({
+    const autoOrder = this.compoundOrderRepository.build({
       firebaseUid: `pg_${generateUniqueId()}`,
       orderNumber,
       compoundStockId: stock.id,

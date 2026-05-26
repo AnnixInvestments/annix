@@ -1,10 +1,10 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
+import { JobSourceProvider } from "../entities/job-market-source.entity";
 import { SalaryBenchmark, SalaryBenchmarkSource } from "../entities/salary-benchmark.entity";
+import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
+import { SalaryBenchmarkRepository } from "../repositories/salary-benchmark.repository";
 import { AdzunaService } from "./adzuna.service";
 
 /**
@@ -56,10 +56,8 @@ export class SalaryBenchmarkService {
   private readonly logger = new Logger(SalaryBenchmarkService.name);
 
   constructor(
-    @InjectRepository(SalaryBenchmark)
-    private readonly benchmarkRepo: Repository<SalaryBenchmark>,
-    @InjectRepository(JobMarketSource)
-    private readonly jobMarketSourceRepo: Repository<JobMarketSource>,
+    private readonly benchmarkRepo: SalaryBenchmarkRepository,
+    private readonly jobMarketSourceRepo: JobMarketSourceRepository,
     private readonly adzunaService: AdzunaService,
   ) {}
 
@@ -72,13 +70,7 @@ export class SalaryBenchmarkService {
     normalizedTitle: string,
     province: string | null,
   ): Promise<SalaryBenchmark | null> {
-    const row = await this.benchmarkRepo.findOne({
-      where: {
-        normalizedTitle,
-        province: province ?? "",
-      },
-    });
-    return row || null;
+    return this.benchmarkRepo.findByTitleAndProvince(normalizedTitle, province ?? "");
   }
 
   /**
@@ -90,9 +82,9 @@ export class SalaryBenchmarkService {
     skipped: number;
     errors: number;
   }> {
-    const adzunaSource = await this.jobMarketSourceRepo.findOne({
-      where: { provider: JobSourceProvider.ADZUNA, enabled: true },
-    });
+    const adzunaSource = await this.jobMarketSourceRepo.findEnabledByProvider(
+      JobSourceProvider.ADZUNA,
+    );
     if (!adzunaSource?.apiId || !adzunaSource.apiKeyEncrypted) {
       this.logger.warn("Salary benchmark refresh skipped: no Adzuna JobMarketSource configured");
       return { refreshed: 0, skipped: SEED_COMBINATIONS.length, errors: 0 };
@@ -107,9 +99,7 @@ export class SalaryBenchmarkService {
     const toProcess = SEED_COMBINATIONS.slice(0, maxToRefresh);
     for (const combo of toProcess) {
       const provinceKey = combo.province ?? "";
-      const existing = await this.benchmarkRepo.findOne({
-        where: { normalizedTitle: combo.title, province: provinceKey },
-      });
+      const existing = await this.benchmarkRepo.findByTitleAndProvince(combo.title, provinceKey);
       if (existing && existing.updatedAt > staleCutoff) {
         skipped++;
         continue;
@@ -137,21 +127,27 @@ export class SalaryBenchmarkService {
         }
 
         const confidence = Math.min(1, aggregates.sampleSize / 50);
-        const row =
-          existing ??
-          this.benchmarkRepo.create({
+
+        if (existing) {
+          existing.minSalary = aggregates.p25 != null ? String(aggregates.p25) : null;
+          existing.medianSalary = String(aggregates.p50);
+          existing.maxSalary = aggregates.p75 != null ? String(aggregates.p75) : null;
+          existing.sampleSize = aggregates.sampleSize;
+          existing.source = SalaryBenchmarkSource.ADZUNA;
+          existing.confidence = confidence.toFixed(2);
+          await this.benchmarkRepo.save(existing);
+        } else {
+          await this.benchmarkRepo.create({
             normalizedTitle: combo.title,
             province: combo.province,
+            minSalary: aggregates.p25 != null ? String(aggregates.p25) : null,
+            medianSalary: String(aggregates.p50),
+            maxSalary: aggregates.p75 != null ? String(aggregates.p75) : null,
+            sampleSize: aggregates.sampleSize,
+            source: SalaryBenchmarkSource.ADZUNA,
+            confidence: confidence.toFixed(2),
           });
-
-        row.minSalary = aggregates.p25 != null ? String(aggregates.p25) : null;
-        row.medianSalary = String(aggregates.p50);
-        row.maxSalary = aggregates.p75 != null ? String(aggregates.p75) : null;
-        row.sampleSize = aggregates.sampleSize;
-        row.source = SalaryBenchmarkSource.ADZUNA;
-        row.confidence = confidence.toFixed(2);
-
-        await this.benchmarkRepo.save(row);
+        }
         refreshed++;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -172,8 +168,7 @@ export class SalaryBenchmarkService {
    */
   async pruneStale(): Promise<number> {
     const cutoff = now().minus({ days: 14 }).toJSDate();
-    const result = await this.benchmarkRepo.delete({ updatedAt: LessThan(cutoff) });
-    return result.affected ?? 0;
+    return this.benchmarkRepo.deleteOlderThan(cutoff);
   }
 
   @Cron("0 2 * * *", { name: "annix-orbit:refresh-salary-benchmarks" })

@@ -1,7 +1,5 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, LessThanOrEqual, Repository } from "typeorm";
 import { fromJSDate, now, nowISO } from "../../lib/datetime";
 import {
   CalloffStatus,
@@ -14,13 +12,17 @@ import {
   CustomerPurchaseOrder,
 } from "../entities/customer-purchase-order.entity";
 import { CustomerPurchaseOrderItem } from "../entities/customer-purchase-order-item.entity";
-import { DeliveryNote } from "../entities/delivery-note.entity";
 import { JobCard } from "../entities/job-card.entity";
-import { JobCardLineItem } from "../entities/job-card-line-item.entity";
 import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
-import { RequisitionItem } from "../entities/requisition-item.entity";
 import { isValidLineItem } from "../lib/line-item-validation";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
+import { CpoCalloffRecordRepository } from "../repositories/cpo-calloff-record.repository";
+import { CustomerPurchaseOrderRepository } from "../repositories/customer-purchase-order.repository";
+import { CustomerPurchaseOrderItemRepository } from "../repositories/customer-purchase-order-item.repository";
+import { JobCardRepository } from "../repositories/job-card.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
+import { RequisitionRepository } from "../repositories/requisition.repository";
+import { RequisitionItemRepository } from "../repositories/requisition-item.repository";
 import { CoatingAnalysisService } from "./coating-analysis.service";
 import { JobCardImportRow } from "./job-card-import.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
@@ -46,22 +48,13 @@ export class CpoService {
   private readonly logger = new Logger(CpoService.name);
 
   constructor(
-    @InjectRepository(CustomerPurchaseOrder)
-    private readonly cpoRepo: Repository<CustomerPurchaseOrder>,
-    @InjectRepository(CustomerPurchaseOrderItem)
-    private readonly cpoItemRepo: Repository<CustomerPurchaseOrderItem>,
-    @InjectRepository(JobCard)
-    private readonly jobCardRepo: Repository<JobCard>,
-    @InjectRepository(JobCardLineItem)
-    private readonly lineItemRepo: Repository<JobCardLineItem>,
-    @InjectRepository(CpoCalloffRecord)
-    private readonly calloffRepo: Repository<CpoCalloffRecord>,
-    @InjectRepository(Requisition)
-    private readonly requisitionRepo: Repository<Requisition>,
-    @InjectRepository(RequisitionItem)
-    private readonly requisitionItemRepo: Repository<RequisitionItem>,
-    @InjectRepository(DeliveryNote)
-    private readonly deliveryNoteRepo: Repository<DeliveryNote>,
+    private readonly cpoRepo: CustomerPurchaseOrderRepository,
+    private readonly cpoItemRepo: CustomerPurchaseOrderItemRepository,
+    private readonly jobCardRepo: JobCardRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly calloffRepo: CpoCalloffRecordRepository,
+    private readonly requisitionRepo: RequisitionRepository,
+    private readonly requisitionItemRepo: RequisitionItemRepository,
     @Inject(forwardRef(() => CoatingAnalysisService))
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly notificationService: WorkflowNotificationService,
@@ -75,24 +68,11 @@ export class CpoService {
     page: number = 1,
     limit: number = 50,
   ): Promise<CustomerPurchaseOrder[]> {
-    const where: Record<string, unknown> = { companyId };
-    if (status) {
-      where.status = status;
-    }
-    return this.cpoRepo.find({
-      where,
-      relations: ["items"],
-      order: { createdAt: "DESC" },
-      take: limit,
-      skip: (page - 1) * limit,
-    });
+    return this.cpoRepo.findPaginatedWithItems(companyId, status ?? null, page, limit);
   }
 
   async findById(companyId: number, id: number): Promise<CustomerPurchaseOrder> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(id, companyId);
     if (!cpo) {
       throw new NotFoundException(`CPO ${id} not found`);
     }
@@ -126,10 +106,7 @@ export class CpoService {
       try {
         const cpoNumber = this.generateCpoNumber(row.jobNumber, row.jcNumber);
 
-        const existing = await this.cpoRepo.findOne({
-          where: { cpoNumber, companyId },
-          relations: ["items"],
-        });
+        const existing = await this.cpoRepo.findOneByNumberWithItems(cpoNumber, companyId);
 
         const validLineItems = (row.lineItems || []).filter(isValidLineItem);
         const totalQuantity = validLineItems.reduce((sum, li) => {
@@ -158,7 +135,7 @@ export class CpoService {
           };
         }
 
-        const cpo = this.cpoRepo.create({
+        const saved = await this.cpoRepo.create({
           companyId,
           cpoNumber,
           jobNumber: row.jobNumber,
@@ -178,11 +155,10 @@ export class CpoService {
           fulfilledQuantity: 0,
           createdBy,
         });
-        const saved = await this.cpoRepo.save(cpo);
 
         if (validLineItems.length > 0) {
-          const itemEntities = validLineItems.map((li, idx) =>
-            this.cpoItemRepo.create({
+          await this.cpoItemRepo.createMany(
+            validLineItems.map((li, idx) => ({
               cpoId: saved.id,
               companyId,
               itemCode: li.itemCode || null,
@@ -193,9 +169,8 @@ export class CpoService {
               jtNo: li.jtNo || null,
               m2: li.m2 ?? null,
               sortOrder: idx,
-            }),
+            })),
           );
-          await this.cpoItemRepo.save(itemEntities);
         }
 
         this.initialiseCpoCoatingAndRequisition(companyId, saved, createdBy).catch((err) => {
@@ -220,7 +195,7 @@ export class CpoService {
   }
 
   async deleteCpo(companyId: number, id: number): Promise<void> {
-    const cpo = await this.cpoRepo.findOne({ where: { id, companyId } });
+    const cpo = await this.cpoRepo.findOneForCompany(id, companyId);
     if (!cpo) {
       throw new NotFoundException(`CPO ${id} not found`);
     }
@@ -246,9 +221,7 @@ export class CpoService {
     cpo.coatingSpecs = coatingSpecs;
     await this.cpoRepo.save(cpo);
 
-    const linkedJobCards = await this.jobCardRepo.find({
-      where: { companyId, cpoId: id },
-    });
+    const linkedJobCards = await this.jobCardRepo.findForCpo(id, companyId);
 
     const updatedJcs: JobCard[] = [];
     linkedJobCards.forEach((jc) => {
@@ -257,7 +230,7 @@ export class CpoService {
     });
 
     if (updatedJcs.length > 0) {
-      await this.jobCardRepo.save(updatedJcs);
+      await this.jobCardRepo.saveMany(updatedJcs);
       this.logger.log(
         `Propagated coating specs to ${updatedJcs.length} job card(s) for CPO ${cpo.cpoNumber}`,
       );
@@ -278,10 +251,7 @@ export class CpoService {
       m2?: number | null;
     },
   ): Promise<CustomerPurchaseOrderItem> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
     if (!cpo) {
       throw new NotFoundException(`CPO ${cpoId} not found`);
     }
@@ -289,7 +259,7 @@ export class CpoService {
     const maxSortOrder = cpo.items.reduce((max, item) => Math.max(max, item.sortOrder), -1);
     const qty = data.quantityOrdered ?? 0;
 
-    const item = this.cpoItemRepo.create({
+    const saved = await this.cpoItemRepo.create({
       cpoId,
       companyId,
       itemCode: data.itemCode || null,
@@ -301,9 +271,8 @@ export class CpoService {
       m2: data.m2 ?? null,
       sortOrder: maxSortOrder + 1,
     });
-    const saved = await this.cpoItemRepo.save(item);
 
-    await this.cpoRepo.update(cpoId, {
+    await this.cpoRepo.updateById(cpoId, {
       totalItems: cpo.items.length + 1,
       totalQuantity: Number(cpo.totalQuantity) + qty,
     });
@@ -324,9 +293,7 @@ export class CpoService {
       m2?: number | null;
     },
   ): Promise<CustomerPurchaseOrderItem> {
-    const item = await this.cpoItemRepo.findOne({
-      where: { id: itemId, cpoId, companyId },
-    });
+    const item = await this.cpoItemRepo.findOneForCpoAndCompany(itemId, cpoId, companyId);
     if (!item) {
       throw new NotFoundException(`CPO item ${itemId} not found`);
     }
@@ -344,10 +311,10 @@ export class CpoService {
     const saved = await this.cpoItemRepo.save(item);
 
     if (oldQty !== newQty) {
-      const cpo = await this.cpoRepo.findOne({ where: { id: cpoId, companyId } });
+      const cpo = await this.cpoRepo.findOneForCompany(cpoId, companyId);
       if (cpo) {
         const delta = newQty - oldQty;
-        await this.cpoRepo.update(cpoId, {
+        await this.cpoRepo.updateById(cpoId, {
           totalQuantity: Math.max(0, Number(cpo.totalQuantity) + delta),
         });
       }
@@ -357,9 +324,7 @@ export class CpoService {
   }
 
   async deleteCpoItem(companyId: number, cpoId: number, itemId: number): Promise<void> {
-    const item = await this.cpoItemRepo.findOne({
-      where: { id: itemId, cpoId, companyId },
-    });
+    const item = await this.cpoItemRepo.findOneForCpoAndCompany(itemId, cpoId, companyId);
     if (!item) {
       throw new NotFoundException(`CPO item ${itemId} not found`);
     }
@@ -367,12 +332,9 @@ export class CpoService {
     const qty = Number(item.quantityOrdered);
     await this.cpoItemRepo.remove(item);
 
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
     if (cpo) {
-      await this.cpoRepo.update(cpoId, {
+      await this.cpoRepo.updateById(cpoId, {
         totalItems: cpo.items.length,
         totalQuantity: Math.max(0, Number(cpo.totalQuantity) - qty),
       });
@@ -387,19 +349,13 @@ export class CpoService {
       matchedItems: 0,
     };
 
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-      relations: ["lineItems"],
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompanyWithLineItems(jobCardId, companyId);
 
     if (!jobCard) {
       return noMatch;
     }
 
-    const cpos = await this.cpoRepo.find({
-      where: { companyId, jobNumber: jobCard.jobNumber, status: CpoStatus.ACTIVE },
-      relations: ["items"],
-    });
+    const cpos = await this.cpoRepo.findActiveByJobNumberWithItems(companyId, jobCard.jobNumber);
 
     if (cpos.length === 0) {
       return noMatch;
@@ -430,7 +386,7 @@ export class CpoService {
     const uniqueMatchedIds = [...new Set(matchedItemIds)];
 
     if (uniqueMatchedIds.length > 0) {
-      await this.jobCardRepo.update(jobCardId, { cpoId: cpo.id, isCpoCalloff: true });
+      await this.jobCardRepo.updateById(jobCardId, { cpoId: cpo.id, isCpoCalloff: true });
 
       const fulfilmentUpdates = uniqueMatchedIds.map(async (cpoItemId) => {
         const cpoItem = cpo.items.find((ci) => ci.id === cpoItemId);
@@ -457,15 +413,12 @@ export class CpoService {
           Number(cpoItem.quantityOrdered),
         );
 
-        await this.cpoItemRepo.update(cpoItemId, { quantityFulfilled: newFulfilled });
+        await this.cpoItemRepo.updateById(cpoItemId, { quantityFulfilled: newFulfilled });
       });
 
       await Promise.all(fulfilmentUpdates);
 
-      const updatedCpo = await this.cpoRepo.findOne({
-        where: { id: cpo.id },
-        relations: ["items"],
-      });
+      const updatedCpo = await this.cpoRepo.findOneByIdWithItems(cpo.id);
 
       if (updatedCpo) {
         const totalFulfilled = updatedCpo.items.reduce(
@@ -481,7 +434,7 @@ export class CpoService {
           updateFields.status = CpoStatus.FULFILLED;
         }
 
-        await this.cpoRepo.update(cpo.id, updateFields);
+        await this.cpoRepo.updateById(cpo.id, updateFields);
       }
 
       this.logger.log(
@@ -512,18 +465,14 @@ export class CpoService {
     cpo: CustomerPurchaseOrder,
     createdBy: string | null,
   ): Promise<Requisition | null> {
-    const existingReq = await this.requisitionRepo.findOne({
-      where: { cpoId: cpo.id, companyId },
-    });
+    const existingReq = await this.requisitionRepo.findForCpo(cpo.id, companyId);
 
     if (existingReq) {
       this.logger.log(`Call-off requisition already exists for CPO ${cpo.cpoNumber}, skipping`);
       return existingReq;
     }
 
-    const linkedJobCards = await this.jobCardRepo.find({
-      where: { cpoId: cpo.id, companyId },
-    });
+    const linkedJobCards = await this.jobCardRepo.findForCpo(cpo.id, companyId);
 
     const analysisResults = await Promise.all(
       linkedJobCards.map(async (jc) => {
@@ -548,7 +497,7 @@ export class CpoService {
       return null;
     }
 
-    const requisition = this.requisitionRepo.create({
+    const savedReq = await this.requisitionRepo.create({
       requisitionNumber: `CALLOFF-${cpo.cpoNumber}`,
       jobCardId: null,
       cpoId: cpo.id,
@@ -559,10 +508,9 @@ export class CpoService {
       createdBy,
       notes: `Auto-generated call-off requisition for CPO ${cpo.cpoNumber}`,
     });
-    const savedReq = await this.requisitionRepo.save(requisition);
 
-    const items = allCoats.map((coat) =>
-      this.requisitionItemRepo.create({
+    const items = this.requisitionItemRepo.buildMany(
+      allCoats.map((coat) => ({
         requisitionId: savedReq.id,
         productName: coat.product,
         area: coat.area,
@@ -570,9 +518,9 @@ export class CpoService {
         packSizeLitres: 20,
         packsToOrder: Math.ceil(coat.litersRequired / 20),
         companyId,
-      }),
+      })),
     );
-    await this.requisitionItemRepo.save(items);
+    await this.requisitionItemRepo.saveMany(items);
 
     this.logger.log(
       `Created call-off requisition ${savedReq.requisitionNumber} with ${items.length} item(s) for CPO ${cpo.cpoNumber}`,
@@ -582,34 +530,26 @@ export class CpoService {
   }
 
   async createCalloffRecords(companyId: number, jobCardId: number): Promise<CpoCalloffRecord[]> {
-    const jobCard = await this.jobCardRepo.findOne({
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
     if (!jobCard?.cpoId) {
       return [];
     }
 
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: jobCard.cpoId, companyId },
-    });
+    const cpo = await this.cpoRepo.findOneForCompany(jobCard.cpoId, companyId);
 
     if (!cpo) {
       return [];
     }
 
-    const existing = await this.calloffRepo.find({
-      where: { jobCardId, companyId },
-    });
+    const existing = await this.calloffRepo.findForJobCard(jobCardId, companyId);
 
     if (existing.length > 0) {
       this.logger.log(`Calloff records already exist for JC ${jobCardId}, skipping`);
       return existing;
     }
 
-    const calloffRequisition = await this.requisitionRepo.findOne({
-      where: { cpoId: cpo.id, companyId, isCalloffOrder: true },
-    });
+    const calloffRequisition = await this.requisitionRepo.findCalloffForCpo(cpo.id, companyId);
 
     const analysisFlags = await this.coatingAnalysisService.flagsByJobCard(companyId, jobCardId);
     const applicableTypes =
@@ -617,18 +557,18 @@ export class CpoService {
         ? [CalloffType.PAINT]
         : [CalloffType.RUBBER, CalloffType.PAINT, CalloffType.SOLUTION];
 
-    const records = applicableTypes.map((type) =>
-      this.calloffRepo.create({
-        companyId,
-        cpoId: cpo.id,
-        jobCardId,
-        requisitionId: calloffRequisition?.id ?? null,
-        calloffType: type,
-        status: CalloffStatus.PENDING,
-      }),
+    const saved = await Promise.all(
+      applicableTypes.map((type) =>
+        this.calloffRepo.create({
+          companyId,
+          cpoId: cpo.id,
+          jobCardId,
+          requisitionId: calloffRequisition?.id ?? null,
+          calloffType: type,
+          status: CalloffStatus.PENDING,
+        }),
+      ),
     );
-
-    const saved = await this.calloffRepo.save(records);
 
     this.logger.log(
       `Created ${saved.length} calloff records for JC ${jobCard.jobNumber} / CPO ${cpo.cpoNumber}`,
@@ -640,11 +580,7 @@ export class CpoService {
   }
 
   async calloffRecordsForCpo(companyId: number, cpoId: number): Promise<CpoCalloffRecord[]> {
-    const records = await this.calloffRepo.find({
-      where: { cpoId, companyId },
-      relations: ["jobCard"],
-      order: { createdAt: "DESC" },
-    });
+    const records = await this.calloffRepo.findForCpoWithJobCard(cpoId, companyId);
 
     const jobCardIds = [...new Set(records.filter((r) => r.jobCardId).map((r) => r.jobCardId!))];
 
@@ -693,20 +629,13 @@ export class CpoService {
       }[];
     }[];
   }> {
-    const cpo = await this.cpoRepo.findOne({
-      where: { id: cpoId, companyId },
-      relations: ["items"],
-    });
+    const cpo = await this.cpoRepo.findOneForCompanyWithItems(cpoId, companyId);
 
     if (!cpo) {
       throw new NotFoundException(`CPO ${cpoId} not found`);
     }
 
-    const linkedJobCards = await this.jobCardRepo.find({
-      where: { cpoId, companyId },
-      relations: ["lineItems"],
-      order: { createdAt: "ASC" },
-    });
+    const linkedJobCards = await this.jobCardRepo.findForCpoWithLineItemsOrdered(cpoId, companyId);
 
     const matchesCpoItem = (
       liCode: string,
@@ -826,9 +755,7 @@ export class CpoService {
     recordId: number,
     status: CalloffStatus,
   ): Promise<CpoCalloffRecord> {
-    const record = await this.calloffRepo.findOne({
-      where: { id: recordId, companyId },
-    });
+    const record = await this.calloffRepo.findOneForCompany(recordId, companyId);
 
     if (!record) {
       throw new NotFoundException(`Calloff record ${recordId} not found`);
@@ -855,19 +782,10 @@ export class CpoService {
     const twentyOneDaysAgo = nowDate.minus({ days: 21 }).toJSDate();
     const sevenDaysAgo = nowDate.minus({ days: 7 }).toJSDate();
 
-    const baseConditions = {
-      status: CalloffStatus.DELIVERED,
-      deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
-      invoicedAt: IsNull(),
-    };
-
-    const overdueRecords = await this.calloffRepo.find({
-      where: [
-        { ...baseConditions, lastInvoiceReminderAt: IsNull() },
-        { ...baseConditions, lastInvoiceReminderAt: LessThanOrEqual(sevenDaysAgo) },
-      ],
-      relations: ["cpo", "jobCard"],
-    });
+    const overdueRecords = await this.calloffRepo.findOverdueNeedingReminder(
+      twentyOneDaysAgo,
+      sevenDaysAgo,
+    );
 
     if (overdueRecords.length === 0) {
       this.logger.log("No overdue uninvoiced CPO items needing reminder");
@@ -891,9 +809,9 @@ export class CpoService {
 
         await this.notificationService.notifyCpoInvoiceOverdue(cpo.companyId, cpo, records);
 
-        await this.calloffRepo.update(
+        await this.calloffRepo.markReminderSent(
           records.map((r) => r.id),
-          { lastInvoiceReminderAt: reminderTimestamp },
+          reminderTimestamp,
         );
       }),
     );
@@ -908,39 +826,22 @@ export class CpoService {
     awaitingCalloff: number;
     overdueInvoices: number;
   }> {
-    const activeCpos = await this.cpoRepo.count({
-      where: { companyId, status: CpoStatus.ACTIVE },
-    });
+    const activeCpos = await this.cpoRepo.countByStatus(companyId, CpoStatus.ACTIVE);
 
-    const awaitingCalloff = await this.calloffRepo.count({
-      where: { companyId, status: CalloffStatus.PENDING },
-    });
+    const awaitingCalloff = await this.calloffRepo.countByStatus(companyId, CalloffStatus.PENDING);
 
     const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
-    const overdueInvoices = await this.calloffRepo.count({
-      where: {
-        companyId,
-        status: CalloffStatus.DELIVERED,
-        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
-        invoicedAt: IsNull(),
-      },
-    });
+    const overdueInvoices = await this.calloffRepo.countOverdueDelivered(
+      companyId,
+      twentyOneDaysAgo,
+    );
 
     return { activeCpos, awaitingCalloff, overdueInvoices };
   }
 
   async overdueCalloffRecordsForCpo(companyId: number, cpoId: number): Promise<CpoCalloffRecord[]> {
     const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
-    return this.calloffRepo.find({
-      where: {
-        cpoId,
-        companyId,
-        status: CalloffStatus.DELIVERED,
-        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
-        invoicedAt: IsNull(),
-      },
-      relations: ["jobCard"],
-    });
+    return this.calloffRepo.findOverdueForCpoWithJobCard(cpoId, companyId, twentyOneDaysAgo);
   }
 
   async linkDeliveryToCalloffs(
@@ -948,10 +849,7 @@ export class CpoService {
     supplierName: string,
     deliveryNoteId: number,
   ): Promise<CpoCalloffRecord[]> {
-    const calledOffRecords = await this.calloffRepo.find({
-      where: { companyId, status: CalloffStatus.CALLED_OFF },
-      relations: ["cpo", "jobCard"],
-    });
+    const calledOffRecords = await this.calloffRepo.findCalledOffWithCpoAndJobCard(companyId);
 
     if (calledOffRecords.length === 0) {
       return [];
@@ -1010,11 +908,7 @@ export class CpoService {
       percentComplete: number;
     }[]
   > {
-    const cpos = await this.cpoRepo.find({
-      where: { companyId },
-      relations: ["items"],
-      order: { createdAt: "DESC" },
-    });
+    const cpos = await this.cpoRepo.findAllForCompanyWithItems(companyId);
 
     return cpos.map((cpo) => {
       const items = (cpo.items || []).map((item) => {
@@ -1067,10 +961,7 @@ export class CpoService {
       invoiced: number;
     }[];
   }> {
-    const records = await this.calloffRepo.find({
-      where: { companyId },
-      relations: ["cpo"],
-    });
+    const records = await this.calloffRepo.findForCompanyWithCpo(companyId);
 
     const summary = records.reduce(
       (acc, r) => ({
@@ -1130,15 +1021,10 @@ export class CpoService {
     }[]
   > {
     const twentyOneDaysAgo = now().minus({ days: 21 }).toJSDate();
-    const records = await this.calloffRepo.find({
-      where: {
-        companyId,
-        status: CalloffStatus.DELIVERED,
-        deliveredAt: LessThanOrEqual(twentyOneDaysAgo),
-        invoicedAt: IsNull(),
-      },
-      relations: ["cpo", "jobCard"],
-    });
+    const records = await this.calloffRepo.findOverdueDeliveredWithCpoAndJobCard(
+      companyId,
+      twentyOneDaysAgo,
+    );
 
     return records.map((r) => ({
       recordId: r.id,
@@ -1153,16 +1039,9 @@ export class CpoService {
   }
 
   async exportCsv(companyId: number): Promise<string> {
-    const cpos = await this.cpoRepo.find({
-      where: { companyId },
-      relations: ["items"],
-      order: { createdAt: "DESC" },
-    });
+    const cpos = await this.cpoRepo.findAllForCompanyWithItems(companyId);
 
-    const calloffRecords = await this.calloffRepo.find({
-      where: { companyId },
-      relations: ["cpo", "jobCard"],
-    });
+    const calloffRecords = await this.calloffRepo.findForCompanyWithCpoAndJobCard(companyId);
 
     const calloffByCpo = calloffRecords.reduce<Record<number, CpoCalloffRecord[]>>(
       (acc, r) => ({
@@ -1338,11 +1217,11 @@ export class CpoService {
 
     const saved = await this.cpoRepo.save(existing);
 
-    await this.cpoItemRepo.delete({ cpoId: saved.id });
+    await this.cpoItemRepo.deleteForCpo(saved.id);
 
     if (validLineItems.length > 0) {
-      const itemEntities = validLineItems.map((li, idx) =>
-        this.cpoItemRepo.create({
+      await this.cpoItemRepo.createMany(
+        validLineItems.map((li, idx) => ({
           cpoId: saved.id,
           companyId,
           itemCode: li.itemCode || null,
@@ -1353,9 +1232,8 @@ export class CpoService {
           jtNo: li.jtNo || null,
           m2: li.m2 ?? null,
           sortOrder: idx,
-        }),
+        })),
       );
-      await this.cpoItemRepo.save(itemEntities);
     }
 
     this.initialiseCpoCoatingAndRequisition(companyId, saved, createdBy).catch((err) => {

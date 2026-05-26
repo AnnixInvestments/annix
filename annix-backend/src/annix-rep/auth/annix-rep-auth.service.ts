@@ -1,13 +1,13 @@
 import { ConflictException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { now } from "../../lib/datetime";
 import { AUTH_CONSTANTS, PasswordService, TokenService } from "../../shared/auth";
 import { SessionInvalidationReason } from "../../shared/enums";
 import { User } from "../../user/entities/user.entity";
-import { UserRole } from "../../user-roles/entities/user-role.entity";
-import { RepProfile } from "../rep-profile/rep-profile.entity";
+import { UserRepository } from "../../user/user.repository";
+import { UserRoleRepository } from "../../user-roles/user-roles.repository";
+import { RepProfileRepository } from "../rep-profile/rep-profile.repository";
+import { AnnixRepSessionRepository } from "./annix-rep-session.repository";
 import {
   AnnixRepAuthResponseDto,
   AnnixRepLoginDto,
@@ -31,14 +31,10 @@ export class AnnixRepAuthService {
   private readonly logger = new Logger(AnnixRepAuthService.name);
 
   constructor(
-    @InjectRepository(AnnixRepSession)
-    private readonly sessionRepo: Repository<AnnixRepSession>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(UserRole)
-    private readonly userRoleRepo: Repository<UserRole>,
-    @InjectRepository(RepProfile)
-    private readonly repProfileRepo: Repository<RepProfile>,
+    private readonly sessionRepo: AnnixRepSessionRepository,
+    private readonly userRepo: UserRepository,
+    private readonly userRoleRepo: UserRoleRepository,
+    private readonly repProfileRepo: RepProfileRepository,
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly oauthProvider: OAuthLoginProvider,
@@ -49,20 +45,18 @@ export class AnnixRepAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AnnixRepAuthResponseDto> {
-    const existingUser = await this.userRepo.findOne({
-      where: { email: dto.email },
-    });
+    const existingUser = await this.userRepo.findOneByEmail(dto.email);
     if (existingUser) {
       throw new ConflictException("An account with this email already exists");
     }
 
     const annixRepRole =
-      (await this.userRoleRepo.findOne({ where: { name: "annixRep" } })) ??
-      (await this.userRoleRepo.save(this.userRoleRepo.create({ name: "annixRep" })));
+      (await this.userRoleRepo.findByName("annixRep")) ??
+      (await this.userRoleRepo.create({ name: "annixRep" }));
 
     const { passwordHash } = await this.passwordService.hash(dto.password);
 
-    const user = this.userRepo.create({
+    const savedUser = await this.userRepo.create({
       username: dto.email,
       email: dto.email,
       passwordHash,
@@ -70,12 +64,11 @@ export class AnnixRepAuthService {
       lastName: dto.lastName,
       roles: [annixRepRole],
     });
-    const savedUser = await this.userRepo.save(user);
 
     const sessionToken = uuidv4();
     const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
-    const session = this.sessionRepo.create({
+    await this.sessionRepo.create({
       userId: savedUser.id,
       sessionToken,
       ipAddress: clientIp,
@@ -84,7 +77,6 @@ export class AnnixRepAuthService {
       expiresAt,
       lastActivity: now().toJSDate(),
     });
-    await this.sessionRepo.save(session);
 
     const payload: AnnixRepJwtPayload = {
       sub: savedUser.id,
@@ -113,10 +105,7 @@ export class AnnixRepAuthService {
     clientIp: string,
     userAgent: string,
   ): Promise<AnnixRepAuthResponseDto> {
-    const user = await this.userRepo.findOne({
-      where: { email: dto.email },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByEmailWithRoles(dto.email);
 
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
@@ -143,7 +132,7 @@ export class AnnixRepAuthService {
     const sessionToken = uuidv4();
     const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
-    const session = this.sessionRepo.create({
+    await this.sessionRepo.create({
       userId: user.id,
       sessionToken,
       ipAddress: clientIp,
@@ -152,7 +141,6 @@ export class AnnixRepAuthService {
       expiresAt,
       lastActivity: now().toJSDate(),
     });
-    await this.sessionRepo.save(session);
 
     const payload: AnnixRepJwtPayload = {
       sub: user.id,
@@ -164,9 +152,7 @@ export class AnnixRepAuthService {
 
     const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
 
-    const repProfile = await this.repProfileRepo.findOne({
-      where: { userId: user.id },
-    });
+    const repProfile = await this.repProfileRepo.findByUserId(user.id);
 
     return {
       accessToken,
@@ -197,7 +183,7 @@ export class AnnixRepAuthService {
     const sessionToken = uuidv4();
     const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
-    const session = this.sessionRepo.create({
+    await this.sessionRepo.create({
       userId: user.id,
       sessionToken,
       ipAddress: clientIp,
@@ -206,7 +192,6 @@ export class AnnixRepAuthService {
       expiresAt,
       lastActivity: now().toJSDate(),
     });
-    await this.sessionRepo.save(session);
 
     const payload: AnnixRepJwtPayload = {
       sub: user.id,
@@ -221,9 +206,7 @@ export class AnnixRepAuthService {
   }
 
   async logout(sessionToken: string): Promise<void> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionToken, isActive: true },
-    });
+    const session = await this.sessionRepo.findActiveByToken(sessionToken);
 
     if (session) {
       session.isActive = false;
@@ -245,9 +228,7 @@ export class AnnixRepAuthService {
         throw new UnauthorizedException("Invalid token type");
       }
 
-      const user = await this.userRepo.findOne({
-        where: { id: payload.sub },
-      });
+      const user = await this.userRepo.findById(payload.sub);
 
       if (!user) {
         throw new UnauthorizedException("User not found");
@@ -256,14 +237,11 @@ export class AnnixRepAuthService {
       const newSessionToken = uuidv4();
       const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
-      await this.sessionRepo.update(
-        { userId: user.id, isActive: true },
-        {
-          sessionToken: newSessionToken,
-          lastActivity: now().toJSDate(),
-          expiresAt,
-        },
-      );
+      await this.sessionRepo.updateActiveUserSessions(user.id, {
+        sessionToken: newSessionToken,
+        lastActivity: now().toJSDate(),
+        expiresAt,
+      });
 
       const newPayload: AnnixRepJwtPayload = {
         sub: user.id,
@@ -275,9 +253,7 @@ export class AnnixRepAuthService {
 
       const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(newPayload);
 
-      const repProfile = await this.repProfileRepo.findOne({
-        where: { userId: user.id },
-      });
+      const repProfile = await this.repProfileRepo.findByUserId(user.id);
 
       return {
         accessToken,
@@ -295,17 +271,13 @@ export class AnnixRepAuthService {
   }
 
   async profile(userId: number): Promise<AnnixRepProfileResponseDto> {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-    });
+    const user = await this.userRepo.findById(userId);
 
     if (!user) {
       throw new UnauthorizedException("User not found");
     }
 
-    const repProfile = await this.repProfileRepo.findOne({
-      where: { userId },
-    });
+    const repProfile = await this.repProfileRepo.findByUserId(userId);
 
     return {
       userId: user.id,
@@ -317,17 +289,12 @@ export class AnnixRepAuthService {
   }
 
   async checkEmailAvailable(email: string): Promise<boolean> {
-    const existingUser = await this.userRepo.findOne({
-      where: { email },
-    });
+    const existingUser = await this.userRepo.findOneByEmail(email);
     return !existingUser;
   }
 
   async verifySession(sessionToken: string): Promise<AnnixRepSession | null> {
-    const session = await this.sessionRepo.findOne({
-      where: { sessionToken, isActive: true },
-      relations: ["user"],
-    });
+    const session = await this.sessionRepo.findActiveByTokenWithUser(sessionToken);
 
     if (!session) return null;
 
@@ -349,14 +316,11 @@ export class AnnixRepAuthService {
     userId: number,
     reason: SessionInvalidationReason,
   ): Promise<void> {
-    await this.sessionRepo.update(
-      { userId, isActive: true },
-      {
-        isActive: false,
-        invalidatedAt: now().toJSDate(),
-        invalidationReason: reason,
-      },
-    );
+    await this.sessionRepo.updateActiveUserSessions(userId, {
+      isActive: false,
+      invalidatedAt: now().toJSDate(),
+      invalidationReason: reason,
+    });
   }
 
   isOAuthProviderConfigured(provider: OAuthProvider): boolean {
@@ -384,18 +348,15 @@ export class AnnixRepAuthService {
       throw new UnauthorizedException("OAuth authentication failed");
     }
 
-    const existingOAuthUser = await this.userRepo.findOne({
-      where: { email: result.email },
-      relations: ["roles"],
-    });
+    const existingOAuthUser = await this.userRepo.findByEmailWithRoles(result.email);
 
     const annixRepRole =
-      (await this.userRoleRepo.findOne({ where: { name: "annixRep" } })) ??
-      (await this.userRoleRepo.save(this.userRoleRepo.create({ name: "annixRep" })));
+      (await this.userRoleRepo.findByName("annixRep")) ??
+      (await this.userRoleRepo.create({ name: "annixRep" }));
 
     const user = await (async () => {
       if (!existingOAuthUser) {
-        const created = this.userRepo.create({
+        const saved = await this.userRepo.create({
           username: result.email,
           email: result.email,
           passwordHash: null,
@@ -405,7 +366,6 @@ export class AnnixRepAuthService {
           oauthProvider: provider,
           oauthId: result.oauthId,
         });
-        const saved = await this.userRepo.save(created);
         this.logger.log(`Created new OAuth user: ${result.email} via ${provider}`);
         return saved;
       } else {
@@ -429,7 +389,7 @@ export class AnnixRepAuthService {
     const sessionToken = uuidv4();
     const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
 
-    const session = this.sessionRepo.create({
+    await this.sessionRepo.create({
       userId: user.id,
       sessionToken,
       ipAddress: clientIp,
@@ -438,7 +398,6 @@ export class AnnixRepAuthService {
       expiresAt,
       lastActivity: now().toJSDate(),
     });
-    await this.sessionRepo.save(session);
 
     const payload: AnnixRepJwtPayload = {
       sub: user.id,
@@ -450,9 +409,7 @@ export class AnnixRepAuthService {
 
     const { accessToken, refreshToken } = await this.tokenService.generateTokenPair(payload);
 
-    const repProfile = await this.repProfileRepo.findOne({
-      where: { userId: user.id },
-    });
+    const repProfile = await this.repProfileRepo.findByUserId(user.id);
 
     return {
       accessToken,

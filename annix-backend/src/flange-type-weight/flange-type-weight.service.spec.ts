@@ -1,42 +1,39 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { FlangeWeightTestCase, testScenarios } from "../test/flange-data-test-scenarios";
 import { FlangeTypeWeight } from "./entities/flange-type-weight.entity";
+import { FlangeTypeWeightRepository } from "./flange-type-weight.repository";
 import { FlangeTypeWeightService } from "./flange-type-weight.service";
 
 describe("FlangeTypeWeightService", () => {
   let service: FlangeTypeWeightService;
 
-  const mockQueryBuilder = {
-    leftJoinAndSelect: jest.fn().mockReturnThis(),
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    select: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    getOne: jest.fn(),
-    getRawMany: jest.fn(),
-  };
-
-  const mockRepository = {
-    find: jest.fn(),
-    createQueryBuilder: jest.fn(() => mockQueryBuilder),
-  };
+  const mockRepository: jest.Mocked<FlangeTypeWeightRepository> = {
+    findAllWithStandard: jest.fn(),
+    findFlangeTypeWeight: jest.fn(),
+    findBlankFlangeWeight: jest.fn(),
+    distinctPressureClasses: jest.fn(),
+    distinctFlangeTypeCodes: jest.fn(),
+    create: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
+    save: jest.fn(),
+    remove: jest.fn(),
+    count: jest.fn(),
+  } as jest.Mocked<FlangeTypeWeightRepository>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         FlangeTypeWeightService,
-        {
-          provide: getRepositoryToken(FlangeTypeWeight),
-          useValue: mockRepository,
-        },
+        { provide: FlangeTypeWeightRepository, useValue: mockRepository },
       ],
     }).compile();
 
     service = module.get<FlangeTypeWeightService>(FlangeTypeWeightService);
 
     jest.clearAllMocks();
-    mockRepository.createQueryBuilder.mockReturnValue(mockQueryBuilder);
   });
 
   it("should be defined", () => {
@@ -46,14 +43,12 @@ describe("FlangeTypeWeightService", () => {
   describe("findAll", () => {
     it("should return all flange type weights", async () => {
       const mockData = [{ id: 1, weight_kg: 10 }] as FlangeTypeWeight[];
-      mockRepository.find.mockResolvedValue(mockData);
+      mockRepository.findAllWithStandard.mockResolvedValue(mockData);
 
       const result = await service.findAll();
 
       expect(result).toEqual(mockData);
-      expect(mockRepository.find).toHaveBeenCalledWith({
-        relations: ["flangeStandard"],
-      });
+      expect(mockRepository.findAllWithStandard).toHaveBeenCalled();
     });
   });
 
@@ -62,8 +57,8 @@ describe("FlangeTypeWeightService", () => {
       const mockEntity = {
         weight_kg: 0.5,
         flangeStandard: { code: "SANS 1123" },
-      };
-      mockQueryBuilder.getOne.mockResolvedValue(mockEntity);
+      } as FlangeTypeWeight;
+      mockRepository.findFlangeTypeWeight.mockResolvedValue(mockEntity);
 
       const result = await service.flangeTypeWeight(15, "PN6", "SANS 1123", "/3");
 
@@ -78,7 +73,7 @@ describe("FlangeTypeWeightService", () => {
     });
 
     it("should return estimated weight when not found", async () => {
-      mockQueryBuilder.getOne.mockResolvedValue(null);
+      mockRepository.findFlangeTypeWeight.mockResolvedValue(null);
 
       const result = await service.flangeTypeWeight(100, "PN16", "SANS 1123", "/3");
 
@@ -88,18 +83,18 @@ describe("FlangeTypeWeightService", () => {
     });
 
     it("should query without standard when standard is null", async () => {
-      mockQueryBuilder.getOne.mockResolvedValue(null);
+      mockRepository.findFlangeTypeWeight.mockResolvedValue(null);
 
       await service.flangeTypeWeight(50, "PN10", null, "WN");
 
-      expect(mockQueryBuilder.andWhere).toHaveBeenCalledWith("ftw.flange_standard_id IS NULL");
+      expect(mockRepository.findFlangeTypeWeight).toHaveBeenCalledWith(50, "PN10", "WN", null);
     });
   });
 
   describe("blankFlangeWeight", () => {
     it("should return blank flange weight when found", async () => {
-      const mockEntity = { weight_kg: 5.5 };
-      mockQueryBuilder.getOne.mockResolvedValue(mockEntity);
+      const mockEntity = { weight_kg: 5.5 } as FlangeTypeWeight;
+      mockRepository.findBlankFlangeWeight.mockResolvedValue(mockEntity);
 
       const result = await service.blankFlangeWeight(100, "PN16");
 
@@ -114,7 +109,7 @@ describe("FlangeTypeWeightService", () => {
     });
 
     it("should return estimated weight when blank flange not found", async () => {
-      mockQueryBuilder.getOne.mockResolvedValue(null);
+      mockRepository.findBlankFlangeWeight.mockResolvedValue(null);
 
       const result = await service.blankFlangeWeight(200, "PN10");
 
@@ -126,7 +121,7 @@ describe("FlangeTypeWeightService", () => {
 
   describe("availablePressureClasses", () => {
     it("should return distinct pressure classes", async () => {
-      mockQueryBuilder.getRawMany.mockResolvedValue([
+      mockRepository.distinctPressureClasses.mockResolvedValue([
         { pressureClass: "PN6" },
         { pressureClass: "PN10" },
         { pressureClass: "PN16" },
@@ -140,7 +135,7 @@ describe("FlangeTypeWeightService", () => {
 
   describe("availableFlangeTypes", () => {
     it("should return distinct flange types", async () => {
-      mockQueryBuilder.getRawMany.mockResolvedValue([
+      mockRepository.distinctFlangeTypeCodes.mockResolvedValue([
         { flangeTypeCode: "/3" },
         { flangeTypeCode: "WN" },
         { flangeTypeCode: "BLANK" },
@@ -165,10 +160,10 @@ describe("FlangeTypeWeightService", () => {
           ftc: string;
           std: string;
         };
-        mockQueryBuilder.getOne.mockResolvedValue({
+        mockRepository.findFlangeTypeWeight.mockResolvedValue({
           weight_kg: scenario.expectedValue,
           flangeStandard: { code: input.std },
-        });
+        } as FlangeTypeWeight);
 
         const result = await service.flangeTypeWeight(input.nb, input.pc, input.std, input.ftc);
 

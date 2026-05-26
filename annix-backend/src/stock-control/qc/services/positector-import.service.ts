@@ -1,17 +1,16 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { nowISO } from "../../../lib/datetime";
 import type { BlastProfileReadingEntry } from "../entities/qc-blast-profile.entity";
-import { QcBlastProfile } from "../entities/qc-blast-profile.entity";
 import type { DftReadingEntry } from "../entities/qc-dft-reading.entity";
-import { DftCoatType, QcDftReading } from "../entities/qc-dft-reading.entity";
-import { QcEnvironmentalRecord } from "../entities/qc-environmental-record.entity";
+import { DftCoatType } from "../entities/qc-dft-reading.entity";
 import type {
   ShoreHardnessAverages,
   ShoreHardnessReadings,
 } from "../entities/qc-shore-hardness.entity";
-import { QcShoreHardness } from "../entities/qc-shore-hardness.entity";
+import { QcBlastProfileRepository } from "../repositories/qc-blast-profile.repository";
+import { QcDftReadingRepository } from "../repositories/qc-dft-reading.repository";
+import { QcEnvironmentalRecordRepository } from "../repositories/qc-environmental-record.repository";
+import { QcShoreHardnessRepository } from "../repositories/qc-shore-hardness.repository";
 import type { PositectorBatch, PositectorReading } from "./positector.service";
 
 function measurementDateFromBatch(batch: PositectorBatch): string {
@@ -65,14 +64,10 @@ export class PositectorImportService {
   private readonly logger = new Logger(PositectorImportService.name);
 
   constructor(
-    @InjectRepository(QcDftReading)
-    private readonly dftRepo: Repository<QcDftReading>,
-    @InjectRepository(QcBlastProfile)
-    private readonly blastRepo: Repository<QcBlastProfile>,
-    @InjectRepository(QcShoreHardness)
-    private readonly shoreRepo: Repository<QcShoreHardness>,
-    @InjectRepository(QcEnvironmentalRecord)
-    private readonly envRepo: Repository<QcEnvironmentalRecord>,
+    private readonly dftRepo: QcDftReadingRepository,
+    private readonly blastRepo: QcBlastProfileRepository,
+    private readonly shoreRepo: QcShoreHardnessRepository,
+    private readonly envRepo: QcEnvironmentalRecordRepository,
   ) {}
 
   async importDftReadings(
@@ -100,7 +95,7 @@ export class PositectorImportService {
       readings.length,
     );
 
-    const record = this.dftRepo.create({
+    const saved = await this.dftRepo.create({
       companyId,
       jobCardId: options.jobCardId,
       coatType: options.coatType,
@@ -114,8 +109,6 @@ export class PositectorImportService {
       capturedByName: user.name,
       capturedById: user.id ?? null,
     });
-
-    const saved = await this.dftRepo.save(record);
 
     return {
       entityType: "dft",
@@ -152,7 +145,7 @@ export class PositectorImportService {
       readings.length,
     );
 
-    const record = this.blastRepo.create({
+    const saved = await this.blastRepo.create({
       companyId,
       jobCardId: options.jobCardId,
       specMicrons: options.specMicrons,
@@ -164,8 +157,6 @@ export class PositectorImportService {
       capturedByName: user.name,
       capturedById: user.id ?? null,
     });
-
-    const saved = await this.blastRepo.save(record);
 
     return {
       entityType: "blast_profile",
@@ -194,7 +185,7 @@ export class PositectorImportService {
       batch.readings.length,
     );
 
-    const record = this.shoreRepo.create({
+    const saved = await this.shoreRepo.create({
       companyId,
       jobCardId: options.jobCardId,
       rubberSpec: options.rubberSpec,
@@ -206,8 +197,6 @@ export class PositectorImportService {
       capturedByName: user.name,
       capturedById: user.id ?? null,
     });
-
-    const saved = await this.shoreRepo.save(record);
 
     return {
       entityType: "shore_hardness",
@@ -244,7 +233,7 @@ export class PositectorImportService {
       recordDate,
     );
 
-    const record = this.envRepo.create({
+    const saved = await this.envRepo.create({
       companyId,
       jobCardId: options.jobCardId,
       recordDate,
@@ -255,8 +244,6 @@ export class PositectorImportService {
       recordedByName: user.name,
       recordedById: user.id ?? null,
     });
-
-    const saved = await this.envRepo.save(record);
 
     return {
       entityType: "environmental",
@@ -359,13 +346,12 @@ export class PositectorImportService {
     readingCount: number,
   ): Promise<boolean> {
     const today = nowISO().split("T")[0];
-    const existing = await this.dftRepo
-      .createQueryBuilder("d")
-      .where("d.companyId = :companyId", { companyId })
-      .andWhere("d.jobCardId = :jobCardId", { jobCardId })
-      .andWhere("d.coatType = :coatType", { coatType })
-      .andWhere("d.readingDate = :today", { today })
-      .getCount();
+    const existing = await this.dftRepo.countForJobCardCoatOnDate(
+      companyId,
+      jobCardId,
+      coatType,
+      today,
+    );
 
     return existing > 0;
   }
@@ -376,12 +362,7 @@ export class PositectorImportService {
     readingCount: number,
   ): Promise<boolean> {
     const today = nowISO().split("T")[0];
-    const existing = await this.blastRepo
-      .createQueryBuilder("b")
-      .where("b.companyId = :companyId", { companyId })
-      .andWhere("b.jobCardId = :jobCardId", { jobCardId })
-      .andWhere("b.readingDate = :today", { today })
-      .getCount();
+    const existing = await this.blastRepo.countForJobCardOnDate(companyId, jobCardId, today);
 
     return existing > 0;
   }
@@ -392,12 +373,7 @@ export class PositectorImportService {
     readingCount: number,
   ): Promise<boolean> {
     const today = nowISO().split("T")[0];
-    const existing = await this.shoreRepo
-      .createQueryBuilder("s")
-      .where("s.companyId = :companyId", { companyId })
-      .andWhere("s.jobCardId = :jobCardId", { jobCardId })
-      .andWhere("s.readingDate = :today", { today })
-      .getCount();
+    const existing = await this.shoreRepo.countForJobCardOnDate(companyId, jobCardId, today);
 
     return existing > 0;
   }
@@ -407,12 +383,7 @@ export class PositectorImportService {
     jobCardId: number,
     recordDate: string,
   ): Promise<boolean> {
-    const existing = await this.envRepo
-      .createQueryBuilder("e")
-      .where("e.companyId = :companyId", { companyId })
-      .andWhere("e.jobCardId = :jobCardId", { jobCardId })
-      .andWhere("e.recordDate = :recordDate", { recordDate })
-      .getCount();
+    const existing = await this.envRepo.countForJobCardOnDate(companyId, jobCardId, recordDate);
 
     return existing > 0;
   }

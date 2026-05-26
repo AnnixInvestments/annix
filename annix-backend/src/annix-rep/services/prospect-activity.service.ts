@@ -1,8 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import { keys } from "es-toolkit/compat";
-import { Repository } from "typeorm";
 import { ProspectActivity, ProspectActivityType } from "../entities";
+import { ProspectActivityRepository } from "../prospect-activity.repository";
 
 export interface LogActivityParams {
   prospectId: number;
@@ -17,13 +16,10 @@ export interface LogActivityParams {
 export class ProspectActivityService {
   private readonly logger = new Logger(ProspectActivityService.name);
 
-  constructor(
-    @InjectRepository(ProspectActivity)
-    private readonly activityRepo: Repository<ProspectActivity>,
-  ) {}
+  constructor(private readonly activityRepo: ProspectActivityRepository) {}
 
   async logActivity(params: LogActivityParams): Promise<ProspectActivity> {
-    const activity = this.activityRepo.create({
+    const saved = await this.activityRepo.create({
       prospectId: params.prospectId,
       userId: params.userId,
       activityType: params.activityType,
@@ -31,8 +27,6 @@ export class ProspectActivityService {
       newValues: params.newValues ?? null,
       description: params.description ?? null,
     });
-
-    const saved = await this.activityRepo.save(activity);
     this.logger.debug(
       `Activity logged: ${params.activityType} for prospect ${params.prospectId} by user ${params.userId}`,
     );
@@ -40,12 +34,7 @@ export class ProspectActivityService {
   }
 
   async findByProspect(prospectId: number, limit = 50): Promise<ProspectActivity[]> {
-    return this.activityRepo.find({
-      where: { prospectId },
-      order: { createdAt: "DESC" },
-      take: limit,
-      relations: ["user"],
-    });
+    return this.activityRepo.findByProspect(prospectId, limit);
   }
 
   async logCreated(prospectId: number, userId: number, companyName: string): Promise<void> {

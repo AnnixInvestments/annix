@@ -1,20 +1,17 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { DateTime, fromISO, now } from "../../lib/datetime";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
-import {
-  AnnixOrbitCandidateEeAttributes,
+import type {
   EeDisabilityStatus,
   EeGender,
   EeNationalityStatus,
   EePopulationGroup,
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
-import { Candidate, CandidateStatus } from "../entities/candidate.entity";
-import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
-import { ExternalJob } from "../entities/external-job.entity";
-import { JobPosting, JobPostingStatus } from "../entities/job-posting.entity";
+import { CandidateStatus } from "../entities/candidate.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { CvAuditService } from "./cv-audit.service";
 
 export interface FunnelStage {
@@ -82,16 +79,9 @@ export class AnalyticsService {
   private readonly logger = new Logger(AnalyticsService.name);
 
   constructor(
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(JobPosting)
-    private readonly jobPostingRepo: Repository<JobPosting>,
-    @InjectRepository(CandidateJobMatch)
-    private readonly matchRepo: Repository<CandidateJobMatch>,
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
-    @InjectRepository(AnnixOrbitCandidateEeAttributes)
-    private readonly eeAttributesRepo: Repository<AnnixOrbitCandidateEeAttributes>,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly jobPostingRepo: JobPostingRepository,
+    private readonly externalJobRepo: ExternalJobRepository,
     private readonly cvAuditService: CvAuditService,
   ) {}
 
@@ -100,53 +90,43 @@ export class AnalyticsService {
     dateFrom?: string | null,
     dateTo?: string | null,
   ): Promise<{ stages: FunnelStage[]; dateFrom: string | null; dateTo: string | null }> {
-    const baseQuery = this.candidateRepo
-      .createQueryBuilder("c")
-      .innerJoin("c.jobPosting", "jp")
-      .where("jp.companyId = :companyId", { companyId });
+    const fromDate = dateFrom ? fromISO(dateFrom).toJSDate() : null;
+    const toDate = dateTo ? fromISO(dateTo).toJSDate() : null;
 
-    if (dateFrom) {
-      baseQuery.andWhere("c.createdAt >= :dateFrom", {
-        dateFrom: fromISO(dateFrom).toJSDate(),
-      });
-    }
-    if (dateTo) {
-      baseQuery.andWhere("c.createdAt <= :dateTo", {
-        dateTo: fromISO(dateTo).toJSDate(),
-      });
-    }
+    const totalCount = await this.candidateRepo.countForCompanyByStatuses(
+      companyId,
+      null,
+      fromDate,
+      toDate,
+    );
 
-    const totalCount = await baseQuery.clone().getCount();
+    const screenedCount = await this.candidateRepo.countForCompanyByStatuses(
+      companyId,
+      PAST_SCREENING_STATUSES,
+      fromDate,
+      toDate,
+    );
 
-    const screenedCount = await baseQuery
-      .clone()
-      .andWhere("c.status IN (:...statuses)", {
-        statuses: PAST_SCREENING_STATUSES,
-      })
-      .getCount();
+    const shortlistedCount = await this.candidateRepo.countForCompanyByStatuses(
+      companyId,
+      [CandidateStatus.SHORTLISTED, CandidateStatus.REFERENCE_CHECK, CandidateStatus.ACCEPTED],
+      fromDate,
+      toDate,
+    );
 
-    const shortlistedCount = await baseQuery
-      .clone()
-      .andWhere("c.status IN (:...statuses)", {
-        statuses: [
-          CandidateStatus.SHORTLISTED,
-          CandidateStatus.REFERENCE_CHECK,
-          CandidateStatus.ACCEPTED,
-        ],
-      })
-      .getCount();
+    const referenceCheckCount = await this.candidateRepo.countForCompanyByStatuses(
+      companyId,
+      [CandidateStatus.REFERENCE_CHECK, CandidateStatus.ACCEPTED],
+      fromDate,
+      toDate,
+    );
 
-    const referenceCheckCount = await baseQuery
-      .clone()
-      .andWhere("c.status IN (:...statuses)", {
-        statuses: [CandidateStatus.REFERENCE_CHECK, CandidateStatus.ACCEPTED],
-      })
-      .getCount();
-
-    const acceptedCount = await baseQuery
-      .clone()
-      .andWhere("c.status = :status", { status: CandidateStatus.ACCEPTED })
-      .getCount();
+    const acceptedCount = await this.candidateRepo.countForCompanyByStatuses(
+      companyId,
+      [CandidateStatus.ACCEPTED],
+      fromDate,
+      toDate,
+    );
 
     const counts = [
       totalCount,
@@ -178,13 +158,7 @@ export class AnalyticsService {
     bands: ScoreBand[];
     overall: { total: number; accepted: number; accuracy: number };
   }> {
-    const candidates = await this.candidateRepo
-      .createQueryBuilder("c")
-      .innerJoin("c.jobPosting", "jp")
-      .where("jp.companyId = :companyId", { companyId })
-      .andWhere("c.matchScore IS NOT NULL")
-      .select(["c.matchScore", "c.status"])
-      .getMany();
+    const candidates = await this.candidateRepo.matchAccuracyData(companyId);
 
     const bandRanges = [
       { range: "0-25", min: 0, max: 25 },
@@ -230,10 +204,7 @@ export class AnalyticsService {
     overall: { averageDays: number; medianDays: number; count: number };
     byJob: TimeToFillByJob[];
   }> {
-    const closedJobs = await this.jobPostingRepo.find({
-      where: { companyId, status: JobPostingStatus.CLOSED },
-      relations: ["candidates"],
-    });
+    const closedJobs = await this.jobPostingRepo.closedForCompanyWithCandidates(companyId);
 
     const jobMetrics = closedJobs
       .map((job) => {
@@ -300,63 +271,21 @@ export class AnalyticsService {
   }> {
     const twelveMonthsAgo = now().minus({ months: 12 }).toJSDate();
 
-    const byCategory: MarketCategoryCount[] = await this.externalJobRepo
-      .createQueryBuilder("ej")
-      .innerJoin("ej.source", "s")
-      .where("s.companyId = :companyId", { companyId })
-      .andWhere("ej.category IS NOT NULL")
-      .select("ej.category", "category")
-      .addSelect("COUNT(*)::int", "count")
-      .groupBy("ej.category")
-      .orderBy("count", "DESC")
-      .limit(10)
-      .getRawMany();
+    const byCategory: MarketCategoryCount[] =
+      await this.externalJobRepo.marketByCategory(companyId);
 
-    const byLocation: MarketLocationCount[] = await this.externalJobRepo
-      .createQueryBuilder("ej")
-      .innerJoin("ej.source", "s")
-      .where("s.companyId = :companyId", { companyId })
-      .andWhere("ej.locationArea IS NOT NULL")
-      .select("ej.location_area", "location")
-      .addSelect("COUNT(*)::int", "count")
-      .groupBy("ej.location_area")
-      .orderBy("count", "DESC")
-      .limit(10)
-      .getRawMany();
+    const byLocation: MarketLocationCount[] =
+      await this.externalJobRepo.marketByLocation(companyId);
 
-    const salaryByCategory: MarketSalaryByCategory[] = await this.externalJobRepo
-      .createQueryBuilder("ej")
-      .innerJoin("ej.source", "s")
-      .where("s.companyId = :companyId", { companyId })
-      .andWhere("ej.category IS NOT NULL")
-      .andWhere("ej.salaryMin IS NOT NULL")
-      .select("ej.category", "category")
-      .addSelect("ROUND(AVG(ej.salary_min)::numeric, 2)", "averageSalaryMin")
-      .addSelect("ROUND(AVG(ej.salary_max)::numeric, 2)", "averageSalaryMax")
-      .groupBy("ej.category")
-      .orderBy('"averageSalaryMin"', "DESC")
-      .limit(10)
-      .getRawMany();
+    const salaryByCategory: MarketSalaryByCategory[] =
+      await this.externalJobRepo.marketSalaryByCategory(companyId);
 
-    const monthlyJobs: MonthlyJobCount[] = await this.externalJobRepo
-      .createQueryBuilder("ej")
-      .innerJoin("ej.source", "s")
-      .where("s.companyId = :companyId", { companyId })
-      .andWhere("ej.postedAt >= :twelveMonthsAgo", { twelveMonthsAgo })
-      .andWhere("ej.postedAt IS NOT NULL")
-      .select("TO_CHAR(ej.posted_at, 'YYYY-MM')", "month")
-      .addSelect("COUNT(*)::int", "count")
-      .groupBy("TO_CHAR(ej.posted_at, 'YYYY-MM')")
-      .orderBy("month", "ASC")
-      .getRawMany();
+    const monthlyJobs: MonthlyJobCount[] = await this.externalJobRepo.marketMonthlyJobs(
+      companyId,
+      twelveMonthsAgo,
+    );
 
-    const jobsWithSkills = await this.externalJobRepo
-      .createQueryBuilder("ej")
-      .innerJoin("ej.source", "s")
-      .where("s.companyId = :companyId", { companyId })
-      .andWhere("ej.extractedSkills != '[]'::jsonb")
-      .select("ej.extractedSkills")
-      .getMany();
+    const jobsWithSkills = await this.externalJobRepo.marketJobsWithSkills(companyId);
 
     const skillCounts = jobsWithSkills
       .flatMap((j) => j.extractedSkills)
@@ -387,24 +316,11 @@ export class AnalyticsService {
     dateFrom?: string | null,
     dateTo?: string | null,
   ): Promise<string> {
-    const query = this.candidateRepo
-      .createQueryBuilder("c")
-      .innerJoinAndSelect("c.jobPosting", "jp")
-      .where("jp.companyId = :companyId", { companyId })
-      .orderBy("c.createdAt", "DESC");
-
-    if (dateFrom) {
-      query.andWhere("c.createdAt >= :dateFrom", {
-        dateFrom: fromISO(dateFrom).toJSDate(),
-      });
-    }
-    if (dateTo) {
-      query.andWhere("c.createdAt <= :dateTo", {
-        dateTo: fromISO(dateTo).toJSDate(),
-      });
-    }
-
-    const candidates = await query.getMany();
+    const candidates = await this.candidateRepo.funnelExportCandidates(
+      companyId,
+      dateFrom ? fromISO(dateFrom).toJSDate() : null,
+      dateTo ? fromISO(dateTo).toJSDate() : null,
+    );
 
     const header = "Name,Email,Job Title,Match Score,Status,Created At,Updated At";
 
@@ -424,10 +340,7 @@ export class AnalyticsService {
   }
 
   async timeToFillExportData(companyId: number): Promise<string> {
-    const closedJobs = await this.jobPostingRepo.find({
-      where: { companyId, status: JobPostingStatus.CLOSED },
-      relations: ["candidates"],
-    });
+    const closedJobs = await this.jobPostingRepo.closedForCompanyWithCandidates(companyId);
 
     const header = "Job Title,Status,Created At,First Accepted At,Days To Fill,Candidate Count";
 
@@ -470,10 +383,7 @@ export class AnalyticsService {
   }> {
     if (!isAnnixOrbitCronEnabled()) return { jobsChecked: 0, breaches: 0, skippedNoData: 0 };
 
-    const activeJobs = await this.jobPostingRepo.find({
-      where: { status: JobPostingStatus.ACTIVE },
-      select: ["id", "companyId", "title"],
-    });
+    const activeJobs = await this.jobPostingRepo.activeJobsForFairness();
 
     const reports = await Promise.all(
       activeJobs.map((job) => this.analyseJobFairness(job.id, job.companyId, job.title)),
@@ -513,35 +423,19 @@ export class AnalyticsService {
     companyId: number,
     jobTitle: string,
   ): Promise<JobFairnessReport> {
-    const rows = await this.candidateRepo
-      .createQueryBuilder("c")
-      .innerJoin(
-        "cv_assistant_candidate_ee_attributes",
-        "ee",
-        "ee.candidate_id = c.id AND ee.deleted_at IS NULL",
-      )
-      .where("c.job_posting_id = :jobPostingId", { jobPostingId })
-      .andWhere("c.status IN (:...screeningStatuses)", {
-        screeningStatuses: PAST_SCREENING_STATUSES,
-      })
-      .select([
-        "c.id AS candidate_id",
-        "c.status AS status",
-        "ee.population_group AS population_group",
-        "ee.gender AS gender",
-        "ee.disability_status AS disability_status",
-        "ee.nationality_status AS nationality_status",
-      ])
-      .orderBy("c.createdAt", "DESC")
-      .limit(FAIRNESS_WINDOW)
-      .getRawMany<{
-        candidate_id: number;
-        status: CandidateStatus;
-        population_group: EePopulationGroup;
-        gender: EeGender;
-        disability_status: EeDisabilityStatus;
-        nationality_status: EeNationalityStatus;
-      }>();
+    const rawRows = await this.candidateRepo.fairnessRows(
+      jobPostingId,
+      PAST_SCREENING_STATUSES,
+      FAIRNESS_WINDOW,
+    );
+    const rows = rawRows.map((row) => ({
+      candidate_id: row.candidate_id,
+      status: row.status as CandidateStatus,
+      population_group: row.population_group as EePopulationGroup,
+      gender: row.gender as EeGender,
+      disability_status: row.disability_status as EeDisabilityStatus,
+      nationality_status: row.nationality_status as EeNationalityStatus,
+    }));
 
     const passRateByPopulation = passRatesFor(rows, "population_group");
     const passRateByGender = passRatesFor(rows, "gender");

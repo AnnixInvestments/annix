@@ -1,9 +1,8 @@
 import { resolve } from "node:path";
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { NixChatSession, type WalkthroughState } from "../entities/nix-chat-session.entity";
+import { NixChatSessionRepository } from "../nix-chat-session.repository";
 import type { INixCapability } from "./nix-capability.interface";
 import { NixCapabilityRegistry } from "./nix-capability-registry.service";
 import { NixGuideLoader } from "./nix-guide-loader.service";
@@ -12,7 +11,7 @@ import { WalkthroughEngine } from "./walkthrough-engine.service";
 describe("WalkthroughEngine", () => {
   let engine: WalkthroughEngine;
   let registry: NixCapabilityRegistry;
-  let sessionRepo: jest.Mocked<Repository<NixChatSession>>;
+  let sessionRepo: jest.Mocked<NixChatSessionRepository>;
   let session: NixChatSession;
 
   beforeEach(async () => {
@@ -32,8 +31,8 @@ describe("WalkthroughEngine", () => {
       updatedAt: new Date(),
     } as NixChatSession;
 
-    const mockRepo: Partial<jest.Mocked<Repository<NixChatSession>>> = {
-      findOne: jest.fn().mockImplementation(async () => session),
+    const mockRepo: Partial<jest.Mocked<NixChatSessionRepository>> = {
+      findById: jest.fn().mockImplementation(async () => session),
       save: jest.fn().mockImplementation(async (s) => {
         Object.assign(session, s);
         return session;
@@ -45,13 +44,13 @@ describe("WalkthroughEngine", () => {
         WalkthroughEngine,
         NixCapabilityRegistry,
         NixGuideLoader,
-        { provide: getRepositoryToken(NixChatSession), useValue: mockRepo },
+        { provide: NixChatSessionRepository, useValue: mockRepo },
       ],
     }).compile();
 
     engine = module.get(WalkthroughEngine);
     registry = module.get(NixCapabilityRegistry);
-    sessionRepo = module.get(getRepositoryToken(NixChatSession));
+    sessionRepo = module.get(NixChatSessionRepository);
   });
 
   afterEach(() => {
@@ -266,7 +265,7 @@ describe("WalkthroughEngine", () => {
 
   describe("session lookup", () => {
     it("throws when session does not exist", async () => {
-      sessionRepo.findOne.mockResolvedValueOnce(null);
+      sessionRepo.findById.mockResolvedValueOnce(null);
       await expect(engine.start(1, "anything")).rejects.toThrow(NotFoundException);
     });
   });

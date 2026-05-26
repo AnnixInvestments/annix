@@ -4,8 +4,6 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { type FindOptionsWhere, ILike, Repository } from "typeorm";
 import type {
   CreateIssuableProductDto,
   IssuableProductFilters,
@@ -14,12 +12,15 @@ import type {
   SolutionExtraDto,
   UpdateIssuableProductDto,
 } from "../dto/issuable-product.dto";
-import { ConsumableProduct } from "../entities/consumable-product.entity";
 import { IssuableProduct, type IssuableProductType } from "../entities/issuable-product.entity";
 import { PaintProduct } from "../entities/paint-product.entity";
-import { RubberOffcutStock } from "../entities/rubber-offcut-stock.entity";
 import { RubberRoll } from "../entities/rubber-roll.entity";
 import { SolutionProduct } from "../entities/solution-product.entity";
+import { ConsumableProductRepository } from "../repositories/consumable-product.repository";
+import { IssuableProductRepository } from "../repositories/issuable-product.repository";
+import { PaintProductRepository } from "../repositories/paint-product.repository";
+import { RubberRollRepository } from "../repositories/rubber-roll.repository";
+import { SolutionProductRepository } from "../repositories/solution-product.repository";
 
 export interface IssuableProductListResult {
   items: IssuableProduct[];
@@ -34,68 +35,35 @@ const MAX_PAGE_SIZE = 200;
 @Injectable()
 export class IssuableProductService {
   constructor(
-    @InjectRepository(IssuableProduct)
-    private readonly productRepo: Repository<IssuableProduct>,
-    @InjectRepository(ConsumableProduct)
-    private readonly consumableRepo: Repository<ConsumableProduct>,
-    @InjectRepository(PaintProduct)
-    private readonly paintRepo: Repository<PaintProduct>,
-    @InjectRepository(RubberRoll)
-    private readonly rubberRollRepo: Repository<RubberRoll>,
-    @InjectRepository(RubberOffcutStock)
-    private readonly rubberOffcutRepo: Repository<RubberOffcutStock>,
-    @InjectRepository(SolutionProduct)
-    private readonly solutionRepo: Repository<SolutionProduct>,
+    private readonly productRepo: IssuableProductRepository,
+    private readonly consumableRepo: ConsumableProductRepository,
+    private readonly paintRepo: PaintProductRepository,
+    private readonly rubberRollRepo: RubberRollRepository,
+    private readonly solutionRepo: SolutionProductRepository,
   ) {}
 
   async list(
     companyId: number,
     filters: IssuableProductFilters = {},
   ): Promise<IssuableProductListResult> {
-    const where: FindOptionsWhere<IssuableProduct> = { companyId };
-    if (filters.productType) {
-      where.productType = filters.productType;
-    }
-    if (filters.categoryId !== undefined) {
-      where.categoryId = filters.categoryId;
-    }
-    if (filters.active !== undefined) {
-      where.active = filters.active;
-    }
-    if (filters.search) {
-      where.name = ILike(`%${filters.search}%`);
-    }
     const page = Math.max(1, filters.page ?? 1);
     const pageSize = Math.min(MAX_PAGE_SIZE, Math.max(1, filters.pageSize ?? DEFAULT_PAGE_SIZE));
-    const [items, total] = await this.productRepo.findAndCount({
-      where,
-      relations: {
-        category: true,
-        consumable: true,
-        paint: true,
-        rubberRoll: true,
-        rubberOffcut: true,
-        solution: true,
+    const { items, total } = await this.productRepo.findPaginatedForCompany(
+      {
+        companyId,
+        productType: filters.productType,
+        categoryId: filters.categoryId,
+        active: filters.active,
       },
-      order: { name: "ASC" },
-      skip: (page - 1) * pageSize,
-      take: pageSize,
-    });
+      filters.search,
+      (page - 1) * pageSize,
+      pageSize,
+    );
     return { items, total, page, pageSize };
   }
 
   async byId(companyId: number, id: number): Promise<IssuableProduct> {
-    const product = await this.productRepo.findOne({
-      where: { id, companyId },
-      relations: {
-        category: true,
-        consumable: true,
-        paint: true,
-        rubberRoll: true,
-        rubberOffcut: true,
-        solution: true,
-      },
-    });
+    const product = await this.productRepo.findByIdForCompanyWithDetail(companyId, id);
     if (!product) {
       throw new NotFoundException(`Issuable product ${id} not found`);
     }
@@ -108,10 +76,10 @@ export class IssuableProductService {
     if (!groupKey) {
       return [];
     }
-    const allInGroup = await this.productRepo.find({
-      where: { companyId, productType: "paint" as IssuableProductType },
-      relations: { paint: true },
-    });
+    const allInGroup = await this.productRepo.findAllOfTypeWithPaint(
+      companyId,
+      "paint" as IssuableProductType,
+    );
     return allInGroup.filter((p) => {
       const key = p.paint?.componentGroupKey;
       return key === groupKey && p.id !== productId;
@@ -119,14 +87,12 @@ export class IssuableProductService {
   }
 
   async create(companyId: number, dto: CreateIssuableProductDto): Promise<IssuableProduct> {
-    const existing = await this.productRepo.findOne({
-      where: { companyId, sku: dto.sku },
-    });
+    const existing = await this.productRepo.findBySkuForCompany(companyId, dto.sku);
     if (existing) {
       throw new ConflictException(`Product with SKU "${dto.sku}" already exists for this company`);
     }
 
-    const product = this.productRepo.create({
+    const product = this.productRepo.build({
       companyId,
       productType: dto.productType,
       sku: dto.sku,
@@ -145,7 +111,7 @@ export class IssuableProductService {
 
     if (dto.productType === "consumable") {
       await this.consumableRepo.save(
-        this.consumableRepo.create({
+        this.consumableRepo.build({
           productId: saved.id,
           notes: dto.consumable?.notes ?? null,
         }),
@@ -173,9 +139,7 @@ export class IssuableProductService {
   ): Promise<IssuableProduct> {
     const product = await this.byId(companyId, id);
     if (typeof dto.sku === "string" && dto.sku !== product.sku) {
-      const conflict = await this.productRepo.findOne({
-        where: { companyId, sku: dto.sku },
-      });
+      const conflict = await this.productRepo.findBySkuForCompany(companyId, dto.sku);
       if (conflict && conflict.id !== id) {
         throw new ConflictException(`Product with SKU "${dto.sku}" already exists`);
       }
@@ -195,18 +159,17 @@ export class IssuableProductService {
 
     if (product.productType === "consumable" && dto.consumable) {
       const child =
-        (await this.consumableRepo.findOne({ where: { productId: id } })) ??
-        this.consumableRepo.create({ productId: id, notes: null });
+        (await this.consumableRepo.findByProductId(id)) ??
+        this.consumableRepo.build({ productId: id, notes: null });
       if (dto.consumable.notes !== undefined) child.notes = dto.consumable.notes;
       await this.consumableRepo.save(child);
     } else if (product.productType === "paint" && dto.paint) {
       const child =
-        (await this.paintRepo.findOne({ where: { productId: id } })) ??
-        this.buildPaintChild(id, undefined);
+        (await this.paintRepo.findByProductId(id)) ?? this.buildPaintChild(id, undefined);
       this.applyPaintUpdate(child, dto.paint);
       await this.paintRepo.save(child);
     } else if (product.productType === "rubber_roll" && dto.rubberRoll) {
-      const child = await this.rubberRollRepo.findOne({ where: { productId: id } });
+      const child = await this.rubberRollRepo.findByProductId(id);
       if (!child) {
         throw new NotFoundException(`Rubber roll detail row not found for product ${id}`);
       }
@@ -214,8 +177,7 @@ export class IssuableProductService {
       await this.rubberRollRepo.save(child);
     } else if (product.productType === "solution" && dto.solution) {
       const child =
-        (await this.solutionRepo.findOne({ where: { productId: id } })) ??
-        this.buildSolutionChild(id, undefined);
+        (await this.solutionRepo.findByProductId(id)) ?? this.buildSolutionChild(id, undefined);
       this.applySolutionUpdate(child, dto.solution);
       await this.solutionRepo.save(child);
     }
@@ -234,34 +196,15 @@ export class IssuableProductService {
     companyId: number,
     legacyStockItemId: number,
   ): Promise<IssuableProduct | null> {
-    return this.productRepo.findOne({
-      where: { companyId, legacyStockItemId },
-    });
+    return this.productRepo.findByLegacyStockItemId(companyId, legacyStockItemId);
   }
 
   async countByType(companyId: number): Promise<Record<IssuableProductType, number>> {
-    const rows = await this.productRepo
-      .createQueryBuilder("p")
-      .select("p.product_type", "type")
-      .addSelect("COUNT(*)", "count")
-      .where("p.company_id = :companyId", { companyId })
-      .groupBy("p.product_type")
-      .getRawMany<{ type: IssuableProductType; count: string }>();
-    const initial: Record<IssuableProductType, number> = {
-      consumable: 0,
-      paint: 0,
-      rubber_roll: 0,
-      rubber_offcut: 0,
-      solution: 0,
-    };
-    return rows.reduce((acc, row) => {
-      acc[row.type] = Number(row.count);
-      return acc;
-    }, initial);
+    return this.productRepo.countByType(companyId);
   }
 
   private buildPaintChild(productId: number, dto: PaintProductExtraDto | undefined): PaintProduct {
-    const child = this.paintRepo.create({ productId, isBanding: false });
+    const child = this.paintRepo.build({ productId, isBanding: false });
     if (dto) {
       this.applyPaintUpdate(child, dto);
     }
@@ -301,7 +244,7 @@ export class IssuableProductService {
   }
 
   private buildRubberRollChild(productId: number, dto: RubberRollExtraDto): RubberRoll {
-    const child = this.rubberRollRepo.create({
+    const child = this.rubberRollRepo.build({
       productId,
       rollNumber: dto.rollNumber,
       status: dto.status ?? "available",
@@ -334,7 +277,7 @@ export class IssuableProductService {
     productId: number,
     dto: SolutionExtraDto | undefined,
   ): SolutionProduct {
-    const child = this.solutionRepo.create({ productId });
+    const child = this.solutionRepo.build({ productId });
     if (dto) {
       this.applySolutionUpdate(child, dto);
     }

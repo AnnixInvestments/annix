@@ -1,17 +1,15 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { ILike, Repository } from "typeorm";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IdentifiedItem, IdentifyItemResponse } from "../dto/identify-item.dto";
 import { StockItem } from "../entities/stock-item.entity";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 
 @Injectable()
 export class ItemIdentificationService {
   private readonly logger = new Logger(ItemIdentificationService.name);
 
   constructor(
-    @InjectRepository(StockItem)
-    private readonly stockItemRepo: Repository<StockItem>,
+    private readonly stockItemRepo: StockItemRepository,
     private readonly aiChatService: AiChatService,
   ) {}
 
@@ -166,14 +164,7 @@ If you cannot identify any items or the image is unclear, return an empty items 
 
     const matchingItems = await validTerms.reduce(async (accPromise, term) => {
       const acc = await accPromise;
-      const items = await this.stockItemRepo.find({
-        where: [
-          { companyId, name: ILike(`%${term}%`) },
-          { companyId, category: ILike(`%${term}%`) },
-          { companyId, description: ILike(`%${term}%`) },
-        ],
-        take: 10,
-      });
+      const items = await this.stockItemRepo.findByTermForCompany(companyId, term);
 
       return items.reduce((innerAcc, item) => {
         const existing = innerAcc.get(item.id);

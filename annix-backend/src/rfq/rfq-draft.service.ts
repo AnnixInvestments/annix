@@ -1,14 +1,15 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { Boq } from "../boq/entities/boq.entity";
-import { BoqSupplierAccess, SupplierBoqStatus } from "../boq/entities/boq-supplier-access.entity";
+import { BoqRepository } from "../boq/boq.repository";
+import { BoqSupplierAccessRepository } from "../boq/boq-supplier-access.repository";
+import { SupplierBoqStatus } from "../boq/entities/boq-supplier-access.entity";
 import { EmailService } from "../email/email.service";
 import { formatDateZA, now } from "../lib/datetime";
 import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { RfqDraftFullResponseDto, RfqDraftResponseDto, SaveRfqDraftDto } from "./dto/rfq-draft.dto";
 import { RfqStatus } from "./entities/rfq.entity";
 import { RfqDraft } from "./entities/rfq-draft.entity";
+import { RfqDraftRepository } from "./rfq-draft.repository";
 
 /**
  * RFQ Draft Management Service
@@ -24,14 +25,10 @@ export class RfqDraftService {
   private readonly logger = new Logger(RfqDraftService.name);
 
   constructor(
-    @InjectRepository(RfqDraft)
-    private rfqDraftRepository: Repository<RfqDraft>,
-    @InjectRepository(User)
-    private userRepository: Repository<User>,
-    @InjectRepository(Boq)
-    private boqRepository: Repository<Boq>,
-    @InjectRepository(BoqSupplierAccess)
-    private boqSupplierAccessRepository: Repository<BoqSupplierAccess>,
+    private rfqDraftRepository: RfqDraftRepository,
+    private userRepository: UserRepository,
+    private boqRepository: BoqRepository,
+    private boqSupplierAccessRepository: BoqSupplierAccessRepository,
     private emailService: EmailService,
   ) {}
 
@@ -61,44 +58,42 @@ export class RfqDraftService {
    * Save or update an RFQ draft
    */
   async saveDraft(dto: SaveRfqDraftDto, userId: number): Promise<RfqDraftResponseDto> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userRepository.findById(userId);
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
     }
 
-    let draft: RfqDraft;
+    const draftFields = {
+      customerRfqReference: dto.customerRfqReference || dto.formData.customerRfqReference,
+      projectName: dto.projectName || dto.formData.projectName || "Untitled Draft",
+      currentStep: dto.currentStep,
+      formData: dto.formData,
+      globalSpecs: dto.globalSpecs,
+      requiredProducts: dto.requiredProducts,
+      straightPipeEntries: dto.straightPipeEntries,
+      pendingDocuments: dto.pendingDocuments,
+      completionPercentage: this.calculateCompletionPercentage(dto),
+    };
+
+    let savedDraft: RfqDraft;
 
     if (dto.draftId) {
-      // Update existing draft
-      const existingDraft = await this.rfqDraftRepository.findOne({
-        where: { id: dto.draftId, createdBy: { id: userId } },
-      });
+      const existingDraft = await this.rfqDraftRepository.findByIdForUser(dto.draftId, userId);
       if (!existingDraft) {
         throw new NotFoundException(`Draft with ID ${dto.draftId} not found or access denied`);
       }
       if (existingDraft.isConverted) {
         throw new BadRequestException("Cannot update a draft that has been converted to an RFQ");
       }
-      draft = existingDraft;
+      Object.assign(existingDraft, draftFields);
+      savedDraft = await this.rfqDraftRepository.save(existingDraft);
     } else {
-      // Create new draft
-      draft = new RfqDraft();
-      draft.draftNumber = await this.generateDraftNumber();
-      draft.createdBy = user;
+      savedDraft = await this.rfqDraftRepository.create({
+        draftNumber: await this.generateDraftNumber(),
+        createdBy: user,
+        ...draftFields,
+      });
     }
-
-    // Update draft fields
-    draft.customerRfqReference = dto.customerRfqReference || dto.formData.customerRfqReference;
-    draft.projectName = dto.projectName || dto.formData.projectName || "Untitled Draft";
-    draft.currentStep = dto.currentStep;
-    draft.formData = dto.formData;
-    draft.globalSpecs = dto.globalSpecs;
-    draft.requiredProducts = dto.requiredProducts;
-    draft.straightPipeEntries = dto.straightPipeEntries;
-    draft.pendingDocuments = dto.pendingDocuments;
-    draft.completionPercentage = this.calculateCompletionPercentage(dto);
-
-    const savedDraft = await this.rfqDraftRepository.save(draft);
 
     void this.sendDraftSavedNotification(savedDraft, user, !dto.draftId);
 
@@ -149,12 +144,7 @@ export class RfqDraftService {
   }
 
   async drafts(userId: number): Promise<RfqDraftResponseDto[]> {
-    const drafts = await this.rfqDraftRepository
-      .createQueryBuilder("draft")
-      .leftJoinAndSelect("draft.convertedRfq", "rfq")
-      .where("draft.created_by_user_id = :userId", { userId })
-      .orderBy("draft.updated_at", "DESC")
-      .getMany();
+    const drafts = await this.rfqDraftRepository.findAllForUserWithConvertedRfq(userId);
 
     const convertedRfqIds = drafts
       .filter((draft) => draft.isConverted && draft.convertedRfqId)
@@ -198,30 +188,17 @@ export class RfqDraftService {
       }
     >
   > {
-    const boqs = await this.boqRepository
-      .createQueryBuilder("boq")
-      .select(["boq.id", "boq.rfq"])
-      .innerJoin("boq.rfq", "rfq")
-      .addSelect("rfq.id")
-      .where("rfq.id IN (:...rfqIds)", { rfqIds })
-      .getMany();
+    const boqLinks = await this.boqRepository.findRfqLinksByRfqIds(rfqIds);
 
-    if (boqs.length === 0) {
+    if (boqLinks.length === 0) {
       return new Map();
     }
 
-    const boqIdToRfqId = new Map(boqs.map((b) => [b.id, b.rfq?.id as number]));
-    const boqIds = boqs.map((b) => b.id);
+    const boqIdToRfqId = new Map(boqLinks.map((link) => [link.boqId, link.rfqId]));
+    const boqIds = boqLinks.map((link) => link.boqId);
 
-    const counts = await this.boqSupplierAccessRepository
-      .createQueryBuilder("access")
-      .select("access.boq_id", "boqId")
-      .addSelect("access.status", "status")
-      .addSelect("COUNT(DISTINCT access.supplier_profile_id)", "count")
-      .where("access.boq_id IN (:...boqIds)", { boqIds })
-      .groupBy("access.boq_id")
-      .addGroupBy("access.status")
-      .getRawMany<{ boqId: number; status: string; count: string }>();
+    const counts =
+      await this.boqSupplierAccessRepository.countDistinctSuppliersByStatusForBoqs(boqIds);
 
     const resultMap = new Map<
       number,
@@ -273,11 +250,7 @@ export class RfqDraftService {
    * Get a single draft with full data
    */
   async draftById(draftId: number, userId: number): Promise<RfqDraftFullResponseDto> {
-    const draft = await this.rfqDraftRepository
-      .createQueryBuilder("draft")
-      .where("draft.id = :draftId", { draftId })
-      .andWhere("draft.created_by_user_id = :userId", { userId })
-      .getOne();
+    const draft = await this.rfqDraftRepository.findByIdForUser(draftId, userId);
 
     if (!draft) {
       throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
@@ -290,11 +263,7 @@ export class RfqDraftService {
    * Get a draft by draft number
    */
   async draftByNumber(draftNumber: string, userId: number): Promise<RfqDraftFullResponseDto> {
-    const draft = await this.rfqDraftRepository
-      .createQueryBuilder("draft")
-      .where("draft.draft_number = :draftNumber", { draftNumber })
-      .andWhere("draft.created_by_user_id = :userId", { userId })
-      .getOne();
+    const draft = await this.rfqDraftRepository.findByDraftNumberForUser(draftNumber, userId);
 
     if (!draft) {
       throw new NotFoundException(`Draft ${draftNumber} not found or access denied`);
@@ -307,11 +276,7 @@ export class RfqDraftService {
    * Delete a draft
    */
   async deleteDraft(draftId: number, userId: number): Promise<void> {
-    const draft = await this.rfqDraftRepository
-      .createQueryBuilder("draft")
-      .where("draft.id = :draftId", { draftId })
-      .andWhere("draft.created_by_user_id = :userId", { userId })
-      .getOne();
+    const draft = await this.rfqDraftRepository.findByIdForUser(draftId, userId);
 
     if (!draft) {
       throw new NotFoundException(`Draft with ID ${draftId} not found or access denied`);
@@ -328,9 +293,7 @@ export class RfqDraftService {
    * Mark a draft as converted to RFQ
    */
   async markDraftAsConverted(draftId: number, rfqId: number, userId: number): Promise<void> {
-    const draft = await this.rfqDraftRepository.findOne({
-      where: { id: draftId, createdBy: { id: userId } },
-    });
+    const draft = await this.rfqDraftRepository.findByIdForUser(draftId, userId);
 
     if (draft) {
       draft.isConverted = true;

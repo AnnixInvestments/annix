@@ -1,40 +1,10 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Bolt } from "../bolt/entities/bolt.entity";
-import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
-import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
-import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
-import { FlangeDimension } from "./entities/flange-dimension.entity";
 import { FlangeDimensionController } from "./flange-dimension.controller";
 import { FlangeDimensionService } from "./flange-dimension.service";
 
 describe("FlangeDimensionController", () => {
   let controller: FlangeDimensionController;
   let service: FlangeDimensionService;
-
-  const mockFlangeRepo = {
-    create: jest.fn(),
-    save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
-    remove: jest.fn(),
-  };
-
-  const mockNominalRepo = {
-    findOne: jest.fn(),
-  };
-
-  const mockStandardRepo = {
-    findOne: jest.fn(),
-  };
-
-  const mockPressureRepo = {
-    findOne: jest.fn(),
-  };
-
-  const mockBoltRepo = {
-    findOne: jest.fn(),
-  };
 
   const mockFlangeDimensionService = {
     create: jest.fn(),
@@ -52,23 +22,6 @@ describe("FlangeDimensionController", () => {
           provide: FlangeDimensionService,
           useValue: mockFlangeDimensionService,
         },
-        {
-          provide: getRepositoryToken(FlangeDimension),
-          useValue: mockFlangeRepo,
-        },
-        {
-          provide: getRepositoryToken(NominalOutsideDiameterMm),
-          useValue: mockNominalRepo,
-        },
-        {
-          provide: getRepositoryToken(FlangeStandard),
-          useValue: mockStandardRepo,
-        },
-        {
-          provide: getRepositoryToken(FlangePressureClass),
-          useValue: mockPressureRepo,
-        },
-        { provide: getRepositoryToken(Bolt), useValue: mockBoltRepo },
       ],
     }).compile();
 
@@ -80,5 +33,9 @@ describe("FlangeDimensionController", () => {
 
   it("should be defined", () => {
     expect(controller).toBeDefined();
+  });
+
+  it("service should be defined", () => {
+    expect(service).toBeDefined();
   });
 });

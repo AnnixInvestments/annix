@@ -1,10 +1,8 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { PasswordService } from "../shared/auth/password.service";
-import { User } from "../user/entities/user.entity";
+import { UserRepository } from "../user/user.repository";
 import { JwtPayload } from "./jwt.strategy";
 
 @Injectable()
@@ -12,15 +10,12 @@ export class AuthService {
   constructor(
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
-    @InjectRepository(User) private readonly userRepo: Repository<User>,
+    private readonly userRepo: UserRepository,
     private readonly passwordService: PasswordService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
-    const user = await this.userRepo.findOne({
-      where: { email },
-      relations: ["roles"],
-    });
+    const user = await this.userRepo.findByEmailWithRoles(email);
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
     }
@@ -72,10 +67,7 @@ export class AuthService {
     try {
       const payload = await this.jwtService.verifyAsync(refreshToken);
 
-      const user = await this.userRepo.findOne({
-        where: { id: payload.sub },
-        relations: ["roles"],
-      });
+      const user = await this.userRepo.findByIdWithRoles(payload.sub);
 
       if (!user) {
         throw new UnauthorizedException("User not found");

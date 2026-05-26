@@ -1,8 +1,6 @@
 import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
-import { User } from "../../user/entities/user.entity";
 import { TeamMember, TeamMemberStatus, TeamRole } from "../entities/team-member.entity";
+import { TeamMemberRepository } from "../team-member.repository";
 
 export interface TeamHierarchyNode {
   member: TeamMember;
@@ -13,48 +11,26 @@ export interface TeamHierarchyNode {
 export class TeamService {
   private readonly logger = new Logger(TeamService.name);
 
-  constructor(
-    @InjectRepository(TeamMember)
-    private readonly teamMemberRepo: Repository<TeamMember>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-  ) {}
+  constructor(private readonly teamMemberRepo: TeamMemberRepository) {}
 
   async members(orgId: number): Promise<TeamMember[]> {
-    return this.teamMemberRepo.find({
-      where: { organizationId: orgId },
-      relations: ["user", "reportsTo"],
-      order: { joinedAt: "ASC" },
-    });
+    return this.teamMemberRepo.findByOrganization(orgId);
   }
 
   async activeMembers(orgId: number): Promise<TeamMember[]> {
-    return this.teamMemberRepo.find({
-      where: { organizationId: orgId, status: TeamMemberStatus.ACTIVE },
-      relations: ["user", "reportsTo"],
-      order: { joinedAt: "ASC" },
-    });
+    return this.teamMemberRepo.findActiveByOrganization(orgId);
   }
 
   async memberById(memberId: number): Promise<TeamMember | null> {
-    return this.teamMemberRepo.findOne({
-      where: { id: memberId },
-      relations: ["user", "reportsTo", "organization"],
-    });
+    return this.teamMemberRepo.findByIdWithRelations(memberId);
   }
 
   async memberByUser(orgId: number, userId: number): Promise<TeamMember | null> {
-    return this.teamMemberRepo.findOne({
-      where: { organizationId: orgId, userId },
-      relations: ["user", "reportsTo", "organization"],
-    });
+    return this.teamMemberRepo.findByOrganizationAndUser(orgId, userId);
   }
 
   async memberByUserAnyOrg(userId: number): Promise<TeamMember | null> {
-    return this.teamMemberRepo.findOne({
-      where: { userId },
-      relations: ["user", "reportsTo", "organization"],
-    });
+    return this.teamMemberRepo.findByUserAnyOrganization(userId);
   }
 
   async addMember(
@@ -68,15 +44,13 @@ export class TeamService {
       throw new ConflictException("User is already a member of this organization");
     }
 
-    const member = this.teamMemberRepo.create({
+    const saved = await this.teamMemberRepo.create({
       organizationId: orgId,
       userId,
       role,
       status: TeamMemberStatus.ACTIVE,
       reportsToId: reportsToId ?? null,
     });
-
-    const saved = await this.teamMemberRepo.save(member);
     this.logger.log(`Member added to org ${orgId}: user ${userId} as ${role}`);
     return saved;
   }
@@ -160,10 +134,7 @@ export class TeamService {
   }
 
   async directReports(orgId: number, managerId: number): Promise<TeamMember[]> {
-    return this.teamMemberRepo.find({
-      where: { organizationId: orgId, reportsToId: managerId },
-      relations: ["user"],
-    });
+    return this.teamMemberRepo.findDirectReports(orgId, managerId);
   }
 
   async isUserInOrganization(userId: number, orgId: number): Promise<boolean> {

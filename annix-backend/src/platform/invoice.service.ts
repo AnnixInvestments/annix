@@ -1,8 +1,7 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import type { InvoiceFilterDto } from "./dto/invoice.dto";
 import { InvoiceExtractionStatus, InvoiceStatus, PlatformInvoice } from "./entities/invoice.entity";
+import { InvoiceRepository } from "./invoice.repository";
 
 export interface InvoicePage {
   data: PlatformInvoice[];
@@ -15,16 +14,10 @@ export interface InvoicePage {
 export class InvoiceService {
   private readonly logger = new Logger(InvoiceService.name);
 
-  constructor(
-    @InjectRepository(PlatformInvoice)
-    private readonly invoiceRepo: Repository<PlatformInvoice>,
-  ) {}
+  constructor(private readonly invoiceRepo: InvoiceRepository) {}
 
   async findById(companyId: number, id: number): Promise<PlatformInvoice> {
-    const invoice = await this.invoiceRepo.findOne({
-      where: { id, companyId },
-      relations: ["supplierContact"],
-    });
+    const invoice = await this.invoiceRepo.findByCompanyAndId(companyId, id, ["supplierContact"]);
 
     if (!invoice) {
       throw new NotFoundException(`Invoice ${id} not found`);
@@ -33,60 +26,12 @@ export class InvoiceService {
     return invoice;
   }
 
-  async search(companyId: number, filters: InvoiceFilterDto): Promise<InvoicePage> {
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 20;
-    const skip = (page - 1) * limit;
-
-    const qb = this.invoiceRepo
-      .createQueryBuilder("invoice")
-      .leftJoinAndSelect("invoice.supplierContact", "supplier")
-      .where("invoice.company_id = :companyId", { companyId })
-      .andWhere("invoice.version_status = :versionStatus", { versionStatus: "ACTIVE" });
-
-    if (filters.sourceModule) {
-      qb.andWhere("invoice.source_module = :sourceModule", {
-        sourceModule: filters.sourceModule,
-      });
-    }
-
-    if (filters.invoiceType) {
-      qb.andWhere("invoice.invoice_type = :invoiceType", { invoiceType: filters.invoiceType });
-    }
-
-    if (filters.status) {
-      qb.andWhere("invoice.status = :status", { status: filters.status });
-    }
-
-    if (filters.extractionStatus) {
-      qb.andWhere("invoice.extraction_status = :extractionStatus", {
-        extractionStatus: filters.extractionStatus,
-      });
-    }
-
-    if (filters.search) {
-      qb.andWhere("(invoice.invoice_number ILIKE :search OR invoice.supplier_name ILIKE :search)", {
-        search: `%${filters.search}%`,
-      });
-    }
-
-    if (filters.dateFrom) {
-      qb.andWhere("invoice.invoice_date >= :dateFrom", { dateFrom: filters.dateFrom });
-    }
-
-    if (filters.dateTo) {
-      qb.andWhere("invoice.invoice_date <= :dateTo", { dateTo: filters.dateTo });
-    }
-
-    qb.orderBy("invoice.created_at", "DESC");
-
-    const [data, total] = await qb.skip(skip).take(limit).getManyAndCount();
-
-    return { data, total, page, limit };
+  search(companyId: number, filters: InvoiceFilterDto): Promise<InvoicePage> {
+    return this.invoiceRepo.search(companyId, filters);
   }
 
   async create(data: Partial<PlatformInvoice>): Promise<PlatformInvoice> {
-    return this.invoiceRepo.save(this.invoiceRepo.create(data));
+    return this.invoiceRepo.create(data);
   }
 
   async update(
@@ -104,7 +49,7 @@ export class InvoiceService {
     extractedData: Record<string, unknown>,
     extractionStatus: InvoiceExtractionStatus,
   ): Promise<PlatformInvoice> {
-    const invoice = await this.invoiceRepo.findOneBy({ id });
+    const invoice = await this.invoiceRepo.findById(id);
     if (!invoice) {
       throw new NotFoundException(`Invoice ${id} not found`);
     }
@@ -136,15 +81,11 @@ export class InvoiceService {
     await this.invoiceRepo.remove(invoice);
   }
 
-  async findByLegacyScId(scInvoiceId: number): Promise<PlatformInvoice | null> {
-    return this.invoiceRepo.findOne({
-      where: { legacyScInvoiceId: scInvoiceId },
-    });
+  findByLegacyScId(scInvoiceId: number): Promise<PlatformInvoice | null> {
+    return this.invoiceRepo.findByLegacyScId(scInvoiceId);
   }
 
-  async findByLegacyRubberId(rubberInvoiceId: number): Promise<PlatformInvoice | null> {
-    return this.invoiceRepo.findOne({
-      where: { legacyRubberInvoiceId: rubberInvoiceId },
-    });
+  findByLegacyRubberId(rubberInvoiceId: number): Promise<PlatformInvoice | null> {
+    return this.invoiceRepo.findByLegacyRubberId(rubberInvoiceId);
   }
 }

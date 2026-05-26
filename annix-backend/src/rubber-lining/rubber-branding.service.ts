@@ -71,7 +71,7 @@ export class RubberBrandingService {
         return { logoCandidates: [], heroCandidates: [], primaryColor: null, colorCandidates: [] };
       }
 
-      const html = await response.text();
+      const html: string = await response.text();
       const baseUrl = new URL(websiteUrl);
 
       const resolveUrl = (raw: string): string | null => {
@@ -110,7 +110,7 @@ export class RubberBrandingService {
       const widthPattern = /width=["']?(\d+)/i;
       const heightPattern = /height=["']?(\d+)/i;
 
-      const imgTags = html.match(imgTagPattern) ?? [];
+      const imgTags: string[] = html.match(imgTagPattern) ?? [];
       imgTags.forEach((tag) => {
         const srcMatch = tag.match(srcPattern);
         const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
@@ -148,9 +148,9 @@ export class RubberBrandingService {
       });
 
       const headerPattern = /<(?:header|nav)[^>]*>[\s\S]*?<\/(?:header|nav)>/gi;
-      const headerBlocks = html.match(headerPattern) ?? [];
+      const headerBlocks: string[] = html.match(headerPattern) ?? [];
       headerBlocks.forEach((block) => {
-        const headerImgs = block.match(imgTagPattern) ?? [];
+        const headerImgs: string[] = block.match(imgTagPattern) ?? [];
         headerImgs.forEach((tag) => {
           const srcMatch = tag.match(srcPattern);
           const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
@@ -187,9 +187,9 @@ export class RubberBrandingService {
       });
 
       const sectionPattern = /<section[^>]*>[\s\S]*?<\/section>/gi;
-      const sectionBlocks = html.match(sectionPattern) ?? [];
+      const sectionBlocks: string[] = html.match(sectionPattern) ?? [];
       sectionBlocks.slice(0, 3).forEach((block) => {
-        const sectionImgs = block.match(imgTagPattern) ?? [];
+        const sectionImgs: string[] = block.match(imgTagPattern) ?? [];
         sectionImgs.forEach((tag) => {
           const srcMatch = tag.match(srcPattern);
           const src = srcMatch ? resolveUrl(srcMatch[1]) : null;
@@ -253,7 +253,7 @@ export class RubberBrandingService {
         Array.from(html.matchAll(pattern)).forEach((match) => addColor(match[1]));
       });
 
-      const hexColors = html.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
+      const hexColors: string[] = html.match(/#[0-9a-fA-F]{6}\b/g) ?? [];
       const hexCounts: Record<string, number> = {};
       hexColors.forEach((c) => {
         const lower = c.toLowerCase();

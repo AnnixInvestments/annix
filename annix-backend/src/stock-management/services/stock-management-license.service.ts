@@ -1,6 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import {
   STOCK_MANAGEMENT_FEATURES,
@@ -10,6 +8,7 @@ import {
   tierIncludesFeature,
 } from "../config/stock-management-features.constants";
 import { CompanyModuleLicense } from "../entities/company-module-license.entity";
+import { CompanyModuleLicenseRepository } from "../repositories/company-module-license.repository";
 
 export interface StockManagementLicenseSnapshot {
   companyId: number;
@@ -26,19 +25,14 @@ const MODULE_KEY = "stock-management";
 export class StockManagementLicenseService {
   private readonly logger = new Logger(StockManagementLicenseService.name);
 
-  constructor(
-    @InjectRepository(CompanyModuleLicense)
-    private readonly licenseRepo: Repository<CompanyModuleLicense>,
-  ) {}
+  constructor(private readonly licenseRepo: CompanyModuleLicenseRepository) {}
 
   async ensureLicense(companyId: number): Promise<CompanyModuleLicense> {
-    const existing = await this.licenseRepo.findOne({
-      where: { companyId, moduleKey: MODULE_KEY },
-    });
+    const existing = await this.licenseRepo.findByCompanyModule(companyId, MODULE_KEY);
     if (existing) {
       return existing;
     }
-    const created = this.licenseRepo.create({
+    const created = this.licenseRepo.build({
       companyId,
       moduleKey: MODULE_KEY,
       tier: "basic",

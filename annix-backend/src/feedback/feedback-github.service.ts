@@ -1,12 +1,12 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
 import { Octokit } from "@octokit/rest";
-import { Repository } from "typeorm";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { type IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { CustomerFeedbackRepository } from "./customer-feedback.repository";
 import { CustomerFeedback, type FeedbackClassification } from "./entities/customer-feedback.entity";
 import { FeedbackAttachment } from "./entities/feedback-attachment.entity";
+import { FeedbackAttachmentRepository } from "./feedback-attachment.repository";
 
 interface FeedbackTranslation {
   classification: FeedbackClassification;
@@ -95,10 +95,8 @@ export class FeedbackGithubService {
   constructor(
     private readonly configService: ConfigService,
     private readonly aiChatService: AiChatService,
-    @InjectRepository(CustomerFeedback)
-    private readonly feedbackRepository: Repository<CustomerFeedback>,
-    @InjectRepository(FeedbackAttachment)
-    private readonly attachmentRepository: Repository<FeedbackAttachment>,
+    private readonly feedbackRepository: CustomerFeedbackRepository,
+    private readonly attachmentRepository: FeedbackAttachmentRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {
@@ -194,10 +192,9 @@ export class FeedbackGithubService {
       feedback.status = "triaged";
       await this.feedbackRepository.save(feedback);
 
-      const attachments = await this.attachmentRepository.find({
-        where: { feedbackId: feedback.id },
-        order: { createdAt: "ASC" },
-      });
+      const attachments = await this.attachmentRepository.findByFeedbackIdOrderedByCreated(
+        feedback.id,
+      );
 
       const commentBody = await this.formatCommentBody(feedback, translation, attachments);
 

@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Between, Repository } from "typeorm";
 import { fromJSDate, now } from "../../lib/datetime";
-import { Meeting, MeetingStatus, Prospect, ProspectStatus, Visit } from "../entities";
+import { MeetingStatus, ProspectStatus } from "../entities";
+import { MeetingRepository } from "../meeting.repository";
+import { ProspectRepository } from "../prospect.repository";
+import { VisitRepository } from "../visit.repository";
 
 export interface MeetingsOverTime {
   period: string;
@@ -60,19 +61,16 @@ export interface AnalyticsSummary {
 @Injectable()
 export class AnalyticsService {
   constructor(
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
-    @InjectRepository(Meeting)
-    private readonly meetingRepo: Repository<Meeting>,
-    @InjectRepository(Visit)
-    private readonly visitRepo: Repository<Visit>,
+    private readonly prospectRepo: ProspectRepository,
+    private readonly meetingRepo: MeetingRepository,
+    private readonly visitRepo: VisitRepository,
   ) {}
 
   async summary(ownerId: number): Promise<AnalyticsSummary> {
     const [prospects, meetings, visits] = await Promise.all([
-      this.prospectRepo.find({ where: { ownerId } }),
-      this.meetingRepo.find({ where: { salesRepId: ownerId } }),
-      this.visitRepo.find({ where: { salesRepId: ownerId } }),
+      this.prospectRepo.findAllByOwner(ownerId),
+      this.meetingRepo.findAllBySalesRep(ownerId),
+      this.visitRepo.findBySalesRep(ownerId),
     ]);
 
     const activeStatuses: ProspectStatus[] = [
@@ -144,12 +142,11 @@ export class AnalyticsService {
             ? current.minus({ weeks: i }).endOf("week")
             : current.minus({ months: i }).endOf("month");
 
-        const meetings = await this.meetingRepo.find({
-          where: {
-            salesRepId: ownerId,
-            scheduledStart: Between(periodStart.toJSDate(), periodEnd.toJSDate()),
-          },
-        });
+        const meetings = await this.meetingRepo.findMeetingsOverTime(
+          ownerId,
+          periodStart.toJSDate(),
+          periodEnd.toJSDate(),
+        );
 
         const label =
           period === "week" ? `W${periodStart.weekNumber}` : periodStart.toFormat("MMM");
@@ -169,7 +166,7 @@ export class AnalyticsService {
   }
 
   async prospectFunnel(ownerId: number): Promise<ProspectFunnel[]> {
-    const prospects = await this.prospectRepo.find({ where: { ownerId } });
+    const prospects = await this.prospectRepo.findAllByOwner(ownerId);
 
     const statusOrder: ProspectStatus[] = [
       ProspectStatus.NEW,
@@ -201,12 +198,11 @@ export class AnalyticsService {
         const monthStart = current.minus({ months: i }).startOf("month");
         const monthEnd = current.minus({ months: i }).endOf("month");
 
-        const prospects = await this.prospectRepo.find({
-          where: {
-            ownerId,
-            updatedAt: Between(monthStart.toJSDate(), monthEnd.toJSDate()),
-          },
-        });
+        const prospects = await this.prospectRepo.findByOwnerUpdatedInRange(
+          ownerId,
+          monthStart.toJSDate(),
+          monthEnd.toJSDate(),
+        );
 
         const won = prospects.filter((p) => p.status === ProspectStatus.WON).length;
         const lost = prospects.filter((p) => p.status === ProspectStatus.LOST).length;
@@ -229,11 +225,7 @@ export class AnalyticsService {
   async activityHeatmap(ownerId: number): Promise<ActivityHeatmapCell[]> {
     const thirtyDaysAgo = now().minus({ days: 30 }).toJSDate();
 
-    const visits = await this.visitRepo.find({
-      where: {
-        salesRepId: ownerId,
-      },
-    });
+    const visits = await this.visitRepo.findBySalesRep(ownerId);
 
     const recentVisits = visits.filter(
       (v) => v.startedAt && fromJSDate(v.startedAt).toJSDate() >= thirtyDaysAgo,
@@ -270,7 +262,7 @@ export class AnalyticsService {
   }
 
   async revenuePipeline(ownerId: number): Promise<RevenuePipeline[]> {
-    const prospects = await this.prospectRepo.find({ where: { ownerId } });
+    const prospects = await this.prospectRepo.findAllByOwner(ownerId);
 
     const pipelineStatuses: ProspectStatus[] = [
       ProspectStatus.NEW,
@@ -295,10 +287,7 @@ export class AnalyticsService {
   }
 
   async topProspects(ownerId: number, limit = 10): Promise<TopProspect[]> {
-    const prospects = await this.prospectRepo.find({
-      where: { ownerId },
-      order: { estimatedValue: "DESC" },
-    });
+    const prospects = await this.prospectRepo.findByOwnerOrderedByValue(ownerId);
 
     return prospects
       .filter((p) => p.estimatedValue !== null && Number(p.estimatedValue) > 0)

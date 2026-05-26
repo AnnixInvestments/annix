@@ -1,29 +1,28 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { Meeting, MeetingStatus } from "../entities/meeting.entity";
+import { MeetingStatus } from "../entities/meeting.entity";
 import { Prospect, ProspectPriority, ProspectStatus } from "../entities/prospect.entity";
-import { Visit } from "../entities/visit.entity";
+import { MeetingRepository } from "../meeting.repository";
+import { ProspectRepository } from "../prospect.repository";
 import { RepProfileService } from "../rep-profile/rep-profile.service";
+import { VisitRepository } from "../visit.repository";
 import { RoutePlanningService } from "./route-planning.service";
 
 describe("RoutePlanningService", () => {
   let service: RoutePlanningService;
 
   const mockMeetingRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    findScheduledOrInProgressWithProspect: jest.fn().mockResolvedValue([]),
+    findScheduledWithLocationForRoute: jest.fn().mockResolvedValue([]),
+    findWithProspect: jest.fn(),
   };
 
   const mockProspectRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    findActiveWithLocationForOwner: jest.fn().mockResolvedValue([]),
+    findById: jest.fn(),
   };
 
   const mockVisitRepository = {
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findBySalesRep: jest.fn(),
   };
 
   const mockRepProfileService = {
@@ -51,9 +50,9 @@ describe("RoutePlanningService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RoutePlanningService,
-        { provide: getRepositoryToken(Meeting), useValue: mockMeetingRepository },
-        { provide: getRepositoryToken(Prospect), useValue: mockProspectRepository },
-        { provide: getRepositoryToken(Visit), useValue: mockVisitRepository },
+        { provide: MeetingRepository, useValue: mockMeetingRepository },
+        { provide: ProspectRepository, useValue: mockProspectRepository },
+        { provide: VisitRepository, useValue: mockVisitRepository },
         { provide: RepProfileService, useValue: mockRepProfileService },
       ],
     }).compile();
@@ -392,7 +391,7 @@ describe("RoutePlanningService", () => {
   describe("Schedule Gap Analysis", () => {
     describe("scheduleGaps", () => {
       it("should return full day gap when no meetings", async () => {
-        mockMeetingRepository.find.mockResolvedValueOnce([]);
+        mockMeetingRepository.findScheduledOrInProgressWithProspect.mockResolvedValueOnce([]);
 
         const gaps = await service.scheduleGaps(1, new Date("2024-02-20"));
 
@@ -418,7 +417,7 @@ describe("RoutePlanningService", () => {
             status: MeetingStatus.SCHEDULED,
           },
         ];
-        mockMeetingRepository.find.mockResolvedValueOnce(meetings);
+        mockMeetingRepository.findScheduledOrInProgressWithProspect.mockResolvedValueOnce(meetings);
 
         const gaps = await service.scheduleGaps(1, new Date("2024-02-20"));
 
@@ -440,7 +439,7 @@ describe("RoutePlanningService", () => {
             status: MeetingStatus.SCHEDULED,
           },
         ];
-        mockMeetingRepository.find.mockResolvedValueOnce(meetings);
+        mockMeetingRepository.findScheduledOrInProgressWithProspect.mockResolvedValueOnce(meetings);
 
         const gaps = await service.scheduleGaps(1, new Date("2024-02-20"), 60);
 
@@ -454,7 +453,7 @@ describe("RoutePlanningService", () => {
   describe("Cold Call Suggestions", () => {
     describe("coldCallSuggestions", () => {
       it("should return empty array when no gaps available", async () => {
-        mockMeetingRepository.find.mockResolvedValueOnce([
+        mockMeetingRepository.findScheduledOrInProgressWithProspect.mockResolvedValueOnce([
           {
             id: 1,
             scheduledStart: new Date("2024-02-20T06:00:00Z"),
@@ -462,7 +461,7 @@ describe("RoutePlanningService", () => {
             status: MeetingStatus.SCHEDULED,
           },
         ]);
-        mockProspectRepository.find.mockResolvedValueOnce([]);
+        mockProspectRepository.findActiveWithLocationForOwner.mockResolvedValueOnce([]);
 
         const suggestions = await service.coldCallSuggestions(1, new Date("2024-02-20"));
 
@@ -471,8 +470,8 @@ describe("RoutePlanningService", () => {
       });
 
       it("should return suggestions ordered by priority", async () => {
-        mockMeetingRepository.find.mockResolvedValueOnce([]);
-        mockProspectRepository.find.mockResolvedValueOnce([
+        mockMeetingRepository.findScheduledOrInProgressWithProspect.mockResolvedValueOnce([]);
+        mockProspectRepository.findActiveWithLocationForOwner.mockResolvedValueOnce([
           {
             id: 1,
             companyName: "Low Priority Co",
@@ -502,8 +501,8 @@ describe("RoutePlanningService", () => {
       });
 
       it("should limit suggestions to maxSuggestions", async () => {
-        mockMeetingRepository.find.mockResolvedValueOnce([]);
-        mockProspectRepository.find.mockResolvedValueOnce(
+        mockMeetingRepository.findScheduledOrInProgressWithProspect.mockResolvedValueOnce([]);
+        mockProspectRepository.findActiveWithLocationForOwner.mockResolvedValueOnce(
           Array.from({ length: 20 }, (_, i) => ({
             id: i + 1,
             companyName: `Company ${i + 1}`,
@@ -530,7 +529,7 @@ describe("RoutePlanningService", () => {
   describe("Route Optimization", () => {
     describe("optimizeRoute", () => {
       it("should return optimized route with total distance", async () => {
-        mockProspectRepository.findOne.mockResolvedValue({
+        mockProspectRepository.findById.mockResolvedValue({
           id: 1,
           companyName: "Test Co",
           latitude: -26.21,
@@ -548,7 +547,7 @@ describe("RoutePlanningService", () => {
       });
 
       it("should handle return to start option", async () => {
-        mockProspectRepository.findOne.mockResolvedValue({
+        mockProspectRepository.findById.mockResolvedValue({
           id: 1,
           companyName: "Test Co",
           latitude: -26.21,
@@ -578,7 +577,7 @@ describe("RoutePlanningService", () => {
   describe("Day Route Planning", () => {
     describe("planDayRoute", () => {
       it("should plan route for day with meetings only", async () => {
-        mockMeetingRepository.find.mockResolvedValueOnce([
+        mockMeetingRepository.findScheduledWithLocationForRoute.mockResolvedValueOnce([
           {
             id: 1,
             title: "Morning Meeting",
@@ -598,8 +597,8 @@ describe("RoutePlanningService", () => {
       });
 
       it("should include cold calls when requested", async () => {
-        mockMeetingRepository.find.mockResolvedValue([]);
-        mockProspectRepository.find.mockResolvedValueOnce([
+        mockMeetingRepository.findScheduledWithLocationForRoute.mockResolvedValue([]);
+        mockProspectRepository.findActiveWithLocationForOwner.mockResolvedValueOnce([
           {
             id: 1,
             companyName: "Prospect A",

@@ -1,36 +1,30 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
 import * as bcrypt from "bcrypt";
 import { plainToInstance } from "class-transformer";
-import { Repository } from "typeorm";
-import { UserRole } from "../user-roles/entities/user-role.entity";
+import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { CreateUserDto } from "./dto/create-user.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
 import { User } from "./entities/user.entity";
+import { UserRepository } from "./user.repository";
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
-    @InjectRepository(UserRole)
-    private readonly userRoleRepo: Repository<UserRole>,
+    private readonly userRepo: UserRepository,
+    private readonly userRoleRepo: UserRoleRepository,
   ) {}
 
   async create(createUserDto: CreateUserDto) {
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
 
-    const user = this.userRepo.create({
+    const user = this.userRepo.instantiate({
       ...createUserDto,
       passwordHash: hashedPassword,
     });
 
-    let employeeRole = await this.userRoleRepo.findOne({
-      where: { name: "employee" },
-    });
+    let employeeRole = await this.userRoleRepo.findByName("employee");
     if (!employeeRole) {
-      employeeRole = this.userRoleRepo.create({ name: "employee" });
-      await this.userRoleRepo.save(employeeRole);
+      employeeRole = await this.userRoleRepo.create({ name: "employee" });
     }
 
     user.roles = [employeeRole];
@@ -42,12 +36,12 @@ export class UserService {
 
   findAll() {
     return this.userRepo
-      .find({ relations: ["roles"] })
+      .findAllWithRoles()
       .then((users) => users.map((user) => plainToInstance(User, user)));
   }
 
   async findOne(id: number) {
-    const user = await this.userRepo.findOne({ where: { id }, relations: ["roles"] });
+    const user = await this.userRepo.findByIdWithRoles(id);
     if (!user) throw new NotFoundException(`User #${id} not found`);
     return plainToInstance(User, user);
   }
@@ -66,8 +60,8 @@ export class UserService {
   }
 
   async remove(id: number) {
-    const result = await this.userRepo.delete(id);
-    if (result.affected === 0) {
+    const affected = await this.userRepo.deleteById(id);
+    if (affected === 0) {
       throw new NotFoundException(`User #${id} not found`);
     }
     return { deleted: true };

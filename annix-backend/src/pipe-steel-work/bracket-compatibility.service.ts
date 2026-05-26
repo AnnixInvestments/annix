@@ -1,6 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { BracketDimensionBySizeRepository } from "./bracket-dimension-by-size.repository";
 import {
   BracketCompatibilityResponseDto,
   BracketTypeResponseDto,
@@ -21,25 +20,17 @@ import {
 export class BracketCompatibilityService {
   private readonly STEEL_DENSITY_KG_M3 = 7850;
 
-  constructor(
-    @InjectRepository(BracketDimensionBySizeEntity)
-    private readonly bracketDimensionRepo: Repository<BracketDimensionBySizeEntity>,
-  ) {}
+  constructor(private readonly bracketDimensionRepo: BracketDimensionBySizeRepository) {}
 
   async dimension(
     bracketTypeCode: string,
     nbMm: number,
   ): Promise<BracketDimensionBySizeEntity | null> {
-    return this.bracketDimensionRepo.findOne({
-      where: { bracketTypeCode, nbMm },
-    });
+    return this.bracketDimensionRepo.findByTypeAndNb(bracketTypeCode, nbMm);
   }
 
   async dimensionsForType(bracketTypeCode: string): Promise<BracketDimensionBySizeEntity[]> {
-    return this.bracketDimensionRepo.find({
-      where: { bracketTypeCode },
-      order: { nbMm: "ASC" },
-    });
+    return this.bracketDimensionRepo.findByTypeOrdered(bracketTypeCode);
   }
 
   async types(nominalDiameterMm?: number): Promise<BracketTypeResponseDto[]> {

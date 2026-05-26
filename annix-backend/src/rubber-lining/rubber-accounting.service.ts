@@ -1,7 +1,5 @@
 import { randomBytes } from "node:crypto";
 import { Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { uploadDocument } from "../lib/app-storage-helper";
 import { now } from "../lib/datetime";
@@ -16,9 +14,11 @@ import {
 import {
   ExtractedTaxInvoiceData,
   RubberTaxInvoice,
-  TaxInvoiceStatus,
   TaxInvoiceType,
 } from "./entities/rubber-tax-invoice.entity";
+import { RubberAccountSignOffRepository } from "./repositories/rubber-account-sign-off.repository";
+import { RubberMonthlyAccountRepository } from "./repositories/rubber-monthly-account.repository";
+import { RubberTaxInvoiceRepository } from "./repositories/rubber-tax-invoice.repository";
 import { RubberAccountingPdfService } from "./rubber-accounting-pdf.service";
 import { RubberCompanyDirectorService } from "./rubber-company-director.service";
 
@@ -84,14 +84,9 @@ export class RubberAccountingService {
   private readonly logger = new Logger(RubberAccountingService.name);
 
   constructor(
-    @InjectRepository(RubberTaxInvoice)
-    private readonly taxInvoiceRepository: Repository<RubberTaxInvoice>,
-    @InjectRepository(RubberCompany)
-    private readonly companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberMonthlyAccount)
-    private readonly monthlyAccountRepository: Repository<RubberMonthlyAccount>,
-    @InjectRepository(RubberAccountSignOff)
-    private readonly signOffRepository: Repository<RubberAccountSignOff>,
+    private readonly taxInvoiceRepository: RubberTaxInvoiceRepository,
+    private readonly monthlyAccountRepository: RubberMonthlyAccountRepository,
+    private readonly signOffRepository: RubberAccountSignOffRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly pdfService: RubberAccountingPdfService,
@@ -132,27 +127,9 @@ export class RubberAccountingService {
     status?: MonthlyAccountStatus;
     year?: number;
   }): Promise<MonthlyAccountDto[]> {
-    const query = this.monthlyAccountRepository
-      .createQueryBuilder("ma")
-      .leftJoinAndSelect("ma.signOffs", "so", "1=1")
-      .orderBy("ma.periodYear", "DESC")
-      .addOrderBy("ma.periodMonth", "DESC");
+    const accounts = await this.monthlyAccountRepository.findFilteredOrdered(filters);
 
-    if (filters?.accountType) {
-      query.andWhere("ma.account_type = :accountType", {
-        accountType: filters.accountType,
-      });
-    }
-    if (filters?.status) {
-      query.andWhere("ma.status = :status", { status: filters.status });
-    }
-    if (filters?.year) {
-      query.andWhere("ma.period_year = :year", { year: filters.year });
-    }
-
-    const accounts = await query.getMany();
-
-    const signOffs = await this.signOffRepository.find();
+    const signOffs = await this.signOffRepository.findAll();
     const signOffsByAccount = signOffs.reduce(
       (acc, so) => {
         const list = acc[so.monthlyAccountId] || [];
@@ -165,14 +142,10 @@ export class RubberAccountingService {
   }
 
   async monthlyAccountById(id: number): Promise<MonthlyAccountDto | null> {
-    const account = await this.monthlyAccountRepository.findOne({
-      where: { id },
-    });
+    const account = await this.monthlyAccountRepository.findById(id);
     if (!account) return null;
 
-    const signOffs = await this.signOffRepository.find({
-      where: { monthlyAccountId: id },
-    });
+    const signOffs = await this.signOffRepository.findByMonthlyAccountId(id);
     return this.mapAccountToDto(account, signOffs);
   }
 
@@ -204,7 +177,7 @@ export class RubberAccountingService {
     );
 
     const firebaseUid = randomBytes(16).toString("hex");
-    const account = this.monthlyAccountRepository.create({
+    const account = this.monthlyAccountRepository.build({
       firebaseUid,
       periodYear: year,
       periodMonth: month,
@@ -222,9 +195,7 @@ export class RubberAccountingService {
   }
 
   async downloadAccountPdf(id: number): Promise<Buffer> {
-    const account = await this.monthlyAccountRepository.findOne({
-      where: { id },
-    });
+    const account = await this.monthlyAccountRepository.findById(id);
     if (!account?.pdfPath) {
       throw new NotFoundException("Monthly account PDF not found");
     }
@@ -232,9 +203,7 @@ export class RubberAccountingService {
   }
 
   async requestDirectorSignOff(monthlyAccountId: number): Promise<MonthlyAccountDto> {
-    const account = await this.monthlyAccountRepository.findOne({
-      where: { id: monthlyAccountId },
-    });
+    const account = await this.monthlyAccountRepository.findById(monthlyAccountId);
     if (!account) {
       throw new NotFoundException("Monthly account not found");
     }
@@ -257,7 +226,7 @@ export class RubberAccountingService {
         const token = randomBytes(32).toString("hex");
         const expiresAt = now().plus({ days: 7 }).toJSDate();
 
-        const signOff = this.signOffRepository.create({
+        const signOff = this.signOffRepository.build({
           monthlyAccountId,
           directorName: director.name,
           directorEmail: director.email,
@@ -315,9 +284,7 @@ export class RubberAccountingService {
     action: "APPROVED" | "REJECTED",
     notes?: string,
   ): Promise<{ success: boolean; message: string }> {
-    const signOff = await this.signOffRepository.findOne({
-      where: { signOffToken: token },
-    });
+    const signOff = await this.signOffRepository.findOneByToken(token);
 
     if (!signOff) {
       return { success: false, message: "Invalid sign-off token" };
@@ -339,13 +306,13 @@ export class RubberAccountingService {
     signOff.notes = notes || null;
     await this.signOffRepository.save(signOff);
 
-    const allSignOffs = await this.signOffRepository.find({
-      where: { monthlyAccountId: signOff.monthlyAccountId },
-    });
+    const allSignOffs = await this.signOffRepository.findByMonthlyAccountId(
+      signOff.monthlyAccountId,
+    );
     const allApproved = allSignOffs.every((s) => s.status === SignOffStatus.APPROVED);
 
     if (allApproved) {
-      await this.monthlyAccountRepository.update(signOff.monthlyAccountId, {
+      await this.monthlyAccountRepository.updateById(signOff.monthlyAccountId, {
         status: MonthlyAccountStatus.SIGNED_OFF,
       });
     }
@@ -358,19 +325,13 @@ export class RubberAccountingService {
     account: MonthlyAccountDto;
     pdfUrl: string | null;
   } | null> {
-    const signOff = await this.signOffRepository.findOne({
-      where: { signOffToken: token },
-    });
+    const signOff = await this.signOffRepository.findOneByToken(token);
     if (!signOff) return null;
 
-    const account = await this.monthlyAccountRepository.findOne({
-      where: { id: signOff.monthlyAccountId },
-    });
+    const account = await this.monthlyAccountRepository.findById(signOff.monthlyAccountId);
     if (!account) return null;
 
-    const allSignOffs = await this.signOffRepository.find({
-      where: { monthlyAccountId: account.id },
-    });
+    const allSignOffs = await this.signOffRepository.findByMonthlyAccountId(account.id);
 
     let pdfUrl: string | null = null;
     if (account.pdfPath) {
@@ -396,24 +357,12 @@ export class RubberAccountingService {
     const endYear = month === 12 ? year + 1 : year;
     const endDate = `${endYear}-${String(endMonth).padStart(2, "0")}-01`;
 
-    const query = this.taxInvoiceRepository
-      .createQueryBuilder("inv")
-      .leftJoinAndSelect("inv.company", "company")
-      .where("inv.invoice_type = :invoiceType", { invoiceType })
-      .andWhere("inv.status = :status", { status: TaxInvoiceStatus.APPROVED })
-      .andWhere("inv.invoice_date >= :startDate", { startDate })
-      .andWhere("inv.invoice_date < :endDate", { endDate })
-      .andWhere("inv.version_status = :versionStatus", {
-        versionStatus: "ACTIVE",
-      })
-      .orderBy("company.name", "ASC")
-      .addOrderBy("inv.invoice_date", "ASC");
-
-    if (companyId) {
-      query.andWhere("inv.company_id = :companyId", { companyId });
-    }
-
-    const invoices = await query.getMany();
+    const invoices = await this.taxInvoiceRepository.findApprovedInvoicesForPeriod(
+      invoiceType,
+      startDate,
+      endDate,
+      companyId,
+    );
 
     const grouped = invoices.reduce(
       (acc, inv) => {

@@ -1,6 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { FittingType } from "./entities/fitting-type.entity";
+import { FittingTypeRepository } from "./fitting-type.repository";
 import { FittingTypeService } from "./fitting-type.service";
 
 describe("FittingTypeService", () => {
@@ -9,17 +8,17 @@ describe("FittingTypeService", () => {
   const mockRepo = {
     create: jest.fn(),
     save: jest.fn(),
-    find: jest.fn(),
-    findOne: jest.fn(),
+    findAll: jest.fn(),
+    findById: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     remove: jest.fn(),
+    count: jest.fn(),
   };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FittingTypeService,
-        { provide: getRepositoryToken(FittingType), useValue: mockRepo },
-      ],
+      providers: [FittingTypeService, { provide: FittingTypeRepository, useValue: mockRepo }],
     }).compile();
 
     service = module.get<FittingTypeService>(FittingTypeService);

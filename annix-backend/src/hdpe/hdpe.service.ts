@@ -1,6 +1,4 @@
 import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { CalculateFittingCostDto } from "./dto/calculate-fitting-cost.dto";
 import { CalculatePipeCostDto } from "./dto/calculate-pipe-cost.dto";
 import { CalculateTotalTransportDto } from "./dto/calculate-total-transport.dto";
@@ -10,44 +8,33 @@ import {
   TransportItemWeightDto,
   TransportWeightResponseDto,
 } from "./dto/transport-weight-response.dto";
-import { HdpeButtweldPrice } from "./entities/hdpe-buttweld-price.entity";
-import { HdpeFittingType } from "./entities/hdpe-fitting-type.entity";
-import { HdpeFittingWeight } from "./entities/hdpe-fitting-weight.entity";
-import { HdpePipeSpecification } from "./entities/hdpe-pipe-specification.entity";
-import { HdpeStandard } from "./entities/hdpe-standard.entity";
-import { HdpeStubPrice } from "./entities/hdpe-stub-price.entity";
+import { HdpeButtweldPriceRepository } from "./hdpe-buttweld-price.repository";
+import { HdpeFittingTypeRepository } from "./hdpe-fitting-type.repository";
+import { HdpeFittingWeightRepository } from "./hdpe-fitting-weight.repository";
+import { HdpePipeSpecificationRepository } from "./hdpe-pipe-specification.repository";
+import { HdpeStandardRepository } from "./hdpe-standard.repository";
+import { HdpeStubPriceRepository } from "./hdpe-stub-price.repository";
 
 @Injectable()
 export class HdpeService {
   private readonly HDPE_DENSITY = 955; // kg/m³
 
   constructor(
-    @InjectRepository(HdpePipeSpecification)
-    private pipeSpecRepo: Repository<HdpePipeSpecification>,
-    @InjectRepository(HdpeFittingType)
-    private fittingTypeRepo: Repository<HdpeFittingType>,
-    @InjectRepository(HdpeFittingWeight)
-    private fittingWeightRepo: Repository<HdpeFittingWeight>,
-    @InjectRepository(HdpeButtweldPrice)
-    private buttweldPriceRepo: Repository<HdpeButtweldPrice>,
-    @InjectRepository(HdpeStubPrice)
-    private stubPriceRepo: Repository<HdpeStubPrice>,
-    @InjectRepository(HdpeStandard)
-    private standardRepo: Repository<HdpeStandard>,
+    private readonly pipeSpecRepo: HdpePipeSpecificationRepository,
+    private readonly fittingTypeRepo: HdpeFittingTypeRepository,
+    private readonly fittingWeightRepo: HdpeFittingWeightRepository,
+    private readonly buttweldPriceRepo: HdpeButtweldPriceRepository,
+    private readonly stubPriceRepo: HdpeStubPriceRepository,
+    private readonly standardRepo: HdpeStandardRepository,
   ) {}
 
   // Standards
   async getAllStandards() {
-    return this.standardRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.standardRepo.findActiveOrderedByDisplayOrder();
   }
 
   async getStandardByCode(code: string) {
-    const standard = await this.standardRepo.findOne({
-      where: { code, isActive: true },
-    });
+    const standard = await this.standardRepo.findByCode(code);
     if (!standard) {
       throw new NotFoundException(`Standard with code ${code} not found`);
     }
@@ -56,23 +43,15 @@ export class HdpeService {
 
   // Pipe Specifications
   async getAllPipeSpecifications() {
-    return this.pipeSpecRepo.find({
-      where: { isActive: true },
-      order: { nominalBore: "ASC", sdr: "ASC" },
-    });
+    return this.pipeSpecRepo.findActiveOrderedByNominalBoreAndSdr();
   }
 
   async getPipeSpecificationsByNB(nominalBore: number) {
-    return this.pipeSpecRepo.find({
-      where: { nominalBore, isActive: true },
-      order: { sdr: "ASC" },
-    });
+    return this.pipeSpecRepo.findAllByNominalBore(nominalBore);
   }
 
   async getPipeSpecification(nominalBore: number, sdr: number) {
-    const spec = await this.pipeSpecRepo.findOne({
-      where: { nominalBore, sdr, isActive: true },
-    });
+    const spec = await this.pipeSpecRepo.findByNominalBoreAndSdr(nominalBore, sdr);
     if (!spec) {
       throw new NotFoundException(
         `Pipe specification for NB ${nominalBore} and SDR ${sdr} not found`,
@@ -83,16 +62,11 @@ export class HdpeService {
 
   // Fitting Types
   async getAllFittingTypes() {
-    return this.fittingTypeRepo.find({
-      where: { isActive: true },
-      order: { displayOrder: "ASC", name: "ASC" },
-    });
+    return this.fittingTypeRepo.findActiveOrderedByDisplayOrder();
   }
 
   async getFittingTypeByCode(code: string) {
-    const fittingType = await this.fittingTypeRepo.findOne({
-      where: { code, isActive: true },
-    });
+    const fittingType = await this.fittingTypeRepo.findByCode(code);
     if (!fittingType) {
       throw new NotFoundException(`Fitting type with code ${code} not found`);
     }
@@ -101,21 +75,15 @@ export class HdpeService {
 
   // Fitting Weights
   async getFittingWeights(fittingTypeId: number) {
-    return this.fittingWeightRepo.find({
-      where: { fittingTypeId, isActive: true },
-      order: { nominalBore: "ASC" },
-    });
+    return this.fittingWeightRepo.findByFittingTypeId(fittingTypeId);
   }
 
   async getFittingWeight(fittingTypeCode: string, nominalBore: number) {
     const fittingType = await this.getFittingTypeByCode(fittingTypeCode);
-    const weight = await this.fittingWeightRepo.findOne({
-      where: {
-        fittingTypeId: fittingType.id,
-        nominalBore,
-        isActive: true,
-      },
-    });
+    const weight = await this.fittingWeightRepo.findByFittingTypeIdAndNominalBore(
+      fittingType.id,
+      nominalBore,
+    );
     if (!weight) {
       throw new NotFoundException(
         `Weight data for ${fittingTypeCode} at NB ${nominalBore} not found`,
@@ -124,53 +92,17 @@ export class HdpeService {
     return weight;
   }
 
-  /**
-   * Retrieves the buttweld price for a given nominal bore size.
-   *
-   * Pricing lookup:
-   *   1. Searches for active price record matching the nominal bore
-   *   2. Falls back to default formula if not found: price = 10 + (nominalBore / 10)
-   *
-   * The fallback formula provides reasonable estimates:
-   *   - NB 50mm  → R15
-   *   - NB 100mm → R20
-   *   - NB 200mm → R30
-   *
-   * @param nominalBore - Pipe nominal bore in mm
-   * @returns Price per buttweld in Rands
-   */
   async buttweldPrice(nominalBore: number): Promise<number> {
-    const price = await this.buttweldPriceRepo.findOne({
-      where: { nominalBore, isActive: true },
-    });
+    const price = await this.buttweldPriceRepo.findByNominalBore(nominalBore);
     if (!price) {
-      // Return default price if not found (10 + nb/10)
       return 10 + nominalBore / 10;
     }
     return Number(price.pricePerWeld);
   }
 
-  /**
-   * Retrieves the stub flange price for a given nominal bore size.
-   *
-   * Pricing lookup:
-   *   1. Searches for active price record matching the nominal bore
-   *   2. Falls back to default formula if not found: price = 5 + (nominalBore / 20)
-   *
-   * The fallback formula provides reasonable estimates:
-   *   - NB 50mm  → R7.50
-   *   - NB 100mm → R10
-   *   - NB 200mm → R15
-   *
-   * @param nominalBore - Pipe nominal bore in mm
-   * @returns Price per stub flange in Rands
-   */
   async stubPrice(nominalBore: number): Promise<number> {
-    const price = await this.stubPriceRepo.findOne({
-      where: { nominalBore, isActive: true },
-    });
+    const price = await this.stubPriceRepo.findByNominalBore(nominalBore);
     if (!price) {
-      // Return default price if not found (5 + nb/20)
       return 5 + nominalBore / 20;
     }
     return Number(price.pricePerStub);
@@ -281,23 +213,12 @@ export class HdpeService {
 
   // Available Nominal Bores
   async getAvailableNominalBores(): Promise<number[]> {
-    const pipes = await this.pipeSpecRepo
-      .createQueryBuilder("pipe")
-      .select("DISTINCT pipe.nominalBore", "nb")
-      .where("pipe.isActive = :active", { active: true })
-      .orderBy("pipe.nominalBore", "ASC")
-      .getRawMany();
-
-    return pipes.map((p) => p.nb);
+    return this.pipeSpecRepo.findDistinctNominalBores();
   }
 
   // Available SDRs for a given NB
   async getAvailableSDRs(nominalBore: number): Promise<number[]> {
-    const pipes = await this.pipeSpecRepo.find({
-      where: { nominalBore, isActive: true },
-      order: { sdr: "ASC" },
-    });
-
+    const pipes = await this.pipeSpecRepo.findAllByNominalBore(nominalBore);
     return pipes.map((p) => Number(p.sdr));
   }
 }

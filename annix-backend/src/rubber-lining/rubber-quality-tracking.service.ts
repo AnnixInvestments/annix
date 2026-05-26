@@ -1,7 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
 import { now } from "../lib/datetime";
 import {
@@ -17,13 +15,16 @@ import {
   UpdateQualityConfigDto,
 } from "./dto/rubber-quality.dto";
 import { RubberCompoundBatch } from "./entities/rubber-compound-batch.entity";
-import { RubberCompoundQualityConfig } from "./entities/rubber-compound-quality-config.entity";
 import {
   QualityAlertSeverity,
   QualityAlertType,
   RubberQualityAlert,
 } from "./entities/rubber-quality-alert.entity";
-import { RubberSupplierCoc, SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { SupplierCocType } from "./entities/rubber-supplier-coc.entity";
+import { RubberCompoundBatchRepository } from "./repositories/rubber-compound-batch.repository";
+import { RubberCompoundQualityConfigRepository } from "./repositories/rubber-compound-quality-config.repository";
+import { RubberQualityAlertRepository } from "./repositories/rubber-quality-alert.repository";
+import { RubberSupplierCocRepository } from "./repositories/rubber-supplier-coc.repository";
 
 interface ThresholdDefaults {
   shoreADriftThreshold: number;
@@ -63,14 +64,10 @@ export class RubberQualityTrackingService {
   private readonly logger = new Logger(RubberQualityTrackingService.name);
 
   constructor(
-    @InjectRepository(RubberCompoundBatch)
-    private batchRepository: Repository<RubberCompoundBatch>,
-    @InjectRepository(RubberSupplierCoc)
-    private cocRepository: Repository<RubberSupplierCoc>,
-    @InjectRepository(RubberCompoundQualityConfig)
-    private configRepository: Repository<RubberCompoundQualityConfig>,
-    @InjectRepository(RubberQualityAlert)
-    private alertRepository: Repository<RubberQualityAlert>,
+    private batchRepository: RubberCompoundBatchRepository,
+    private cocRepository: RubberSupplierCocRepository,
+    private configRepository: RubberCompoundQualityConfigRepository,
+    private alertRepository: RubberQualityAlertRepository,
     private emailService: EmailService,
     private configService: ConfigService,
   ) {}
@@ -250,8 +247,8 @@ export class RubberQualityTrackingService {
       return { compoundCode, alertsCreated: 0, alerts: [] };
     }
 
-    const savedAlerts = await this.alertRepository.save(
-      alertsToCreate.map((a) => this.alertRepository.create(a)),
+    const savedAlerts = await this.alertRepository.saveMany(
+      alertsToCreate.map((a) => this.alertRepository.build(a)),
     );
 
     const alertDtos = savedAlerts.map((a) => this.mapAlertToDto(a));
@@ -266,24 +263,17 @@ export class RubberQualityTrackingService {
   }
 
   async activeAlerts(): Promise<QualityAlertDto[]> {
-    const alerts = await this.alertRepository.find({
-      where: { acknowledgedAt: IsNull() },
-      order: { createdAt: "DESC" },
-    });
+    const alerts = await this.alertRepository.findActiveOrdered();
     return alerts.map((a) => this.mapAlertToDto(a));
   }
 
   async alertsForCompound(compoundCode: string): Promise<QualityAlertDto[]> {
-    const alerts = await this.alertRepository.find({
-      where: { compoundCode },
-      order: { createdAt: "DESC" },
-      take: 50,
-    });
+    const alerts = await this.alertRepository.findByCompoundCodeOrdered(compoundCode);
     return alerts.map((a) => this.mapAlertToDto(a));
   }
 
   async acknowledgeAlert(id: number, acknowledgedBy: string): Promise<QualityAlertDto | null> {
-    const alert = await this.alertRepository.findOne({ where: { id } });
+    const alert = await this.alertRepository.findById(id);
     if (!alert) return null;
 
     alert.acknowledgedAt = now().toJSDate();
@@ -294,7 +284,7 @@ export class RubberQualityTrackingService {
   }
 
   async configForCompound(compoundCode: string): Promise<QualityConfigDto> {
-    const config = await this.configRepository.findOne({ where: { compoundCode } });
+    const config = await this.configRepository.findOneByCompoundCode(compoundCode);
 
     if (config) {
       return {
@@ -390,10 +380,10 @@ export class RubberQualityTrackingService {
     dto: UpdateQualityConfigDto,
     updatedBy: string,
   ): Promise<QualityConfigDto> {
-    let config = await this.configRepository.findOne({ where: { compoundCode } });
+    let config = await this.configRepository.findOneByCompoundCode(compoundCode);
 
     if (!config) {
-      config = this.configRepository.create({
+      config = this.configRepository.build({
         compoundCode,
         windowSize: dto.windowSize ?? DEFAULT_WINDOW_SIZE,
         shoreADriftThreshold: dto.shoreADriftThreshold ?? null,
@@ -477,36 +467,15 @@ export class RubberQualityTrackingService {
   }
 
   private async distinctCompoundCodes(): Promise<string[]> {
-    const cocs = await this.cocRepository
-      .createQueryBuilder("coc")
-      .select("DISTINCT coc.compound_code", "compoundCode")
-      .where("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
-      .andWhere("coc.compound_code IS NOT NULL")
-      .getRawMany<{ compoundCode: string }>();
-
-    return cocs.map((c) => c.compoundCode).filter((code) => code && code.trim() !== "");
+    return this.cocRepository.distinctCompoundCodesByCocType(SupplierCocType.COMPOUNDER);
   }
 
   private async completeBatchesForCompound(compoundCode: string): Promise<RubberCompoundBatch[]> {
-    return this.batchRepository
-      .createQueryBuilder("batch")
-      .innerJoin("batch.supplierCoc", "coc")
-      .where("coc.compound_code = :compoundCode", { compoundCode })
-      .andWhere("coc.coc_type = :type", { type: SupplierCocType.COMPOUNDER })
-      .andWhere("batch.shore_a_hardness IS NOT NULL")
-      .andWhere("batch.specific_gravity IS NOT NULL")
-      .andWhere("batch.tensile_strength_mpa IS NOT NULL")
-      .andWhere("batch.elongation_percent IS NOT NULL")
-      .andWhere("batch.tear_strength_kn_m IS NOT NULL")
-      .andWhere("batch.rheometer_tc90 IS NOT NULL")
-      .orderBy("batch.created_at", "DESC")
-      .getMany();
+    return this.batchRepository.completeBatchesForCompound(compoundCode);
   }
 
   private async activeAlertCountForCompound(compoundCode: string): Promise<number> {
-    return this.alertRepository.count({
-      where: { compoundCode, acknowledgedAt: IsNull() },
-    });
+    return this.alertRepository.countActiveByCompoundCode(compoundCode);
   }
 
   private calculateMetricStats(values: (number | null)[]): MetricStats | null {

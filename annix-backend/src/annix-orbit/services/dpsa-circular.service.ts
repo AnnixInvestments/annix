@@ -1,15 +1,14 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
 import { chunk } from "es-toolkit/compat";
-import { In, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { extractTextFromPdf } from "../../lib/document-extraction";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
-import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
 
@@ -62,10 +61,8 @@ export class DpsaCircularService {
   private readonly logger = new Logger(DpsaCircularService.name);
 
   constructor(
-    @InjectRepository(JobMarketSource)
-    private readonly sourceRepo: Repository<JobMarketSource>,
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
+    private readonly sourceRepo: JobMarketSourceRepository,
+    private readonly externalJobRepo: ExternalJobRepository,
     private readonly aiChatService: AiChatService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
@@ -74,9 +71,7 @@ export class DpsaCircularService {
   @Cron("0 7 * * 1", { name: "annix-orbit:dpsa-weekly" })
   async pollDpsa(): Promise<void> {
     if (!isAnnixOrbitCronEnabled()) return;
-    const source = await this.sourceRepo.findOne({
-      where: { provider: JobSourceProvider.DPSA, enabled: true },
-    });
+    const source = await this.sourceRepo.findEnabledByProvider(JobSourceProvider.DPSA);
     if (!source) {
       this.logger.warn("No enabled DPSA source configured — skipping weekly poll");
       return;
@@ -90,47 +85,36 @@ export class DpsaCircularService {
     }
   }
 
-  async ingestLatestCircular(
-    source: JobMarketSource,
-  ): Promise<{ ingested: number; savedIds: number[] }> {
+  async ingestLatestCircular(source: JobMarketSource): Promise<{ ingested: number }> {
     const pdfUrl = await this.discoverLatestCircularUrl();
     if (!pdfUrl) {
       this.logger.warn("Could not discover latest PSVC PDF URL");
-      return { ingested: 0, savedIds: [] };
+      return { ingested: 0 };
     }
     return this.ingestFromUrl(source, pdfUrl);
   }
 
-  async ingestFromUrl(
-    source: JobMarketSource,
-    pdfUrl: string,
-  ): Promise<{ ingested: number; savedIds: number[] }> {
+  async ingestFromUrl(source: JobMarketSource, pdfUrl: string): Promise<{ ingested: number }> {
     this.logger.log(`Fetching DPSA PSVC from ${pdfUrl}`);
     const buffer = await this.downloadPdf(pdfUrl);
     const text = await extractTextFromPdf(buffer);
     if (!text || text.length < 200) {
       this.logger.warn(`PSVC PDF text too short (${text.length} chars) — likely scan/OCR needed`);
-      return { ingested: 0, savedIds: [] };
+      return { ingested: 0 };
     }
 
     const vacancies = await this.extractVacancies(text, pdfUrl);
     if (vacancies.length === 0) {
       this.logger.warn("AI returned 0 vacancies from PSVC — prompt may need tuning");
-      return { ingested: 0, savedIds: [] };
+      return { ingested: 0 };
     }
 
     const externalIds = vacancies.map((v) => buildPostExternalId(pdfUrl, v.postNumber));
-    const existing = await this.externalJobRepo.find({
-      where: { sourceExternalId: In(externalIds), sourceId: source.id },
-      select: ["sourceExternalId"],
-    });
+    const existing = await this.externalJobRepo.findByExternalIds(externalIds, source.id);
     const existingIds = new Set(existing.map((e) => e.sourceExternalId));
 
     const seenAt = now().toJSDate();
-    await this.externalJobRepo.update(
-      { sourceId: source.id, sourceExternalId: In(externalIds) },
-      { lastSeenAt: seenAt },
-    );
+    await this.externalJobRepo.stampLastSeenByExternalIds(source.id, externalIds, seenAt);
 
     const fresh = vacancies.filter(
       (v) => !existingIds.has(buildPostExternalId(pdfUrl, v.postNumber)),
@@ -138,30 +122,25 @@ export class DpsaCircularService {
 
     const saved = await Promise.all(
       fresh.map((v) =>
-        this.externalJobRepo.save(
-          this.externalJobRepo.create({
-            title: truncate(v.title, 500),
-            company: truncate(
-              v.department ?? "Department of Public Service and Administration",
-              500,
-            ),
-            country: "za",
-            locationRaw: truncate(v.centre, 500),
-            locationArea: truncate(v.centre, 255),
-            salaryMin: null,
-            salaryMax: null,
-            salaryCurrency: "ZAR",
-            description: buildDescription(v),
-            extractedSkills: [],
-            category: "public-service",
-            sourceExternalId: buildPostExternalId(pdfUrl, v.postNumber),
-            sourceUrl: pdfUrl,
-            postedAt: null,
-            expiresAt: null,
-            lastSeenAt: seenAt,
-            sourceId: source.id,
-          }),
-        ),
+        this.externalJobRepo.create({
+          title: truncate(v.title, 500),
+          company: truncate(v.department ?? "Department of Public Service and Administration", 500),
+          country: "za",
+          locationRaw: truncate(v.centre, 500),
+          locationArea: truncate(v.centre, 255),
+          salaryMin: null,
+          salaryMax: null,
+          salaryCurrency: "ZAR",
+          description: buildDescription(v),
+          extractedSkills: [],
+          category: "public-service",
+          sourceExternalId: buildPostExternalId(pdfUrl, v.postNumber),
+          sourceUrl: pdfUrl,
+          postedAt: null,
+          expiresAt: null,
+          lastSeenAt: seenAt,
+          sourceId: source.id,
+        }),
       ),
     );
 
@@ -180,7 +159,7 @@ export class DpsaCircularService {
     });
 
     this.logger.log(`DPSA ingestion: ${saved.length} new posts from ${pdfUrl}`);
-    return { ingested: saved.length, savedIds: saved.map((job) => job.id) };
+    return { ingested: saved.length };
   }
 
   private async discoverLatestCircularUrl(): Promise<string | null> {
@@ -189,11 +168,6 @@ export class DpsaCircularService {
       if (!indexResponse.ok) return null;
       const indexHtml = await indexResponse.text();
 
-      // The index links the weekly vacancy circulars as subpages
-      // (/newsroom/psvc/circular-NN-of-YYYY/). Each subpage holds the combined
-      // "PSV CIRCULAR NN of YYYY.pdf" plus per-section splits (a.pdf … w.pdf).
-      // NOTE: do not match bare "Circular N of YYYY.pdf" on the index — those are
-      // Employment Management circulars (admin memos), not vacancy circulars.
       const circularPageHref = findLatestCircularPageHref(indexHtml);
       if (!circularPageHref) {
         this.logger.warn("PSVC discovery: no circular subpage link on index");
@@ -268,7 +242,6 @@ export class DpsaCircularService {
       );
     }
 
-    // De-dup by postNumber in case a vacancy straddled a chunk boundary.
     const seen = new Set<string>();
     return all.filter((v) => {
       if (!v?.postNumber || !v?.title) return false;
@@ -287,8 +260,6 @@ export class DpsaCircularService {
         maxOutputTokens: DPSA_CHUNK_MAX_OUTPUT_TOKENS,
         temperature: 0.1,
         responseFormat: "json",
-        // Disable reasoning so the full budget goes to JSON — gemini-2.5-flash
-        // otherwise spends tokens thinking and truncates large chunks mid-array.
         thinkingBudget: 0,
       },
     );
@@ -301,9 +272,6 @@ export class DpsaCircularService {
   }
 }
 
-// Split PSVC text into chunks of N vacancies, each chunk starting at a
-// "POST NN/NN :" boundary. Any preamble before the first POST marker is
-// dropped (cover page / instructions, no vacancies).
 function splitByVacancyBoundary(text: string, vacanciesPerChunk: number): string[] {
   const segments = text
     .split(/(?=POST\s+\d+\/\d+\s*:)/i)
@@ -328,9 +296,6 @@ function findLatestCircularPageHref(html: string): string | null {
   return ranked[0]?.href ?? null;
 }
 
-// A circular subpage holds the combined "PSV CIRCULAR NN of YYYY.pdf" plus
-// per-section splits (a.pdf … w.pdf). Prefer the combined file; never pick a
-// single-letter split or a non-vacancy doc.
 function findCombinedCircularPdfHref(html: string): string | null {
   const pdfs = [...html.matchAll(/href=['"]([^'"]+\.pdf)['"]/gi)].map((m) => m[1]);
   if (pdfs.length === 0) return null;

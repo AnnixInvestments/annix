@@ -1,8 +1,7 @@
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { CreatePumpProductDto } from "./dto/create-pump-product.dto";
-import { PumpProduct, PumpProductCategory } from "./entities/pump-product.entity";
+import { PumpProductCategory } from "./entities/pump-product.entity";
+import { PumpProductRepository } from "./pump-product.repository";
 
 export interface PumpProductImportRow {
   sku: string;
@@ -57,10 +56,7 @@ export interface ManufacturerCatalog {
 export class PumpDataImportService {
   private readonly logger = new Logger(PumpDataImportService.name);
 
-  constructor(
-    @InjectRepository(PumpProduct)
-    private readonly productRepository: Repository<PumpProduct>,
-  ) {}
+  constructor(private readonly productRepository: PumpProductRepository) {}
 
   async importFromCsv(
     csvData: string,
@@ -97,9 +93,7 @@ export class PumpDataImportService {
 
       try {
         const dto = this.mapRowToDto(row, supplierId);
-        const existing = await this.productRepository.findOne({
-          where: { sku: dto.sku },
-        });
+        const existing = await this.productRepository.findBySku(dto.sku);
 
         if (existing) {
           if (updateExisting) {
@@ -112,8 +106,7 @@ export class PumpDataImportService {
             this.logger.debug(`Skipped existing product: ${dto.sku}`);
           }
         } else {
-          const entity = this.productRepository.create(dto);
-          await this.productRepository.save(entity);
+          await this.productRepository.create(dto);
           result.imported++;
           this.logger.debug(`Imported product: ${dto.sku}`);
         }
@@ -157,9 +150,7 @@ export class PumpDataImportService {
       }
 
       try {
-        const existing = await this.productRepository.findOne({
-          where: { sku: dto.sku },
-        });
+        const existing = await this.productRepository.findBySku(dto.sku);
 
         if (existing) {
           if (updateExisting) {
@@ -170,8 +161,7 @@ export class PumpDataImportService {
             result.skipped++;
           }
         } else {
-          const entity = this.productRepository.create(dto);
-          await this.productRepository.save(entity);
+          await this.productRepository.create(dto);
           result.imported++;
         }
       } catch (error) {

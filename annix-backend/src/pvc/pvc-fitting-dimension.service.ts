@@ -1,10 +1,9 @@
 import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { type FindOptionsWhere, Repository } from "typeorm";
 import {
   PvcFittingDimension,
   type PvcFittingDimensionType,
 } from "./entities/pvc-fitting-dimension.entity";
+import { PvcFittingDimensionRepository } from "./pvc-fitting-dimension.repository";
 
 export interface PvcFittingDimensionLookupCriteria {
   fittingType: PvcFittingDimensionType;
@@ -14,37 +13,21 @@ export interface PvcFittingDimensionLookupCriteria {
 
 @Injectable()
 export class PvcFittingDimensionService {
-  constructor(
-    @InjectRepository(PvcFittingDimension)
-    private readonly repository: Repository<PvcFittingDimension>,
-  ) {}
+  constructor(private readonly repository: PvcFittingDimensionRepository) {}
 
-  async findByCriteria(
-    criteria: PvcFittingDimensionLookupCriteria,
-  ): Promise<PvcFittingDimension | null> {
-    const where: FindOptionsWhere<PvcFittingDimension> = {
-      fittingType: criteria.fittingType,
-      mainDnMm: criteria.mainDnMm,
-    };
-    // Reducer / reducing-tee / saddle rows are keyed by
-    // (mainDn, branchDn). Symmetric fitting rows (elbow / equal-tee
-    // / end-cap / coupling / flange-adapter) store branchDn as NULL
-    // — match accordingly so the unique constraint resolves the
-    // right row.
-    where.branchDnMm = criteria.branchDnMm ?? (null as unknown as number);
-    return this.repository.findOne({ where });
+  findByCriteria(criteria: PvcFittingDimensionLookupCriteria): Promise<PvcFittingDimension | null> {
+    return this.repository.findByCriteria(
+      criteria.fittingType,
+      criteria.mainDnMm,
+      criteria.branchDnMm ?? null,
+    );
   }
 
-  async findAll(): Promise<PvcFittingDimension[]> {
-    return this.repository.find({
-      order: { fittingType: "ASC", mainDnMm: "ASC", branchDnMm: "ASC" },
-    });
+  findAll(): Promise<PvcFittingDimension[]> {
+    return this.repository.findAllOrderedByTypeAndSize();
   }
 
-  async findByType(fittingType: PvcFittingDimensionType): Promise<PvcFittingDimension[]> {
-    return this.repository.find({
-      where: { fittingType },
-      order: { mainDnMm: "ASC", branchDnMm: "ASC" },
-    });
+  findByType(fittingType: PvcFittingDimensionType): Promise<PvcFittingDimension[]> {
+    return this.repository.findByType(fittingType);
   }
 }

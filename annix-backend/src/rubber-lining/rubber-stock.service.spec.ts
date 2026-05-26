@@ -1,13 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { now } from "../lib/datetime";
-import { RubberCompoundMovement } from "./entities/rubber-compound-movement.entity";
-import { RubberCompoundOrder } from "./entities/rubber-compound-order.entity";
-import { RubberCompoundStock } from "./entities/rubber-compound-stock.entity";
-import { RubberProduct } from "./entities/rubber-product.entity";
-import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
-import { RubberProduction } from "./entities/rubber-production.entity";
-import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
+import { RubberCompoundMovementRepository } from "./repositories/rubber-compound-movement.repository";
+import { RubberCompoundOrderRepository } from "./repositories/rubber-compound-order.repository";
+import { RubberCompoundStockRepository } from "./repositories/rubber-compound-stock.repository";
+import { RubberProductRepository } from "./repositories/rubber-product.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
+import { RubberProductionRepository } from "./repositories/rubber-production.repository";
+import { RubberStockLocationRepository } from "./repositories/rubber-stock-location.repository";
 import { RubberStockService } from "./rubber-stock.service";
 
 describe("RubberStockService", () => {
@@ -16,9 +15,15 @@ describe("RubberStockService", () => {
   const mockRepo = () => ({
     find: jest.fn(),
     findOne: jest.fn(),
+    findById: jest.fn(),
+    findAll: jest.fn(),
+    findOneWhere: jest.fn(),
+    findManyWhere: jest.fn(),
     save: jest.fn(),
     create: jest.fn((data: unknown) => data),
+    build: jest.fn((data: unknown) => data),
     delete: jest.fn(),
+    remove: jest.fn(),
     count: jest.fn(),
     createQueryBuilder: jest.fn(),
   });
@@ -27,13 +32,13 @@ describe("RubberStockService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberStockService,
-        { provide: getRepositoryToken(RubberCompoundStock), useValue: mockRepo() },
-        { provide: getRepositoryToken(RubberCompoundMovement), useValue: mockRepo() },
-        { provide: getRepositoryToken(RubberProduction), useValue: mockRepo() },
-        { provide: getRepositoryToken(RubberCompoundOrder), useValue: mockRepo() },
-        { provide: getRepositoryToken(RubberProductCoding), useValue: mockRepo() },
-        { provide: getRepositoryToken(RubberProduct), useValue: mockRepo() },
-        { provide: getRepositoryToken(RubberStockLocation), useValue: mockRepo() },
+        { provide: RubberCompoundStockRepository, useValue: mockRepo() },
+        { provide: RubberCompoundMovementRepository, useValue: mockRepo() },
+        { provide: RubberProductionRepository, useValue: mockRepo() },
+        { provide: RubberCompoundOrderRepository, useValue: mockRepo() },
+        { provide: RubberProductCodingRepository, useValue: mockRepo() },
+        { provide: RubberProductRepository, useValue: mockRepo() },
+        { provide: RubberStockLocationRepository, useValue: mockRepo() },
       ],
     }).compile();
 

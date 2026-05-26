@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { RubberStockLocation } from "./entities/rubber-stock-location.entity";
+import { RubberStockLocationRepository } from "./repositories/rubber-stock-location.repository";
 
 export interface StockLocationDto {
   id: number;
@@ -15,27 +14,15 @@ export interface StockLocationDto {
 
 @Injectable()
 export class RubberStockLocationService {
-  constructor(
-    @InjectRepository(RubberStockLocation)
-    private readonly locationRepo: Repository<RubberStockLocation>,
-  ) {}
+  constructor(private readonly locationRepo: RubberStockLocationRepository) {}
 
   async allLocations(includeInactive = false): Promise<StockLocationDto[]> {
-    const queryBuilder = this.locationRepo
-      .createQueryBuilder("location")
-      .orderBy("location.displayOrder", "ASC")
-      .addOrderBy("location.name", "ASC");
-
-    if (!includeInactive) {
-      queryBuilder.andWhere("location.active = :active", { active: true });
-    }
-
-    const locations = await queryBuilder.getMany();
+    const locations = await this.locationRepo.findAllOrdered(includeInactive);
     return locations.map((loc) => this.toDto(loc));
   }
 
   async locationById(id: number): Promise<StockLocationDto> {
-    const location = await this.locationRepo.findOne({ where: { id } });
+    const location = await this.locationRepo.findById(id);
 
     if (!location) {
       throw new NotFoundException(`Location ${id} not found`);
@@ -49,7 +36,7 @@ export class RubberStockLocationService {
     description?: string;
     displayOrder?: number;
   }): Promise<StockLocationDto> {
-    const location = this.locationRepo.create({
+    const location = this.locationRepo.build({
       name: data.name,
       description: data.description || null,
       displayOrder: data.displayOrder ?? 0,
@@ -69,7 +56,7 @@ export class RubberStockLocationService {
       active?: boolean;
     },
   ): Promise<StockLocationDto> {
-    const location = await this.locationRepo.findOne({ where: { id } });
+    const location = await this.locationRepo.findById(id);
 
     if (!location) {
       throw new NotFoundException(`Location ${id} not found`);
@@ -85,7 +72,7 @@ export class RubberStockLocationService {
   }
 
   async deleteLocation(id: number): Promise<void> {
-    const location = await this.locationRepo.findOne({ where: { id } });
+    const location = await this.locationRepo.findById(id);
 
     if (!location) {
       throw new NotFoundException(`Location ${id} not found`);

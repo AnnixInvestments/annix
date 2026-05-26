@@ -1,15 +1,17 @@
 import { DEFAULT_MATCH_TIER, isMatchTier, type MatchTier } from "@annix/product-data/sa-market";
 import { BadRequestException, Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { isNumber } from "es-toolkit/compat";
-import { MoreThanOrEqual, Repository } from "typeorm";
-import { DateTime, nowMillis } from "../../lib/datetime";
+import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
-import { SeekerApplyClick } from "../entities/seeker-apply-click.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
+import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
+import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
+import { SeekerMuteRepository } from "../repositories/seeker-mute.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
@@ -63,18 +65,12 @@ export class SeekerJobFeedService {
   private readonly lastRematchByCandidate = new Map<number, number>();
 
   constructor(
-    @InjectRepository(Candidate)
-    private readonly candidateRepo: Repository<Candidate>,
-    @InjectRepository(JobMarketSource)
-    private readonly sourceRepo: Repository<JobMarketSource>,
-    @InjectRepository(CandidateJobMatch)
-    private readonly matchRepo: Repository<CandidateJobMatch>,
-    @InjectRepository(SeekerApplyClick)
-    private readonly applyClickRepo: Repository<SeekerApplyClick>,
-    @InjectRepository(ExternalJob)
-    private readonly externalJobRepo: Repository<ExternalJob>,
-    @InjectRepository(SeekerMute)
-    private readonly muteRepo: Repository<SeekerMute>,
+    private readonly candidateRepo: CandidateRepository,
+    private readonly sourceRepo: JobMarketSourceRepository,
+    private readonly matchRepo: CandidateJobMatchRepository,
+    private readonly applyClickRepo: SeekerApplyClickRepository,
+    private readonly externalJobRepo: ExternalJobRepository,
+    private readonly muteRepo: SeekerMuteRepository,
     private readonly matchingService: CandidateJobMatchingService,
   ) {}
 
@@ -91,21 +87,15 @@ export class SeekerJobFeedService {
       return { created: false, mute: null };
     }
     const target = candidates[0];
-    const existing = await this.muteRepo
-      .createQueryBuilder("mute")
-      .where("mute.candidate_id = :candidateId", { candidateId: target.id })
-      .andWhere("LOWER(mute.company_name) = LOWER(:company)", { company: trimmed })
-      .getOne();
+    const existing = await this.muteRepo.findByCandidateAndCompany(target.id, trimmed);
     if (existing) {
       return { created: false, mute: existing };
     }
-    const created = await this.muteRepo.save(
-      this.muteRepo.create({
-        candidateId: target.id,
-        companyName: trimmed,
-        category: null,
-      }),
-    );
+    const created = await this.muteRepo.create({
+      candidateId: target.id,
+      companyName: trimmed,
+      category: null,
+    });
     return { created: true, mute: created };
   }
 
@@ -122,21 +112,15 @@ export class SeekerJobFeedService {
       return { created: false, mute: null };
     }
     const target = candidates[0];
-    const existing = await this.muteRepo
-      .createQueryBuilder("mute")
-      .where("mute.candidate_id = :candidateId", { candidateId: target.id })
-      .andWhere("LOWER(mute.category) = LOWER(:category)", { category: trimmed })
-      .getOne();
+    const existing = await this.muteRepo.findByCandidateAndCategory(target.id, trimmed);
     if (existing) {
       return { created: false, mute: existing };
     }
-    const created = await this.muteRepo.save(
-      this.muteRepo.create({
-        candidateId: target.id,
-        companyName: null,
-        category: trimmed,
-      }),
-    );
+    const created = await this.muteRepo.create({
+      candidateId: target.id,
+      companyName: null,
+      category: trimmed,
+    });
     return { created: true, mute: created };
   }
 
@@ -146,22 +130,18 @@ export class SeekerJobFeedService {
       return [];
     }
     const candidateIds = candidates.map((c) => c.id);
-    return this.muteRepo
-      .createQueryBuilder("mute")
-      .where("mute.candidate_id IN (:...ids)", { ids: candidateIds })
-      .orderBy("mute.muted_at", "DESC")
-      .getMany();
+    return this.muteRepo.listForCandidates(candidateIds);
   }
 
   async revokeMuteForSeeker(email: string | null, muteId: number): Promise<boolean> {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) return false;
     const candidateIds = new Set(candidates.map((c) => c.id));
-    const found = await this.muteRepo.findOne({ where: { id: muteId } });
+    const found = await this.muteRepo.findById(muteId);
     if (!found || !candidateIds.has(found.candidateId)) {
       return false;
     }
-    await this.muteRepo.delete(found.id);
+    await this.muteRepo.deleteById(found.id);
     return true;
   }
 
@@ -171,10 +151,7 @@ export class SeekerJobFeedService {
     selector: (item: T) => { company: string | null; category: string | null },
   ): Promise<T[]> {
     if (items.length === 0 || candidateIds.length === 0) return items;
-    const mutes = await this.muteRepo
-      .createQueryBuilder("mute")
-      .where("mute.candidate_id IN (:...ids)", { ids: candidateIds })
-      .getMany();
+    const mutes = await this.muteRepo.listForCandidates(candidateIds);
     if (mutes.length === 0) return items;
 
     const mutedCompanies = new Set<string>();
@@ -197,50 +174,7 @@ export class SeekerJobFeedService {
 
   async candidatesForSeeker(email: string | null): Promise<Candidate[]> {
     if (!email) return [];
-    return this.candidateRepo.find({ where: { email } });
-  }
-
-  async matchTierForSeeker(email: string | null): Promise<{
-    hasCandidate: boolean;
-    matchTier: MatchTier;
-    targetCategories: string[];
-    candidateIds: number[];
-  }> {
-    const candidates = await this.candidatesForSeeker(email);
-    if (candidates.length === 0) {
-      return {
-        hasCandidate: false,
-        matchTier: DEFAULT_MATCH_TIER,
-        targetCategories: [],
-        candidateIds: [],
-      };
-    }
-    const primary = candidates[0];
-    const matchTier = isMatchTier(primary.matchTier) ? primary.matchTier : DEFAULT_MATCH_TIER;
-    return {
-      hasCandidate: true,
-      matchTier,
-      targetCategories: primary.targetCategories ?? [],
-      candidateIds: candidates.map((c) => c.id),
-    };
-  }
-
-  async setMatchTierForSeeker(
-    email: string | null,
-    tier: string,
-  ): Promise<{ candidatesAffected: number; matchTier: MatchTier }> {
-    if (!isMatchTier(tier)) {
-      throw new BadRequestException(`Invalid match tier: ${tier}`);
-    }
-    const candidates = await this.candidatesForSeeker(email);
-    if (candidates.length === 0) {
-      return { candidatesAffected: 0, matchTier: tier };
-    }
-    await Promise.all(
-      candidates.map((candidate) => this.candidateRepo.update(candidate.id, { matchTier: tier })),
-    );
-    this.logger.log(`Set match tier "${tier}" for ${candidates.length} candidate(s) of ${email}`);
-    return { candidatesAffected: candidates.length, matchTier: tier };
+    return this.candidateRepo.findByEmail(email);
   }
 
   async listSeekers(params: {
@@ -251,19 +185,11 @@ export class SeekerJobFeedService {
     const page = params.page && params.page > 0 ? params.page : 1;
     const limit = params.limit && params.limit > 0 ? params.limit : 20;
     const search = params.search ? params.search.trim() : "";
-    const query = this.candidateRepo
-      .createQueryBuilder("candidate")
-      .where("candidate.isTestFixture = :fixture", { fixture: false });
-    if (search) {
-      query.andWhere("(candidate.email ILIKE :term OR candidate.name ILIKE :term)", {
-        term: `%${search}%`,
-      });
-    }
-    const [rows, total] = await query
-      .orderBy("candidate.createdAt", "DESC")
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
+    const [rows, total] = await this.candidateRepo.listNonFixture({
+      search: search || null,
+      skip: (page - 1) * limit,
+      limit,
+    });
     const seekers = rows.map((row) => ({
       id: row.id,
       name: row.name,
@@ -306,12 +232,7 @@ export class SeekerJobFeedService {
     }
     const candidateIds = candidates.map((c) => c.id);
     const consentedAt = DateTime.now().toJSDate();
-    await this.candidateRepo
-      .createQueryBuilder()
-      .update()
-      .set({ popiaConsent: true, popiaConsentedAt: consentedAt, jobAlertsOptIn: true })
-      .where("id IN (:...ids)", { ids: candidateIds })
-      .execute();
+    await this.candidateRepo.grantMatchingConsent(candidateIds, consentedAt);
     return { candidatesAffected: candidateIds.length };
   }
 
@@ -348,7 +269,9 @@ export class SeekerJobFeedService {
 
     const sourceIds = [
       ...new Set(
-        flat.map((m) => m.externalJob?.sourceId).filter((id): id is number => isNumber(id)),
+        flat
+          .map((m) => m.externalJob?.sourceId)
+          .filter((id): id is number => typeof id === "number"),
       ),
     ];
     const sources = sourceIds.length > 0 ? await this.sourceRepo.findByIds(sourceIds) : [];
@@ -439,24 +362,15 @@ export class SeekerJobFeedService {
     }
     const candidateIds = candidates.map((c) => c.id);
 
-    const deleteResult = await this.matchRepo
-      .createQueryBuilder()
-      .delete()
-      .where("candidate_id IN (:...ids)", { ids: candidateIds })
-      .execute();
+    const matchesCleared = await this.matchRepo.deleteForCandidates(candidateIds);
 
-    await this.candidateRepo
-      .createQueryBuilder()
-      .update()
-      .set({ embedding: null, jobAlertsOptIn: false })
-      .where("id IN (:...ids)", { ids: candidateIds })
-      .execute();
+    await this.candidateRepo.withdrawMatching(candidateIds);
 
     candidateIds.forEach((id) => this.lastRematchByCandidate.delete(id));
 
     return {
       candidatesAffected: candidateIds.length,
-      matchesCleared: deleteResult.affected ?? 0,
+      matchesCleared,
     };
   }
 
@@ -469,19 +383,13 @@ export class SeekerJobFeedService {
     }
     const candidateIds = candidates.map((c) => c.id);
 
-    const totalQb = this.matchRepo
-      .createQueryBuilder("match")
-      .where("match.candidate_id IN (:...ids)", { ids: candidateIds })
-      .andWhere("match.dismissed = false");
-    const totalMatches = await totalQb.getCount();
+    const totalMatches = await this.matchRepo.countActiveForCandidates(candidateIds);
 
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
-    const recentQb = this.matchRepo
-      .createQueryBuilder("match")
-      .where("match.candidate_id IN (:...ids)", { ids: candidateIds })
-      .andWhere("match.dismissed = false")
-      .andWhere("match.created_at >= :sevenDaysAgo", { sevenDaysAgo });
-    const matchesLast7Days = await recentQb.getCount();
+    const matchesLast7Days = await this.matchRepo.countActiveForCandidatesSince(
+      candidateIds,
+      sevenDaysAgo,
+    );
 
     return { hasCandidate: true, totalMatches, matchesLast7Days };
   }
@@ -491,7 +399,7 @@ export class SeekerJobFeedService {
     if (candidates.length === 0) return false;
     const candidateIds = new Set(candidates.map((c) => c.id));
 
-    const found = await this.matchRepo.findOne({ where: { id: matchId } });
+    const found = await this.matchRepo.findById(matchId);
     if (!found || !candidateIds.has(found.candidateId)) {
       return false;
     }
@@ -539,32 +447,10 @@ export class SeekerJobFeedService {
       }
     }
 
-    const qb = this.externalJobRepo
-      .createQueryBuilder("job")
-      .where("job.country = :country", { country: "za" });
-
-    if (locationTokens.size > 0) {
-      const locations = [...locationTokens];
-      const conditions = locations
-        .map((_, idx) => `LOWER(COALESCE(job.location_raw, '')) LIKE :loc${idx}`)
-        .join(" OR ");
-      const params = locations.reduce<Record<string, string>>(
-        (acc, loc, idx) => Object.assign(acc, { [`loc${idx}`]: `%${loc}%` }),
-        {},
-      );
-      qb.andWhere(`(${conditions})`, params);
-    }
-
-    qb.orderBy("job.postedAt", "DESC", "NULLS LAST").take(MAX_COLD_START * 2);
-    let jobs = await qb.getMany();
+    let jobs = await this.externalJobRepo.coldStartJobs([...locationTokens], MAX_COLD_START * 2);
 
     if (jobs.length === 0 && locationTokens.size > 0) {
-      const fallback = await this.externalJobRepo
-        .createQueryBuilder("job")
-        .where("job.country = :country", { country: "za" })
-        .orderBy("job.postedAt", "DESC", "NULLS LAST")
-        .take(MAX_COLD_START * 2)
-        .getMany();
+      const fallback = await this.externalJobRepo.coldStartFallbackJobs(MAX_COLD_START * 2);
       jobs.push(...fallback);
     }
 
@@ -604,7 +490,7 @@ export class SeekerJobFeedService {
 
     let candidateId: number | null = null;
     if (input.matchId !== null) {
-      const match = await this.matchRepo.findOne({ where: { id: input.matchId } });
+      const match = await this.matchRepo.findById(input.matchId);
       if (!match || !candidateIds.has(match.candidateId)) {
         return { recorded: false, clickId: null };
       }
@@ -614,27 +500,67 @@ export class SeekerJobFeedService {
     }
 
     if (input.externalJobId !== null && candidateId !== null) {
-      const cutoff = DateTime.fromMillis(nowMillis() - APPLY_CLICK_DEDUP_MS).toJSDate();
-      const existing = await this.applyClickRepo.findOne({
-        where: {
-          candidateId,
-          externalJobId: input.externalJobId,
-          clickedAt: MoreThanOrEqual(cutoff),
-        },
-      });
+      const cutoff = fromJSDate(new Date(nowMillis() - APPLY_CLICK_DEDUP_MS)).toJSDate();
+      const existing = await this.applyClickRepo.findRecentClick(
+        candidateId,
+        input.externalJobId,
+        cutoff,
+      );
       if (existing) {
         return { recorded: false, clickId: existing.id };
       }
     }
 
-    const click = this.applyClickRepo.create({
+    const saved = await this.applyClickRepo.create({
       candidateId,
       externalJobId: input.externalJobId,
       matchId: input.matchId,
       sourceUrl: input.sourceUrl,
     });
-    const saved = await this.applyClickRepo.save(click);
     return { recorded: true, clickId: saved.id };
+  }
+
+  async matchTierForSeeker(email: string | null): Promise<{
+    hasCandidate: boolean;
+    matchTier: MatchTier;
+    targetCategories: string[];
+    candidateIds: number[];
+  }> {
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return {
+        hasCandidate: false,
+        matchTier: DEFAULT_MATCH_TIER,
+        targetCategories: [],
+        candidateIds: [],
+      };
+    }
+    const primary = candidates[0];
+    const matchTier = isMatchTier(primary.matchTier) ? primary.matchTier : DEFAULT_MATCH_TIER;
+    return {
+      hasCandidate: true,
+      matchTier,
+      targetCategories: primary.targetCategories ?? [],
+      candidateIds: candidates.map((c) => c.id),
+    };
+  }
+
+  async setMatchTierForSeeker(
+    email: string | null,
+    tier: string,
+  ): Promise<{ candidatesAffected: number; matchTier: MatchTier }> {
+    if (!isMatchTier(tier)) {
+      throw new BadRequestException(`Invalid match tier: ${tier}`);
+    }
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { candidatesAffected: 0, matchTier: tier };
+    }
+    await Promise.all(
+      candidates.map((candidate) => this.candidateRepo.updateMatchTier(candidate.id, tier)),
+    );
+    this.logger.log(`Set match tier "${tier}" for ${candidates.length} candidate(s) of ${email}`);
+    return { candidatesAffected: candidates.length, matchTier: tier };
   }
 }
 

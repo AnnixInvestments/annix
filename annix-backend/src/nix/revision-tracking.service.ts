@@ -1,7 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, Repository } from "typeorm";
-import { ExtractionStatus, NixExtraction } from "./entities/nix-extraction.entity";
+import { NixExtraction } from "./entities/nix-extraction.entity";
+import { NixExtractionRepository } from "./nix-extraction.repository";
 
 export type RevisionComparison = "older" | "newer" | "same" | "unknown";
 
@@ -55,10 +54,7 @@ export type SupersessionVerdict =
 export class RevisionTrackingService {
   private readonly logger = new Logger(RevisionTrackingService.name);
 
-  constructor(
-    @InjectRepository(NixExtraction)
-    private readonly extractionRepo: Repository<NixExtraction>,
-  ) {}
+  constructor(private readonly extractionRepo: NixExtractionRepository) {}
 
   /**
    * Compares two revision strings semantically. Handles:
@@ -111,19 +107,11 @@ export class RevisionTrackingService {
       return { action: "first" };
     }
 
-    const where: Record<string, unknown> = {
+    const candidates = await this.extractionRepo.findRevisionCandidates({
       documentNumber: extraction.documentNumber,
-      isLatestRevision: true,
-      status: ExtractionStatus.COMPLETED,
-    };
-    if (extraction.mineId && extraction.mineCountry) {
-      where.mineId = extraction.mineId;
-      where.mineCountry = extraction.mineCountry;
-    } else {
-      where.mineId = IsNull();
-    }
-
-    const candidates = await this.extractionRepo.find({ where });
+      mineId: extraction.mineId ?? null,
+      mineCountry: extraction.mineCountry ?? null,
+    });
     const others = candidates.filter((c) => c.id !== extraction.id);
 
     if (others.length === 0) {
@@ -155,10 +143,7 @@ export class RevisionTrackingService {
 
     if (bestComparison === "newer") {
       for (const other of others) {
-        await this.extractionRepo.update(
-          { id: other.id },
-          { isLatestRevision: false, supersededByExtractionId: extraction.id },
-        );
+        await this.extractionRepo.markSuperseded(other.id, false, extraction.id);
       }
       this.logger.log(
         `Revision tracking #${extraction.id}: new rev '${incomingRev}' supersedes ${others.length} older row(s) for doc '${extraction.documentNumber}'`,
@@ -182,10 +167,7 @@ export class RevisionTrackingService {
     }
 
     if (bestComparison === "older") {
-      await this.extractionRepo.update(
-        { id: extraction.id },
-        { isLatestRevision: false, supersededByExtractionId: bestOther.id },
-      );
+      await this.extractionRepo.markSuperseded(extraction.id, false, bestOther.id);
       this.logger.log(
         `Revision tracking #${extraction.id}: rev '${incomingRev}' is older than canonical rev '${bestOther.documentRevision}' (#${bestOther.id}) — flagged for user review`,
       );
@@ -196,7 +178,7 @@ export class RevisionTrackingService {
       };
     }
 
-    await this.extractionRepo.update({ id: extraction.id }, { isLatestRevision: false });
+    await this.extractionRepo.markSuperseded(extraction.id, false, null);
     this.logger.log(
       `Revision tracking #${extraction.id}: cannot order rev '${incomingRev}' vs canonical rev '${bestOther.documentRevision}' (#${bestOther.id}) — surfacing for user`,
     );

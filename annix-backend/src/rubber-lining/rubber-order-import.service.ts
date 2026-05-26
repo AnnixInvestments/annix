@@ -1,6 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { DocumentAnnotationService } from "../nix/services/document-annotation.service";
 import type {
@@ -14,7 +12,9 @@ import type {
 import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
 import { RubberOrderStatus } from "./entities/rubber-order.entity";
 import { RubberOrderImportCorrection } from "./entities/rubber-order-import-correction.entity";
-import { RubberProduct } from "./entities/rubber-product.entity";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberOrderImportCorrectionRepository } from "./repositories/rubber-order-import-correction.repository";
+import { RubberProductRepository } from "./repositories/rubber-product.repository";
 import { RubberLiningService } from "./rubber-lining.service";
 import { RubberPoTemplateService } from "./rubber-po-template.service";
 
@@ -30,12 +30,9 @@ export class RubberOrderImportService {
   private readonly logger = new Logger(RubberOrderImportService.name);
 
   constructor(
-    @InjectRepository(RubberCompany)
-    private companyRepository: Repository<RubberCompany>,
-    @InjectRepository(RubberProduct)
-    private productRepository: Repository<RubberProduct>,
-    @InjectRepository(RubberOrderImportCorrection)
-    private correctionRepository: Repository<RubberOrderImportCorrection>,
+    private companyRepository: RubberCompanyRepository,
+    private productRepository: RubberProductRepository,
+    private correctionRepository: RubberOrderImportCorrectionRepository,
     private aiChatService: AiChatService,
     private rubberLiningService: RubberLiningService,
     private templateService: RubberPoTemplateService,
@@ -159,7 +156,7 @@ export class RubberOrderImportService {
 
       if (quickCompanyId) {
         result.companyId = quickCompanyId;
-        const company = await this.companyRepository.findOneBy({ id: quickCompanyId });
+        const company = await this.companyRepository.findById(quickCompanyId);
         result.companyName = company?.name || null;
 
         const mappedCompany = await this.resolveCompanyFromMapping(result.companyName);
@@ -305,7 +302,7 @@ export class RubberOrderImportService {
   }
 
   private async detectCompanyFromText(text: string): Promise<number | null> {
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
     const textLower = text.toLowerCase();
 
     const match = companies.find((company) => textLower.includes(company.name.toLowerCase()));
@@ -621,7 +618,7 @@ ${truncatedText}`;
 
   private async matchCompanyAndProducts(analysis: AnalyzedOrderData): Promise<void> {
     if (analysis.companyName) {
-      const companies = await this.companyRepository.find();
+      const companies = await this.companyRepository.findAll();
       const companyNameLower = analysis.companyName.toLowerCase();
 
       const exactMatch = companies.find((c) => c.name.toLowerCase() === companyNameLower);
@@ -641,7 +638,7 @@ ${truncatedText}`;
       }
     }
 
-    const products = await this.productRepository.find();
+    const products = await this.productRepository.findAll();
 
     analysis.lines.forEach((line) => {
       if (line.productName) {
@@ -673,7 +670,7 @@ ${truncatedText}`;
     companyName: string,
     details?: NewCompanyFromAnalysis,
   ): Promise<RubberCompany> {
-    const companies = await this.companyRepository.find();
+    const companies = await this.companyRepository.findAll();
     const nameLower = companyName.toLowerCase();
 
     const exactMatch = companies.find((c) => c.name.toLowerCase() === nameLower);
@@ -699,7 +696,7 @@ ${truncatedText}`;
     });
 
     this.logger.log(`Auto-created customer company: ${companyName} (id=${created.id})`);
-    return this.companyRepository.findOneByOrFail({ id: created.id });
+    return this.companyRepository.findOneByIdOrFail(created.id);
   }
 
   async createOrderFromAnalysis(dto: CreateOrderFromAnalysisDto): Promise<{ orderId: number }> {
@@ -1044,7 +1041,7 @@ Respond ONLY with JSON:
 
     let companyName: string | null = null;
     if (companyId) {
-      const company = await this.companyRepository.findOneBy({ id: companyId });
+      const company = await this.companyRepository.findById(companyId);
       companyName = company?.name || null;
     }
 
@@ -1115,7 +1112,7 @@ Respond ONLY with JSON:
     this.logger.log(
       `Saving ${corrections.length} order import corrections for company "${companyName}"`,
     );
-    await this.correctionRepository.save(corrections);
+    await this.correctionRepository.saveMany(corrections);
   }
 
   private async resolveCompanyFromMapping(
@@ -1125,10 +1122,10 @@ Respond ONLY with JSON:
       return null;
     }
 
-    const mapping = await this.correctionRepository.findOne({
-      where: { fieldName: "companyName", originalValue: extractedCompanyName },
-      order: { createdAt: "DESC" },
-    });
+    const mapping = await this.correctionRepository.findOneByFieldAndOriginalValueLatest(
+      "companyName",
+      extractedCompanyName,
+    );
 
     if (mapping?.companyId && mapping.companyName) {
       return { companyId: mapping.companyId, companyName: mapping.companyName };
@@ -1142,11 +1139,7 @@ Respond ONLY with JSON:
       return null;
     }
 
-    const corrections = await this.correctionRepository.find({
-      where: { companyName },
-      order: { createdAt: "DESC" },
-      take: 30,
-    });
+    const corrections = await this.correctionRepository.findByCompanyNameLatest(companyName, 30);
 
     if (corrections.length === 0) {
       return null;

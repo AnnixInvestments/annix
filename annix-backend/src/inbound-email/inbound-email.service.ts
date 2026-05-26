@@ -1,7 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { decrypt, encrypt } from "../secure-documents/crypto.util";
 import { InboundEmail, InboundEmailStatus } from "./entities/inbound-email.entity";
 import {
@@ -9,6 +7,9 @@ import {
   InboundEmailAttachment,
 } from "./entities/inbound-email-attachment.entity";
 import { InboundEmailConfig } from "./entities/inbound-email-config.entity";
+import { InboundEmailRepository, InboundEmailStatusCounts } from "./inbound-email.repository";
+import { InboundEmailAttachmentRepository } from "./inbound-email-attachment.repository";
+import { InboundEmailConfigRepository } from "./inbound-email-config.repository";
 
 export interface InboundEmailConfigDto {
   emailHost: string | null;
@@ -46,12 +47,9 @@ export class InboundEmailService {
   private readonly logger = new Logger(InboundEmailService.name);
 
   constructor(
-    @InjectRepository(InboundEmailConfig)
-    private readonly configRepo: Repository<InboundEmailConfig>,
-    @InjectRepository(InboundEmail)
-    private readonly emailRepo: Repository<InboundEmail>,
-    @InjectRepository(InboundEmailAttachment)
-    private readonly attachmentRepo: Repository<InboundEmailAttachment>,
+    private readonly configRepo: InboundEmailConfigRepository,
+    private readonly emailRepo: InboundEmailRepository,
+    private readonly attachmentRepo: InboundEmailAttachmentRepository,
     private readonly configService: ConfigService,
   ) {}
 
@@ -60,11 +58,11 @@ export class InboundEmailService {
   }
 
   async rawEmailConfig(app: string, companyId: number): Promise<InboundEmailConfig | null> {
-    return this.configRepo.findOne({ where: { app, companyId } });
+    return this.configRepo.findByAppAndCompany(app, companyId);
   }
 
   async emailConfig(app: string, companyId: number): Promise<InboundEmailConfigResponse> {
-    const config = await this.configRepo.findOne({ where: { app, companyId } });
+    const config = await this.configRepo.findByAppAndCompany(app, companyId);
 
     if (!config) {
       return {
@@ -100,7 +98,7 @@ export class InboundEmailService {
   ): Promise<{ message: string }> {
     const key = this.encryptionKey();
 
-    let config = await this.configRepo.findOne({ where: { app, companyId } });
+    let config = await this.configRepo.findByAppAndCompany(app, companyId);
 
     if (!dto.emailHost) {
       if (config) {
@@ -114,7 +112,10 @@ export class InboundEmailService {
     }
 
     if (!config) {
-      config = this.configRepo.create({ app, companyId });
+      config = await this.configRepo.create({
+        app,
+        companyId,
+      } as Partial<InboundEmailConfig> as InboundEmailConfig);
     }
 
     config.emailHost = dto.emailHost;
@@ -133,7 +134,7 @@ export class InboundEmailService {
   }
 
   async enabledConfigs(): Promise<InboundEmailConfig[]> {
-    return this.configRepo.find({ where: { enabled: true } });
+    return this.configRepo.findAllEnabled();
   }
 
   async decryptPassword(config: InboundEmailConfig): Promise<string> {
@@ -145,15 +146,11 @@ export class InboundEmailService {
   }
 
   async updateLastPoll(configId: number, error: string | null): Promise<void> {
-    await this.configRepo.update(configId, {
-      lastPollAt: new Date(),
-      lastError: error,
-    });
+    await this.configRepo.updateLastPoll(configId, new Date(), error);
   }
 
   async emailExists(messageId: string): Promise<boolean> {
-    const count = await this.emailRepo.count({ where: { messageId } });
-    return count > 0;
+    return this.emailRepo.existsByMessageId(messageId);
   }
 
   async recordEmail(data: {
@@ -167,7 +164,7 @@ export class InboundEmailService {
     receivedAt: Date | null;
     attachmentCount: number;
   }): Promise<InboundEmail> {
-    const email = this.emailRepo.create({
+    return this.emailRepo.create({
       configId: data.configId,
       app: data.app,
       companyId: data.companyId,
@@ -179,7 +176,6 @@ export class InboundEmailService {
       attachmentCount: data.attachmentCount,
       processingStatus: InboundEmailStatus.PROCESSING,
     });
-    return this.emailRepo.save(email);
   }
 
   async createAttachment(data: {
@@ -192,8 +188,7 @@ export class InboundEmailService {
     classificationConfidence: number | null;
     classificationSource: string | null;
   }): Promise<InboundEmailAttachment> {
-    const attachment = this.attachmentRepo.create(data);
-    return this.attachmentRepo.save(attachment);
+    return this.attachmentRepo.create(data);
   }
 
   async updateAttachment(
@@ -213,7 +208,7 @@ export class InboundEmailService {
       >
     >,
   ): Promise<void> {
-    await this.attachmentRepo.update(id, data);
+    await this.attachmentRepo.updateFields(id, data);
   }
 
   async updateEmailStatus(
@@ -221,10 +216,7 @@ export class InboundEmailService {
     status: InboundEmailStatus,
     errorMessage?: string,
   ): Promise<void> {
-    await this.emailRepo.update(id, {
-      processingStatus: status,
-      errorMessage: errorMessage ?? null,
-    });
+    await this.emailRepo.updateStatus(id, status, errorMessage ?? null);
   }
 
   async listEmails(
@@ -232,47 +224,13 @@ export class InboundEmailService {
     companyId: number,
     filters: InboundEmailListFilters,
   ): Promise<{ items: InboundEmail[]; total: number }> {
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 25;
-
-    const qb = this.emailRepo
-      .createQueryBuilder("email")
-      .leftJoinAndSelect("email.attachments", "attachment")
-      .where("email.app = :app", { app })
-      .andWhere("email.company_id = :companyId", { companyId })
-      .orderBy("email.created_at", "DESC");
-
-    if (filters.status) {
-      qb.andWhere("email.processing_status = :status", { status: filters.status });
-    }
-
-    if (filters.dateFrom) {
-      qb.andWhere("email.created_at >= :dateFrom", { dateFrom: filters.dateFrom });
-    }
-
-    if (filters.dateTo) {
-      qb.andWhere("email.created_at <= :dateTo", { dateTo: filters.dateTo });
-    }
-
-    if (filters.documentType) {
-      qb.andWhere("attachment.document_type = :docType", { docType: filters.documentType });
-    }
-
-    const [items, total] = await qb
-      .skip((page - 1) * limit)
-      .take(limit)
-      .getManyAndCount();
-
-    return { items, total };
+    return this.emailRepo.listByAppAndCompany(app, companyId, filters);
   }
 
   async emailDetail(app: string, companyId: number, emailId: number): Promise<InboundEmail> {
-    const email = await this.emailRepo.findOne({
-      where: { id: emailId, app, companyId },
-      relations: ["attachments"],
-    });
+    const email = await this.emailRepo.findById(emailId, ["attachments"]);
 
-    if (!email) {
+    if (!email || email.app !== app || email.companyId !== companyId) {
       throw new NotFoundException(`Inbound email ${emailId} not found`);
     }
 
@@ -283,7 +241,7 @@ export class InboundEmailService {
     attachmentId: number,
     newDocumentType: string,
   ): Promise<InboundEmailAttachment> {
-    const attachment = await this.attachmentRepo.findOne({ where: { id: attachmentId } });
+    const attachment = await this.attachmentRepo.findById(attachmentId);
 
     if (!attachment) {
       throw new NotFoundException(`Attachment ${attachmentId} not found`);
@@ -300,10 +258,7 @@ export class InboundEmailService {
   }
 
   async attachmentById(attachmentId: number): Promise<InboundEmailAttachment> {
-    const attachment = await this.attachmentRepo.findOne({
-      where: { id: attachmentId },
-      relations: ["inboundEmail"],
-    });
+    const attachment = await this.attachmentRepo.findById(attachmentId, ["inboundEmail"]);
 
     if (!attachment) {
       throw new NotFoundException(`Attachment ${attachmentId} not found`);
@@ -312,61 +267,11 @@ export class InboundEmailService {
     return attachment;
   }
 
-  // Attachments classified as a real document type whose extraction was
-  // skipped (e.g. an app router that wasn't yet wired). Loaded with their
-  // parent email so a reprocess pass has the sender/subject context.
   async listSkippedAttachments(app: string): Promise<InboundEmailAttachment[]> {
-    return this.attachmentRepo
-      .createQueryBuilder("att")
-      .leftJoinAndSelect("att.inboundEmail", "email")
-      .where("email.app = :app", { app })
-      .andWhere("att.extraction_status = :status", {
-        status: AttachmentExtractionStatus.SKIPPED,
-      })
-      .andWhere("att.document_type != :unknown", { unknown: "unknown" })
-      .orderBy("att.id", "ASC")
-      .getMany();
+    return this.attachmentRepo.findSkippedClassifiedByApp(app);
   }
 
-  async emailStats(
-    app: string,
-    companyId: number,
-  ): Promise<{
-    total: number;
-    completed: number;
-    failed: number;
-    unclassified: number;
-    pending: number;
-  }> {
-    const results = await this.emailRepo
-      .createQueryBuilder("email")
-      .select("email.processing_status", "status")
-      .addSelect("COUNT(*)", "count")
-      .where("email.app = :app", { app })
-      .andWhere("email.company_id = :companyId", { companyId })
-      .groupBy("email.processing_status")
-      .getRawMany();
-
-    const counts = results.reduce(
-      (acc: Record<string, number>, row: { status: string; count: string }) => ({
-        ...acc,
-        [row.status]: parseInt(row.count, 10),
-      }),
-      {} as Record<string, number>,
-    );
-
-    const total = (Object.values(counts) as number[]).reduce(
-      (sum: number, c: number) => sum + c,
-      0,
-    );
-
-    return {
-      total,
-      completed: counts[InboundEmailStatus.COMPLETED] ?? 0,
-      failed: counts[InboundEmailStatus.FAILED] ?? 0,
-      unclassified: counts[InboundEmailStatus.UNCLASSIFIED] ?? 0,
-      pending:
-        (counts[InboundEmailStatus.PENDING] ?? 0) + (counts[InboundEmailStatus.PROCESSING] ?? 0),
-    };
+  async emailStats(app: string, companyId: number): Promise<InboundEmailStatusCounts> {
+    return this.emailRepo.statsByAppAndCompany(app, companyId);
   }
 }

@@ -1,9 +1,8 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { AiChatService } from "../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../storage/storage.interface";
-import { RubberCompany } from "./entities/rubber-company.entity";
-import { RubberProductCoding } from "./entities/rubber-product-coding.entity";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberProductCodingRepository } from "./repositories/rubber-product-coding.repository";
 import { RubberCocService } from "./rubber-coc.service";
 import { RubberCocExtractionService } from "./rubber-coc-extraction.service";
 import { RubberDeliveryNoteService } from "./rubber-delivery-note.service";
@@ -26,8 +25,8 @@ describe("RubberInboundEmailService", () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RubberInboundEmailService,
-        { provide: getRepositoryToken(RubberCompany), useValue: mockRepo() },
-        { provide: getRepositoryToken(RubberProductCoding), useValue: mockRepo() },
+        { provide: RubberCompanyRepository, useValue: mockRepo() },
+        { provide: RubberProductCodingRepository, useValue: mockRepo() },
         { provide: STORAGE_SERVICE, useValue: {} },
         { provide: RubberCocService, useValue: {} },
         { provide: RubberDeliveryNoteService, useValue: {} },

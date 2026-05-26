@@ -1,8 +1,7 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { PumpProduct } from "./entities/pump-product.entity";
+import { PumpProductRepository } from "./pump-product.repository";
 
 export interface DatasheetUploadResult {
   productId: number;
@@ -58,8 +57,7 @@ export class PumpDatasheetService {
   private readonly logger = new Logger(PumpDatasheetService.name);
 
   constructor(
-    @InjectRepository(PumpProduct)
-    private readonly productRepository: Repository<PumpProduct>,
+    private readonly productRepository: PumpProductRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -78,9 +76,7 @@ export class PumpDatasheetService {
       );
     }
 
-    const product = await this.productRepository.findOne({
-      where: { id: productId },
-    });
+    const product = await this.productRepository.findById(productId);
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${productId} not found`);
@@ -127,9 +123,7 @@ export class PumpDatasheetService {
       );
     }
 
-    const product = await this.productRepository.findOne({
-      where: { id: productId },
-    });
+    const product = await this.productRepository.findById(productId);
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${productId} not found`);
@@ -169,9 +163,7 @@ export class PumpDatasheetService {
       throw new BadRequestException("Invalid file type. Allowed types: JPEG, PNG, WebP");
     }
 
-    const product = await this.productRepository.findOne({
-      where: { id: productId },
-    });
+    const product = await this.productRepository.findById(productId);
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${productId} not found`);
@@ -203,9 +195,7 @@ export class PumpDatasheetService {
   }
 
   async updatePumpCurveData(productId: number, curveData: PumpCurveData): Promise<PumpProduct> {
-    const product = await this.productRepository.findOne({
-      where: { id: productId },
-    });
+    const product = await this.productRepository.findById(productId);
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${productId} not found`);
@@ -230,9 +220,7 @@ export class PumpDatasheetService {
   }
 
   async deleteDatasheet(productId: number): Promise<void> {
-    const product = await this.productRepository.findOne({
-      where: { id: productId },
-    });
+    const product = await this.productRepository.findById(productId);
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${productId} not found`);
@@ -256,9 +244,7 @@ export class PumpDatasheetService {
     filename: string;
     mimeType: string;
   }> {
-    const product = await this.productRepository.findOne({
-      where: { id: productId },
-    });
+    const product = await this.productRepository.findById(productId);
 
     if (!product) {
       throw new NotFoundException(`Product with ID ${productId} not found`);

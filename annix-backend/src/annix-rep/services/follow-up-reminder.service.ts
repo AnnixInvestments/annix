@@ -1,23 +1,20 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron, CronExpression } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
 import { groupBy, keys } from "es-toolkit/compat";
-import { LessThanOrEqual, Repository } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
-import { User } from "../../user/entities/user.entity";
+import { UserRepository } from "../../user/user.repository";
 import { isAnnixRepCronEnabled } from "../annix-rep-cron.config";
-import { Prospect, ProspectStatus } from "../entities";
+import { ProspectStatus } from "../entities";
+import { ProspectRepository } from "../prospect.repository";
 
 @Injectable()
 export class FollowUpReminderService {
   private readonly logger = new Logger(FollowUpReminderService.name);
 
   constructor(
-    @InjectRepository(Prospect)
-    private readonly prospectRepo: Repository<Prospect>,
-    @InjectRepository(User)
-    private readonly userRepo: Repository<User>,
+    private readonly prospectRepo: ProspectRepository,
+    private readonly userRepo: UserRepository,
     private readonly emailService: EmailService,
   ) {}
 
@@ -27,12 +24,7 @@ export class FollowUpReminderService {
 
     this.logger.log("Starting daily follow-up reminder job");
 
-    const overdueProspects = await this.prospectRepo.find({
-      where: {
-        nextFollowUpAt: LessThanOrEqual(now().toJSDate()),
-        status: LessThanOrEqual(ProspectStatus.PROPOSAL) as unknown as ProspectStatus,
-      },
-    });
+    const overdueProspects = await this.prospectRepo.findOverdueFollowUps(now().toJSDate());
 
     if (overdueProspects.length === 0) {
       this.logger.log("No overdue follow-ups found");

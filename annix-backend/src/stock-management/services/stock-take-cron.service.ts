@@ -1,9 +1,7 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
 import { now } from "../../lib/datetime";
-import { StockTake } from "../entities/stock-take.entity";
+import { StockTakeRepository } from "../repositories/stock-take.repository";
 import { StockTakeService } from "./stock-take.service";
 
 @Injectable()
@@ -11,8 +9,7 @@ export class StockTakeCronService {
   private readonly logger = new Logger(StockTakeCronService.name);
 
   constructor(
-    @InjectRepository(StockTake)
-    private readonly stockTakeRepo: Repository<StockTake>,
+    private readonly stockTakeRepo: StockTakeRepository,
     private readonly stockTakeService: StockTakeService,
   ) {}
 
@@ -22,21 +19,15 @@ export class StockTakeCronService {
   })
   async monthlySnapshot(): Promise<void> {
     this.logger.log("Running monthly stock take snapshot cron");
-    const companies = await this.stockTakeRepo
-      .createQueryBuilder("st")
-      .select("DISTINCT st.company_id", "company_id")
-      .getRawMany<{ company_id: number }>();
+    const companyIds = await this.stockTakeRepo.distinctCompanyIds();
 
     const previousMonth = now().minus({ months: 1 });
     const periodLabel = previousMonth.toFormat("yyyy-MM");
     const name = `${previousMonth.toFormat("LLLL yyyy")} Month-End`;
 
-    for (const company of companies) {
-      const companyId = company.company_id;
+    for (const companyId of companyIds) {
       try {
-        const existing = await this.stockTakeRepo.findOne({
-          where: { companyId, periodLabel, status: "draft" },
-        });
+        const existing = await this.stockTakeRepo.findDraftForPeriod(companyId, periodLabel);
         if (existing) {
           await this.stockTakeService.captureSnapshot(companyId, existing.id);
           this.logger.log(

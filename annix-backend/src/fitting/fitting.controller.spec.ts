@@ -5,8 +5,8 @@ import { FlangeDimension } from "../flange-dimension/entities/flange-dimension.e
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
 import { NutMass } from "../nut-mass/entities/nut-mass.entity";
 import { PipeDimension } from "../pipe-dimension/entities/pipe-dimension.entity";
-import { Sabs62FittingDimension } from "../sabs62-fitting-dimension/entities/sabs62-fitting-dimension.entity";
-import { Sabs719FittingDimension } from "../sabs719-fitting-dimension/entities/sabs719-fitting-dimension.entity";
+import { Sabs62FittingDimensionRepository } from "../sabs62-fitting-dimension/sabs62-fitting-dimension.repository";
+import { Sabs719FittingDimensionRepository } from "../sabs719-fitting-dimension/sabs719-fitting-dimension.repository";
 import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
 import { FittingController } from "./fitting.controller";
 import { FittingService } from "./fitting.service";
@@ -16,12 +16,16 @@ describe("FittingController", () => {
   let service: FittingService;
 
   const mockSabs62Repo = {
-    createQueryBuilder: jest.fn(),
+    findByTypeAndDiameter: jest.fn(),
+    distinctFittingTypes: jest.fn(),
+    distinctSizes: jest.fn(),
+    distinctAngleRanges: jest.fn(),
   };
 
   const mockSabs719Repo = {
-    findOne: jest.fn(),
-    createQueryBuilder: jest.fn(),
+    findByTypeAndDiameter: jest.fn(),
+    distinctFittingTypes: jest.fn(),
+    distinctSizes: jest.fn(),
   };
 
   const mockPipeDimensionRepo = {
@@ -62,11 +66,11 @@ describe("FittingController", () => {
       providers: [
         { provide: FittingService, useValue: mockFittingService },
         {
-          provide: getRepositoryToken(Sabs62FittingDimension),
+          provide: Sabs62FittingDimensionRepository,
           useValue: mockSabs62Repo,
         },
         {
-          provide: getRepositoryToken(Sabs719FittingDimension),
+          provide: Sabs719FittingDimensionRepository,
           useValue: mockSabs719Repo,
         },
         {
