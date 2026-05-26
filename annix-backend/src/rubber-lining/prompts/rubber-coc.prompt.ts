@@ -249,6 +249,7 @@ Return a JSON object with this structure:
   "batchNumbers": string[] (individual batch numbers like ["209", "210", "211"] or parse range "209-227" into individual numbers),
   "rollNumbers": string[] (roll numbers if present),
   "hasGraph": boolean (true if rheometer/cure graph page exists),
+  "graphPageNumber": number or null (the 1-indexed PDF page number that the rheometer/cure graph is on, when hasGraph is true; null if there is no graph),
   "specifications": {
     "shoreAMin": number or null,
     "shoreAMax": number or null,

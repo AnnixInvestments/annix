@@ -71,6 +71,7 @@ export interface ExtractedCocData {
   orderNumber?: string;
   ticketNumber?: string;
   hasGraph?: boolean;
+  graphPageNumber?: number | null;
   approverNames?: string[];
   specifications?: ExtractedCocSpecifications;
   batches?: Array<{

@@ -5,6 +5,8 @@ import { Eye, Loader2, Mail, RefreshCw, Zap } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import {
@@ -80,9 +82,7 @@ export default function AuCocsPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [previewingId, setPreviewingId] = useState<number | null>(null);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const { confirm, ConfirmDialog } = useConfirm();
   const [isAutoGenerating, setIsAutoGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isRegeneratingSelected, setIsRegeneratingSelected] = useState(false);
@@ -450,19 +450,20 @@ export default function AuCocsPage() {
     }
   };
 
-  const handleDelete = async () => {
-    if (!deletingId) return;
+  const handleDeleteCoc = async (coc: RubberAuCocDto) => {
+    const confirmed = await confirm({
+      title: "Delete this certificate?",
+      message: `${coc.cocNumber} will be permanently deleted. This cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     try {
-      setIsDeleting(true);
-      await auRubberApiClient.deleteAuCoc(deletingId);
+      await auRubberApiClient.deleteAuCoc(coc.id);
       showToast("Certificate deleted successfully", "success");
-      setShowDeleteModal(false);
-      setDeletingId(null);
       refresh();
     } catch (err) {
       toastError(showToast, err, "Failed to delete certificate");
-    } finally {
-      setIsDeleting(false);
     }
   };
 
@@ -979,10 +980,7 @@ export default function AuCocsPage() {
                       )}
                       {isAdmin && (
                         <button
-                          onClick={() => {
-                            setDeletingId(coc.id);
-                            setShowDeleteModal(true);
-                          }}
+                          onClick={() => handleDeleteCoc(coc)}
                           className="text-red-600 hover:text-red-800"
                         >
                           Delete
@@ -1024,132 +1022,101 @@ export default function AuCocsPage() {
 
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
 
-      {progressModal.visible && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/10 backdrop-blur-md" />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">{progressModal.title}</h3>
-              <div className="space-y-4">
-                {progressModal.status === "running" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-3">
-                      <Loader2 className="w-6 h-6 text-yellow-600 animate-spin flex-shrink-0" />
+      {progressModal.visible &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] overflow-y-auto">
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div className="fixed inset-0 bg-black/10 backdrop-blur-md" />
+              <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">{progressModal.title}</h3>
+                <div className="space-y-4">
+                  {progressModal.status === "running" && (
+                    <div className="space-y-3">
+                      <div className="flex items-center space-x-3">
+                        <Loader2 className="w-6 h-6 text-yellow-600 animate-spin flex-shrink-0" />
+                        <p className="text-sm text-gray-600">{progressModal.message}</p>
+                      </div>
+                      {progressModal.total != null && progressModal.current != null && (
+                        <div>
+                          <div className="flex justify-between text-xs text-gray-500 mb-1">
+                            <span>{progressModal.currentLabel}</span>
+                            <span>
+                              {progressModal.current} / {progressModal.total}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5">
+                            <div
+                              className="bg-yellow-500 h-2.5 rounded-full transition-all duration-300"
+                              style={{
+                                width: `${(progressModal.current / progressModal.total) * 100}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {progressModal.status === "done" && (
+                    <div className="flex items-start space-x-3">
+                      <svg
+                        className="w-6 h-6 text-green-500 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M5 13l4 4L19 7"
+                        />
+                      </svg>
                       <p className="text-sm text-gray-600">{progressModal.message}</p>
                     </div>
-                    {progressModal.total != null && progressModal.current != null && (
-                      <div>
-                        <div className="flex justify-between text-xs text-gray-500 mb-1">
-                          <span>{progressModal.currentLabel}</span>
-                          <span>
-                            {progressModal.current} / {progressModal.total}
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div
-                            className="bg-yellow-500 h-2.5 rounded-full transition-all duration-300"
-                            style={{
-                              width: `${(progressModal.current / progressModal.total) * 100}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {progressModal.status === "done" && (
-                  <div className="flex items-start space-x-3">
-                    <svg
-                      className="w-6 h-6 text-green-500 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M5 13l4 4L19 7"
-                      />
-                    </svg>
-                    <p className="text-sm text-gray-600">{progressModal.message}</p>
-                  </div>
-                )}
-                {progressModal.status === "error" && (
-                  <div className="flex items-start space-x-3">
-                    <svg
-                      className="w-6 h-6 text-red-500 flex-shrink-0"
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
-                      />
-                    </svg>
-                    <p className="text-sm text-gray-600">{progressModal.message}</p>
-                  </div>
-                )}
-              </div>
-              {progressModal.status !== "running" && (
-                <div className="mt-6 flex justify-end">
-                  <button
-                    onClick={() =>
-                      setProgressModal({
-                        visible: false,
-                        title: "",
-                        status: "running",
-                        message: "",
-                      })
-                    }
-                    className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700"
-                  >
-                    Close
-                  </button>
+                  )}
+                  {progressModal.status === "error" && (
+                    <div className="flex items-start space-x-3">
+                      <svg
+                        className="w-6 h-6 text-red-500 flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"
+                        />
+                      </svg>
+                      <p className="text-sm text-gray-600">{progressModal.message}</p>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div
-              className="fixed inset-0 bg-black/10 backdrop-blur-md"
-              onClick={() => setShowDeleteModal(false)}
-            />
-            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Delete Certificate</h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Are you sure you want to delete this certificate? This action cannot be undone.
-              </p>
-              <div className="mt-6 flex justify-end space-x-3">
-                <button
-                  onClick={() => {
-                    setShowDeleteModal(false);
-                    setDeletingId(null);
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
-                >
-                  {isDeleting ? "Deleting..." : "Delete"}
-                </button>
+                {progressModal.status !== "running" && (
+                  <div className="mt-6 flex justify-end">
+                    <button
+                      onClick={() =>
+                        setProgressModal({
+                          visible: false,
+                          title: "",
+                          status: "running",
+                          message: "",
+                        })
+                      }
+                      className="px-4 py-2 text-sm font-medium text-white bg-yellow-600 rounded-md hover:bg-yellow-700"
+                    >
+                      Close
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body,
+        )}
+
+      {ConfirmDialog}
     </div>
   );
 }

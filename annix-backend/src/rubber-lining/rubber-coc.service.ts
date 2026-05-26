@@ -608,6 +608,8 @@ export class RubberCocService {
     coc.approvedBy = approvedBy ?? null;
     await this.supplierCocRepository.save(coc);
 
+    await this.captureCalendererEmbeddedGraph(coc);
+
     if (coc.extractedData?.batches) {
       const existingCount = await this.compoundBatchRepository.count({
         where: { supplierCocId: id },
@@ -629,6 +631,60 @@ export class RubberCocService {
     this.autoLinkAndCheckReadiness(coc);
 
     return this.mapSupplierCocToDto(coc);
+  }
+
+  // A self-contained Impilo (CALENDERER) CoC carries the rheometer/cure graph
+  // on the same PDF as its batch table, so — unlike S&N compounder CoCs whose
+  // graph arrives as a separate file — nothing ever populated graphPdfPath, and
+  // the downstream customer CoC stuck on "Waiting: Graph". When such a CoC
+  // reports a graph (hasGraph) but has no graphPdfPath, slice the graph page out
+  // of its own document into a standalone PDF and store it as graphPdfPath. Uses
+  // the AI-reported page; falls back to the last page (the graph always follows
+  // the batch tables in the Impilo layout).
+  private async captureCalendererEmbeddedGraph(coc: RubberSupplierCoc): Promise<void> {
+    if (
+      coc.cocType !== SupplierCocType.CALENDARER ||
+      !coc.extractedData?.hasGraph ||
+      coc.graphPdfPath ||
+      !coc.documentPath?.toLowerCase().endsWith(".pdf")
+    ) {
+      return;
+    }
+    try {
+      const sourceBuffer = await this.storageService.download(coc.documentPath);
+      const sourcePdf = await PDFDocument.load(sourceBuffer);
+      const pageCount = sourcePdf.getPageCount();
+      if (pageCount === 0) return;
+      const declaredPage = coc.extractedData.graphPageNumber;
+      const pageIdx =
+        typeof declaredPage === "number" && declaredPage >= 1 && declaredPage <= pageCount
+          ? declaredPage - 1
+          : pageCount - 1;
+      const sliced = await PDFDocument.create();
+      const copied = await sliced.copyPages(sourcePdf, [pageIdx]);
+      copied.forEach((page) => sliced.addPage(page));
+      const slicedBuffer = Buffer.from(await sliced.save());
+      const subdir = coc.documentPath.includes("/")
+        ? coc.documentPath.substring(0, coc.documentPath.lastIndexOf("/"))
+        : "";
+      const file = {
+        fieldname: "file",
+        originalname: `${generateUniqueId()}-graph.pdf`,
+        mimetype: "application/pdf",
+        buffer: slicedBuffer,
+        size: slicedBuffer.length,
+      } as Express.Multer.File;
+      const upload = await this.storageService.upload(file, subdir);
+      coc.graphPdfPath = upload.path;
+      await this.supplierCocRepository.save(coc);
+      this.logger.log(
+        `Captured embedded rheometer graph for CALENDERER CoC ${coc.id} (page ${pageIdx + 1}/${pageCount}) → ${upload.path}`,
+      );
+    } catch (error) {
+      this.logger.warn(
+        `Failed to capture embedded graph for CoC ${coc.id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   async reextractAndUpdateCoc(
@@ -664,6 +720,8 @@ export class RubberCocService {
       );
     }
 
+    await this.captureCalendererEmbeddedGraph(coc);
+
     if (coc.cocType === SupplierCocType.COMPOUNDER && coc.compoundCode) {
       await this.saveSpecificationsFromExtractedData(coc);
     }
@@ -688,6 +746,7 @@ export class RubberCocService {
       "orderNumber",
       "ticketNumber",
       "hasGraph",
+      "graphPageNumber",
       "deliveryNoteNumber",
       "waybillNumber",
       "sharedDensity",

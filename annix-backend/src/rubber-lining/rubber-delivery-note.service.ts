@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { In, IsNull, Not, Repository } from "typeorm";
 import { formatISODate, generateUniqueId } from "../lib/datetime";
 import { PaginatedResult } from "../lib/dto/pagination-query.dto";
+import { ExtractionMetricService } from "../metrics/extraction-metric.service";
 import {
   CreateDeliveryNoteDto,
   CreateDeliveryNoteItemDto,
@@ -139,6 +140,7 @@ export class RubberDeliveryNoteService {
     private rubberRollStockService: RubberRollStockService,
     private auCocReadinessService: RubberAuCocReadinessService,
     private versioningService: RubberDocumentVersioningService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
   async allDeliveryNotes(filters?: {
@@ -2157,6 +2159,15 @@ export class RubberDeliveryNoteService {
   }
 
   async bulkAutoLinkAllUnlinkedDns(): Promise<{ linked: number; details: string[] }> {
+    return this.extractionMetricService.time("au-rubber", "autolink-supplier-dns", () =>
+      this.bulkAutoLinkAllUnlinkedDnsImpl(),
+    );
+  }
+
+  private async bulkAutoLinkAllUnlinkedDnsImpl(): Promise<{
+    linked: number;
+    details: string[];
+  }> {
     const [allCocs, allUnlinkedNotes] = await Promise.all([
       // Only ACTIVE CoCs are valid link targets — never a superseded version.
       this.supplierCocRepository.find({
@@ -2263,6 +2274,15 @@ export class RubberDeliveryNoteService {
   }
 
   async bulkLinkCustomerDnsFromLinkedSupplierDns(): Promise<{
+    linked: number;
+    details: string[];
+  }> {
+    return this.extractionMetricService.time("au-rubber", "autolink-customer-dns", () =>
+      this.bulkLinkCustomerDnsFromLinkedSupplierDnsImpl(),
+    );
+  }
+
+  private async bulkLinkCustomerDnsFromLinkedSupplierDnsImpl(): Promise<{
     linked: number;
     details: string[];
   }> {

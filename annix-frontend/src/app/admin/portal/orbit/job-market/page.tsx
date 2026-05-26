@@ -40,18 +40,31 @@ async function lastIngestedFor(sourceId: number): Promise<string | null> {
   }
 }
 
-async function waitForBackgroundIngestion(sourceId: number): Promise<void> {
+async function waitForBackgroundIngestion(sourceId: number): Promise<boolean> {
   // Capture the baseline from a fresh fetch (the React Query cache can be stale,
   // which would make the poll think the run already finished and flash closed).
+  // Returns true once the run reports completion (lastIngestedAt changes), false
+  // if it never does within the window — e.g. a disabled source (DPSA without
+  // DPSA_INGESTION_ENABLED) returns 0 without touching lastIngestedAt.
   const baseline = await lastIngestedFor(sourceId);
-  const poll = async (attempt: number): Promise<void> => {
+  const poll = async (attempt: number): Promise<boolean> => {
     await new Promise((resolve) => globalThis.setTimeout(resolve, 5000));
     const current = await lastIngestedFor(sourceId);
-    if (current && current !== baseline) return;
-    if (attempt >= 60) return;
+    if (current && current !== baseline) return true;
+    if (attempt >= 60) return false;
     return poll(attempt + 1);
   };
   return poll(0);
+}
+
+async function jobCountForSource(sourceId: number): Promise<number> {
+  try {
+    const stats = await adminApiClient.orbitJobMarketStats();
+    const match = stats.sources.find((source) => source.id === sourceId);
+    return match ? match.jobCount : 0;
+  } catch {
+    return 0;
+  }
 }
 
 export default function AdminOrbitJobMarketPage() {
@@ -202,6 +215,7 @@ export default function AdminOrbitJobMarketPage() {
     });
 
     try {
+      const baselineCount = await jobCountForSource(sourceId);
       const fetched = await adminApiClient.fetchOrbitSource(sourceId);
 
       if (fetched.started) {
@@ -214,13 +228,24 @@ export default function AdminOrbitJobMarketPage() {
           label: `Crawling ${sourceName} in the background…`,
           estimatedDurationMs: learnedMs || 120_000,
         });
-        await waitForBackgroundIngestion(sourceId);
+        const completed = await waitForBackgroundIngestion(sourceId);
         hideExtraction();
-        setIngestionStatus((prev) => ({
-          ...prev,
-          [sourceId]: "Done — new jobs ingested. Re-run to fetch more.",
-        }));
         queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+        if (!completed) {
+          setIngestionStatus((prev) => ({
+            ...prev,
+            [sourceId]:
+              "No new jobs reported — this source may be disabled (e.g. DPSA needs DPSA_INGESTION_ENABLED) or found nothing new.",
+          }));
+          return;
+        }
+        const afterCount = await jobCountForSource(sourceId);
+        const delta = afterCount - baselineCount;
+        const message =
+          delta > 0
+            ? `Done — ${delta} new job${delta === 1 ? "" : "s"} ingested. Re-run to fetch more.`
+            : "Done — no new jobs found (all current postings already ingested).";
+        setIngestionStatus((prev) => ({ ...prev, [sourceId]: message }));
         return;
       }
 

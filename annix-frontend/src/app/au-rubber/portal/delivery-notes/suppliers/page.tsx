@@ -28,6 +28,7 @@ import {
   type ExtractedDeliveryNoteData,
   type RubberDeliveryNoteDto,
 } from "@/app/lib/api/auRubberApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateZA, nowMillis } from "@/app/lib/datetime";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
@@ -105,6 +106,15 @@ export default function SupplierDeliveryNotesPage() {
   const handleBulkAutoLink = async () => {
     try {
       setIsAutoLinking(true);
+      const learnedMs = await metricsApi
+        .extractionStats("au-rubber", "autolink-supplier-dns")
+        .then((s) => s.averageMs)
+        .catch(() => null);
+      showExtraction({
+        brand: "au-rubber",
+        label: "Linking supplier delivery notes to CoCs…",
+        estimatedDurationMs: learnedMs ?? 20000,
+      });
       const result = await auRubberApiClient.bulkAutoLinkDeliveryNotes();
       if (result.linked > 0) {
         showToast(`Auto-linked ${result.linked} delivery note(s) to supplier CoCs`, "success");
@@ -115,6 +125,7 @@ export default function SupplierDeliveryNotesPage() {
     } catch (err) {
       showToast("Failed to auto-link delivery notes", "error");
     } finally {
+      hideExtraction();
       setIsAutoLinking(false);
     }
   };
