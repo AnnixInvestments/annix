@@ -24,7 +24,7 @@ export const GENERAL_FAQS: ServiceFaq[] = [
   {
     question: "Can I visit your factory in Boksburg?",
     answer:
-      "Yes — we welcome customer visits to our Boksburg facility at 50 Paul Smit Street, ALAC Industrial Park (Cnr Main Street), Dunswart, Boksburg, 1508. Please make an appointment prior to your visit so we can have the right person available to walk you through. Open Monday to Thursday and Friday morning per standard business hours.",
+      "Yes — we welcome customer visits to our Boksburg facility at 8 Paul Smit Road, ALAC Industrial Park (Cnr Main Street), Anderbolt, Boksburg, 1458. Please make an appointment prior to your visit so we can have the right person available to walk you through. Open Monday to Thursday and Friday morning per standard business hours.",
   },
   {
     question: "Do you offer site visits and technical consultations?",

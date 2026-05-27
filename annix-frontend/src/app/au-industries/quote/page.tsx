@@ -244,8 +244,8 @@ export default function AuIndustriesQuotePage() {
                     />
                   </svg>
                   <div>
-                    <p>50 Paul Smit Street</p>
-                    <p>Dunswart</p>
+                    <p>8 Paul Smit Road, ALAC Industrial Park (Cnr Main Street)</p>
+                    <p>Anderbolt</p>
                     <p>Boksburg</p>
                     <p>1458</p>
                   </div>

@@ -2,10 +2,10 @@ export const AU_INDUSTRIES_CONTACT = {
   companyName: "AU Industries",
   phone: "+27 72 039 8429",
   email: "info@auind.co.za",
-  streetAddress: "50 Paul Smit Street, ALAC Industrial Park (Cnr Main Street)",
-  city: "Dunswart, Boksburg",
+  streetAddress: "8 Paul Smit Road, ALAC Industrial Park (Cnr Main Street)",
+  city: "Anderbolt, Boksburg",
   province: "Gauteng",
-  postalCode: "1508",
+  postalCode: "1458",
   address:
-    "50 Paul Smit Street, ALAC Industrial Park (Cnr Main Street), Dunswart, Boksburg, 1508, Gauteng, South Africa",
+    "8 Paul Smit Road, ALAC Industrial Park (Cnr Main Street), Anderbolt, Boksburg, 1458, Gauteng, South Africa",
 } as const;

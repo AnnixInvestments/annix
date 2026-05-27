@@ -1938,7 +1938,7 @@ export class RubberAuCocService {
           { align: "center", width: 515 },
         );
       doc.text(
-        "50 Paul Smit Street, Dunswart, Boksburg, 1458  Tel: 072 039 8429  www.auind.co.za",
+        "8 Paul Smit Road, Anderbolt, Boksburg, 1458  Tel: 072 039 8429  www.auind.co.za",
         40,
         y + 42,
         { align: "center", width: 515 },
