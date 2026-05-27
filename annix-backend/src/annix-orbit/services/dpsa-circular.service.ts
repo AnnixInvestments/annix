@@ -3,6 +3,7 @@ import { Cron } from "@nestjs/schedule";
 import { InjectRepository } from "@nestjs/typeorm";
 import { chunk } from "es-toolkit/compat";
 import { In, Repository } from "typeorm";
+import { now } from "../../lib/datetime";
 import { extractTextFromPdf } from "../../lib/document-extraction";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -125,6 +126,12 @@ export class DpsaCircularService {
     });
     const existingIds = new Set(existing.map((e) => e.sourceExternalId));
 
+    const seenAt = now().toJSDate();
+    await this.externalJobRepo.update(
+      { sourceId: source.id, sourceExternalId: In(externalIds) },
+      { lastSeenAt: seenAt },
+    );
+
     const fresh = vacancies.filter(
       (v) => !existingIds.has(buildPostExternalId(pdfUrl, v.postNumber)),
     );
@@ -151,6 +158,7 @@ export class DpsaCircularService {
             sourceUrl: pdfUrl,
             postedAt: null,
             expiresAt: null,
+            lastSeenAt: seenAt,
             sourceId: source.id,
           }),
         ),

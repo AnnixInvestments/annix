@@ -2015,13 +2015,29 @@ export interface ReviewedRow {
   corrections: { field: string; originalValue: string | null; correctedValue: string | null }[];
 }
 
+export interface StockTakeVariance {
+  stockItemId: number;
+  sku: string;
+  name: string;
+  location: string | null;
+  unitOfMeasure: string;
+  systemQty: number;
+  countedQty: number;
+  varianceQty: number;
+  unitCost: number;
+  varianceValueR: number;
+  zeroed: boolean;
+}
+
 export interface ReviewedImportResult {
   totalRows: number;
   created: number;
   updated: number;
   skipped: number;
   learned: number;
+  zeroed: number;
   errors: { row: number; message: string }[];
+  variances: StockTakeVariance[];
 }
 
 export interface StockIssuance {

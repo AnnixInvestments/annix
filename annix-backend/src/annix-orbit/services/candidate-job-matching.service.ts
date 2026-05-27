@@ -178,8 +178,9 @@ export class CandidateJobMatchingService {
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
     const qb = this.matchRepo
       .createQueryBuilder("match")
-      .leftJoinAndSelect("match.externalJob", "job")
+      .innerJoinAndSelect("match.externalJob", "job")
       .where("match.candidate_id = :candidateId", { candidateId })
+      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
       .orderBy("match.overallScore", "DESC")
       .take(RECOMMENDED_FETCH_WINDOW);
 

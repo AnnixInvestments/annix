@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import type {
   ImportMatchRow,
   ReviewedImportResult,
@@ -164,6 +165,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "matched" | "new">("all");
+  const [confirmZeroOpen, setConfirmZeroOpen] = useState(false);
 
   const updateRow = useCallback((index: number, field: keyof EditableRow, value: string) => {
     setRows((prev) => prev.map((r) => (r.index === index ? { ...r, [field]: value } : r)));
@@ -215,7 +217,8 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
     setRows((prev) => [...prev, newRow]);
   }, [rows]);
 
-  const handleSubmit = async () => {
+  const doSubmit = async () => {
+    setConfirmZeroOpen(false);
     try {
       setIsSubmitting(true);
       setError(null);
@@ -249,6 +252,8 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
         reviewedRows,
         isStockTake,
         isStockTake ? stockTakeDate : null,
+        // Full stock take: align everything to the count and zero items not on it.
+        isStockTake,
       );
       onComplete(result);
     } catch (err) {
@@ -256,6 +261,15 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // A stock take rewrites stock, so confirm the zero-missing behaviour first.
+  const handleSubmit = () => {
+    if (isStockTake) {
+      setConfirmZeroOpen(true);
+      return;
+    }
+    doSubmit();
   };
 
   const matchedCount = rows.filter((r) => r.originalMatch !== null).length;
@@ -271,6 +285,15 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
 
   return (
     <div className="space-y-4">
+      <ConfirmModal
+        isOpen={confirmZeroOpen}
+        title="Confirm full stock take"
+        message="This aligns all stock to your count: items on the sheet are set to the counted quantity, and any item in the system that is NOT on this count is set to zero (we no longer have it). A stock-variances spreadsheet is produced afterwards. Continue?"
+        confirmLabel="Align stock & import"
+        loading={isSubmitting}
+        onConfirm={doSubmit}
+        onCancel={() => setConfirmZeroOpen(false)}
+      />
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">

@@ -3,12 +3,14 @@ import {
   Controller,
   Post,
   Req,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { StockControlAuthGuard } from "../guards/stock-control-auth.guard";
 import { StockControlOnboardingGuard } from "../guards/stock-control-onboarding.guard";
 import {
@@ -16,7 +18,7 @@ import {
   StockControlRoleGuard,
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
-import type { ImportRow, ReviewedRow } from "../services/import.service";
+import type { ImportRow, ReviewedRow, StockTakeVariance } from "../services/import.service";
 import { ImportService } from "../services/import.service";
 
 @ApiTags("Stock Control - Import")
@@ -82,6 +84,7 @@ export class ImportController {
       rows: ReviewedRow[];
       isStockTake?: boolean;
       stockTakeDate?: string;
+      zeroMissing?: boolean;
     },
     @Req() req: any,
   ) {
@@ -91,6 +94,23 @@ export class ImportController {
       req.user.name,
       body.isStockTake ?? false,
       body.stockTakeDate ?? null,
+      body.zeroMissing ?? false,
     );
+  }
+
+  @Post("stock-take-variances/export")
+  @ApiOperation({ summary: "Download stock-take variances as an Excel (.xlsx)" })
+  async exportVariances(
+    @Body() body: { variances: StockTakeVariance[] },
+    @Res() res: Response,
+  ): Promise<void> {
+    const buffer = await this.importService.buildVarianceWorkbook(body.variances ?? []);
+    const stamp = new Date().toISOString().slice(0, 10);
+    res.set({
+      "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      "Content-Disposition": `attachment; filename="stock-variances-${stamp}.xlsx"`,
+      "Content-Length": String(buffer.length),
+    });
+    res.end(buffer);
   }
 }

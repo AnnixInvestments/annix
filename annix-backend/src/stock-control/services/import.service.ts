@@ -74,13 +74,29 @@ export interface ReviewedRow {
   corrections: { field: string; originalValue: string | null; correctedValue: string | null }[];
 }
 
+export interface StockTakeVariance {
+  stockItemId: number;
+  sku: string;
+  name: string;
+  location: string | null;
+  unitOfMeasure: string;
+  systemQty: number; // on-hand the system held before this stock take
+  countedQty: number; // what was counted (0 for items not on the count)
+  varianceQty: number; // counted - system
+  unitCost: number;
+  varianceValueR: number; // varianceQty * unitCost
+  zeroed: boolean; // true when the item was on the system but absent from the count
+}
+
 export interface ReviewedImportResult {
   totalRows: number;
   created: number;
   updated: number;
   skipped: number;
   learned: number;
+  zeroed: number; // items not on the count that were set to zero (full stock take)
   errors: { row: number; message: string }[];
+  variances: StockTakeVariance[];
 }
 
 const INVENTORY_PDF_EXTRACTION_PROMPT = `You are an expert at reading inventory, stock, and product listing documents.
@@ -895,6 +911,7 @@ export class ImportService {
     createdBy: string | null,
     isStockTake: boolean,
     stockTakeDate: string | null,
+    zeroMissing = false,
   ): Promise<ReviewedImportResult> {
     const result: ReviewedImportResult = {
       totalRows: rows.length,
@@ -902,8 +919,14 @@ export class ImportService {
       updated: 0,
       skipped: 0,
       learned: 0,
+      zeroed: 0,
       errors: [],
+      variances: [],
     };
+
+    // Every item the count touched (matched or newly created) — the zero-missing pass
+    // must leave these alone.
+    const countedItemIds = new Set<number>();
 
     for (const row of rows) {
       try {
@@ -926,6 +949,9 @@ export class ImportService {
             ];
             continue;
           }
+
+          const systemQtyBefore = Number(existing.quantity) || 0;
+          countedItemIds.add(existing.id);
 
           if (!isStockTake) {
             existing.sku = row.sku || existing.sku;
@@ -966,6 +992,12 @@ export class ImportService {
 
           await this.stockItemRepo.save(existing);
           result.updated += 1;
+
+          if (isStockTake && row.quantity !== null && row.quantity !== undefined) {
+            result.variances.push(
+              this.buildVariance(existing, systemQtyBefore, row.quantity, false),
+            );
+          }
         } else if (row.action === "create") {
           const item = this.stockItemRepo.create({
             sku: row.sku,
@@ -981,6 +1013,7 @@ export class ImportService {
             needsQrPrint: isStockTake,
           });
           const saved = await this.stockItemRepo.save(item);
+          countedItemIds.add(saved.id);
 
           if (row.quantity && row.quantity > 0) {
             const movement = this.movementRepo.create({
@@ -996,6 +1029,10 @@ export class ImportService {
           }
 
           result.created += 1;
+
+          if (isStockTake) {
+            result.variances.push(this.buildVariance(saved, 0, row.quantity || 0, false));
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unknown error";
@@ -1003,7 +1040,112 @@ export class ImportService {
       }
     }
 
+    // Full stock take: anything in the system but absent from the count no longer exists,
+    // so zero it (rolling forward any movements since the count date) and log the variance.
+    if (isStockTake && zeroMissing) {
+      const allItems = await this.stockItemRepo.find({ where: { companyId } });
+      for (const item of allItems) {
+        if (countedItemIds.has(item.id)) continue;
+        const systemQtyBefore = Number(item.quantity) || 0;
+        if (systemQtyBefore === 0) continue;
+        try {
+          const { finalSoh, movementNotes } = await this.resolveStockTakeQuantity(
+            item,
+            0,
+            companyId,
+            true,
+            stockTakeDate,
+          );
+          if (finalSoh !== item.quantity) {
+            const delta = finalSoh - item.quantity;
+            item.quantity = finalSoh;
+            const movement = this.movementRepo.create({
+              stockItem: item,
+              movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
+              quantity: Math.abs(delta),
+              referenceType: ReferenceType.STOCK_TAKE,
+              notes: `Not on count — ${movementNotes}`,
+              createdBy,
+              companyId,
+            });
+            await this.movementRepo.save(movement);
+            await this.stockItemRepo.save(item);
+          }
+          result.zeroed += 1;
+          result.variances.push(this.buildVariance(item, systemQtyBefore, 0, true));
+        } catch (err) {
+          const message = err instanceof Error ? err.message : "Unknown error";
+          result.errors = [
+            ...result.errors,
+            { row: 0, message: `Zeroing ${item.sku || item.name}: ${message}` },
+          ];
+        }
+      }
+    }
+
     return result;
+  }
+
+  private buildVariance(
+    item: StockItem,
+    systemQty: number,
+    countedQty: number,
+    zeroed: boolean,
+  ): StockTakeVariance {
+    const unitCost = Number(item.costPerUnit) || 0;
+    const varianceQty = countedQty - systemQty;
+    return {
+      stockItemId: item.id,
+      sku: item.sku,
+      name: item.name,
+      location: item.location,
+      unitOfMeasure: item.unitOfMeasure,
+      systemQty,
+      countedQty,
+      varianceQty,
+      unitCost,
+      varianceValueR: Math.round(varianceQty * unitCost * 100) / 100,
+      zeroed,
+    };
+  }
+
+  /** Build a downloadable .xlsx of stock-take variances (SheetJS, matching the reader). */
+  async buildVarianceWorkbook(variances: StockTakeVariance[]): Promise<Buffer> {
+    const xlsx = await import("xlsx");
+    const header = [
+      "SKU",
+      "Item",
+      "Location",
+      "UoM",
+      "System Qty",
+      "Counted Qty",
+      "Variance Qty",
+      "Unit Cost (R)",
+      "Variance Value (R)",
+      "Not On Count",
+    ];
+    const rows = variances.map((v) => [
+      v.sku,
+      v.name,
+      v.location || "",
+      v.unitOfMeasure,
+      v.systemQty,
+      v.countedQty,
+      v.varianceQty,
+      v.unitCost,
+      v.varianceValueR,
+      v.zeroed ? "Yes" : "",
+    ]);
+    const totalValue = variances.reduce((s, v) => s + v.varianceValueR, 0);
+    const sheet = xlsx.utils.aoa_to_sheet([
+      header,
+      ...rows,
+      [],
+      ["", "", "", "", "", "", "", "Total variance (R)", Math.round(totalValue * 100) / 100, ""],
+    ]);
+    const wb = xlsx.utils.book_new();
+    xlsx.utils.book_append_sheet(wb, sheet, "Stock Variances");
+    return xlsx.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
   }
 
   private async recordCorrections(row: ReviewedRow): Promise<number> {

@@ -9,6 +9,8 @@ import type {
   InventoryColumnMapping,
   ReviewedImportResult,
 } from "@/app/lib/api/stockControlApi";
+import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { DateTime } from "@/app/lib/datetime";
 import { useMatchImportRows, useUploadImportFile } from "@/app/lib/query/hooks";
 import { ImportReviewStep } from "./ImportReviewStep";
 
@@ -142,6 +144,27 @@ export default function ImportPage() {
   const handleReviewComplete = (reviewResult: ReviewedImportResult) => {
     setResult(reviewResult);
     setStep("result");
+  };
+
+  const [downloadingVariances, setDownloadingVariances] = useState(false);
+  const downloadVariances = async () => {
+    if (!result || result.variances.length === 0) return;
+    try {
+      setDownloadingVariances(true);
+      const blob = await stockControlApiClient.exportStockTakeVariances(result.variances);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `stock-variances-${DateTime.now().toISODate()}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download variances");
+    } finally {
+      setDownloadingVariances(false);
+    }
   };
 
   const resetImport = () => {
@@ -480,6 +503,16 @@ export default function ImportPage() {
                 </div>
               </div>
 
+              {result.zeroed > 0 && (
+                <div className="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                  <p className="text-sm text-amber-800">
+                    {result.zeroed} item{result.zeroed !== 1 ? "s were" : " was"} not on this count
+                    and {result.zeroed !== 1 ? "have" : "has"} been set to zero (no longer in
+                    stock). Check the variances spreadsheet to trace any differences.
+                  </p>
+                </div>
+              )}
+
               {result.learned > 0 && (
                 <div className="mb-4 bg-purple-50 border border-purple-200 rounded-lg p-3">
                   <p className="text-sm text-purple-700">
@@ -502,7 +535,19 @@ export default function ImportPage() {
                 </div>
               )}
 
-              <div className="mt-6 flex items-center space-x-3">
+              <div className="mt-6 flex flex-wrap items-center gap-3">
+                {result.variances.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={downloadVariances}
+                    disabled={downloadingVariances}
+                    className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700 disabled:opacity-50"
+                  >
+                    {downloadingVariances
+                      ? "Preparing…"
+                      : `Download Stock Variances (${result.variances.length}) — Excel`}
+                  </button>
+                )}
                 <button
                   onClick={resetImport}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"

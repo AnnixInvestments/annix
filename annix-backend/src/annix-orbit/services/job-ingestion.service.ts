@@ -125,6 +125,11 @@ export class JobIngestionService {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Auto-resolve duplicates failed: ${message}`);
     });
+
+    await this.expireStaleJobs().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Stale-job sweep failed: ${message}`);
+    });
   }
 
   async backfillCanonicalCategories(limit = 200): Promise<{ updated: number }> {
@@ -646,6 +651,30 @@ export class JobIngestionService {
     return { deleted: unique.length };
   }
 
+  // Source-agnostic staleness sweep: a listing absent from its source's feed for
+  // STALE_JOB_DAYS is treated as no longer available (job boards like Adzuna serve
+  // a "no longer available" page rather than a 404, so feed-absence is the reliable
+  // signal). It is hidden from the seeker site — the public feed and the match
+  // queries already filter on expires_at. Runs once per poll across every source:
+  // API feeds, sitemap crawls and DPSA alike, since last_seen_at is stamped on each.
+  async expireStaleJobs(): Promise<{ expired: number }> {
+    const result = await this.externalJobRepo
+      .createQueryBuilder()
+      .update()
+      .set({ expiresAt: () => "now()" })
+      .where("(expires_at IS NULL OR expires_at > now())")
+      .andWhere("last_seen_at IS NOT NULL")
+      .andWhere("last_seen_at < now() - INTERVAL '14 days'")
+      .execute();
+    const expired = result.affected ?? 0;
+    if (expired > 0) {
+      this.logger.log(
+        `Stale-job sweep: hid ${expired} listing(s) absent from their source for 14+ days`,
+      );
+    }
+    return { expired };
+  }
+
   // Auto-removes duplicate listings sharing the same title + location. Within
   // such a group: if there is at most one distinct named employer, every copy
   // is treated as the same job (including employer-blank copies, which are just
@@ -993,12 +1022,30 @@ export class JobIngestionService {
     });
     const existingAlternates = await this.alternateRepo.find({
       where: { sourceExternalId: In(externalIds), sourceId: source.id },
-      select: ["sourceExternalId"],
+      select: ["sourceExternalId", "canonicalExternalJobId"],
     });
 
     const alreadyKnown = new Set<string>();
     existingJobs.forEach((j) => alreadyKnown.add(j.sourceExternalId));
     existingAlternates.forEach((a) => alreadyKnown.add(a.sourceExternalId));
+
+    // Liveness signal: every job the source still returns is stamped as seen now.
+    // Canonical jobs represented only by a re-seen alternate are stamped too, so a
+    // job kept alive through a duplicate listing is not wrongly swept as stale.
+    const seenAt = DateTime.now().toJSDate();
+    await this.externalJobRepo.update(
+      { sourceId: source.id, sourceExternalId: In(externalIds) },
+      { lastSeenAt: seenAt },
+    );
+    const canonicalIdsFromAlternates = [
+      ...new Set(existingAlternates.map((a) => a.canonicalExternalJobId)),
+    ];
+    if (canonicalIdsFromAlternates.length > 0) {
+      await this.externalJobRepo.update(
+        { id: In(canonicalIdsFromAlternates) },
+        { lastSeenAt: seenAt },
+      );
+    }
 
     const candidates = jobs.filter((job) => !alreadyKnown.has(job.id));
 
@@ -1051,6 +1098,7 @@ export class JobIngestionService {
           sourceUrl: job.redirectUrl,
           postedAt: job.created ? fromISO(job.created).toJSDate() : null,
           expiresAt: this.estimateExpiryForSource(source, job.created),
+          lastSeenAt: seenAt,
           sourceId: source.id,
         });
         return this.externalJobRepo.save(externalJob);

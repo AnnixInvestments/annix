@@ -73,6 +73,9 @@ export class ExternalJob {
   @Column({ name: "expires_at", type: "timestamptz", nullable: true })
   expiresAt: Date | null;
 
+  @Column({ name: "last_seen_at", type: "timestamptz", nullable: true })
+  lastSeenAt: Date | null;
+
   @ManyToOne(() => JobMarketSource, { onDelete: "CASCADE" })
   @JoinColumn({ name: "source_id" })
   source: JobMarketSource;

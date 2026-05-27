@@ -8,6 +8,7 @@ import type {
   ReviewedRow,
   StockItem,
   StockPriceHistory,
+  StockTakeVariance,
 } from "./types";
 
 declare module "./base" {
@@ -89,7 +90,9 @@ declare module "./base" {
       rows: ReviewedRow[],
       isStockTake?: boolean,
       stockTakeDate?: string | null,
+      zeroMissing?: boolean,
     ): Promise<ReviewedImportResult>;
+    exportStockTakeVariances(variances: StockTakeVariance[]): Promise<Blob>;
     autoCategorize(): Promise<{
       categorized: number;
       total: number;
@@ -253,10 +256,22 @@ proto.matchImportRows = async function (rows) {
   });
 };
 
-proto.confirmReviewedImport = async function (rows, isStockTake = false, stockTakeDate = null) {
+proto.confirmReviewedImport = async function (
+  rows,
+  isStockTake = false,
+  stockTakeDate = null,
+  zeroMissing = false,
+) {
   return this.request("/stock-control/import/confirm-reviewed", {
     method: "POST",
-    body: JSON.stringify({ rows, isStockTake, stockTakeDate }),
+    body: JSON.stringify({ rows, isStockTake, stockTakeDate, zeroMissing }),
+  });
+};
+
+proto.exportStockTakeVariances = async function (variances) {
+  return this.requestBlob("/stock-control/import/stock-take-variances/export", {
+    method: "POST",
+    body: JSON.stringify({ variances }),
   });
 };
 
