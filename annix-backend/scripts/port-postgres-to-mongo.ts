@@ -14,10 +14,16 @@ const READ_BATCH = 500;
 type ColumnPropertyMap = Map<string, string>;
 
 function columnMapFor(metadata: EntityMetadata): ColumnPropertyMap {
-  return metadata.columns.reduce((columns, column) => {
+  const columns = metadata.columns.reduce((columns, column) => {
     columns.set(column.databaseName, column.propertyName);
     return columns;
   }, new Map<string, string>());
+  metadata.relations.forEach((relation) => {
+    relation.joinColumns.forEach((column) => {
+      columns.set(column.databaseName, `${relation.propertyName}Id`);
+    });
+  });
+  return columns;
 }
 
 async function columnPropertyMaps(): Promise<Map<string, ColumnPropertyMap>> {
