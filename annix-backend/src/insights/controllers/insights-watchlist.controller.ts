@@ -72,9 +72,8 @@ export class InsightsWatchlistController {
     @Param("symbol") symbol: string,
     @Query("from") from?: string,
   ): Promise<PriceBarDto[]> {
-    const rows = await this.ingestion.historyForSymbol(symbol.toUpperCase());
-    const filtered = from ? rows.filter((row) => row.date >= from) : rows;
-    return filtered.map((row) => ({
+    const rows = await this.ingestion.historyForSymbol(symbol.toUpperCase(), from);
+    return rows.map((row) => ({
       date: typeof row.date === "string" ? row.date.slice(0, 10) : row.date,
       open: Number(row.open),
       high: Number(row.high),

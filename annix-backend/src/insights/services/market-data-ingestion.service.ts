@@ -1,6 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { MoreThanOrEqual, Repository } from "typeorm";
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { Asset } from "../entities/asset.entity";
@@ -113,11 +113,11 @@ export class MarketDataIngestionService {
     return trailingPe;
   }
 
-  async historyForSymbol(symbol: string): Promise<PriceHistory[]> {
+  async historyForSymbol(symbol: string, from?: string): Promise<PriceHistory[]> {
     const asset = await this.assetRepo.findOne({ where: { symbol } });
     if (!asset) return [];
     return this.historyRepo.find({
-      where: { assetId: asset.id },
+      where: from ? { assetId: asset.id, date: MoreThanOrEqual(from) } : { assetId: asset.id },
       order: { date: "ASC" },
     });
   }

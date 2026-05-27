@@ -15,7 +15,7 @@ export class EscoNormalisationService implements OnModuleInit {
   private readonly logger = new Logger(EscoNormalisationService.name);
   private cache: Map<string, { canonical: string; alts: string[] }> | null = null;
   private cachePopulatedAt = 0;
-  private readonly CACHE_TTL_MS = 30 * 60 * 1000;
+  private readonly CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
   constructor(
     @InjectRepository(CvEscoSkill)

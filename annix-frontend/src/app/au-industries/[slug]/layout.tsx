@@ -44,8 +44,15 @@ export async function generateMetadata(props: {
   }
 
   const { metaTitle, metaDescription, title: pageTitle } = page;
-  const title = metaTitle || pageTitle;
   const description = metaDescription || undefined;
+  // The CMS metaTitle already carries the "| AU Industries" brand suffix, so use
+  // it verbatim (absolute) to stop the root layout template "%s | AU Industries"
+  // appending the brand a second time. A title without the brand (the page.title
+  // fallback, or a future clean metaTitle) still gets the template's brand.
+  const rawTitle = metaTitle || pageTitle;
+  const hasBrand = rawTitle.includes("AU Industries");
+  const title: Metadata["title"] = hasBrand ? { absolute: rawTitle } : rawTitle;
+  const ogTitle = hasBrand ? rawTitle : `${rawTitle} | AU Industries`;
 
   return {
     title,
@@ -54,7 +61,7 @@ export async function generateMetadata(props: {
     openGraph: {
       type: "website",
       url: canonical,
-      title: `${title} | AU Industries`,
+      title: ogTitle,
       description,
     },
   };
