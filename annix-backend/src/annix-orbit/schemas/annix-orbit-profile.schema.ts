@@ -16,19 +16,19 @@ export class AnnixOrbitProfile {
   @Prop({ type: Number, required: true })
   userId: number;
 
-  @Prop({ type: String, required: false })
-  companyId: string;
+  @Prop({ type: Number, required: false })
+  companyId: number;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "company" })
   userType: string;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 80 })
   matchAlertThreshold: number;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: true })
   digestEnabled: boolean;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   pushEnabled: boolean;
 
   @Prop({ type: String, required: false })

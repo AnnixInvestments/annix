@@ -16,7 +16,7 @@ export class Company {
   @Prop({ type: String, required: true })
   name: string;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "MANUFACTURER" })
   companyType: string;
 
   @Prop({ type: String, required: false })
@@ -58,10 +58,10 @@ export class Company {
   @Prop({ type: String, required: false })
   websiteUrl: string;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "annix" })
   brandingType: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   brandingAuthorized: boolean;
 
   @Prop({ type: String, required: false })
@@ -94,31 +94,31 @@ export class Company {
   @Prop({ type: String, required: false })
   smtpFromEmail: string;
 
-  @Prop({ type: Object, required: true })
-  notificationEmails: Record<string, unknown>;
+  @Prop({ type: [String], required: true, default: [] })
+  notificationEmails: string[];
 
   @Prop({ type: Object, required: false })
   emailConfig: Record<string, unknown>;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 45 })
   pipingLossFactorPct: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 20 })
   flatPlateLossFactorPct: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 30 })
   structuralSteelLossFactorPct: number;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: true })
   qcEnabled: boolean;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   messagingEnabled: boolean;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   staffLeaveEnabled: boolean;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: true })
   workflowEnabled: boolean;
 
   @Prop({ type: String, required: false })
@@ -136,10 +136,10 @@ export class Company {
   @Prop({ type: String, required: false })
   companySize: string;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "South Africa" })
   country: string;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "ZAR" })
   currencyCode: string;
 
   @Prop({ type: Number, required: false })
@@ -151,13 +151,13 @@ export class Company {
   @Prop({ type: String, required: false })
   beeVerificationAgency: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   isExemptMicroEnterprise: boolean;
 
   @Prop({ type: Date, required: false })
   beeExpiryNotificationSentAt: Date;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   onboardingComplete: boolean;
 
   @Prop({ type: Number, required: false })

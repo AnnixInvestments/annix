@@ -56,14 +56,21 @@ export class MongoAppRepository extends MongoCrudRepository<App> implements AppR
   async findWithDetails(
     code: string,
   ): Promise<(App & { permissions: AppPermission[]; roles: AppRole[] }) | null> {
-    const document = await this.documents.findOne({ code, isActive: true }).lean().exec();
-    if (!document) {
-      return null;
-    }
-    const app = this.toDomain(document) as App & { permissions: AppPermission[]; roles: AppRole[] };
-    app.permissions = [];
-    app.roles = [];
-    return app;
+    const document = await this.documents
+      .findOne({ code, isActive: true })
+      .populate("permissions")
+      .populate({
+        path: "roles",
+        populate: { path: "rolePermissions", populate: { path: "permission" } },
+      })
+      .lean()
+      .exec();
+    return this.toDomain(document) as
+      | (App & {
+          permissions: AppPermission[];
+          roles: AppRole[];
+        })
+      | null;
   }
 }
 
@@ -103,15 +110,16 @@ export class MongoAppRoleRepository
   ): Promise<
     (AppRole & { rolePermissions: (AppRolePermission & { permission: AppPermission })[] }) | null
   > {
-    const document = await this.documents.findById(roleId).lean().exec();
-    if (!document) {
-      return null;
-    }
-    const role = this.toDomain(document) as AppRole & {
-      rolePermissions: (AppRolePermission & { permission: AppPermission })[];
-    };
-    role.rolePermissions = [];
-    return role;
+    const document = await this.documents
+      .findById(roleId)
+      .populate({ path: "rolePermissions", populate: { path: "permission" } })
+      .lean()
+      .exec();
+    return this.toDomain(document) as
+      | (AppRole & {
+          rolePermissions: (AppRolePermission & { permission: AppPermission })[];
+        })
+      | null;
   }
 
   async findAllWithPermissionsForApp(
@@ -119,14 +127,15 @@ export class MongoAppRoleRepository
   ): Promise<
     (AppRole & { rolePermissions: (AppRolePermission & { permission: AppPermission })[] })[]
   > {
-    const documents = await this.documents.find({ appId }).sort({ displayOrder: 1 }).lean().exec();
-    return this.toDomainList(documents).map((role) => {
-      const r = role as AppRole & {
-        rolePermissions: (AppRolePermission & { permission: AppPermission })[];
-      };
-      r.rolePermissions = [];
-      return r;
-    });
+    const documents = await this.documents
+      .find({ appId })
+      .populate({ path: "rolePermissions", populate: { path: "permission" } })
+      .sort({ displayOrder: 1 })
+      .lean()
+      .exec();
+    return this.toDomainList(documents) as (AppRole & {
+      rolePermissions: (AppRolePermission & { permission: AppPermission })[];
+    })[];
   }
 }
 
@@ -199,7 +208,7 @@ export class MongoUserAppAccessRepository
   }
 
   async findOneByUserAndAppWithRole(userId: number, appId: number): Promise<UserAppAccess | null> {
-    const document = await this.documents.findOne({ userId, appId }).lean().exec();
+    const document = await this.documents.findOne({ userId, appId }).populate("role").lean().exec();
     return this.toDomain(document);
   }
 
@@ -211,32 +220,67 @@ export class MongoUserAppAccessRepository
     if (!app) {
       return null;
     }
-    const document = await this.documents.findOne({ userId, appId: app._id }).lean().exec();
+    const document = await this.documents
+      .findOne({ userId, appId: app._id })
+      .populate("role")
+      .lean()
+      .exec();
     return this.toDomain(document);
   }
 
   async findWithRelations(id: number): Promise<UserAppAccess | null> {
-    const document = await this.documents.findById(id).lean().exec();
+    const document = await this.documents
+      .findById(id)
+      .populate("user")
+      .populate("app")
+      .populate("role")
+      .populate({ path: "customPermissions", populate: { path: "permission" } })
+      .populate("userProducts")
+      .lean()
+      .exec();
     return this.toDomain(document);
   }
 
   async findManyWithRelationsForApp(appId: number): Promise<UserAppAccess[]> {
-    const documents = await this.documents.find({ appId }).sort({ grantedAt: -1 }).lean().exec();
+    const documents = await this.documents
+      .find({ appId })
+      .populate("user")
+      .populate("role")
+      .populate({ path: "customPermissions", populate: { path: "permission" } })
+      .populate("userProducts")
+      .sort({ grantedAt: -1 })
+      .lean()
+      .exec();
     return this.toDomainList(documents);
   }
 
   async findAllWithRelations(): Promise<UserAppAccess[]> {
-    const documents = await this.documents.find().lean().exec();
+    const documents = await this.documents
+      .find()
+      .populate("app")
+      .populate("role")
+      .populate({ path: "customPermissions", populate: { path: "permission" } })
+      .populate("userProducts")
+      .lean()
+      .exec();
     return this.toDomainList(documents);
   }
 
   async findWithPermissionsAndRole(userId: number, appId: number): Promise<UserAppAccess | null> {
-    const document = await this.documents.findOne({ userId, appId }).lean().exec();
+    const document = await this.documents
+      .findOne({ userId, appId })
+      .populate({
+        path: "role",
+        populate: { path: "rolePermissions", populate: { path: "permission" } },
+      })
+      .populate({ path: "customPermissions", populate: { path: "permission" } })
+      .lean()
+      .exec();
     return this.toDomain(document);
   }
 
   async findWithApp(userId: number): Promise<UserAppAccess[]> {
-    const documents = await this.documents.find({ userId }).lean().exec();
+    const documents = await this.documents.find({ userId }).populate("app").lean().exec();
     return this.toDomainList(documents);
   }
 
