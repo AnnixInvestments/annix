@@ -36,12 +36,33 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
     return this.session ? { session: this.session } : {};
   }
 
+  private cachedDateFields: string[] | null = null;
+
+  private get dateFields(): string[] {
+    if (this.cachedDateFields === null) {
+      this.cachedDateFields = Object.entries(this.model.schema.paths)
+        .filter(([, type]) => (type as { instance?: string }).instance === "Date")
+        .map(([path]) => path);
+    }
+    return this.cachedDateFields;
+  }
+
   protected toDomain(document: MongoDocument | null): Entity | null {
     if (!document) {
       return null;
     }
     const { _id, ...rest } = document;
-    return { id: _id, ...rest } as unknown as Entity;
+    const entity = { id: _id, ...rest } as MongoDocument;
+    for (const field of this.dateFields) {
+      const value = entity[field];
+      if (typeof value === "string") {
+        const parsed = new Date(value);
+        if (!Number.isNaN(parsed.getTime())) {
+          entity[field] = parsed;
+        }
+      }
+    }
+    return entity as unknown as Entity;
   }
 
   protected toDomainList(documents: MongoDocument[]): Entity[] {
