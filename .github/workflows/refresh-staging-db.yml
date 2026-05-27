@@ -1,9 +1,8 @@
-name: Refresh staging DB from prod
+name: Refresh staging MongoDB from production
 
 on:
   schedule:
-    # 04:00 UTC = 06:00 SAST daily
-    - cron: '0 4 * * *'
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 concurrency:
@@ -12,39 +11,69 @@ concurrency:
 
 jobs:
   refresh:
+    if: github.event_name == 'workflow_dispatch' || vars.MONGO_REFRESH_ENABLED == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - name: Install Postgres 17 client (matches Neon)
+      - name: Validate MongoDB refresh configuration
+        env:
+          PROD_MONGODB_URI: ${{ secrets.PROD_MONGODB_URI }}
+          PROD_MONGO_DATABASE: ${{ secrets.PROD_MONGO_DATABASE }}
+          STAGING_MONGODB_URI: ${{ secrets.STAGING_MONGODB_URI }}
+          STAGING_MONGO_DATABASE: ${{ secrets.STAGING_MONGO_DATABASE }}
         run: |
-          sudo apt-get update
-          sudo install -d /usr/share/postgresql-common/pgdg
-          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
-          sudo apt-get update
-          sudo apt-get install -y postgresql-client-17
+          set -euo pipefail
+          test -n "${PROD_MONGODB_URI}"
+          test -n "${PROD_MONGO_DATABASE}"
+          test -n "${STAGING_MONGODB_URI}"
+          test -n "${STAGING_MONGO_DATABASE}"
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+      - uses: ./.github/actions/setup-monorepo
+
+      - name: Install MongoDB Database Tools
+        run: |
+          curl -fsSL -o mongodb-database-tools.deb \
+            https://fastdl.mongodb.org/tools/db/mongodb-database-tools-ubuntu2204-x86_64-100.10.0.deb
+          sudo apt-get update
+          sudo apt-get install -y ./mongodb-database-tools.deb
+          mongodump --version
 
       - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Dump production MongoDB
+        env:
+          PROD_MONGODB_URI: ${{ secrets.PROD_MONGODB_URI }}
+          PROD_MONGO_DATABASE: ${{ secrets.PROD_MONGO_DATABASE }}
+        run: mongodump --uri="${PROD_MONGODB_URI}" --db="${PROD_MONGO_DATABASE}" --archive="${RUNNER_TEMP}/production.archive.gz" --gzip
 
       - name: Scale staging to 0 machines
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
         run: flyctl scale count 0 -a annix-app-staging --yes
 
-      - name: Clone prod -> staging
+      - name: Clear staging MongoDB
         env:
-          PROD_DATABASE_URL: ${{ secrets.PROD_DATABASE_URL }}
-          STAGING_DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          MONGODB_URI: ${{ secrets.STAGING_MONGODB_URI }}
+          MONGO_DATABASE: ${{ secrets.STAGING_MONGO_DATABASE }}
+        run: pnpm --filter annix-backend exec ts-node --transpile-only scripts/clear-mongo-database.ts
+
+      - name: Restore production MongoDB to staging
+        env:
+          PROD_MONGO_DATABASE: ${{ secrets.PROD_MONGO_DATABASE }}
+          STAGING_MONGODB_URI: ${{ secrets.STAGING_MONGODB_URI }}
+          STAGING_MONGO_DATABASE: ${{ secrets.STAGING_MONGO_DATABASE }}
         run: |
-          export PATH="/usr/lib/postgresql/17/bin:$PATH"
-          pg_dump --version
-          node scripts/clone-prod-to-staging.mjs --yes
+          set -euo pipefail
+          mongorestore --uri="${STAGING_MONGODB_URI}" --archive="${RUNNER_TEMP}/production.archive.gz" --gzip \
+            --nsFrom="${PROD_MONGO_DATABASE}.*" --nsTo="${STAGING_MONGO_DATABASE}.*"
+
+      - name: Seed staging MongoDB counters
+        env:
+          MONGODB_URI: ${{ secrets.STAGING_MONGODB_URI }}
+          MONGO_DATABASE: ${{ secrets.STAGING_MONGO_DATABASE }}
+        run: pnpm --filter annix-backend exec ts-node --transpile-only scripts/seed-mongo-counters.ts
 
       - name: Scale staging back to 2 machines
         if: always()

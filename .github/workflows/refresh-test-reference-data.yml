@@ -1,0 +1,67 @@
+name: Refresh test MongoDB with reference data
+
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: refresh-test-reference-data
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    if: github.event_name == 'workflow_dispatch' || vars.MONGO_TEST_REFERENCE_REFRESH_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Validate MongoDB refresh configuration
+        env:
+          PROD_MONGODB_URI: ${{ secrets.PROD_MONGODB_URI }}
+          PROD_MONGO_DATABASE: ${{ secrets.PROD_MONGO_DATABASE }}
+          TEST_MONGODB_URI: ${{ secrets.TEST_MONGODB_URI }}
+          TEST_MONGO_DATABASE: ${{ secrets.TEST_MONGO_DATABASE }}
+        run: |
+          set -euo pipefail
+          test -n "${PROD_MONGODB_URI}"
+          test -n "${PROD_MONGO_DATABASE}"
+          test -n "${TEST_MONGODB_URI}"
+          test -n "${TEST_MONGO_DATABASE}"
+
+      - uses: ./.github/actions/setup-monorepo
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Scale test to 0 machines
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl scale count 0 -a annix-app-test --yes
+
+      - name: Clear test transactional data
+        env:
+          MONGODB_URI: ${{ secrets.TEST_MONGODB_URI }}
+          MONGO_DATABASE: ${{ secrets.TEST_MONGO_DATABASE }}
+          PRESERVE_COLLECTIONS_FILE: scripts/mongo-test-preserved-collections.txt
+        run: pnpm --filter annix-backend exec ts-node --transpile-only scripts/clear-mongo-database.ts
+
+      - name: Copy production reference data to test
+        env:
+          SOURCE_MONGODB_URI: ${{ secrets.PROD_MONGODB_URI }}
+          SOURCE_MONGO_DATABASE: ${{ secrets.PROD_MONGO_DATABASE }}
+          MONGODB_URI: ${{ secrets.TEST_MONGODB_URI }}
+          MONGO_DATABASE: ${{ secrets.TEST_MONGO_DATABASE }}
+          MONGO_COLLECTIONS_FILE: scripts/mongo-reference-collections.txt
+        run: pnpm --filter annix-backend exec ts-node --transpile-only scripts/sync-mongo-collections.ts
+
+      - name: Seed test MongoDB counters
+        env:
+          MONGODB_URI: ${{ secrets.TEST_MONGODB_URI }}
+          MONGO_DATABASE: ${{ secrets.TEST_MONGO_DATABASE }}
+        run: pnpm --filter annix-backend exec ts-node --transpile-only scripts/seed-mongo-counters.ts
+
+      - name: Scale test back to 2 machines
+        if: always()
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+        run: flyctl scale count 2 -a annix-app-test --yes
