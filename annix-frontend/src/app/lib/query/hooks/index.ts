@@ -243,6 +243,7 @@ export {
   useOrbitUpdateEmailTemplate,
 } from "./annix-orbit/useOrbitEmailTemplates";
 export {
+  useAdoptNixCv,
   useGenerateNixCv,
   useNixGeneratedCv,
   useOrbitConfirmMyAccountDeletion,

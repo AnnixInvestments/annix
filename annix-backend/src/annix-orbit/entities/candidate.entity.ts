@@ -119,13 +119,13 @@ export class Candidate {
   @ManyToOne(
     () => JobPosting,
     (jobPosting) => jobPosting.candidates,
-    { onDelete: "CASCADE" },
+    { onDelete: "CASCADE", nullable: true },
   )
   @JoinColumn({ name: "job_posting_id" })
-  jobPosting: JobPosting;
+  jobPosting: JobPosting | null;
 
-  @Column({ name: "job_posting_id" })
-  jobPostingId: number;
+  @Column({ name: "job_posting_id", nullable: true })
+  jobPostingId: number | null;
 
   @OneToMany(
     () => CandidateReference,

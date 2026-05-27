@@ -126,7 +126,8 @@ export class InterviewBookingService {
       relations: ["jobPosting"],
     });
     if (!candidate) throw new NotFoundException("Candidate not found");
-    if (candidate.jobPosting.companyId !== companyId) {
+    const jobPosting = candidate.jobPosting;
+    if (!jobPosting || jobPosting.companyId !== companyId) {
       throw new ForbiddenException("Candidate does not belong to your company");
     }
     if (
@@ -145,7 +146,7 @@ export class InterviewBookingService {
     const expiresAt = now().plus({ days: INVITE_TOKEN_TTL_DAYS }).toJSDate();
     const invite = this.inviteRepo.create({
       candidateId: candidate.id,
-      jobPostingId: candidate.jobPosting.id,
+      jobPostingId: jobPosting.id,
       token,
       expiresAt,
     });
@@ -160,7 +161,7 @@ export class InterviewBookingService {
       to: candidate.email,
       vars: {
         candidateName: candidate.name || "Applicant",
-        jobTitle: candidate.jobPosting.title,
+        jobTitle: jobPosting.title,
         companyName,
         bookingLink,
       },
@@ -189,6 +190,8 @@ export class InterviewBookingService {
       relations: ["jobPosting"],
     });
     if (!candidate) throw new NotFoundException("Candidate not found");
+    const jobPosting = candidate.jobPosting;
+    if (!jobPosting) throw new NotFoundException("Candidate is not linked to a job posting");
 
     const slots = await this.slotRepo.find({
       where: { jobPostingId: invite.jobPostingId, isCancelled: false },
@@ -207,7 +210,7 @@ export class InterviewBookingService {
     return {
       invite,
       candidate,
-      job: candidate.jobPosting,
+      job: jobPosting,
       slots,
       currentBooking,
     };

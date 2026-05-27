@@ -149,3 +149,15 @@ export function useUpdateNixGeneratedCv() {
     },
   });
 }
+
+export function useAdoptNixCv() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ candidateId: number | null }, Error, void>({
+    mutationFn: () => annixOrbitApiClient.nixWizardAdoptCv(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.all });
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
+    },
+  });
+}

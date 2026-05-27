@@ -20,9 +20,11 @@ import {
   IndividualDocumentKind,
 } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
-import { Candidate } from "../entities/candidate.entity";
+import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
+import { EmbeddingService } from "./embedding.service";
 import { type EeAttributesView, PopiaService } from "./popia.service";
 
 const DELETION_TOKEN_EXPIRY_HOURS = 1;
@@ -123,7 +125,110 @@ export class IndividualProfileService {
     private readonly emailService: EmailService,
     private readonly cvAuditService: CvAuditService,
     private readonly popiaService: PopiaService,
+    private readonly embeddingService: EmbeddingService,
+    private readonly candidateJobMatchingService: CandidateJobMatchingService,
   ) {}
+
+  // Self-service seekers live as an AnnixOrbitProfile, but matching runs against
+  // the Candidate entity (linked by email). Upsert a posting-less Candidate from
+  // the profile's extracted CV data, embed it, and (best-effort) refresh matches
+  // so the seeker is matchable. Returns the candidate id, or null if there's
+  // nothing to sync yet.
+  async syncCandidateFromProfile(profile: AnnixOrbitProfile): Promise<number | null> {
+    if (!profile.extractedCvData) {
+      return null;
+    }
+    const user = await this.userRepo.findOne({ where: { id: profile.userId } });
+    const email = user?.email ?? null;
+    if (!email) {
+      return null;
+    }
+    const fullName = [user?.firstName, user?.lastName]
+      .filter((part): part is string => Boolean(part && part.trim().length > 0))
+      .join(" ");
+
+    const existing = await this.candidateRepo.findOne({ where: { email } });
+    const candidate =
+      existing ??
+      this.candidateRepo.create({
+        email,
+        jobPostingId: null,
+        status: CandidateStatus.NEW,
+      });
+    candidate.name =
+      profile.extractedCvData.candidateName ?? (fullName.length > 0 ? fullName : null);
+    candidate.rawCvText = profile.rawCvText;
+    candidate.extractedData = profile.extractedCvData;
+    const saved = await this.candidateRepo.save(candidate);
+
+    try {
+      const embedded = await this.embeddingService.embedCandidate(saved.id);
+      if (embedded) {
+        await this.candidateJobMatchingService.matchCandidateToJobs(saved.id);
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Failed to embed/match candidate ${saved.id} for profile ${profile.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+
+    return saved.id;
+  }
+
+  // "Use this CV": store the Nix-built PDF as the seeker's CV document, re-extract
+  // it into the profile, then sync + embed + rematch the candidate. Awaits the
+  // sync so the caller (and its progress popup) knows when matching is ready.
+  async adoptGeneratedCv(
+    userId: number,
+    pdfBuffer: Buffer,
+  ): Promise<{ candidateId: number | null }> {
+    const profile = await this.profileForUser(userId);
+
+    const pseudoFile = {
+      originalname: "Nix-CV.pdf",
+      mimetype: "application/pdf",
+      size: pdfBuffer.length,
+      buffer: pdfBuffer,
+    } as unknown as Express.Multer.File;
+    const subPath = `${StorageArea.ANNIX_ORBIT}/individuals/${profile.userId}/${IndividualDocumentKind.CV}`;
+    const stored = await this.storageService.upload(pseudoFile, subPath);
+
+    const previousCv = await this.documentRepo.findOne({
+      where: { profileId: profile.id, kind: IndividualDocumentKind.CV },
+    });
+    if (previousCv) {
+      try {
+        await this.storageService.delete(previousCv.filePath);
+      } catch (err) {
+        this.logger.warn(`Failed to delete previous CV file ${previousCv.filePath}: ${err}`);
+      }
+      await this.documentRepo.delete(previousCv.id);
+    }
+
+    await this.documentRepo.save(
+      this.documentRepo.create({
+        profileId: profile.id,
+        kind: IndividualDocumentKind.CV,
+        filePath: stored.path,
+        originalFilename: stored.originalFilename,
+        mimeType: stored.mimeType,
+        sizeBytes: stored.size,
+        label: "Built by Nix",
+      }),
+    );
+
+    profile.cvFilePath = stored.path;
+    profile.cvUploadedAt = now().toJSDate();
+    const { text, data } = await this.cvExtractionService.processCV(stored.path);
+    profile.rawCvText = text;
+    profile.extractedCvData = data;
+    await this.profileRepo.save(profile);
+
+    const candidateId = await this.syncCandidateFromProfile(profile);
+    return { candidateId };
+  }
 
   async profileForUser(userId: number): Promise<AnnixOrbitProfile> {
     const profile = await this.profileRepo.findOne({ where: { userId } });
@@ -297,6 +402,16 @@ export class IndividualProfileService {
         "We couldn't read any text from this CV file. If it is a scanned image, please upload a text-based PDF, Word, or Excel version instead.",
       );
     }
+
+    // Make the seeker matchable: sync a posting-less Candidate from the freshly
+    // extracted CV and embed it. Fire-and-forget so the upload response is fast.
+    void this.syncCandidateFromProfile(profile).catch((err) => {
+      this.logger.warn(
+        `Background candidate sync failed for profile ${profile.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
   }
 
   async notificationPreferences(userId: number): Promise<IndividualNotificationPreferences> {

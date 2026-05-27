@@ -1823,6 +1823,10 @@ class AnnixOrbitApiClient {
     return apiClient.requestBlob("/annix-orbit/me/nix-wizard/generated-cv/pdf");
   }
 
+  async nixWizardAdoptCv(): Promise<{ candidateId: number | null }> {
+    return this.request("/annix-orbit/me/nix-wizard/adopt-cv", { method: "POST" });
+  }
+
   async candidateDataExport(candidateId: number): Promise<unknown> {
     return this.request(`/annix-orbit/candidates/${candidateId}/data-export`);
   }

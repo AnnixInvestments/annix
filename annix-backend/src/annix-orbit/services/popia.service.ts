@@ -152,7 +152,7 @@ export class PopiaService {
       relations: ["jobPosting", "references"],
     });
 
-    if (!candidate || candidate.jobPosting.companyId !== companyId) {
+    if (!candidate || !candidate.jobPosting || candidate.jobPosting.companyId !== companyId) {
       return { message: "Candidate not found" };
     }
 

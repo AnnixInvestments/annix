@@ -104,7 +104,7 @@ export class CandidateService {
       relations: ["jobPosting", "references"],
     });
 
-    if (!candidate || candidate.jobPosting.companyId !== companyId) {
+    if (!candidate || !candidate.jobPosting || candidate.jobPosting.companyId !== companyId) {
       throw new NotFoundException("Candidate not found");
     }
 
@@ -192,7 +192,7 @@ export class CandidateService {
         type: "rejection_email",
         sentAt: candidate.rejectionSentAt,
         recipient: candidate.email,
-        metadata: { jobTitle: candidate.jobPosting.title },
+        metadata: { jobTitle: candidate.jobPosting?.title ?? null },
       });
     }
     if (candidate.acceptanceSentAt) {
@@ -200,7 +200,7 @@ export class CandidateService {
         type: "shortlist_email",
         sentAt: candidate.acceptanceSentAt,
         recipient: candidate.email,
-        metadata: { jobTitle: candidate.jobPosting.title },
+        metadata: { jobTitle: candidate.jobPosting?.title ?? null },
       });
     }
     references.forEach((ref) => {
@@ -234,15 +234,17 @@ export class CandidateService {
         createdAt: candidate.createdAt,
         updatedAt: candidate.updatedAt,
       },
-      applications: [
-        {
-          jobPostingId: candidate.jobPosting.id,
-          jobTitle: candidate.jobPosting.title,
-          referenceNumber: candidate.jobPosting.referenceNumber ?? null,
-          appliedAt: candidate.createdAt,
-          currentStatus: candidate.status,
-        },
-      ],
+      applications: candidate.jobPosting
+        ? [
+            {
+              jobPostingId: candidate.jobPosting.id,
+              jobTitle: candidate.jobPosting.title,
+              referenceNumber: candidate.jobPosting.referenceNumber ?? null,
+              appliedAt: candidate.createdAt,
+              currentStatus: candidate.status,
+            },
+          ]
+        : [],
       screeningDecisions,
       communications,
     };

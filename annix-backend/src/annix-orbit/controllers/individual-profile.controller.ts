@@ -19,6 +19,7 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import type { Response } from "express";
 import { FEATURE_FLAGS } from "../../feature-flags/feature-flags.constants";
 import { FeatureFlagsService } from "../../feature-flags/feature-flags.service";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import {
   INDIVIDUAL_DOC_MAX_BYTES,
   isAcceptedDocumentMime,
@@ -48,6 +49,7 @@ export class IndividualProfileController {
     private readonly interviewBookingService: InterviewBookingService,
     private readonly featureFlagsService: FeatureFlagsService,
     private readonly nixCvPdfService: NixCvPdfService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
   private async ensureNixCvBuilderEnabled(): Promise<void> {
@@ -198,6 +200,19 @@ export class IndividualProfileController {
     res.setHeader("Content-Disposition", `attachment; filename="Nix-CV.pdf"`);
     res.setHeader("Content-Length", buffer.length.toString());
     res.end(buffer);
+  }
+
+  @Post("nix-wizard/adopt-cv")
+  async adoptNixCv(@Request() req: { user: { id: number } }) {
+    await this.ensureNixCvBuilderEnabled();
+    const { cv } = await this.nixSeekerAssistService.generatedCv(req.user.id);
+    if (!cv) {
+      throw new BadRequestException("Generate your CV with Nix first.");
+    }
+    return this.extractionMetricService.time("orbit-cv-adopt", "nix-cv", async () => {
+      const pdf = await this.nixCvPdfService.renderPdf(cv);
+      return this.individualProfileService.adoptGeneratedCv(req.user.id, pdf);
+    });
   }
 
   @Get("interview-bookings")

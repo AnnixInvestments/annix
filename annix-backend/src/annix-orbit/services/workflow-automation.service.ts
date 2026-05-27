@@ -56,7 +56,12 @@ export class WorkflowAutomationService {
       this.logger.warn(`Candidate ${candidateId} not found`);
     } else if (!candidate.cvFilePath) {
       this.logger.warn(`Candidate ${candidateId} has no CV file`);
+    } else if (!candidate.jobPosting) {
+      this.logger.warn(
+        `Candidate ${candidateId} has no job posting — skipping recruiter CV automation`,
+      );
     } else {
+      const jobPosting = candidate.jobPosting;
       try {
         candidate.status = CandidateStatus.SCREENING;
         await this.candidateRepo.save(candidate);
@@ -69,7 +74,7 @@ export class WorkflowAutomationService {
         candidate.email = data.email || candidate.email;
         await this.candidateRepo.save(candidate);
 
-        const matchAnalysis = await this.jobMatchService.analyzeMatch(data, candidate.jobPosting);
+        const matchAnalysis = await this.jobMatchService.analyzeMatch(data, jobPosting);
 
         candidate.matchAnalysis = matchAnalysis;
         candidate.matchScore = matchAnalysis.overallScore;
@@ -93,7 +98,7 @@ export class WorkflowAutomationService {
             );
           });
 
-        await this.applyAutomationRules(candidate, candidate.jobPosting);
+        await this.applyAutomationRules(candidate, jobPosting);
 
         this.logger.log(
           `Processed CV for candidate ${candidateId}, score: ${matchAnalysis.overallScore}`,
@@ -261,7 +266,7 @@ export class WorkflowAutomationService {
       const sent = await this.emailService.sendAnnixOrbitShortlistEmail(
         candidate.email,
         candidate.name || "Applicant",
-        candidate.jobPosting.title,
+        candidate.jobPosting?.title ?? "the role",
       );
 
       if (sent) {
@@ -287,21 +292,22 @@ export class WorkflowAutomationService {
       relations: ["jobPosting"],
     });
 
-    if (candidate && candidate.jobPosting.companyId === companyId) {
+    if (candidate?.jobPosting && candidate.jobPosting.companyId === companyId) {
+      const jobPosting = candidate.jobPosting;
       const previousStatus = candidate.status;
       candidate.status = CandidateStatus.REJECTED;
       await this.candidateRepo.save(candidate);
 
       if (candidate.email && !candidate.rejectionSentAt) {
-        const companyName = await this.companyName(candidate.jobPosting.companyId);
-        const explanation = formatMatchExplanation(candidate.matchAnalysis, candidate.jobPosting);
+        const companyName = await this.companyName(jobPosting.companyId);
+        const explanation = formatMatchExplanation(candidate.matchAnalysis, jobPosting);
         const sent = await this.emailTemplateService.renderAndSend({
-          companyId: candidate.jobPosting.companyId,
+          companyId: jobPosting.companyId,
           kind: CvEmailTemplateKind.REJECTION,
           to: candidate.email,
           vars: {
             candidateName: candidate.name || "Applicant",
-            jobTitle: candidate.jobPosting.title,
+            jobTitle: jobPosting.title,
             companyName,
             matchExplanation: explanation.text,
           },
@@ -309,7 +315,7 @@ export class WorkflowAutomationService {
 
         if (sent) {
           await this.candidateService.markRejectionSent(candidate.id);
-          await this.cvAuditService.logRejectionExplanation(candidate.id, candidate.jobPosting.id, {
+          await this.cvAuditService.logRejectionExplanation(candidate.id, jobPosting.id, {
             channel: "manual_reject_email",
             bullets: explanation.bullets,
             reasoning: explanation.reasoning,
@@ -328,7 +334,7 @@ export class WorkflowAutomationService {
         );
         await this.cvAuditService.logScreeningDecision(
           candidate.id,
-          candidate.jobPosting.id,
+          jobPosting.id,
           "manual_rejected",
           reason ? [reason] : [],
           actorId,
@@ -348,20 +354,21 @@ export class WorkflowAutomationService {
       relations: ["jobPosting", "references"],
     });
 
-    if (candidate && candidate.jobPosting.companyId === companyId) {
+    if (candidate?.jobPosting && candidate.jobPosting.companyId === companyId) {
+      const jobPosting = candidate.jobPosting;
       const previousStatus = candidate.status;
       candidate.status = CandidateStatus.SHORTLISTED;
       await this.candidateRepo.save(candidate);
 
       if (candidate.email && !candidate.acceptanceSentAt) {
-        const companyName = await this.companyName(candidate.jobPosting.companyId);
+        const companyName = await this.companyName(jobPosting.companyId);
         const sent = await this.emailTemplateService.renderAndSend({
-          companyId: candidate.jobPosting.companyId,
+          companyId: jobPosting.companyId,
           kind: CvEmailTemplateKind.SHORTLIST,
           to: candidate.email,
           vars: {
             candidateName: candidate.name || "Applicant",
-            jobTitle: candidate.jobPosting.title,
+            jobTitle: jobPosting.title,
             companyName,
           },
         });
@@ -385,7 +392,7 @@ export class WorkflowAutomationService {
         );
         await this.cvAuditService.logScreeningDecision(
           candidate.id,
-          candidate.jobPosting.id,
+          jobPosting.id,
           "shortlisted",
           reason ? [reason] : [],
           actorId,
@@ -405,20 +412,21 @@ export class WorkflowAutomationService {
       relations: ["jobPosting"],
     });
 
-    if (candidate && candidate.jobPosting.companyId === companyId) {
+    if (candidate?.jobPosting && candidate.jobPosting.companyId === companyId) {
+      const jobPosting = candidate.jobPosting;
       const previousStatus = candidate.status;
       candidate.status = CandidateStatus.ACCEPTED;
       await this.candidateRepo.save(candidate);
 
       if (candidate.email) {
-        const companyName = await this.companyName(candidate.jobPosting.companyId);
+        const companyName = await this.companyName(jobPosting.companyId);
         await this.emailTemplateService.renderAndSend({
-          companyId: candidate.jobPosting.companyId,
+          companyId: jobPosting.companyId,
           kind: CvEmailTemplateKind.ACCEPTANCE,
           to: candidate.email,
           vars: {
             candidateName: candidate.name || "Applicant",
-            jobTitle: candidate.jobPosting.title,
+            jobTitle: jobPosting.title,
             companyName,
           },
         });
@@ -434,7 +442,7 @@ export class WorkflowAutomationService {
         );
         await this.cvAuditService.logScreeningDecision(
           candidate.id,
-          candidate.jobPosting.id,
+          jobPosting.id,
           "manual_accepted",
           reason ? [reason] : [],
           actorId,

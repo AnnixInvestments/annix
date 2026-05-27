@@ -15,7 +15,7 @@ import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabl
 import { NixCvBuilder } from "./NixCvBuilder";
 
 const NIX_REVIEW_ESTIMATED_MS = 12000;
-const NIX_CV_BUILDER_FLAG = "CV_ASSISTANT_NIX_CV_BUILDER";
+const NIX_CV_BUILDER_FLAG = "ANNIX_ORBIT_NIX_CV_BUILDER";
 
 const AREA_LABELS: Record<NixSeekerImprovementArea, string> = {
   summary: "Summary",

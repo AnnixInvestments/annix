@@ -19,12 +19,32 @@ function postLoginPath(userType: string | undefined, returnUrl: string | null): 
   return "/annix/orbit/portal/dashboard";
 }
 
+const ORBIT_LOGIN_TYPES = new Set(["individual", "company", "student"]);
+
+function orbitUserTypeLabel(userType: string): string {
+  if (userType === "individual") return "job seeker";
+  if (userType === "company") return "company";
+  if (userType === "student") return "student";
+  return "account";
+}
+
+// When a specific sign-in type is selected (?type=…), reject accounts that
+// don't match it — otherwise a company account could sign in on the job-seeker
+// page and get silently routed to the company portal.
+function loginTypeMismatch(selectedType: string | null, actualType: string): string | null {
+  if (!selectedType || !ORBIT_LOGIN_TYPES.has(selectedType)) return null;
+  if (selectedType === actualType) return null;
+  const actualLabel = orbitUserTypeLabel(actualType);
+  const selectedLabel = orbitUserTypeLabel(selectedType);
+  return `This account is registered as a ${actualLabel} account, not a ${selectedLabel} account. Please use the ${actualLabel} sign-in.`;
+}
+
 function AnnixOrbitLoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const returnUrl = searchParams.get("returnUrl");
   const accountType = searchParams.get("type");
-  const { login, isLoading } = useAnnixOrbitAuth();
+  const { login, logout, isLoading } = useAnnixOrbitAuth();
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
   const [email, setEmail] = useState("");
@@ -48,6 +68,12 @@ function AnnixOrbitLoginContent() {
 
     try {
       const profile = await login(submitEmail, submitPassword, rememberMe);
+      const mismatch = loginTypeMismatch(accountType, profile.userType);
+      if (mismatch) {
+        await logout().catch(() => {});
+        setError(mismatch);
+        return;
+      }
       router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -207,6 +233,12 @@ function AnnixOrbitLoginContent() {
                 onSuccess={async (response) => {
                   storePasskeyJwt(annixOrbitTokenStore, response, rememberMe);
                   const profile = await annixOrbitApiClient.currentUser();
+                  const mismatch = loginTypeMismatch(accountType, profile.userType);
+                  if (mismatch) {
+                    await logout().catch(() => {});
+                    setError(mismatch);
+                    return;
+                  }
                   redirectAfterPasskeyLogin(postLoginPath(profile.userType, returnUrl));
                 }}
                 onError={(message) => setError(message)}

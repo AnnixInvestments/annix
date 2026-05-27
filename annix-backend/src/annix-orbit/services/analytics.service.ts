@@ -412,7 +412,7 @@ export class AnalyticsService {
       [
         csvEscape(c.name),
         csvEscape(c.email),
-        csvEscape(c.jobPosting.title),
+        csvEscape(c.jobPosting?.title ?? ""),
         c.matchScore ?? "",
         c.status,
         DateTime.fromJSDate(c.createdAt).toISO(),

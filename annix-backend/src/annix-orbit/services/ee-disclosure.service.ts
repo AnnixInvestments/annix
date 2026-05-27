@@ -173,7 +173,8 @@ export class EeDisclosureService {
       relations: ["jobPosting"],
     });
     if (!candidate) throw new NotFoundException("Candidate not found");
-    if (candidate.jobPosting.companyId !== companyId) {
+    const jobPosting = candidate.jobPosting;
+    if (!jobPosting || jobPosting.companyId !== companyId) {
       throw new ForbiddenException("Candidate does not belong to your company");
     }
     if (!candidate.email) {
@@ -195,7 +196,7 @@ export class EeDisclosureService {
 
     await this.activeConsentText();
 
-    const invite = await this.createInvite(candidate.id, candidate.jobPosting.id);
+    const invite = await this.createInvite(candidate.id, jobPosting.id);
     const disclosureLink = this.disclosureLinkFor(invite.token);
     const dpoEmail = this.dpoEmail();
 
@@ -205,7 +206,7 @@ export class EeDisclosureService {
       to: candidate.email,
       vars: {
         candidateName: candidate.name || "Applicant",
-        jobTitle: candidate.jobPosting.title,
+        jobTitle: jobPosting.title,
         companyName: company.name,
         disclosureLink,
         dpoEmail,

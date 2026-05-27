@@ -61,11 +61,12 @@ export class ReferenceService {
       relations: ["jobPosting", "references"],
     });
 
-    if (!candidate) {
+    if (!candidate || !candidate.jobPosting) {
       throw new NotFoundException("Candidate not found");
     }
 
-    const companyId = candidate.jobPosting.companyId;
+    const jobPosting = candidate.jobPosting;
+    const companyId = jobPosting.companyId;
     const company = await this.companyRepo.findOne({ where: { id: companyId } });
     const companyName = company?.name ?? "the hiring team";
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") ?? "http://localhost:3000";
@@ -82,7 +83,7 @@ export class ReferenceService {
           vars: {
             referenceName: reference.name,
             candidateName: candidate.name || "the candidate",
-            jobTitle: candidate.jobPosting.title,
+            jobTitle: jobPosting.title,
             companyName,
             feedbackLink,
           },
@@ -134,7 +135,7 @@ export class ReferenceService {
       valid: true,
       reference,
       candidateName: reference.candidate.name || "the candidate",
-      jobTitle: reference.candidate.jobPosting.title,
+      jobTitle: reference.candidate.jobPosting?.title ?? "the role",
     };
   }
 
@@ -192,7 +193,7 @@ export class ReferenceService {
           reference.email,
           reference.name,
           reference.candidate.name || "the candidate",
-          reference.candidate.jobPosting.title,
+          reference.candidate.jobPosting?.title ?? "the role",
           reference.feedbackToken,
         );
 

@@ -2,13 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { useToast } from "@/app/components/Toast";
 import type {
   NixGeneratedCv,
   NixGeneratedCvExperience,
   NixGeneratedCvReference,
 } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import {
+  useAdoptNixCv,
   useGenerateNixCv,
   useNixGeneratedCv,
   useUpdateNixGeneratedCv,
@@ -181,6 +184,36 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       });
   };
 
+  const adoptMutation = useAdoptNixCv();
+  const { showToast } = useToast();
+  const [adopting, setAdopting] = useState(false);
+  const [adoptMessage, setAdoptMessage] = useState<string | null>(null);
+
+  const handleUseThisCv = async () => {
+    setAdopting(true);
+    setAdoptMessage(null);
+    const stats = await metricsApi.extractionStats("orbit-cv-adopt", "nix-cv").catch(() => null);
+    const learnedMs = stats ? stats.averageMs : null;
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Saving your CV and matching you to jobs…",
+      estimatedDurationMs: learnedMs || 30000,
+    });
+    try {
+      await adoptMutation.mutateAsync();
+      hideExtraction();
+      setAdoptMessage("Saved — Nix is now using this CV. Your job matches will refresh shortly.");
+      showToast("Your CV is saved and Nix is matching you to jobs.", "success");
+    } catch (err) {
+      hideExtraction();
+      const message = err instanceof Error ? err.message : "Couldn't save your CV right now.";
+      setAdoptMessage(message);
+      showToast(message, "error");
+    } finally {
+      setAdopting(false);
+    }
+  };
+
   return (
     <div className="bg-gradient-to-br from-[#f0f0fc] to-white rounded-xl border border-[#c0c0eb] p-6 space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -251,6 +284,16 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
           <div className="flex items-center gap-3 flex-wrap">
             <button
               type="button"
+              onClick={handleUseThisCv}
+              disabled={adopting}
+              className="text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
+              style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+              title="Save this as your CV and have Nix match it to jobs"
+            >
+              {adopting ? "Saving & matching…" : "Use this CV"}
+            </button>
+            <button
+              type="button"
               onClick={handleDownload}
               disabled={downloading}
               className="bg-[#323288] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
@@ -265,6 +308,12 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
               {copied ? "Copied!" : "Copy text"}
             </button>
           </div>
+
+          {adoptMessage && (
+            <p className="text-sm text-[#252560] bg-[#f0f0fc] border border-[#c0c0eb] rounded-lg px-4 py-2">
+              {adoptMessage}
+            </p>
+          )}
         </div>
       )}
     </div>

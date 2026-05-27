@@ -141,7 +141,7 @@ export class CvNotificationService {
       relations: ["jobPosting"],
     });
 
-    if (!candidate) {
+    if (!candidate || !candidate.jobPosting) {
       return;
     } else {
       const companyId = candidate.jobPosting.companyId;
