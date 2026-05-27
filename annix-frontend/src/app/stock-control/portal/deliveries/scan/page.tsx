@@ -11,15 +11,11 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import {
   useAcceptAnalyzedDeliveryNote,
-  useAcceptAnalyzedInvoice,
   useAnalyzeDeliveryNotePhoto,
   useSavePendingDeliveryNote,
 } from "@/app/lib/query/hooks";
 import { DeliveryNoteConfirmationModal } from "@/app/stock-control/components/DeliveryNoteConfirmationModal";
 import { useErrorModal } from "@/app/stock-control/context/ErrorModalContext";
-
-const isInvoiceDocument = (docType: AnalyzedDeliveryNoteData["documentType"]): boolean =>
-  docType === "SUPPLIER_INVOICE" || docType === "TAX_INVOICE";
 
 export default function ScanDeliveryNotePage() {
   const router = useRouter();
@@ -30,14 +26,12 @@ export default function ScanDeliveryNotePage() {
 
   const analyzeMutation = useAnalyzeDeliveryNotePhoto();
   const acceptDnMutation = useAcceptAnalyzedDeliveryNote();
-  const acceptInvoiceMutation = useAcceptAnalyzedInvoice();
   const savePendingMutation = useSavePendingDeliveryNote();
 
   const isAnalyzing = analyzeMutation.isPending;
   const aLoading = acceptDnMutation.isPending;
-  const bLoading = acceptInvoiceMutation.isPending;
   const cLoading = savePendingMutation.isPending;
-  const isSubmitting = aLoading || bLoading || cLoading;
+  const isSubmitting = aLoading || cLoading;
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -103,28 +97,12 @@ export default function ScanDeliveryNotePage() {
       onSuccess: (analysisResult) => {
         setResult(analysisResult);
 
-        if (isInvoiceDocument(analysisResult.data.documentType)) {
-          showToast("Invoice detected — accepting automatically", "info");
-          acceptInvoiceMutation.mutate(
-            { file: selectedFile, analyzedData: analysisResult.data },
-            {
-              onSuccess: (invoice) => {
-                const invNum = invoice.invoiceNumber;
-                showToast(`Invoice ${invNum ? invNum : ""} created successfully`, "success");
-                router.push("/stock-control/portal/invoices");
-              },
-              onError: (err) => {
-                showError(
-                  "Invoice Creation Failed",
-                  extractErrorMessage(err, "Failed to create invoice"),
-                );
-              },
-            },
-          );
-        } else {
-          setShowConfirmModal(true);
-          showToast("Delivery note analyzed — review the data below", "success");
-        }
+        // This is the Delivery Note scanner, so the user's intent is a delivery note:
+        // always review + add to stock, even when the document is laid out as a (tax)
+        // invoice — some suppliers use their invoice as the delivery note. Routing it to
+        // the invoice flow here would skip the stock-in, which is the bug we're fixing.
+        setShowConfirmModal(true);
+        showToast("Delivery note analyzed — review the data below", "success");
       },
       onError: (err) => {
         showError("Analysis Failed", extractErrorMessage(err, "Failed to analyze delivery note"));

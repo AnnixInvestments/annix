@@ -872,5 +872,54 @@ describe("M2CalculationService", () => {
       expect(result.externalM2).toBeGreaterThan(0);
       expect(result.internalM2).toBeGreaterThan(0);
     });
+
+    it("recognises plural fitting words ('BENDS') so the bend still gets m2", async () => {
+      setupStandardMocks(168.3, 7.11);
+      const [result] = await service.calculateM2ForItems(["150NB 90° BENDS FBE 1000/3 C/F 235"]);
+      expect(result.parsedItemType).toBe("bend");
+      expect(result.parsedFlangeCount).toBe(2);
+      expect(result.error).toBeNull();
+      expect(result.externalM2).toBeGreaterThan(0);
+    });
+
+    it("recognises plural 'PIPES' and 'SPOOLS'", async () => {
+      setupStandardMocks(355.6, 9.53);
+      const [pipes] = await service.calculateM2ForItems(["350NB 5994LG PIPES FOE"]);
+      expect(pipes.parsedItemType).toBe("pipe");
+      expect(pipes.externalM2).toBeGreaterThan(0);
+    });
+
+    it("uses an explicit m² typed in the description as a manual override", async () => {
+      setupStandardMocks();
+      const [result] = await service.calculateM2ForItems(["FAN IMPELLER @ 13.7m²"]);
+      expect(result.externalM2).toBe(13.7);
+      expect(result.internalM2).toBe(13.7);
+      expect(result.confidence).toBe(1);
+      expect(result.error).toBeNull();
+      // never reaches the geometric path
+      expect(mockNbOdLookup.nbToOd).not.toHaveBeenCalled();
+    });
+
+    it("accepts 'm2' spelling for the manual override and ignores microns", async () => {
+      setupStandardMocks();
+      const [m2] = await service.calculateM2ForItems(["ODD SHAPE 42 m2"]);
+      expect(m2.externalM2).toBe(42);
+      // microns must NOT be read as an area
+      const [microns] = await service.calculateM2ForItems(["100NB 6000LG PIPE @ 150µm"]);
+      expect(microns.parsedItemType).toBe("pipe");
+    });
+
+    it("computes plural 'BLANK FLANGES' (no length) with SABS class", async () => {
+      setupStandardMocks(355.6, 9.53);
+      mockFlangeDimension.flangeDimensionsForM2.mockResolvedValue({ D: 580, d4: 410, b: 40 });
+      const [result] = await service.calculateM2ForItems(["350NB 2500/8 BLANK FLANGES"]);
+      expect(result.parsedItemType).toBe("flange");
+      expect(result.parsedFlangeConfig).toBe("blank_flange");
+      expect(result.parsedFlangeCount).toBe(1);
+      expect(result.parsedFlangeStandard).toBe("SABS 1123");
+      expect(result.parsedPressureClass).toBe("2500");
+      expect(result.error).toBeNull();
+      expect(result.externalM2).toBeGreaterThan(0);
+    });
   });
 });

@@ -327,6 +327,25 @@ export default function JobCardDetailPage() {
     return status !== "accepted" && status !== "manual";
   }, [coating.coatingAnalysis, jobCard?.rubberPlanOverride]);
 
+  // Which m² columns to show on the line-items table: a paint-only job shows only
+  // Paint m², a lining-only job only Lining m², a job with both shows both. Before a
+  // coating analysis exists we don't know the profile, so show both.
+  const m2Columns = useMemo(() => {
+    const ca = coating.coatingAnalysis;
+    if (!ca) return { lining: true, paint: true };
+    // applicationType ("external" | "internal" | "both") comes from the spec sections and
+    // is reliable even if the m² figure hasn't computed yet; fall back to the areas.
+    const rawAppType = ca.applicationType;
+    const appType = (rawAppType || "").toLowerCase();
+    const intM2 = Number(ca.intM2);
+    const extM2 = Number(ca.extM2);
+    const lined = ca.hasInternalLining === true;
+    const lining = lined || appType === "internal" || appType === "both" || intM2 > 0;
+    const paint = appType === "external" || appType === "both" || extM2 > 0;
+    if (!lining && !paint) return { lining: true, paint: true };
+    return { lining, paint };
+  }, [coating.coatingAnalysis]);
+
   const specsNeedReview = useMemo(() => {
     if (!currentStep || currentStep !== "manager_approval") return false;
     const ca = coating.coatingAnalysis;
@@ -750,6 +769,8 @@ export default function JobCardDetailPage() {
                   attachments={documents.attachments}
                   canManageLineItems={userRole === "admin" || userRole === "accounts"}
                   onRefresh={fetchData}
+                  showLiningColumn={m2Columns.lining}
+                  showPaintColumn={m2Columns.paint}
                 />
               }
               showVersionHistory={documents.showVersionHistory}

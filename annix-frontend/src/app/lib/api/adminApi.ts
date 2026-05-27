@@ -1081,6 +1081,13 @@ class AdminApiClient {
     });
   }
 
+  async bulkDeleteOrbitExternalJobs(ids: number[]): Promise<{ deleted: number }> {
+    return this.request("/admin/annix-orbit/job-market/jobs/bulk-delete", {
+      method: "POST",
+      body: JSON.stringify({ ids }),
+    });
+  }
+
   async autoResolveOrbitDuplicates(): Promise<{ deleted: number; groups: number }> {
     return this.request("/admin/annix-orbit/job-market/duplicates/auto-resolve", {
       method: "POST",

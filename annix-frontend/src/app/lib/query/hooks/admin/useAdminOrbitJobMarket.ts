@@ -87,6 +87,16 @@ export function useAdminDeleteOrbitExternalJob() {
   });
 }
 
+export function useAdminBulkDeleteOrbitExternalJobs() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: number[]) => adminApiClient.bulkDeleteOrbitExternalJobs(ids),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+    },
+  });
+}
+
 export function useAdminAutoResolveOrbitDuplicates() {
   const queryClient = useQueryClient();
   return useMutation({

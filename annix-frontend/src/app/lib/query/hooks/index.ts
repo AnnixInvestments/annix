@@ -35,6 +35,7 @@ export {
 } from "./admin/useAdminOrbitEeTargets";
 export {
   useAdminAutoResolveOrbitDuplicates,
+  useAdminBulkDeleteOrbitExternalJobs,
   useAdminCreateOrbitJobMarketSource,
   useAdminDeleteOrbitExternalJob,
   useAdminDeleteOrbitJobMarketSource,

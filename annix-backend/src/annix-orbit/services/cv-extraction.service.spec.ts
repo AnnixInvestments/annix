@@ -21,6 +21,7 @@ describe("CvExtractionService", () => {
 
     mockAiChatService = {
       chat: jest.fn(),
+      chatWithImage: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -49,24 +50,44 @@ describe("CvExtractionService", () => {
     expect(service).toBeDefined();
   });
 
-  describe("extractTextFromPdf", () => {
-    it("should download PDF from S3 and extract text", async () => {
-      const pdfBuffer = Buffer.from("%PDF-1.4 test content");
+  describe("extractTextFromCv", () => {
+    it("routes a PDF with no extractable text layer to Gemini vision OCR", async () => {
+      const pdfBuffer = Buffer.from("%PDF-1.4 not a real parseable pdf");
       (mockStorageService.download as jest.Mock).mockResolvedValue(pdfBuffer);
+      (mockAiChatService.chatWithImage as jest.Mock).mockResolvedValue({
+        content: "John Doe\nSoftware Engineer",
+        providerUsed: "gemini",
+        tokensUsed: 50,
+      });
 
-      await expect(
-        service.extractTextFromPdf("annix-orbit/candidates/1/test.pdf"),
-      ).rejects.toThrow();
+      const text = await service.extractTextFromCv("cv-assistant/individuals/8/cv/test.pdf");
 
-      expect(mockStorageService.download).toHaveBeenCalledWith("annix-orbit/candidates/1/test.pdf");
+      expect(mockStorageService.download).toHaveBeenCalledWith(
+        "cv-assistant/individuals/8/cv/test.pdf",
+      );
+      expect(mockAiChatService.chatWithImage).toHaveBeenCalledWith(
+        pdfBuffer.toString("base64"),
+        "application/pdf",
+        expect.any(String),
+      );
+      expect(text).toBe("John Doe\nSoftware Engineer");
     });
 
-    it("should throw error if download fails", async () => {
-      (mockStorageService.download as jest.Mock).mockRejectedValue(new Error("S3 error"));
+    it("returns an empty string when OCR also fails so callers surface a friendly error", async () => {
+      const pdfBuffer = Buffer.from("%PDF-1.4 not a real parseable pdf");
+      (mockStorageService.download as jest.Mock).mockResolvedValue(pdfBuffer);
+      (mockAiChatService.chatWithImage as jest.Mock).mockRejectedValue(new Error("Gemini down"));
 
-      await expect(service.extractTextFromPdf("annix-orbit/candidates/1/test.pdf")).rejects.toThrow(
-        "Failed to extract text from PDF: S3 error",
-      );
+      const text = await service.extractTextFromCv("cv-assistant/individuals/8/cv/test.pdf");
+
+      expect(text).toBe("");
+    });
+
+    it("throws for unsupported formats before any download", async () => {
+      await expect(
+        service.extractTextFromCv("cv-assistant/individuals/8/cv/notes.txt"),
+      ).rejects.toThrow("Unsupported CV file format");
+      expect(mockStorageService.download).not.toHaveBeenCalled();
     });
   });
 
@@ -159,13 +180,27 @@ describe("CvExtractionService", () => {
   });
 
   describe("processCV", () => {
-    it("should download from S3, extract text, and parse data", async () => {
-      const pdfBuffer = Buffer.from("%PDF-1.4 test");
+    it("downloads, OCRs an image-only PDF, and parses structured data", async () => {
+      const pdfBuffer = Buffer.from("%PDF-1.4 not a real parseable pdf");
       (mockStorageService.download as jest.Mock).mockResolvedValue(pdfBuffer);
+      (mockAiChatService.chatWithImage as jest.Mock).mockResolvedValue({
+        content: "Jane Doe CV text",
+        providerUsed: "gemini",
+        tokensUsed: 40,
+      });
+      (mockAiChatService.chat as jest.Mock).mockResolvedValue({
+        content: JSON.stringify({ candidateName: "Jane Doe", skills: [] }),
+        providerUsed: "gemini",
+        tokensUsed: 100,
+      });
 
-      await expect(service.processCV("annix-orbit/candidates/1/test.pdf")).rejects.toThrow();
+      const result = await service.processCV("cv-assistant/individuals/8/cv/test.pdf");
 
-      expect(mockStorageService.download).toHaveBeenCalledWith("annix-orbit/candidates/1/test.pdf");
+      expect(mockStorageService.download).toHaveBeenCalledWith(
+        "cv-assistant/individuals/8/cv/test.pdf",
+      );
+      expect(result.text).toBe("Jane Doe CV text");
+      expect(result.data.candidateName).toBe("Jane Doe");
     });
   });
 });

@@ -13,7 +13,11 @@ import {
 } from "@nestjs/common";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
 import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
-import { CreateJobMarketSourceDto, UpdateJobMarketSourceDto } from "../dto/job-market.dto";
+import {
+  BulkDeleteJobsDto,
+  CreateJobMarketSourceDto,
+  UpdateJobMarketSourceDto,
+} from "../dto/job-market.dto";
 import { JobSourceProvider } from "../entities/job-market-source.entity";
 import { isSitemapCrawlProvider } from "../services/crawl/sitemap-crawl-profiles";
 import { EmbeddingService } from "../services/embedding.service";
@@ -130,6 +134,11 @@ export class AdminOrbitJobMarketController {
   @Post("duplicates/auto-resolve")
   async autoResolveDuplicates() {
     return this.ingestionService.autoResolveDuplicates();
+  }
+
+  @Post("jobs/bulk-delete")
+  async bulkDeleteJobs(@Body() dto: BulkDeleteJobsDto) {
+    return this.ingestionService.deleteExternalJobs(dto.ids);
   }
 
   @Delete("jobs/:id")

@@ -53,6 +53,10 @@ const NB_PREFIX_PATTERN = /\bNB\s*(\d+)/i;
 const BARE_REDUCING_PATTERN = /^(\d{2,4})\s*x\s*\d{2,4}\b/;
 // Explicit small-end outside diameter for fabricated reducers, e.g. "180 OD", "228 O/D".
 const SMALL_OD_PATTERN = /(\d{2,4})\s*O\s*\/?\s*D\b/i;
+// Manual m² entered directly in the description for items that can't be derived from
+// geometry, e.g. "FAN IMPELLER @ 13.7m²" / "TANK @ 42 m2". Takes precedence over the
+// geometric calc. The negative lookahead avoids matching microns like "400µm".
+const EXPLICIT_M2_PATTERN = /(\d+(?:\.\d+)?)\s*m\s*(?:²|2)(?!\d)/i;
 const LG_PATTERN = /(\d+)\s*LG/i;
 const LG_METERS_PATTERN = /(\d+\.\d+)\s*Lg\b/i;
 const MM_PATTERN = /(\d+)\s*mm\b/i;
@@ -81,8 +85,8 @@ const FLANGE_COUNT_PATTERNS: { pattern: RegExp; count: number }[] = [
   { pattern: /(\d+)\s*[Xx]\s*L\/F\s*,\s*(\d+)\s*[Xx]\s*R\/F/i, count: -1 },
   { pattern: /(\d+)\s*[Xx]\s*R\/F/i, count: -1 },
   { pattern: /(\d+)\s*[Xx]\s*L\/F/i, count: -1 },
-  { pattern: /\bBLANK\s+FLANGE\b/i, count: 1 },
-  { pattern: /\bBLIND\s+FLANGE\b/i, count: 1 },
+  { pattern: /\bBLANK\s+FLANGES?\b/i, count: 1 },
+  { pattern: /\bBLIND\s+FLANGES?\b/i, count: 1 },
   { pattern: /\bFBE\b/i, count: 2 },
   { pattern: /\bF2E\b/i, count: 2 },
   { pattern: /\bFFE\b/i, count: 2 },
@@ -92,8 +96,8 @@ const FLANGE_COUNT_PATTERNS: { pattern: RegExp; count: number }[] = [
 ];
 
 const FLANGE_CONFIG_PATTERNS: { pattern: RegExp; config: string }[] = [
-  { pattern: /\bBLANK\s+FLANGE\b/i, config: "blank_flange" },
-  { pattern: /\bBLIND\s+FLANGE\b/i, config: "blind_flange" },
+  { pattern: /\bBLANK\s+FLANGES?\b/i, config: "blank_flange" },
+  { pattern: /\bBLIND\s+FLANGES?\b/i, config: "blind_flange" },
   { pattern: /\bFBE\b/i, config: "both_ends" },
   { pattern: /\bF(?:OE|1E)\b/i, config: "one_end" },
   { pattern: /\bFFE\b/i, config: "both_ends" },
@@ -107,39 +111,41 @@ const FLANGE_CONFIG_PATTERNS: { pattern: RegExp; config: string }[] = [
   { pattern: /\d+\s*[Xx]\s*L\/F/i, config: "loose_flange" },
 ];
 
+// Trailing S? so plurals on shop sheets ("BENDS", "PIPES", "REDUCERS", "LATERALS",
+// "TEES", "FLANGES") are recognised — \bBEND\b alone never matched "BENDS".
 const ITEM_TYPE_PATTERNS: { pattern: RegExp; type: string }[] = [
-  { pattern: /\bPIPE\b/i, type: "pipe" },
-  { pattern: /\bBEND\b/i, type: "bend" },
-  { pattern: /\bELBOW\b/i, type: "bend" },
-  { pattern: /\bREDUCER\b/i, type: "reducer" },
+  { pattern: /\bPIPES?\b/i, type: "pipe" },
+  { pattern: /\bBENDS?\b/i, type: "bend" },
+  { pattern: /\bELBOWS?\b/i, type: "bend" },
+  { pattern: /\bREDUCERS?\b/i, type: "reducer" },
   // Shop abbreviations: "CON RED", "ECC RED", "ECC/REDUCERS", "OBLIQUE REDUCER".
   // Excludes reducing tees ("RED/TEE", "RED TEE") which must stay type "tee".
   {
     pattern: /\b(?:CONC(?:ENTRIC)?|CON|ECC(?:ENTRIC)?|OBLIQUE)[\s./]*RED(?:UCER|UCERS|UCING)?\b/i,
     type: "reducer",
   },
-  { pattern: /\bTEE\b/i, type: "tee" },
-  { pattern: /\bT[- ]?PIECE\b/i, type: "tee" },
-  { pattern: /\bLATERAL\b/i, type: "lateral" },
-  { pattern: /\bFLANGE\b/i, type: "flange" },
-  { pattern: /\bOFFSET\b/i, type: "offset" },
-  { pattern: /\bVALVE\b/i, type: "valve" },
+  { pattern: /\bTEES?\b/i, type: "tee" },
+  { pattern: /\bT[- ]?PIECES?\b/i, type: "tee" },
+  { pattern: /\bLATERALS?\b/i, type: "lateral" },
+  { pattern: /\bFLANGES?\b/i, type: "flange" },
+  { pattern: /\bOFFSETS?\b/i, type: "offset" },
+  { pattern: /\bVALVES?\b/i, type: "valve" },
 ];
 
 const FITTING_TYPE_PATTERNS: { pattern: RegExp; fittingType: string }[] = [
-  { pattern: /\bEQUAL\s+TEE\b/i, fittingType: "equal_tee" },
-  { pattern: /\bUNEQUAL\s+TEE\b/i, fittingType: "unequal_tee" },
-  { pattern: /\bRED(?:UCING)?[\s/]+TEE\b/i, fittingType: "reducing_tee" },
-  { pattern: /\bCONCENTRIC\s+REDUCER\b/i, fittingType: "concentric_reducer" },
-  { pattern: /\bECCENTRIC\s+REDUCER\b/i, fittingType: "eccentric_reducer" },
+  { pattern: /\bEQUAL\s+TEES?\b/i, fittingType: "equal_tee" },
+  { pattern: /\bUNEQUAL\s+TEES?\b/i, fittingType: "unequal_tee" },
+  { pattern: /\bRED(?:UCING)?[\s/]+TEES?\b/i, fittingType: "reducing_tee" },
+  { pattern: /\bCONCENTRIC\s+REDUCERS?\b/i, fittingType: "concentric_reducer" },
+  { pattern: /\bECCENTRIC\s+REDUCERS?\b/i, fittingType: "eccentric_reducer" },
   { pattern: /\bCONC?(?:ENTRIC)?[\s./]*RED(?:UCER|UCERS)?\b/i, fittingType: "concentric_reducer" },
   { pattern: /\bECC(?:ENTRIC)?[\s./]*RED(?:UCER|UCERS)?\b/i, fittingType: "eccentric_reducer" },
   { pattern: /\bOBLIQUE[\s./]*RED(?:UCER)?\b/i, fittingType: "eccentric_reducer" },
-  { pattern: /\bREDUCER\b/i, fittingType: "reducer" },
-  { pattern: /\bLATERAL\b/i, fittingType: "lateral" },
-  { pattern: /\bSHORT\s+EQUAL\s+TEE\b/i, fittingType: "equal_tee" },
-  { pattern: /\bLONG\s+EQUAL\s+TEE\b/i, fittingType: "equal_tee" },
-  { pattern: /\bTEE\b/i, fittingType: "equal_tee" },
+  { pattern: /\bREDUCERS?\b/i, fittingType: "reducer" },
+  { pattern: /\bLATERALS?\b/i, fittingType: "lateral" },
+  { pattern: /\bSHORT\s+EQUAL\s+TEES?\b/i, fittingType: "equal_tee" },
+  { pattern: /\bLONG\s+EQUAL\s+TEES?\b/i, fittingType: "equal_tee" },
+  { pattern: /\bTEES?\b/i, fittingType: "equal_tee" },
 ];
 
 const FLANGE_OVERLAP_ALLOWANCE_MM = 100;
@@ -658,6 +664,26 @@ export class M2CalculationService {
 
   private async calculateSingle(description: string): Promise<M2Result> {
     try {
+      // Manual override: an m² typed straight into the description wins over geometry,
+      // for items the system can't derive (no NB / no drawing). The figure feeds whichever
+      // coating column applies (paint and/or lining) downstream.
+      const explicitMatch = description.match(EXPLICIT_M2_PATTERN);
+      if (explicitMatch) {
+        const explicit = parseFloat(explicitMatch[1]);
+        if (Number.isFinite(explicit) && explicit > 0) {
+          const rounded = Math.round(explicit * 10000) / 10000;
+          return {
+            ...this.emptyResult(description),
+            totalM2: rounded,
+            externalM2: rounded,
+            internalM2: rounded,
+            parsedItemType: "manual",
+            confidence: 1,
+            error: null,
+          };
+        }
+      }
+
       const regex = this.regexParse(description);
 
       let diameterMm = regex.diameterMm;

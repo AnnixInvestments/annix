@@ -25,6 +25,10 @@ interface LineItemsTabProps {
   attachments: JobCardAttachment[];
   canManageLineItems: boolean;
   onRefresh: () => void;
+  // Column visibility driven by the job's coating profile: a paint-only job shows only
+  // Paint m², a lining-only job shows only Lining m², a job with both shows both.
+  showLiningColumn?: boolean;
+  showPaintColumn?: boolean;
 }
 
 interface AddLineFormData {
@@ -48,7 +52,14 @@ const EMPTY_FORM: AddLineFormData = {
 };
 
 export function LineItemsTab(props: LineItemsTabProps) {
-  const { jobCard, attachments, canManageLineItems, onRefresh } = props;
+  const {
+    jobCard,
+    attachments,
+    canManageLineItems,
+    onRefresh,
+    showLiningColumn = true,
+    showPaintColumn = true,
+  } = props;
   const reExtract = useReExtractLineItems();
   const deleteLineItem = useDeleteLineItem();
   const addLineItem = useAddLineItem();
@@ -299,12 +310,16 @@ export function LineItemsTab(props: LineItemsTabProps) {
               <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-20">
                 Qty
               </th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                Lining m²
-              </th>
-              <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
-                Paint m²
-              </th>
+              {showLiningColumn && (
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                  Lining m²
+                </th>
+              )}
+              {showPaintColumn && (
+                <th className="px-3 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider w-24">
+                  Paint m²
+                </th>
+              )}
               <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 JT No
               </th>
@@ -346,12 +361,16 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-semibold text-gray-900">
                       {quantity || "-"}
                     </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-teal-700">
-                      {li.liningM2 ? Number(li.liningM2).toFixed(2) : "-"}
-                    </td>
-                    <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
-                      {li.m2 ? Number(li.m2).toFixed(2) : "-"}
-                    </td>
+                    {showLiningColumn && (
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right font-medium text-teal-700">
+                        {li.liningM2 ? Number(li.liningM2).toFixed(2) : "-"}
+                      </td>
+                    )}
+                    {showPaintColumn && (
+                      <td className="px-3 py-2 whitespace-nowrap text-sm text-right text-gray-900">
+                        {li.m2 ? Number(li.m2).toFixed(2) : "-"}
+                      </td>
+                    )}
                     <td className="px-3 py-2 text-sm text-gray-900 whitespace-nowrap">
                       {jtNo || "-"}
                     </td>
@@ -376,7 +395,12 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     <tr key={`note-${li.id}`} className="bg-amber-50">
                       <td className="px-3 py-1.5" />
                       <td
-                        colSpan={canManageLineItems ? 8 : 7}
+                        colSpan={
+                          5 +
+                          (showLiningColumn ? 1 : 0) +
+                          (showPaintColumn ? 1 : 0) +
+                          (canManageLineItems ? 1 : 0)
+                        }
                         className="px-3 py-1.5 text-sm italic text-amber-800 whitespace-pre-wrap"
                       >
                         <span className="font-semibold not-italic text-amber-900 mr-1">
@@ -419,12 +443,12 @@ export function LineItemsTab(props: LineItemsTabProps) {
                     {li.quantity && (
                       <span className="font-semibold text-gray-900">Qty: {li.quantity}</span>
                     )}
-                    {li.liningM2 ? (
+                    {showLiningColumn && li.liningM2 ? (
                       <span className="text-teal-700">
                         Lining {Number(li.liningM2).toFixed(2)} m²
                       </span>
                     ) : null}
-                    {li.m2 ? (
+                    {showPaintColumn && li.m2 ? (
                       <span className="text-gray-600">Paint {Number(li.m2).toFixed(2)} m²</span>
                     ) : null}
                     {canManageLineItems && (

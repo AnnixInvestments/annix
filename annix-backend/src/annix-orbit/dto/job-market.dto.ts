@@ -1,5 +1,22 @@
-import { IsArray, IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from "class-validator";
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsBoolean,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+} from "class-validator";
 import { JobSourceProvider } from "../entities/job-market-source.entity";
+
+export class BulkDeleteJobsDto {
+  @IsArray()
+  @ArrayNotEmpty()
+  @IsInt({ each: true })
+  ids: number[];
+}
 
 export class CreateJobMarketSourceDto {
   @IsEnum(JobSourceProvider)

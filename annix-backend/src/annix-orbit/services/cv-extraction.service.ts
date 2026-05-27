@@ -1,15 +1,20 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import mammoth from "mammoth";
-import pdfParse from "pdf-parse";
-import * as XLSX from "xlsx";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
+import {
+  extractTextFromExcel,
+  extractTextFromPdf,
+  extractTextFromWord,
+} from "../../lib/document-extraction";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { ExtractedCvData } from "../entities/candidate.entity";
 import { CV_EXTRACTION_SYSTEM_PROMPT, cvExtractionPrompt } from "../prompts/cv-analysis.prompt";
 
 type SupportedCvFormat = "pdf" | "docx" | "xlsx" | "unsupported";
+
+const CV_OCR_PROMPT =
+  "Transcribe ALL readable text from this CV/résumé document verbatim, preserving the natural reading order (headings, sections, bullet points, dates). The document may be written in English, Afrikaans, isiZulu, or another South African language. Output plain text only — no commentary, no markdown.";
 
 function detectCvFormat(filePath: string): SupportedCvFormat {
   const lower = filePath.toLowerCase();
@@ -30,55 +35,50 @@ export class CvExtractionService {
     private readonly aiUsageService: AiUsageService,
   ) {}
 
-  async extractTextFromPdf(storagePath: string): Promise<string> {
-    try {
-      const dataBuffer = await this.storageService.download(storagePath);
-      const pdfData = await pdfParse(dataBuffer);
-      return pdfData.text;
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to extract text from PDF: ${msg}`);
-      throw new Error(`Failed to extract text from PDF: ${msg}`);
-    }
-  }
-
-  async extractTextFromDocx(storagePath: string): Promise<string> {
-    try {
-      const dataBuffer = await this.storageService.download(storagePath);
-      const result = await mammoth.extractRawText({ buffer: dataBuffer });
-      return result.value;
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to extract text from Word document: ${msg}`);
-      throw new Error(`Failed to extract text from Word document: ${msg}`);
-    }
-  }
-
-  async extractTextFromXlsx(storagePath: string): Promise<string> {
-    try {
-      const dataBuffer = await this.storageService.download(storagePath);
-      const workbook = XLSX.read(dataBuffer, { type: "buffer" });
-      const sheetTexts = workbook.SheetNames.map((name) => {
-        const sheet = workbook.Sheets[name];
-        const csv = XLSX.utils.sheet_to_csv(sheet, { blankrows: false });
-        return `--- Sheet: ${name} ---\n${csv}`;
-      });
-      return sheetTexts.join("\n\n");
-    } catch (error: unknown) {
-      const msg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to extract text from spreadsheet: ${msg}`);
-      throw new Error(`Failed to extract text from spreadsheet: ${msg}`);
-    }
-  }
-
   async extractTextFromCv(storagePath: string): Promise<string> {
     const format = detectCvFormat(storagePath);
-    if (format === "pdf") return this.extractTextFromPdf(storagePath);
-    if (format === "docx") return this.extractTextFromDocx(storagePath);
-    if (format === "xlsx") return this.extractTextFromXlsx(storagePath);
-    throw new Error(
-      "Unsupported CV file format. Please upload a PDF, Word (.docx), or Excel (.xlsx) file.",
-    );
+    if (format === "unsupported") {
+      throw new Error(
+        "Unsupported CV file format. Please upload a PDF, Word (.docx), or Excel (.xlsx) file.",
+      );
+    }
+
+    const buffer = await this.storageService.download(storagePath);
+
+    if (format === "docx") return extractTextFromWord(buffer);
+    if (format === "xlsx") return extractTextFromExcel(buffer);
+
+    const pdfText = await extractTextFromPdf(buffer);
+    if (pdfText.trim().length > 0) {
+      return pdfText;
+    }
+
+    this.logger.warn(`No text layer in PDF ${storagePath} — falling back to Gemini vision OCR.`);
+    return this.ocrPdf(buffer);
+  }
+
+  private async ocrPdf(buffer: Buffer): Promise<string> {
+    try {
+      const { content, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(
+        buffer.toString("base64"),
+        "application/pdf",
+        CV_OCR_PROMPT,
+      );
+
+      this.aiUsageService.log({
+        app: AiApp.ANNIX_ORBIT,
+        actionType: "cv-ocr",
+        provider: providerUsed.includes("claude") ? AiProvider.CLAUDE : AiProvider.GEMINI,
+        model: providerUsed,
+        tokensUsed,
+      });
+
+      return content.trim();
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Gemini vision OCR failed for CV PDF: ${msg}`);
+      return "";
+    }
   }
 
   async extractDataFromCv(cvText: string): Promise<ExtractedCvData> {

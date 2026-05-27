@@ -27,6 +27,31 @@ import {
 
 const METRIC_CATEGORY = "annix-orbit-nix-seeker";
 
+// Deterministic guard so a role's place never appears twice (e.g. employer
+// "Selfridges - London" alongside location "London, UK") — a tell that flags
+// AI-built CVs. When the location's leading city token is also tacked onto the
+// end of the employer name, strip it from the employer so the place shows once.
+function dedupeExperienceLocations(cv: NixGeneratedCv): NixGeneratedCv {
+  const experience = (cv.experience ?? []).map((exp) => {
+    const location = exp.location;
+    if (!location || location.trim().length === 0) {
+      return exp;
+    }
+    const cityToken = location.split(/[,/]/)[0].trim();
+    if (cityToken.length === 0) {
+      return exp;
+    }
+    const escaped = cityToken.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const trailingCity = new RegExp(`\\s*[-–·,/]\\s*${escaped}\\s*$`, "i");
+    const employer = exp.employer.replace(trailingCity, "").trim();
+    if (employer.length === 0 || employer === exp.employer) {
+      return exp;
+    }
+    return { ...exp, employer };
+  });
+  return { ...cv, experience };
+}
+
 @Injectable()
 export class NixSeekerAssistService {
   private readonly logger = new Logger(NixSeekerAssistService.name);
@@ -151,7 +176,7 @@ export class NixSeekerAssistService {
         }
       : null;
 
-    const result = await this.metrics.time(METRIC_CATEGORY, "cv-generation", async () => {
+    const generated = await this.metrics.time(METRIC_CATEGORY, "cv-generation", async () => {
       const prompt = seekerCvGenerationPrompt({
         cvText: profile.rawCvText,
         extractedCv,
@@ -161,6 +186,7 @@ export class NixSeekerAssistService {
       return parseNixJson<NixGeneratedCv>(aiResult.content);
     });
 
+    const result = dedupeExperienceLocations(generated);
     profile.nixGeneratedCv = result;
     profile.nixGeneratedCvAt = now().toJSDate();
     await this.profileRepo.save(profile);

@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { DuplicateJobSide } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdminAutoResolveOrbitDuplicates,
+  useAdminBulkDeleteOrbitExternalJobs,
   useAdminDeleteOrbitExternalJob,
   useAdminOrbitJobMarketDuplicates,
 } from "@/app/lib/query/hooks";
 
-function SideRow(props: { side: DuplicateJobSide; onDelete: () => void; deleting: boolean }) {
+function SideRow(props: {
+  side: DuplicateJobSide;
+  onDelete: () => void;
+  deleting: boolean;
+  selected: boolean;
+  onToggleSelect: () => void;
+}) {
   const side = props.side;
   const company = side.company;
   const location = side.location;
@@ -18,15 +25,23 @@ function SideRow(props: { side: DuplicateJobSide; onDelete: () => void; deleting
   const locationText = location || "—";
   return (
     <div className="flex items-start justify-between gap-3 rounded-lg border border-gray-200 p-3">
-      <div className="min-w-0">
-        <p className="text-sm font-medium text-gray-900">{side.title}</p>
-        <p className="mt-0.5 text-xs text-gray-500">
-          {companyText} · {locationText}
-        </p>
-        <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
-          {side.source}
+      <label className="flex min-w-0 cursor-pointer items-start gap-2">
+        <input
+          type="checkbox"
+          checked={props.selected}
+          onChange={props.onToggleSelect}
+          className="mt-0.5 h-4 w-4 shrink-0 rounded border-gray-300 text-red-600 focus:ring-red-500"
+        />
+        <span className="min-w-0">
+          <span className="block text-sm font-medium text-gray-900">{side.title}</span>
+          <span className="mt-0.5 block text-xs text-gray-500">
+            {companyText} · {locationText}
+          </span>
+          <span className="mt-1 inline-block rounded bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-gray-600">
+            {side.source}
+          </span>
         </span>
-      </div>
+      </label>
       <button
         type="button"
         onClick={props.onDelete}
@@ -46,12 +61,15 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
   const autoResolvedRef = useRef(false);
   const duplicatesQuery = useAdminOrbitJobMarketDuplicates(isOpen && autoResolve.isSuccess);
   const deleteJob = useAdminDeleteOrbitExternalJob();
+  const bulkDelete = useAdminBulkDeleteOrbitExternalJobs();
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
 
   // On open, auto-remove EXACT duplicates first (keeping the most-respected
   // source), then list the remaining near-duplicates for manual review.
   useEffect(() => {
     if (!isOpen) {
       autoResolvedRef.current = false;
+      setSelectedIds(new Set());
       return;
     }
     if (autoResolvedRef.current) return;
@@ -67,6 +85,28 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
   const isError = duplicatesQuery.isError;
   const removed = autoResolve.data;
   const deletingId = deleteJob.isPending ? deleteJob.variables : null;
+  const selectedCount = selectedIds.size;
+
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const dropFromSelection = (id: number) => {
+    setSelectedIds((prev) => {
+      if (!prev.has(id)) return prev;
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
+  };
 
   const handleDelete = async (side: DuplicateJobSide) => {
     const confirmed = await confirm({
@@ -77,6 +117,20 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
     });
     if (confirmed) {
       deleteJob.mutate(side.id);
+      dropFromSelection(side.id);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedCount === 0) return;
+    const confirmed = await confirm({
+      title: `Delete ${selectedCount} listing(s)?`,
+      message: "The selected listings will be permanently removed from the feed.",
+      confirmLabel: `Delete ${selectedCount}`,
+      variant: "danger",
+    });
+    if (confirmed) {
+      bulkDelete.mutate([...selectedIds], { onSuccess: () => setSelectedIds(new Set()) });
     }
   };
 
@@ -105,6 +159,24 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
             aria-label="Close"
           >
             ✕
+          </button>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-5 py-2.5">
+          <span className="text-xs text-gray-600">
+            {selectedCount > 0
+              ? `${selectedCount} listing(s) selected`
+              : "Tick listings to delete several at once"}
+          </span>
+          <button
+            type="button"
+            onClick={handleBulkDelete}
+            disabled={selectedCount === 0 || bulkDelete.isPending}
+            className="shrink-0 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {bulkDelete.isPending
+              ? "Deleting…"
+              : `Delete selected${selectedCount > 0 ? ` (${selectedCount})` : ""}`}
           </button>
         </div>
 
@@ -185,11 +257,15 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
                     side={pair.a}
                     onDelete={() => handleDelete(pair.a)}
                     deleting={deletingId === pair.a.id}
+                    selected={selectedIds.has(pair.a.id)}
+                    onToggleSelect={() => toggleSelect(pair.a.id)}
                   />
                   <SideRow
                     side={pair.b}
                     onDelete={() => handleDelete(pair.b)}
                     deleting={deletingId === pair.b.id}
+                    selected={selectedIds.has(pair.b.id)}
+                    onToggleSelect={() => toggleSelect(pair.b.id)}
                   />
                 </div>
               </div>

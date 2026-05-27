@@ -635,16 +635,31 @@ export class JobIngestionService {
     await this.externalJobRepo.delete(jobId);
   }
 
+  async deleteExternalJobs(ids: number[]): Promise<{ deleted: number }> {
+    const unique = [...new Set(ids.filter((id) => Number.isInteger(id) && id > 0))];
+    if (unique.length === 0) {
+      return { deleted: 0 };
+    }
+    await this.alternateRepo.delete({ canonicalExternalJobId: In(unique) });
+    await this.externalJobRepo.delete(unique);
+    this.logger.log(`Bulk-deleted ${unique.length} external job listing(s)`);
+    return { deleted: unique.length };
+  }
+
   // Auto-removes duplicate listings sharing the same title + location. Within
   // such a group: if there is at most one distinct named employer, every copy
   // is treated as the same job (including employer-blank copies, which are just
   // incomplete versions) and a single best record is kept. If two or more
   // distinct named employers appear, only same-employer copies are collapsed —
   // the different-employer listings are left for human review (they may be
-  // genuinely separate jobs). The kept record is the most respected source,
-  // then the one with a named employer, then the richest (longest description),
-  // then the oldest. Runs on demand (admin button) and after each ingestion
-  // poll so the feed self-cleans and duplicates shrink over time.
+  // genuinely separate jobs). Additionally, an employer-blank copy that shares
+  // its source (provider) with a named listing in the same group is treated as
+  // that listing missing its employer field and is removed too; blanks with no
+  // same-source named sibling stay for review (ambiguous). The kept record is
+  // the most respected source, then the one with a named employer, then the
+  // richest (longest description), then the oldest. Runs on demand (admin
+  // button) and after each ingestion poll so the feed self-cleans and
+  // duplicates shrink over time.
   async autoResolveDuplicates(): Promise<{ deleted: number; groups: number }> {
     type DedupRow = {
       id: number;
@@ -684,27 +699,31 @@ export class JobIngestionService {
       });
 
     const deletionsFor = (bucket: DedupRow[]): number[] => {
-      const distinctEmployers = new Set(bucket.filter((r) => r.comp !== "").map((r) => r.comp));
+      const named = bucket.filter((r) => r.comp !== "");
+      const distinctEmployers = new Set(named.map((r) => r.comp));
       if (distinctEmployers.size <= 1) {
         return preferenceSort(bucket)
           .slice(1)
           .map((r) => r.id);
       }
-      const byEmployer = bucket
-        .filter((r) => r.comp !== "")
-        .reduce((map, row) => {
-          const sub = map.get(row.comp);
-          if (sub) sub.push(row);
-          else map.set(row.comp, [row]);
-          return map;
-        }, new Map<string, DedupRow[]>());
-      return [...byEmployer.values()]
+      const byEmployer = named.reduce((map, row) => {
+        const sub = map.get(row.comp);
+        if (sub) sub.push(row);
+        else map.set(row.comp, [row]);
+        return map;
+      }, new Map<string, DedupRow[]>());
+      const sameEmployerDeletions = [...byEmployer.values()]
         .filter((sub) => sub.length > 1)
         .flatMap((sub) =>
           preferenceSort(sub)
             .slice(1)
             .map((r) => r.id),
         );
+      const namedProviders = new Set(named.map((r) => r.provider));
+      const blankSameSourceDeletions = bucket
+        .filter((r) => r.comp === "" && namedProviders.has(r.provider))
+        .map((r) => r.id);
+      return [...sameEmployerDeletions, ...blankSameSourceDeletions];
     };
 
     const grouped = rows.reduce((map, row) => {

@@ -891,9 +891,9 @@ Return JSON with this exact shape:
   "experience": [
     {
       "role": "string — job title",
-      "employer": "string — company name",
+      "employer": "string — the company / organisation name ONLY, with NO city, branch or region attached (write 'Selfridges', never 'Selfridges - London')",
       "period": "string — e.g. 'Jan 2021 – Present'",
-      "location": "string or null",
+      "location": "string or null — the role's city and country/province (e.g. 'Cape Town, South Africa'); populate for every role where it can be determined, null only if genuinely indeterminable. Never also embed it in the employer field.",
       "bullets": ["string — quantified achievement bullet", ...]
     },
     ...
@@ -928,6 +928,7 @@ Write it like a real person, not like AI. This matters because recruitment scree
 - Allow natural unevenness. Real CVs are not perfectly balanced, so a more recent or more significant role can carry more detail than an older or minor one.
 - Keep one consistent voice throughout, as though a single real person wrote the whole document.
 - professionalSummary: 3-5 sentences that sound like the candidate describing themselves naturally, not a template opener. Tailor it to their actual field and experience. Avoid the clichés above.
+- experience employer + location: put the company / organisation name in "employer" with NO city, branch or region attached, and the place (city plus country/province) in "location". The location must appear exactly ONCE — never both inside the employer name and in the location field (write employer "Selfridges" with location "London, UK", never employer "Selfridges - London" with location "London, UK"). Populate location for every role where it is stated or can be reasonably inferred from the company or the seeker's own location; use null only when genuinely indeterminable. Do not invent a specific city you have no basis for, but a country or region clearly implied by the company or the seeker's location is acceptable.
 - experience bullets: 3-6 per role. Rewrite duty lists into clear achievement-focused bullets where the original gives enough signal, but keep them varied in shape and length. Do not invent metrics that aren't supported by the source.
 - coreCompetencies / keySkills: recruiter-searchable terms drawn from the seeker's real experience. Plain skill names, no marketing phrasing.
 - Apply South African hiring norms: NQF levels, SAQA, ECSA / SACPCMP / SAICA / SAIPA registrations, valid driver's licence, right-to-work — only where the seeker legitimately has them.

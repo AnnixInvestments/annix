@@ -173,7 +173,7 @@ export class CoatingAnalysisService {
       const lineItems = allLineItems.filter((li) => !junkItemIds.has(li.id));
 
       const PIPE_ITEM_PATTERN =
-        /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
+        /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b|\d+(?:\.\d+)?\s*m\s*(?:²|2))/i;
       const hasPipeItems = lineItems.some((li) => {
         const desc = li.itemDescription || li.itemCode || "";
         return PIPE_ITEM_PATTERN.test(desc);
@@ -604,7 +604,7 @@ export class CoatingAnalysisService {
     });
 
     const PIPE_ITEM_PATTERN =
-      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
+      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b|\d+(?:\.\d+)?\s*m\s*(?:²|2))/i;
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
       return PIPE_ITEM_PATTERN.test(desc);
@@ -646,7 +646,7 @@ export class CoatingAnalysisService {
     lineItems: JobCardLineItem[],
   ): Promise<{ extM2: number; intM2: number }> {
     const PIPE_ITEM_PATTERN =
-      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b)/i;
+      /(?:\d+\s*NB|NB\s*\d+|^\d{2,4}\s*x\s*\d{2,4}\b|\bPIPE\b|\bBEND\b|\bELBOW\b|\bTEE\b|\bT[- ]?PIECE\b|\bREDUCER\b|\bLATERAL\b|\bFLANGE\b|\bOFFSET\b|\bVALVE\b|\bSCH(?:EDULE)?\s*\d+|\d+\s*LG\b|\d+(?:\.\d+)?\s*m\s*(?:²|2))/i;
     const pipeItems = lineItems.filter((li) => {
       const desc = li.itemDescription || li.itemCode || "";
       return PIPE_ITEM_PATTERN.test(desc);

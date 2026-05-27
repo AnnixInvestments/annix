@@ -734,10 +734,22 @@ export class JobCardService {
       const pNum = (jc.jobNumber || "").trim().toLowerCase();
       const jcNum = (jc.jcNumber || "").trim().toLowerCase();
       const jtNum = (jc.jtDnNumber || "").trim().toLowerCase();
+      const pageNum = (jc.pageNumber || "").trim().toLowerCase();
 
-      if (!pNum || !jcNum || !jtNum) return;
+      if (!pNum || !jcNum) return;
 
-      const key = `${pNum}|${jcNum}|${jtNum}`;
+      let key: string;
+      if (jtNum) {
+        // Delivery / JT-numbered cards keyed by JT (unchanged).
+        key = `${pNum}|${jcNum}|jt:${jtNum}`;
+      } else {
+        // Plain job cards with no JT (e.g. re-imported the same .xls twice) escaped
+        // dedup before. Key them by page so different pages of one JC aren't merged but
+        // exact re-imports are. Skip CPO parents / delivery children to avoid orphaning.
+        if (jc.cpoId || jc.parentJobCardId) return;
+        key = `${pNum}|${jcNum}|page:${pageNum}`;
+      }
+
       const existing = groups.get(key) || [];
       groups.set(key, [...existing, jc]);
     });
