@@ -23,6 +23,9 @@ import {
   UserAppPermissionRepository,
 } from "./rbac.repository";
 
+type RolePermissionWithPermission = AppRolePermission & { permission: AppPermission };
+type CustomPermissionWithPermission = UserAppPermission & { permission: AppPermission };
+
 @Injectable()
 export class MongoAppRepository extends MongoCrudRepository<App> implements AppRepository {
   constructor(@InjectModel("App") model: Model<App>) {
@@ -208,8 +211,13 @@ export class MongoUserAppAccessRepository
   }
 
   async findOneByUserAndAppWithRole(userId: number, appId: number): Promise<UserAppAccess | null> {
-    const document = await this.documents.findOne({ userId, appId }).populate("role").lean().exec();
-    return this.toDomain(document);
+    const document = await this.documents.findOne({ userId, appId }).lean().exec();
+    if (!document) {
+      return null;
+    }
+    const access = this.toDomain(document) as UserAppAccess & { role: AppRole | null };
+    access.role = await this.roleById(access.roleId);
+    return access;
   }
 
   async findByUserAndAppCodeWithRole(
@@ -220,12 +228,13 @@ export class MongoUserAppAccessRepository
     if (!app) {
       return null;
     }
-    const document = await this.documents
-      .findOne({ userId, appId: app._id })
-      .populate("role")
-      .lean()
-      .exec();
-    return this.toDomain(document);
+    const document = await this.documents.findOne({ userId, appId: app._id }).lean().exec();
+    if (!document) {
+      return null;
+    }
+    const access = this.toDomain(document) as UserAppAccess & { role: AppRole | null };
+    access.role = await this.roleById(access.roleId);
+    return access;
   }
 
   async findWithRelations(id: number): Promise<UserAppAccess | null> {
@@ -266,17 +275,98 @@ export class MongoUserAppAccessRepository
     return this.toDomainList(documents);
   }
 
-  async findWithPermissionsAndRole(userId: number, appId: number): Promise<UserAppAccess | null> {
-    const document = await this.documents
-      .findOne({ userId, appId })
-      .populate({
-        path: "role",
-        populate: { path: "rolePermissions", populate: { path: "permission" } },
-      })
-      .populate({ path: "customPermissions", populate: { path: "permission" } })
+  private get appRolePermissionModel(): Model<Record<string, unknown>> {
+    return this.model.db.model<Record<string, unknown>>("AppRolePermission");
+  }
+
+  private get appPermissionModel(): Model<Record<string, unknown>> {
+    return this.model.db.model<Record<string, unknown>>("AppPermission");
+  }
+
+  private get userAppPermissionModel(): Model<Record<string, unknown>> {
+    return this.model.db.model<Record<string, unknown>>("UserAppPermission");
+  }
+
+  private mapDoc<T>(document: Record<string, unknown> | null): T | null {
+    if (!document) {
+      return null;
+    }
+    const { _id, ...rest } = document;
+    return { id: _id, ...rest } as unknown as T;
+  }
+
+  private async permissionsByIds(ids: number[]): Promise<Map<number, AppPermission>> {
+    if (ids.length === 0) {
+      return new Map();
+    }
+    const documents = await this.appPermissionModel
+      .find({ _id: { $in: ids } })
       .lean()
       .exec();
-    return this.toDomain(document);
+    return new Map(
+      documents.map((document) => [
+        document._id as number,
+        this.mapDoc<AppPermission>(document) as AppPermission,
+      ]),
+    );
+  }
+
+  private async roleById(roleId: number | null | undefined): Promise<AppRole | null> {
+    if (roleId === null || roleId === undefined) {
+      return null;
+    }
+    return this.mapDoc<AppRole>(await this.appRoleModel.findById(roleId).lean().exec());
+  }
+
+  private async roleWithPermissions(
+    roleId: number | null | undefined,
+  ): Promise<(AppRole & { rolePermissions: RolePermissionWithPermission[] }) | null> {
+    const role = await this.roleById(roleId);
+    if (!role) {
+      return null;
+    }
+    const links = await this.appRolePermissionModel.find({ roleId }).lean().exec();
+    const permissions = await this.permissionsByIds(
+      links.map((link) => link.permissionId as number),
+    );
+    const rolePermissions = links
+      .map((link) => ({
+        ...(this.mapDoc<AppRolePermission>(link) as AppRolePermission),
+        permission: permissions.get(link.permissionId as number) ?? null,
+      }))
+      .filter((link): link is RolePermissionWithPermission => link.permission !== null);
+    return { ...role, rolePermissions };
+  }
+
+  private async customPermissionsForAccess(
+    accessId: number,
+  ): Promise<CustomPermissionWithPermission[]> {
+    const links = await this.userAppPermissionModel.find({ userAccessId: accessId }).lean().exec();
+    const permissions = await this.permissionsByIds(
+      links.map((link) => link.permissionId as number),
+    );
+    return links
+      .map((link) => ({
+        ...(this.mapDoc<UserAppPermission>(link) as UserAppPermission),
+        permission: permissions.get(link.permissionId as number) ?? null,
+      }))
+      .filter((link): link is CustomPermissionWithPermission => link.permission !== null);
+  }
+
+  async findWithPermissionsAndRole(userId: number, appId: number): Promise<UserAppAccess | null> {
+    const document = await this.documents.findOne({ userId, appId }).lean().exec();
+    if (!document) {
+      return null;
+    }
+    const access = this.toDomain(document) as UserAppAccess & {
+      role: (AppRole & { rolePermissions: RolePermissionWithPermission[] }) | null;
+      customPermissions: CustomPermissionWithPermission[];
+    };
+    access.role = await this.roleWithPermissions(access.roleId);
+    access.customPermissions = access.useCustomPermissions
+      ? await this.customPermissionsForAccess(Number(access.id))
+      : [];
+    return access;
   }
 
   async findWithApp(userId: number): Promise<UserAppAccess[]> {
