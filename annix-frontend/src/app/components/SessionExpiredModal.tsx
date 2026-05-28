@@ -107,8 +107,10 @@ export default function SessionExpiredModal(props: SessionExpiredHandlerProps) {
       if (window.location.pathname.startsWith(loginPath)) return;
       localStorage.removeItem(portal.accessTokenKey);
       localStorage.removeItem(portal.refreshTokenKey);
+      const here = `${window.location.pathname}${window.location.search}`;
+      const returnUrl = encodeURIComponent(here);
       const separator = loginPath.includes("?") ? "&" : "?";
-      window.location.href = `${loginPath}${separator}expired=1`;
+      window.location.href = `${loginPath}${separator}expired=1&returnUrl=${returnUrl}`;
     });
     return () => {
       unsubscribe();

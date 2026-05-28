@@ -1,5 +1,6 @@
 import { isString } from "es-toolkit/compat";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
+import { refreshActivePortalToken } from "@/app/lib/api/portalRefresh";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
 import { fromISO } from "@/app/lib/datetime";
 import { browserBaseUrl } from "@/lib/api-config";
@@ -141,24 +142,38 @@ async function nixRequest<TResponse>(
     parseErrorBody?: boolean;
   },
 ): Promise<TResponse> {
-  const headers: Record<string, string> = { ...nixAuthHeaders(options.portalContext) };
-  if (options.body !== undefined) {
-    headers["Content-Type"] = "application/json";
-  }
+  const buildHeaders = (): Record<string, string> => {
+    const headers: Record<string, string> = { ...nixAuthHeaders(options.portalContext) };
+    if (options.body !== undefined) {
+      headers["Content-Type"] = "application/json";
+    }
+    return headers;
+  };
 
   const rawMethod = options.method;
+  const url = `${browserBaseUrl()}${path}`;
+  const sendRequest = (): Promise<Response> =>
+    retryableFetch(url, {
+      method: rawMethod || "GET",
+      headers: buildHeaders(),
+      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
+    });
 
-  const response = await retryableFetch(`${browserBaseUrl()}${path}`, {
-    method: rawMethod || "GET",
-    headers,
-    ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
-  });
+  let response = await sendRequest();
+
+  // An expired-but-refreshable access token must not tear down the whole
+  // portal session. Attempt the same portal-aware refresh the data clients
+  // use, retry once, and only escalate to sessionExpiredEvent below if the
+  // refresh genuinely failed.
+  if (response.status === 401) {
+    const refreshed = await refreshActivePortalToken();
+    if (refreshed) {
+      response = await sendRequest();
+    }
+  }
 
   if (!response.ok) {
     if (response.status === 401) {
-      // Fire the global session-expired event so the SessionExpiredModal
-      // shows a branded "please sign in again" prompt instead of the page
-      // rendering "Could not load session — it may have been deleted".
       sessionExpiredEvent.emit();
       throw new Error("Session expired — please sign in again.");
     }
