@@ -2358,6 +2358,21 @@ Formula: totalPrice = totalKg × salePricePerKg
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
   @ApiBearerAuth()
+  @Get("portal/au-cocs/pending")
+  @ApiOperation({ summary: "List AU CoCs pending generation with readiness details" })
+  async pendingAuCocs() {
+    const cocs = await this.rubberAuCocService.allAuCocs({ status: "DRAFT" as never });
+    const pendingCocs = cocs.filter(
+      (coc) =>
+        coc.readinessStatus &&
+        coc.readinessStatus !== "NOT_TRACKED" &&
+        coc.readinessStatus !== "AUTO_GENERATED",
+    );
+    return pendingCocs;
+  }
+
+  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
+  @ApiBearerAuth()
   @Get("portal/au-cocs/:id")
   @ApiOperation({ summary: "Get AU CoC by ID" })
   @ApiParam({ name: "id", description: "AU CoC ID" })
@@ -2544,21 +2559,6 @@ Formula: totalPrice = totalKg × salePricePerKg
       "Content-Length": buffer.length.toString(),
     });
     res.send(buffer);
-  }
-
-  @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
-  @ApiBearerAuth()
-  @Get("portal/au-cocs/pending")
-  @ApiOperation({ summary: "List AU CoCs pending generation with readiness details" })
-  async pendingAuCocs() {
-    const cocs = await this.rubberAuCocService.allAuCocs({ status: "DRAFT" as never });
-    const pendingCocs = cocs.filter(
-      (coc) =>
-        coc.readinessStatus &&
-        coc.readinessStatus !== "NOT_TRACKED" &&
-        coc.readinessStatus !== "AUTO_GENERATED",
-    );
-    return pendingCocs;
   }
 
   @UseGuards(AdminAuthGuard, AuRubberAccessGuard, AuRubberFeatureGuard)
