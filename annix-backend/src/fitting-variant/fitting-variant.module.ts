@@ -16,6 +16,7 @@ import { FittingDimensionRepository } from "src/fitting-dimension/fitting-dimens
 import { MongoFittingDimensionRepository } from "src/fitting-dimension/fitting-dimension.repository.mongo";
 import { PostgresFittingDimensionRepository } from "src/fitting-dimension/fitting-dimension.repository.postgres";
 import { FittingDimensionSchema } from "src/fitting-dimension/schemas/fitting-dimension.schema";
+import { AngleRange } from "../angle-range/entities/angle-range.entity";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { FittingVariant } from "./entities/fitting-variant.entity";
@@ -40,7 +41,15 @@ import { FittingVariantSchema } from "./schemas/fitting-variant.schema";
       : []),
     ...(isMongoDriver()
       ? []
-      : [TypeOrmModule.forFeature([Fitting, FittingVariant, FittingBore, FittingDimension])]),
+      : [
+          TypeOrmModule.forFeature([
+            AngleRange,
+            Fitting,
+            FittingVariant,
+            FittingBore,
+            FittingDimension,
+          ]),
+        ]),
   ],
   controllers: [FittingVariantController],
   providers: [

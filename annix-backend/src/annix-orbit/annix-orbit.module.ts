@@ -18,8 +18,13 @@ import { PostgresCompanyRepository } from "../platform/company.repository.postgr
 import { Company } from "../platform/entities/company.entity";
 import { CompanySchema } from "../platform/schemas/company.schema";
 import { App } from "../rbac/entities/app.entity";
+import { AppPermission } from "../rbac/entities/app-permission.entity";
 import { AppRole } from "../rbac/entities/app-role.entity";
+import { AppRolePermission } from "../rbac/entities/app-role-permission.entity";
+import { AppRoleProduct } from "../rbac/entities/app-role-product.entity";
+import { UserAccessProduct } from "../rbac/entities/user-access-product.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
+import { UserAppPermission } from "../rbac/entities/user-app-permission.entity";
 import { AppRepository, AppRoleRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import {
   MongoAppRepository,
@@ -347,6 +352,11 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
       ? []
       : [
           TypeOrmModule.forFeature([
+            AppPermission,
+            AppRolePermission,
+            AppRoleProduct,
+            UserAccessProduct,
+            UserAppPermission,
             AnnixOrbitProfile,
             User,
             Company,

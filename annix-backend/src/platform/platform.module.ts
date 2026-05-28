@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { DeliveryNote } from "../stock-control/entities/delivery-note.entity";
 import { CertificateController } from "./certificate.controller";
 import { CertificateRepository } from "./certificate.repository";
 import { MongoCertificateRepository } from "./certificate.repository.mongo";
@@ -65,6 +66,7 @@ import { PlatformInvoiceSchema } from "./schemas/platform-invoice.schema";
       ? []
       : [
           TypeOrmModule.forFeature([
+            DeliveryNote,
             Company,
             CompanyModuleSubscription,
             Contact,

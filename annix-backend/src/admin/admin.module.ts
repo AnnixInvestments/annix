@@ -29,8 +29,13 @@ import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MessagingModule } from "../messaging/messaging.module";
 import { App } from "../rbac/entities/app.entity";
+import { AppPermission } from "../rbac/entities/app-permission.entity";
 import { AppRole } from "../rbac/entities/app-role.entity";
+import { AppRolePermission } from "../rbac/entities/app-role-permission.entity";
+import { AppRoleProduct } from "../rbac/entities/app-role-product.entity";
+import { UserAccessProduct } from "../rbac/entities/user-access-product.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
+import { UserAppPermission } from "../rbac/entities/user-app-permission.entity";
 import { AppRepository, AppRoleRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import {
   MongoAppRepository,
@@ -87,6 +92,7 @@ import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
 import { PostgresUserRepository } from "../user/user.repository.postgres";
+import { UserRole } from "../user-roles/entities/user-role.entity";
 import { UserRoleSchema } from "../user-roles/schemas/user-role.schema";
 import { UserRoleRepository } from "../user-roles/user-roles.repository";
 import { MongoUserRoleRepository } from "../user-roles/user-roles.repository.mongo";
@@ -180,6 +186,12 @@ import { ScheduledJobsGlobalSettingsSchema } from "./schemas/scheduled-jobs-glob
       ? []
       : [
           TypeOrmModule.forFeature([
+            AppPermission,
+            AppRolePermission,
+            AppRoleProduct,
+            UserAccessProduct,
+            UserAppPermission,
+            UserRole,
             AdminSession,
             App,
             AppRole,

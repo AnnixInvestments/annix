@@ -10,7 +10,13 @@ import { LicensingModule } from "../licensing";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { App } from "../rbac/entities/app.entity";
+import { AppPermission } from "../rbac/entities/app-permission.entity";
+import { AppRole } from "../rbac/entities/app-role.entity";
+import { AppRolePermission } from "../rbac/entities/app-role-permission.entity";
+import { AppRoleProduct } from "../rbac/entities/app-role-product.entity";
+import { UserAccessProduct } from "../rbac/entities/user-access-product.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
+import { UserAppPermission } from "../rbac/entities/user-app-permission.entity";
 import { RbacModule } from "../rbac/rbac.module";
 import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { MongoAppRepository, MongoUserAppAccessRepository } from "../rbac/rbac.repository.mongo";
@@ -46,6 +52,7 @@ import {
 } from "./entities/rubber-application.entity";
 import { RubberAuCoc } from "./entities/rubber-au-coc.entity";
 import { RubberAuCocItem } from "./entities/rubber-au-coc-item.entity";
+import { RubberChemicalCompatibility } from "./entities/rubber-chemical-compatibility.entity";
 import { RubberCocBatchCorrection } from "./entities/rubber-coc-batch-correction.entity";
 import { RubberCompany } from "./entities/rubber-company.entity";
 import { RubberCompanyDirector } from "./entities/rubber-company-director.entity";
@@ -429,6 +436,13 @@ import { WebsitePagesService } from "./website-pages.service";
       ? []
       : [
           TypeOrmModule.forFeature([
+            AppPermission,
+            AppRole,
+            AppRolePermission,
+            AppRoleProduct,
+            UserAccessProduct,
+            UserAppPermission,
+            RubberChemicalCompatibility,
             App,
             UserAppAccess,
             RubberType,

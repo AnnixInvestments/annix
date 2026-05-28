@@ -30,8 +30,13 @@ import { CustomerProfileSchema } from "../customer/schemas/customer-profile.sche
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { App } from "../rbac/entities/app.entity";
+import { AppPermission } from "../rbac/entities/app-permission.entity";
 import { AppRole } from "../rbac/entities/app-role.entity";
+import { AppRolePermission } from "../rbac/entities/app-role-permission.entity";
+import { AppRoleProduct } from "../rbac/entities/app-role-product.entity";
+import { UserAccessProduct } from "../rbac/entities/user-access-product.entity";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
+import { UserAppPermission } from "../rbac/entities/user-app-permission.entity";
 import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { MongoAppRepository, MongoUserAppAccessRepository } from "../rbac/rbac.repository.mongo";
 import {
@@ -91,6 +96,11 @@ import { SsoAdminController } from "./sso-admin.controller";
         ]
       : [
           TypeOrmModule.forFeature([
+            AppPermission,
+            AppRolePermission,
+            AppRoleProduct,
+            UserAccessProduct,
+            UserAppPermission,
             User,
             App,
             AppRole,

@@ -4,10 +4,12 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { PipeDimension } from "src/pipe-dimension/entities/pipe-dimension.entity";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
 import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository";
 import { MongoPipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository.mongo";
 import { PostgresPipeDimensionRepository } from "../pipe-dimension/pipe-dimension.repository.postgres";
 import { PipeDimensionSchema } from "../pipe-dimension/schemas/pipe-dimension.schema";
+import { SteelSpecification } from "../steel-specification/entities/steel-specification.entity";
 import { PipePressure } from "./entities/pipe-pressure.entity";
 import { PipePressureController } from "./pipe-pressure.controller";
 import { PipePressureRepository } from "./pipe-pressure.repository";
@@ -26,7 +28,16 @@ import { PipePressureSchema } from "./schemas/pipe-pressure.schema";
           ]),
         ]
       : []),
-    ...(isMongoDriver() ? [] : [TypeOrmModule.forFeature([PipePressure, PipeDimension])]),
+    ...(isMongoDriver()
+      ? []
+      : [
+          TypeOrmModule.forFeature([
+            NominalOutsideDiameterMm,
+            SteelSpecification,
+            PipePressure,
+            PipeDimension,
+          ]),
+        ]),
   ],
   providers: [
     PipePressureService,

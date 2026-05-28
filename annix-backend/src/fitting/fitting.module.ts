@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { Bolt } from "../bolt/entities/bolt.entity";
 import { BoltMassRepository } from "../bolt-mass/bolt-mass.repository";
 import { MongoBoltMassRepository } from "../bolt-mass/bolt-mass.repository.mongo";
 import { PostgresBoltMassRepository } from "../bolt-mass/bolt-mass.repository.postgres";
@@ -11,6 +12,8 @@ import { FlangeDimensionRepository } from "../flange-dimension/flange-dimension.
 import { MongoFlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository.mongo";
 import { PostgresFlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository.postgres";
 import { FlangeDimensionSchema } from "../flange-dimension/schemas/flange-dimension.schema";
+import { FlangePressureClass } from "../flange-pressure-class/entities/flange-pressure-class.entity";
+import { FlangeStandard } from "../flange-standard/entities/flange-standard.entity";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { NbNpsLookup } from "../nb-nps-lookup/entities/nb-nps-lookup.entity";
@@ -18,6 +21,7 @@ import { NbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository
 import { MongoNbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository.mongo";
 import { PostgresNbNpsLookupRepository } from "../nb-nps-lookup/nb-nps-lookup.repository.postgres";
 import { NbNpsLookupSchema } from "../nb-nps-lookup/schemas/nb-nps-lookup.schema";
+import { NominalOutsideDiameterMm } from "../nominal-outside-diameter-mm/entities/nominal-outside-diameter-mm.entity";
 import { NutMass } from "../nut-mass/entities/nut-mass.entity";
 import { NutMassRepository } from "../nut-mass/nut-mass.repository";
 import { MongoNutMassRepository } from "../nut-mass/nut-mass.repository.mongo";
@@ -72,6 +76,10 @@ import { FittingSchema } from "./schemas/fitting.schema";
       ? []
       : [
           TypeOrmModule.forFeature([
+            Bolt,
+            FlangePressureClass,
+            FlangeStandard,
+            NominalOutsideDiameterMm,
             Fitting,
             Sabs62FittingDimension,
             Sabs719FittingDimension,

@@ -25,6 +25,9 @@ import { MongoRfqItemRepository } from "../rfq/rfq-item.repository.mongo";
 import { PostgresRfqItemRepository } from "../rfq/rfq-item.repository.postgres";
 import { RfqSchema } from "../rfq/schemas/rfq.schema";
 import { RfqItemSchema } from "../rfq/schemas/rfq-item.schema";
+import { SupplierCapability } from "../supplier/entities/supplier-capability.entity";
+import { SupplierOnboarding } from "../supplier/entities/supplier-onboarding.entity";
+import { SupplierProfile } from "../supplier/entities/supplier-profile.entity";
 import { SupplierCapabilitySchema } from "../supplier/schemas/supplier-capability.schema";
 import { SupplierOnboardingSchema } from "../supplier/schemas/supplier-onboarding.schema";
 import { SupplierProfileSchema } from "../supplier/schemas/supplier-profile.schema";
@@ -86,6 +89,9 @@ import { BoqSupplierAccessSchema } from "./schemas/boq-supplier-access.schema";
       ? []
       : [
           TypeOrmModule.forFeature([
+            SupplierCapability,
+            SupplierOnboarding,
+            SupplierProfile,
             Boq,
             BoqLineItem,
             BoqSection,
