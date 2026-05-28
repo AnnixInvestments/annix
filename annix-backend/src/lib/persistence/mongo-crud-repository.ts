@@ -40,9 +40,12 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
 
   private get dateFields(): string[] {
     if (this.cachedDateFields === null) {
-      this.cachedDateFields = Object.entries(this.model.schema.paths)
+      const schemaDateFields = Object.entries(this.model.schema.paths)
         .filter(([, type]) => (type as { instance?: string }).instance === "Date")
         .map(([path]) => path);
+      this.cachedDateFields = Array.from(
+        new Set([...schemaDateFields, "createdAt", "updatedAt", "deletedAt"]),
+      );
     }
     return this.cachedDateFields;
   }
