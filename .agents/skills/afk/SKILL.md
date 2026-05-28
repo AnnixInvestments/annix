@@ -19,12 +19,13 @@ numbers) or just `/afk` when the issues are clear from context.
    — never one giant commit at the end. The user should be able to read
    the history and see the progression.
 3. **Follow project commit conventions:**
-   - No AI attribution in commit messages (the pre-commit hook rejects
-     `Co-Authored-By: Codex` and `🤖 Generated with`).
+   - No AI attribution in commit messages (the commit-msg hook rejects
+     `Co-Authored-By: Claude`, `Co-Authored-By: Anthropic` and
+     `🤖 Generated with`).
    - Use `git commit --only <paths>` to pin the exact files — a
      parallel process in this repo races files into the staging area.
    - Bump `annix-frontend/src/app/stock-control/config/version.ts`
-     (patch) when shipping ASCA changes; let the pre-commit hooks
+     (patch) when shipping Stock Control changes; let the pre-commit hooks
      (biome, ESLint, type-check) run and fix anything they flag.
 4. **Verify before committing.** Run the type-check / lint for the area
    touched. If a hook blocks the commit, fix the cause and retry — never

@@ -5,7 +5,7 @@ description: Run the discovery-first protocol before writing new shared code. Se
 
 # Discovery-first protocol
 
-Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Comply SA, FieldFlow, Annix Rep, Annix Orbit) that share a backend, a frontend, and a `packages/product-data/` workspace package. Before writing any new shared-ish code, you MUST verify it doesn't already exist.
+Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Annix Sentinel, FieldFlow, Annix Rep, Annix Orbit) that share a backend, a frontend, and a `packages/product-data/` workspace package. Before writing any new shared-ish code, you MUST verify it doesn't already exist.
 
 ## When to run this protocol
 
@@ -33,13 +33,13 @@ Run it before writing any of the following:
    - `annix-frontend/src/app/au-rubber/`
    - `annix-frontend/src/app/annix-orbit/`
    - `annix-frontend/src/app/annix-rep/`
-   - `annix-frontend/src/app/comply-sa/`
+   - `annix-frontend/src/app/annix-sentinel/`
    - `annix-frontend/src/app/fieldflow/`
 
 4. **Report findings to the user** before writing any code:
    - **Exists in canonical location** → use the existing module, do not duplicate
    - **Exists as per-app copy** → propose consolidating into the correct canonical home before adding more copies
-   - **Does not exist anywhere** → proceed, and choose the canonical home using the table in `AGENTS.md` §"Discovery-first protocol"
+   - **Does not exist anywhere** → proceed, and choose the canonical home using the table in `CLAUDE.md` §"Discovery-first protocol"
 
 5. **If you add new shared code**, update `docs/shared-registry.md` in the same commit. The pre-push hook (`scripts/check-inter-app-duplication.sh`) will warn if you don't.
 

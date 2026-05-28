@@ -1,6 +1,6 @@
 ---
 name: unstick-dev
-description: Diagnose and recover a stuck local dev environment. Detects hung next-server, dead backend, swarm registry desync, runaway CPU loops, orphan Codex CLI sessions, and stale git worktrees. Reports findings; kills runaways only with confirmation.
+description: Diagnose and recover a stuck local dev environment. Detects hung next-server, dead backend, swarm registry desync, runaway CPU loops, orphan agent CLI sessions, and stale git worktrees. Reports findings; kills runaways only with confirmation.
 ---
 
 # Unstick Dev
@@ -37,8 +37,8 @@ curl -sS --max-time 5 -o /dev/null -w "backend  / : %{http_code} in %{time_total
 ### 2. Log staleness
 
 ```bash
-stat -f "frontend.log: mtime=%Sm size=%z" /Users/andrewbarrett/annix/logs/frontend.log
-stat -f "backend.log:  mtime=%Sm size=%z" /Users/andrewbarrett/annix/logs/backend.log
+stat -f "frontend.log: mtime=%Sm size=%z" logs/frontend.log
+stat -f "backend.log:  mtime=%Sm size=%z" logs/backend.log
 ```
 
 If mtime is older than ~2 minutes during active use → server is not flushing logs. Hang or detached stdio.
@@ -58,7 +58,7 @@ Flag any of:
 ### 4. Swarm registry desync
 
 ```bash
-cat /Users/andrewbarrett/annix/.Codex-swarm/registry.json
+cat .claude-swarm/registry.json
 ```
 
 If `"pid": null` but `"status": "running"` → swarm has lost its child PIDs and cannot restart them. The orchestrator is blind.
@@ -68,32 +68,32 @@ If `"pid": null` but `"status": "running"` → swarm has lost its child PIDs and
 If logs are stale, look at the **last** errors before the freeze (often the cause):
 
 ```bash
-grep -B 1 -A 25 "ERROR" /Users/andrewbarrett/annix/logs/backend.log | tail -80
+grep -B 1 -A 25 "ERROR" logs/backend.log | tail -80
 ```
 
 Particular things to look for:
 - `Cannot read properties of undefined (reading 'databaseName')` → TypeORM orderBy using snake_case DB column instead of entity property name. Crash path is `getManyAndCount` with pagination + join (`createOrderByCombinedWithSelectExpression`).
 - `value too long for type character varying(N)` → string literal exceeds column width. Look at the failing INSERT to identify the column.
 
-### 6. Orphan Codex CLI sessions
+### 6. Orphan agent CLI sessions
 
-Use the patched detection (excludes desktop app helpers — never run the loose `ps | grep Codex` filter, it will flag macOS Codex.app helpers as orphans):
+Use the patched detection (excludes desktop app helpers — never run a loose `ps | grep` for the agent name, it will flag the macOS desktop-app helpers (Claude.app / Codex.app) as orphans):
 
 ```bash
 node -e '
 const { execSync } = require("child_process");
 const out = execSync("ps -eo pid,tty,command", { encoding: "utf8" });
-function isClaudeCliCommand(c) {
-  if (/Codex\.app|claudefordesktop|Codex-simulator|Squirrel|ShipIt/i.test(c)) return false;
-  return /(?:^|\/)Codex(\s|$)/.test(c) || /\bclaude-code\b/.test(c);
+function isAgentCliCommand(c) {
+  if (/Claude\.app|Codex\.app|claudefordesktop|Squirrel|ShipIt/i.test(c)) return false;
+  return /(?:^|\/)(claude|codex)(\s|$)/.test(c) || /\bclaude-code\b/.test(c);
 }
 const orphans = [], attached = [];
 out.split("\n").slice(1).forEach(line => {
   const m = line.match(/^\s*(\d+)\s+(\S+)\s+(.+)$/);
   if (!m) return;
   const [, pid, tty, cmd] = m;
-  if (cmd.includes("Codex-swarm")) return;
-  if (!isClaudeCliCommand(cmd)) return;
+  if (cmd.includes("claude-swarm")) return;
+  if (!isAgentCliCommand(cmd)) return;
   ((tty === "??" || tty === "?") ? orphans : attached).push({ pid, tty, cmd: cmd.slice(0,80) });
 });
 console.log("Attached:"); attached.forEach(s => console.log(`  ${s.pid} ${s.tty} ${s.cmd}`));
@@ -107,7 +107,7 @@ console.log("\nOrphans:"); if (!orphans.length) console.log("  (none)"); else or
 git worktree list
 ```
 
-For any worktree on a `Codex/*` branch that's stale (last commit > 1 month ago) or has no commits ahead of main, flag for cleanup. Check `git status` inside before suggesting deletion — there may be uncommitted work the user wants to keep.
+For any worktree on a `claude/*` branch that's stale (last commit > 1 month ago) or has no commits ahead of main, flag for cleanup. Check `git status` inside before suggesting deletion — there may be uncommitted work the user wants to keep.
 
 ## Report format
 
@@ -131,14 +131,14 @@ Each one is destructive in its own way — confirm before doing.
 
 1. **Kill a runaway next-server**: `kill -9 <pid>`. The parent `pnpm dev:turbo` *may* respawn it; often it dies with the child and the user will need to restart swarm.
 2. **Kill orphan CLI sessions**: `kill -9 <pid>` for each.
-3. **Remove stale worktrees**: `git worktree remove --force <path>` then `git branch -D Codex/<branch>`.
-4. **Restart the swarm**: tell the user to do this themselves — `AGENTS.md` forbids running `pnpm run dev`, `./run-dev.sh` etc. directly. Swarm owns the lifecycle.
+3. **Remove stale worktrees**: `git worktree remove --force <path>` then `git branch -D claude/<branch>`.
+4. **Restart the swarm**: tell the user to do this themselves — `CLAUDE.md` forbids running `pnpm run dev`, `./run-dev.sh` etc. directly. Swarm owns the lifecycle.
 
 After any kill, re-run health probes (step 1) to confirm the new state.
 
 ## Anti-patterns
 
-- **Do not** run `pnpm run dev`, `pnpm dev:turbo`, `nest start`, `next dev`, `./run-dev.sh`, or any build command. The Codex Swarm orchestrator owns these. (See `AGENTS.md` § Build & Dev Servers.)
-- **Do not** use the loose `ps | grep Codex` filter — it will match the macOS Codex desktop app helpers and offer to kill them. Always use the `isClaudeCliCommand` filter above.
+- **Do not** run `pnpm run dev`, `pnpm dev:turbo`, `nest start`, `next dev`, `./run-dev.sh`, or any build command. The Claude Swarm orchestrator owns these. (See `CLAUDE.md` § Build & Dev Servers.)
+- **Do not** use a loose `ps | grep` for the agent name — it will match the macOS desktop-app helpers (Claude.app / Codex.app) and offer to kill them. Always use the `isAgentCliCommand` filter above.
 - **Do not** delete worktrees without showing what's in them first. The user may have unmerged work they want to preserve.
 - **Do not** force-restart everything just because a curl timed out. Diagnose the specific stuck component; fix only that.
