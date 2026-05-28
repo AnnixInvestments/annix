@@ -503,9 +503,6 @@ export class RbacService {
 
     const app = await this.appByCode(appCode);
     const access = app ? await this.accessRepo.findWithPermissionsAndRole(userId, app.id) : null;
-    this.logger.warn(
-      `[rbac-debug] uid=${userId} code=${appCode} app=${app?.id ?? "NULL"} access=${access ? "found" : "NULL"} roleId=${(access as { roleId?: number } | null)?.roleId ?? "n/a"} roleCode=${(access as { role?: { code?: string } } | null)?.role?.code ?? "n/a"} perms=${permissions.length}`,
-    );
     if (!app || !access) {
       return { roleCode: null, roleName: null, permissions: [], isAdmin: false };
     }

@@ -5,6 +5,7 @@ import { AdminAuthService } from "../admin-auth.service";
 
 export interface AdminRequestContext {
   id: number;
+  userId: number;
   email: string;
   firstName: string;
   lastName: string;
@@ -49,6 +50,7 @@ export class AdminAuthGuard implements CanActivate {
       // Attach user to request
       request.user = {
         id: user.id,
+        userId: user.id,
         email: user.email,
         firstName: user.firstName,
         lastName: user.lastName,
