@@ -46,6 +46,32 @@
         "FRONTEND_URL": "http://localhost:3000",
         "CORS_ORIGINS": "http://localhost:3000"
       }
+    },
+    "prod-mongo": {
+      "description": "Production S3 + secrets (CAUTION: live data!) but database = staging Mongo (g95w61s / annix_staging). AWS_S3_BUCKET is the PRODUCTION bucket, so uploads write real prod files. Sourced from annix-app-staging, which already carries the production S3 bucket, the shared prod crypto/AWS secrets (identical values to prod), and the Mongo connection (DATABASE_DRIVER=mongo) - so no secrets are stored in this file.",
+      "env": {
+        "provider": "flyio",
+        "app": "annix-app-staging",
+        "secrets": [
+          "DATABASE_DRIVER",
+          "MONGODB_URI",
+          "MONGO_DATABASE",
+          "JWT_SECRET",
+          "DOCUMENT_ENCRYPTION_KEY",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "AWS_REGION",
+          "AWS_S3_BUCKET",
+          "GEMINI_API_KEY",
+          "ANTHROPIC_API_KEY",
+          "TOKEN_ENCRYPTION_KEY",
+          "EMAIL_DELIVERY_DISABLED"
+        ]
+      },
+      "localOverrides": {
+        "FRONTEND_URL": "http://localhost:3000",
+        "CORS_ORIGINS": "http://localhost:3000"
+      }
     }
   }
 }
