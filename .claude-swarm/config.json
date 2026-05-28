@@ -19,11 +19,37 @@
   ],
   "envDir": "annix-backend/configs",
   "profiles": {
-    "prod": {
-      "description": "Production database + S3 + secrets (CAUTION: live data!)",
+    "staging": {
+      "description": "Staging Mongo (annix_staging). Uploads use prod S3 bucket. Email off locally.",
       "env": {
         "provider": "flyio",
-        "app": "annix-app",
+        "app": "annix-app-staging",
+        "secrets": [
+          "DATABASE_DRIVER",
+          "MONGODB_URI",
+          "MONGO_DATABASE",
+          "JWT_SECRET",
+          "DOCUMENT_ENCRYPTION_KEY",
+          "AWS_ACCESS_KEY_ID",
+          "AWS_SECRET_ACCESS_KEY",
+          "AWS_REGION",
+          "AWS_S3_BUCKET",
+          "GEMINI_API_KEY",
+          "ANTHROPIC_API_KEY",
+          "TOKEN_ENCRYPTION_KEY"
+        ]
+      },
+      "localOverrides": {
+        "FRONTEND_URL": "http://localhost:3000",
+        "CORS_ORIGINS": "http://localhost:3000",
+        "EMAIL_DELIVERY_DISABLED": "true"
+      }
+    },
+    "test": {
+      "description": "Test Postgres on Neon. Uploads use prod S3 bucket. Email off locally.",
+      "env": {
+        "provider": "flyio",
+        "app": "annix-app-test",
         "secrets": [
           "DATABASE_HOST",
           "DATABASE_PORT",
@@ -43,15 +69,17 @@
         ]
       },
       "localOverrides": {
+        "DATABASE_DRIVER": "postgres",
         "FRONTEND_URL": "http://localhost:3000",
-        "CORS_ORIGINS": "http://localhost:3000"
+        "CORS_ORIGINS": "http://localhost:3000",
+        "EMAIL_DELIVERY_DISABLED": "true"
       }
     },
-    "prod-mongo": {
-      "description": "Production S3 + secrets (CAUTION: live data!) but database = staging Mongo (g95w61s / annix_staging). AWS_S3_BUCKET is the PRODUCTION bucket, so uploads write real prod files. Sourced from annix-app-staging, which already carries the production S3 bucket, the shared prod crypto/AWS secrets (identical values to prod), and the Mongo connection (DATABASE_DRIVER=mongo) - so no secrets are stored in this file.",
+    "production": {
+      "description": "LIVE production Mongo (annix_production) + prod S3. Real customer data. Email off locally.",
       "env": {
         "provider": "flyio",
-        "app": "annix-app-staging",
+        "app": "annix-app",
         "secrets": [
           "DATABASE_DRIVER",
           "MONGODB_URI",
@@ -64,13 +92,13 @@
           "AWS_S3_BUCKET",
           "GEMINI_API_KEY",
           "ANTHROPIC_API_KEY",
-          "TOKEN_ENCRYPTION_KEY",
-          "EMAIL_DELIVERY_DISABLED"
+          "TOKEN_ENCRYPTION_KEY"
         ]
       },
       "localOverrides": {
         "FRONTEND_URL": "http://localhost:3000",
-        "CORS_ORIGINS": "http://localhost:3000"
+        "CORS_ORIGINS": "http://localhost:3000",
+        "EMAIL_DELIVERY_DISABLED": "true"
       }
     }
   }
