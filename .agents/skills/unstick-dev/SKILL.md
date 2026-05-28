@@ -77,15 +77,15 @@ Particular things to look for:
 
 ### 6. Orphan agent CLI sessions
 
-Use the patched detection (excludes desktop app helpers — never run a loose `ps | grep` for the agent name, it will flag the macOS desktop-app helpers (Claude.app / Codex.app) as orphans):
+Use the patched detection (excludes desktop app helpers — never run a loose `ps | grep claude`, it will flag the macOS Claude.app helpers as orphans):
 
 ```bash
 node -e '
 const { execSync } = require("child_process");
 const out = execSync("ps -eo pid,tty,command", { encoding: "utf8" });
-function isAgentCliCommand(c) {
-  if (/Claude\.app|Codex\.app|claudefordesktop|Squirrel|ShipIt/i.test(c)) return false;
-  return /(?:^|\/)(claude|codex)(\s|$)/.test(c) || /\bclaude-code\b/.test(c);
+function isClaudeCliCommand(c) {
+  if (/Claude\.app|claudefordesktop|Squirrel|ShipIt/i.test(c)) return false;
+  return /(?:^|\/)claude(\s|$)/.test(c) || /\bclaude-code\b/.test(c);
 }
 const orphans = [], attached = [];
 out.split("\n").slice(1).forEach(line => {
@@ -93,7 +93,7 @@ out.split("\n").slice(1).forEach(line => {
   if (!m) return;
   const [, pid, tty, cmd] = m;
   if (cmd.includes("claude-swarm")) return;
-  if (!isAgentCliCommand(cmd)) return;
+  if (!isClaudeCliCommand(cmd)) return;
   ((tty === "??" || tty === "?") ? orphans : attached).push({ pid, tty, cmd: cmd.slice(0,80) });
 });
 console.log("Attached:"); attached.forEach(s => console.log(`  ${s.pid} ${s.tty} ${s.cmd}`));
@@ -139,6 +139,6 @@ After any kill, re-run health probes (step 1) to confirm the new state.
 ## Anti-patterns
 
 - **Do not** run `pnpm run dev`, `pnpm dev:turbo`, `nest start`, `next dev`, `./run-dev.sh`, or any build command. The Claude Swarm orchestrator owns these. (See `CLAUDE.md` § Build & Dev Servers.)
-- **Do not** use a loose `ps | grep` for the agent name — it will match the macOS desktop-app helpers (Claude.app / Codex.app) and offer to kill them. Always use the `isAgentCliCommand` filter above.
+- **Do not** use a loose `ps | grep claude` — it will match the macOS Claude.app helpers and offer to kill them. Always use the `isClaudeCliCommand` filter above.
 - **Do not** delete worktrees without showing what's in them first. The user may have unmerged work they want to preserve.
 - **Do not** force-restart everything just because a curl timed out. Diagnose the specific stuck component; fix only that.
