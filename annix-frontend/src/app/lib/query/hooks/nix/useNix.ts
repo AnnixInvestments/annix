@@ -1,4 +1,4 @@
-import { isString } from "es-toolkit/compat";
+import { isString, keys } from "es-toolkit/compat";
 import { sessionExpiredEvent } from "@/app/components/SessionExpiredModal";
 import { refreshActivePortalToken } from "@/app/lib/api/portalRefresh";
 import { anyPortalAuthHeaders } from "@/app/lib/api/portalTokenStores";
@@ -159,13 +159,20 @@ async function nixRequest<TResponse>(
       ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
     });
 
+  // A request sent without an Authorization header is anonymous — typically a
+  // freshly opened tab whose session has not yet been adopted from a sibling
+  // tab. A 401 there means "not signed in yet", not an expired session, so it
+  // must neither refresh nor tear the portal session down. Only an
+  // authenticated 401 is a genuine expiry.
+  const sentWithAuth = keys(buildHeaders()).some((key) => key.toLowerCase() === "authorization");
+
   let response = await sendRequest();
 
   // An expired-but-refreshable access token must not tear down the whole
   // portal session. Attempt the same portal-aware refresh the data clients
   // use, retry once, and only escalate to sessionExpiredEvent below if the
   // refresh genuinely failed.
-  if (response.status === 401) {
+  if (response.status === 401 && sentWithAuth) {
     const refreshed = await refreshActivePortalToken();
     if (refreshed) {
       response = await sendRequest();
@@ -174,7 +181,9 @@ async function nixRequest<TResponse>(
 
   if (!response.ok) {
     if (response.status === 401) {
-      sessionExpiredEvent.emit();
+      if (sentWithAuth) {
+        sessionExpiredEvent.emit();
+      }
       throw new Error("Session expired — please sign in again.");
     }
     if (options.parseErrorBody) {
