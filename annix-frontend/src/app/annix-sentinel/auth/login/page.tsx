@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { login } from "@/app/annix-sentinel/lib/api";
-import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
+import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -39,13 +39,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0A1B3D] flex items-center justify-center px-4">
+    <div className="min-h-screen bg-[#0A1B3D] flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
-        <div className="flex justify-center mb-8">
-          <Link href="/annix-sentinel" className="inline-flex items-center gap-2">
-            <AnnixSentinelLogo size="lg" variant="dark" />
-          </Link>
-        </div>
+        <Link href="/annix-sentinel" className="block mb-8">
+          <BrandLoginCard brand="annix-sentinel" />
+        </Link>
 
         <div className="bg-[#1A2332] border border-slate-700 rounded-xl p-8">
           <h1 className="text-2xl font-bold text-white mb-6 text-center">Welcome Back</h1>

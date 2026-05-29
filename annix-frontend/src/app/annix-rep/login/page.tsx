@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixRepAuth } from "@/app/context/AnnixRepAuthContext";
 import { annixRepTokenStore } from "@/app/lib/api/portalTokenStores";
@@ -108,8 +109,11 @@ function LoginPageContent() {
   }
 
   return (
-    <div className="min-h-[80vh] flex items-center justify-center px-4">
+    <div className="min-h-[80vh] flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
+        <div className="mb-4">
+          <BrandLoginCard brand="annix-rep" />
+        </div>
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl overflow-hidden">
           <div className="px-8 py-8 bg-gradient-to-br from-indigo-600 to-indigo-700 text-center">
             <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-3">

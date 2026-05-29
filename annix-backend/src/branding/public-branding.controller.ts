@@ -19,6 +19,7 @@ const VALID_SLOTS: BrandingAssetSlot[] = [
   "subMark",
   "flashLine",
   "heroImage",
+  "loginCard",
 ];
 
 @ApiTags("Public Branding")

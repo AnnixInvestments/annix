@@ -115,6 +115,12 @@ export class AppBranding {
   @Prop({ type: String, required: false })
   heroImagePathDark: string;
 
+  @Prop({ type: String, required: false })
+  loginCardPath: string;
+
+  @Prop({ type: String, required: false })
+  loginCardPathDark: string;
+
   @Prop({ type: Boolean, required: true, default: true })
   watermarkEnabled: boolean;
 

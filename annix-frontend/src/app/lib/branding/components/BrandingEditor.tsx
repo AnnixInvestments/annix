@@ -128,7 +128,13 @@ const HERO_IMAGE_FIELD: AssetFieldDef = {
   hint: "Optional artwork that overrides the typed pillar tagline.",
 };
 
-const ALL_FIELDS: AssetFieldDef[] = [...LAYER_FIELDS, HERO_IMAGE_FIELD];
+const LOGIN_CARD_FIELD: AssetFieldDef = {
+  key: "loginCard",
+  label: "Login card",
+  hint: "Full marketing card shown on this app's login screen.",
+};
+
+const ALL_FIELDS: AssetFieldDef[] = [...LAYER_FIELDS, HERO_IMAGE_FIELD, LOGIN_CARD_FIELD];
 
 const SLOT_TO_FIELD: Record<
   BrandingAssetSlot,
@@ -143,6 +149,7 @@ const SLOT_TO_FIELD: Record<
   subMark: { light: "subMarkPath", dark: "subMarkPathDark" },
   flashLine: { light: "flashLinePath", dark: "flashLinePathDark" },
   heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
+  loginCard: { light: "loginCardPath", dark: "loginCardPathDark" },
 };
 
 const ASSET_SLOTS: BrandingAssetSlot[] = [
@@ -155,6 +162,7 @@ const ASSET_SLOTS: BrandingAssetSlot[] = [
   "subMark",
   "flashLine",
   "heroImage",
+  "loginCard",
 ];
 
 const MASTER_LABEL = "Annix Investments";
@@ -578,6 +586,30 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               lightInheriting={slotInheriting("heroImage", "light")}
               darkInheriting={slotInheriting("heroImage", "dark")}
               onFile={(variant, file) => handleUpload("heroImage", variant, file)}
+            />
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Login card</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              The full marketing card shown on this app's login screen (lockup, pillars, tagline and
+              a log-in prompt). Upload a Light variant for light backgrounds and a Dark variant for
+              dark backgrounds.
+            </p>
+            {brandHasAsset("loginCard", adminView.effective, "light") ||
+            brandHasAsset("loginCard", adminView.effective, "dark") ? (
+              <div
+                className="mb-3 h-40 w-full rounded-xl border border-gray-200 bg-gray-900 bg-contain bg-center bg-no-repeat"
+                style={{ backgroundImage: `url('${assetPreview.loginCard[previewTheme]}')` }}
+              />
+            ) : null}
+            <LayeredAssetRow
+              field={LOGIN_CARD_FIELD}
+              previews={assetPreview.loginCard}
+              uploadingKey={uploadingKey}
+              lightInheriting={slotInheriting("loginCard", "light")}
+              darkInheriting={slotInheriting("loginCard", "dark")}
+              onFile={(variant, file) => handleUpload("loginCard", variant, file)}
             />
           </section>
 

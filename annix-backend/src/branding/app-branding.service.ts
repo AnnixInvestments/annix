@@ -25,7 +25,8 @@ export type BrandingAssetSlot =
   | "textCrop"
   | "subMark"
   | "flashLine"
-  | "heroImage";
+  | "heroImage"
+  | "loginCard";
 
 export type BrandingAssetVariant = "light" | "dark";
 
@@ -85,6 +86,7 @@ const SLOT_COLUMN: Record<
   subMark: { light: "subMarkPath", dark: "subMarkPathDark" },
   flashLine: { light: "flashLinePath", dark: "flashLinePathDark" },
   heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
+  loginCard: { light: "loginCardPath", dark: "loginCardPathDark" },
 };
 
 const ASSET_SLOTS: BrandingAssetSlot[] = [
@@ -97,6 +99,7 @@ const ASSET_SLOTS: BrandingAssetSlot[] = [
   "subMark",
   "flashLine",
   "heroImage",
+  "loginCard",
 ];
 
 const PATH_COLUMNS: (keyof AppBranding)[] = ASSET_SLOTS.flatMap((slot) => [
@@ -176,6 +179,8 @@ export class AppBrandingService {
       subMarkPathDark: null,
       flashLinePathDark: null,
       heroImagePathDark: null,
+      loginCardPath: null,
+      loginCardPathDark: null,
       watermarkEnabled: true,
       watermarkOpacity: 0.1,
       watermarkMaxSizePx: 880,

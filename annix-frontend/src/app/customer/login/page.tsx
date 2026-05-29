@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useRef, useState } from "react";
+import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
@@ -146,6 +147,9 @@ function CustomerLoginContent() {
   return (
     <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        <Link href="/" className="mb-6 block">
+          <BrandLoginCard brand="annix-forge" />
+        </Link>
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
             <svg

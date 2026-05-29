@@ -113,6 +113,12 @@ export class AppBranding {
   @Column({ name: "hero_image_path_dark", type: "varchar", length: 500, nullable: true })
   heroImagePathDark: string | null;
 
+  @Column({ name: "login_card_path", type: "varchar", length: 500, nullable: true })
+  loginCardPath: string | null;
+
+  @Column({ name: "login_card_path_dark", type: "varchar", length: 500, nullable: true })
+  loginCardPathDark: string | null;
+
   @Column({ name: "watermark_enabled", type: "boolean", default: true })
   watermarkEnabled: boolean;
 

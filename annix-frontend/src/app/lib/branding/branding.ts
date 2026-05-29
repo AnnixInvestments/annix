@@ -7,7 +7,8 @@ export type BrandingAssetSlot =
   | "textCrop"
   | "subMark"
   | "flashLine"
-  | "heroImage";
+  | "heroImage"
+  | "loginCard";
 
 export type BrandingAssetVariant = "light" | "dark";
 
@@ -129,6 +130,8 @@ export interface BrandingUpdate {
   subMarkPath?: string | null;
   flashLinePath?: string | null;
   heroImagePath?: string | null;
+  loginCardPath?: string | null;
+  loginCardPathDark?: string | null;
   logoIconPathDark?: string | null;
   logoLockupPathDark?: string | null;
   wordmarkPathDark?: string | null;
@@ -187,6 +190,7 @@ function emptyAssetPresence(): Record<BrandingAssetSlot, boolean> {
     subMark: false,
     flashLine: false,
     heroImage: false,
+    loginCard: false,
   };
 }
 
