@@ -156,12 +156,12 @@ export const portalConfig = {
     loginHref: "/admin/login",
   },
   customer: {
-    title: "",
+    title: "Annix Forge",
     homeHref: "/customer/portal/dashboard",
     loginHref: "/customer/login",
   },
   supplier: {
-    title: "",
+    title: "Annix Forge",
     homeHref: "/supplier/portal/dashboard",
     loginHref: "/supplier/login",
   },

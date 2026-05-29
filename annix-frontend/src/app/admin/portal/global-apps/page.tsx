@@ -188,8 +188,8 @@ const adminApps: AppCard[] = [
 const platformApps: AppCard[] = [
   {
     href: "/admin/portal/rfqs",
-    title: "RFQ Platform",
-    description: "Pipeline quotation management for customers and suppliers.",
+    title: "Annix Forge",
+    description: "Industrial project execution — quote, build, inspect, deliver.",
     icon: <RfqIcon />,
     color: "bg-blue-100 text-blue-600",
     hoverColor: "hover:border-blue-400 group-hover:bg-blue-600 group-hover:text-white",

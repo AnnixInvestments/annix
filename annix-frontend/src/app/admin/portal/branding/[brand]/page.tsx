@@ -10,6 +10,7 @@ const BRAND_TITLES: Record<string, string> = {
   "annix-insights": "Annix Insights",
   "annix-rep": "Annix Rep",
   "annix-sentinel": "Annix Sentinel",
+  "annix-forge": "Annix Forge",
 };
 
 const BRAND_HUBS: Record<string, string> = {
@@ -18,6 +19,7 @@ const BRAND_HUBS: Record<string, string> = {
   "annix-rep": "/admin/portal/annix-rep",
   "annix-sentinel": "/admin/portal/annix-sentinel",
   "annix-investments": "/admin/portal/dashboard",
+  "annix-forge": "/admin/portal/rfqs",
 };
 
 export default function AdminBrandingPage() {

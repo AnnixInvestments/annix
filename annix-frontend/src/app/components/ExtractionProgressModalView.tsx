@@ -31,7 +31,7 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
     logo: null,
   },
   rfq: {
-    label: "RFQ",
+    label: "Annix Forge",
     bar: "bg-blue-600",
     bg: "bg-blue-50",
     text: "text-blue-700",

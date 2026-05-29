@@ -4,6 +4,7 @@ export const BRAND_CODES = [
   "annix-insights",
   "annix-rep",
   "annix-sentinel",
+  "annix-forge",
 ] as const;
 
 export type BrandCode = (typeof BRAND_CODES)[number];

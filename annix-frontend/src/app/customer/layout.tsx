@@ -6,7 +6,7 @@ export const metadata: Metadata = {
     template: "%s | Annix Customer",
     default: "Annix Customer",
   },
-  description: "Annix customer portal for RFQ management",
+  description: "Annix Forge customer portal — quote, build, inspect, deliver",
 };
 
 export default function CustomerLayout(props: { children: React.ReactNode }) {

@@ -184,7 +184,7 @@ export class AdminDashboardService {
       apps: [
         {
           appCode: "rfq",
-          appName: "RFQ Platform",
+          appName: "Annix Forge",
           total: rfqItems.reduce((sum, item) => sum + item.count, 0),
           items: rfqItems,
         },

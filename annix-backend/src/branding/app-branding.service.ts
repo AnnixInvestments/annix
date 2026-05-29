@@ -1,4 +1,5 @@
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { AppBrandingRepository } from "./app-branding.repository";
 import { type BrandCode, isBrandCode } from "./branding.constants";
@@ -67,10 +68,38 @@ export class AppBrandingService {
   async entity(brand: string): Promise<AppBranding> {
     const code = this.assertBrand(brand);
     const row = await this.brandingRepo.findByBrandCode(code);
-    if (!row) {
-      throw new NotFoundException(`Branding for ${code} not found. Run migrations to seed it.`);
+    if (row) {
+      return row;
     }
-    return row;
+    return this.defaultBranding(code);
+  }
+
+  private defaultBranding(code: BrandCode): AppBranding {
+    const timestamp = now().toJSDate();
+    return {
+      brandCode: code,
+      navbarColor: "#323288",
+      accentOrange: "#FF8A00",
+      accentOrangeLight: "#FF9C33",
+      accentOrangeDark: "#CC6900",
+      gradientFrom: "#1a1a40",
+      gradientVia: "#0d0d20",
+      gradientTo: "#1a1a40",
+      tagline: "",
+      description: "",
+      logoIconPath: null,
+      logoLockupPath: null,
+      wordmarkPath: null,
+      faviconPath: null,
+      watermarkPath: null,
+      textCropPath: null,
+      watermarkEnabled: true,
+      watermarkOpacity: 0.1,
+      watermarkMaxSizePx: 880,
+      loadingAnimation: "pulse",
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    };
   }
 
   async branding(brand: string): Promise<BrandingView> {
