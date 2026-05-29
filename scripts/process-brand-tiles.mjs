@@ -38,8 +38,9 @@ const TILES = {
   },
   watermark: {
     shape: "rounded",
-    // Light = the navy/orange orbital mark (transparent) so it reads as the
-    // blue logo on light surfaces; dark = the white-background rounded tile.
+    // Uniform rounded-square card in both modes: a navy tile for light surfaces
+    // and the white tile for dark surfaces (same shape, inverted background).
+    lightBg: { r: 26, g: 26, b: 64, alpha: 1 },
     light: ["watermark_path", "watermarkPath"],
     dark: ["watermark_path_dark", "watermarkPathDark"],
   },
@@ -70,6 +71,24 @@ async function processTile(buffer, shape) {
   return sharp(buffer)
     .resize(SIZE, SIZE, { fit: "cover" })
     .composite([{ input: maskFor(shape), blend: "dest-in" }])
+    .png()
+    .toBuffer();
+}
+
+// Builds a solid-colour rounded/circular tile with the mark centred on top —
+// used to synthesise the navy watermark card from the transparent orbital mark.
+async function colouredTile(markBuffer, shape, bg) {
+  const markSize = Math.round(SIZE * 0.72);
+  const mark = await sharp(markBuffer)
+    .resize(markSize, markSize, { fit: "contain", background: { r: 0, g: 0, b: 0, alpha: 0 } })
+    .png()
+    .toBuffer();
+  const base = await sharp({ create: { width: SIZE, height: SIZE, channels: 4, background: bg } })
+    .composite([{ input: maskFor(shape), blend: "dest-in" }])
+    .png()
+    .toBuffer();
+  return sharp(base)
+    .composite([{ input: mark, gravity: "center" }])
     .png()
     .toBuffer();
 }
@@ -143,8 +162,9 @@ const setSnake = {};
 const setCamel = {};
 
 for (const [slot, def] of Object.entries(TILES)) {
-  const lightSource = def.lightFromDark ? darkBytes : lightBytes;
-  const lightTile = await processTile(lightSource, def.shape);
+  const lightTile = def.lightBg
+    ? await colouredTile(lightBytes, def.shape, def.lightBg)
+    : await processTile(lightBytes, def.shape);
   const darkTile = await processTile(darkBytes, def.shape);
   const lightKey = `branding/${MASTER}/${slot}-light.png`;
   const darkKey = `branding/${MASTER}/${slot}-dark.png`;
