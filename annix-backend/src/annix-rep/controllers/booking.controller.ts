@@ -29,7 +29,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Booking Links")
+@ApiTags("Annix Pulse - Booking Links")
 @Controller("annix-rep/booking-links")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

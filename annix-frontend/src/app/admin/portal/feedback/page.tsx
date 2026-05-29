@@ -41,7 +41,7 @@ const APP_OPTIONS: Array<{ value: string; label: string }> = [
   { value: "au-rubber", label: "AU Rubber" },
   { value: "supplier", label: "Supplier" },
   { value: "annix-orbit", label: "Annix Orbit" },
-  { value: "annix-rep", label: "Annix Rep" },
+  { value: "annix-rep", label: "Annix Pulse" },
 ];
 
 function statusBadgeColor(status: FeedbackStatus): string {

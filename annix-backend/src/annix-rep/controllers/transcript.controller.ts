@@ -25,7 +25,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Transcripts")
+@ApiTags("Annix Pulse - Transcripts")
 @ApiBearerAuth()
 @UseGuards(AnnixRepAuthGuard)
 @Controller("annix-rep/transcripts")

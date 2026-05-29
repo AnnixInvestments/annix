@@ -20,7 +20,7 @@ interface AnnixRepRequest extends Request {
   annixRepUser: AnnixRepUser;
 }
 
-@ApiTags("Annix Rep - Team Activity")
+@ApiTags("Annix Pulse - Team Activity")
 @Controller("annix-rep/team/activity")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

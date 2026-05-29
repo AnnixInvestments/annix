@@ -57,7 +57,7 @@ interface SyncResponse {
   errors: string[];
 }
 
-@ApiTags("Annix Rep - Calendars")
+@ApiTags("Annix Pulse - Calendars")
 @Controller("annix-rep/calendars")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

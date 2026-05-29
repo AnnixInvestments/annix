@@ -26,7 +26,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Goals")
+@ApiTags("Annix Pulse - Goals")
 @Controller("annix-rep/goals")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

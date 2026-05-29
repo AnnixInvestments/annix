@@ -200,7 +200,7 @@ function ReportBody(props: { report: IdentityReconciliationReport }) {
       </Section>
 
       <Section
-        title="2. Annix Rep gap"
+        title="2. Annix Pulse gap"
         subtitle="RepProfiles that have no UserAppAccess row for the 'annix-rep' app — they cannot be granted Rep access via the unified RBAC model yet."
       >
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

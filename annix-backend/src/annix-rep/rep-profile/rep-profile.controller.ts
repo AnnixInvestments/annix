@@ -19,7 +19,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Rep Profile")
+@ApiTags("Annix Pulse - Rep Profile")
 @Controller("annix-rep/rep-profile")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

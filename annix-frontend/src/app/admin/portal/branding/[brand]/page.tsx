@@ -8,7 +8,7 @@ const BRAND_TITLES: Record<string, string> = {
   "annix-investments": "Annix Investments",
   "annix-orbit": "Annix Orbit",
   "annix-insights": "Annix Insights",
-  "annix-rep": "Annix Rep",
+  "annix-rep": "Annix Pulse",
   "annix-sentinel": "Annix Sentinel",
   "annix-forge": "Annix Forge",
 };

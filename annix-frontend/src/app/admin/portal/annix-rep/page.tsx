@@ -31,7 +31,7 @@ function BrandingIcon() {
 const cards: AppHubCard[] = [
   {
     href: "/annix-rep",
-    title: "Open Annix Rep",
+    title: "Open Annix Pulse",
     description: "Mobile sales assistant with smart prospecting and route planning.",
     icon: <OpenAppIcon />,
     color: "bg-emerald-100 text-emerald-600",
@@ -40,7 +40,7 @@ const cards: AppHubCard[] = [
   {
     href: "/admin/portal/branding/annix-rep",
     title: "Branding",
-    description: "Annix Rep brand — logo, colours and identity.",
+    description: "Annix Pulse brand — logo, colours and identity.",
     icon: <BrandingIcon />,
     color: "bg-violet-100 text-violet-600",
     hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
@@ -51,7 +51,7 @@ export default function AnnixRepAdminHubPage() {
   return (
     <AppAdminHub
       appKey="annix-rep"
-      title="Annix Rep — Admin Hub"
+      title="Annix Pulse — Admin Hub"
       subtitle="Open the app or manage its branding."
       cards={cards}
     />

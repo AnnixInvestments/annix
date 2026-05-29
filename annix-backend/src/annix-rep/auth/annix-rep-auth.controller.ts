@@ -27,14 +27,14 @@ import {
 import { AnnixRepAuthGuard } from "./guards";
 import { OAuthProvider } from "./oauth-login.provider";
 
-@ApiTags("Annix Rep - Authentication")
+@ApiTags("Annix Pulse - Authentication")
 @Controller("annix-rep/auth")
 export class AnnixRepAuthController {
   constructor(private readonly authService: AnnixRepAuthService) {}
 
   @Post("register")
   @Public()
-  @ApiOperation({ summary: "Register a new Annix Rep user" })
+  @ApiOperation({ summary: "Register a new Annix Pulse user" })
   @ApiResponse({ status: 201, type: AnnixRepAuthResponseDto })
   @ApiResponse({ status: 409, description: "Email already exists" })
   async register(
@@ -47,7 +47,7 @@ export class AnnixRepAuthController {
 
   @Post("login")
   @Public()
-  @ApiOperation({ summary: "Login to Annix Rep" })
+  @ApiOperation({ summary: "Login to Annix Pulse" })
   @ApiResponse({ status: 200, type: AnnixRepAuthResponseDto })
   @ApiResponse({ status: 401, description: "Invalid credentials" })
   async login(
@@ -60,7 +60,7 @@ export class AnnixRepAuthController {
 
   @Post("logout")
   @UseGuards(AnnixRepAuthGuard)
-  @ApiOperation({ summary: "Logout from Annix Rep" })
+  @ApiOperation({ summary: "Logout from Annix Pulse" })
   @ApiResponse({ status: 200 })
   async logout(@Request() req): Promise<{ success: boolean }> {
     await this.authService.logout(req.annixRepUser.sessionToken);

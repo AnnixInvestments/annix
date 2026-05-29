@@ -15,7 +15,7 @@ interface AnnixRepRequest extends Request {
   annixRepUser: AnnixRepUser;
 }
 
-@ApiTags("Annix Rep - Manager Dashboard")
+@ApiTags("Annix Pulse - Manager Dashboard")
 @Controller("annix-rep/manager")
 @UseGuards(AnnixRepAuthGuard, TeamRoleGuard)
 @TeamRoles(TeamRole.MANAGER, TeamRole.ADMIN)

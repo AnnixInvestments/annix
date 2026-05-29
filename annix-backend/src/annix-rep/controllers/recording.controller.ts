@@ -45,7 +45,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Recordings")
+@ApiTags("Annix Pulse - Recordings")
 @Controller("annix-rep/recordings")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

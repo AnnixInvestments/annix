@@ -138,7 +138,7 @@ export default function HomePage() {
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-emerald-100 rounded-2xl text-emerald-600 mb-6 group-hover:bg-emerald-600 group-hover:text-white transition-colors">
                   <MapPinned {...iconProps} />
                 </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Rep</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Pulse</h3>
                 <p className="text-gray-600 mb-6">
                   Mobile sales field assistant with smart prospecting, route planning, and meeting
                   AI.

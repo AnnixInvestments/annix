@@ -37,7 +37,7 @@ const MODULE_COLORS: Record<string, string> = {
   "Stock Control Dashboard":
     "bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300",
   Admin: "bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300",
-  "Annix Rep": "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
+  "Annix Pulse": "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300",
 };
 
 function formatInterval(ms: number): string {

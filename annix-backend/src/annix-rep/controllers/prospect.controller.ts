@@ -50,7 +50,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Prospects")
+@ApiTags("Annix Pulse - Prospects")
 @Controller("annix-rep/prospects")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

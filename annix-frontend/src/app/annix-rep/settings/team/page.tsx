@@ -183,7 +183,7 @@ function InviteMemberModal({ onClose }: { onClose: () => void }) {
                 onChange={(e) => setMessage(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                 rows={3}
-                placeholder="Join our sales team on Annix Rep!"
+                placeholder="Join our sales team on Annix Pulse!"
               />
             </div>
 

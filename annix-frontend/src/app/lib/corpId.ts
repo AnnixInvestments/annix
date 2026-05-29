@@ -171,7 +171,7 @@ export const portalConfig = {
     loginHref: "/au-rubber/login",
   },
   annixRep: {
-    title: "Annix Rep",
+    title: "Annix Pulse",
     homeHref: "/annix-rep",
     loginHref: "/admin/login",
   },

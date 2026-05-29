@@ -213,7 +213,7 @@ const platformApps: AppCard[] = [
   },
   {
     href: "/admin/portal/annix-rep",
-    title: "Annix Rep",
+    title: "Annix Pulse",
     description: "Mobile sales assistant with smart prospecting and route planning.",
     icon: <AnnixRepIcon />,
     color: "bg-emerald-100 text-emerald-600",

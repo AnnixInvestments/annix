@@ -26,7 +26,7 @@ interface AnnixRepRequest extends Request {
   annixRepUser: AnnixRepUser;
 }
 
-@ApiTags("Annix Rep - Organization")
+@ApiTags("Annix Pulse - Organization")
 @Controller("annix-rep/organization")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

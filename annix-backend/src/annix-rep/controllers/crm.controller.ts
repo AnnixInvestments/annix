@@ -44,7 +44,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - CRM")
+@ApiTags("Annix Pulse - CRM")
 @Controller("annix-rep/crm")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

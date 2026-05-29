@@ -1386,7 +1386,7 @@ Annix Team
           <!-- Footer -->
           <div style="text-align: center; padding: 20px; color: #9ca3af; font-size: 12px;">
             <p style="margin: 0;">This summary was automatically generated from meeting transcript.</p>
-            <p style="margin: 5px 0 0 0;">Powered by Annix Rep</p>
+            <p style="margin: 5px 0 0 0;">Powered by Annix Pulse</p>
           </div>
         </div>
       </body>
@@ -1430,7 +1430,7 @@ ${summary.nextSteps.map((s) => `- ${s}`).join("\n") || "None identified"}
 
 ---
 This summary was automatically generated from meeting transcript.
-Powered by Annix Rep
+Powered by Annix Pulse
     `;
 
     return this.sendEmail({
@@ -1471,7 +1471,7 @@ Powered by Annix Rep
       <html>
       <head>
         <meta charset="utf-8">
-        <title>Follow-Up Reminder - Annix Rep</title>
+        <title>Follow-Up Reminder - Annix Pulse</title>
       </head>
       <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
         <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -1505,7 +1505,7 @@ Powered by Annix Rep
 
           <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
           <p style="color: #999; font-size: 12px;">
-            This is an automated daily reminder from Annix Rep.
+            This is an automated daily reminder from Annix Pulse.
           </p>
         </div>
       </body>
@@ -1523,12 +1523,12 @@ ${prospects.map((p) => `- ${p.companyName} (Due: ${p.nextFollowUpAt ? formatDate
 
 View your prospects: ${prospectsLink}
 
-This is an automated daily reminder from Annix Rep.
+This is an automated daily reminder from Annix Pulse.
     `;
 
     return this.sendEmail({
       to: email,
-      subject: `Follow-Up Reminder: ${prospects.length} overdue prospect${prospects.length === 1 ? "" : "s"} - Annix Rep`,
+      subject: `Follow-Up Reminder: ${prospects.length} overdue prospect${prospects.length === 1 ? "" : "s"} - Annix Pulse`,
       html,
       text,
     });

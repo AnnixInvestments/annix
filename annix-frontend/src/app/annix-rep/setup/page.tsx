@@ -240,7 +240,7 @@ export default function RepSetupPage() {
           </h1>
           <p className="text-indigo-100 text-sm mt-1">
             {step === "account"
-              ? "Join Annix Rep to start finding prospects"
+              ? "Join Annix Pulse to start finding prospects"
               : "Tell us about what you sell so we can help you find prospects"}
           </p>
         </div>

@@ -46,7 +46,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Meetings")
+@ApiTags("Annix Pulse - Meetings")
 @Controller("annix-rep/meetings")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

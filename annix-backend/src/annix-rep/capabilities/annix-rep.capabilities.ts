@@ -12,7 +12,7 @@ export class AnnixRepCapabilities implements OnModuleInit {
     for (const capability of this.capabilities()) {
       this.registry.register(capability);
     }
-    this.logger.log(`Registered ${this.capabilities().length} Annix Rep capabilities`);
+    this.logger.log(`Registered ${this.capabilities().length} Annix Pulse capabilities`);
   }
 
   private capabilities(): INixCapability[] {

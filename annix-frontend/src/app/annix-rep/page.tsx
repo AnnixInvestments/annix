@@ -206,7 +206,7 @@ export default function AnnixRepDashboard() {
   return (
     <div className="space-y-8">
       <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">Annix Rep</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-3">Annix Pulse</h1>
         <p className="text-gray-500 dark:text-gray-400">
           Mobile sales field assistant for prospecting, meetings, and route planning
         </p>

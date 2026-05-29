@@ -123,7 +123,7 @@ export class AnnixRepAuthService {
     if (!hasAnnixRepRole) {
       this.logger.warn(`Login attempt for user ${dto.email} without annixRep role`);
       throw new UnauthorizedException(
-        "This account is not registered for Annix Rep. Please register first.",
+        "This account is not registered for Annix Pulse. Please register first.",
       );
     }
 
@@ -174,7 +174,7 @@ export class AnnixRepAuthService {
     const hasAnnixRepRole = user.roles?.some((role) => role.name === "annixRep");
     if (!hasAnnixRepRole) {
       throw new UnauthorizedException(
-        "This account is not registered for Annix Rep. Please register first.",
+        "This account is not registered for Annix Pulse. Please register first.",
       );
     }
 

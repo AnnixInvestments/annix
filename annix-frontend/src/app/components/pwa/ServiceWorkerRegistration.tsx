@@ -127,7 +127,7 @@ export default function ServiceWorkerRegistration() {
           </div>
           <div className="flex-1">
             <h3 className="font-semibold">Update Available</h3>
-            <p className="text-sm text-blue-100 mt-1">A new version of Annix Rep is available.</p>
+            <p className="text-sm text-blue-100 mt-1">A new version of Annix Pulse is available.</p>
             <div className="flex items-center gap-2 mt-3">
               <button
                 onClick={handleUpdate}

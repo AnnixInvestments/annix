@@ -51,7 +51,7 @@ interface SyncResponse {
   recordings: number;
 }
 
-@ApiTags("Annix Rep - Meeting Platforms")
+@ApiTags("Annix Pulse - Meeting Platforms")
 @Controller("annix-rep/meeting-platforms")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

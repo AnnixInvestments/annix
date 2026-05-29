@@ -11,7 +11,7 @@ interface AnnixRepRequest extends Request {
   annixRepUser: AnnixRepUser;
 }
 
-@ApiTags("Annix Rep - Prospect Handoff")
+@ApiTags("Annix Pulse - Prospect Handoff")
 @Controller("annix-rep/prospects/handoff")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

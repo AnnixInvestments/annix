@@ -4,7 +4,7 @@ import { AnnixRepAuthGuard } from "../auth";
 import { MeetingSummaryDto, SendSummaryDto, SendSummaryResultDto, SummaryPreviewDto } from "../dto";
 import { MeetingSummaryService } from "../services/meeting-summary.service";
 
-@ApiTags("Annix Rep - Meeting Summaries")
+@ApiTags("Annix Pulse - Meeting Summaries")
 @ApiBearerAuth()
 @UseGuards(AnnixRepAuthGuard)
 @Controller("annix-rep/summaries")

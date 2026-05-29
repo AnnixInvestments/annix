@@ -28,7 +28,7 @@ interface AnnixRepRequest extends Request {
   annixRepUser: AnnixRepUser;
 }
 
-@ApiTags("Annix Rep - Territories")
+@ApiTags("Annix Pulse - Territories")
 @Controller("annix-rep/territories")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

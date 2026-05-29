@@ -5,8 +5,8 @@ import AnnixRepLayoutClient from "./AnnixRepLayoutClient";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Annix Rep",
-    default: "Annix Rep",
+    template: "%s | Annix Pulse",
+    default: "Annix Pulse",
   },
   description:
     "Mobile-first sales field assistant with smart prospecting, calendar sync, and meeting recording",
@@ -21,7 +21,7 @@ export default function AnnixRepLayout(props: { children: React.ReactNode }) {
       </BrandingProvider>
       <NixAssistant
         context="general"
-        pageContext={{ currentPage: "Annix Rep", portalContext: "general" }}
+        pageContext={{ currentPage: "Annix Pulse", portalContext: "general" }}
       />
     </NixAppProvider>
   );

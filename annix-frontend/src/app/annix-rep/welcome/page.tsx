@@ -61,8 +61,8 @@ export default function WelcomePage() {
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-white mb-2">Annix Rep</h1>
-            <p className="text-indigo-100">Your AI-powered sales assistant</p>
+            <h1 className="text-2xl font-bold text-white mb-2">Annix Pulse</h1>
+            <p className="text-indigo-100">Transform conversations into customers</p>
           </div>
 
           <div className="p-8">
@@ -163,7 +163,8 @@ export default function WelcomePage() {
             </div>
 
             <p className="text-center text-xs text-gray-500 dark:text-gray-400 mt-6">
-              New to Annix Rep? Create an account to get started with AI-powered prospect discovery.
+              New to Annix Pulse? Create an account to get started with AI-powered prospect
+              discovery.
             </p>
           </div>
         </div>

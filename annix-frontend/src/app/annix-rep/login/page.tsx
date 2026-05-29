@@ -128,7 +128,7 @@ function LoginPageContent() {
               </svg>
             </div>
             <h1 className="text-xl font-bold text-white mb-1">Welcome Back</h1>
-            <p className="text-indigo-100 text-sm">Sign in to continue to Annix Rep</p>
+            <p className="text-indigo-100 text-sm">Sign in to continue to Annix Pulse</p>
           </div>
 
           <div className="p-8">

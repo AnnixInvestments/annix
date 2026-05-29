@@ -7,7 +7,7 @@ import { PageErrorFallback, QueryErrorFallback } from "./ErrorBoundary";
 describe("PageErrorFallback", () => {
   it("renders the BrandedErrorScreen for the default area", () => {
     render(<PageErrorFallback />);
-    expect(screen.getByText(/We hit a snag in Annix Rep/)).toBeInTheDocument();
+    expect(screen.getByText(/We hit a snag in Annix Pulse/)).toBeInTheDocument();
   });
 
   it("ignores legacy title/message props and renders the branded screen for the configured area", () => {

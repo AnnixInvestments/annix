@@ -52,7 +52,7 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
     logo: null,
   },
   "annix-rep": {
-    label: "Annix Rep",
+    label: "Annix Pulse",
     bar: "bg-violet-600",
     bg: "bg-violet-50",
     text: "text-violet-700",

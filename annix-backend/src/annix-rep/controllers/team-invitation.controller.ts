@@ -22,7 +22,7 @@ interface AnnixRepRequest extends Request {
   annixRepUser: AnnixRepUser;
 }
 
-@ApiTags("Annix Rep - Team Invitations")
+@ApiTags("Annix Pulse - Team Invitations")
 @Controller("annix-rep/team/invitations")
 @ApiBearerAuth()
 export class TeamInvitationController {

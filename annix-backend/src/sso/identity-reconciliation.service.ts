@@ -103,7 +103,7 @@ export class IdentityReconciliationService {
       this.profileCount("Stock Control", "stock_control_profiles", this.stockControlProfileRepo),
       this.profileCount("Annix Orbit", "cv_assistant_profiles", this.annixOrbitProfileRepo),
       this.profileCount("Annix Sentinel", "comply_sa_profiles", this.annixSentinelProfileRepo),
-      this.profileCount("Annix Rep", "annix_rep_rep_profiles", this.repProfileRepo),
+      this.profileCount("Annix Pulse", "annix_rep_rep_profiles", this.repProfileRepo),
     ]);
 
     return { totalCoreUsers, accessByApp, profilesByPortal };

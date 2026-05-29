@@ -102,8 +102,8 @@ export const POLLING_JOB_METADATA: Record<
     defaultIntervalMs: SIX_HOURS,
   },
   "annix-rep:crm": {
-    description: "Annix Rep — CRM poll",
-    module: "Annix Rep",
+    description: "Annix Pulse — CRM poll",
+    module: "Annix Pulse",
     defaultIntervalMs: SIX_HOURS,
   },
   "stock-control:notification-count": {

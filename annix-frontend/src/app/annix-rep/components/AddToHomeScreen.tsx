@@ -99,7 +99,7 @@ export function AddToHomeScreen() {
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-gray-900 dark:text-white text-sm">
-              Install Annix Rep
+              Install Annix Pulse
             </h3>
             <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
               Add to your home screen for quick access and offline support

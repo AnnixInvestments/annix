@@ -53,7 +53,7 @@ type TeamsBotEvent =
   | { type: "transcript"; data: TeamsBotTranscriptEvent }
   | { type: "participant"; data: TeamsBotParticipantEvent };
 
-@ApiTags("Annix Rep - Teams Bot (SSE)")
+@ApiTags("Annix Pulse - Teams Bot (SSE)")
 @Controller("annix-rep/teams-bot/events")
 export class TeamsBotGateway implements OnModuleDestroy {
   private readonly logger = new Logger(TeamsBotGateway.name);

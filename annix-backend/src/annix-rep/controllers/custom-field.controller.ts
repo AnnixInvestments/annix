@@ -37,7 +37,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Custom Fields")
+@ApiTags("Annix Pulse - Custom Fields")
 @Controller("annix-rep/custom-fields")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

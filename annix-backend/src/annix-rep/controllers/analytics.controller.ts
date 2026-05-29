@@ -12,7 +12,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Analytics")
+@ApiTags("Annix Pulse - Analytics")
 @Controller("annix-rep/analytics")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

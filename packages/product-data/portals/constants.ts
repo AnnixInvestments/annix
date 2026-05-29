@@ -64,7 +64,7 @@ export const PORTAL_HOSTS: readonly PortalHost[] = [
   },
   {
     code: "annix-rep",
-    displayName: "Annix Rep",
+    displayName: "Annix Pulse",
     internalPathPrefix: "/annix-rep",
     prodHost: "annixrep.annix.co.za",
     prodHostAliases: [],

@@ -25,7 +25,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Teams Bot")
+@ApiTags("Annix Pulse - Teams Bot")
 @Controller("annix-rep/teams-bot")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()

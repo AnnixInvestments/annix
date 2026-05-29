@@ -19,7 +19,7 @@ interface AnnixRepRequest extends Request {
   };
 }
 
-@ApiTags("Annix Rep - Routes")
+@ApiTags("Annix Pulse - Routes")
 @Controller("annix-rep/routes")
 @UseGuards(AnnixRepAuthGuard)
 @ApiBearerAuth()
