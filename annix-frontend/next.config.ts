@@ -35,6 +35,20 @@ const nextConfig: NextConfig = {
         destination: "/annix/orbit/:path*",
         permanent: true,
       },
+      // The Annix Rep app was rebranded to Annix Pulse; its canonical routes
+      // moved to /annix-pulse/*. The page files still live under app/annix-rep
+      // (served via the rewrite below), but every public URL is /annix-pulse so
+      // old bookmarks, emailed links and installed PWAs keep working.
+      {
+        source: "/annix-rep",
+        destination: "/annix-pulse",
+        permanent: true,
+      },
+      {
+        source: "/annix-rep/:path*",
+        destination: "/annix-pulse/:path*",
+        permanent: true,
+      },
     ];
   },
 
@@ -97,9 +111,17 @@ const nextConfig: NextConfig = {
 
   async rewrites() {
     return [
+      // Annix Pulse: serve the existing app/annix-rep page tree under the
+      // canonical /annix-pulse URL without moving the directory. The redirect
+      // above makes /annix-pulse canonical; this rewrite resolves it to the
+      // real route files. Internal links point at /annix-pulse directly.
       {
-        source: "/annix-rep/:path*",
-        destination: "/fieldflow/:path*",
+        source: "/annix-pulse",
+        destination: "/annix-rep",
+      },
+      {
+        source: "/annix-pulse/:path*",
+        destination: "/annix-rep/:path*",
       },
     ];
   },

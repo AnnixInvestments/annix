@@ -1,13 +1,13 @@
 {
-  "name": "Annix Rep",
-  "short_name": "Annix Rep",
+  "name": "Annix Pulse",
+  "short_name": "Annix Pulse",
   "description": "Mobile-first sales field assistant with smart prospecting, calendar sync, and meeting recording",
-  "start_url": "/annix-rep",
+  "start_url": "/annix-pulse",
   "display": "standalone",
   "background_color": "#0f172a",
   "theme_color": "#3b82f6",
   "orientation": "portrait-primary",
-  "scope": "/annix-rep",
+  "scope": "/annix-pulse",
   "icons": [
     {
       "src": "/images/annix-icon.png",
@@ -22,7 +22,7 @@
       "sizes": "1080x1920",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Annix Rep Dashboard"
+      "label": "Annix Pulse Dashboard"
     }
   ],
   "categories": ["business", "productivity"],
@@ -30,22 +30,22 @@
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "description": "View your Annix Rep dashboard",
-      "url": "/annix-rep",
+      "description": "View your Annix Pulse dashboard",
+      "url": "/annix-pulse",
       "icons": [{ "src": "/images/annix-icon.png", "sizes": "192x192" }]
     },
     {
       "name": "Prospects",
       "short_name": "Prospects",
       "description": "Manage your prospects",
-      "url": "/annix-rep/prospects",
+      "url": "/annix-pulse/prospects",
       "icons": [{ "src": "/images/annix-icon.png", "sizes": "192x192" }]
     },
     {
       "name": "Meetings",
       "short_name": "Meetings",
       "description": "View your meetings",
-      "url": "/annix-rep/meetings",
+      "url": "/annix-pulse/meetings",
       "icons": [{ "src": "/images/annix-icon.png", "sizes": "192x192" }]
     }
   ],

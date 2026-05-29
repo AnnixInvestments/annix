@@ -78,7 +78,7 @@ function PlatformOAuthCallbackContent() {
     if (window.opener) {
       window.close();
     } else {
-      router.push("/annix-rep/settings/integrations");
+      router.push("/annix-pulse/settings/integrations");
     }
   };
 

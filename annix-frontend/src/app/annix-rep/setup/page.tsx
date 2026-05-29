@@ -71,7 +71,7 @@ export default function RepSetupPage() {
 
   useEffect(() => {
     if (!authLoading && !isCheckingStatus && profileStatus?.setupCompleted) {
-      router.replace("/annix-rep");
+      router.replace("/annix-pulse");
     }
   }, [profileStatus, authLoading, isCheckingStatus, router]);
 
@@ -202,7 +202,7 @@ export default function RepSetupPage() {
   };
 
   const handleFinish = () => {
-    router.push("/annix-rep");
+    router.push("/annix-pulse");
   };
 
   const stepNumber = {
@@ -402,7 +402,7 @@ export default function RepSetupPage() {
                 <p className="text-sm text-gray-500 dark:text-gray-400">
                   Already have an account?{" "}
                   <Link
-                    href="/annix-rep/login"
+                    href="/annix-pulse/login"
                     className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
                   >
                     Sign In

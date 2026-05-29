@@ -422,7 +422,7 @@ export default function TerritoriesPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/settings"
+            href="/annix-pulse/settings"
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg
@@ -454,7 +454,7 @@ export default function TerritoriesPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/settings"
+            href="/annix-pulse/settings"
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg
@@ -478,7 +478,7 @@ export default function TerritoriesPage() {
             You need to create an organization first before managing territories.
           </p>
           <Link
-            href="/annix-rep/settings/team"
+            href="/annix-pulse/settings/team"
             className="inline-block mt-4 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
           >
             Create Organization
@@ -495,7 +495,7 @@ export default function TerritoriesPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep/settings"
+          href="/annix-pulse/settings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

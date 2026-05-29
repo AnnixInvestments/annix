@@ -52,9 +52,9 @@ function LoginPageContent() {
       if (redirectPath) {
         router.replace(redirectPath);
       } else if (profileStatus?.setupCompleted) {
-        router.replace("/annix-rep");
+        router.replace("/annix-pulse");
       } else {
-        router.replace("/annix-rep/setup");
+        router.replace("/annix-pulse/setup");
       }
     }
   }, [isAuthenticated, authLoading, profileLoading, profileStatus, router, redirectPath]);
@@ -222,7 +222,7 @@ function LoginPageContent() {
                   appCode="annix-rep"
                   onSuccess={(response) => {
                     storePasskeyJwt(annixRepTokenStore, response, rememberMe);
-                    redirectAfterPasskeyLogin(redirectPath || "/annix-rep");
+                    redirectAfterPasskeyLogin(redirectPath || "/annix-pulse");
                   }}
                   onError={(message) => setError(message)}
                 />
@@ -231,7 +231,7 @@ function LoginPageContent() {
 
             <div className="mt-6 text-center">
               <Link
-                href="/annix-rep/welcome"
+                href="/annix-pulse/welcome"
                 className="text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
               >
                 Back to Welcome
@@ -242,7 +242,7 @@ function LoginPageContent() {
               <p className="text-sm text-gray-500 dark:text-gray-400">
                 Don't have an account?{" "}
                 <Link
-                  href="/annix-rep/setup"
+                  href="/annix-pulse/setup"
                   className="text-indigo-600 dark:text-indigo-400 font-medium hover:underline"
                 >
                   Get Started

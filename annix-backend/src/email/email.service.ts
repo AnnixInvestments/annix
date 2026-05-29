@@ -1447,14 +1447,14 @@ Powered by Annix Pulse
     prospects: Array<{ id: number; companyName: string; nextFollowUpAt: Date | null }>,
   ): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
-    const prospectsLink = `${frontendUrl}/annix-rep/prospects`;
+    const prospectsLink = `${frontendUrl}/annix-pulse/prospects`;
 
     const prospectsList = prospects
       .map(
         (p) => `
         <tr>
           <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
-            <a href="${frontendUrl}/annix-rep/prospects/${p.id}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
+            <a href="${frontendUrl}/annix-pulse/prospects/${p.id}" style="color: #2563eb; text-decoration: none; font-weight: 500;">
               ${p.companyName}
             </a>
           </td>

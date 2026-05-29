@@ -146,7 +146,7 @@ export default function NearbyMap(props: NearbyMapProps) {
               </div>
               <div className="mt-3 flex gap-2">
                 <Link
-                  href={`/annix-rep/prospects/${infoWindowProspect.id}`}
+                  href={`/annix-pulse/prospects/${infoWindowProspect.id}`}
                   className="text-xs text-blue-600 hover:underline"
                 >
                   View Details

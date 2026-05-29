@@ -335,7 +335,7 @@ export default function CalendarsSettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep/settings"
+          href="/annix-pulse/settings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg
@@ -485,7 +485,7 @@ export default function CalendarsSettingsPage() {
       )}
 
       {connections && connections.length > 0 && (
-        <Link href="/annix-rep/settings/calendars/conflicts">
+        <Link href="/annix-pulse/settings/calendars/conflicts">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">

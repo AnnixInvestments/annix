@@ -18,9 +18,9 @@ export default function WelcomePage() {
 
     if (isAuthenticated) {
       if (profileStatus?.setupCompleted) {
-        router.replace("/annix-rep");
+        router.replace("/annix-pulse");
       } else {
-        router.replace("/annix-rep/setup");
+        router.replace("/annix-pulse/setup");
       }
     }
   }, [isAuthenticated, authLoading, profileLoading, profileStatus, router]);
@@ -148,14 +148,14 @@ export default function WelcomePage() {
 
             <div className="space-y-3">
               <Link
-                href="/annix-rep/login"
+                href="/annix-pulse/login"
                 className="w-full flex items-center justify-center py-3 px-4 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
               >
                 Sign In
               </Link>
 
               <Link
-                href="/annix-rep/setup"
+                href="/annix-pulse/setup"
                 className="w-full flex items-center justify-center py-3 px-4 bg-gray-100 dark:bg-slate-700 text-gray-900 dark:text-white rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
               >
                 Get Started

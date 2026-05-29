@@ -193,7 +193,7 @@ export default function CrmSyncLogsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep/settings/crm"
+          href="/annix-pulse/settings/crm"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

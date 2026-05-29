@@ -30,7 +30,7 @@ function BrandingIcon() {
 
 const cards: AppHubCard[] = [
   {
-    href: "/annix-rep",
+    href: "/annix-pulse",
     title: "Open Annix Pulse",
     description: "Mobile sales assistant with smart prospecting and route planning.",
     icon: <OpenAppIcon />,

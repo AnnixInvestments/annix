@@ -62,8 +62,8 @@ const PORTAL_ROUTES: PortalRoute[] = [
     refreshTokenKey: "annixOrbitRefreshToken",
   },
   {
-    prefix: "/annix-rep",
-    login: "/annix-rep/login",
+    prefix: "/annix-pulse",
+    login: "/annix-pulse/login",
     accessTokenKey: "annixRepAccessToken",
     refreshTokenKey: "annixRepRefreshToken",
   },

@@ -72,7 +72,7 @@ function MonthlySalesReportContent() {
 
   const handleMonthChange = (newMonth: string) => {
     setMonth(newMonth);
-    router.push(`/annix-rep/reports/monthly?month=${newMonth}`);
+    router.push(`/annix-pulse/reports/monthly?month=${newMonth}`);
   };
 
   const handlePreviousMonth = () => {
@@ -110,7 +110,7 @@ function MonthlySalesReportContent() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/reports"
+            href="/annix-pulse/reports"
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <svg
@@ -316,7 +316,7 @@ function MonthlySalesReportContent() {
                 {report.topDeals.map((deal, index) => (
                   <Link
                     key={deal.prospectId}
-                    href={`/annix-rep/prospects/${deal.prospectId}`}
+                    href={`/annix-pulse/prospects/${deal.prospectId}`}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
                   >
                     <div className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/40 flex items-center justify-center text-xs font-medium text-green-600 dark:text-green-400">

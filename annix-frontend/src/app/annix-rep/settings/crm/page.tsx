@@ -344,7 +344,7 @@ function CrmConfigCard({
         )}
 
         <Link
-          href={`/annix-rep/settings/crm/${config.id}/sync-logs`}
+          href={`/annix-pulse/settings/crm/${config.id}/sync-logs`}
           className="px-3 py-1.5 text-sm border border-gray-300 dark:border-slate-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-slate-700"
         >
           View Sync Logs
@@ -766,7 +766,7 @@ export default function CrmSettingsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep/settings"
+          href="/annix-pulse/settings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

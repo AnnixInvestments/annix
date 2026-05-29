@@ -115,30 +115,30 @@ export default function ReportsPage() {
 
   const getWeeklyUrl = () => {
     if (selectedRange) {
-      return `/annix-rep/reports/weekly?startDate=${selectedRange.start}&endDate=${selectedRange.end}`;
+      return `/annix-pulse/reports/weekly?startDate=${selectedRange.start}&endDate=${selectedRange.end}`;
     }
-    return `/annix-rep/reports/weekly?startDate=${lastWeekStart}&endDate=${lastWeekEnd}`;
+    return `/annix-pulse/reports/weekly?startDate=${lastWeekStart}&endDate=${lastWeekEnd}`;
   };
 
   const getTerritoryUrl = () => {
     if (selectedRange) {
-      return `/annix-rep/reports/territory?startDate=${selectedRange.start}&endDate=${selectedRange.end}`;
+      return `/annix-pulse/reports/territory?startDate=${selectedRange.start}&endDate=${selectedRange.end}`;
     }
-    return `/annix-rep/reports/territory?startDate=${lastWeekStart}&endDate=${lastWeekEnd}`;
+    return `/annix-pulse/reports/territory?startDate=${lastWeekStart}&endDate=${lastWeekEnd}`;
   };
 
   const getMeetingsUrl = () => {
     if (selectedRange) {
-      return `/annix-rep/reports/meetings?startDate=${selectedRange.start}&endDate=${selectedRange.end}`;
+      return `/annix-pulse/reports/meetings?startDate=${selectedRange.start}&endDate=${selectedRange.end}`;
     }
-    return `/annix-rep/reports/meetings?startDate=${lastWeekStart}&endDate=${lastWeekEnd}`;
+    return `/annix-pulse/reports/meetings?startDate=${lastWeekStart}&endDate=${lastWeekEnd}`;
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep"
+          href="/annix-pulse"
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
         >
           <svg
@@ -201,7 +201,7 @@ export default function ReportsPage() {
         <ReportCard
           title="Monthly Sales Report"
           description="Revenue, deals closed, and sales performance for a month"
-          href={`/annix-rep/reports/monthly?month=${currentMonth}`}
+          href={`/annix-pulse/reports/monthly?month=${currentMonth}`}
           icon={
             <svg
               className="w-6 h-6 text-blue-600 dark:text-blue-400"

@@ -196,7 +196,7 @@ export default function ProspectDetailPage() {
       <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
         <p className="text-red-700 dark:text-red-400">Failed to load prospect</p>
         <Link
-          href="/annix-rep/prospects"
+          href="/annix-pulse/prospects"
           className="text-sm text-blue-600 hover:underline mt-2 inline-block"
         >
           Back to prospects
@@ -285,7 +285,7 @@ export default function ProspectDetailPage() {
     // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
     if (confirm("Are you sure you want to delete this prospect?")) {
       await deleteProspect.mutateAsync(id);
-      router.push("/annix-rep/prospects");
+      router.push("/annix-pulse/prospects");
     }
   };
 
@@ -349,7 +349,7 @@ export default function ProspectDetailPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep/prospects"
+          href="/annix-pulse/prospects"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

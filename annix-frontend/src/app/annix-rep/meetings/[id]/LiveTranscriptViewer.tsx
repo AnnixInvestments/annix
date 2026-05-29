@@ -138,7 +138,7 @@ export function LiveTranscriptViewer(props: LiveTranscriptViewerProps) {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href={`/annix-rep/meetings/${meetingId}`}
+          href={`/annix-pulse/meetings/${meetingId}`}
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg
@@ -268,7 +268,7 @@ export function LiveTranscriptViewer(props: LiveTranscriptViewerProps) {
             The bot has left the meeting. The transcript has been saved.
           </p>
           <Link
-            href={`/annix-rep/meetings/${meetingId}`}
+            href={`/annix-pulse/meetings/${meetingId}`}
             className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
           >
             Return to meeting details

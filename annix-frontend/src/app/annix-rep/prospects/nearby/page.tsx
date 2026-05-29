@@ -193,7 +193,7 @@ export default function NearbyProspectsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/prospects"
+            href="/annix-pulse/prospects"
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg

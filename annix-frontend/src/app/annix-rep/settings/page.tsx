@@ -211,7 +211,7 @@ export default function SettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Link href="/annix-rep/settings/calendars">
+        <Link href="/annix-pulse/settings/calendars">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
@@ -241,7 +241,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/annix-rep/settings/crm">
+        <Link href="/annix-pulse/settings/crm">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -271,7 +271,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/annix-rep/settings/integrations">
+        <Link href="/annix-pulse/settings/integrations">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
@@ -300,7 +300,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/annix-rep/settings/colors">
+        <Link href="/annix-pulse/settings/colors">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg">
@@ -330,7 +330,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/annix-rep/settings/booking-links">
+        <Link href="/annix-pulse/settings/booking-links">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
@@ -360,7 +360,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/annix-rep/settings/team">
+        <Link href="/annix-pulse/settings/team">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
@@ -390,7 +390,7 @@ export default function SettingsPage() {
           </div>
         </Link>
 
-        <Link href="/annix-rep/settings/territories">
+        <Link href="/annix-pulse/settings/territories">
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md transition-shadow cursor-pointer">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">

@@ -70,7 +70,7 @@ function TerritoryCoverageReportContent() {
   const handleDateChange = (newStartDate: string, newEndDate: string) => {
     setStartDate(newStartDate);
     setEndDate(newEndDate);
-    router.push(`/annix-rep/reports/territory?startDate=${newStartDate}&endDate=${newEndDate}`);
+    router.push(`/annix-pulse/reports/territory?startDate=${newStartDate}&endDate=${newEndDate}`);
   };
 
   const handleExportPdf = async () => {
@@ -98,7 +98,7 @@ function TerritoryCoverageReportContent() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/reports"
+            href="/annix-pulse/reports"
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <svg
@@ -239,7 +239,7 @@ function TerritoryCoverageReportContent() {
                           >
                             <td className="py-3 px-4">
                               <Link
-                                href={`/annix-rep/prospects/${prospect.id}`}
+                                href={`/annix-pulse/prospects/${prospect.id}`}
                                 className="text-sm font-medium text-gray-900 dark:text-white hover:text-blue-600 dark:hover:text-blue-400"
                               >
                                 {prospect.companyName}

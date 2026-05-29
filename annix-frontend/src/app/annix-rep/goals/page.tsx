@@ -408,7 +408,7 @@ export default function GoalsPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep"
+          href="/annix-pulse"
           className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
         >
           <svg

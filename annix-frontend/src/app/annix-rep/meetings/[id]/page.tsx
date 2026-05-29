@@ -110,7 +110,7 @@ export default function MeetingDetailPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 dark:text-gray-400">Meeting not found</p>
-        <Link href="/annix-rep/meetings" className="mt-4 text-blue-600 hover:underline">
+        <Link href="/annix-pulse/meetings" className="mt-4 text-blue-600 hover:underline">
           Back to meetings
         </Link>
       </div>
@@ -179,7 +179,7 @@ export default function MeetingDetailPage() {
     <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href="/annix-rep/meetings"
+          href="/annix-pulse/meetings"
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg
@@ -353,7 +353,7 @@ export default function MeetingDetailPage() {
 
               <div className="mt-4 pt-4 border-t border-gray-200 dark:border-slate-700 flex flex-wrap gap-3">
                 <Link
-                  href={`/annix-rep/meetings/${meetingId}/transcript`}
+                  href={`/annix-pulse/meetings/${meetingId}/transcript`}
                   className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md flex items-center gap-1"
                 >
                   <svg
@@ -372,7 +372,7 @@ export default function MeetingDetailPage() {
                   View Transcript
                 </Link>
                 <Link
-                  href={`/annix-rep/meetings/${meetingId}/summary`}
+                  href={`/annix-pulse/meetings/${meetingId}/summary`}
                   className="px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md flex items-center gap-1"
                 >
                   <svg
@@ -453,7 +453,7 @@ export default function MeetingDetailPage() {
 
               {canRecord && !recording && (
                 <Link
-                  href={`/annix-rep/meetings/${meetingId}/record`}
+                  href={`/annix-pulse/meetings/${meetingId}/record`}
                   className="w-full px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 flex items-center justify-center gap-2"
                 >
                   <svg
@@ -490,7 +490,7 @@ export default function MeetingDetailPage() {
                   </div>
                   <div className="flex gap-2">
                     <Link
-                      href={`/annix-rep/meetings/${meetingId}/transcript`}
+                      href={`/annix-pulse/meetings/${meetingId}/transcript`}
                       className="flex-1 px-3 py-1.5 text-sm font-medium text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md text-center"
                     >
                       View Live Transcript

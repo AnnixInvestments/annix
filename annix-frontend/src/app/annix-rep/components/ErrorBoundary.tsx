@@ -45,7 +45,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
       const error = this.state.error;
       if (!error) return null;
       const area = this.props.area ? this.props.area : "Annix Pulse";
-      const backHref = this.props.backHref ? this.props.backHref : "/annix-rep";
+      const backHref = this.props.backHref ? this.props.backHref : "/annix-pulse";
       return (
         <BrandedErrorScreen
           area={area}
@@ -77,7 +77,7 @@ interface PageErrorFallbackProps {
 export function PageErrorFallback(props: PageErrorFallbackProps) {
   const { error, reset } = props;
   const area = props.area ? props.area : "Annix Pulse";
-  const backHref = props.backHref ? props.backHref : "/annix-rep";
+  const backHref = props.backHref ? props.backHref : "/annix-pulse";
   const safeError: Error & { digest?: string } = error
     ? (error as Error & { digest?: string })
     : new Error("Unknown error");

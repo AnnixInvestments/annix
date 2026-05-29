@@ -36,7 +36,7 @@ export default function ServiceWorkerRegistration() {
     const registerServiceWorker = async () => {
       try {
         const registration = await navigator.serviceWorker.register("/sw.js", {
-          scope: "/annix-rep",
+          scope: "/annix-pulse",
         });
 
         setState({

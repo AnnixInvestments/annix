@@ -161,7 +161,7 @@ export default function ConflictsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <Link
-              href="/annix-rep/settings/calendars"
+              href="/annix-pulse/settings/calendars"
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-2 inline-block"
             >
               &larr; Back to Calendar Settings

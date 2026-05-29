@@ -266,7 +266,7 @@ export default function SummaryPage() {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500 dark:text-gray-400">Meeting not found</p>
-        <Link href="/annix-rep/meetings" className="mt-4 text-blue-600 hover:underline">
+        <Link href="/annix-pulse/meetings" className="mt-4 text-blue-600 hover:underline">
           Back to meetings
         </Link>
       </div>
@@ -278,7 +278,7 @@ export default function SummaryPage() {
       <div className="max-w-4xl mx-auto">
         <div className="flex items-center gap-4 mb-6">
           <Link
-            href={`/annix-rep/meetings/${meetingId}`}
+            href={`/annix-pulse/meetings/${meetingId}`}
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg
@@ -319,7 +319,7 @@ export default function SummaryPage() {
             This meeting needs a recording and transcript before a summary can be generated.
           </p>
           <Link
-            href={`/annix-rep/meetings/${meetingId}/transcript`}
+            href={`/annix-pulse/meetings/${meetingId}/transcript`}
             className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
           >
             Go to Transcript
@@ -333,7 +333,7 @@ export default function SummaryPage() {
     <div className="max-w-4xl mx-auto">
       <div className="flex items-center gap-4 mb-6">
         <Link
-          href={`/annix-rep/meetings/${meetingId}`}
+          href={`/annix-pulse/meetings/${meetingId}`}
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg
@@ -466,7 +466,7 @@ export default function SummaryPage() {
               Send to More Recipients
             </button>
             <Link
-              href={`/annix-rep/meetings/${meetingId}`}
+              href={`/annix-pulse/meetings/${meetingId}`}
               className="flex-1 px-4 py-2 text-sm font-medium text-center text-white bg-blue-600 rounded-md hover:bg-blue-700"
             >
               Back to Meeting

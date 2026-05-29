@@ -326,7 +326,7 @@ export default function RoutePlannerPage() {
           </p>
         </div>
         <Link
-          href="/annix-rep/schedule"
+          href="/annix-pulse/schedule"
           className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md hover:bg-gray-50 dark:hover:bg-slate-600 flex items-center gap-2"
         >
           <svg

@@ -122,7 +122,7 @@ function WeeklyActivityReportContent() {
   const handleDateChange = (newStartDate: string, newEndDate: string) => {
     setStartDate(newStartDate);
     setEndDate(newEndDate);
-    router.push(`/annix-rep/reports/weekly?startDate=${newStartDate}&endDate=${newEndDate}`);
+    router.push(`/annix-pulse/reports/weekly?startDate=${newStartDate}&endDate=${newEndDate}`);
   };
 
   const handlePreviousWeek = () => {
@@ -162,7 +162,7 @@ function WeeklyActivityReportContent() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/reports"
+            href="/annix-pulse/reports"
             className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors"
           >
             <svg

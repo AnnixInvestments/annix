@@ -108,7 +108,7 @@ export default function ColorsSettingsPage() {
       <div className="space-y-6">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/settings"
+            href="/annix-pulse/settings"
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -135,7 +135,7 @@ export default function ColorsSettingsPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
-            href="/annix-rep/settings"
+            href="/annix-pulse/settings"
             className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           >
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

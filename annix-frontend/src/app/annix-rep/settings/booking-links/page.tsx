@@ -518,7 +518,7 @@ export default function BookingLinksSettingsPage() {
         <div className="flex items-center justify-between mb-6">
           <div>
             <Link
-              href="/annix-rep/settings"
+              href="/annix-pulse/settings"
               className="text-sm text-blue-600 dark:text-blue-400 hover:underline mb-2 inline-block"
             >
               &larr; Back to Settings

@@ -292,7 +292,7 @@ export default function RecordMeetingPage() {
     });
 
     setIsUploading(false);
-    router.push(`/annix-rep/meetings/${meetingId}`);
+    router.push(`/annix-pulse/meetings/${meetingId}`);
   };
 
   useEffect(() => {
@@ -322,7 +322,7 @@ export default function RecordMeetingPage() {
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center gap-4">
           <Link
-            href={`/annix-rep/meetings/${meetingId}`}
+            href={`/annix-pulse/meetings/${meetingId}`}
             className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
           >
             <svg
@@ -362,7 +362,7 @@ export default function RecordMeetingPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center gap-4">
         <Link
-          href={`/annix-rep/meetings/${meetingId}`}
+          href={`/annix-pulse/meetings/${meetingId}`}
           className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
         >
           <svg

@@ -75,7 +75,7 @@ function CrmOAuthCallbackContent() {
     if (window.opener) {
       window.close();
     } else {
-      router.push("/annix-rep/settings/crm");
+      router.push("/annix-pulse/settings/crm");
     }
   };
 
