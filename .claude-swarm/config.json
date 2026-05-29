@@ -46,17 +46,14 @@
       }
     },
     "test": {
-      "description": "Test Postgres on Neon. Uploads use prod S3 bucket. Email off locally.",
+      "description": "Test Mongo (annix_test). Uploads use prod S3 bucket. Email off locally.",
       "env": {
         "provider": "flyio",
         "app": "annix-app-test",
         "secrets": [
-          "DATABASE_HOST",
-          "DATABASE_PORT",
-          "DATABASE_USERNAME",
-          "DATABASE_PASSWORD",
-          "DATABASE_NAME",
-          "DATABASE_SSL",
+          "DATABASE_DRIVER",
+          "MONGODB_URI",
+          "MONGO_DATABASE",
           "JWT_SECRET",
           "DOCUMENT_ENCRYPTION_KEY",
           "AWS_ACCESS_KEY_ID",
@@ -69,7 +66,6 @@
         ]
       },
       "localOverrides": {
-        "DATABASE_DRIVER": "postgres",
         "FRONTEND_URL": "http://localhost:3000",
         "CORS_ORIGINS": "http://localhost:3000",
         "EMAIL_DELIVERY_DISABLED": "true"
