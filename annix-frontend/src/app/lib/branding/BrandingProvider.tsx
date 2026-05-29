@@ -1,13 +1,32 @@
 "use client";
 
-import { createContext, useContext } from "react";
+import { createContext, useContext, useEffect } from "react";
 import { useBranding } from "@/app/lib/query/hooks";
-import { type Branding, brandingCssVars, brandingFallback } from "./branding";
+import { type Branding, brandingCssVars, brandingFallback, googleFontsHref } from "./branding";
 
 const BrandingContext = createContext<Branding | null>(null);
 
 export function useBrandingContext(): Branding | null {
   return useContext(BrandingContext);
+}
+
+function useBrandFonts(branding: Branding) {
+  const href = googleFontsHref(branding);
+  const brandCode = branding.brandCode;
+  useEffect(() => {
+    if (!href) return;
+    const id = `brand-fonts-${brandCode}`;
+    const existing = document.getElementById(id) as HTMLLinkElement | null;
+    if (existing) {
+      if (existing.href !== href) existing.href = href;
+      return;
+    }
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = href;
+    document.head.appendChild(link);
+  }, [href, brandCode]);
 }
 
 /**
@@ -28,6 +47,7 @@ export function BrandingProvider(props: {
   const data = query.data;
   const branding = data || brandingFallback(brand);
   const cssVars = brandingCssVars(branding);
+  useBrandFonts(branding);
 
   if (!withSurface) {
     return (

@@ -1,9 +1,10 @@
-import { BadRequestException, Controller, Get, Header, Param, Res } from "@nestjs/common";
+import { BadRequestException, Controller, Get, Header, Param, Query, Res } from "@nestjs/common";
 import { ApiOperation, ApiTags } from "@nestjs/swagger";
 import type { Response } from "express";
 import {
   AppBrandingService,
   type BrandingAssetSlot,
+  type BrandingAssetVariant,
   type BrandingImageView,
   type BrandingView,
 } from "./app-branding.service";
@@ -15,6 +16,9 @@ const VALID_SLOTS: BrandingAssetSlot[] = [
   "favicon",
   "watermark",
   "textCrop",
+  "subMark",
+  "flashLine",
+  "heroImage",
 ];
 
 @ApiTags("Public Branding")
@@ -34,10 +38,16 @@ export class PublicBrandingController {
   async asset(
     @Param("brand") brand: string,
     @Param("slot") slot: string,
+    @Query("variant") variant: string,
     @Res() res: Response,
   ): Promise<void> {
     const validSlot = parseSlot(slot);
-    const { buffer, mimeType } = await this.brandingService.assetForSlot(brand, validSlot);
+    const validVariant = parseVariant(variant);
+    const { buffer, mimeType } = await this.brandingService.assetForSlot(
+      brand,
+      validSlot,
+      validVariant,
+    );
     res.setHeader("Content-Type", mimeType);
     res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
     res.send(buffer);
@@ -70,4 +80,8 @@ function parseSlot(slot: string): BrandingAssetSlot {
     throw new BadRequestException(`Unknown branding slot: ${slot}`);
   }
   return match;
+}
+
+function parseVariant(variant: string): BrandingAssetVariant {
+  return variant === "dark" ? "dark" : "light";
 }

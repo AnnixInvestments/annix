@@ -19,7 +19,12 @@ export type BrandingAssetSlot =
   | "wordmark"
   | "favicon"
   | "watermark"
-  | "textCrop";
+  | "textCrop"
+  | "subMark"
+  | "flashLine"
+  | "heroImage";
+
+export type BrandingAssetVariant = "light" | "dark";
 
 export interface BrandingView {
   brandCode: string;
@@ -32,11 +37,16 @@ export interface BrandingView {
   gradientTo: string;
   tagline: string;
   description: string;
+  heroWords: string;
+  fontDisplay: string;
+  fontHeadings: string;
+  fontBody: string;
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
   assets: Record<BrandingAssetSlot, boolean>;
+  assetsDark: Record<BrandingAssetSlot, boolean>;
   assetVersion: number;
 }
 
@@ -54,14 +64,37 @@ export interface BrandingAdminView {
   effective: BrandingView;
 }
 
-const SLOT_COLUMN: Record<BrandingAssetSlot, keyof AppBranding> = {
-  logoIcon: "logoIconPath",
-  logoLockup: "logoLockupPath",
-  wordmark: "wordmarkPath",
-  favicon: "faviconPath",
-  watermark: "watermarkPath",
-  textCrop: "textCropPath",
+const SLOT_COLUMN: Record<
+  BrandingAssetSlot,
+  { light: keyof AppBranding; dark: keyof AppBranding }
+> = {
+  logoIcon: { light: "logoIconPath", dark: "logoIconPathDark" },
+  logoLockup: { light: "logoLockupPath", dark: "logoLockupPathDark" },
+  wordmark: { light: "wordmarkPath", dark: "wordmarkPathDark" },
+  favicon: { light: "faviconPath", dark: "faviconPathDark" },
+  watermark: { light: "watermarkPath", dark: "watermarkPathDark" },
+  textCrop: { light: "textCropPath", dark: "textCropPathDark" },
+  subMark: { light: "subMarkPath", dark: "subMarkPathDark" },
+  flashLine: { light: "flashLinePath", dark: "flashLinePathDark" },
+  heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
 };
+
+const ASSET_SLOTS: BrandingAssetSlot[] = [
+  "logoIcon",
+  "logoLockup",
+  "wordmark",
+  "favicon",
+  "watermark",
+  "textCrop",
+  "subMark",
+  "flashLine",
+  "heroImage",
+];
+
+const PATH_COLUMNS: (keyof AppBranding)[] = ASSET_SLOTS.flatMap((slot) => [
+  SLOT_COLUMN[slot].light,
+  SLOT_COLUMN[slot].dark,
+]);
 
 @Injectable()
 export class AppBrandingService {
@@ -102,12 +135,28 @@ export class AppBrandingService {
       gradientTo: "#1a1a40",
       tagline: "",
       description: "",
+      heroWords: "",
+      fontDisplay: "Orbitron",
+      fontHeadings: "Exo 2",
+      fontBody: "Inter",
       logoIconPath: null,
       logoLockupPath: null,
       wordmarkPath: null,
       faviconPath: null,
       watermarkPath: null,
       textCropPath: null,
+      subMarkPath: null,
+      flashLinePath: null,
+      heroImagePath: null,
+      logoIconPathDark: null,
+      logoLockupPathDark: null,
+      wordmarkPathDark: null,
+      faviconPathDark: null,
+      watermarkPathDark: null,
+      textCropPathDark: null,
+      subMarkPathDark: null,
+      flashLinePathDark: null,
+      heroImagePathDark: null,
       watermarkEnabled: true,
       watermarkOpacity: 0.1,
       watermarkMaxSizePx: 880,
@@ -170,18 +219,23 @@ export class AppBrandingService {
 
     if (dto.tagline !== undefined) existing.tagline = dto.tagline;
     if (dto.description !== undefined) existing.description = dto.description;
+    if (dto.heroWords !== undefined) existing.heroWords = dto.heroWords;
+    if (dto.fontDisplay !== undefined) existing.fontDisplay = dto.fontDisplay;
+    if (dto.fontHeadings !== undefined) existing.fontHeadings = dto.fontHeadings;
+    if (dto.fontBody !== undefined) existing.fontBody = dto.fontBody;
 
     if (dto.watermarkEnabled !== undefined) existing.watermarkEnabled = dto.watermarkEnabled;
     if (dto.watermarkOpacity !== undefined) existing.watermarkOpacity = dto.watermarkOpacity;
     if (dto.watermarkMaxSizePx !== undefined) existing.watermarkMaxSizePx = dto.watermarkMaxSizePx;
     if (dto.loadingAnimation !== undefined) existing.loadingAnimation = dto.loadingAnimation;
 
-    if (dto.logoIconPath !== undefined) existing.logoIconPath = dto.logoIconPath;
-    if (dto.logoLockupPath !== undefined) existing.logoLockupPath = dto.logoLockupPath;
-    if (dto.wordmarkPath !== undefined) existing.wordmarkPath = dto.wordmarkPath;
-    if (dto.faviconPath !== undefined) existing.faviconPath = dto.faviconPath;
-    if (dto.watermarkPath !== undefined) existing.watermarkPath = dto.watermarkPath;
-    if (dto.textCropPath !== undefined) existing.textCropPath = dto.textCropPath;
+    const dtoRecord = dto as unknown as Record<string, string | null | undefined>;
+    PATH_COLUMNS.forEach((column) => {
+      const value = dtoRecord[column];
+      if (value !== undefined) {
+        existing[column] = value as never;
+      }
+    });
 
     if (dto.inheritedFields !== undefined) {
       const allowed = dto.inheritedFields.filter((field) =>
@@ -208,9 +262,10 @@ export class AppBrandingService {
   async assetForSlot(
     brand: string,
     slot: BrandingAssetSlot,
+    variant: BrandingAssetVariant = "light",
   ): Promise<{ buffer: Buffer; mimeType: string }> {
     const code = this.assertBrand(brand);
-    const column = SLOT_COLUMN[slot];
+    const column = SLOT_COLUMN[slot][variant];
     const app = await this.rawRow(code);
     const ownPath = app[column] as string | null;
     const masterPath =
@@ -219,7 +274,7 @@ export class AppBrandingService {
         : ((await this.rawRow(MASTER_BRAND_CODE))[column] as string | null);
     const path = ownPath ?? masterPath;
     if (!path) {
-      throw new NotFoundException(`No custom asset set for ${brand}/${slot}`);
+      throw new NotFoundException(`No custom ${variant} asset set for ${brand}/${slot}`);
     }
     const buffer = await this.storageService.download(path);
     return { buffer, mimeType: mimeTypeForPath(path) };
@@ -298,6 +353,10 @@ function pickScalars(row: AppBranding): PlatformBrandingScalars {
     gradientTo: row.gradientTo,
     tagline: row.tagline,
     description: row.description,
+    heroWords: row.heroWords,
+    fontDisplay: row.fontDisplay,
+    fontHeadings: row.fontHeadings,
+    fontBody: row.fontBody,
     watermarkEnabled: row.watermarkEnabled,
     watermarkOpacity: row.watermarkOpacity,
     watermarkMaxSizePx: row.watermarkMaxSizePx,
@@ -328,19 +387,22 @@ function composeView(
   const scalars = isMaster ? own : mergeScalars(own, pickScalars(master), inheritedFields);
   const present = (ownPath: string | null, masterPath: string | null): boolean =>
     ownPath != null || (!isMaster && masterPath != null);
+  const presence = (variant: BrandingAssetVariant): Record<BrandingAssetSlot, boolean> =>
+    ASSET_SLOTS.reduce<Record<BrandingAssetSlot, boolean>>(
+      (acc, slot) => {
+        const column = SLOT_COLUMN[slot][variant];
+        acc[slot] = present(app[column] as string | null, master[column] as string | null);
+        return acc;
+      },
+      {} as Record<BrandingAssetSlot, boolean>,
+    );
   const appTime = app.updatedAt ? app.updatedAt.getTime() : 0;
   const masterTime = master.updatedAt ? master.updatedAt.getTime() : 0;
   return {
     brandCode: app.brandCode,
     ...scalars,
-    assets: {
-      logoIcon: present(app.logoIconPath, master.logoIconPath),
-      logoLockup: present(app.logoLockupPath, master.logoLockupPath),
-      wordmark: present(app.wordmarkPath, master.wordmarkPath),
-      favicon: present(app.faviconPath, master.faviconPath),
-      watermark: present(app.watermarkPath, master.watermarkPath),
-      textCrop: present(app.textCropPath, master.textCropPath),
-    },
+    assets: presence("light"),
+    assetsDark: presence("dark"),
     assetVersion: isMaster ? appTime : Math.max(appTime, masterTime),
   };
 }

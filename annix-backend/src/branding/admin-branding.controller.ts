@@ -40,6 +40,9 @@ const VALID_SLOTS: BrandingAssetSlot[] = [
   "favicon",
   "watermark",
   "textCrop",
+  "subMark",
+  "flashLine",
+  "heroImage",
 ];
 
 @ApiTags("Admin Branding")

@@ -139,14 +139,15 @@ Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModa
 
 #### Branding — per-app + master inheritance (`app/lib/branding/`, backend `branding/`)
 
-Single source of truth for every app's theme (colours, gradients, logos, watermark, loading animation, tagline). **Never hardcode brand assets/colours** — resolve at runtime.
+Single source of truth for every app's theme (colours, gradients, logos, watermark, loading animation, tagline, hero words, typography). **Never hardcode brand assets/colours** — resolve at runtime.
 
 | Export | Use for |
 |---|---|
 | `useBranding(brandCode)` | Public resolved branding for an app shell (`@/app/lib/query/hooks`). Returns the **effective** branding after inheritance is applied server-side. |
-| `resolveBrandAssetUrl(slot, branding)` / `brandingCssVars(branding)` / `brandHasAsset` / `brandingFallback` | Resolve asset URLs + CSS vars. Slots: `logoIcon`, `logoLockup`, `wordmark`, `favicon`, `watermark`, `textCrop`. |
+| `resolveBrandAssetUrl(slot, branding, variant?)` / `brandingCssVars(branding)` / `brandHasAsset(slot, branding, variant?)` / `brandingFallback` | Resolve asset URLs + CSS vars. Each slot has a **light + dark** variant (`variant` defaults to `light`; dark falls back to light when unset). Slots: `logoIcon`, `logoLockup`, `wordmark`, `favicon`, `watermark`, `textCrop`, `subMark`, `flashLine`, `heroImage`. `brandingCssVars` also emits `--brand-font-display/-headings/-body`. |
+| `googleFontsHref(branding)` / `BRAND_FONT_OPTIONS` | Build the Google Fonts stylesheet href for the brand's three font families; `BrandingProvider` loads it automatically. |
 | `BrandingEditor` (`lib/branding/components/`) | The shared per-brand editor. Used by `app/admin/portal/branding/[brand]/page.tsx`. Renders per-field **Inherit ⟷ Override** toggles for non-master brands; the master brand (`annix-investments`) shows no toggles. |
-| `MASTER_BRAND_CODE` (`annix-investments`), `INHERITABLE_SCALAR_FIELDS`, `BrandingAdminView` | Inheritance model. The master brand holds the umbrella Annix identity; per-app brands inherit any scalar field listed in their `inheritedFields`, and inherit an asset slot whenever they have no own upload (falls back master → bundled default). |
+| `MASTER_BRAND_CODE` (`annix-investments`), `INHERITABLE_SCALAR_FIELDS`, `BrandingAdminView` | Inheritance model. The master brand holds the umbrella Annix identity; per-app brands inherit any scalar field listed in their `inheritedFields` (now incl. `heroWords`, `fontDisplay`, `fontHeadings`, `fontBody`), and inherit an asset slot/variant whenever they have no own upload (falls back master → bundled default). |
 
 **Brand Center** = `app/admin/portal/branding/page.tsx` (linked from Global Apps → Admin Tools): features the master brand + links to every app's editor.
 

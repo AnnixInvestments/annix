@@ -4,10 +4,15 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import {
+  BRAND_FONT_OPTIONS,
   BRAND_LOADING_ANIMATIONS,
   type Branding,
   type BrandingAssetSlot,
+  type BrandingAssetVariant,
   type BrandingUpdate,
+  brandHasAsset,
+  brandingFallback,
+  googleFontsHref,
   resolveBrandAssetUrl,
 } from "@/app/lib/branding/branding";
 import {
@@ -29,6 +34,10 @@ interface BrandingForm {
   gradientTo: string;
   tagline: string;
   description: string;
+  heroWords: string;
+  fontDisplay: string;
+  fontHeadings: string;
+  fontBody: string;
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
@@ -54,46 +63,72 @@ const COLOR_FIELDS: { key: ColorKey; label: string }[] = [
   { key: "gradientTo", label: "Gradient — to" },
 ];
 
+type FontKey = "fontDisplay" | "fontHeadings" | "fontBody";
+
+const FONT_FIELDS: { key: FontKey; label: string; hint: string }[] = [
+  { key: "fontDisplay", label: "Display", hint: "Big brand lettering — defaults to Orbitron." },
+  { key: "fontHeadings", label: "Headings", hint: "Section headings — defaults to Exo 2." },
+  { key: "fontBody", label: "Body", hint: "Paragraphs and UI text — defaults to Inter." },
+];
+
 interface AssetFieldDef {
   key: BrandingAssetSlot;
   label: string;
   hint: string;
 }
 
-const ASSET_FIELDS: AssetFieldDef[] = [
-  { key: "logoIcon", label: "Logo icon", hint: "Square mark shown in the toolbar." },
-  { key: "logoLockup", label: "Full lockup", hint: "The complete brand artwork." },
-  { key: "wordmark", label: "Wordmark", hint: "The text logo." },
-  { key: "favicon", label: "Browser favicon", hint: "Shown in the browser tab." },
+const LAYER_FIELDS: AssetFieldDef[] = [
+  { key: "logoIcon", label: "Orbital mark", hint: "Square icon shown in the toolbar." },
+  { key: "wordmark", label: "ANNIX wordmark", hint: "The ANNIX text logo." },
+  { key: "subMark", label: "App-title sub-mark", hint: "The app name, e.g. INVESTMENTS." },
+  { key: "flashLine", label: "Flash line", hint: "Orange horizon flare accent." },
+  { key: "logoLockup", label: "Full lockup", hint: "The complete composite artwork." },
+  { key: "favicon", label: "Favicon", hint: "Shown in the browser tab." },
   { key: "watermark", label: "Background watermark", hint: "Faded hero behind pages." },
+  { key: "textCrop", label: "Text image", hint: "Horizontal text logo — navbar & login." },
 ];
 
-const TEXT_IMAGE_FIELD: AssetFieldDef = {
-  key: "textCrop",
-  label: "Text image",
-  hint: "Horizontal text logo — shown in the navbar and on the login screen.",
+const HERO_IMAGE_FIELD: AssetFieldDef = {
+  key: "heroImage",
+  label: "Hero words image",
+  hint: "Optional artwork that overrides the typed pillar tagline.",
 };
 
-const ALL_FIELDS: AssetFieldDef[] = [...ASSET_FIELDS, TEXT_IMAGE_FIELD];
+const ALL_FIELDS: AssetFieldDef[] = [...LAYER_FIELDS, HERO_IMAGE_FIELD];
 
-type BrandingAssetField =
-  | "logoIconPath"
-  | "logoLockupPath"
-  | "wordmarkPath"
-  | "faviconPath"
-  | "watermarkPath"
-  | "textCropPath";
-
-const SLOT_TO_FIELD: Record<BrandingAssetSlot, BrandingAssetField> = {
-  logoIcon: "logoIconPath",
-  logoLockup: "logoLockupPath",
-  wordmark: "wordmarkPath",
-  favicon: "faviconPath",
-  watermark: "watermarkPath",
-  textCrop: "textCropPath",
+const SLOT_TO_FIELD: Record<
+  BrandingAssetSlot,
+  { light: keyof BrandingUpdate; dark: keyof BrandingUpdate }
+> = {
+  logoIcon: { light: "logoIconPath", dark: "logoIconPathDark" },
+  logoLockup: { light: "logoLockupPath", dark: "logoLockupPathDark" },
+  wordmark: { light: "wordmarkPath", dark: "wordmarkPathDark" },
+  favicon: { light: "faviconPath", dark: "faviconPathDark" },
+  watermark: { light: "watermarkPath", dark: "watermarkPathDark" },
+  textCrop: { light: "textCropPath", dark: "textCropPathDark" },
+  subMark: { light: "subMarkPath", dark: "subMarkPathDark" },
+  flashLine: { light: "flashLinePath", dark: "flashLinePathDark" },
+  heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
 };
+
+const ASSET_SLOTS: BrandingAssetSlot[] = [
+  "logoIcon",
+  "logoLockup",
+  "wordmark",
+  "favicon",
+  "watermark",
+  "textCrop",
+  "subMark",
+  "flashLine",
+  "heroImage",
+];
 
 const MASTER_LABEL = "Annix Investments";
+
+type VariantUrls = { light: string; dark: string };
+type AssetPreviewMap = Record<BrandingAssetSlot, VariantUrls>;
+type AssetChangeEntry = { light?: string | null; dark?: string | null };
+type AssetChangeMap = Partial<Record<BrandingAssetSlot, AssetChangeEntry>>;
 
 function formFromBranding(branding: Branding): BrandingForm {
   return {
@@ -106,11 +141,29 @@ function formFromBranding(branding: Branding): BrandingForm {
     gradientTo: branding.gradientTo,
     tagline: branding.tagline,
     description: branding.description,
+    heroWords: branding.heroWords,
+    fontDisplay: branding.fontDisplay,
+    fontHeadings: branding.fontHeadings,
+    fontBody: branding.fontBody,
     watermarkEnabled: branding.watermarkEnabled,
     watermarkOpacity: branding.watermarkOpacity,
     watermarkMaxSizePx: branding.watermarkMaxSizePx,
     loadingAnimation: branding.loadingAnimation,
   };
+}
+
+function previewsFromBranding(branding: Branding): AssetPreviewMap {
+  return ASSET_SLOTS.reduce<AssetPreviewMap>((acc, slot) => {
+    acc[slot] = {
+      light: resolveBrandAssetUrl(slot, branding, "light"),
+      dark: resolveBrandAssetUrl(slot, branding, "dark"),
+    };
+    return acc;
+  }, {} as AssetPreviewMap);
+}
+
+function splitHeroWords(value: string): string[] {
+  return value.split(/[\s•·|/,]+/).filter((token) => token.length > 0);
 }
 
 export function BrandingEditor(props: { brand: string; title: string; backHref?: string }) {
@@ -127,37 +180,38 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
 
   const [form, setForm] = useState<BrandingForm | null>(null);
   const [inherited, setInherited] = useState<Set<string>>(new Set());
-  const [assetPreview, setAssetPreview] = useState<Record<BrandingAssetSlot, string>>({
-    logoIcon: "",
-    logoLockup: "",
-    wordmark: "",
-    favicon: "",
-    watermark: "",
-    textCrop: "",
-  });
-  const [assetChange, setAssetChange] = useState<Partial<Record<BrandingAssetSlot, string | null>>>(
-    {},
+  const [assetPreview, setAssetPreview] = useState<AssetPreviewMap>(() =>
+    previewsFromBranding(brandingFallback(brand)),
   );
-  const [uploadingSlot, setUploadingSlot] = useState<BrandingAssetSlot | null>(null);
+  const [assetChange, setAssetChange] = useState<AssetChangeMap>({});
+  const [uploadingKey, setUploadingKey] = useState<string | null>(null);
+  const [previewTheme, setPreviewTheme] = useState<BrandingAssetVariant>("dark");
 
   const adminView = brandingQuery.data;
 
   useEffect(() => {
     if (!adminView) return;
-    const own = adminView.own;
-    const effective = adminView.effective;
-    setForm(formFromBranding(own));
+    setForm(formFromBranding(adminView.own));
     setInherited(new Set(adminView.inheritedFields));
-    setAssetPreview({
-      logoIcon: resolveBrandAssetUrl("logoIcon", effective),
-      logoLockup: resolveBrandAssetUrl("logoLockup", effective),
-      wordmark: resolveBrandAssetUrl("wordmark", effective),
-      favicon: resolveBrandAssetUrl("favicon", effective),
-      watermark: resolveBrandAssetUrl("watermark", effective),
-      textCrop: resolveBrandAssetUrl("textCrop", effective),
-    });
+    setAssetPreview(previewsFromBranding(adminView.effective));
     setAssetChange({});
   }, [adminView]);
+
+  const fontHref = form ? googleFontsHref({ ...form, brandCode: brand } as Branding) : null;
+  useEffect(() => {
+    if (!fontHref) return;
+    const id = "branding-editor-fonts";
+    const existing = document.getElementById(id) as HTMLLinkElement | null;
+    if (existing) {
+      if (existing.href !== fontHref) existing.href = fontHref;
+      return;
+    }
+    const link = document.createElement("link");
+    link.id = id;
+    link.rel = "stylesheet";
+    link.href = fontHref;
+    document.head.appendChild(link);
+  }, [fontHref]);
 
   const setField = <K extends keyof BrandingForm>(key: K, value: BrandingForm[K]) => {
     setForm((prev) => (prev ? ({ ...prev, [key]: value } as BrandingForm) : prev));
@@ -175,17 +229,29 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
     });
   };
 
-  const handleUpload = async (slot: BrandingAssetSlot, file: File) => {
-    setUploadingSlot(slot);
+  const handleUpload = async (
+    slot: BrandingAssetSlot,
+    variant: BrandingAssetVariant,
+    file: File,
+  ) => {
+    const key = `${slot}:${variant}`;
+    setUploadingKey(key);
     try {
       const result = await uploadMutation.mutateAsync({ slot, file });
-      setAssetPreview((prev) => ({ ...prev, [slot]: result.previewUrl }));
-      setAssetChange((prev) => ({ ...prev, [slot]: result.path }));
+      setAssetPreview((prev) => {
+        const current = prev[slot];
+        return { ...prev, [slot]: { ...current, [variant]: result.previewUrl } };
+      });
+      setAssetChange((prev) => {
+        const existing = prev[slot];
+        const current = existing || {};
+        return { ...prev, [slot]: { ...current, [variant]: result.path } };
+      });
       showToast("Uploaded — preview updated. Publish to go live.", "success");
     } catch {
       showToast("Upload failed — use a PNG/JPG/SVG under 2MB.", "error");
     } finally {
-      setUploadingSlot(null);
+      setUploadingKey(null);
     }
   };
 
@@ -213,10 +279,16 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
     const payload: BrandingUpdate = { ...form, inheritedFields: Array.from(inherited) };
     ALL_FIELDS.forEach((assetField) => {
       const slot = assetField.key;
-      const value = assetChange[slot];
-      if (value !== undefined) {
-        const targetField = SLOT_TO_FIELD[slot];
-        payload[targetField] = value;
+      const change = assetChange[slot];
+      if (!change) return;
+      const fields = SLOT_TO_FIELD[slot];
+      const lightValue = change.light;
+      const darkValue = change.dark;
+      if (lightValue !== undefined) {
+        payload[fields.light] = lightValue as never;
+      }
+      if (darkValue !== undefined) {
+        payload[fields.dark] = darkValue as never;
       }
     });
     try {
@@ -249,12 +321,33 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
 
   const isMaster = adminView.isMaster;
   const master = adminView.master;
+  const effective = adminView.effective;
+  const ownView = adminView.own;
 
   const effectiveValue = <K extends keyof BrandingForm>(key: K): BrandingForm[K] => {
     if (!isMaster && inherited.has(key)) {
       return master[key as keyof Branding] as BrandingForm[K];
     }
     return form[key];
+  };
+
+  const slotHasAsset = (slot: BrandingAssetSlot, variant: BrandingAssetVariant): boolean => {
+    const change = assetChange[slot];
+    const changed = change ? change[variant] : undefined;
+    if (changed !== undefined) {
+      return changed !== null;
+    }
+    return brandHasAsset(slot, effective, variant);
+  };
+
+  const slotInheriting = (slot: BrandingAssetSlot, variant: BrandingAssetVariant): boolean => {
+    if (isMaster) return false;
+    const change = assetChange[slot];
+    const changed = change ? change[variant] : undefined;
+    if (changed !== undefined) return false;
+    const ownHas = variant === "dark" ? ownView.assetsDark[slot] : ownView.assets[slot];
+    const masterHas = variant === "dark" ? master.assetsDark[slot] : master.assets[slot];
+    return !ownHas && masterHas;
   };
 
   const previewNavbar = effectiveValue("navbarColor");
@@ -264,36 +357,55 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const previewGradTo = effectiveValue("gradientTo");
   const previewTagline = effectiveValue("tagline");
   const previewDescription = effectiveValue("description");
+  const previewHeroWords = effectiveValue("heroWords");
+  const previewFontDisplay = effectiveValue("fontDisplay");
+  const previewFontHeadings = effectiveValue("fontHeadings");
+  const previewFontBody = effectiveValue("fontBody");
   const previewWatermarkEnabled = effectiveValue("watermarkEnabled");
   const previewWatermarkOpacityRaw = effectiveValue("watermarkOpacity");
   const previewAnimation = effectiveValue("loadingAnimation");
 
   const watermarkOpacityForPreview = previewWatermarkEnabled ? previewWatermarkOpacityRaw : 0;
+  const displayFontStack = `'${previewFontDisplay}', sans-serif`;
+  const headingsFontStack = `'${previewFontHeadings}', sans-serif`;
+  const bodyFontStack = `'${previewFontBody}', sans-serif`;
   const previewStyle = {
     "--brand-navbar": previewNavbar,
     "--brand-accent": previewAccent,
   } as React.CSSProperties;
   const previewGradient = `linear-gradient(to bottom right, ${previewGradFrom}, ${previewGradVia}, ${previewGradTo})`;
 
-  const logoPreview = assetPreview.logoIcon;
-  const wordmarkPreview = assetPreview.wordmark;
-  const watermarkPreview = assetPreview.watermark;
-  const faviconPreview = assetPreview.favicon;
-  const textCropPreview = assetPreview.textCrop;
-  const textCropBusy = uploadingSlot === "textCrop";
-  const effectiveAssets = adminView.effective.assets;
-  const hasTextCrop = effectiveAssets.textCrop;
+  const themeUrl = (slot: BrandingAssetSlot): string => assetPreview[slot][previewTheme];
+  const logoPreview = themeUrl("logoIcon");
+  const faviconPreview = assetPreview.favicon.light;
+  const wordmarkPreview = themeUrl("wordmark");
+  const subMarkPreview = themeUrl("subMark");
+  const flashLinePreview = themeUrl("flashLine");
+  const heroImagePreview = themeUrl("heroImage");
+  const watermarkPreview = themeUrl("watermark");
+  const textCropPreview = themeUrl("textCrop");
+
+  const hasTextCrop = slotHasAsset("textCrop", previewTheme);
   const navbarTextUrl = hasTextCrop ? textCropPreview : wordmarkPreview;
+  const showWordmarkLayer = slotHasAsset("wordmark", previewTheme);
+  const showSubMarkLayer = slotHasAsset("subMark", previewTheme);
+  const showFlashLineLayer = slotHasAsset("flashLine", previewTheme);
+  const showHeroImageLayer = slotHasAsset("heroImage", previewTheme);
+  const heroTokens = splitHeroWords(previewHeroWords);
+
+  const heroIsLight = previewTheme === "light";
+  const heroSurface = heroIsLight ? "#eef1f5" : previewGradient;
+  const heroTextColor = heroIsLight ? "#0A1B3D" : "#ffffff";
+  const heroSubText = heroIsLight ? "rgba(10,27,61,0.65)" : "rgba(255,255,255,0.7)";
+
   const isPublishing = updateMutation.isPending;
   const galleryData = imagesQuery.data;
   const galleryImages = galleryData ?? [];
   const addingImage = addImageMutation.isPending;
 
-  const ownTextCrop = adminView.own.assets.textCrop;
-  const masterTextCrop = master.assets.textCrop;
-  const textCropInheriting = !isMaster && !ownTextCrop && masterTextCrop;
   const taglineInherited = !isMaster && inherited.has("tagline");
   const descriptionInherited = !isMaster && inherited.has("description");
+  const heroWordsInherited = !isMaster && inherited.has("heroWords");
   const watermarkEnabledInherited = !isMaster && inherited.has("watermarkEnabled");
   const watermarkOpacityInherited = !isMaster && inherited.has("watermarkOpacity");
   const animationInherited = !isMaster && inherited.has("loadingAnimation");
@@ -306,7 +418,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
           <p className="text-gray-600 mt-1">
             {isMaster
               ? "This is the master Annix brand. Other apps inherit these values unless they override them."
-              : "Upload logos and edit colours/text. Toggle Inherit on any field to follow the Annix Investments master brand. Changes go live when you publish."}
+              : "Upload logos and edit text/typography. Toggle Inherit on any field to follow the Annix Investments master brand. Changes go live when you publish."}
           </p>
         </div>
         {backHref ? (
@@ -346,26 +458,25 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Images</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Logo layers</h2>
             <p className="text-xs text-gray-500 mb-3">
-              Drag an image onto a row, or click Upload. PNG/JPG/SVG/WebP under 2MB. Leave a slot
-              empty to inherit the {MASTER_LABEL} master asset.
+              Each layer takes a Light variant (for light backgrounds) and a Dark variant (for dark
+              backgrounds). PNG/JPG/SVG/WebP under 2MB. Leave a variant empty to inherit the{" "}
+              {MASTER_LABEL} master asset.
             </p>
             <div className="space-y-2">
-              {ASSET_FIELDS.map((field) => {
-                const previewUrl = assetPreview[field.key];
-                const isBusy = uploadingSlot === field.key;
-                const ownHasAsset = adminView.own.assets[field.key];
-                const masterHasAsset = master.assets[field.key];
-                const inheritingAsset = !isMaster && !ownHasAsset && masterHasAsset;
+              {LAYER_FIELDS.map((field) => {
+                const slot = field.key;
+                const previews = assetPreview[slot];
                 return (
-                  <AssetUploadRow
-                    key={field.key}
+                  <LayeredAssetRow
+                    key={slot}
                     field={field}
-                    previewUrl={previewUrl}
-                    busy={isBusy}
-                    inheriting={inheritingAsset}
-                    onFile={(file) => handleUpload(field.key, file)}
+                    previews={previews}
+                    uploadingKey={uploadingKey}
+                    lightInheriting={slotInheriting(slot, "light")}
+                    darkInheriting={slotInheriting(slot, "dark")}
+                    onFile={(variant, file) => handleUpload(slot, variant, file)}
                   />
                 );
               })}
@@ -373,18 +484,68 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Text image</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Hero words</h2>
             <p className="text-xs text-gray-500 mb-3">
-              Horizontal text logo (text crop) — shown in the navbar and on the login screen. Drag &
-              drop or click Upload.
+              The pillar tagline (e.g.{" "}
+              <span className="font-mono">QUOTE · BUILD · INSPECT · DELIVER</span>). Words render
+              with accent-orange dot separators. Upload a Hero words image below to override the
+              typed version with artwork.
             </p>
-            <AssetUploadRow
-              field={TEXT_IMAGE_FIELD}
-              previewUrl={textCropPreview}
-              busy={textCropBusy}
-              inheriting={textCropInheriting}
-              onFile={(file) => handleUpload("textCrop", file)}
+            <label className="block mb-4">
+              <span className="flex items-center justify-between">
+                <span className="text-sm text-gray-700">Pillar tagline</span>
+                {!isMaster ? (
+                  <InheritCheckbox
+                    inherited={heroWordsInherited}
+                    onToggle={(v) => toggleInherit("heroWords", v)}
+                  />
+                ) : null}
+              </span>
+              <input
+                type="text"
+                value={heroWordsInherited ? master.heroWords : form.heroWords}
+                maxLength={200}
+                disabled={heroWordsInherited}
+                placeholder="QUOTE · BUILD · INSPECT · DELIVER"
+                onChange={(e) => setField("heroWords", e.target.value)}
+                className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              />
+            </label>
+            <LayeredAssetRow
+              field={HERO_IMAGE_FIELD}
+              previews={assetPreview.heroImage}
+              uploadingKey={uploadingKey}
+              lightInheriting={slotInheriting("heroImage", "light")}
+              darkInheriting={slotInheriting("heroImage", "dark")}
+              onFile={(variant, file) => handleUpload("heroImage", variant, file)}
             />
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Typography</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Fonts load from Google Fonts and preview live. Pick a listed family or type any Google
+              Fonts name.
+            </p>
+            <div className="space-y-3">
+              {FONT_FIELDS.map((fontField) => {
+                const key = fontField.key;
+                const fieldInherited = !isMaster && inherited.has(key);
+                const value = fieldInherited ? (master[key] as string) : form[key];
+                return (
+                  <FontField
+                    key={key}
+                    label={fontField.label}
+                    hint={fontField.hint}
+                    value={value}
+                    inheritable={!isMaster}
+                    inherited={fieldInherited}
+                    onChange={(v) => setField(key, v)}
+                    onToggleInherit={(v) => toggleInherit(key, v)}
+                  />
+                );
+              })}
+            </div>
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
@@ -442,7 +603,29 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
         </div>
 
         <div className="lg:sticky lg:top-24 self-start space-y-2">
-          <p className="text-sm font-medium text-gray-700">Live preview</p>
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-medium text-gray-700">Live preview</p>
+            <div className="inline-flex rounded-lg border border-gray-300 p-0.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setPreviewTheme("light")}
+                className={`px-2.5 py-1 rounded-md ${
+                  previewTheme === "light" ? "bg-gray-900 text-white" : "text-gray-600"
+                }`}
+              >
+                Light
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewTheme("dark")}
+                className={`px-2.5 py-1 rounded-md ${
+                  previewTheme === "dark" ? "bg-gray-900 text-white" : "text-gray-600"
+                }`}
+              >
+                Dark
+              </button>
+            </div>
+          </div>
           <div className="rounded-xl border border-gray-300 overflow-hidden shadow-sm">
             <div className="flex items-center gap-2 bg-gray-200 px-3 py-2">
               <span className="flex gap-1.5">
@@ -472,10 +655,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                   style={{ backgroundImage: `url('${navbarTextUrl}')` }}
                 />
               </div>
-              <div
-                className="relative h-72 overflow-hidden"
-                style={{ backgroundImage: previewGradient }}
-              >
+              <div className="relative h-80 overflow-hidden" style={{ background: heroSurface }}>
                 <div
                   className="pointer-events-none absolute inset-0 bg-center bg-no-repeat"
                   style={{
@@ -484,15 +664,76 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                     opacity: watermarkOpacityForPreview,
                   }}
                 />
-                <div className="relative z-10 p-4">
-                  <h3 className="text-xl font-bold text-white">{title}</h3>
+                {showFlashLineLayer ? (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-10 h-16 bg-center bg-no-repeat"
+                    style={{
+                      backgroundImage: `url('${flashLinePreview}')`,
+                      backgroundSize: "contain",
+                    }}
+                  />
+                ) : null}
+                <div className="relative z-10 flex h-full flex-col justify-center p-5">
+                  {showWordmarkLayer ? (
+                    <span
+                      className="h-10 w-44 bg-left bg-no-repeat"
+                      style={{
+                        backgroundImage: `url('${wordmarkPreview}')`,
+                        backgroundSize: "contain",
+                      }}
+                    />
+                  ) : (
+                    <h3
+                      className="text-3xl font-bold"
+                      style={{ color: heroTextColor, fontFamily: displayFontStack }}
+                    >
+                      {title}
+                    </h3>
+                  )}
+                  {showSubMarkLayer ? (
+                    <span
+                      className="mt-1 h-6 w-32 bg-left bg-no-repeat"
+                      style={{
+                        backgroundImage: `url('${subMarkPreview}')`,
+                        backgroundSize: "contain",
+                      }}
+                    />
+                  ) : null}
+                  {showHeroImageLayer ? (
+                    <span
+                      className="mt-3 h-8 w-56 bg-left bg-no-repeat"
+                      style={{
+                        backgroundImage: `url('${heroImagePreview}')`,
+                        backgroundSize: "contain",
+                      }}
+                    />
+                  ) : heroTokens.length > 0 ? (
+                    <p
+                      className="mt-3 flex flex-wrap items-center gap-x-2 text-sm font-semibold uppercase tracking-wide"
+                      style={{ color: heroTextColor, fontFamily: headingsFontStack }}
+                    >
+                      {heroTokens.map((token, index) => (
+                        <span key={`${token}-${index}`} className="flex items-center gap-2">
+                          {index > 0 ? (
+                            <span style={{ color: "var(--brand-accent)" }}>•</span>
+                          ) : null}
+                          {token}
+                        </span>
+                      ))}
+                    </p>
+                  ) : null}
                   <p
-                    className="text-xs font-semibold tracking-widest uppercase mt-1"
-                    style={{ color: "var(--brand-accent)" }}
+                    className="mt-3 text-xs font-semibold tracking-widest uppercase"
+                    style={{ color: "var(--brand-accent)", fontFamily: headingsFontStack }}
                   >
                     {previewTagline}
                   </p>
-                  <p className="text-white/70 text-xs mt-1">{previewDescription}</p>
+                  <p
+                    className="text-xs mt-1"
+                    style={{ color: heroSubText, fontFamily: bodyFontStack }}
+                  >
+                    {previewDescription}
+                  </p>
                 </div>
               </div>
             </div>
@@ -659,14 +900,50 @@ function InheritToggleRow(props: {
   );
 }
 
-function AssetUploadRow(props: {
-  field: AssetFieldDef;
+function FontField(props: {
+  label: string;
+  hint: string;
+  value: string;
+  inheritable: boolean;
+  inherited: boolean;
+  onChange: (v: string) => void;
+  onToggleInherit: (inherit: boolean) => void;
+}) {
+  const { label, hint, value, inheritable, inherited, onChange, onToggleInherit } = props;
+  const listId = `font-options-${label.toLowerCase()}`;
+  return (
+    <label className="block">
+      <span className="flex items-center justify-between">
+        <span className="text-sm text-gray-700">{label}</span>
+        {inheritable ? <InheritCheckbox inherited={inherited} onToggle={onToggleInherit} /> : null}
+      </span>
+      <input
+        type="text"
+        list={listId}
+        value={value}
+        disabled={inherited}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+        style={{ fontFamily: `'${value}', sans-serif` }}
+      />
+      <datalist id={listId}>
+        {BRAND_FONT_OPTIONS.map((option) => (
+          <option key={option} value={option} />
+        ))}
+      </datalist>
+      <span className="mt-1 block text-xs text-gray-400">{hint}</span>
+    </label>
+  );
+}
+
+function VariantUpload(props: {
+  variantLabel: string;
   previewUrl: string;
   busy: boolean;
   inheriting: boolean;
   onFile: (file: File) => void;
 }) {
-  const { field, previewUrl, busy, inheriting, onFile } = props;
+  const { variantLabel, previewUrl, busy, inheriting, onFile } = props;
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -677,11 +954,7 @@ function AssetUploadRow(props: {
     if (file) onFile(file);
   };
 
-  const hint = dragOver
-    ? "Drop to upload…"
-    : inheriting
-      ? `Inheriting ${MASTER_LABEL}`
-      : field.hint;
+  const swatchBg = variantLabel === "Dark" ? "bg-gray-900" : "bg-gray-100";
 
   return (
     <div
@@ -691,20 +964,22 @@ function AssetUploadRow(props: {
       }}
       onDragLeave={() => setDragOver(false)}
       onDrop={handleDrop}
-      className={`flex items-center gap-3 rounded-lg border p-2 transition-colors ${
-        dragOver ? "border-dashed border-violet-400 bg-violet-50" : "border-transparent"
+      className={`flex flex-1 items-center gap-2 rounded-lg border p-2 transition-colors ${
+        dragOver ? "border-dashed border-violet-400 bg-violet-50" : "border-gray-200"
       }`}
     >
       <div
-        className="h-12 w-12 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-900 bg-contain bg-center bg-no-repeat"
+        className={`h-10 w-10 flex-shrink-0 rounded-lg border border-gray-200 bg-contain bg-center bg-no-repeat ${swatchBg}`}
         style={{ backgroundImage: `url('${previewUrl}')` }}
       />
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium text-gray-900">{field.label}</p>
-        <p className={`text-xs ${inheriting ? "text-violet-500" : "text-gray-500"}`}>{hint}</p>
+        <p className="text-xs font-medium text-gray-700">{variantLabel}</p>
+        <p className={`text-[11px] ${inheriting ? "text-violet-500" : "text-gray-400"}`}>
+          {inheriting ? `Inheriting ${MASTER_LABEL}` : "Empty inherits master"}
+        </p>
       </div>
-      <label className="cursor-pointer px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200">
-        {busy ? "Uploading…" : "Upload"}
+      <label className="cursor-pointer px-2.5 py-1 text-[11px] font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200">
+        {busy ? "…" : "Upload"}
         <input
           type="file"
           accept="image/png,image/jpeg,image/svg+xml,image/webp,image/x-icon"
@@ -718,6 +993,43 @@ function AssetUploadRow(props: {
           }}
         />
       </label>
+    </div>
+  );
+}
+
+function LayeredAssetRow(props: {
+  field: AssetFieldDef;
+  previews: VariantUrls;
+  uploadingKey: string | null;
+  lightInheriting: boolean;
+  darkInheriting: boolean;
+  onFile: (variant: BrandingAssetVariant, file: File) => void;
+}) {
+  const { field, previews, uploadingKey, lightInheriting, darkInheriting, onFile } = props;
+  const lightBusy = uploadingKey === `${field.key}:light`;
+  const darkBusy = uploadingKey === `${field.key}:dark`;
+  return (
+    <div className="rounded-lg border border-gray-100 p-2">
+      <div className="mb-2">
+        <p className="text-sm font-medium text-gray-900">{field.label}</p>
+        <p className="text-xs text-gray-500">{field.hint}</p>
+      </div>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <VariantUpload
+          variantLabel="Light"
+          previewUrl={previews.light}
+          busy={lightBusy}
+          inheriting={lightInheriting}
+          onFile={(file) => onFile("light", file)}
+        />
+        <VariantUpload
+          variantLabel="Dark"
+          previewUrl={previews.dark}
+          busy={darkBusy}
+          inheriting={darkInheriting}
+          onFile={(file) => onFile("dark", file)}
+        />
+      </div>
     </div>
   );
 }

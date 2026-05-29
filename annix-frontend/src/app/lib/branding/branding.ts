@@ -4,7 +4,12 @@ export type BrandingAssetSlot =
   | "wordmark"
   | "favicon"
   | "watermark"
-  | "textCrop";
+  | "textCrop"
+  | "subMark"
+  | "flashLine"
+  | "heroImage";
+
+export type BrandingAssetVariant = "light" | "dark";
 
 export interface Branding {
   brandCode: string;
@@ -17,11 +22,16 @@ export interface Branding {
   gradientTo: string;
   tagline: string;
   description: string;
+  heroWords: string;
+  fontDisplay: string;
+  fontHeadings: string;
+  fontBody: string;
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
   assets: Record<BrandingAssetSlot, boolean>;
+  assetsDark: Record<BrandingAssetSlot, boolean>;
   assetVersion: number;
 }
 
@@ -47,6 +57,10 @@ export const INHERITABLE_SCALAR_FIELDS = [
   "gradientTo",
   "tagline",
   "description",
+  "heroWords",
+  "fontDisplay",
+  "fontHeadings",
+  "fontBody",
   "watermarkEnabled",
   "watermarkOpacity",
   "watermarkMaxSizePx",
@@ -54,6 +68,21 @@ export const INHERITABLE_SCALAR_FIELDS = [
 ] as const;
 
 export type InheritableScalarField = (typeof INHERITABLE_SCALAR_FIELDS)[number];
+
+export const BRAND_FONT_OPTIONS = [
+  "Orbitron",
+  "Exo 2",
+  "Inter",
+  "Montserrat",
+  "Poppins",
+  "Rajdhani",
+  "Roboto",
+  "Roboto Mono",
+  "Space Grotesk",
+  "Sora",
+  "Archivo",
+  "Lexend",
+] as const;
 
 /** Admin editor payload: the brand's own values, the master's effective values
  *  (shown when a field inherits), and the resolved effective branding. */
@@ -76,12 +105,28 @@ export interface BrandingUpdate {
   gradientTo?: string;
   tagline?: string;
   description?: string;
+  heroWords?: string;
+  fontDisplay?: string;
+  fontHeadings?: string;
+  fontBody?: string;
   logoIconPath?: string | null;
   logoLockupPath?: string | null;
   wordmarkPath?: string | null;
   faviconPath?: string | null;
   watermarkPath?: string | null;
   textCropPath?: string | null;
+  subMarkPath?: string | null;
+  flashLinePath?: string | null;
+  heroImagePath?: string | null;
+  logoIconPathDark?: string | null;
+  logoLockupPathDark?: string | null;
+  wordmarkPathDark?: string | null;
+  faviconPathDark?: string | null;
+  watermarkPathDark?: string | null;
+  textCropPathDark?: string | null;
+  subMarkPathDark?: string | null;
+  flashLinePathDark?: string | null;
+  heroImagePathDark?: string | null;
   watermarkEnabled?: boolean;
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
@@ -120,6 +165,20 @@ export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSl
 const GENERIC_ASSET_DEFAULT = "/branding/annix-orbit-icon.png";
 const ASSET_STREAM_BASE = "/api/public/branding";
 
+function emptyAssetPresence(): Record<BrandingAssetSlot, boolean> {
+  return {
+    logoIcon: false,
+    logoLockup: false,
+    wordmark: false,
+    favicon: false,
+    watermark: false,
+    textCrop: false,
+    subMark: false,
+    flashLine: false,
+    heroImage: false,
+  };
+}
+
 export function brandingFallback(brandCode: string): Branding {
   return {
     brandCode,
@@ -132,25 +191,32 @@ export function brandingFallback(brandCode: string): Branding {
     gradientTo: "#1a1a40",
     tagline: "",
     description: "",
+    heroWords: "",
+    fontDisplay: "Orbitron",
+    fontHeadings: "Exo 2",
+    fontBody: "Inter",
     watermarkEnabled: true,
     watermarkOpacity: 0.1,
     watermarkMaxSizePx: 880,
     loadingAnimation: "pulse",
-    assets: {
-      logoIcon: false,
-      logoLockup: false,
-      wordmark: false,
-      favicon: false,
-      watermark: false,
-      textCrop: false,
-    },
+    assets: emptyAssetPresence(),
+    assetsDark: emptyAssetPresence(),
     assetVersion: 0,
   };
 }
 
-/** True when the brand has a real asset for the slot (uploaded or a registered
- *  per-brand default) — i.e. NOT just the generic placeholder. */
-export function brandHasAsset(slot: BrandingAssetSlot, branding: Branding): boolean {
+/** True when the brand has a real asset for the slot/variant (uploaded or a
+ *  registered per-brand default) — i.e. NOT just the generic placeholder.
+ *  Dark variants have no per-brand bundled defaults, so they are only "present"
+ *  when an admin has uploaded one. */
+export function brandHasAsset(
+  slot: BrandingAssetSlot,
+  branding: Branding,
+  variant: BrandingAssetVariant = "light",
+): boolean {
+  if (variant === "dark") {
+    return branding.assetsDark[slot];
+  }
   const hasCustom = branding.assets[slot];
   if (hasCustom) return true;
   const perBrand = BRAND_ASSET_DEFAULTS[branding.brandCode];
@@ -158,7 +224,18 @@ export function brandHasAsset(slot: BrandingAssetSlot, branding: Branding): bool
   return fallback != null;
 }
 
-export function resolveBrandAssetUrl(slot: BrandingAssetSlot, branding: Branding): string {
+export function resolveBrandAssetUrl(
+  slot: BrandingAssetSlot,
+  branding: Branding,
+  variant: BrandingAssetVariant = "light",
+): string {
+  if (variant === "dark") {
+    const hasDark = branding.assetsDark[slot];
+    if (hasDark) {
+      return `${ASSET_STREAM_BASE}/${branding.brandCode}/asset/${slot}?variant=dark&v=${branding.assetVersion}`;
+    }
+    return resolveBrandAssetUrl(slot, branding, "light");
+  }
   const hasCustom = branding.assets[slot];
   if (hasCustom) {
     return `${ASSET_STREAM_BASE}/${branding.brandCode}/asset/${slot}?v=${branding.assetVersion}`;
@@ -185,8 +262,35 @@ export function brandingCssVars(branding: Branding): Record<string, string> {
     "--brand-grad-from": branding.gradientFrom,
     "--brand-grad-via": branding.gradientVia,
     "--brand-grad-to": branding.gradientTo,
+    "--brand-font-display": fontStack(branding.fontDisplay, "sans-serif"),
+    "--brand-font-headings": fontStack(branding.fontHeadings, "sans-serif"),
+    "--brand-font-body": fontStack(branding.fontBody, "sans-serif"),
     "--brand-watermark-image": watermarkImage,
     "--brand-watermark-opacity": String(effectiveOpacity),
     "--brand-watermark-size": `min(85vmin, ${branding.watermarkMaxSizePx}px)`,
   };
+}
+
+function fontStack(family: string, fallback: string): string {
+  const name = family.trim();
+  if (name.length === 0) {
+    return fallback;
+  }
+  return `'${name}', ${fallback}`;
+}
+
+/** Builds a Google Fonts stylesheet href for the brand's three font families,
+ *  or null when every family is empty. Loads each weight set we use. */
+export function googleFontsHref(branding: Branding): string | null {
+  const families = [branding.fontDisplay, branding.fontHeadings, branding.fontBody]
+    .map((family) => family.trim())
+    .filter((family) => family.length > 0);
+  const unique = Array.from(new Set(families));
+  if (unique.length === 0) {
+    return null;
+  }
+  const params = unique
+    .map((family) => `family=${encodeURIComponent(family)}:wght@400;500;600;700;800`)
+    .join("&");
+  return `https://fonts.googleapis.com/css2?${params}&display=swap`;
 }

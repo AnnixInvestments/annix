@@ -64,6 +64,30 @@ export class UpdateBrandingDto {
   @MaxLength(2000)
   description?: string;
 
+  @ApiPropertyOptional({ description: "Pillar tagline, e.g. QUOTE · BUILD · INSPECT · DELIVER" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  heroWords?: string;
+
+  @ApiPropertyOptional({ description: "Display font family (e.g. Orbitron)" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  fontDisplay?: string;
+
+  @ApiPropertyOptional({ description: "Headings font family (e.g. Exo 2)" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  fontHeadings?: string;
+
+  @ApiPropertyOptional({ description: "Body font family (e.g. Inter)" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  fontBody?: string;
+
   @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
   @IsOptional()
   @ValidateIf((_, value) => value !== null)
@@ -99,6 +123,78 @@ export class UpdateBrandingDto {
   @ValidateIf((_, value) => value !== null)
   @IsString()
   textCropPath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  subMarkPath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  flashLinePath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroImagePath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  logoIconPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  logoLockupPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  wordmarkPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  faviconPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  watermarkPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  textCropPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  subMarkPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  flashLinePathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroImagePathDark?: string | null;
 
   @ApiPropertyOptional()
   @IsOptional()

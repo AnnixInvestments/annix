@@ -38,6 +38,18 @@ export class AppBranding {
   @Column({ name: "description", type: "text", default: "" })
   description: string;
 
+  @Column({ name: "hero_words", type: "varchar", length: 200, default: "" })
+  heroWords: string;
+
+  @Column({ name: "font_display", type: "varchar", length: 100, default: "Orbitron" })
+  fontDisplay: string;
+
+  @Column({ name: "font_headings", type: "varchar", length: 100, default: "Exo 2" })
+  fontHeadings: string;
+
+  @Column({ name: "font_body", type: "varchar", length: 100, default: "Inter" })
+  fontBody: string;
+
   @Column({ name: "logo_icon_path", type: "varchar", length: 500, nullable: true })
   logoIconPath: string | null;
 
@@ -55,6 +67,42 @@ export class AppBranding {
 
   @Column({ name: "text_crop_path", type: "varchar", length: 500, nullable: true })
   textCropPath: string | null;
+
+  @Column({ name: "sub_mark_path", type: "varchar", length: 500, nullable: true })
+  subMarkPath: string | null;
+
+  @Column({ name: "flash_line_path", type: "varchar", length: 500, nullable: true })
+  flashLinePath: string | null;
+
+  @Column({ name: "hero_image_path", type: "varchar", length: 500, nullable: true })
+  heroImagePath: string | null;
+
+  @Column({ name: "logo_icon_path_dark", type: "varchar", length: 500, nullable: true })
+  logoIconPathDark: string | null;
+
+  @Column({ name: "logo_lockup_path_dark", type: "varchar", length: 500, nullable: true })
+  logoLockupPathDark: string | null;
+
+  @Column({ name: "wordmark_path_dark", type: "varchar", length: 500, nullable: true })
+  wordmarkPathDark: string | null;
+
+  @Column({ name: "favicon_path_dark", type: "varchar", length: 500, nullable: true })
+  faviconPathDark: string | null;
+
+  @Column({ name: "watermark_path_dark", type: "varchar", length: 500, nullable: true })
+  watermarkPathDark: string | null;
+
+  @Column({ name: "text_crop_path_dark", type: "varchar", length: 500, nullable: true })
+  textCropPathDark: string | null;
+
+  @Column({ name: "sub_mark_path_dark", type: "varchar", length: 500, nullable: true })
+  subMarkPathDark: string | null;
+
+  @Column({ name: "flash_line_path_dark", type: "varchar", length: 500, nullable: true })
+  flashLinePathDark: string | null;
+
+  @Column({ name: "hero_image_path_dark", type: "varchar", length: 500, nullable: true })
+  heroImagePathDark: string | null;
 
   @Column({ name: "watermark_enabled", type: "boolean", default: true })
   watermarkEnabled: boolean;

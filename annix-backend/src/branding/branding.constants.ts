@@ -25,6 +25,10 @@ export const INHERITABLE_SCALAR_FIELDS = [
   "gradientTo",
   "tagline",
   "description",
+  "heroWords",
+  "fontDisplay",
+  "fontHeadings",
+  "fontBody",
   "watermarkEnabled",
   "watermarkOpacity",
   "watermarkMaxSizePx",
@@ -47,6 +51,10 @@ export interface PlatformBrandingScalars {
   gradientTo: string;
   tagline: string;
   description: string;
+  heroWords: string;
+  fontDisplay: string;
+  fontHeadings: string;
+  fontBody: string;
   watermarkEnabled: boolean;
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
@@ -63,6 +71,10 @@ export const PLATFORM_BRANDING_DEFAULTS: PlatformBrandingScalars = {
   gradientTo: "#1a1a40",
   tagline: "",
   description: "",
+  heroWords: "",
+  fontDisplay: "Orbitron",
+  fontHeadings: "Exo 2",
+  fontBody: "Inter",
   watermarkEnabled: true,
   watermarkOpacity: 0.1,
   watermarkMaxSizePx: 880,

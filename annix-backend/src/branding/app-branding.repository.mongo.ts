@@ -17,12 +17,28 @@ type AppBrandingDocument = {
   gradientTo?: string;
   tagline?: string;
   description?: string;
+  heroWords?: string;
+  fontDisplay?: string;
+  fontHeadings?: string;
+  fontBody?: string;
   logoIconPath?: string | null;
   logoLockupPath?: string | null;
   wordmarkPath?: string | null;
   faviconPath?: string | null;
   watermarkPath?: string | null;
   textCropPath?: string | null;
+  subMarkPath?: string | null;
+  flashLinePath?: string | null;
+  heroImagePath?: string | null;
+  logoIconPathDark?: string | null;
+  logoLockupPathDark?: string | null;
+  wordmarkPathDark?: string | null;
+  faviconPathDark?: string | null;
+  watermarkPathDark?: string | null;
+  textCropPathDark?: string | null;
+  subMarkPathDark?: string | null;
+  flashLinePathDark?: string | null;
+  heroImagePathDark?: string | null;
   watermarkEnabled?: boolean;
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
@@ -72,12 +88,28 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       gradientTo: document.gradientTo ?? "#1a1a40",
       tagline: document.tagline ?? "",
       description: document.description ?? "",
+      heroWords: document.heroWords ?? "",
+      fontDisplay: document.fontDisplay ?? "Orbitron",
+      fontHeadings: document.fontHeadings ?? "Exo 2",
+      fontBody: document.fontBody ?? "Inter",
       logoIconPath: document.logoIconPath ?? null,
       logoLockupPath: document.logoLockupPath ?? null,
       wordmarkPath: document.wordmarkPath ?? null,
       faviconPath: document.faviconPath ?? null,
       watermarkPath: document.watermarkPath ?? null,
       textCropPath: document.textCropPath ?? null,
+      subMarkPath: document.subMarkPath ?? null,
+      flashLinePath: document.flashLinePath ?? null,
+      heroImagePath: document.heroImagePath ?? null,
+      logoIconPathDark: document.logoIconPathDark ?? null,
+      logoLockupPathDark: document.logoLockupPathDark ?? null,
+      wordmarkPathDark: document.wordmarkPathDark ?? null,
+      faviconPathDark: document.faviconPathDark ?? null,
+      watermarkPathDark: document.watermarkPathDark ?? null,
+      textCropPathDark: document.textCropPathDark ?? null,
+      subMarkPathDark: document.subMarkPathDark ?? null,
+      flashLinePathDark: document.flashLinePathDark ?? null,
+      heroImagePathDark: document.heroImagePathDark ?? null,
       watermarkEnabled: document.watermarkEnabled ?? true,
       watermarkOpacity: document.watermarkOpacity ?? 0.1,
       watermarkMaxSizePx: document.watermarkMaxSizePx ?? 880,
@@ -115,12 +147,28 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       gradientTo: branding.gradientTo,
       tagline: branding.tagline,
       description: branding.description,
+      heroWords: branding.heroWords,
+      fontDisplay: branding.fontDisplay,
+      fontHeadings: branding.fontHeadings,
+      fontBody: branding.fontBody,
       logoIconPath: branding.logoIconPath,
       logoLockupPath: branding.logoLockupPath,
       wordmarkPath: branding.wordmarkPath,
       faviconPath: branding.faviconPath,
       watermarkPath: branding.watermarkPath,
       textCropPath: branding.textCropPath,
+      subMarkPath: branding.subMarkPath,
+      flashLinePath: branding.flashLinePath,
+      heroImagePath: branding.heroImagePath,
+      logoIconPathDark: branding.logoIconPathDark,
+      logoLockupPathDark: branding.logoLockupPathDark,
+      wordmarkPathDark: branding.wordmarkPathDark,
+      faviconPathDark: branding.faviconPathDark,
+      watermarkPathDark: branding.watermarkPathDark,
+      textCropPathDark: branding.textCropPathDark,
+      subMarkPathDark: branding.subMarkPathDark,
+      flashLinePathDark: branding.flashLinePathDark,
+      heroImagePathDark: branding.heroImagePathDark,
       watermarkEnabled: branding.watermarkEnabled,
       watermarkOpacity: branding.watermarkOpacity,
       watermarkMaxSizePx: branding.watermarkMaxSizePx,
