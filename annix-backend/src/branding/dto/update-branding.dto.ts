@@ -24,6 +24,21 @@ export class UpdateBrandingDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Matches(HEX_COLOR, { message: "navbarColorLight must be a hex colour" })
+  navbarColorLight?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Matches(HEX_COLOR, { message: "backgroundLight must be a hex colour" })
+  backgroundLight?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Matches(HEX_COLOR, { message: "backgroundDark must be a hex colour" })
+  backgroundDark?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @Matches(HEX_COLOR, { message: "accentOrange must be a hex colour" })
   accentOrange?: string;
 

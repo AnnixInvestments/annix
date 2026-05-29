@@ -5,8 +5,10 @@ import { usePathname } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { useLayout } from "@/app/context/LayoutContext";
 import { corpId, PortalType, portalConfig } from "@/app/lib/corpId";
-import AmixLogo from "./AmixLogo";
+import { useBranding } from "@/app/lib/query/hooks";
+import { BrandNavLockup } from "./BrandNavLockup";
 import { BrandNavLogo } from "./BrandNavLogo";
+import { useTheme } from "./ThemeProvider";
 import { ThemeToggle } from "./ThemeToggle";
 import { Tooltip } from "./Tooltip";
 
@@ -93,21 +95,41 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const brandPrefix = isBrandPortal ? "brand" : null;
   const brandCode =
     portalType === "annixOrbit" ? "annix-orbit" : portalType === "annixRep" ? "annix-rep" : null;
+  const { resolvedTheme } = useTheme();
+  // Annix Investments (non-brand) portals follow the theme using the master
+  // brand's per-mode toolbar colours; the foreground goes navy on the light
+  // toolbar so it stays legible. Brand portals (Orbit/Pulse) keep their fixed
+  // brand navbar via CSS vars.
+  const masterBrandingQuery = useBranding("annix-investments");
+  const masterBrandingData = masterBrandingQuery.data;
+  const masterBranding = masterBrandingData ?? null;
+  const lightNavbar = !isBrandPortal && resolvedTheme === "light";
+  const investToolbarLight = masterBranding ? masterBranding.navbarColorLight : "#F2F4F7";
+  const investToolbarDark = masterBranding ? masterBranding.navbarColor : colors.background;
   const navBg = brandPrefix
     ? `var(--${brandPrefix}-navbar, ${colors.background})`
-    : colors.background;
-  const navActive = brandPrefix
-    ? `var(--${brandPrefix}-navbar-active, ${colors.active})`
-    : colors.active;
-  const navHover = brandPrefix
-    ? `var(--${brandPrefix}-navbar-hover, ${colors.hover})`
-    : colors.hover;
+    : lightNavbar
+      ? investToolbarLight
+      : investToolbarDark;
+  const navActive = lightNavbar
+    ? "rgba(15, 23, 42, 0.10)"
+    : brandPrefix
+      ? `var(--${brandPrefix}-navbar-active, ${colors.active})`
+      : colors.active;
+  const navHover = lightNavbar
+    ? "rgba(15, 23, 42, 0.06)"
+    : brandPrefix
+      ? `var(--${brandPrefix}-navbar-hover, ${colors.hover})`
+      : colors.hover;
   const accentColor = brandPrefix
     ? `var(--${brandPrefix}-accent, ${corpId.colors.accent.orange})`
     : corpId.colors.accent.orange;
   const accentColorLight = brandPrefix
     ? `var(--${brandPrefix}-accent-light, ${corpId.colors.accent.orangeLight})`
     : corpId.colors.accent.orangeLight;
+  // Foreground for nav links / names / version. Navy on the light navbar so
+  // it stays legible; the brand accent (orange) on the dark navbar as before.
+  const navForeground = lightNavbar ? "#1a1a40" : accentColor;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -148,16 +170,12 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                 {brandCode ? (
                   <BrandNavLogo brand={brandCode} isOrbit={isOrbit} />
                 ) : (
-                  <AmixLogo
-                    size="sm"
-                    showText={true}
-                    wordmark={isOrbit ? "orbit" : "investments"}
-                  />
+                  <BrandNavLockup brand="annix-investments" />
                 )}
                 {showTitleOrVersion && (
                   <span
                     className="text-lg font-semibold hidden md:block"
-                    style={{ color: accentColor }}
+                    style={{ color: navForeground }}
                   >
                     {titleText}
                     {version && (
@@ -176,7 +194,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                       href={item.href}
                       className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md transition-colors"
                       style={{
-                        color: accentColor,
+                        color: navForeground,
                         backgroundColor: isActive ? navActive : "transparent",
                       }}
                       onMouseEnter={(e) => {

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect } from "react";
+import { useTheme } from "@/app/components/ThemeProvider";
 import { useBranding } from "@/app/lib/query/hooks";
 import { type Branding, brandingCssVars, brandingFallback, googleFontsHref } from "./branding";
 
@@ -46,7 +47,9 @@ export function BrandingProvider(props: {
   const query = useBranding(brand);
   const data = query.data;
   const branding = data || brandingFallback(brand);
-  const cssVars = brandingCssVars(branding);
+  const { resolvedTheme } = useTheme();
+  const mode = resolvedTheme === "light" ? "light" : "dark";
+  const cssVars = brandingCssVars(branding, mode);
   useBrandFonts(branding);
 
   if (!withSurface) {

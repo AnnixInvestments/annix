@@ -32,6 +32,9 @@ export type BrandingAssetVariant = "light" | "dark";
 export interface BrandingView {
   brandCode: string;
   navbarColor: string;
+  navbarColorLight: string;
+  backgroundLight: string;
+  backgroundDark: string;
   accentOrange: string;
   accentOrangeLight: string;
   accentOrangeDark: string;
@@ -140,6 +143,9 @@ export class AppBrandingService {
     return {
       brandCode: code,
       navbarColor: "#323288",
+      navbarColorLight: "#F2F4F7",
+      backgroundLight: "#F8FAFC",
+      backgroundDark: "#0F172A",
       accentOrange: "#FF8A00",
       accentOrangeLight: "#FF9C33",
       accentOrangeDark: "#CC6900",
@@ -233,6 +239,9 @@ export class AppBrandingService {
 
     const colorKeys: (keyof UpdateBrandingDto & keyof AppBranding)[] = [
       "navbarColor",
+      "navbarColorLight",
+      "backgroundLight",
+      "backgroundDark",
       "accentOrange",
       "accentOrangeLight",
       "accentOrangeDark",
@@ -382,6 +391,9 @@ function mimeTypeForPath(path: string): string {
 function pickScalars(row: AppBranding): PlatformBrandingScalars {
   return {
     navbarColor: row.navbarColor,
+    navbarColorLight: row.navbarColorLight,
+    backgroundLight: row.backgroundLight,
+    backgroundDark: row.backgroundDark,
     accentOrange: row.accentOrange,
     accentOrangeLight: row.accentOrangeLight,
     accentOrangeDark: row.accentOrangeDark,

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixLogo from "@/app/components/AnnixLogo";
 
 interface NixAiPopupProps {
   isVisible: boolean;
@@ -25,7 +25,7 @@ export default function NixAiPopup(props: NixAiPopupProps) {
           className="px-4 py-3 flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: "#323288" }}
         >
-          <AmixLogo size="md" showText useSignatureFont />
+          <AnnixLogo size="md" showText useSignatureFont />
         </div>
 
         <div className="px-4 py-4 sm:px-6">

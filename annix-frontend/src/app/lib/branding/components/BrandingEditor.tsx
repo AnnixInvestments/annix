@@ -26,6 +26,9 @@ import {
 
 interface BrandingForm {
   navbarColor: string;
+  navbarColorLight: string;
+  backgroundLight: string;
+  backgroundDark: string;
   accentOrange: string;
   accentOrangeLight: string;
   accentOrangeDark: string;
@@ -46,6 +49,9 @@ interface BrandingForm {
 
 type ColorKey =
   | "navbarColor"
+  | "navbarColorLight"
+  | "backgroundLight"
+  | "backgroundDark"
   | "accentOrange"
   | "accentOrangeLight"
   | "accentOrangeDark"
@@ -53,14 +59,42 @@ type ColorKey =
   | "gradientVia"
   | "gradientTo";
 
-const COLOR_FIELDS: { key: ColorKey; label: string }[] = [
-  { key: "navbarColor", label: "Toolbar" },
-  { key: "accentOrange", label: "Accent" },
-  { key: "accentOrangeLight", label: "Accent light" },
-  { key: "accentOrangeDark", label: "Accent dark" },
-  { key: "gradientFrom", label: "Gradient — from" },
-  { key: "gradientVia", label: "Gradient — via" },
-  { key: "gradientTo", label: "Gradient — to" },
+interface ColorGroup {
+  title: string;
+  fields: { key: ColorKey; label: string }[];
+}
+
+const COLOR_GROUPS: ColorGroup[] = [
+  {
+    title: "Light mode",
+    fields: [
+      { key: "navbarColorLight", label: "Toolbar" },
+      { key: "backgroundLight", label: "Main background" },
+    ],
+  },
+  {
+    title: "Dark mode",
+    fields: [
+      { key: "navbarColor", label: "Toolbar" },
+      { key: "backgroundDark", label: "Main background" },
+    ],
+  },
+  {
+    title: "Accent",
+    fields: [
+      { key: "accentOrange", label: "Accent" },
+      { key: "accentOrangeLight", label: "Accent light" },
+      { key: "accentOrangeDark", label: "Accent dark" },
+    ],
+  },
+  {
+    title: "Gradient",
+    fields: [
+      { key: "gradientFrom", label: "From" },
+      { key: "gradientVia", label: "Via" },
+      { key: "gradientTo", label: "To" },
+    ],
+  },
 ];
 
 type FontKey = "fontDisplay" | "fontHeadings" | "fontBody";
@@ -133,6 +167,9 @@ type AssetChangeMap = Partial<Record<BrandingAssetSlot, AssetChangeEntry>>;
 function formFromBranding(branding: Branding): BrandingForm {
   return {
     navbarColor: branding.navbarColor,
+    navbarColorLight: branding.navbarColorLight,
+    backgroundLight: branding.backgroundLight,
+    backgroundDark: branding.backgroundDark,
     accentOrange: branding.accentOrange,
     accentOrangeLight: branding.accentOrangeLight,
     accentOrangeDark: branding.accentOrangeDark,
@@ -352,11 +389,11 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
     return !ownHas && masterHas;
   };
 
-  const previewNavbar = effectiveValue("navbarColor");
+  const previewIsLight = previewTheme === "light";
+  const previewNavbar = previewIsLight
+    ? effectiveValue("navbarColorLight")
+    : effectiveValue("navbarColor");
   const previewAccent = effectiveValue("accentOrange");
-  const previewGradFrom = effectiveValue("gradientFrom");
-  const previewGradVia = effectiveValue("gradientVia");
-  const previewGradTo = effectiveValue("gradientTo");
   const previewTagline = effectiveValue("tagline");
   const previewDescription = effectiveValue("description");
   const previewHeroWords = effectiveValue("heroWords");
@@ -375,7 +412,6 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
     "--brand-navbar": previewNavbar,
     "--brand-accent": previewAccent,
   } as React.CSSProperties;
-  const previewGradient = `linear-gradient(to bottom right, ${previewGradFrom}, ${previewGradVia}, ${previewGradTo})`;
 
   const themeUrl = (slot: BrandingAssetSlot): string => assetPreview[slot][previewTheme];
   const logoPreview = themeUrl("logoIcon");
@@ -395,8 +431,10 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const showHeroImageLayer = slotHasAsset("heroImage", previewTheme);
   const heroTokens = splitHeroWords(previewHeroWords);
 
-  const heroIsLight = previewTheme === "light";
-  const heroSurface = heroIsLight ? "#eef1f5" : previewGradient;
+  const heroIsLight = previewIsLight;
+  const heroSurface = heroIsLight
+    ? effectiveValue("backgroundLight")
+    : effectiveValue("backgroundDark");
   const heroTextColor = heroIsLight ? "#0A1B3D" : "#ffffff";
   const heroSubText = heroIsLight ? "rgba(10,27,61,0.65)" : "rgba(255,255,255,0.7)";
 
@@ -443,27 +481,36 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                 brand page.
               </p>
             ) : null}
-            <div className="divide-y divide-gray-100">
-              {COLOR_FIELDS.map((colorField) => {
-                const key = colorField.key;
-                const locked = !isMaster && lockedScalars.has(key);
-                const fieldInherited = !isMaster && !locked && inherited.has(key);
-                const ownValue = form[key];
-                const masterValue = master[key];
-                return (
-                  <ColorField
-                    key={key}
-                    label={colorField.label}
-                    value={ownValue}
-                    onChange={(v) => setField(key, v)}
-                    inheritable={!isMaster && !locked}
-                    inherited={fieldInherited}
-                    locked={locked}
-                    masterValue={masterValue}
-                    onToggleInherit={(v) => toggleInherit(key, v)}
-                  />
-                );
-              })}
+            <div className="space-y-4">
+              {COLOR_GROUPS.map((group) => (
+                <div key={group.title}>
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-400 mb-1">
+                    {group.title}
+                  </p>
+                  <div className="divide-y divide-gray-100">
+                    {group.fields.map((colorField) => {
+                      const key = colorField.key;
+                      const locked = !isMaster && lockedScalars.has(key);
+                      const fieldInherited = !isMaster && !locked && inherited.has(key);
+                      const ownValue = form[key];
+                      const masterValue = master[key];
+                      return (
+                        <ColorField
+                          key={key}
+                          label={colorField.label}
+                          value={ownValue}
+                          onChange={(v) => setField(key, v)}
+                          inheritable={!isMaster && !locked}
+                          inherited={fieldInherited}
+                          locked={locked}
+                          masterValue={masterValue}
+                          onToggleInherit={(v) => toggleInherit(key, v)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </section>
 
@@ -669,14 +716,17 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                 />
               </div>
               <div className="relative h-80 overflow-hidden" style={{ background: heroSurface }}>
-                <div
-                  className="pointer-events-none absolute inset-0 bg-center bg-no-repeat"
-                  style={{
-                    backgroundImage: `url('${watermarkPreview}')`,
-                    backgroundSize: "min(70%, 240px)",
-                    opacity: watermarkOpacityForPreview,
-                  }}
-                />
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+                  <div
+                    className="rounded-[18%] bg-contain bg-center bg-no-repeat"
+                    style={{
+                      width: "min(70%, 240px)",
+                      aspectRatio: "1 / 1",
+                      backgroundImage: `url('${watermarkPreview}')`,
+                      opacity: watermarkOpacityForPreview,
+                    }}
+                  />
+                </div>
                 {showFlashLineLayer ? (
                   <div
                     className="pointer-events-none absolute inset-x-0 top-10 h-16 bg-center bg-no-repeat"

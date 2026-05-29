@@ -14,6 +14,15 @@ export class AppBranding {
   @Column({ name: "navbar_color", type: "varchar", length: 9, default: "#323288" })
   navbarColor: string;
 
+  @Column({ name: "navbar_color_light", type: "varchar", length: 9, default: "#F2F4F7" })
+  navbarColorLight: string;
+
+  @Column({ name: "background_light", type: "varchar", length: 9, default: "#F8FAFC" })
+  backgroundLight: string;
+
+  @Column({ name: "background_dark", type: "varchar", length: 9, default: "#0F172A" })
+  backgroundDark: string;
+
   @Column({ name: "accent_orange", type: "varchar", length: 9, default: "#FF8A00" })
   accentOrange: string;
 

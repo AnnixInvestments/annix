@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixLogo from "@/app/components/AnnixLogo";
 
 interface NixProcessingPopupProps {
   isVisible: boolean;
@@ -68,7 +68,7 @@ export default function NixProcessingPopup(props: NixProcessingPopupProps) {
           className="px-4 py-3 flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: headerColor || "#323288" }}
         >
-          {headerContent || <AmixLogo size="md" showText useSignatureFont />}
+          {headerContent || <AnnixLogo size="md" showText useSignatureFont />}
         </div>
 
         <div className="px-6 py-6">

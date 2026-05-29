@@ -16,6 +16,15 @@ export class AppBranding {
   @Prop({ type: String, required: true, default: "#323288" })
   navbarColor: string;
 
+  @Prop({ type: String, required: true, default: "#F2F4F7" })
+  navbarColorLight: string;
+
+  @Prop({ type: String, required: true, default: "#F8FAFC" })
+  backgroundLight: string;
+
+  @Prop({ type: String, required: true, default: "#0F172A" })
+  backgroundDark: string;
+
   @Prop({ type: String, required: true, default: "#FF8A00" })
   accentOrange: string;
 

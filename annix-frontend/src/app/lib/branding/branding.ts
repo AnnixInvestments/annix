@@ -14,6 +14,9 @@ export type BrandingAssetVariant = "light" | "dark";
 export interface Branding {
   brandCode: string;
   navbarColor: string;
+  navbarColorLight: string;
+  backgroundLight: string;
+  backgroundDark: string;
   accentOrange: string;
   accentOrangeLight: string;
   accentOrangeDark: string;
@@ -49,6 +52,9 @@ export const MASTER_BRAND_CODE = "annix-investments";
 
 export const INHERITABLE_SCALAR_FIELDS = [
   "navbarColor",
+  "navbarColorLight",
+  "backgroundLight",
+  "backgroundDark",
   "accentOrange",
   "accentOrangeLight",
   "accentOrangeDark",
@@ -99,6 +105,9 @@ export interface BrandingAdminView {
 
 export interface BrandingUpdate {
   navbarColor?: string;
+  navbarColorLight?: string;
+  backgroundLight?: string;
+  backgroundDark?: string;
   accentOrange?: string;
   accentOrangeLight?: string;
   accentOrangeDark?: string;
@@ -185,6 +194,9 @@ export function brandingFallback(brandCode: string): Branding {
   return {
     brandCode,
     navbarColor: "#323288",
+    navbarColorLight: "#F2F4F7",
+    backgroundLight: "#F8FAFC",
+    backgroundDark: "#0F172A",
     accentOrange: "#FF8A00",
     accentOrangeLight: "#FF9C33",
     accentOrangeDark: "#CC6900",
@@ -247,10 +259,13 @@ export function resolveBrandAssetUrl(
   return fallback || GENERIC_ASSET_DEFAULT;
 }
 
-export function brandingCssVars(branding: Branding): Record<string, string> {
-  const hasWatermark = brandHasAsset("watermark", branding);
+export function brandingCssVars(
+  branding: Branding,
+  mode: BrandingAssetVariant = "light",
+): Record<string, string> {
+  const hasWatermark = brandHasAsset("watermark", branding, mode);
   const watermarkImage = hasWatermark
-    ? `url('${resolveBrandAssetUrl("watermark", branding)}')`
+    ? `url('${resolveBrandAssetUrl("watermark", branding, mode)}')`
     : "none";
   const effectiveOpacity =
     branding.watermarkEnabled && hasWatermark ? branding.watermarkOpacity : 0;

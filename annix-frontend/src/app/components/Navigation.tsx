@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import AdminLoginButton from "./AdminLoginButton";
-import AmixLogo from "./AmixLogo";
+import AnnixLogo from "./AnnixLogo";
 import { ThemeToggle } from "./ThemeToggle";
 
 const isPortalRoute = (pathname: string): boolean => {
@@ -54,7 +54,7 @@ export default function Navigation() {
               href="/"
               className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
             >
-              <AmixLogo size="sm" showText useSignatureFont />
+              <AnnixLogo size="sm" showText useSignatureFont />
             </Link>
 
             {showHomeNav && (

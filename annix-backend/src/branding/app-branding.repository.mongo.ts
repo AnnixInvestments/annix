@@ -9,6 +9,9 @@ import { AppBrandingImage } from "./entities/app-branding-image.entity";
 type AppBrandingDocument = {
   _id: string;
   navbarColor?: string;
+  navbarColorLight?: string;
+  backgroundLight?: string;
+  backgroundDark?: string;
   accentOrange?: string;
   accentOrangeLight?: string;
   accentOrangeDark?: string;
@@ -80,6 +83,9 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
     return {
       brandCode: document._id,
       navbarColor: document.navbarColor ?? "#323288",
+      navbarColorLight: document.navbarColorLight ?? "#F2F4F7",
+      backgroundLight: document.backgroundLight ?? "#F8FAFC",
+      backgroundDark: document.backgroundDark ?? "#0F172A",
       accentOrange: document.accentOrange ?? "#FF8A00",
       accentOrangeLight: document.accentOrangeLight ?? "#FF9C33",
       accentOrangeDark: document.accentOrangeDark ?? "#CC6900",
@@ -139,6 +145,9 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
   async save(branding: AppBranding): Promise<AppBranding> {
     const update: Record<string, unknown> = {
       navbarColor: branding.navbarColor,
+      navbarColorLight: branding.navbarColorLight,
+      backgroundLight: branding.backgroundLight,
+      backgroundDark: branding.backgroundDark,
       accentOrange: branding.accentOrange,
       accentOrangeLight: branding.accentOrangeLight,
       accentOrangeDark: branding.accentOrangeDark,

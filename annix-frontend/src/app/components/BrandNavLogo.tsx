@@ -2,12 +2,12 @@
 
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { useBranding } from "@/app/lib/query/hooks";
-import AmixLogo from "./AmixLogo";
+import AnnixLogo from "./AnnixLogo";
 
 // Single source of truth for an app's navbar logo lockup (icon + textCrop),
 // pulled live from the per-app branding page. Used by PortalToolbar and any
 // other surface that must match the app toolbar exactly (e.g. the extraction
-// progress popup). Falls back to AmixLogo until branding/textCrop is available.
+// progress popup). Falls back to AnnixLogo until branding/textCrop is available.
 export function BrandNavLogo(props: { brand: string; isOrbit: boolean }) {
   const { brand, isOrbit } = props;
   const query = useBranding(brand);
@@ -26,5 +26,5 @@ export function BrandNavLogo(props: { brand: string; isOrbit: boolean }) {
     );
   }
 
-  return <AmixLogo size="sm" showText={true} wordmark={isOrbit ? "orbit" : "investments"} />;
+  return <AnnixLogo size="sm" showText={true} wordmark={isOrbit ? "orbit" : "investments"} />;
 }

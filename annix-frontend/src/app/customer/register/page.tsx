@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import React, { useCallback, useEffect, useState } from "react";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixLogo from "@/app/components/AnnixLogo";
 import {
   RegistrationBottomToolbar,
   RegistrationTopToolbar,
@@ -1393,7 +1393,7 @@ export default function CustomerRegistrationPage() {
               className="px-4 py-3 flex items-center justify-center"
               style={{ backgroundColor: "#323288" }}
             >
-              <AmixLogo size="md" showText useSignatureFont />
+              <AnnixLogo size="md" showText useSignatureFont />
             </div>
             <div className="px-6 py-8">
               <div className="flex items-center gap-4 mb-6">

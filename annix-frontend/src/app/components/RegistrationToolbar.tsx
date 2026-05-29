@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import AmixLogo from "./AmixLogo";
+import AnnixLogo from "./AnnixLogo";
 
 export interface StepConfig {
   id: string;
@@ -31,7 +31,7 @@ export function RegistrationTopToolbar(props: { title: string; homeHref?: string
               href={homeHref}
               className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
             >
-              <AmixLogo size="sm" showText useSignatureFont />
+              <AnnixLogo size="sm" showText useSignatureFont />
             </Link>
             <div className="h-6 w-px bg-white/30" />
             <span className="text-white font-medium text-sm">{title}</span>

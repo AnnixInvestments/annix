@@ -5,7 +5,7 @@ import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
 import { resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { log } from "@/app/lib/logger";
 
-interface AmixLogoProps {
+interface AnnixLogoProps {
   /** Size variant: 'sm' (32px), 'md' (48px), 'lg' (64px), 'xl' (96px) */
   size?: "sm" | "md" | "lg" | "xl";
   /** Show the "Amix" text next to the logo */
@@ -42,15 +42,15 @@ const sizeMap = {
  * separately and will be updated in its own change.
  *
  * Usage:
- * - <AmixLogo />                 Default medium size with text
- * - <AmixLogo size="lg" />       Large logo with text
- * - <AmixLogo showText={false} /> Icon only
+ * - <AnnixLogo />                 Default medium size with text
+ * - <AnnixLogo size="lg" />       Large logo with text
+ * - <AnnixLogo showText={false} /> Icon only
  *
  * All 17 consumers (Navigation, PortalToolbar, RegistrationToolbar,
  * SessionExpiredModal, Annix Sentinel pages, Nix popups, customer/register)
  * pick up the new icon automatically — no per-call-site changes needed.
  */
-export default function AmixLogo(props: AmixLogoProps) {
+export default function AnnixLogo(props: AnnixLogoProps) {
   const {
     size = "md",
     showText = true,
@@ -80,7 +80,7 @@ export default function AmixLogo(props: AmixLogoProps) {
     const wordmarkSrc = isOrbit ? orbitWordmark : "/images/annix-text.png";
     const wordmarkAlt = isOrbit ? "Annix Orbit" : "Annix Investments";
 
-    log.debug("AmixLogo rendering inline parts", {
+    log.debug("AnnixLogo rendering inline parts", {
       size,
       logoSize,
       iconSize,
@@ -113,7 +113,7 @@ export default function AmixLogo(props: AmixLogoProps) {
     );
   }
 
-  log.debug("AmixLogo rendering icon only", { size, logoSize });
+  log.debug("AnnixLogo rendering icon only", { size, logoSize });
 
   return (
     <div className={`inline-block ${className}`}>
@@ -133,8 +133,8 @@ export default function AmixLogo(props: AmixLogoProps) {
 /**
  * Full logo with navy background — for use on light backgrounds.
  */
-export function AmixLogoWithBackground(
-  props: Omit<AmixLogoProps, "showText" | "useSignatureFont">,
+export function AnnixLogoWithBackground(
+  props: Omit<AnnixLogoProps, "showText" | "useSignatureFont">,
 ) {
   const { size = "md", className = "" } = props;
   return (
@@ -142,7 +142,7 @@ export function AmixLogoWithBackground(
       className={`inline-flex items-center rounded-lg px-4 py-2 ${className}`}
       style={{ backgroundColor: "#323288" }}
     >
-      <AmixLogo size={size} showText useSignatureFont />
+      <AnnixLogo size={size} showText useSignatureFont />
     </div>
   );
 }

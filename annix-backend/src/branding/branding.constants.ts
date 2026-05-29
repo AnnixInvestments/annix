@@ -17,6 +17,9 @@ export const MASTER_BRAND_CODE: BrandCode = "annix-investments";
 
 export const INHERITABLE_SCALAR_FIELDS = [
   "navbarColor",
+  "navbarColorLight",
+  "backgroundLight",
+  "backgroundDark",
   "accentOrange",
   "accentOrangeLight",
   "accentOrangeDark",
@@ -43,6 +46,9 @@ export function isInheritableScalarField(value: string): value is InheritableSca
 
 export const GLOBAL_LOCKED_SCALAR_FIELDS = [
   "navbarColor",
+  "navbarColorLight",
+  "backgroundLight",
+  "backgroundDark",
   "accentOrange",
   "accentOrangeLight",
   "accentOrangeDark",
@@ -61,6 +67,9 @@ export function brandLocksGlobals(brand: string): boolean {
 
 export interface PlatformBrandingScalars {
   navbarColor: string;
+  navbarColorLight: string;
+  backgroundLight: string;
+  backgroundDark: string;
   accentOrange: string;
   accentOrangeLight: string;
   accentOrangeDark: string;
@@ -81,6 +90,9 @@ export interface PlatformBrandingScalars {
 
 export const PLATFORM_BRANDING_DEFAULTS: PlatformBrandingScalars = {
   navbarColor: "#323288",
+  navbarColorLight: "#F2F4F7",
+  backgroundLight: "#F8FAFC",
+  backgroundDark: "#0F172A",
   accentOrange: "#FF8A00",
   accentOrangeLight: "#FF9C33",
   accentOrangeDark: "#CC6900",

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixLogo from "@/app/components/AnnixLogo";
 import { nixApi, PdfPageImage, RegionCoordinates, RegistrationDocumentType } from "../api";
 
 interface NixDocumentAnnotatorProps {
@@ -262,7 +262,7 @@ export default function NixDocumentAnnotator(props: NixDocumentAnnotatorProps) {
           className="px-4 py-3 flex items-center justify-between flex-shrink-0"
           style={{ backgroundColor: "#323288" }}
         >
-          <AmixLogo size="md" showText useSignatureFont />
+          <AnnixLogo size="md" showText useSignatureFont />
           <button onClick={onClose} className="text-white/70 hover:text-white transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path

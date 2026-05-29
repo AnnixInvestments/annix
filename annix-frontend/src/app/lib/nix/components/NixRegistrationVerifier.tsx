@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import AmixLogo from "@/app/components/AmixLogo";
+import AnnixLogo from "@/app/components/AnnixLogo";
 import NixDocumentAnnotator from "./NixDocumentAnnotator";
 
 export type RegistrationDocumentType = "vat" | "registration" | "bee";
@@ -545,7 +545,7 @@ export default function NixRegistrationVerifier(props: NixRegistrationVerifierPr
           className="px-4 py-3 flex items-center justify-center flex-shrink-0"
           style={{ backgroundColor: "#323288" }}
         >
-          <AmixLogo size="md" showText useSignatureFont />
+          <AnnixLogo size="md" showText useSignatureFont />
         </div>
 
         {renderContent()}
