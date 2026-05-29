@@ -2,6 +2,7 @@ import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/c
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import type {
   Branding,
+  BrandingAdminView,
   BrandingAssetSlot,
   BrandingUpdate,
   BrandingUploadResult,
@@ -1154,7 +1155,7 @@ class AdminApiClient {
     return this.request(`/admin/annix-orbit/seekers${suffix ? `?${suffix}` : ""}`);
   }
 
-  async appBranding(brand: string): Promise<Branding> {
+  async appBranding(brand: string): Promise<BrandingAdminView> {
     return this.request(`/admin/branding/${brand}`);
   }
 

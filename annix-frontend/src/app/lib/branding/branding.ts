@@ -35,6 +35,37 @@ export const BRAND_LOADING_ANIMATIONS = [
 
 export type BrandLoadingAnimation = (typeof BRAND_LOADING_ANIMATIONS)[number]["key"];
 
+export const MASTER_BRAND_CODE = "annix-investments";
+
+export const INHERITABLE_SCALAR_FIELDS = [
+  "navbarColor",
+  "accentOrange",
+  "accentOrangeLight",
+  "accentOrangeDark",
+  "gradientFrom",
+  "gradientVia",
+  "gradientTo",
+  "tagline",
+  "description",
+  "watermarkEnabled",
+  "watermarkOpacity",
+  "watermarkMaxSizePx",
+  "loadingAnimation",
+] as const;
+
+export type InheritableScalarField = (typeof INHERITABLE_SCALAR_FIELDS)[number];
+
+/** Admin editor payload: the brand's own values, the master's effective values
+ *  (shown when a field inherits), and the resolved effective branding. */
+export interface BrandingAdminView {
+  brandCode: string;
+  isMaster: boolean;
+  inheritedFields: string[];
+  own: Branding;
+  master: Branding;
+  effective: Branding;
+}
+
 export interface BrandingUpdate {
   navbarColor?: string;
   accentOrange?: string;
@@ -55,6 +86,7 @@ export interface BrandingUpdate {
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
   loadingAnimation?: string;
+  inheritedFields?: string[];
 }
 
 export interface BrandingUploadResult {

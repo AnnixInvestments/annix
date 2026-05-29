@@ -1,7 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminApiClient, type BrandingImage } from "@/app/lib/api/adminApi";
 import { fetchPublicBranding } from "@/app/lib/api/brandingApi";
-import type { Branding, BrandingAssetSlot, BrandingUpdate } from "@/app/lib/branding/branding";
+import type {
+  Branding,
+  BrandingAdminView,
+  BrandingAssetSlot,
+  BrandingUpdate,
+} from "@/app/lib/branding/branding";
 import { brandingKeys } from "../../keys/brandingKeys";
 
 export function useBranding(brand: string) {
@@ -13,7 +18,7 @@ export function useBranding(brand: string) {
 }
 
 export function useAdminBranding(brand: string) {
-  return useQuery<Branding>({
+  return useQuery<BrandingAdminView>({
     queryKey: brandingKeys.admin(brand),
     queryFn: () => adminApiClient.appBranding(brand),
     staleTime: 60 * 1000,

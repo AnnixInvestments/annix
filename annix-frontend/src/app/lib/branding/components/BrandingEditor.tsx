@@ -35,6 +35,25 @@ interface BrandingForm {
   loadingAnimation: string;
 }
 
+type ColorKey =
+  | "navbarColor"
+  | "accentOrange"
+  | "accentOrangeLight"
+  | "accentOrangeDark"
+  | "gradientFrom"
+  | "gradientVia"
+  | "gradientTo";
+
+const COLOR_FIELDS: { key: ColorKey; label: string }[] = [
+  { key: "navbarColor", label: "Toolbar" },
+  { key: "accentOrange", label: "Accent" },
+  { key: "accentOrangeLight", label: "Accent light" },
+  { key: "accentOrangeDark", label: "Accent dark" },
+  { key: "gradientFrom", label: "Gradient — from" },
+  { key: "gradientVia", label: "Gradient — via" },
+  { key: "gradientTo", label: "Gradient — to" },
+];
+
 interface AssetFieldDef {
   key: BrandingAssetSlot;
   label: string;
@@ -74,6 +93,8 @@ const SLOT_TO_FIELD: Record<BrandingAssetSlot, BrandingAssetField> = {
   textCrop: "textCropPath",
 };
 
+const MASTER_LABEL = "Annix Investments";
+
 function formFromBranding(branding: Branding): BrandingForm {
   return {
     navbarColor: branding.navbarColor,
@@ -105,6 +126,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const [newImageLabel, setNewImageLabel] = useState("");
 
   const [form, setForm] = useState<BrandingForm | null>(null);
+  const [inherited, setInherited] = useState<Set<string>>(new Set());
   const [assetPreview, setAssetPreview] = useState<Record<BrandingAssetSlot, string>>({
     logoIcon: "",
     logoLockup: "",
@@ -118,24 +140,39 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   );
   const [uploadingSlot, setUploadingSlot] = useState<BrandingAssetSlot | null>(null);
 
-  const brandingData = brandingQuery.data;
+  const adminView = brandingQuery.data;
 
   useEffect(() => {
-    if (!brandingData) return;
-    setForm(formFromBranding(brandingData));
+    if (!adminView) return;
+    const own = adminView.own;
+    const effective = adminView.effective;
+    setForm(formFromBranding(own));
+    setInherited(new Set(adminView.inheritedFields));
     setAssetPreview({
-      logoIcon: resolveBrandAssetUrl("logoIcon", brandingData),
-      logoLockup: resolveBrandAssetUrl("logoLockup", brandingData),
-      wordmark: resolveBrandAssetUrl("wordmark", brandingData),
-      favicon: resolveBrandAssetUrl("favicon", brandingData),
-      watermark: resolveBrandAssetUrl("watermark", brandingData),
-      textCrop: resolveBrandAssetUrl("textCrop", brandingData),
+      logoIcon: resolveBrandAssetUrl("logoIcon", effective),
+      logoLockup: resolveBrandAssetUrl("logoLockup", effective),
+      wordmark: resolveBrandAssetUrl("wordmark", effective),
+      favicon: resolveBrandAssetUrl("favicon", effective),
+      watermark: resolveBrandAssetUrl("watermark", effective),
+      textCrop: resolveBrandAssetUrl("textCrop", effective),
     });
     setAssetChange({});
-  }, [brandingData]);
+  }, [adminView]);
 
   const setField = <K extends keyof BrandingForm>(key: K, value: BrandingForm[K]) => {
     setForm((prev) => (prev ? ({ ...prev, [key]: value } as BrandingForm) : prev));
+  };
+
+  const toggleInherit = (field: string, inheritIt: boolean) => {
+    setInherited((prev) => {
+      const next = new Set(prev);
+      if (inheritIt) {
+        next.add(field);
+      } else {
+        next.delete(field);
+      }
+      return next;
+    });
   };
 
   const handleUpload = async (slot: BrandingAssetSlot, file: File) => {
@@ -173,7 +210,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
 
   const handlePublish = async () => {
     if (!form) return;
-    const payload: BrandingUpdate = { ...form };
+    const payload: BrandingUpdate = { ...form, inheritedFields: Array.from(inherited) };
     ALL_FIELDS.forEach((assetField) => {
       const slot = assetField.key;
       const value = assetChange[slot];
@@ -194,7 +231,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const brandingLoading = brandingQuery.isLoading;
   const brandingError = brandingQuery.isError;
 
-  if (brandingLoading || !form) {
+  if (brandingLoading || !form || !adminView) {
     return (
       <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
         Loading branding…
@@ -210,12 +247,33 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
     );
   }
 
-  const watermarkOpacityForPreview = form.watermarkEnabled ? form.watermarkOpacity : 0;
+  const isMaster = adminView.isMaster;
+  const master = adminView.master;
+
+  const effectiveValue = <K extends keyof BrandingForm>(key: K): BrandingForm[K] => {
+    if (!isMaster && inherited.has(key)) {
+      return master[key as keyof Branding] as BrandingForm[K];
+    }
+    return form[key];
+  };
+
+  const previewNavbar = effectiveValue("navbarColor");
+  const previewAccent = effectiveValue("accentOrange");
+  const previewGradFrom = effectiveValue("gradientFrom");
+  const previewGradVia = effectiveValue("gradientVia");
+  const previewGradTo = effectiveValue("gradientTo");
+  const previewTagline = effectiveValue("tagline");
+  const previewDescription = effectiveValue("description");
+  const previewWatermarkEnabled = effectiveValue("watermarkEnabled");
+  const previewWatermarkOpacityRaw = effectiveValue("watermarkOpacity");
+  const previewAnimation = effectiveValue("loadingAnimation");
+
+  const watermarkOpacityForPreview = previewWatermarkEnabled ? previewWatermarkOpacityRaw : 0;
   const previewStyle = {
-    "--brand-navbar": form.navbarColor,
-    "--brand-accent": form.accentOrange,
+    "--brand-navbar": previewNavbar,
+    "--brand-accent": previewAccent,
   } as React.CSSProperties;
-  const previewGradient = `linear-gradient(to bottom right, ${form.gradientFrom}, ${form.gradientVia}, ${form.gradientTo})`;
+  const previewGradient = `linear-gradient(to bottom right, ${previewGradFrom}, ${previewGradVia}, ${previewGradTo})`;
 
   const logoPreview = assetPreview.logoIcon;
   const wordmarkPreview = assetPreview.wordmark;
@@ -223,12 +281,22 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const faviconPreview = assetPreview.favicon;
   const textCropPreview = assetPreview.textCrop;
   const textCropBusy = uploadingSlot === "textCrop";
-  const hasTextCrop = brandingData ? brandingData.assets.textCrop : false;
+  const effectiveAssets = adminView.effective.assets;
+  const hasTextCrop = effectiveAssets.textCrop;
   const navbarTextUrl = hasTextCrop ? textCropPreview : wordmarkPreview;
   const isPublishing = updateMutation.isPending;
   const galleryData = imagesQuery.data;
   const galleryImages = galleryData ?? [];
   const addingImage = addImageMutation.isPending;
+
+  const ownTextCrop = adminView.own.assets.textCrop;
+  const masterTextCrop = master.assets.textCrop;
+  const textCropInheriting = !isMaster && !ownTextCrop && masterTextCrop;
+  const taglineInherited = !isMaster && inherited.has("tagline");
+  const descriptionInherited = !isMaster && inherited.has("description");
+  const watermarkEnabledInherited = !isMaster && inherited.has("watermarkEnabled");
+  const watermarkOpacityInherited = !isMaster && inherited.has("watermarkOpacity");
+  const animationInherited = !isMaster && inherited.has("loadingAnimation");
 
   return (
     <div className="space-y-6">
@@ -236,8 +304,9 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{title} — Branding</h1>
           <p className="text-gray-600 mt-1">
-            Upload logos and edit colours/text. Changes preview live and only go live when you
-            publish.
+            {isMaster
+              ? "This is the master Annix brand. Other apps inherit these values unless they override them."
+              : "Upload logos and edit colours/text. Toggle Inherit on any field to follow the Annix Investments master brand. Changes go live when you publish."}
           </p>
         </div>
         {backHref ? (
@@ -255,59 +324,47 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
           <section className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Colours</h2>
             <div className="divide-y divide-gray-100">
-              <ColorField
-                label="Toolbar"
-                value={form.navbarColor}
-                onChange={(v) => setField("navbarColor", v)}
-              />
-              <ColorField
-                label="Accent"
-                value={form.accentOrange}
-                onChange={(v) => setField("accentOrange", v)}
-              />
-              <ColorField
-                label="Accent light"
-                value={form.accentOrangeLight}
-                onChange={(v) => setField("accentOrangeLight", v)}
-              />
-              <ColorField
-                label="Accent dark"
-                value={form.accentOrangeDark}
-                onChange={(v) => setField("accentOrangeDark", v)}
-              />
-              <ColorField
-                label="Gradient — from"
-                value={form.gradientFrom}
-                onChange={(v) => setField("gradientFrom", v)}
-              />
-              <ColorField
-                label="Gradient — via"
-                value={form.gradientVia}
-                onChange={(v) => setField("gradientVia", v)}
-              />
-              <ColorField
-                label="Gradient — to"
-                value={form.gradientTo}
-                onChange={(v) => setField("gradientTo", v)}
-              />
+              {COLOR_FIELDS.map((colorField) => {
+                const key = colorField.key;
+                const fieldInherited = !isMaster && inherited.has(key);
+                const ownValue = form[key];
+                const masterValue = master[key];
+                return (
+                  <ColorField
+                    key={key}
+                    label={colorField.label}
+                    value={ownValue}
+                    onChange={(v) => setField(key, v)}
+                    inheritable={!isMaster}
+                    inherited={fieldInherited}
+                    masterValue={masterValue}
+                    onToggleInherit={(v) => toggleInherit(key, v)}
+                  />
+                );
+              })}
             </div>
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Images</h2>
             <p className="text-xs text-gray-500 mb-3">
-              Drag an image onto a row, or click Upload. PNG/JPG/SVG/WebP under 2MB.
+              Drag an image onto a row, or click Upload. PNG/JPG/SVG/WebP under 2MB. Leave a slot
+              empty to inherit the {MASTER_LABEL} master asset.
             </p>
             <div className="space-y-2">
               {ASSET_FIELDS.map((field) => {
                 const previewUrl = assetPreview[field.key];
                 const isBusy = uploadingSlot === field.key;
+                const ownHasAsset = adminView.own.assets[field.key];
+                const masterHasAsset = master.assets[field.key];
+                const inheritingAsset = !isMaster && !ownHasAsset && masterHasAsset;
                 return (
                   <AssetUploadRow
                     key={field.key}
                     field={field}
                     previewUrl={previewUrl}
                     busy={isBusy}
+                    inheriting={inheritingAsset}
                     onFile={(file) => handleUpload(field.key, file)}
                   />
                 );
@@ -325,6 +382,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               field={TEXT_IMAGE_FIELD}
               previewUrl={textCropPreview}
               busy={textCropBusy}
+              inheriting={textCropInheriting}
               onFile={(file) => handleUpload("textCrop", file)}
             />
           </section>
@@ -432,9 +490,9 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                     className="text-xs font-semibold tracking-widest uppercase mt-1"
                     style={{ color: "var(--brand-accent)" }}
                   >
-                    {form.tagline}
+                    {previewTagline}
                   </p>
-                  <p className="text-white/70 text-xs mt-1">{form.description}</p>
+                  <p className="text-white/70 text-xs mt-1">{previewDescription}</p>
                 </div>
               </div>
             </div>
@@ -442,15 +500,28 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Watermark</h2>
+            <InheritToggleRow
+              show={!isMaster}
+              inherited={watermarkEnabledInherited}
+              onToggle={(v) => toggleInherit("watermarkEnabled", v)}
+              label="Show watermark"
+            />
             <label className="flex items-center gap-2 mb-4">
               <input
                 type="checkbox"
                 checked={form.watermarkEnabled}
+                disabled={watermarkEnabledInherited}
                 onChange={(e) => setField("watermarkEnabled", e.target.checked)}
-                className="h-4 w-4"
+                className="h-4 w-4 disabled:opacity-50"
               />
               <span className="text-sm text-gray-700">Show the background watermark</span>
             </label>
+            <InheritToggleRow
+              show={!isMaster}
+              inherited={watermarkOpacityInherited}
+              onToggle={(v) => toggleInherit("watermarkOpacity", v)}
+              label="Opacity"
+            />
             <div className="flex items-center justify-between text-sm text-gray-700">
               <span>Opacity</span>
               <span className="font-mono text-xs">{form.watermarkOpacity.toFixed(2)}</span>
@@ -461,25 +532,35 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               max={0.5}
               step={0.01}
               value={form.watermarkOpacity}
+              disabled={watermarkOpacityInherited}
               onChange={(e) => setField("watermarkOpacity", Number(e.target.value))}
-              className="w-full"
+              className="w-full disabled:opacity-50"
             />
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">Loading animation</h2>
+            <div className="flex items-center justify-between mb-1">
+              <h2 className="text-lg font-semibold text-gray-900">Loading animation</h2>
+              {!isMaster ? (
+                <InheritCheckbox
+                  inherited={animationInherited}
+                  onToggle={(v) => toggleInherit("loadingAnimation", v)}
+                />
+              ) : null}
+            </div>
             <p className="text-xs text-gray-500 mb-3">
               How the logo animates on loading screens. Pick a style — it previews live.
             </p>
             <div className="grid grid-cols-5 gap-2">
               {BRAND_LOADING_ANIMATIONS.map((option) => {
-                const isSelected = form.loadingAnimation === option.key;
+                const isSelected = previewAnimation === option.key;
                 return (
                   <button
                     key={option.key}
                     type="button"
+                    disabled={animationInherited}
                     onClick={() => setField("loadingAnimation", option.key)}
-                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-colors ${
+                    className={`flex flex-col items-center gap-1.5 rounded-lg border p-2 transition-colors disabled:opacity-50 ${
                       isSelected
                         ? "border-violet-500 bg-violet-50"
                         : "border-gray-200 hover:border-gray-300"
@@ -502,23 +583,41 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
             <h2 className="text-lg font-semibold text-gray-900 mb-3">Text</h2>
             <div className="space-y-3">
               <label className="block">
-                <span className="text-sm text-gray-700">Tagline</span>
+                <span className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Tagline</span>
+                  {!isMaster ? (
+                    <InheritCheckbox
+                      inherited={taglineInherited}
+                      onToggle={(v) => toggleInherit("tagline", v)}
+                    />
+                  ) : null}
+                </span>
                 <input
                   type="text"
-                  value={form.tagline}
+                  value={taglineInherited ? master.tagline : form.tagline}
                   maxLength={200}
+                  disabled={taglineInherited}
                   onChange={(e) => setField("tagline", e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm disabled:bg-gray-50 disabled:text-gray-400"
                 />
               </label>
               <label className="block">
-                <span className="text-sm text-gray-700">Description</span>
+                <span className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">Description</span>
+                  {!isMaster ? (
+                    <InheritCheckbox
+                      inherited={descriptionInherited}
+                      onToggle={(v) => toggleInherit("description", v)}
+                    />
+                  ) : null}
+                </span>
                 <textarea
-                  value={form.description}
+                  value={descriptionInherited ? master.description : form.description}
                   maxLength={2000}
                   rows={2}
+                  disabled={descriptionInherited}
                   onChange={(e) => setField("description", e.target.value)}
-                  className="mt-1 w-full rounded border border-gray-300 px-3 py-1.5 text-sm resize-none"
+                  className="mt-1 w-full rounded border border-gray-300 px-3 py-1.5 text-sm resize-none disabled:bg-gray-50 disabled:text-gray-400"
                 />
               </label>
             </div>
@@ -529,13 +628,45 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   );
 }
 
+function InheritCheckbox(props: { inherited: boolean; onToggle: (inherit: boolean) => void }) {
+  const { inherited, onToggle } = props;
+  return (
+    <label className="flex items-center gap-1.5 text-[11px] text-gray-500 cursor-pointer">
+      <input
+        type="checkbox"
+        checked={inherited}
+        onChange={(e) => onToggle(e.target.checked)}
+        className="h-3.5 w-3.5"
+      />
+      Inherit
+    </label>
+  );
+}
+
+function InheritToggleRow(props: {
+  show: boolean;
+  inherited: boolean;
+  onToggle: (inherit: boolean) => void;
+  label: string;
+}) {
+  const { show, inherited, onToggle, label } = props;
+  if (!show) return null;
+  return (
+    <div className="flex items-center justify-between mb-1">
+      <span className="text-[11px] uppercase tracking-wide text-gray-400">{label}</span>
+      <InheritCheckbox inherited={inherited} onToggle={onToggle} />
+    </div>
+  );
+}
+
 function AssetUploadRow(props: {
   field: AssetFieldDef;
   previewUrl: string;
   busy: boolean;
+  inheriting: boolean;
   onFile: (file: File) => void;
 }) {
-  const { field, previewUrl, busy, onFile } = props;
+  const { field, previewUrl, busy, inheriting, onFile } = props;
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -545,6 +676,12 @@ function AssetUploadRow(props: {
     const file = dropped && dropped.length > 0 ? dropped[0] : null;
     if (file) onFile(file);
   };
+
+  const hint = dragOver
+    ? "Drop to upload…"
+    : inheriting
+      ? `Inheriting ${MASTER_LABEL}`
+      : field.hint;
 
   return (
     <div
@@ -564,7 +701,7 @@ function AssetUploadRow(props: {
       />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-gray-900">{field.label}</p>
-        <p className="text-xs text-gray-500">{dragOver ? "Drop to upload…" : field.hint}</p>
+        <p className={`text-xs ${inheriting ? "text-violet-500" : "text-gray-500"}`}>{hint}</p>
       </div>
       <label className="cursor-pointer px-3 py-1.5 text-xs font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200">
         {busy ? "Uploading…" : "Upload"}
@@ -679,8 +816,17 @@ function hexToHsl(hex: string): { h: number; s: number; l: number } {
   return { h: Math.round(h * 60), s: Math.round(s * 100), l: Math.round(l * 100) };
 }
 
-function ColorField(props: { label: string; value: string; onChange: (v: string) => void }) {
-  const { label, value, onChange } = props;
+function ColorField(props: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  inheritable: boolean;
+  inherited: boolean;
+  masterValue: string;
+  onToggleInherit: (inherit: boolean) => void;
+}) {
+  const { label, value, onChange, inheritable, inherited, onToggleInherit } = props;
+  const masterValue = props.masterValue;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -694,24 +840,48 @@ function ColorField(props: { label: string; value: string; onChange: (v: string)
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
+  const showInherited = inheritable && inherited;
+  const displayValue = showInherited ? masterValue : value;
+
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="text-sm text-gray-700">{label}</span>
+      <span className="text-sm text-gray-700 flex items-center gap-2">
+        {label}
+        {inheritable ? <InheritCheckbox inherited={inherited} onToggle={onToggleInherit} /> : null}
+      </span>
       <div ref={ref} className="relative flex items-center gap-2">
-        <button
-          type="button"
-          aria-label={`Pick ${label} colour`}
-          onClick={() => setOpen((o) => !o)}
-          className="h-8 w-10 rounded border border-gray-300"
-          style={{ backgroundColor: value }}
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          className="w-24 rounded border border-gray-300 px-2 py-1 text-xs font-mono"
-        />
-        {open ? <ColorPickerPopover value={value} onChange={onChange} /> : null}
+        {showInherited ? (
+          <>
+            <span
+              className="h-8 w-10 rounded border border-gray-300 opacity-70"
+              style={{ backgroundColor: displayValue }}
+            />
+            <input
+              type="text"
+              value={displayValue}
+              readOnly
+              disabled
+              className="w-24 rounded border border-gray-200 px-2 py-1 text-xs font-mono bg-gray-50 text-gray-400"
+            />
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              aria-label={`Pick ${label} colour`}
+              onClick={() => setOpen((o) => !o)}
+              className="h-8 w-10 rounded border border-gray-300"
+              style={{ backgroundColor: value }}
+            />
+            <input
+              type="text"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="w-24 rounded border border-gray-300 px-2 py-1 text-xs font-mono"
+            />
+            {open ? <ColorPickerPopover value={value} onChange={onChange} /> : null}
+          </>
+        )}
       </div>
     </div>
   );

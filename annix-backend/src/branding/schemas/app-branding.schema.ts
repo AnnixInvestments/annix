@@ -67,6 +67,9 @@ export class AppBranding {
   @Prop({ type: String, required: true, default: "pulse" })
   loadingAnimation: string;
 
+  @Prop({ type: [String], required: true, default: [] })
+  inheritedFields: string[];
+
   @Prop({ type: String, required: false })
   createdAt: string;
 

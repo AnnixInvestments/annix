@@ -68,6 +68,9 @@ export class AppBranding {
   @Column({ name: "loading_animation", type: "varchar", length: 32, default: "pulse" })
   loadingAnimation: string;
 
+  @Column({ name: "inherited_fields", type: "text", array: true, default: () => "'{}'" })
+  inheritedFields: string[];
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

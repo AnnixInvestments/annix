@@ -142,6 +142,19 @@ function AdminPortalIcon() {
   );
 }
 
+function BrandCenterIcon() {
+  return (
+    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42"
+      />
+    </svg>
+  );
+}
+
 function MessagesIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -182,6 +195,14 @@ const adminApps: AppCard[] = [
     icon: <MessagesIcon />,
     color: "bg-purple-100 text-purple-600",
     hoverColor: "hover:border-purple-400 group-hover:bg-purple-600 group-hover:text-white",
+  },
+  {
+    href: "/admin/portal/branding",
+    title: "Brand Center",
+    description: "Manage the master Annix brand and every app's logo, colours and identity.",
+    icon: <BrandCenterIcon />,
+    color: "bg-violet-100 text-violet-600",
+    hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
   },
 ];
 

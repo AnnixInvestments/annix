@@ -137,6 +137,21 @@ Existing shared components include: `DataTable`, `TableComponents`, `ConfirmModa
 | `DocumentBucket` | One labelled, tonal (blue/purple/indigo/teal) container around a `DocumentDropzone` with confirm/edit lifecycle, optional processing spinner, and a callback for the empty-confirm case. Use when you have a header + drop + confirm flow that should look consistent across apps. |
 | `DocumentsForExtractionPanel` | Renders a stack of `DocumentBucket`s from a `buckets` config array. Use for the "drawings + specifications separately" pattern (or any N-bucket extraction flow). Each bucket = `{ id, title, subtitle, tone, documents, onAddDocument, onRemoveDocument, isConfirmed, onConfirm, onUnconfirm, ... }`. The panel itself owns no state — host app owns and passes per-bucket state. |
 
+#### Branding — per-app + master inheritance (`app/lib/branding/`, backend `branding/`)
+
+Single source of truth for every app's theme (colours, gradients, logos, watermark, loading animation, tagline). **Never hardcode brand assets/colours** — resolve at runtime.
+
+| Export | Use for |
+|---|---|
+| `useBranding(brandCode)` | Public resolved branding for an app shell (`@/app/lib/query/hooks`). Returns the **effective** branding after inheritance is applied server-side. |
+| `resolveBrandAssetUrl(slot, branding)` / `brandingCssVars(branding)` / `brandHasAsset` / `brandingFallback` | Resolve asset URLs + CSS vars. Slots: `logoIcon`, `logoLockup`, `wordmark`, `favicon`, `watermark`, `textCrop`. |
+| `BrandingEditor` (`lib/branding/components/`) | The shared per-brand editor. Used by `app/admin/portal/branding/[brand]/page.tsx`. Renders per-field **Inherit ⟷ Override** toggles for non-master brands; the master brand (`annix-investments`) shows no toggles. |
+| `MASTER_BRAND_CODE` (`annix-investments`), `INHERITABLE_SCALAR_FIELDS`, `BrandingAdminView` | Inheritance model. The master brand holds the umbrella Annix identity; per-app brands inherit any scalar field listed in their `inheritedFields`, and inherit an asset slot whenever they have no own upload (falls back master → bundled default). |
+
+**Brand Center** = `app/admin/portal/branding/page.tsx` (linked from Global Apps → Admin Tools): features the master brand + links to every app's editor.
+
+**Resolution (server-side, in `AppBrandingService`):** `platform defaults → master (annix-investments) → per-app override`. A field overrides only when NOT in the brand's `inheritedFields`. Public + admin endpoints return the merged effective branding, so app shells need no inheritance logic. Mongo collection `app_branding`, keyed `_id = brandCode`.
+
 #### RFQ 3D preview hooks (`components/rfq/previews/hooks/`)
 
 Shared scene setup and camera state for all 6 Three.js/R3F 3D preview components (ref #197):

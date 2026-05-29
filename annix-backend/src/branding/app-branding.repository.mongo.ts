@@ -27,6 +27,7 @@ type AppBrandingDocument = {
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
   loadingAnimation?: string;
+  inheritedFields?: string[];
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
 };
@@ -81,6 +82,7 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       watermarkOpacity: document.watermarkOpacity ?? 0.1,
       watermarkMaxSizePx: document.watermarkMaxSizePx ?? 880,
       loadingAnimation: document.loadingAnimation ?? "pulse",
+      inheritedFields: document.inheritedFields ?? [],
       createdAt: this.toDate(document.createdAt),
       updatedAt: this.toDate(document.updatedAt),
     };
@@ -123,6 +125,7 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       watermarkOpacity: branding.watermarkOpacity,
       watermarkMaxSizePx: branding.watermarkMaxSizePx,
       loadingAnimation: branding.loadingAnimation,
+      inheritedFields: branding.inheritedFields ?? [],
     };
     const saved = await this.model
       .findByIdAndUpdate(

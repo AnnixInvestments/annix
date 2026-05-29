@@ -16,6 +16,7 @@ import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from "@nestjs/swagg
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import {
   AppBrandingService,
+  type BrandingAdminView,
   type BrandingAssetSlot,
   type BrandingImageView,
   type BrandingView,
@@ -49,9 +50,9 @@ export class AdminBrandingController {
   constructor(private readonly brandingService: AppBrandingService) {}
 
   @Get(":brand")
-  @ApiOperation({ summary: "Retrieve a brand's branding" })
-  async branding(@Param("brand") brand: string): Promise<BrandingView> {
-    return this.brandingService.branding(brand);
+  @ApiOperation({ summary: "Retrieve a brand's branding (own + master + effective)" })
+  async branding(@Param("brand") brand: string): Promise<BrandingAdminView> {
+    return this.brandingService.adminBranding(brand);
   }
 
   @Patch(":brand")

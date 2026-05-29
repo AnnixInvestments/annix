@@ -2,7 +2,13 @@ import { BadRequestException, Inject, Injectable, Logger, NotFoundException } fr
 import { now } from "../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { AppBrandingRepository } from "./app-branding.repository";
-import { type BrandCode, isBrandCode } from "./branding.constants";
+import {
+  type BrandCode,
+  INHERITABLE_SCALAR_FIELDS,
+  isBrandCode,
+  MASTER_BRAND_CODE,
+  type PlatformBrandingScalars,
+} from "./branding.constants";
 import { UpdateBrandingDto } from "./dto/update-branding.dto";
 import { AppBranding } from "./entities/app-branding.entity";
 import { AppBrandingImage } from "./entities/app-branding-image.entity";
@@ -37,6 +43,15 @@ export interface BrandingView {
 export interface BrandingImageView {
   id: string;
   label: string;
+}
+
+export interface BrandingAdminView {
+  brandCode: string;
+  isMaster: boolean;
+  inheritedFields: string[];
+  own: BrandingView;
+  master: BrandingView;
+  effective: BrandingView;
 }
 
 const SLOT_COLUMN: Record<BrandingAssetSlot, keyof AppBranding> = {
@@ -97,41 +112,40 @@ export class AppBrandingService {
       watermarkOpacity: 0.1,
       watermarkMaxSizePx: 880,
       loadingAnimation: "pulse",
+      inheritedFields: [],
       createdAt: timestamp,
       updatedAt: timestamp,
     };
   }
 
-  async branding(brand: string): Promise<BrandingView> {
-    const row = await this.entity(brand);
-    return this.toView(row);
+  private async rawRow(brand: BrandCode): Promise<AppBranding> {
+    const row = await this.brandingRepo.findByBrandCode(brand);
+    return row ?? this.defaultBranding(brand);
   }
 
-  toView(row: AppBranding): BrandingView {
+  async branding(brand: string): Promise<BrandingView> {
+    const code = this.assertBrand(brand);
+    const app = await this.rawRow(code);
+    if (code === MASTER_BRAND_CODE) {
+      return composeView(app, app, [], true);
+    }
+    const master = await this.rawRow(MASTER_BRAND_CODE);
+    return composeView(app, master, app.inheritedFields ?? [], false);
+  }
+
+  async adminBranding(brand: string): Promise<BrandingAdminView> {
+    const code = this.assertBrand(brand);
+    const app = await this.rawRow(code);
+    const isMaster = code === MASTER_BRAND_CODE;
+    const master = isMaster ? app : await this.rawRow(MASTER_BRAND_CODE);
+    const inheritedFields = isMaster ? [] : (app.inheritedFields ?? []);
     return {
-      brandCode: row.brandCode,
-      navbarColor: row.navbarColor,
-      accentOrange: row.accentOrange,
-      accentOrangeLight: row.accentOrangeLight,
-      accentOrangeDark: row.accentOrangeDark,
-      gradientFrom: row.gradientFrom,
-      gradientVia: row.gradientVia,
-      gradientTo: row.gradientTo,
-      tagline: row.tagline,
-      description: row.description,
-      watermarkEnabled: row.watermarkEnabled,
-      watermarkOpacity: row.watermarkOpacity,
-      watermarkMaxSizePx: row.watermarkMaxSizePx,
-      loadingAnimation: row.loadingAnimation,
-      assets: {
-        logoIcon: row.logoIconPath != null,
-        logoLockup: row.logoLockupPath != null,
-        wordmark: row.wordmarkPath != null,
-        favicon: row.faviconPath != null,
-        watermark: row.watermarkPath != null,
-        textCrop: row.textCropPath != null,
-      },
-      assetVersion: row.updatedAt ? row.updatedAt.getTime() : 0,
+      brandCode: code,
+      isMaster,
+      inheritedFields,
+      own: composeView(app, app, [], true),
+      master: composeView(master, master, [], true),
+      effective: composeView(app, master, inheritedFields, isMaster),
     };
   }
 
@@ -169,9 +183,16 @@ export class AppBrandingService {
     if (dto.watermarkPath !== undefined) existing.watermarkPath = dto.watermarkPath;
     if (dto.textCropPath !== undefined) existing.textCropPath = dto.textCropPath;
 
+    if (dto.inheritedFields !== undefined) {
+      const allowed = dto.inheritedFields.filter((field) =>
+        (INHERITABLE_SCALAR_FIELDS as readonly string[]).includes(field),
+      );
+      existing.inheritedFields = brand === MASTER_BRAND_CODE ? [] : allowed;
+    }
+
     const saved = await this.brandingRepo.save(existing);
     this.logger.log(`Branding updated for ${saved.brandCode}`);
-    return this.toView(saved);
+    return this.branding(saved.brandCode);
   }
 
   async uploadAsset(
@@ -188,9 +209,15 @@ export class AppBrandingService {
     brand: string,
     slot: BrandingAssetSlot,
   ): Promise<{ buffer: Buffer; mimeType: string }> {
-    const row = await this.entity(brand);
+    const code = this.assertBrand(brand);
     const column = SLOT_COLUMN[slot];
-    const path = row[column] as string | null;
+    const app = await this.rawRow(code);
+    const ownPath = app[column] as string | null;
+    const masterPath =
+      code === MASTER_BRAND_CODE
+        ? null
+        : ((await this.rawRow(MASTER_BRAND_CODE))[column] as string | null);
+    const path = ownPath ?? masterPath;
     if (!path) {
       throw new NotFoundException(`No custom asset set for ${brand}/${slot}`);
     }
@@ -258,4 +285,62 @@ function mimeTypeForPath(path: string): string {
   if (lower.endsWith(".ico")) return "image/x-icon";
   if (lower.endsWith(".gif")) return "image/gif";
   return "image/png";
+}
+
+function pickScalars(row: AppBranding): PlatformBrandingScalars {
+  return {
+    navbarColor: row.navbarColor,
+    accentOrange: row.accentOrange,
+    accentOrangeLight: row.accentOrangeLight,
+    accentOrangeDark: row.accentOrangeDark,
+    gradientFrom: row.gradientFrom,
+    gradientVia: row.gradientVia,
+    gradientTo: row.gradientTo,
+    tagline: row.tagline,
+    description: row.description,
+    watermarkEnabled: row.watermarkEnabled,
+    watermarkOpacity: row.watermarkOpacity,
+    watermarkMaxSizePx: row.watermarkMaxSizePx,
+    loadingAnimation: row.loadingAnimation,
+  };
+}
+
+function mergeScalars(
+  own: PlatformBrandingScalars,
+  master: PlatformBrandingScalars,
+  inheritedFields: string[],
+): PlatformBrandingScalars {
+  const masterRecord = master as unknown as Record<string, unknown>;
+  return INHERITABLE_SCALAR_FIELDS.reduce<PlatformBrandingScalars>(
+    (acc, field) =>
+      inheritedFields.includes(field) ? { ...acc, [field]: masterRecord[field] } : acc,
+    { ...own },
+  );
+}
+
+function composeView(
+  app: AppBranding,
+  master: AppBranding,
+  inheritedFields: string[],
+  isMaster: boolean,
+): BrandingView {
+  const own = pickScalars(app);
+  const scalars = isMaster ? own : mergeScalars(own, pickScalars(master), inheritedFields);
+  const present = (ownPath: string | null, masterPath: string | null): boolean =>
+    ownPath != null || (!isMaster && masterPath != null);
+  const appTime = app.updatedAt ? app.updatedAt.getTime() : 0;
+  const masterTime = master.updatedAt ? master.updatedAt.getTime() : 0;
+  return {
+    brandCode: app.brandCode,
+    ...scalars,
+    assets: {
+      logoIcon: present(app.logoIconPath, master.logoIconPath),
+      logoLockup: present(app.logoLockupPath, master.logoLockupPath),
+      wordmark: present(app.wordmarkPath, master.wordmarkPath),
+      favicon: present(app.faviconPath, master.faviconPath),
+      watermark: present(app.watermarkPath, master.watermarkPath),
+      textCrop: present(app.textCropPath, master.textCropPath),
+    },
+    assetVersion: isMaster ? appTime : Math.max(appTime, masterTime),
+  };
 }

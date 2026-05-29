@@ -1,5 +1,6 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
 import {
+  IsArray,
   IsBoolean,
   IsIn,
   IsInt,
@@ -11,6 +12,7 @@ import {
   Min,
   ValidateIf,
 } from "class-validator";
+import { INHERITABLE_SCALAR_FIELDS } from "../branding.constants";
 
 const HEX_COLOR = /^#([0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 
@@ -120,4 +122,14 @@ export class UpdateBrandingDto {
   @IsOptional()
   @IsIn(["pulse", "spin", "bounce", "glow", "float"])
   loadingAnimation?: string;
+
+  @ApiPropertyOptional({
+    description: "Scalar fields this brand inherits from the master (Annix Investments) brand",
+    isArray: true,
+    enum: INHERITABLE_SCALAR_FIELDS,
+  })
+  @IsOptional()
+  @IsArray()
+  @IsIn(INHERITABLE_SCALAR_FIELDS, { each: true })
+  inheritedFields?: string[];
 }
