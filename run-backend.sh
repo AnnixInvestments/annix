@@ -4,7 +4,10 @@ set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/dev-lib.sh"
 cd "$ANNIX_ROOT/annix-backend"
 
-database_driver=$(grep -E '^DATABASE_DRIVER=' .env 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')
+database_driver="${DATABASE_DRIVER:-}"
+if [ -z "$database_driver" ]; then
+  database_driver=$(grep -E '^DATABASE_DRIVER=' .env 2>/dev/null | cut -d= -f2- | tr -d '[:space:]')
+fi
 
 if [ "$database_driver" = "mongo" ]; then
   echo "[run-backend] DATABASE_DRIVER=mongo — skipping Postgres migrations"
