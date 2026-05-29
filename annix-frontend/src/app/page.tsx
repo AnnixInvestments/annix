@@ -1,11 +1,4 @@
-import {
-  AudioLines,
-  Boxes,
-  ClipboardCheck,
-  FileText,
-  GraduationCap,
-  MapPinned,
-} from "lucide-react";
+import { AudioLines, ClipboardCheck, FileText, GraduationCap, MapPinned } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AnnixOrbitCard } from "@/app/components/cards/AnnixOrbitCard";
@@ -66,34 +59,13 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/core" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-indigo-400 hover:shadow-xl transition-all duration-300 h-full">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-indigo-100 rounded-2xl text-indigo-600 mb-6 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                  <Boxes {...iconProps} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Core</h3>
-                <p className="text-gray-600 mb-6">
-                  The operations platform for stock, production, documents, quality, and delivery.
-                  Includes AU Rubber and Stock Control.
-                </p>
-                <span className="inline-flex items-center text-indigo-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Open Core
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
-              </div>
+          <Link href="/core" className="group h-full">
+            <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border-2 border-transparent bg-[#0b1430] p-3 shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
+              <img
+                src="/branding/annix-core-card.png"
+                alt="Annix Core — the operations platform for stock, production, documents, quality, and delivery"
+                className="h-auto max-h-full w-full rounded-lg object-contain"
+              />
             </div>
           </Link>
 
