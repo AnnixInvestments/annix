@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useRef, useState } from "react";
+import { BrandNavLockup } from "@/app/components/BrandNavLockup";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
+import { useTheme } from "@/app/components/ThemeProvider";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { useBranding } from "@/app/lib/query/hooks";
 
 function AdminLoginContent() {
   const router = useRouter();
@@ -21,6 +24,19 @@ function AdminLoginContent() {
   const [rememberMe, setRememberMe] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const { resolvedTheme } = useTheme();
+  const masterBranding = useBranding("annix-investments").data;
+  const isLightTheme = resolvedTheme === "light";
+  const screenBg = isLightTheme
+    ? masterBranding
+      ? masterBranding.backgroundLight
+      : "#F8FAFC"
+    : masterBranding
+      ? masterBranding.backgroundDark
+      : "#0F172A";
+  const headingColor = isLightTheme ? "#1a1a40" : "#ffffff";
+  const subColor = isLightTheme ? "rgba(26,26,64,0.7)" : "#bfdbfe";
 
   useEffect(() => {
     const localGlobal = globalThis.localStorage;
@@ -88,37 +104,40 @@ function AdminLoginContent() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: screenBg }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="mt-4 text-white">Loading...</p>
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto"
+            style={{ borderColor: headingColor }}
+          />
+          <p className="mt-4" style={{ color: headingColor }}>
+            Loading...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div
+      className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8"
+      style={{ backgroundColor: screenBg }}
+    >
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         {/* Admin Portal Header */}
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-            <svg
-              className="w-10 h-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"
-              />
-            </svg>
+        <div className="flex flex-col items-center text-center">
+          <div className="mb-4">
+            <BrandNavLockup brand="annix-investments" />
           </div>
-          <h1 className="text-3xl font-bold text-white">Admin Portal</h1>
-          <p className="mt-2 text-xl text-blue-200">Sign in to manage the platform</p>
+          <h1 className="text-3xl font-bold" style={{ color: headingColor }}>
+            Admin Portal
+          </h1>
+          <p className="mt-2 text-xl" style={{ color: subColor }}>
+            Sign in to manage the platform
+          </p>
         </div>
       </div>
 
