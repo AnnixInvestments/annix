@@ -41,6 +41,24 @@ export function isInheritableScalarField(value: string): value is InheritableSca
   return (INHERITABLE_SCALAR_FIELDS as readonly string[]).includes(value);
 }
 
+export const GLOBAL_LOCKED_SCALAR_FIELDS = [
+  "navbarColor",
+  "accentOrange",
+  "accentOrangeLight",
+  "accentOrangeDark",
+  "gradientFrom",
+  "gradientVia",
+  "gradientTo",
+] as const;
+
+export const GLOBAL_LOCKED_ASSET_SLOTS = ["logoIcon", "wordmark"] as const;
+
+export const GLOBAL_LOCK_EXEMPT_BRANDS: readonly string[] = ["annix-sentinel"];
+
+export function brandLocksGlobals(brand: string): boolean {
+  return brand !== MASTER_BRAND_CODE && !GLOBAL_LOCK_EXEMPT_BRANDS.includes(brand);
+}
+
 export interface PlatformBrandingScalars {
   navbarColor: string;
   accentOrange: string;

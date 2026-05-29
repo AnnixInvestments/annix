@@ -323,9 +323,11 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const master = adminView.master;
   const effective = adminView.effective;
   const ownView = adminView.own;
+  const lockedScalars = new Set(adminView.lockedScalarFields);
+  const lockedSlots = new Set(adminView.lockedAssetSlots);
 
   const effectiveValue = <K extends keyof BrandingForm>(key: K): BrandingForm[K] => {
-    if (!isMaster && inherited.has(key)) {
+    if (!isMaster && (lockedScalars.has(key) || inherited.has(key))) {
       return master[key as keyof Branding] as BrandingForm[K];
     }
     return form[key];
@@ -434,11 +436,18 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
           <section className="bg-white rounded-xl border border-gray-200 p-5">
-            <h2 className="text-lg font-semibold text-gray-900 mb-3">Colours</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Colours</h2>
+            {!isMaster && lockedScalars.size > 0 ? (
+              <p className="text-xs text-violet-600 mb-3">
+                Colours are managed globally from {MASTER_LABEL} — edit them on the {MASTER_LABEL}{" "}
+                brand page.
+              </p>
+            ) : null}
             <div className="divide-y divide-gray-100">
               {COLOR_FIELDS.map((colorField) => {
                 const key = colorField.key;
-                const fieldInherited = !isMaster && inherited.has(key);
+                const locked = !isMaster && lockedScalars.has(key);
+                const fieldInherited = !isMaster && !locked && inherited.has(key);
                 const ownValue = form[key];
                 const masterValue = master[key];
                 return (
@@ -447,8 +456,9 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                     label={colorField.label}
                     value={ownValue}
                     onChange={(v) => setField(key, v)}
-                    inheritable={!isMaster}
+                    inheritable={!isMaster && !locked}
                     inherited={fieldInherited}
+                    locked={locked}
                     masterValue={masterValue}
                     onToggleInherit={(v) => toggleInherit(key, v)}
                   />
@@ -468,6 +478,9 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               {LAYER_FIELDS.map((field) => {
                 const slot = field.key;
                 const previews = assetPreview[slot];
+                if (lockedSlots.has(slot)) {
+                  return <LockedAssetRow key={slot} field={field} previews={previews} />;
+                }
                 return (
                   <LayeredAssetRow
                     key={slot}
@@ -997,6 +1010,36 @@ function VariantUpload(props: {
   );
 }
 
+function LockedAssetRow(props: { field: AssetFieldDef; previews: VariantUrls }) {
+  const { field, previews } = props;
+  return (
+    <div className="rounded-lg border border-gray-100 bg-gray-50 p-2">
+      <div className="mb-2 flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium text-gray-900">{field.label}</p>
+          <p className="text-xs text-gray-500">{field.hint}</p>
+        </div>
+        <span className="rounded bg-gray-200 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+          Global
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <div
+          className="h-10 w-10 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-100 bg-contain bg-center bg-no-repeat"
+          style={{ backgroundImage: `url('${previews.light}')` }}
+        />
+        <div
+          className="h-10 w-10 flex-shrink-0 rounded-lg border border-gray-200 bg-gray-900 bg-contain bg-center bg-no-repeat"
+          style={{ backgroundImage: `url('${previews.dark}')` }}
+        />
+      </div>
+      <p className="mt-2 text-[11px] text-gray-400">
+        Managed globally from {MASTER_LABEL} — edit on the {MASTER_LABEL} brand page.
+      </p>
+    </div>
+  );
+}
+
 function LayeredAssetRow(props: {
   field: AssetFieldDef;
   previews: VariantUrls;
@@ -1134,11 +1177,13 @@ function ColorField(props: {
   onChange: (v: string) => void;
   inheritable: boolean;
   inherited: boolean;
+  locked?: boolean;
   masterValue: string;
   onToggleInherit: (inherit: boolean) => void;
 }) {
   const { label, value, onChange, inheritable, inherited, onToggleInherit } = props;
   const masterValue = props.masterValue;
+  const locked = props.locked === true;
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -1152,17 +1197,22 @@ function ColorField(props: {
     return () => document.removeEventListener("mousedown", onDown);
   }, [open]);
 
-  const showInherited = inheritable && inherited;
-  const displayValue = showInherited ? masterValue : value;
+  const showReadonly = locked || (inheritable && inherited);
+  const displayValue = showReadonly ? masterValue : value;
 
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
       <span className="text-sm text-gray-700 flex items-center gap-2">
         {label}
+        {locked ? (
+          <span className="rounded bg-gray-200 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-gray-500">
+            Global
+          </span>
+        ) : null}
         {inheritable ? <InheritCheckbox inherited={inherited} onToggle={onToggleInherit} /> : null}
       </span>
       <div ref={ref} className="relative flex items-center gap-2">
-        {showInherited ? (
+        {showReadonly ? (
           <>
             <span
               className="h-8 w-10 rounded border border-gray-300 opacity-70"

@@ -4,6 +4,9 @@ import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { AppBrandingRepository } from "./app-branding.repository";
 import {
   type BrandCode,
+  brandLocksGlobals,
+  GLOBAL_LOCKED_ASSET_SLOTS,
+  GLOBAL_LOCKED_SCALAR_FIELDS,
   INHERITABLE_SCALAR_FIELDS,
   isBrandCode,
   MASTER_BRAND_CODE,
@@ -59,6 +62,8 @@ export interface BrandingAdminView {
   brandCode: string;
   isMaster: boolean;
   inheritedFields: string[];
+  lockedScalarFields: string[];
+  lockedAssetSlots: BrandingAssetSlot[];
   own: BrandingView;
   master: BrandingView;
   effective: BrandingView;
@@ -111,6 +116,14 @@ export class AppBrandingService {
       throw new BadRequestException(`Unknown brand: ${brand}`);
     }
     return brand;
+  }
+
+  private lockedScalars(brand: string): string[] {
+    return brandLocksGlobals(brand) ? [...GLOBAL_LOCKED_SCALAR_FIELDS] : [];
+  }
+
+  private lockedSlots(brand: string): BrandingAssetSlot[] {
+    return brandLocksGlobals(brand) ? [...GLOBAL_LOCKED_ASSET_SLOTS] : [];
   }
 
   async entity(brand: string): Promise<AppBranding> {
@@ -176,10 +189,13 @@ export class AppBrandingService {
     const code = this.assertBrand(brand);
     const app = await this.rawRow(code);
     if (code === MASTER_BRAND_CODE) {
-      return composeView(app, app, [], true);
+      return composeView(app, app, [], true, []);
     }
     const master = await this.rawRow(MASTER_BRAND_CODE);
-    return composeView(app, master, app.inheritedFields ?? [], false);
+    const inherited = Array.from(
+      new Set([...(app.inheritedFields ?? []), ...this.lockedScalars(code)]),
+    );
+    return composeView(app, master, inherited, false, this.lockedSlots(code));
   }
 
   async adminBranding(brand: string): Promise<BrandingAdminView> {
@@ -187,19 +203,33 @@ export class AppBrandingService {
     const app = await this.rawRow(code);
     const isMaster = code === MASTER_BRAND_CODE;
     const master = isMaster ? app : await this.rawRow(MASTER_BRAND_CODE);
-    const inheritedFields = isMaster ? [] : (app.inheritedFields ?? []);
+    const ownInherited = isMaster ? [] : (app.inheritedFields ?? []);
+    const lockedScalarFields = this.lockedScalars(code);
+    const lockedAssetSlots = this.lockedSlots(code);
+    const effectiveInherited = Array.from(new Set([...ownInherited, ...lockedScalarFields]));
     return {
       brandCode: code,
       isMaster,
-      inheritedFields,
-      own: composeView(app, app, [], true),
-      master: composeView(master, master, [], true),
-      effective: composeView(app, master, inheritedFields, isMaster),
+      inheritedFields: ownInherited,
+      lockedScalarFields,
+      lockedAssetSlots,
+      own: composeView(app, app, [], true, []),
+      master: composeView(master, master, [], true, []),
+      effective: composeView(app, master, effectiveInherited, isMaster, lockedAssetSlots),
     };
   }
 
   async updateBranding(brand: string, dto: UpdateBrandingDto): Promise<BrandingView> {
     const existing = await this.entity(brand);
+    const locksGlobals = brandLocksGlobals(brand);
+    const lockedColumns = locksGlobals
+      ? new Set<keyof AppBranding>(
+          GLOBAL_LOCKED_ASSET_SLOTS.flatMap((slot) => [
+            SLOT_COLUMN[slot].light,
+            SLOT_COLUMN[slot].dark,
+          ]),
+        )
+      : new Set<keyof AppBranding>();
 
     const colorKeys: (keyof UpdateBrandingDto & keyof AppBranding)[] = [
       "navbarColor",
@@ -210,12 +240,14 @@ export class AppBrandingService {
       "gradientVia",
       "gradientTo",
     ];
-    colorKeys.forEach((key) => {
-      const value = dto[key];
-      if (value !== undefined) {
-        existing[key] = value as never;
-      }
-    });
+    if (!locksGlobals) {
+      colorKeys.forEach((key) => {
+        const value = dto[key];
+        if (value !== undefined) {
+          existing[key] = value as never;
+        }
+      });
+    }
 
     if (dto.tagline !== undefined) existing.tagline = dto.tagline;
     if (dto.description !== undefined) existing.description = dto.description;
@@ -231,6 +263,9 @@ export class AppBrandingService {
 
     const dtoRecord = dto as unknown as Record<string, string | null | undefined>;
     PATH_COLUMNS.forEach((column) => {
+      if (lockedColumns.has(column)) {
+        return;
+      }
       const value = dtoRecord[column];
       if (value !== undefined) {
         existing[column] = value as never;
@@ -267,7 +302,9 @@ export class AppBrandingService {
     const code = this.assertBrand(brand);
     const column = SLOT_COLUMN[slot][variant];
     const app = await this.rawRow(code);
-    const ownPath = app[column] as string | null;
+    const locked =
+      brandLocksGlobals(code) && (GLOBAL_LOCKED_ASSET_SLOTS as readonly string[]).includes(slot);
+    const ownPath = locked ? null : (app[column] as string | null);
     const masterPath =
       code === MASTER_BRAND_CODE
         ? null
@@ -382,6 +419,7 @@ function composeView(
   master: AppBranding,
   inheritedFields: string[],
   isMaster: boolean,
+  lockedAssetSlots: BrandingAssetSlot[],
 ): BrandingView {
   const own = pickScalars(app);
   const scalars = isMaster ? own : mergeScalars(own, pickScalars(master), inheritedFields);
@@ -391,7 +429,9 @@ function composeView(
     ASSET_SLOTS.reduce<Record<BrandingAssetSlot, boolean>>(
       (acc, slot) => {
         const column = SLOT_COLUMN[slot][variant];
-        acc[slot] = present(app[column] as string | null, master[column] as string | null);
+        const locked = lockedAssetSlots.includes(slot);
+        const ownValue = locked ? null : (app[column] as string | null);
+        acc[slot] = present(ownValue, master[column] as string | null);
         return acc;
       },
       {} as Record<BrandingAssetSlot, boolean>,

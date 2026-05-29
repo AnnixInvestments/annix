@@ -90,6 +90,8 @@ export interface BrandingAdminView {
   brandCode: string;
   isMaster: boolean;
   inheritedFields: string[];
+  lockedScalarFields: string[];
+  lockedAssetSlots: BrandingAssetSlot[];
   own: Branding;
   master: Branding;
   effective: Branding;
