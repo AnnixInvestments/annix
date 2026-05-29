@@ -38,9 +38,8 @@ const TILES = {
   },
   watermark: {
     shape: "rounded",
-    // Both variants use the white-background mark so the watermark is a
-    // consistent rounded-corner card (not the bare circular orbital ring).
-    lightFromDark: true,
+    // Light = the navy/orange orbital mark (transparent) so it reads as the
+    // blue logo on light surfaces; dark = the white-background rounded tile.
     light: ["watermark_path", "watermarkPath"],
     dark: ["watermark_path_dark", "watermarkPathDark"],
   },
