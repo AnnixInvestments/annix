@@ -297,14 +297,14 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 - **Write data access through the repository abstraction** (`CrudRepository` + per-entity Mongo/Postgres impls) — never raw TypeORM `createQueryBuilder` on a live path. Mongoose does NOT ignore `undefined` query fields the way TypeORM does: `findOne({ x: undefined })` returns `null` on Mongo, so never pass undefined query params.
 - The Neon / TypeORM-migration / `synchronize` rules below are **legacy (Postgres-era)**. They bind only the Postgres path; on Mongo there are no SQL DDL migrations. Their spirit still applies on Atlas: no unbounded loads, paginate, cache static reference data (Atlas connection/bandwidth limits are real too).
 
-### Scheduled Jobs & Neon Compute Budget
+### Scheduled Jobs & Neon Compute Budget — LEGACY (Neon retired 2026-05-28; the 6-hour cron default still applies for Mongo Atlas bandwidth/cost)
 - Neon free tier = 100 CU-hrs/month. Every cron wake-up costs ~8 min compute.
 - **Default frequency for new `@Cron` jobs touching Neon = every 6 hours** (`0 */6 * * *`) unless there's clear business justification for higher.
 - **Never default to 10-min or 30-min polling** — prevents Neon from suspending and burns the budget.
 - **Register in `JOB_METADATA`** in `admin-scheduled-jobs.service.ts` with a `defaultCron` matching the decorator. Frequency is adjustable at runtime via the Admin > Scheduled Jobs page.
 - **Cluster daily jobs** at `0 8 * * *` (morning) or `0 2 * * *` (nightly) to share wake-ups.
 
-### Neon Network Transfer Budget
+### Neon Network Transfer Budget — LEGACY (Neon retired 2026-05-28; the pagination / refetch-interval / cache-control guidance still applies on Mongo Atlas)
 - **Never use `eager: true`** in TypeORM entities — use explicit `relations: [...]` in service queries. ESLint enforces.
 - **Paginate unbounded collections**: detail endpoints don't load related collections inline. Use sub-resource endpoints (`/drawings/:id/versions`, etc.). Default page size: 20.
 - **TanStack Query `refetchInterval` >= 120_000ms** unless documented justification. Use `usePollingInterval()` for admin-configurable intervals. ESLint warns on all `refetchInterval`.
