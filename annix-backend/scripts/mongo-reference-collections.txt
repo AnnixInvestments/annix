@@ -16,6 +16,9 @@ coating_specifications
 coating_standards
 coating_systems
 commodities
+comply_sa_compliance_requirements
+comply_sa_government_documents
+comply_sa_regulatory_updates
 cv_assistant_ee_consent_text_versions
 cv_assistant_ee_sectoral_targets
 cv_assistant_email_templates
@@ -47,7 +50,6 @@ forged_fitting_series
 forged_fitting_types
 gasket_weights
 gusset_configurations
-hardness_test_results
 hdpe_buttweld_prices
 hdpe_chemical_resistance
 hdpe_fitting_dimensions
@@ -57,13 +59,12 @@ hdpe_pipe_specifications
 hdpe_standards
 hdpe_stub_prices
 hydrotest_requirements
-impact_test_results
 lining_coating_rules
 malleable_iron_fitting_dimensions
 material_allowable_stresses
 material_limits
 material_mechanical_properties
-material_test_certificates
+module_license
 mozambique_mines
 namibia_mines
 nb_nps_lookup
@@ -90,6 +91,8 @@ pipe_steel_grades
 pipe_steel_work_config
 pipe_support_spacing
 pipe_tolerances
+polling_jobs_global_settings
+product_data_sheets
 pump_products
 pvc_cement_prices
 pvc_fitting_dimensions
@@ -97,6 +100,7 @@ pvc_fitting_types
 pvc_fitting_weights
 pvc_pipe_specifications
 pvc_standards
+qc_control_plans
 reinforcement_pad_standards
 retaining_ring_weights
 rubber_adhesion_requirements
@@ -115,12 +119,11 @@ sabs62_fitting_dimension
 sabs719_fitting_dimension
 sabs_719_bend_dimensions
 sabs_719_test_pressures
+scheduled_jobs_global_settings
 shop_labor_rates
+sla_config
 slurry_profiles
-sp_coating_rates
-sp_lining_rates
-sp_surface_prep_rates
-spectacle_blinds
+sm_company_module_license
 sm_consumable_product
 sm_issuable_product
 sm_paint_product
@@ -128,6 +131,10 @@ sm_product_category
 sm_rubber_compound
 sm_solution_product
 sm_stock_take_variance_category
+sp_coating_rates
+sp_lining_rates
+sp_surface_prep_rates
+spectacle_blinds
 stainless_steel_grades
 steel_specifications
 structural_steel_grades
@@ -137,6 +144,7 @@ sweep_tee_dimensions
 threaded_inserts
 u_bolts
 washers
+website_page
 weld_defect_acceptance
 weld_thickness_fitting_recommendations
 weld_thickness_pipe_recommendations
