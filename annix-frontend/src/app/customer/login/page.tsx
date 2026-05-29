@@ -5,11 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
+import { useTheme } from "@/app/components/ThemeProvider";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { customerEmailApi } from "@/app/lib/api/customerApi";
 import { customerTokenStore } from "@/app/lib/api/portalTokenStores";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
+import { useBranding } from "@/app/lib/query/hooks";
 
 function CustomerLoginContent() {
   const router = useRouter();
@@ -133,41 +135,54 @@ function CustomerLoginContent() {
     }
   };
 
+  const { resolvedTheme } = useTheme();
+  const masterBranding = useBranding("annix-investments").data;
+  const isLightTheme = resolvedTheme === "light";
+  const screenBg = isLightTheme
+    ? masterBranding
+      ? masterBranding.backgroundLight
+      : "#F8FAFC"
+    : masterBranding
+      ? masterBranding.backgroundDark
+      : "#0F172A";
+  const headingColor = isLightTheme ? "#1a1a40" : "#ffffff";
+  const subColor = isLightTheme ? "rgba(26,26,64,0.7)" : "#bfdbfe";
+
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div
+        className="min-h-screen flex items-center justify-center"
+        style={{ backgroundColor: screenBg }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="mt-4 text-white">Loading...</p>
+          <div
+            className="animate-spin rounded-full h-12 w-12 border-b-2 mx-auto"
+            style={{ borderColor: headingColor }}
+          />
+          <p className="mt-4" style={{ color: headingColor }}>
+            Loading...
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div
+      className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8"
+      style={{ backgroundColor: screenBg }}
+    >
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link href="/" className="mb-6 block">
           <BrandLoginCard brand="annix-forge" />
         </Link>
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-600 mb-4">
-            <svg
-              className="w-10 h-10 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-              />
-            </svg>
-          </div>
-          <h1 className="text-3xl font-bold text-white">Customer Portal</h1>
-          <p className="mt-2 text-xl text-blue-200">Sign in to your account</p>
+          <h1 className="text-3xl font-bold" style={{ color: headingColor }}>
+            Customer Portal
+          </h1>
+          <p className="mt-2 text-xl" style={{ color: subColor }}>
+            Sign in to your account
+          </p>
         </div>
       </div>
 
