@@ -291,6 +291,12 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 - **Pre-push hook**: `.githooks/pre-push` builds both apps and runs migrations.
 - **Hook failures**: fix the issue and amend the existing commit — do not create a new commit.
 
+### Database / Persistence — MongoDB is the system of record (READ FIRST)
+- **Annix runs on MongoDB (Atlas), NOT PostgreSQL.** Production (`annix_production`), staging (`annix_staging`) and test (`annix_test`) all run the Mongo driver. The PostgreSQL / Neon era is over — Neon is retired (production cutover 2026-05-28). When in doubt, the database is Mongo. Do not assume Postgres semantics.
+- A dual-driver abstraction remains behind the `DATABASE_DRIVER` env var (`activeDatabaseDriver()` in `annix-backend/src/lib/persistence/database-driver.ts`); `mongo` is the live value in every deployed environment. The Postgres/TypeORM path still compiles but is used nowhere in production.
+- **Write data access through the repository abstraction** (`CrudRepository` + per-entity Mongo/Postgres impls) — never raw TypeORM `createQueryBuilder` on a live path. Mongoose does NOT ignore `undefined` query fields the way TypeORM does: `findOne({ x: undefined })` returns `null` on Mongo, so never pass undefined query params.
+- The Neon / TypeORM-migration / `synchronize` rules below are **legacy (Postgres-era)**. They bind only the Postgres path; on Mongo there are no SQL DDL migrations. Their spirit still applies on Atlas: no unbounded loads, paginate, cache static reference data (Atlas connection/bandwidth limits are real too).
+
 ### Scheduled Jobs & Neon Compute Budget
 - Neon free tier = 100 CU-hrs/month. Every cron wake-up costs ~8 min compute.
 - **Default frequency for new `@Cron` jobs touching Neon = every 6 hours** (`0 */6 * * *`) unless there's clear business justification for higher.
@@ -304,7 +310,7 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 - **TanStack Query `refetchInterval` >= 120_000ms** unless documented justification. Use `usePollingInterval()` for admin-configurable intervals. ESLint warns on all `refetchInterval`.
 - **Static reference endpoints** must set `Cache-Control: public, max-age=31536000, immutable`.
 
-### Database Schema Changes
+### Database Schema Changes (legacy — Postgres/TypeORM path only; Mongo has no SQL migrations)
 - **Never `synchronize: true`** — all schema changes go through TypeORM migrations.
 - **Never modify the database directly** — no manual DDL outside migration files.
 - **Migration timestamps must respect dependencies**: if B references a table created in A, B's timestamp > A's.
