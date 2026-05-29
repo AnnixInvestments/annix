@@ -29,7 +29,16 @@ The full stack runs a NestJS backend (`nest start --watch`) and a Next.js fronte
 - **Microsoft Visual C++ Redistributable (x64)** - needed by native toolchain binaries
   (Biome ships a native `biome.exe`). An established dev machine already has it; only a
   brand-new Windows install is likely to be missing it. See troubleshooting if Biome fails
-  to load.
+  to load. Install with `winget install --id Microsoft.VCRedist.2015+.x64 -e`.
+- **Python 3** - the git hooks' timing helper (`timer.sh`) calls `python3` for millisecond
+  timestamps when GNU `gdate` is absent (which it is on Windows). Without it, `git push`
+  dies immediately with "Python was not found". Install with
+  `winget install --id Python.Python.3.12 -e`. On **Windows-on-ARM** (Parallels on Apple
+  Silicon), winget installs ARM64 Python that ships only `python.exe`; create the alias the
+  hook expects with: `Copy-Item "$env:LOCALAPPDATA\Programs\Python\Python312-arm64\python.exe" "$env:LOCALAPPDATA\Programs\Python\Python312-arm64\python3.exe"`.
+  Verify `python3 --version` prints a version (if it still shows the Store stub, disable the
+  `python`/`python3` App Execution Aliases in Settings, or put the Python dir ahead of
+  `WindowsApps` on PATH).
 
 ## 2. Clone and install
 
@@ -113,6 +122,7 @@ Other swarm commands: `npx claude-swarm status | stop | restart | logs`.
 | `pnpm env:setup` says "No secrets fetched ... authenticate with fly auth login" | `fly` not on PATH or not authenticated | Re-do section 3 in the same terminal you run setup from. |
 | Backend connects to the wrong database | DB vars in `annix-backend/.env` overriding the profile | Empty `.env` (section 5). |
 | Biome fails with `node.exe: error while loading shared libraries` / exit 127, blocking the pre-commit and pre-push hooks (`node` and `pnpm` themselves work fine) | The native `biome.exe` can't load because the Microsoft VC++ Redistributable is missing - only happens on a brand-new Windows install | `winget install --id Microsoft.VCRedist.2015+.x64 -e`. Confirm `npx @biomejs/biome --version` then prints a version. |
+| `git push` fails instantly with "Python was not found" and no build output | The pre-push `timer.sh` calls `python3`, which is missing (or only the Store stub exists) | Install Python 3 and ensure `python3` resolves (see Prerequisites). On ARM, add the `python3.exe` copy. |
 
 ## Notes
 
