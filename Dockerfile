@@ -105,6 +105,8 @@ COPY --from=backend-builder /app/annix-backend/dist ./annix-backend/dist
 COPY --from=backend-builder /app/annix-backend/src/config/data-source.ts ./annix-backend/src/config/data-source.ts
 COPY --from=backend-builder /app/annix-backend/src/migrations ./annix-backend/src/migrations
 COPY --from=backend-builder /app/annix-backend/tsconfig.json ./annix-backend/tsconfig.json
+COPY --from=backend-builder /app/annix-backend/migrate-mongo-config.ts ./annix-backend/migrate-mongo-config.ts
+COPY --from=backend-builder /app/annix-backend/migrations-mongo ./annix-backend/migrations-mongo
 
 # Frontend build output
 COPY --from=frontend-builder /app/annix-frontend/.next ./annix-frontend/.next

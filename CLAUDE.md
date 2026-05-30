@@ -295,7 +295,14 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 - **Annix runs on MongoDB (Atlas), NOT PostgreSQL.** Production (`annix_production`), staging (`annix_staging`) and test (`annix_test`) all run the Mongo driver. The PostgreSQL / Neon era is over — Neon is retired (production cutover 2026-05-28). When in doubt, the database is Mongo. Do not assume Postgres semantics.
 - A dual-driver abstraction remains behind the `DATABASE_DRIVER` env var (`activeDatabaseDriver()` in `annix-backend/src/lib/persistence/database-driver.ts`); `mongo` is the live value in every deployed environment. The Postgres/TypeORM path still compiles but is used nowhere in production.
 - **Write data access through the repository abstraction** (`CrudRepository` + per-entity Mongo/Postgres impls) — never raw TypeORM `createQueryBuilder` on a live path. Mongoose does NOT ignore `undefined` query fields the way TypeORM does: `findOne({ x: undefined })` returns `null` on Mongo, so never pass undefined query params.
-- The Neon / TypeORM-migration / `synchronize` rules below are **legacy (Postgres-era)**. They bind only the Postgres path; on Mongo there are no SQL DDL migrations. Their spirit still applies on Atlas: no unbounded loads, paginate, cache static reference data (Atlas connection/bandwidth limits are real too).
+- The Neon / TypeORM-migration / `synchronize` rules below are **legacy (Postgres-era)**. They bind only the Postgres path. Their spirit still applies on Atlas: no unbounded loads, paginate, cache static reference data (Atlas connection/bandwidth limits are real too).
+- **The connection runs `autoCreate: false` and `autoIndex: false`** (`src/lib/persistence/mongo-connection.module.ts`). Collections are created on first write, never pre-created on boot; indexes are **not** built automatically. So adding an index, backfilling data, or any structural change goes through a Mongo migration (below) — never rely on Mongoose to build an index for you.
+
+### Mongo Migrations (migrate-mongo — the live framework)
+- **Mongo migrations are real and run on every deploy.** Forward-only, via `migrate-mongo`. Files live in `annix-backend/migrations-mongo/` as **TypeScript** (`export const up`/`down`, `db` typed as `mongo.Db` from `mongoose`), run through `ts-node`, tracked in the `_migrations` changelog collection. Config: `annix-backend/migrate-mongo-config.ts` (reads `MONGODB_URI` + `MONGO_DATABASE` from env). The repo is TypeScript-only — never add `.js` migrations.
+- **Production is the baseline.** The 768 TypeORM files in `src/migrations/` are legacy Postgres history and are NOT replayed on Mongo. Do not port them. The first Mongo migration is the first change to production's current shape.
+- **Commands** (from `annix-backend/`): `pnpm migrate:status` · `pnpm migrate:create <name>` · `pnpm migrate:up` · `pnpm migrate:down`. Run `pnpm biome check --write` on a new migration file before committing.
+- **Execution:** the `fly.toml` `release_command` runs `migrate-mongo up` once per deploy, before traffic, against that environment's own DB (one `fly.toml` serves prod/staging/test — each reads its own Fly secrets). Keep `up`/`down` idempotent.
 
 ### Scheduled Jobs & Neon Compute Budget — LEGACY (Neon retired 2026-05-28; the 6-hour cron default still applies for Mongo Atlas bandwidth/cost)
 - Neon free tier = 100 CU-hrs/month. Every cron wake-up costs ~8 min compute.
@@ -310,7 +317,7 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 - **TanStack Query `refetchInterval` >= 120_000ms** unless documented justification. Use `usePollingInterval()` for admin-configurable intervals. ESLint warns on all `refetchInterval`.
 - **Static reference endpoints** must set `Cache-Control: public, max-age=31536000, immutable`.
 
-### Database Schema Changes (legacy — Postgres/TypeORM path only; Mongo has no SQL migrations)
+### Database Schema Changes (legacy — Postgres/TypeORM path only; for Mongo see "Mongo Migrations" above)
 - **Never `synchronize: true`** — all schema changes go through TypeORM migrations.
 - **Never modify the database directly** — no manual DDL outside migration files.
 - **Migration timestamps must respect dependencies**: if B references a table created in A, B's timestamp > A's.
