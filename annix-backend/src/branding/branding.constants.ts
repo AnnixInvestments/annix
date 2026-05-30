@@ -58,7 +58,7 @@ export const GLOBAL_LOCKED_SCALAR_FIELDS = [
   "gradientTo",
 ] as const;
 
-export const GLOBAL_LOCKED_ASSET_SLOTS = ["logoIcon", "wordmark"] as const;
+export const GLOBAL_LOCKED_ASSET_SLOTS = ["logoIcon", "wordmark", "pageBackground"] as const;
 
 export const GLOBAL_LOCK_EXEMPT_BRANDS: readonly string[] = ["annix-sentinel"];
 

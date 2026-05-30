@@ -223,6 +223,18 @@ export class UpdateBrandingDto {
   @IsString()
   loginCardPathDark?: string | null;
 
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  pageBackgroundPath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  pageBackgroundPathDark?: string | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()

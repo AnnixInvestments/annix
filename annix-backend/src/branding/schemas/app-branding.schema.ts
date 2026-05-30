@@ -121,6 +121,12 @@ export class AppBranding {
   @Prop({ type: String, required: false })
   loginCardPathDark: string;
 
+  @Prop({ type: String, required: false })
+  pageBackgroundPath: string;
+
+  @Prop({ type: String, required: false })
+  pageBackgroundPathDark: string;
+
   @Prop({ type: Boolean, required: true, default: true })
   watermarkEnabled: boolean;
 

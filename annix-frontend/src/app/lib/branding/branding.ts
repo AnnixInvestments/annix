@@ -8,7 +8,8 @@ export type BrandingAssetSlot =
   | "subMark"
   | "flashLine"
   | "heroImage"
-  | "loginCard";
+  | "loginCard"
+  | "pageBackground";
 
 export type BrandingAssetVariant = "light" | "dark";
 
@@ -132,6 +133,8 @@ export interface BrandingUpdate {
   heroImagePath?: string | null;
   loginCardPath?: string | null;
   loginCardPathDark?: string | null;
+  pageBackgroundPath?: string | null;
+  pageBackgroundPathDark?: string | null;
   logoIconPathDark?: string | null;
   logoLockupPathDark?: string | null;
   wordmarkPathDark?: string | null;
@@ -191,6 +194,7 @@ function emptyAssetPresence(): Record<BrandingAssetSlot, boolean> {
     flashLine: false,
     heroImage: false,
     loginCard: false,
+    pageBackground: false,
   };
 }
 
@@ -273,6 +277,10 @@ export function brandingCssVars(
     : "none";
   const effectiveOpacity =
     branding.watermarkEnabled && hasWatermark ? branding.watermarkOpacity : 0;
+  const hasPageBackground = brandHasAsset("pageBackground", branding, mode);
+  const pageBackgroundImage = hasPageBackground
+    ? `url('${resolveBrandAssetUrl("pageBackground", branding, mode)}')`
+    : "none";
   return {
     "--brand-navbar": branding.navbarColor,
     "--brand-navbar-hover": `color-mix(in srgb, ${branding.navbarColor} 80%, #ffffff)`,
@@ -289,6 +297,7 @@ export function brandingCssVars(
     "--brand-watermark-image": watermarkImage,
     "--brand-watermark-opacity": String(effectiveOpacity),
     "--brand-watermark-size": `min(85vmin, ${branding.watermarkMaxSizePx}px)`,
+    "--brand-page-background-image": pageBackgroundImage,
   };
 }
 

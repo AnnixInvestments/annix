@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Exo_2, Geist, Geist_Mono, Great_Vibes, Inter } from "next/font/google";
 import "./globals.css";
 import ConditionalNavigation from "./components/ConditionalNavigation";
+import { GlobalBrandBackground } from "./components/GlobalBrandBackground";
 import { Providers } from "./components/Providers";
 import SessionExpiredModal from "./components/SessionExpiredModal";
 
@@ -87,6 +88,7 @@ export default function RootLayout(
         suppressHydrationWarning
       >
         <Providers>
+          <GlobalBrandBackground />
           <ConditionalNavigation />
           {children}
           <SessionExpiredModal />

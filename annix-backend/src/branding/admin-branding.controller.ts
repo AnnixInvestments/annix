@@ -44,6 +44,7 @@ const VALID_SLOTS: BrandingAssetSlot[] = [
   "flashLine",
   "heroImage",
   "loginCard",
+  "pageBackground",
 ];
 
 @ApiTags("Admin Branding")

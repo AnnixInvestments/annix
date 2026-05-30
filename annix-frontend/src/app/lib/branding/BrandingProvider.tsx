@@ -73,6 +73,17 @@ export function BrandingProvider(props: {
           aria-hidden="true"
           className="pointer-events-none fixed inset-0 z-0"
           style={{
+            backgroundImage: "var(--brand-page-background-image)",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center",
+            backgroundSize: "cover",
+            backgroundAttachment: "fixed",
+          }}
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none fixed inset-0 z-0"
+          style={{
             backgroundImage: "var(--brand-watermark-image)",
             backgroundRepeat: "no-repeat",
             backgroundPosition: "center",

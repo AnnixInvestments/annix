@@ -119,6 +119,12 @@ export class AppBranding {
   @Column({ name: "login_card_path_dark", type: "varchar", length: 500, nullable: true })
   loginCardPathDark: string | null;
 
+  @Column({ name: "page_background_path", type: "varchar", length: 500, nullable: true })
+  pageBackgroundPath: string | null;
+
+  @Column({ name: "page_background_path_dark", type: "varchar", length: 500, nullable: true })
+  pageBackgroundPathDark: string | null;
+
   @Column({ name: "watermark_enabled", type: "boolean", default: true })
   watermarkEnabled: boolean;
 

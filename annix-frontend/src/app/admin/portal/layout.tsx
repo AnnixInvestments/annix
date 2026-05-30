@@ -4,14 +4,12 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect } from "react";
 import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar from "@/app/components/PortalToolbar";
-import { useTheme } from "@/app/components/ThemeProvider";
 import { ErrorBoundary } from "@/app/components/ui/ErrorBoundary";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { LayoutProvider } from "@/app/context/LayoutContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { RFQ_VERSION } from "@/app/lib/config/rfq/version";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
-import { useBranding } from "@/app/lib/query/hooks";
 
 const navItems = [
   {
@@ -66,13 +64,8 @@ function AdminNavigation() {
 }
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
-  const { resolvedTheme } = useTheme();
-  const branding = useBranding("annix-investments").data;
-  const lightBg = branding ? branding.backgroundLight : "#F8FAFC";
-  const darkBg = branding ? branding.backgroundDark : "#0F172A";
-  const screenBg = resolvedTheme === "light" ? lightBg : darkBg;
   return (
-    <div className="min-h-screen" style={{ backgroundColor: screenBg }}>
+    <div className="min-h-screen">
       <AdminNavigation />
       <main className="py-6">
         <div className="w-full px-4 sm:px-6 lg:px-8">

@@ -134,7 +134,18 @@ const LOGIN_CARD_FIELD: AssetFieldDef = {
   hint: "Full marketing card shown on this app's login screen.",
 };
 
-const ALL_FIELDS: AssetFieldDef[] = [...LAYER_FIELDS, HERO_IMAGE_FIELD, LOGIN_CARD_FIELD];
+const PAGE_BACKGROUND_FIELD: AssetFieldDef = {
+  key: "pageBackground",
+  label: "Page background image",
+  hint: "Full-screen hero picture behind every page; the Main background colour shows underneath.",
+};
+
+const ALL_FIELDS: AssetFieldDef[] = [
+  ...LAYER_FIELDS,
+  HERO_IMAGE_FIELD,
+  LOGIN_CARD_FIELD,
+  PAGE_BACKGROUND_FIELD,
+];
 
 const SLOT_TO_FIELD: Record<
   BrandingAssetSlot,
@@ -150,6 +161,7 @@ const SLOT_TO_FIELD: Record<
   flashLine: { light: "flashLinePath", dark: "flashLinePathDark" },
   heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
   loginCard: { light: "loginCardPath", dark: "loginCardPathDark" },
+  pageBackground: { light: "pageBackgroundPath", dark: "pageBackgroundPathDark" },
 };
 
 const ASSET_SLOTS: BrandingAssetSlot[] = [
@@ -163,6 +175,7 @@ const ASSET_SLOTS: BrandingAssetSlot[] = [
   "flashLine",
   "heroImage",
   "loginCard",
+  "pageBackground",
 ];
 
 const MASTER_LABEL = "Annix Investments";
@@ -587,6 +600,37 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               darkInheriting={slotInheriting("heroImage", "dark")}
               onFile={(variant, file) => handleUpload("heroImage", variant, file)}
             />
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Page background image</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              A full-screen hero picture shown behind every page (Light and Dark variants). The Main
+              background colour shows underneath. Globally locked — set here on {MASTER_LABEL} and
+              every app inherits it unless it scraps to its own branding.
+            </p>
+            {brandHasAsset("pageBackground", adminView.effective, "light") ||
+            brandHasAsset("pageBackground", adminView.effective, "dark") ? (
+              <div
+                className="mb-3 h-40 w-full rounded-xl border border-gray-200 bg-gray-900 bg-cover bg-center bg-no-repeat"
+                style={{ backgroundImage: `url('${assetPreview.pageBackground[previewTheme]}')` }}
+              />
+            ) : null}
+            {lockedSlots.has("pageBackground") ? (
+              <LockedAssetRow
+                field={PAGE_BACKGROUND_FIELD}
+                previews={assetPreview.pageBackground}
+              />
+            ) : (
+              <LayeredAssetRow
+                field={PAGE_BACKGROUND_FIELD}
+                previews={assetPreview.pageBackground}
+                uploadingKey={uploadingKey}
+                lightInheriting={slotInheriting("pageBackground", "light")}
+                darkInheriting={slotInheriting("pageBackground", "dark")}
+                onFile={(variant, file) => handleUpload("pageBackground", variant, file)}
+              />
+            )}
           </section>
 
           <section className="bg-white rounded-xl border border-gray-200 p-5">

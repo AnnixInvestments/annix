@@ -44,6 +44,8 @@ type AppBrandingDocument = {
   heroImagePathDark?: string | null;
   loginCardPath?: string | null;
   loginCardPathDark?: string | null;
+  pageBackgroundPath?: string | null;
+  pageBackgroundPathDark?: string | null;
   watermarkEnabled?: boolean;
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
@@ -120,6 +122,8 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       heroImagePathDark: document.heroImagePathDark ?? null,
       loginCardPath: document.loginCardPath ?? null,
       loginCardPathDark: document.loginCardPathDark ?? null,
+      pageBackgroundPath: document.pageBackgroundPath ?? null,
+      pageBackgroundPathDark: document.pageBackgroundPathDark ?? null,
       watermarkEnabled: document.watermarkEnabled ?? true,
       watermarkOpacity: document.watermarkOpacity ?? 0.1,
       watermarkMaxSizePx: document.watermarkMaxSizePx ?? 880,
@@ -184,6 +188,8 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       heroImagePathDark: branding.heroImagePathDark,
       loginCardPath: branding.loginCardPath,
       loginCardPathDark: branding.loginCardPathDark,
+      pageBackgroundPath: branding.pageBackgroundPath,
+      pageBackgroundPathDark: branding.pageBackgroundPathDark,
       watermarkEnabled: branding.watermarkEnabled,
       watermarkOpacity: branding.watermarkOpacity,
       watermarkMaxSizePx: branding.watermarkMaxSizePx,
