@@ -1,6 +1,6 @@
 "use client";
 
-import { resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { useBranding } from "@/app/lib/query/hooks";
 import { useTheme } from "./ThemeProvider";
 
@@ -34,6 +34,15 @@ export function GlobalBrandBackground() {
   const imageUrl =
     branding && hasImage ? resolveBrandAssetUrl("pageBackground", branding, variant) : null;
 
+  const hasWatermark = branding ? brandHasAsset("watermark", branding, variant) : false;
+  const watermarkEnabled = branding ? branding.watermarkEnabled : false;
+  const watermarkUrl =
+    branding && watermarkEnabled && hasWatermark
+      ? resolveBrandAssetUrl("watermark", branding, variant)
+      : null;
+  const watermarkOpacity = branding ? branding.watermarkOpacity : 0;
+  const watermarkMaxSizePx = branding ? branding.watermarkMaxSizePx : 880;
+
   return (
     <div
       aria-hidden="true"
@@ -48,6 +57,18 @@ export function GlobalBrandBackground() {
             backgroundRepeat: "no-repeat",
             backgroundPosition: "center bottom",
             backgroundSize: "cover",
+          }}
+        />
+      ) : null}
+      {watermarkUrl ? (
+        <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: `url('${watermarkUrl}')`,
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center",
+            backgroundSize: `min(85vmin, ${watermarkMaxSizePx}px)`,
+            opacity: watermarkOpacity,
           }}
         />
       ) : null}
