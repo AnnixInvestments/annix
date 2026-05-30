@@ -11,6 +11,7 @@ const BRAND_TITLES: Record<string, string> = {
   "annix-rep": "Annix Pulse",
   "annix-sentinel": "Annix Sentinel",
   "annix-forge": "Annix Forge",
+  "annix-core": "Annix Core",
 };
 
 const BRAND_HUBS: Record<string, string> = {

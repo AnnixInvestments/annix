@@ -8,6 +8,15 @@ require("dotenv").config({
   path: fileURLToPath(new URL("../annix-backend/.env", import.meta.url)),
 });
 
+const { setServers } = require("node:dns");
+if (process.env.MONGO_DNS_SERVERS) {
+  setServers(
+    process.env.MONGO_DNS_SERVERS.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 
 const CORP_ID =
@@ -20,6 +29,7 @@ const CARDS = {
   "annix-forge": "Annix Forge Full Card.png",
   "annix-rep": "Annix Pulse Full Card.png",
   "annix-orbit": "Annix Orbit Logo.png",
+  "annix-core": "Annix Core Full Card.png",
 };
 
 function assertEnv(name) {

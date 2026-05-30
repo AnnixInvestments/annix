@@ -8,6 +8,15 @@ require("dotenv").config({
   path: fileURLToPath(new URL("../annix-backend/.env", import.meta.url)),
 });
 
+const { setServers } = require("node:dns");
+if (process.env.MONGO_DNS_SERVERS) {
+  setServers(
+    process.env.MONGO_DNS_SERVERS.split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
+}
+
 const sharp = require("sharp");
 const { S3Client, PutObjectCommand } = require("@aws-sdk/client-s3");
 

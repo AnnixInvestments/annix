@@ -119,7 +119,10 @@ export class InboundEmailMonitorService {
       );
 
       for (const message of messages) {
-        await this.processMessage(config, message);
+        const status = await this.processMessage(config, message);
+        if (status === InboundEmailStatus.COMPLETED && this.mailboxIsAutoDeletable(config)) {
+          await this.deleteProcessedMessage(connection, config, message);
+        }
       }
     } finally {
       if (connection) {
@@ -128,10 +131,13 @@ export class InboundEmailMonitorService {
     }
   }
 
-  private async processMessage(config: InboundEmailConfig, message: Imap.Message): Promise<void> {
+  private async processMessage(
+    config: InboundEmailConfig,
+    message: Imap.Message,
+  ): Promise<InboundEmailStatus | null> {
     try {
       const all = message.parts.find((part) => part.which === "");
-      if (!all) return;
+      if (!all) return null;
 
       const parsed = await simpleParser(all.body);
       const messageId = parsed.messageId || `${nowMillis()}-${Math.random()}`;
@@ -139,7 +145,7 @@ export class InboundEmailMonitorService {
       const alreadyExists = await this.inboundEmailService.emailExists(messageId);
       if (alreadyExists) {
         this.logger.debug(`[${config.app}] Skipping duplicate message: ${messageId}`);
-        return;
+        return InboundEmailStatus.COMPLETED;
       }
 
       const fromValue = parsed.from?.value;
@@ -175,7 +181,7 @@ export class InboundEmailMonitorService {
 
       if (eligibleAttachments.length === 0) {
         await this.inboundEmailService.updateEmailStatus(email.id, InboundEmailStatus.COMPLETED);
-        return;
+        return InboundEmailStatus.COMPLETED;
       }
 
       const classifier = this.registry.classifierForApp(config.app);
@@ -266,9 +272,48 @@ export class InboundEmailMonitorService {
           : InboundEmailStatus.FAILED;
 
       await this.inboundEmailService.updateEmailStatus(email.id, finalStatus);
+      return finalStatus;
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
       this.logger.error(`[${config.app}] Failed to process email: ${msg}`);
+      return null;
+    }
+  }
+
+  private mailboxIsAutoDeletable(config: InboundEmailConfig): boolean {
+    const ownedDomains = this.autoDeleteDomains();
+    if (ownedDomains.length === 0) return false;
+
+    const atIndex = config.emailUser.lastIndexOf("@");
+    if (atIndex < 0) return false;
+
+    const domain = config.emailUser.slice(atIndex + 1).toLowerCase();
+    return ownedDomains.includes(domain);
+  }
+
+  private autoDeleteDomains(): string[] {
+    const configured = this.configService.get<string>("INBOUND_AUTO_DELETE_DOMAINS") ?? "";
+    return configured
+      .split(",")
+      .map((entry) => entry.trim().toLowerCase())
+      .filter((entry) => entry.length > 0);
+  }
+
+  private async deleteProcessedMessage(
+    connection: Imap.ImapSimple,
+    config: InboundEmailConfig,
+    message: Imap.Message,
+  ): Promise<void> {
+    const uid = message.attributes?.uid;
+    if (!uid) return;
+
+    try {
+      await connection.deleteMessage(uid);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      this.logger.warn(
+        `[${config.app}] Processed but could not delete message uid ${uid} from INBOX: ${msg}`,
+      );
     }
   }
 

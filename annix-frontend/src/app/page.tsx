@@ -39,9 +39,8 @@ export default function HomePage() {
 
           <Link href="/core" className="group h-full">
             <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border-2 border-transparent bg-[#0b1430] p-3 shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
-              <img
-                src="/branding/annix-core-card.png"
-                alt="Annix Core — the operations platform for stock, production, documents, quality, and delivery"
+              <BrandLoginCard
+                brand="annix-core"
                 className="h-auto max-h-full w-full rounded-lg object-contain"
               />
             </div>

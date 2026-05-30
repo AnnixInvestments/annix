@@ -1,5 +1,5 @@
 import "./load-env";
-import { setDefaultResultOrder } from "node:dns";
+import { setDefaultResultOrder, setServers } from "node:dns";
 import { setDefaultAutoSelectFamily } from "node:net";
 import * as path from "node:path";
 import { corsOriginsFor } from "@annix/product-data/portals";
@@ -11,6 +11,19 @@ import { AppModule } from "./app.module";
 
 setDefaultResultOrder("ipv4first");
 setDefaultAutoSelectFamily(false);
+
+// Opt-in DNS override for environments whose local resolver refuses Node's SRV
+// queries (e.g. some VPNs break mongodb+srv:// lookups). Set MONGO_DNS_SERVERS
+// to a comma list of public resolvers. Unset in prod, so prod is unaffected.
+const mongoDnsServers = process.env.MONGO_DNS_SERVERS;
+if (mongoDnsServers) {
+  setServers(
+    mongoDnsServers
+      .split(",")
+      .map((server) => server.trim())
+      .filter(Boolean),
+  );
+}
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {

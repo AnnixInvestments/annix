@@ -42,6 +42,11 @@ const APP_BRANDS: BrandLink[] = [
     title: "Annix Insights",
     description: "Market data, news signals and AI-driven portfolio insights.",
   },
+  {
+    code: "annix-core",
+    title: "Annix Core",
+    description: "Operations platform — AU Rubber and Stock Control.",
+  },
 ];
 
 function BrandLogo(props: { code: string }) {
