@@ -38,8 +38,8 @@ export default function HomePage() {
             ))}
           </div>
           <p
-            className="text-lg md:text-xl max-w-2xl mx-auto"
-            style={{ color: "var(--muted-text)" }}
+            className="text-lg md:text-xl font-medium max-w-2xl mx-auto"
+            style={{ color: "var(--foreground)" }}
           >
             Creating intelligent platforms that help businesses work smarter, move faster, and grow
             stronger.
