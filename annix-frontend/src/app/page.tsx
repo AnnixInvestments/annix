@@ -4,25 +4,48 @@ import Link from "next/link";
 import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 
 export const metadata: Metadata = {
-  title: "Annix Platform",
+  title: "Annix Investments",
   description:
-    "Your trusted partner for industrial solutions. Manage RFQs, field sales, inventory, and more from a single platform.",
+    "Build • Connect • Innovate • Grow. Creating intelligent platforms that help businesses work smarter, move faster, and grow stronger.",
 };
 
 const iconProps = { className: "w-12 h-12", strokeWidth: 1.5 };
 
+const ANNIX_PILLARS = ["BUILD", "CONNECT", "INNOVATE", "GROW"];
+
 export default function HomePage() {
   return (
     <div className="min-h-screen">
-      <div className="text-white">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-16">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-4">Annix Platform</h1>
-            <p className="text-xl text-blue-200 max-w-2xl mx-auto">
-              Your trusted partner for industrial solutions. Manage RFQs, field sales, inventory,
-              and more from a single platform.
-            </p>
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center">
+          <h1
+            className="text-4xl md:text-5xl font-bold mb-3 tracking-tight"
+            style={{ color: "var(--foreground)" }}
+          >
+            ANNIX <span style={{ color: "#FF8A00" }}>INVESTMENTS</span>
+          </h1>
+          <div
+            className="flex items-center justify-center gap-2 md:gap-3 text-xs md:text-sm font-semibold tracking-[0.15em] uppercase mb-5"
+            style={{ color: "var(--foreground)" }}
+          >
+            {ANNIX_PILLARS.map((pillar, index) => (
+              <span key={pillar} className="flex items-center gap-2 md:gap-3">
+                {index > 0 ? (
+                  <span aria-hidden="true" style={{ color: "#FF8A00" }}>
+                    •
+                  </span>
+                ) : null}
+                {pillar}
+              </span>
+            ))}
           </div>
+          <p
+            className="text-lg md:text-xl max-w-2xl mx-auto"
+            style={{ color: "var(--muted-text)" }}
+          >
+            Creating intelligent platforms that help businesses work smarter, move faster, and grow
+            stronger.
+          </p>
         </div>
       </div>
 
