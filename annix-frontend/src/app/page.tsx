@@ -1,7 +1,7 @@
 import { AudioLines, ClipboardCheck, FileText, GraduationCap, MapPinned } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AnnixOrbitCard } from "@/app/components/cards/AnnixOrbitCard";
+import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 
 export const metadata: Metadata = {
   title: "Annix Platform",
@@ -136,10 +136,12 @@ export default function HomePage() {
             rel="noopener noreferrer"
             className="group h-full"
           >
-            <AnnixOrbitCard
-              variant="dark"
-              className="h-full hover:shadow-2xl transition-all duration-300"
-            />
+            <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border-2 border-transparent bg-[#0b1430] p-3 shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
+              <BrandLoginCard
+                brand="annix-orbit"
+                className="h-auto max-h-full w-full rounded-lg object-contain"
+              />
+            </div>
           </Link>
 
           <Link
