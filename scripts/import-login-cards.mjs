@@ -24,13 +24,23 @@ const CORP_ID =
   "C:/Users/andy/OneDrive - AU Industries (Pty) Ltd/Shared Files/Annix Investments/Corp ID";
 
 // brand → source card file. Core is omitted (not a registered brand yet).
-const CARDS = {
+const ALL_CARDS = {
   "annix-sentinel": "Annix Sentinel Full Card.png",
   "annix-forge": "Annix Forge Full Card.png",
   "annix-rep": "Annix Pulse Full Card.png",
   "annix-orbit": "Annix Orbit Logo.png",
   "annix-core": "Annix Core Full Card.png",
 };
+
+const requested = process.argv.slice(2);
+const CARDS = requested.length
+  ? Object.fromEntries(Object.entries(ALL_CARDS).filter(([brand]) => requested.includes(brand)))
+  : ALL_CARDS;
+
+if (!Object.keys(CARDS).length) {
+  console.error(`No matching brands. Available: ${Object.keys(ALL_CARDS).join(", ")}`);
+  process.exit(1);
+}
 
 function assertEnv(name) {
   const value = process.env[name];
