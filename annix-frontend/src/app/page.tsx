@@ -2,6 +2,7 @@ import { AudioLines, GraduationCap } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLoginCard } from "@/app/components/BrandLoginCard";
+import { HubBrandWordmark } from "@/app/components/HubBrandWordmark";
 
 export const metadata: Metadata = {
   title: "Annix Investments",
@@ -18,11 +19,8 @@ export default function HomePage() {
     <div className="min-h-screen">
       <div className="w-full px-4 sm:px-6 lg:px-8 py-16">
         <div className="text-center">
-          <h1
-            className="text-4xl md:text-5xl font-bold mb-3 tracking-tight"
-            style={{ color: "var(--foreground)" }}
-          >
-            ANNIX <span style={{ color: "#FF8A00" }}>INVESTMENTS</span>
+          <h1 className="flex justify-center mb-3">
+            <HubBrandWordmark />
           </h1>
           <div
             className="flex items-center justify-center gap-2 md:gap-3 text-xs md:text-sm font-semibold tracking-[0.15em] uppercase mb-5"
