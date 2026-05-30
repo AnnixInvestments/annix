@@ -1,4 +1,4 @@
-import { AudioLines, ClipboardCheck, FileText, GraduationCap, MapPinned } from "lucide-react";
+import { AudioLines, FileText, GraduationCap, MapPinned } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLoginCard } from "@/app/components/BrandLoginCard";
@@ -180,34 +180,12 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/annix-sentinel" target="_blank" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-blue-400 hover:shadow-xl transition-all duration-300 h-full">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-100 rounded-2xl text-blue-600 mb-6 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                  <ClipboardCheck {...iconProps} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Annix Sentinel</h3>
-                <p className="text-gray-600 mb-6">
-                  AI-powered compliance operating system that monitors, protects, and strengthens
-                  your business against risk and regulatory non-compliance.
-                </p>
-                <span className="inline-flex items-center text-blue-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Open App
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
-              </div>
+          <Link href="/annix-sentinel" target="_blank" className="group h-full">
+            <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border-2 border-transparent bg-[#0b1430] p-3 shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
+              <BrandLoginCard
+                brand="annix-sentinel"
+                className="h-auto max-h-full w-full rounded-lg object-contain"
+              />
             </div>
           </Link>
         </div>
