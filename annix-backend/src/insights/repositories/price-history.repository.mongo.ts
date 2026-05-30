@@ -44,7 +44,11 @@ export class MongoPriceHistoryRepository
 
   async latestForAsset(assetId: string): Promise<PriceHistory | null> {
     const doc = await this.documents.findOne({ assetId }).sort({ date: -1 }).lean().exec();
-    return this.toDomain(doc);
+    const entity = this.toDomain(doc);
+    if (entity) {
+      entity.date = toIsoDate(doc?.date);
+    }
+    return entity;
   }
 
   async historyForAssetAsc(assetId: string, from?: string): Promise<PriceHistory[]> {
