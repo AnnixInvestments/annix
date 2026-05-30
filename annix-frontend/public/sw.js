@@ -1,7 +1,7 @@
-const CACHE_NAME = "fieldflow-v2";
-const STATIC_CACHE_NAME = "fieldflow-static-v2";
-const DYNAMIC_CACHE_NAME = "fieldflow-dynamic-v2";
-const API_CACHE_NAME = "fieldflow-api-v2";
+const CACHE_NAME = "fieldflow-v3";
+const STATIC_CACHE_NAME = "fieldflow-static-v3";
+const DYNAMIC_CACHE_NAME = "fieldflow-dynamic-v3";
+const API_CACHE_NAME = "fieldflow-api-v3";
 
 const STATIC_ASSETS = [
   "/fieldflow",

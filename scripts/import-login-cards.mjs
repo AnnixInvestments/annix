@@ -108,7 +108,11 @@ async function applyMongo(keys) {
   await mongoose.connect(assertEnv("MONGODB_URI"), { dbName: assertEnv("MONGO_DATABASE") });
   const collection = mongoose.connection.collection("app_branding");
   for (const [brand, key] of Object.entries(keys)) {
-    await collection.updateOne({ _id: brand }, { $set: { loginCardPath: key } }, { upsert: true });
+    await collection.updateOne(
+      { _id: brand },
+      { $set: { loginCardPath: key, updatedAt: new Date() } },
+      { upsert: true },
+    );
     console.log(`  Mongo ✓ ${brand}`);
   }
   await mongoose.disconnect();
