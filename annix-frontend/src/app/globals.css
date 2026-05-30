@@ -14,6 +14,7 @@
   /* Light mode (default) - soft grey feel */
   --background: #f5f7fa;
   --foreground: #171717;
+  --foreground-inverted: #f9fafb;
   --card-bg: #ffffff;
   --card-border: #e5e7eb;
   --input-bg: #ffffff;
@@ -26,6 +27,7 @@
 .dark {
   --background: #111827;
   --foreground: #f9fafb;
+  --foreground-inverted: #0a1b3d;
   --card-bg: #1f2937;
   --card-border: #374151;
   --input-bg: #1f2937;

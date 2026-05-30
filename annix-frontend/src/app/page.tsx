@@ -24,7 +24,7 @@ export default function HomePage() {
           </h1>
           <div
             className="flex items-center justify-center gap-2 md:gap-3 text-xs md:text-sm font-semibold tracking-[0.15em] uppercase mb-5"
-            style={{ color: "var(--foreground)" }}
+            style={{ color: "var(--foreground-inverted)" }}
           >
             {ANNIX_PILLARS.map((pillar, index) => (
               <span key={pillar} className="flex items-center gap-2 md:gap-3">

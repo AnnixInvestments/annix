@@ -7,14 +7,16 @@ import { useTheme } from "./ThemeProvider";
 const MASTER_BRAND = "annix-investments";
 
 // The Annix Investments logo wording (ANNIX wordmark + INVESTMENTS sub-mark),
-// pulled live from master branding and following the theme so it matches the
-// navbar lockup. Falls back to styled text until the wordmark asset loads.
+// pulled live from master branding. The hub header sits over the brand
+// watermark, which shares the wordmark's per-mode colour and washes it out — so
+// here we INVERT the variant (light theme → dark lockup, dark theme → light
+// lockup) so the wording contrasts against the watermark behind it.
 export function HubBrandWordmark() {
   const { resolvedTheme } = useTheme();
   const brandingQuery = useBranding(MASTER_BRAND);
   const brandingData = brandingQuery.data;
   const branding = brandingData ?? null;
-  const variant = resolvedTheme === "light" ? "light" : "dark";
+  const variant = resolvedTheme === "light" ? "dark" : "light";
 
   const hasWordmark = branding ? brandHasAsset("wordmark", branding, variant) : false;
 
@@ -22,7 +24,7 @@ export function HubBrandWordmark() {
     return (
       <span
         className="text-4xl md:text-5xl font-bold tracking-tight"
-        style={{ color: "var(--foreground)" }}
+        style={{ color: "var(--foreground-inverted)" }}
       >
         ANNIX <span style={{ color: "#FF8A00" }}>INVESTMENTS</span>
       </span>
