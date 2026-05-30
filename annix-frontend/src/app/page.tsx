@@ -29,25 +29,25 @@ export default function HomePage() {
       <div className="w-full px-4 sm:px-6 lg:px-8 py-12 -mt-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
           <Link href="/rfq-portal" target="_blank" rel="noopener noreferrer" className="group">
-            <div className="h-full overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
+            <div className="aspect-[4/5] overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
               <BrandLoginCard brand="annix-forge" className="h-full w-full object-cover" />
             </div>
           </Link>
 
           <Link href="/core" className="group h-full">
-            <div className="h-full overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
+            <div className="aspect-[4/5] overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
               <BrandLoginCard brand="annix-core" className="h-full w-full object-cover" />
             </div>
           </Link>
 
           <Link href="/annix-rep/setup" target="_blank" rel="noopener noreferrer" className="group">
-            <div className="h-full overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-emerald-400 hover:shadow-2xl">
+            <div className="aspect-[4/5] overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-emerald-400 hover:shadow-2xl">
               <BrandLoginCard brand="annix-rep" className="h-full w-full object-cover" />
             </div>
           </Link>
 
           <Link href="/annix-sentinel" target="_blank" className="group h-full">
-            <div className="h-full overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
+            <div className="aspect-[4/5] overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
               <BrandLoginCard brand="annix-sentinel" className="h-full w-full object-cover" />
             </div>
           </Link>
@@ -58,7 +58,7 @@ export default function HomePage() {
             rel="noopener noreferrer"
             className="group h-full"
           >
-            <div className="h-full overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
+            <div className="aspect-[4/5] overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
               <BrandLoginCard brand="annix-orbit" className="h-full w-full object-cover" />
             </div>
           </Link>
@@ -69,7 +69,7 @@ export default function HomePage() {
             rel="noopener noreferrer"
             className="group"
           >
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-[#FF8A00] hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-[#FF8A00] hover:shadow-xl transition-all duration-300 aspect-[4/5] flex flex-col items-center justify-center">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-[#f5f6ff] rounded-2xl text-[#323288] mb-6 group-hover:bg-[#323288] group-hover:text-white transition-colors">
                   <GraduationCap {...iconProps} />
@@ -100,7 +100,7 @@ export default function HomePage() {
           </Link>
 
           <Link href="/voice-filter/login" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 aspect-[4/5] flex flex-col items-center justify-center">
               <div className="text-center">
                 <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
                   <AudioLines {...iconProps} />
