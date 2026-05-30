@@ -2,9 +2,17 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useBranding } from "@/app/lib/query/hooks";
 import AdminLoginButton from "./AdminLoginButton";
 import AnnixLogo from "./AnnixLogo";
+import { BrandNavLockup } from "./BrandNavLockup";
+import { useTheme } from "./ThemeProvider";
 import { ThemeToggle } from "./ThemeToggle";
+
+const MASTER_BRAND = "annix-investments";
+const DARK_NAVBAR_FALLBACK = "#323288";
+const LIGHT_NAVBAR_FALLBACK = "#F2F4F7";
+const ACCENT_FALLBACK = "#FF8A00";
 
 const isPortalRoute = (pathname: string): boolean => {
   return (
@@ -34,6 +42,10 @@ const isHomePage = (pathname: string): boolean => {
 
 export default function Navigation() {
   const pathname = usePathname();
+  const { resolvedTheme } = useTheme();
+  const brandingQuery = useBranding(MASTER_BRAND);
+  const brandingData = brandingQuery.data;
+  const branding = brandingData ?? null;
 
   if (isPortalRoute(pathname)) {
     return null;
@@ -42,10 +54,20 @@ export default function Navigation() {
   const showRfqNav = isRfqRoute(pathname);
   const showHomeNav = isHomePage(pathname);
 
+  const isLight = resolvedTheme === "light";
+  const lightNav = branding?.navbarColorLight;
+  const darkNav = branding?.navbarColor;
+  const dynamicNavbar = isLight
+    ? lightNav || LIGHT_NAVBAR_FALLBACK
+    : darkNav || DARK_NAVBAR_FALLBACK;
+  const navbarColor = showHomeNav ? dynamicNavbar : "#323288";
+  const accent = branding?.accentOrange;
+  const accentColor = accent || ACCENT_FALLBACK;
+
   return (
     <nav
-      className="sticky top-0 z-50 shadow-lg amix-toolbar"
-      style={{ backgroundColor: "#323288" }}
+      className="sticky top-0 z-50 shadow-lg amix-toolbar transition-colors"
+      style={{ backgroundColor: navbarColor }}
     >
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -54,12 +76,16 @@ export default function Navigation() {
               href="/"
               className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
             >
-              <AnnixLogo size="sm" showText useSignatureFont />
+              {showHomeNav ? (
+                <BrandNavLockup brand={MASTER_BRAND} />
+              ) : (
+                <AnnixLogo size="sm" showText useSignatureFont />
+              )}
             </Link>
 
             {showHomeNav && (
               <div className="flex gap-1">
-                <span className="px-4 py-2 rounded-lg font-semibold" style={{ color: "#FF8A00" }}>
+                <span className="px-4 py-2 rounded-lg font-semibold" style={{ color: accentColor }}>
                   Select an application below
                 </span>
               </div>
