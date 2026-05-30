@@ -19,6 +19,8 @@ import { MongooseModule } from "@nestjs/mongoose";
           serverSelectionTimeoutMS: 30000,
           connectTimeoutMS: 30000,
           maxPoolSize: 10,
+          autoCreate: false,
+          autoIndex: false,
         };
       },
     }),
