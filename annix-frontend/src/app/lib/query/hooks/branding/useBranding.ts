@@ -13,7 +13,12 @@ export function useBranding(brand: string) {
   return useQuery<Branding>({
     queryKey: brandingKeys.public(brand),
     queryFn: () => fetchPublicBranding(brand),
-    staleTime: 5 * 60 * 1000,
+    // Always treat branding as stale so a plain reload / tab focus picks up new
+    // colours, logos and login cards without any cache clearing. The payload is
+    // small and fetched with no-store, so the extra refetches are cheap.
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
   });
 }
 
