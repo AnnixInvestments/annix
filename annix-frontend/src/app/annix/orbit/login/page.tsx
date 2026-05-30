@@ -4,13 +4,12 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
+import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
-import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
-import { useBranding } from "@/app/lib/query/hooks";
 
 function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
   if (returnUrl) return returnUrl;
@@ -52,12 +51,6 @@ function AnnixOrbitLoginContent() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const brandingQuery = useBranding("annix-orbit");
-  const brandingData = brandingQuery.data;
-  const branding = brandingData ?? null;
-  const hasTextCrop = branding ? brandHasAsset("textCrop", branding) : false;
-  const textCropUrl = branding ? resolveBrandAssetUrl("textCrop", branding) : "";
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const emailInput = emailRef.current;
@@ -90,37 +83,14 @@ function AnnixOrbitLoginContent() {
           : "/annix/orbit";
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
+        <Link href="/annix/orbit" className="mb-4 block">
+          <BrandLoginCard brand="annix-orbit" />
+        </Link>
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
-            {hasTextCrop ? (
-              <img
-                src={textCropUrl}
-                alt="Annix Orbit"
-                className="mx-auto mb-4 h-12 w-auto max-w-[260px] object-contain"
-              />
-            ) : (
-              <>
-                <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
-                  <svg
-                    className="w-8 h-8 text-[#323288]"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.5}
-                      d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                    />
-                  </svg>
-                </div>
-                <h1 className="text-2xl font-bold text-gray-900">Annix Orbit</h1>
-              </>
-            )}
-            <p className="text-gray-600 mt-2">
+            <p className="text-gray-600">
               {accountType === "individual"
                 ? "Sign in to your job seeker account"
                 : accountType === "company"

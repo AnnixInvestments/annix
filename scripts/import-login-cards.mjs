@@ -19,6 +19,7 @@ const CARDS = {
   "annix-sentinel": "Annix Sentinel Full Card.png",
   "annix-forge": "Annix Forge Full Card.png",
   "annix-rep": "Annix Pulse Full Card.png",
+  "annix-orbit": "Annix Orbit Logo.png",
 };
 
 function assertEnv(name) {
