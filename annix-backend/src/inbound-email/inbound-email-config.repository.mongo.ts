@@ -14,13 +14,21 @@ export class MongoInboundEmailConfigRepository
     super(model);
   }
 
-  async findByAppAndCompany(app: string, companyId: number): Promise<InboundEmailConfig | null> {
+  async findByAppAndCompany(
+    app: string,
+    companyId: number | null,
+  ): Promise<InboundEmailConfig | null> {
     const document = await this.documents.findOne({ app, companyId }).lean().exec();
     return this.toDomain(document);
   }
 
   async findAllEnabled(): Promise<InboundEmailConfig[]> {
     const documents = await this.documents.find({ enabled: true }).lean().exec();
+    return this.toDomainList(documents);
+  }
+
+  async findAllConfigs(): Promise<InboundEmailConfig[]> {
+    const documents = await this.documents.find({}).sort({ app: 1, companyId: 1 }).lean().exec();
     return this.toDomainList(documents);
   }
 

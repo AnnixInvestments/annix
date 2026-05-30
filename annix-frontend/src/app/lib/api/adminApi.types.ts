@@ -456,3 +456,19 @@ export interface AppAttention {
 export interface AdminAttention {
   apps: AppAttention[];
 }
+
+export interface AdminInboundConfigRow {
+  app: string;
+  companyId: number | null;
+  companyName: string;
+  emailUser: string;
+  enabled: boolean;
+  lastPollAt: string | null;
+  lastError: string | null;
+}
+
+export interface AdminInboundConfigGroup {
+  app: string;
+  label: string;
+  accounts: AdminInboundConfigRow[];
+}

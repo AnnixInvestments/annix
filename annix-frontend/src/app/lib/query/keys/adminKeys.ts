@@ -26,6 +26,10 @@ export const adminKeys = {
     // Per-app "needs attention" counts for the Global Apps badges + dashboard panel.
     attention: () => [...adminKeys.dashboard.all, "attention"] as const,
   },
+  inboundEmails: {
+    all: ["admin", "inboundEmails"] as const,
+    configs: () => [...adminKeys.inboundEmails.all, "configs"] as const,
+  },
   rfqs: {
     all: ["admin", "rfqs"] as const,
     list: (params?: AdminRfqQueryDto) => [...adminKeys.rfqs.all, "list", params ?? {}] as const,

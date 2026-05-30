@@ -82,6 +82,10 @@ export {
 export { useExtractionMetricsUsage } from "./admin/useExtractionMetricsUsage";
 export { useFeatureFlags, useToggleFeatureFlag } from "./admin/useFeatureFlags";
 export {
+  useInboundEmailConfigs,
+  useSetInboundEmailEnabled,
+} from "./admin/useInboundEmailConfigs";
+export {
   useAdminLicensingCatalog,
   useSetAddOn,
   useSetTierFeatures,

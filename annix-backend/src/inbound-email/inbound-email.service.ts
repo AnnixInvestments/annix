@@ -57,8 +57,29 @@ export class InboundEmailService {
     return this.configService.get<string>("DOCUMENT_ENCRYPTION_KEY") ?? null;
   }
 
-  async rawEmailConfig(app: string, companyId: number): Promise<InboundEmailConfig | null> {
+  async rawEmailConfig(app: string, companyId: number | null): Promise<InboundEmailConfig | null> {
     return this.configRepo.findByAppAndCompany(app, companyId);
+  }
+
+  async allConfigs(): Promise<InboundEmailConfig[]> {
+    return this.configRepo.findAllConfigs();
+  }
+
+  async setEnabled(
+    app: string,
+    companyId: number | null,
+    enabled: boolean,
+  ): Promise<{ message: string }> {
+    const config = await this.configRepo.findByAppAndCompany(app, companyId);
+
+    if (!config) {
+      throw new NotFoundException("Inbound email configuration not found.");
+    }
+
+    config.enabled = enabled;
+    await this.configRepo.save(config);
+
+    return { message: enabled ? "Inbound email enabled." : "Inbound email disabled." };
   }
 
   async emailConfig(app: string, companyId: number): Promise<InboundEmailConfigResponse> {

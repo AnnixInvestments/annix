@@ -5,15 +5,21 @@ category: Admin
 roles: [admin]
 order: 5
 tags: [email, inbound, automation]
-lastUpdated: 2026-04-11
+lastUpdated: 2026-05-30
 summary: Route supplier emails into the portal so delivery notes auto-extract.
 readingMinutes: 4
-relatedPaths: [annix-backend/src/inbound-email, annix-backend/src/email]
+relatedPaths: [annix-backend/src/inbound-email, annix-backend/src/email, annix-frontend/src/app/admin/portal/inbound-emails]
 ---
 
 ## How it works
 
 Inbound email lets suppliers send delivery notes, invoices, and CoCs to a dedicated address (e.g. `stock@yourcompany.annix.co.za`). The system classifies each message and routes it to the right module automatically.
+
+Each app gets its **own** mailbox so documents never cross between apps. When a customer is approved, the platform pre-creates one mailbox per subscribed app (`<company>-app@annix.co.za`, then `<company>-2-app`, `<company>-3-app`, …) and emails the credentials to the operations team.
+
+## Admin: review and enable mailboxes
+
+Annix admins manage every company's mailboxes at **Admin Portal → Inbox Emails** (`/admin/portal/inbound-emails`). Mailboxes are created **disabled** — once the real mailbox exists on the hosting panel, open this page (the provisioning email links straight to the right row) and click **Enable** to start polling.
 
 ## Steps
 

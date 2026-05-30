@@ -14,6 +14,7 @@ import { API_BASE_URL } from "@/lib/api-config";
 import type {
   ActivityItem,
   AdminAttention,
+  AdminInboundConfigGroup,
   AdminLoginDto,
   AdminLoginResponse,
   AdminRfqListResponse,
@@ -995,6 +996,18 @@ class AdminApiClient {
   >(apiClient, "PATCH", {
     path: "/admin/company-profile",
     body: (data) => data,
+  });
+
+  inboundEmailConfigs = createEndpoint<[], AdminInboundConfigGroup[]>(apiClient, "GET", {
+    path: "/admin/inbound-emails/configs",
+  });
+
+  setInboundEmailEnabled = createEndpoint<
+    [app: string, companyId: number | null, enabled: boolean],
+    { message: string }
+  >(apiClient, "PATCH", {
+    path: (app) => `/admin/inbound-emails/configs/${app}/enabled`,
+    body: (_app, companyId, enabled) => ({ companyId, enabled }),
   });
 
   async orbitJobMarketProviders(): Promise<JobSourceProviderInfo[]> {

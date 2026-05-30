@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from "@nes
 import { AuditService } from "../audit/audit.service";
 import { AuditAction } from "../audit/entities/audit-log.entity";
 import { EmailService } from "../email/email.service";
+import { InboundEmailProvisioningService } from "../inbound-email/inbound-email-provisioning.service";
 import { now } from "../lib/datetime";
 import { SecureDocumentsService } from "../secure-documents/secure-documents.service";
 import { S3StorageService } from "../storage/s3-storage.service";
@@ -41,6 +42,7 @@ export class CustomerAdminService {
     private readonly emailService: EmailService,
     private readonly storageService: S3StorageService,
     private readonly secureDocumentsService: SecureDocumentsService,
+    private readonly inboundEmailProvisioningService: InboundEmailProvisioningService,
   ) {}
 
   /**
@@ -530,6 +532,17 @@ export class CustomerAdminService {
       profile.user.email,
       profile.company.tradingName || profile.company.legalName || "",
     );
+
+    try {
+      await this.inboundEmailProvisioningService.provisionForCompany({
+        companyId: profile.company.id,
+        legalName: profile.company.legalName ?? profile.company.tradingName ?? null,
+        customerCode: profile.company.customerCode ?? null,
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.error(`Inbox provisioning failed for company ${profile.company.id}: ${message}`);
+    }
 
     const adminUser = await this.userRepo.findById(adminUserId);
     await this.auditService.log({

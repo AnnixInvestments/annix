@@ -725,6 +725,70 @@ export class EmailService {
     });
   }
 
+  async sendInboundMailboxProvisionedNotification(input: {
+    companyId: number;
+    companyName: string;
+    mailboxes: { app: string; emailUser: string; plainPassword: string }[];
+  }): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const notifyEmail =
+      this.configService.get<string>("INBOUND_PROVISION_NOTIFY_EMAIL") ||
+      this.configService.get<string>("SUPPORT_EMAIL") ||
+      "info@annix.co.za";
+
+    const mailboxBlocks = input.mailboxes
+      .map((mailbox) => {
+        const link = `${frontendUrl}/admin/portal/inbound-emails?app=${mailbox.app}&companyId=${input.companyId}`;
+        return `
+          <div style="background-color: #f3f4f6; border-left: 4px solid #2563eb; padding: 15px; margin: 20px 0;">
+            <p style="margin: 0 0 5px 0;">
+              <strong>App:</strong> ${mailbox.app}<br/>
+              <strong>Email address:</strong> ${mailbox.emailUser}
+            </p>
+            <p style="margin: 8px 0 0 0;">
+              <strong>Password:</strong>
+              <code style="background-color: #111827; color: #f9fafb; padding: 4px 8px; border-radius: 4px; font-family: monospace;">${mailbox.plainPassword}</code>
+            </p>
+            <p style="margin: 8px 0 0 0; font-size: 13px;">
+              <a href="${link}" style="color: #2563eb;">Review &amp; enable this inbox →</a>
+            </p>
+          </div>`;
+      })
+      .join("");
+
+    const intro =
+      input.mailboxes.length === 1
+        ? "A customer's onboarding was approved and a dedicated inbound mailbox has been pre-configured."
+        : `A customer's onboarding was approved and ${input.mailboxes.length} dedicated inbound mailboxes (one per app) have been pre-configured.`;
+
+    const html = emailLayout({
+      title: "Inbox Mailbox Provisioned - Annix",
+      heading: "New Inbox Mailbox to Create",
+      headingColor: "#2563eb",
+      bodyHtml: `
+          <p>${intro} Create each mailbox on the hosting panel, then enable it from the admin page.</p>
+
+          <p style="margin: 5px 0 0 0;"><strong>Company:</strong> ${input.companyName}</p>
+          ${mailboxBlocks}
+
+          <p style="color: #b91c1c; font-size: 14px;">
+            For security, delete or rotate these passwords once the mailboxes have been created.
+          </p>`,
+      footerText: "This is an automated notification from the Annix platform.",
+    });
+
+    const subject =
+      input.mailboxes.length === 1
+        ? `Inbox mailbox provisioned — ${input.companyName} (${input.mailboxes[0].emailUser})`
+        : `Inbox mailboxes provisioned — ${input.companyName} (${input.mailboxes.length} apps)`;
+
+    return this.sendEmail({
+      to: notifyEmail,
+      subject,
+      html,
+    });
+  }
+
   async sendSupplierManualReviewNotification(
     companyName: string,
     supplierEmail: string,
