@@ -70,8 +70,8 @@ export class StockControlCompany {
   @Prop({ type: String, required: false })
   smtpUser: string;
 
-  @Prop({ type: String, required: false })
-  smtpPassEncrypted: string;
+  @Prop({ type: Buffer, required: false })
+  smtpPassEncrypted: Buffer;
 
   @Prop({ type: String, required: false })
   smtpFromName: string;
@@ -109,8 +109,8 @@ export class StockControlCompany {
   @Prop({ type: String, required: false })
   sageUsername: string;
 
-  @Prop({ type: String, required: false })
-  sagePassEncrypted: string;
+  @Prop({ type: Buffer, required: false })
+  sagePassEncrypted: Buffer;
 
   @Prop({ type: Number, required: false })
   sageCompanyId: number;

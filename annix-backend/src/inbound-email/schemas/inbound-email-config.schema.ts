@@ -28,8 +28,8 @@ export class InboundEmailConfig {
   @Prop({ type: String, required: true })
   emailUser: string;
 
-  @Prop({ type: String, required: true })
-  emailPassEncrypted: string;
+  @Prop({ type: Buffer, required: true })
+  emailPassEncrypted: Buffer;
 
   @Prop({ type: Boolean, required: true })
   tlsEnabled: boolean;

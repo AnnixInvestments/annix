@@ -85,8 +85,8 @@ export class Company {
   @Prop({ type: String, required: false })
   smtpUser: string;
 
-  @Prop({ type: String, required: false })
-  smtpPassEncrypted: string;
+  @Prop({ type: Buffer, required: false })
+  smtpPassEncrypted: Buffer;
 
   @Prop({ type: String, required: false })
   smtpFromName: string;
