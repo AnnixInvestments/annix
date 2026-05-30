@@ -55,33 +55,12 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/voice-filter/login" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
-                  <AudioLines {...iconProps} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Voice Filter</h3>
-                <p className="text-gray-600 mb-6">
-                  Speaker verification filter that only passes through your authorized voice.
-                </p>
-                <span className="inline-flex items-center text-cyan-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Login
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
-              </div>
+          <Link href="/annix-sentinel" target="_blank" className="group h-full">
+            <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border-2 border-transparent bg-[#0b1430] p-3 shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
+              <BrandLoginCard
+                brand="annix-sentinel"
+                className="h-auto max-h-full w-full rounded-lg object-contain"
+              />
             </div>
           </Link>
 
@@ -135,12 +114,33 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/annix-sentinel" target="_blank" className="group h-full">
-            <div className="flex h-full items-center justify-center overflow-hidden rounded-xl border-2 border-transparent bg-[#0b1430] p-3 shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
-              <BrandLoginCard
-                brand="annix-sentinel"
-                className="h-auto max-h-full w-full rounded-lg object-contain"
-              />
+          <Link href="/voice-filter/login" className="group">
+            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 h-full">
+              <div className="text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
+                  <AudioLines {...iconProps} />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-3">Voice Filter</h3>
+                <p className="text-gray-600 mb-6">
+                  Speaker verification filter that only passes through your authorized voice.
+                </p>
+                <span className="inline-flex items-center text-cyan-600 font-semibold group-hover:translate-x-1 transition-transform">
+                  Login
+                  <svg
+                    className="w-5 h-5 ml-2"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                </span>
+              </div>
             </div>
           </Link>
         </div>
