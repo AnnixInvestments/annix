@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { decrypt, encrypt } from "../secure-documents/crypto.util";
 import { InboundEmail, InboundEmailStatus } from "./entities/inbound-email.entity";
@@ -96,9 +96,7 @@ export class InboundEmailService {
     companyId: number,
     dto: InboundEmailConfigDto,
   ): Promise<{ message: string }> {
-    const key = this.encryptionKey();
-
-    let config = await this.configRepo.findByAppAndCompany(app, companyId);
+    const config = await this.configRepo.findByAppAndCompany(app, companyId);
 
     if (!dto.emailHost) {
       if (config) {
@@ -107,27 +105,41 @@ export class InboundEmailService {
       return { message: "Inbound email configuration cleared." };
     }
 
+    const key = this.encryptionKey();
     if (!key) {
       throw new Error("DOCUMENT_ENCRYPTION_KEY not configured. Cannot store email credentials.");
     }
 
+    const emailPassEncrypted = dto.emailPass
+      ? encrypt(dto.emailPass, key)
+      : (config?.emailPassEncrypted ?? null);
+
+    if (!emailPassEncrypted) {
+      throw new BadRequestException("A mailbox password is required to enable inbound email.");
+    }
+
     if (!config) {
-      config = await this.configRepo.create({
+      await this.configRepo.create({
         app,
         companyId,
+        emailHost: dto.emailHost,
+        emailPort: dto.emailPort ?? 993,
+        emailUser: dto.emailUser ?? "",
+        emailPassEncrypted,
+        tlsEnabled: dto.tlsEnabled,
+        tlsServerName: dto.tlsServerName,
+        enabled: dto.enabled,
       } as Partial<InboundEmailConfig> as InboundEmailConfig);
+      return { message: "Inbound email configuration saved." };
     }
 
     config.emailHost = dto.emailHost;
     config.emailPort = dto.emailPort ?? 993;
     config.emailUser = dto.emailUser ?? "";
+    config.emailPassEncrypted = emailPassEncrypted;
     config.tlsEnabled = dto.tlsEnabled;
     config.tlsServerName = dto.tlsServerName;
     config.enabled = dto.enabled;
-
-    if (dto.emailPass) {
-      config.emailPassEncrypted = encrypt(dto.emailPass, key);
-    }
 
     await this.configRepo.save(config);
     return { message: "Inbound email configuration saved." };
