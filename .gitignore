@@ -56,6 +56,7 @@ annix-backend/uploads/
 *.js
 !*.config.js
 !*.config.mjs
+!annix-frontend/public/sw.js
 
 # Deployment docs with secrets - DO NOT COMMIT
 FLY_DEPLOYMENT_TECHNICAL_DOCS.md
