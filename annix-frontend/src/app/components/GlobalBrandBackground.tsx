@@ -46,7 +46,7 @@ export function GlobalBrandBackground() {
           style={{
             backgroundImage: `url('${imageUrl}')`,
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
+            backgroundPosition: "center bottom",
             backgroundSize: "cover",
           }}
         />

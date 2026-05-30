@@ -75,7 +75,7 @@ export function BrandingProvider(props: {
           style={{
             backgroundImage: "var(--brand-page-background-image)",
             backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
+            backgroundPosition: "center bottom",
             backgroundSize: "cover",
             backgroundAttachment: "fixed",
           }}
