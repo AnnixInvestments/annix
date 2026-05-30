@@ -443,6 +443,8 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const heroImagePreview = themeUrl("heroImage");
   const watermarkPreview = themeUrl("watermark");
   const textCropPreview = themeUrl("textCrop");
+  const pageBackgroundPreview = themeUrl("pageBackground");
+  const showPageBackgroundLayer = slotHasAsset("pageBackground", previewTheme);
 
   const hasTextCrop = slotHasAsset("textCrop", previewTheme);
   const navbarTextUrl = hasTextCrop ? textCropPreview : wordmarkPreview;
@@ -792,6 +794,15 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                 />
               </div>
               <div className="relative h-80 overflow-hidden" style={{ background: heroSurface }}>
+                {showPageBackgroundLayer ? (
+                  <div
+                    className="pointer-events-none absolute inset-0 bg-cover bg-no-repeat"
+                    style={{
+                      backgroundImage: `url('${pageBackgroundPreview}')`,
+                      backgroundPosition: "center bottom",
+                    }}
+                  />
+                ) : null}
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div
                     className="rounded-[18%] bg-contain bg-center bg-no-repeat"
