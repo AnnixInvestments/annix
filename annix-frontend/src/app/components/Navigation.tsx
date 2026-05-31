@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { isLoginScreen } from "@/app/lib/navigation-utils";
 import { useBranding } from "@/app/lib/query/hooks";
 import AdminLoginButton from "./AdminLoginButton";
 import AnnixLogo from "./AnnixLogo";
@@ -15,6 +16,9 @@ const LIGHT_NAVBAR_FALLBACK = "#F2F4F7";
 const ACCENT_FALLBACK = "#FF8A00";
 
 const isPortalRoute = (pathname: string): boolean => {
+  if (isLoginScreen(pathname)) {
+    return false;
+  }
   return (
     pathname.startsWith("/customer/portal") ||
     pathname.startsWith("/supplier/portal") ||
