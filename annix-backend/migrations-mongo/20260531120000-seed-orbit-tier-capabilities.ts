@@ -11,6 +11,7 @@ interface SeedTier {
     applyToJobs: boolean;
     viewSalaries: boolean;
     nixCvBuilder: boolean;
+    jobListingSite: boolean;
   };
   displayOrder: number;
 }
@@ -25,6 +26,7 @@ const TIERS: SeedTier[] = [
       applyToJobs: true,
       viewSalaries: false,
       nixCvBuilder: false,
+      jobListingSite: false,
     },
     displayOrder: 10,
   },
@@ -37,18 +39,20 @@ const TIERS: SeedTier[] = [
       applyToJobs: true,
       viewSalaries: true,
       nixCvBuilder: true,
+      jobListingSite: false,
     },
     displayOrder: 20,
   },
   {
     tier: "hard",
-    label: "Hard",
+    label: "Heavy",
     matchStrictness: "hard",
     maxJobResults: null,
     features: {
       applyToJobs: true,
       viewSalaries: true,
       nixCvBuilder: true,
+      jobListingSite: true,
     },
     displayOrder: 30,
   },

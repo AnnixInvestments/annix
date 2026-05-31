@@ -10,6 +10,7 @@ export interface OrbitTierFeatures {
   applyToJobs: boolean;
   viewSalaries: boolean;
   nixCvBuilder: boolean;
+  jobListingSite: boolean;
 }
 
 @Entity("cv_assistant_tier_capabilities")

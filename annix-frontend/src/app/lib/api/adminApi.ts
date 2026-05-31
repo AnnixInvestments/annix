@@ -1339,6 +1339,7 @@ export interface OrbitTierFeatures {
   applyToJobs: boolean;
   viewSalaries: boolean;
   nixCvBuilder: boolean;
+  jobListingSite: boolean;
 }
 
 export interface OrbitTierCapability {

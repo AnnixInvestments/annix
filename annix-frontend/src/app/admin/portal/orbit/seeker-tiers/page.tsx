@@ -24,7 +24,7 @@ const TIER_OPTIONS = [
   },
   {
     key: "hard",
-    label: "Hard",
+    label: "Heavy",
     description: "Pool strictly limited to the seeker's exact target categories.",
   },
 ];
@@ -35,6 +35,7 @@ const FEATURE_COLUMNS: Array<{ key: keyof OrbitTierFeatures; label: string }> = 
   { key: "applyToJobs", label: "Apply to jobs" },
   { key: "viewSalaries", label: "View salaries" },
   { key: "nixCvBuilder", label: "Nix CV builder" },
+  { key: "jobListingSite", label: "Job listing site" },
 ];
 
 interface TierDraft {
