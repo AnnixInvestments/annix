@@ -414,6 +414,7 @@ export default function SeekerJobsPage() {
         confirmDialog={ConfirmDialog}
         variant="no-cv"
         jobCount={jobCount}
+        matchCount={data ? data.matches.length : 0}
         hasCv={false}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -457,6 +458,7 @@ export default function SeekerJobsPage() {
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
         jobCount={jobCount}
+        matchCount={data ? data.matches.length : 0}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -509,6 +511,7 @@ export default function SeekerJobsPage() {
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
         jobCount={jobCount}
+        matchCount={data ? data.matches.length : 0}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -527,6 +530,7 @@ export default function SeekerJobsPage() {
 
       <JobsTopBar
         jobCount={jobCount}
+        matchCount={data ? data.matches.length : 0}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -575,18 +579,31 @@ export default function SeekerJobsPage() {
 
 function JobsTopBar(props: {
   jobCount: number;
+  matchCount: number;
   hasCv: boolean;
   searching: boolean;
   onHelpFindJob: () => void;
 }) {
-  const { jobCount, hasCv, searching, onHelpFindJob } = props;
+  const { jobCount, matchCount, hasCv, searching, onHelpFindJob } = props;
   const countLabel = jobCount > 0 ? jobCount.toLocaleString() : "—";
+  const matchLabel = matchCount > 0 ? matchCount.toLocaleString() : "—";
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-      <div className="rounded-xl bg-white/5 border border-white/10 p-5 flex flex-col justify-center">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div
+        className="rounded-xl border border-white/10 p-5 flex flex-col justify-center"
+        style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+      >
         <p className="text-sm text-white/60">Jobs listed</p>
         <p className="text-3xl font-bold text-white mt-1">{countLabel}</p>
+      </div>
+
+      <div
+        className="rounded-xl border border-white/10 p-5 flex flex-col justify-center"
+        style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+      >
+        <p className="text-sm text-white/60">Nix matches</p>
+        <p className="text-3xl font-bold text-white mt-1">{matchLabel}</p>
       </div>
 
       {HELP_ME_FIND_A_JOB_ENABLED ? (
@@ -630,6 +647,7 @@ interface BrowseAllJobsViewProps {
   confirmDialog: React.ReactNode;
   variant: "no-cv" | "matches-pending";
   jobCount: number;
+  matchCount: number;
   hasCv: boolean;
   searching: boolean;
   onHelpFindJob: () => void;
@@ -649,6 +667,7 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
 
       <JobsTopBar
         jobCount={props.jobCount}
+        matchCount={props.matchCount}
         hasCv={props.hasCv}
         searching={props.searching}
         onHelpFindJob={props.onHelpFindJob}
