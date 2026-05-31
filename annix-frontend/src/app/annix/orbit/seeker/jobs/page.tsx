@@ -82,7 +82,8 @@ export default function SeekerJobsPage() {
   const consentPromptShown = useRef(false);
 
   const browseJobsEnabled = profileReady;
-  const browseJobsQuery = useOrbitSeekerBrowseJobs({ limit: 100 }, browseJobsEnabled);
+  const [browseLimit, setBrowseLimit] = useState(100);
+  const browseJobsQuery = useOrbitSeekerBrowseJobs({ limit: browseLimit }, browseJobsEnabled);
   const browseJobsData = browseJobsQuery.data;
   const browseJobs = useMemo(() => (browseJobsData ? browseJobsData.jobs : []), [browseJobsData]);
 
@@ -372,6 +373,9 @@ export default function SeekerJobsPage() {
   const isGrantingConsent = grantConsentMutation.isPending;
   const helpSearching = isRematching || isGrantingConsent || nixSearching;
   const jobCount = browseJobsData ? browseJobsData.total : 0;
+  const hasMoreBrowse = browseJobs.length < jobCount;
+  const browseLoadingMore = browseJobsQuery.isFetching && browseJobs.length > 0;
+  const handleLoadMoreBrowse = () => setBrowseLimit((current) => current + 100);
 
   const profileLoading = profileStatusQuery.isLoading;
   const profileError = profileStatusQuery.isError;
@@ -418,6 +422,9 @@ export default function SeekerJobsPage() {
         hasCv={false}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
+        hasMore={hasMoreBrowse}
+        loadingMore={browseLoadingMore}
+        onLoadMore={handleLoadMoreBrowse}
       />
     );
   }
@@ -462,6 +469,9 @@ export default function SeekerJobsPage() {
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
+        hasMore={hasMoreBrowse}
+        loadingMore={browseLoadingMore}
+        onLoadMore={handleLoadMoreBrowse}
       />
     );
   }
@@ -515,6 +525,9 @@ export default function SeekerJobsPage() {
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
+        hasMore={hasMoreBrowse}
+        loadingMore={browseLoadingMore}
+        onLoadMore={handleLoadMoreBrowse}
       />
     );
   }
@@ -651,6 +664,9 @@ interface BrowseAllJobsViewProps {
   hasCv: boolean;
   searching: boolean;
   onHelpFindJob: () => void;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
 }
 
 function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
@@ -716,6 +732,21 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
           ))}
         </div>
       )}
+
+      {!props.loading && !props.error && jobs.length > 0 && props.hasMore ? (
+        <div className="flex justify-center pt-1">
+          <button
+            type="button"
+            onClick={props.onLoadMore}
+            disabled={props.loadingMore}
+            className="px-5 py-2.5 text-sm font-medium rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {props.loadingMore
+              ? "Loading…"
+              : `Load more jobs (${jobs.length} of ${props.jobCount.toLocaleString()})`}
+          </button>
+        </div>
+      ) : null}
       {props.confirmDialog}
     </div>
   );
