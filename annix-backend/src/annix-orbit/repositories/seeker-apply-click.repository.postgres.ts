@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThanOrEqual, Repository } from "typeorm";
+import { In, MoreThanOrEqual, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { SeekerApplyClick } from "../entities/seeker-apply-click.entity";
 import { SeekerApplyClickRepository } from "./seeker-apply-click.repository";
@@ -25,6 +25,14 @@ export class PostgresSeekerApplyClickRepository
         externalJobId,
         clickedAt: MoreThanOrEqual(cutoff),
       },
+    });
+  }
+
+  listForCandidates(candidateIds: number[]): Promise<SeekerApplyClick[]> {
+    if (candidateIds.length === 0) return Promise.resolve([]);
+    return this.repository.find({
+      where: { candidateId: In(candidateIds) },
+      order: { clickedAt: "DESC" },
     });
   }
 }

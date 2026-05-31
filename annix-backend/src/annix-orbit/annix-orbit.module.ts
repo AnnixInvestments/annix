@@ -76,6 +76,7 @@ import { PublicJobMarketController } from "./controllers/public-job-market.contr
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
+import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
 import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { TradeProfileController } from "./controllers/trade-profile.controller";
@@ -292,6 +293,7 @@ import { PortalPostingRetryService } from "./services/portal-posting-retry.servi
 import { ReferenceService } from "./services/reference.service";
 import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
+import { SeekerApplicationsService } from "./services/seeker-applications.service";
 import { SeekerJobFeedService } from "./services/seeker-job-feed.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
@@ -462,6 +464,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     AdminOrbitJobMarketController,
     AdminOrbitSeekerController,
     SeekerJobsController,
+    SeekerApplicationsController,
     TradeProfileController,
     CredentialController,
     AdminOrbitCredentialTypesController,
@@ -517,6 +520,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     InterviewBookingService,
     AnnixOrbitCapabilities,
     SeekerJobFeedService,
+    SeekerApplicationsService,
     TradeProfileService,
     CredentialService,
     OrbitCredentialTypeService,

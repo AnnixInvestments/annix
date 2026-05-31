@@ -7,4 +7,5 @@ export abstract class SeekerApplyClickRepository extends CrudRepository<SeekerAp
     externalJobId: number,
     cutoff: Date,
   ): Promise<SeekerApplyClick | null>;
+  abstract listForCandidates(candidateIds: number[]): Promise<SeekerApplyClick[]>;
 }

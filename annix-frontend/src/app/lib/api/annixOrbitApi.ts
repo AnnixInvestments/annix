@@ -2067,6 +2067,10 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/me/credentials/types");
   }
 
+  async listMyApplications(): Promise<{ applications: SeekerApplication[] }> {
+    return this.request("/annix-orbit/me/applications");
+  }
+
   async seekerEducation(): Promise<SeekerEducationResponse> {
     return this.request("/annix-orbit/education/me");
   }
@@ -2253,6 +2257,19 @@ export interface OrbitCredentialTypeOption {
   description: string | null;
   sortOrder: number;
   active: boolean;
+}
+
+export interface SeekerApplication {
+  id: number;
+  externalJobId: number | null;
+  title: string;
+  company: string | null;
+  location: string | null;
+  sourceUrl: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  appliedAt: string;
 }
 
 export interface ExtractedCredentialDocument {

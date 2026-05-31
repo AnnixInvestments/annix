@@ -25,4 +25,14 @@ export class MongoSeekerApplyClickRepository
       .exec();
     return this.toDomain(doc);
   }
+
+  async listForCandidates(candidateIds: number[]): Promise<SeekerApplyClick[]> {
+    if (candidateIds.length === 0) return [];
+    const docs = await this.documents
+      .find({ candidateId: { $in: candidateIds } })
+      .sort({ clickedAt: -1 })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
 }
