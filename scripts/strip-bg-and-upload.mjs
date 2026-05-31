@@ -43,8 +43,25 @@ const SOURCES = [
 const INNER = 34;
 const OUTER = 80;
 
+// The source art is a rounded-square card; its dot-wave design curls upward at
+// the bottom-left and bottom-right corners. Cropping a margin off the left,
+// right, and bottom removes those rounded corners so the wave bleeds straight
+// to the screen edges when rendered full-bleed with background-size: cover.
+const CROP_SIDE_FRACTION = 0.09;
+const CROP_BOTTOM_FRACTION = 0.06;
+
 async function stripFill(filePath) {
-  const { data, info } = await sharp(filePath).ensureAlpha().raw().toBuffer({
+  const meta = await sharp(filePath).metadata();
+  const cropX = Math.round(meta.width * CROP_SIDE_FRACTION);
+  const cropBottom = Math.round(meta.height * CROP_BOTTOM_FRACTION);
+  const cropped = sharp(filePath).extract({
+    left: cropX,
+    top: 0,
+    width: meta.width - cropX * 2,
+    height: meta.height - cropBottom,
+  });
+
+  const { data, info } = await cropped.ensureAlpha().raw().toBuffer({
     resolveWithObject: true,
   });
   const { width, height, channels } = info;
