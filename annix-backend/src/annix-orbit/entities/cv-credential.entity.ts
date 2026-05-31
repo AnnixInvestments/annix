@@ -1,4 +1,3 @@
-import type { CredentialType } from "@annix/product-data/sa-market";
 import {
   Column,
   CreateDateColumn,
@@ -18,7 +17,7 @@ export class CvCredential {
   candidateId: number;
 
   @Column({ name: "credential_type", type: "varchar", length: 50 })
-  credentialType: CredentialType;
+  credentialType: string;
 
   @Column({ name: "issued_at", type: "date", nullable: true })
   issuedAt: string | null;

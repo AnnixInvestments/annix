@@ -106,10 +106,19 @@ export const adminKeys = {
     matchTier: (email: string) => [...adminKeys.orbitSeekers.all, "matchTier", email] as const,
     list: (params?: { search?: string; page?: number; limit?: number }) =>
       [...adminKeys.orbitSeekers.all, "list", params ?? {}] as const,
+    detail: (id: number) => [...adminKeys.orbitSeekers.all, "detail", id] as const,
+  },
+  orbitTierCapabilities: {
+    all: ["admin", "orbitTierCapabilities"] as const,
+    list: () => [...adminKeys.orbitTierCapabilities.all, "list"] as const,
   },
   orbitEeTargets: {
     all: ["admin", "orbitEeTargets"] as const,
     list: () => [...adminKeys.orbitEeTargets.all, "list"] as const,
+  },
+  orbitCredentialTypes: {
+    all: ["admin", "orbitCredentialTypes"] as const,
+    list: () => [...adminKeys.orbitCredentialTypes.all, "list"] as const,
   },
   sso: {
     all: ["admin", "sso"] as const,

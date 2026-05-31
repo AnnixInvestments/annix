@@ -2063,6 +2063,10 @@ class AnnixOrbitApiClient {
     );
   }
 
+  async listCredentialTypes(): Promise<{ types: OrbitCredentialTypeOption[] }> {
+    return this.request("/annix-orbit/me/credentials/types");
+  }
+
   async seekerEducation(): Promise<SeekerEducationResponse> {
     return this.request("/annix-orbit/education/me");
   }
@@ -2223,7 +2227,7 @@ export interface WorkforceNeedInput {
 export interface SeekerCredential {
   id: number;
   candidateId: number;
-  credentialType: import("@annix/product-data/sa-market").CredentialType;
+  credentialType: string;
   issuedAt: string | null;
   expiresAt: string | null;
   issuingAuthority: string | null;
@@ -2234,12 +2238,21 @@ export interface SeekerCredential {
 }
 
 export interface SeekerCredentialInput {
-  credentialType: import("@annix/product-data/sa-market").CredentialType;
+  credentialType: string;
   issuedAt?: string | null;
   expiresAt?: string | null;
   issuingAuthority?: string | null;
   documentPath?: string | null;
   notes?: string | null;
+}
+
+export interface OrbitCredentialTypeOption {
+  id: number;
+  code: string;
+  label: string;
+  description: string | null;
+  sortOrder: number;
+  active: boolean;
 }
 
 export interface ExtractedCredentialDocument {

@@ -15,9 +15,10 @@ import { Candidate } from "../entities/candidate.entity";
 import { CvCredential } from "../entities/cv-credential.entity";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CvCredentialRepository } from "../repositories/cv-credential.repository";
+import { OrbitCredentialTypeRepository } from "../repositories/orbit-credential-type.repository";
 
 export interface UpsertCredentialInput {
-  credentialType: CredentialType;
+  credentialType: string;
   issuedAt: string | null;
   expiresAt: string | null;
   issuingAuthority: string | null;
@@ -37,7 +38,16 @@ export class CredentialService {
     private readonly emailService: EmailService,
     private readonly aiChatService: AiChatService,
     private readonly extractionMetricService: ExtractionMetricService,
+    private readonly credentialTypeRepo: OrbitCredentialTypeRepository,
   ) {}
+
+  private async isAllowedCredentialCode(code: string): Promise<boolean> {
+    if (CREDENTIAL_TYPES.includes(code as CredentialType)) {
+      return true;
+    }
+    const match = await this.credentialTypeRepo.findByCode(code);
+    return match !== null && match.active;
+  }
 
   async extractFromDocument(
     fileBuffer: Buffer,
@@ -109,7 +119,7 @@ export class CredentialService {
     email: string | null,
     input: UpsertCredentialInput,
   ): Promise<CvCredential | null> {
-    if (!CREDENTIAL_TYPES.includes(input.credentialType)) return null;
+    if (!(await this.isAllowedCredentialCode(input.credentialType))) return null;
     const candidates = await this.candidatesForEmail(email);
     if (candidates.length === 0) return null;
     const target = candidates[0];
@@ -136,7 +146,7 @@ export class CredentialService {
     const existing = await this.credentialRepo.findById(credentialId);
     if (!existing || !candidateIds.has(existing.candidateId)) return null;
 
-    if (input.credentialType && CREDENTIAL_TYPES.includes(input.credentialType)) {
+    if (input.credentialType && (await this.isAllowedCredentialCode(input.credentialType))) {
       existing.credentialType = input.credentialType;
     }
     if (input.issuedAt !== undefined) existing.issuedAt = input.issuedAt;

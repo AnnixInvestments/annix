@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
   type ExtractedCredentialDocument,
+  type OrbitCredentialTypeOption,
   type SeekerCredential,
   type SeekerCredentialInput,
 } from "@/app/lib/api/annixOrbitApi";
@@ -69,5 +70,13 @@ export function useOrbitAutofillSeekerCredentials() {
 export function useOrbitExtractCredentialDocument() {
   return useMutation<ExtractedCredentialDocument, Error, File>({
     mutationFn: (file) => annixOrbitApiClient.extractCredentialFromDocument(file),
+  });
+}
+
+export function useOrbitCredentialTypes() {
+  return useQuery<OrbitCredentialTypeOption[]>({
+    queryKey: annixOrbitKeys.credentialTypes.list(),
+    queryFn: () => annixOrbitApiClient.listCredentialTypes().then((res) => res.types),
+    staleTime: 5 * 60 * 1000,
   });
 }

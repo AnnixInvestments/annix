@@ -52,6 +52,7 @@ import { MongoUserRepository } from "../user/user.repository.mongo";
 import { PostgresUserRepository } from "../user/user.repository.postgres";
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
+import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
@@ -105,6 +106,7 @@ import { JobPostingPortalPosting } from "./entities/job-posting-portal-posting.e
 import { JobScreeningQuestion } from "./entities/job-screening-question.entity";
 import { JobSkill } from "./entities/job-skill.entity";
 import { JobSuccessMetric } from "./entities/job-success-metric.entity";
+import { OrbitCredentialType } from "./entities/orbit-credential-type.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { SeekerMute } from "./entities/seeker-mute.entity";
@@ -192,6 +194,9 @@ import { PostgresJobSkillRepository } from "./repositories/job-skill.repository.
 import { JobSuccessMetricRepository } from "./repositories/job-success-metric.repository";
 import { MongoJobSuccessMetricRepository } from "./repositories/job-success-metric.repository.mongo";
 import { PostgresJobSuccessMetricRepository } from "./repositories/job-success-metric.repository.postgres";
+import { OrbitCredentialTypeRepository } from "./repositories/orbit-credential-type.repository";
+import { MongoOrbitCredentialTypeRepository } from "./repositories/orbit-credential-type.repository.mongo";
+import { PostgresOrbitCredentialTypeRepository } from "./repositories/orbit-credential-type.repository.postgres";
 import { SalaryBenchmarkRepository } from "./repositories/salary-benchmark.repository";
 import { MongoSalaryBenchmarkRepository } from "./repositories/salary-benchmark.repository.mongo";
 import { PostgresSalaryBenchmarkRepository } from "./repositories/salary-benchmark.repository.postgres";
@@ -231,6 +236,7 @@ import { JobPostingPortalPostingSchema } from "./schemas/job-posting-portal-post
 import { JobScreeningQuestionSchema } from "./schemas/job-screening-question.schema";
 import { JobSkillSchema } from "./schemas/job-skill.schema";
 import { JobSuccessMetricSchema } from "./schemas/job-success-metric.schema";
+import { OrbitCredentialTypeSchema } from "./schemas/orbit-credential-type.schema";
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
 import { SeekerMuteSchema } from "./schemas/seeker-mute.schema";
@@ -271,6 +277,7 @@ import { MarketInsightsService } from "./services/market-insights.service";
 import { NixCvPdfService } from "./services/nix-cv-pdf.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
+import { OrbitCredentialTypeService } from "./services/orbit-credential-type.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
@@ -336,6 +343,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
             { name: "SeekerMute", schema: SeekerMuteSchema },
             { name: "SourceRespectRank", schema: SourceRespectRankSchema },
             { name: "CvCredential", schema: CvCredentialSchema },
+            { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
             { name: "CvEscoSkill", schema: CvEscoSkillSchema },
             { name: "CvGeocodeCache", schema: CvGeocodeCacheSchema },
             { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
@@ -391,6 +399,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
             SeekerMute,
             SourceRespectRank,
             CvCredential,
+            OrbitCredentialType,
             CvEscoSkill,
             CvGeocodeCache,
             Rfq,
@@ -446,6 +455,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     SeekerJobsController,
     TradeProfileController,
     CredentialController,
+    AdminOrbitCredentialTypesController,
     WorkforceNeedController,
   ],
   providers: [
@@ -500,6 +510,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     SeekerJobFeedService,
     TradeProfileService,
     CredentialService,
+    OrbitCredentialTypeService,
     WorkforceNeedService,
     repositoryProvider(CandidateRepository, PostgresCandidateRepository, MongoCandidateRepository),
     repositoryProvider(
@@ -632,6 +643,11 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
       CvCredentialRepository,
       PostgresCvCredentialRepository,
       MongoCvCredentialRepository,
+    ),
+    repositoryProvider(
+      OrbitCredentialTypeRepository,
+      PostgresOrbitCredentialTypeRepository,
+      MongoOrbitCredentialTypeRepository,
     ),
     repositoryProvider(
       CvEscoSkillRepository,

@@ -1,4 +1,3 @@
-import { CREDENTIAL_TYPES, type CredentialType } from "@annix/product-data/sa-market";
 import {
   BadRequestException,
   Body,
@@ -16,9 +15,10 @@ import {
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { CredentialService } from "../services/credential.service";
+import { OrbitCredentialTypeService } from "../services/orbit-credential-type.service";
 
 const CREDENTIAL_DOC_MAX_BYTES = 15 * 1024 * 1024;
 const ACCEPTED_CREDENTIAL_DOC_MIMES = new Set([
@@ -34,8 +34,9 @@ interface SeekerAuthRequest {
 }
 
 class CredentialDto {
-  @IsIn(CREDENTIAL_TYPES as unknown as string[])
-  credentialType: CredentialType;
+  @IsString()
+  @MaxLength(50)
+  credentialType: string;
 
   @IsOptional()
   @IsString()
@@ -62,8 +63,9 @@ class CredentialDto {
 
 class PatchCredentialDto {
   @IsOptional()
-  @IsIn(CREDENTIAL_TYPES as unknown as string[])
-  credentialType?: CredentialType;
+  @IsString()
+  @MaxLength(50)
+  credentialType?: string;
 
   @IsOptional()
   @IsString()
@@ -91,7 +93,16 @@ class PatchCredentialDto {
 @Controller("annix-orbit/me/credentials")
 @UseGuards(AnnixOrbitAuthGuard)
 export class CredentialController {
-  constructor(private readonly credentialService: CredentialService) {}
+  constructor(
+    private readonly credentialService: CredentialService,
+    private readonly credentialTypeService: OrbitCredentialTypeService,
+  ) {}
+
+  @Get("types")
+  async types() {
+    const types = await this.credentialTypeService.listActive();
+    return { types };
+  }
 
   @Get()
   async list(@Request() req: SeekerAuthRequest) {

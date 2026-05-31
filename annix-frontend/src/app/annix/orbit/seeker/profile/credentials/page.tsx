@@ -4,7 +4,6 @@ import {
   CREDENTIAL_DESCRIPTIONS,
   CREDENTIAL_LABELS,
   CREDENTIAL_TYPES,
-  type CredentialType,
 } from "@annix/product-data/sa-market";
 import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
@@ -16,6 +15,7 @@ import { DateTime, fromISO } from "@/app/lib/datetime";
 import {
   useOrbitAutofillSeekerCredentials,
   useOrbitCreateSeekerCredential,
+  useOrbitCredentialTypes,
   useOrbitDeleteSeekerCredential,
   useOrbitExtractCredentialDocument,
   useOrbitSeekerCredentials,
@@ -36,7 +36,21 @@ export default function SeekerCredentialsPage() {
 
   const data = query.data;
   const credentials = data ? data.credentials : [];
-  const selectedTypeDescription = CREDENTIAL_DESCRIPTIONS[draft.credentialType];
+
+  const typesQuery = useOrbitCredentialTypes();
+  const fetchedTypes = typesQuery.data;
+  const typeOptions =
+    fetchedTypes && fetchedTypes.length > 0
+      ? fetchedTypes.map((t) => ({ code: t.code, label: t.label, description: t.description }))
+      : CREDENTIAL_TYPES.map((code) => ({
+          code: code as string,
+          label: CREDENTIAL_LABELS[code],
+          description: CREDENTIAL_DESCRIPTIONS[code] as string | null,
+        }));
+  const labelByCode = new Map(typeOptions.map((option) => [option.code, option.label]));
+  const descriptionByCode = new Map(typeOptions.map((option) => [option.code, option.description]));
+  const selectedDescriptionRaw = descriptionByCode.get(draft.credentialType);
+  const selectedTypeDescription = selectedDescriptionRaw ?? null;
 
   const handleCreate = () => {
     if (!draft.credentialType) {
@@ -172,14 +186,12 @@ export default function SeekerCredentialsPage() {
             <span className="text-sm text-gray-700">Type</span>
             <select
               value={draft.credentialType}
-              onChange={(e) =>
-                setDraft({ ...draft, credentialType: e.target.value as CredentialType })
-              }
+              onChange={(e) => setDraft({ ...draft, credentialType: e.target.value })}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             >
-              {CREDENTIAL_TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {CREDENTIAL_LABELS[t]}
+              {typeOptions.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -247,18 +259,23 @@ export default function SeekerCredentialsPage() {
           </p>
         ) : (
           <div className="space-y-2">
-            {credentials.map((credential) => (
-              <CredentialRow
-                key={credential.id}
-                credential={credential}
-                onUpdate={(patch) => handleUpdate(credential.id, patch)}
-                onDelete={() => handleDelete(credential.id)}
-                isPending={
-                  (updateMutation.isPending && updateMutation.variables?.id === credential.id) ||
-                  (deleteMutation.isPending && deleteMutation.variables === credential.id)
-                }
-              />
-            ))}
+            {credentials.map((credential) => {
+              const rawLabel = labelByCode.get(credential.credentialType);
+              const label = rawLabel || credential.credentialType;
+              return (
+                <CredentialRow
+                  key={credential.id}
+                  credential={credential}
+                  label={label}
+                  onUpdate={(patch) => handleUpdate(credential.id, patch)}
+                  onDelete={() => handleDelete(credential.id)}
+                  isPending={
+                    (updateMutation.isPending && updateMutation.variables?.id === credential.id) ||
+                    (deleteMutation.isPending && deleteMutation.variables === credential.id)
+                  }
+                />
+              );
+            })}
           </div>
         )}
       </section>
@@ -268,13 +285,14 @@ export default function SeekerCredentialsPage() {
 
 interface CredentialRowProps {
   credential: SeekerCredential;
+  label: string;
   onUpdate: (patch: Partial<SeekerCredentialInput>) => void;
   onDelete: () => void;
   isPending: boolean;
 }
 
 function CredentialRow(props: CredentialRowProps) {
-  const { credential, onUpdate, onDelete, isPending } = props;
+  const { credential, label, onUpdate, onDelete, isPending } = props;
   const expiryStatus = classifyExpiry(credential.expiresAt);
   const badgeClasses = badgeClassFor(expiryStatus);
   const issuingAuthorityLabel = credential.issuingAuthority
@@ -284,9 +302,7 @@ function CredentialRow(props: CredentialRowProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-6 gap-2 items-center p-2 border border-gray-100 rounded-lg">
       <div className="sm:col-span-2">
-        <div className="text-sm font-medium text-gray-900">
-          {CREDENTIAL_LABELS[credential.credentialType]}
-        </div>
+        <div className="text-sm font-medium text-gray-900">{label}</div>
         <div className="text-xs text-gray-500">{issuingAuthorityLabel}</div>
       </div>
       <div>

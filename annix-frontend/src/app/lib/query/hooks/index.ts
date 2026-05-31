@@ -29,6 +29,12 @@ export {
   useUpdateSlaConfig,
 } from "./admin/useAdminMessaging";
 export {
+  useAdminCreateOrbitCredentialType,
+  useAdminDeleteOrbitCredentialType,
+  useAdminOrbitCredentialTypes,
+  useAdminUpdateOrbitCredentialType,
+} from "./admin/useAdminOrbitCredentialTypes";
+export {
   useAdminDeleteOrbitEeTarget,
   useAdminOrbitEeTargets,
   useAdminUpsertOrbitEeTarget,
@@ -44,6 +50,7 @@ export {
   useAdminOrbitJobMarketProviders,
   useAdminOrbitJobMarketSources,
   useAdminOrbitJobMarketStats,
+  useAdminOrbitSeekerDetail,
   useAdminOrbitSeekerMatchTier,
   useAdminOrbitSeekers,
   useAdminSetOrbitSeekerMatchTier,
@@ -211,6 +218,7 @@ export {
 export {
   useOrbitAutofillSeekerCredentials,
   useOrbitCreateSeekerCredential,
+  useOrbitCredentialTypes,
   useOrbitDeleteSeekerCredential,
   useOrbitExtractCredentialDocument,
   useOrbitSeekerCredentials,

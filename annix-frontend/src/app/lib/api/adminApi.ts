@@ -1168,6 +1168,28 @@ class AdminApiClient {
     return this.request(`/admin/annix-orbit/seekers${suffix ? `?${suffix}` : ""}`);
   }
 
+  async orbitSeekerDetail(id: number): Promise<OrbitSeekerDetail> {
+    return this.request(`/admin/annix-orbit/seekers/${id}`);
+  }
+
+  async orbitTierCapabilities(): Promise<OrbitTierCapability[]> {
+    return this.request("/admin/annix-orbit/tier-capabilities");
+  }
+
+  async updateOrbitTierCapability(
+    tier: string,
+    data: {
+      matchStrictness?: string;
+      maxJobResults?: number | null;
+      features?: Partial<OrbitTierFeatures>;
+    },
+  ): Promise<OrbitTierCapability> {
+    return this.request(`/admin/annix-orbit/tier-capabilities/${encodeURIComponent(tier)}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
   async appBranding(brand: string): Promise<BrandingAdminView> {
     return this.request(`/admin/branding/${brand}`);
   }
@@ -1216,6 +1238,33 @@ class AdminApiClient {
   async deleteOrbitEeTarget(id: number): Promise<{ success: boolean }> {
     return this.request(`/admin/annix-orbit/ee-sectoral-targets/${id}`, { method: "DELETE" });
   }
+
+  async orbitCredentialTypes(): Promise<OrbitCredentialType[]> {
+    return this.request("/admin/annix-orbit/credential-types");
+  }
+
+  async createOrbitCredentialType(
+    input: CreateOrbitCredentialTypeInput,
+  ): Promise<OrbitCredentialType> {
+    return this.request("/admin/annix-orbit/credential-types", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateOrbitCredentialType(
+    id: number,
+    input: UpdateOrbitCredentialTypeInput,
+  ): Promise<OrbitCredentialType> {
+    return this.request(`/admin/annix-orbit/credential-types/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deleteOrbitCredentialType(id: number): Promise<{ success: boolean }> {
+    return this.request(`/admin/annix-orbit/credential-types/${id}`, { method: "DELETE" });
+  }
 }
 
 export interface OrbitSeekerMatchTier {
@@ -1235,6 +1284,73 @@ export interface OrbitSeekerSummary {
   hasCv: boolean;
   lastActiveAt: string | null;
   createdAt: string | null;
+}
+
+export interface OrbitSeekerDocument {
+  id: number;
+  kind: string;
+  originalFilename: string;
+  sizeBytes: number;
+  label: string | null;
+  uploadedAt: string | null;
+  downloadUrl: string;
+  isCv: boolean;
+}
+
+export interface OrbitSeekerActivityDay {
+  day: string;
+  count: number;
+}
+
+export interface OrbitSeekerDetail extends OrbitSeekerSummary {
+  popiaConsent: boolean;
+  popiaConsentedAt: string | null;
+  tradeProfile: unknown;
+  cv: {
+    summary: string | null;
+    experienceYears: number | null;
+    location: string | null;
+    skills: string[];
+    education: string[];
+    certifications: string[];
+    professionalRegistrations: string[];
+    saQualifications: string[];
+  };
+  matchAnalysis: {
+    overallScore: number;
+    recommendation: string;
+    reasoning: string | null;
+  } | null;
+  documents: OrbitSeekerDocument[];
+  references: Array<{
+    id: number;
+    name: string;
+    email: string;
+    relationship: string | null;
+    status: string;
+    rating: number | null;
+    submittedAt: string | null;
+  }>;
+  stats: { totalMatches: number; matchesLast7Days: number };
+  activity: OrbitSeekerActivityDay[];
+}
+
+export interface OrbitTierFeatures {
+  applyToJobs: boolean;
+  viewSalaries: boolean;
+  nixCvBuilder: boolean;
+  references: boolean;
+  futurePath: boolean;
+}
+
+export interface OrbitTierCapability {
+  id: number;
+  tier: string;
+  label: string;
+  matchStrictness: string;
+  maxJobResults: number | null;
+  features: OrbitTierFeatures;
+  displayOrder: number;
 }
 
 export type EeTargetMetric =
@@ -1271,6 +1387,30 @@ export interface UpsertOrbitEeTargetInput {
   targetMetric: EeTargetMetric;
   targetPercent: number;
   gazetteReference: string | null;
+}
+
+export interface OrbitCredentialType {
+  id: number;
+  code: string;
+  label: string;
+  description: string | null;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface CreateOrbitCredentialTypeInput {
+  code: string;
+  label: string;
+  description: string | null;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface UpdateOrbitCredentialTypeInput {
+  label?: string;
+  description?: string | null;
+  sortOrder?: number;
+  active?: boolean;
 }
 
 export interface BrandingImage {
