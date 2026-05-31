@@ -2538,6 +2538,8 @@ export interface SeekerRecommendedJob {
   similarityScore: number;
   structuredScore: number;
   matchDetails: SeekerJobMatchDetails | null;
+  locked?: boolean;
+  lockedSourceName?: string | null;
   job: {
     id: number;
     title: string;

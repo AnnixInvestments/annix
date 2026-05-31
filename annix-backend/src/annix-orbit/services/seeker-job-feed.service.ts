@@ -23,6 +23,7 @@ import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
 const MAX_COLD_START = 12;
+const MAX_LOCKED_TEASERS = 3;
 
 export interface SeekerJobMatch {
   matchId: number;
@@ -32,6 +33,8 @@ export interface SeekerJobMatch {
   similarityScore: number;
   structuredScore: number;
   matchDetails: MatchDetails | null;
+  locked: boolean;
+  lockedSourceName: string | null;
   job: {
     id: number;
     title: string;
@@ -446,20 +449,31 @@ export class SeekerJobFeedService {
     };
 
     const bestByJob = new Map<number, CandidateJobMatch & { externalJob: ExternalJob }>();
+    const lockedByJob = new Map<number, CandidateJobMatch & { externalJob: ExternalJob }>();
     flat.forEach((match) => {
-      if (!sourceVisibleToSeeker(match.externalJob.sourceId)) return;
       const jobId = match.externalJobId;
-      const existing = bestByJob.get(jobId);
+      const target = sourceVisibleToSeeker(match.externalJob.sourceId) ? bestByJob : lockedByJob;
+      const existing = target.get(jobId);
       if (!existing || match.overallScore > existing.overallScore) {
-        bestByJob.set(jobId, match);
+        target.set(jobId, match);
       }
     });
+    // A job available from any visible source is never shown as locked.
+    bestByJob.forEach((_match, jobId) => lockedByJob.delete(jobId));
 
     const sorted = [...bestByJob.values()].sort((a, b) => b.overallScore - a.overallScore);
+    const lockedSorted = [...lockedByJob.values()]
+      .sort((a, b) => b.overallScore - a.overallScore)
+      .slice(0, MAX_LOCKED_TEASERS);
 
-    const matches = sorted.map((match) =>
-      toSeekerMatch(match, sourceById.get(match.externalJob.sourceId) ?? null),
-    );
+    const matches = [
+      ...sorted.map((match) =>
+        toSeekerMatch(match, sourceById.get(match.externalJob.sourceId) ?? null, false),
+      ),
+      ...lockedSorted.map((match) =>
+        toSeekerMatch(match, sourceById.get(match.externalJob.sourceId) ?? null, true),
+      ),
+    ];
     return { matches, candidateIds: candidates.map((c) => c.id) };
   }
 
@@ -720,6 +734,7 @@ export class SeekerJobFeedService {
 function toSeekerMatch(
   match: CandidateJobMatch & { externalJob: ExternalJob },
   source: JobMarketSource | null,
+  locked = false,
 ): SeekerJobMatch {
   const job = match.externalJob;
   return {
@@ -730,6 +745,8 @@ function toSeekerMatch(
     similarityScore: Number(match.similarityScore),
     structuredScore: Number(match.structuredScore),
     matchDetails: match.matchDetails,
+    locked,
+    lockedSourceName: locked ? (source?.name ?? null) : null,
     job: {
       id: job.id,
       title: job.title,
@@ -776,6 +793,8 @@ function toColdStartSeekerMatch(
       locationMatch: 0,
       reasoning: "Recent SA job listing while your CV is being matched.",
     },
+    locked: false,
+    lockedSourceName: null,
     job: {
       id: job.id,
       title: job.title,

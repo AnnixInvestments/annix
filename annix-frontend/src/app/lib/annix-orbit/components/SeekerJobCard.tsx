@@ -25,6 +25,11 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const match = props.match;
   const job = match.job;
+  const isLocked = match.locked === true;
+
+  if (isLocked) {
+    return <LockedJobCard match={match} />;
+  }
   const muteCompanyHandler = props.onMuteCompany;
   const muteCategoryHandler = props.onMuteCategory;
   const hasMuteOptions = Boolean(muteCompanyHandler) || Boolean(muteCategoryHandler);
@@ -171,6 +176,52 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
         >
           View &amp; apply
         </button>
+      </div>
+    </div>
+  );
+}
+
+function LockedJobCard(props: { match: SeekerRecommendedJob }) {
+  const recommended = props.match;
+  const job = recommended.job;
+  const lockedSourceRaw = recommended.lockedSourceName;
+  const lockedSourceName = lockedSourceRaw || null;
+  const sourceLabel = lockedSourceName || "a premium job board";
+  const company = job.company;
+  const teaserCompany = company ? `${company.slice(0, 1)}•••••` : "Premium employer";
+  return (
+    <div className="relative bg-white rounded-xl border border-violet-200 p-5 overflow-hidden">
+      <div className="select-none blur-[3px] pointer-events-none" aria-hidden="true">
+        <h3 className="text-lg font-semibold text-gray-900 truncate">{job.title}</h3>
+        <div className="text-sm text-gray-600 mt-0.5 flex flex-wrap items-center gap-x-2">
+          <span>{teaserCompany}</span>
+          {job.locationArea ? <span>· {job.locationArea}</span> : null}
+        </div>
+        <div className="mt-3 h-1.5 bg-gray-100 rounded-full" />
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-transparent">
+            premium
+          </span>
+          <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-transparent">
+            listing
+          </span>
+        </div>
+      </div>
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/60 text-center px-4">
+        <span className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-violet-100 text-violet-700 mb-2">
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 11c0-1.105.895-2 2-2s2 .895 2 2-.895 2-2 2-2-.895-2-2zM5 11V7a7 7 0 0114 0v4M5 11h14a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2z"
+            />
+          </svg>
+        </span>
+        <p className="text-sm font-semibold text-gray-900">Premium listing from {sourceLabel}</p>
+        <p className="text-xs text-gray-600 mt-1 max-w-xs">
+          Upgrade to the Heavy plan to unlock jobs from our premium partner boards.
+        </p>
       </div>
     </div>
   );
