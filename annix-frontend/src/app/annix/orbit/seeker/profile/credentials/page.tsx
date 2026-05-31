@@ -344,9 +344,11 @@ function CredentialRow(props: CredentialRowProps) {
           <span className="text-xs text-gray-500">Issued</span>
           <input
             type="date"
-            value={emptyIfNull(credential.issuedAt)}
-            onBlur={(e) => onUpdate({ issuedAt: stringOrNull(e.target.value) })}
             defaultValue={emptyIfNull(credential.issuedAt)}
+            onBlur={(e) => {
+              const next = stringOrNull(e.target.value);
+              if (next !== credential.issuedAt) onUpdate({ issuedAt: next });
+            }}
             className="mt-1 w-full px-2 py-1 border border-gray-200 rounded text-xs"
           />
         </label>
@@ -356,9 +358,11 @@ function CredentialRow(props: CredentialRowProps) {
           <span className="text-xs text-gray-500">Expires</span>
           <input
             type="date"
-            value={emptyIfNull(credential.expiresAt)}
-            onBlur={(e) => onUpdate({ expiresAt: stringOrNull(e.target.value) })}
             defaultValue={emptyIfNull(credential.expiresAt)}
+            onBlur={(e) => {
+              const next = stringOrNull(e.target.value);
+              if (next !== credential.expiresAt) onUpdate({ expiresAt: next });
+            }}
             className="mt-1 w-full px-2 py-1 border border-gray-200 rounded text-xs"
           />
         </label>

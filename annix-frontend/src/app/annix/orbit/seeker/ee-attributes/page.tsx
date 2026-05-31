@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type {
   EeDisabilityKey,
@@ -61,8 +61,11 @@ export default function SeekerEeAttributesPage() {
   const [eeReporting, setEeReporting] = useState(true);
   const [fairnessMonitoring, setFairnessMonitoring] = useState(true);
 
+  const hydratedRef = useRef(false);
   useEffect(() => {
+    if (hydratedRef.current) return;
     if (!data) return;
+    hydratedRef.current = true;
     setPopulationGroup(data.populationGroup);
     setGender(data.gender);
     setDisabilityStatus(data.disabilityStatus);

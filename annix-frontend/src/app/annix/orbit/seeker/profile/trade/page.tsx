@@ -15,7 +15,7 @@ import {
   type TradeKey,
   type TradeProfile,
 } from "@annix/product-data/sa-market";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
@@ -36,9 +36,13 @@ export default function SeekerTradeProfilePage() {
   const [profile, setProfile] = useState<TradeProfile>(emptyTradeProfile());
 
   const queryData = query.data;
+  const hydratedRef = useRef(false);
   useEffect(() => {
-    if (queryData?.profile) {
-      setProfile(queryData.profile);
+    if (hydratedRef.current) return;
+    const profileData = queryData?.profile;
+    if (profileData) {
+      setProfile(profileData);
+      hydratedRef.current = true;
     }
   }, [queryData]);
 
