@@ -122,9 +122,20 @@ export default function SeekerCredentialsPage() {
     }
   };
 
-  const handleAutofill = () => {
+  const handleAutofill = async () => {
+    const stats = await metricsApi
+      .extractionStats("orbit-credential-extract", "cv-autofill")
+      .catch(() => null);
+    const averageMs = stats?.averageMs;
+    const estimatedDurationMs = averageMs || 12000;
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Nix is reading your CV for credentials…",
+      estimatedDurationMs,
+    });
     autofillMutation.mutate(undefined, {
       onSuccess: (result) => {
+        hideExtraction();
         if (result.created > 0) {
           showToast(
             `Added ${result.created} credential${result.created === 1 ? "" : "s"} from your CV`,
@@ -145,7 +156,10 @@ export default function SeekerCredentialsPage() {
           showToast("No new credentials found in your CV", "info");
         }
       },
-      onError: () => showToast("Auto-fill failed — add credentials manually", "error"),
+      onError: () => {
+        hideExtraction();
+        showToast("Auto-fill failed — add credentials manually", "error");
+      },
     });
   };
 

@@ -6,6 +6,7 @@ import {
   type TradeProfile,
 } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -17,6 +18,7 @@ export class TradeProfileService {
   constructor(
     private readonly candidateRepo: CandidateRepository,
     private readonly aiChatService: AiChatService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
   async forSeeker(
@@ -81,7 +83,11 @@ export class TradeProfileService {
       };
     }
 
-    const aiProfile = await this.extractTradeProfileFromCv(rawCvText);
+    const aiProfile = await this.extractionMetricService.time(
+      "orbit-trade-extract",
+      "cv-autofill",
+      () => this.extractTradeProfileFromCv(rawCvText),
+    );
     if (!aiProfile) {
       return {
         extracted: false,

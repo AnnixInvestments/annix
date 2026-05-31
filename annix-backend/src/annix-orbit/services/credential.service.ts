@@ -274,7 +274,11 @@ export class CredentialService {
       return { created: 0, credentials: [], reason: "no-credential-keywords" };
     }
 
-    const extracted = await this.extractCredentialsFromCv(rawCvText);
+    const extracted = await this.extractionMetricService.time(
+      "orbit-credential-extract",
+      "cv-autofill",
+      () => this.extractCredentialsFromCv(rawCvText),
+    );
     if (extracted.length === 0) {
       return { created: 0, credentials: [], reason: "ai-failed" };
     }

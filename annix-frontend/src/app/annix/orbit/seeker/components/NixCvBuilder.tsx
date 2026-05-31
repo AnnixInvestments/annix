@@ -31,6 +31,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const [copied, setCopied] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
+  const [buildEstimateMs, setBuildEstimateMs] = useState(NIX_BUILD_ESTIMATED_MS);
 
   const updateMutation = useUpdateNixGeneratedCv();
   const persistCv = updateMutation.mutate;
@@ -40,11 +41,20 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const generate = generateMutation.mutate;
 
   useEffect(() => {
+    metricsApi
+      .extractionStats("annix-orbit-nix-seeker", "cv-generation")
+      .then((stats) => {
+        if (stats.averageMs) setBuildEstimateMs(stats.averageMs);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (isBuilding) {
       showExtraction({
         brand: "annix-orbit",
         label: "Nix is building your improved CV…",
-        estimatedDurationMs: NIX_BUILD_ESTIMATED_MS,
+        estimatedDurationMs: buildEstimateMs,
       });
     } else {
       hideExtraction();
@@ -52,7 +62,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     return () => {
       hideExtraction();
     };
-  }, [isBuilding, showExtraction, hideExtraction]);
+  }, [isBuilding, buildEstimateMs, showExtraction, hideExtraction]);
 
   const mutationCv = generateMutation.data;
   const queryCv = generatedQuery.data ? generatedQuery.data.cv : null;

@@ -10,6 +10,7 @@ import type {
   NixSeekerPriority,
   NixSeekerRankingPotential,
 } from "@/app/lib/api/annixOrbitApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useOrbitNixWizardImprovements } from "@/app/lib/query/hooks";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { NixCvBuilder } from "./NixCvBuilder";
@@ -64,6 +65,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   const isLoading = mutation.isPending;
   const cvBuilderFlag = useFeatureFlagEnabled(NIX_CV_BUILDER_FLAG);
   const cvBuilderEnabled = cvBuilderFlag.enabled;
+  const [reviewEstimateMs, setReviewEstimateMs] = useState(NIX_REVIEW_ESTIMATED_MS);
 
   useEffect(() => {
     if (!hasCv) return;
@@ -80,11 +82,20 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   }, [autoRunKey, hasCv, mutate]);
 
   useEffect(() => {
+    metricsApi
+      .extractionStats("annix-orbit-nix-seeker", "cv-improvements")
+      .then((stats) => {
+        if (stats.averageMs) setReviewEstimateMs(stats.averageMs);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (isLoading) {
       showExtraction({
         brand: "annix-orbit",
         label: "Nix is reviewing your CV…",
-        estimatedDurationMs: NIX_REVIEW_ESTIMATED_MS,
+        estimatedDurationMs: reviewEstimateMs,
       });
     } else {
       hideExtraction();
@@ -92,7 +103,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
     return () => {
       hideExtraction();
     };
-  }, [isLoading, showExtraction, hideExtraction]);
+  }, [isLoading, reviewEstimateMs, showExtraction, hideExtraction]);
 
   const result = mutation.data;
   const errorMessage = mutation.error

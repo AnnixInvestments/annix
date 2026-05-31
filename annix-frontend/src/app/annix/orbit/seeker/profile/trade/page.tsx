@@ -16,7 +16,9 @@ import {
   type TradeProfile,
 } from "@annix/product-data/sa-market";
 import { useEffect, useMemo, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { DateTime } from "@/app/lib/datetime";
 import {
   useOrbitAutofillSeekerTradeProfile,
@@ -29,6 +31,7 @@ export default function SeekerTradeProfilePage() {
   const query = useOrbitSeekerTradeProfile();
   const mutation = useOrbitUpsertSeekerTradeProfile();
   const autofillMutation = useOrbitAutofillSeekerTradeProfile();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const [profile, setProfile] = useState<TradeProfile>(emptyTradeProfile());
 
@@ -115,9 +118,20 @@ export default function SeekerTradeProfilePage() {
     });
   };
 
-  const handleAutofill = () => {
+  const handleAutofill = async () => {
+    const stats = await metricsApi
+      .extractionStats("orbit-trade-extract", "cv-autofill")
+      .catch(() => null);
+    const averageMs = stats?.averageMs;
+    const estimatedDurationMs = averageMs || 12000;
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Nix is reading your CV for your trade profile…",
+      estimatedDurationMs,
+    });
     autofillMutation.mutate(undefined, {
       onSuccess: (result) => {
+        hideExtraction();
         if (result.extracted) {
           setProfile(result.profile);
           showToast("Trade profile auto-filled from your CV — review and save", "success");
@@ -137,7 +151,10 @@ export default function SeekerTradeProfilePage() {
           showToast("Auto-fill couldn't read your CV — fill in the form manually", "error");
         }
       },
-      onError: () => showToast("Auto-fill failed — fill in the form manually", "error"),
+      onError: () => {
+        hideExtraction();
+        showToast("Auto-fill failed — fill in the form manually", "error");
+      },
     });
   };
 
