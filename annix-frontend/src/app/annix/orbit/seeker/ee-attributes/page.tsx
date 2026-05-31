@@ -98,9 +98,8 @@ export default function SeekerEeAttributesPage() {
         purposes,
       });
       showToast("Your disclosure has been updated.", "success");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't update your disclosure.";
-      showToast(message, "error");
+    } catch {
+      showToast("Couldn't update your disclosure — please try again.", "error");
     }
   };
 
@@ -116,9 +115,8 @@ export default function SeekerEeAttributesPage() {
     try {
       await deleteMutation.mutateAsync();
       showToast("Disclosure withdrawn.", "success");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : "Couldn't withdraw your disclosure.";
-      showToast(message, "error");
+    } catch {
+      showToast("Couldn't withdraw your disclosure — please try again.", "error");
     }
   };
 

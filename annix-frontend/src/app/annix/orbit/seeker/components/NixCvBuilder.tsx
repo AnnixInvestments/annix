@@ -139,9 +139,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   const mutationError = generateMutation.error;
   const buildErrorMessage = mutationError
-    ? mutationError instanceof Error
-      ? mutationError.message
-      : "Nix could not build your CV right now. Please try again."
+    ? "Nix could not build your CV right now. Please try again."
     : null;
 
   const handleBuild = () => {
@@ -204,9 +202,9 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       hideExtraction();
       setAdoptMessage("Saved — Nix is now using this CV. Your job matches will refresh shortly.");
       showToast("Your CV is saved and Nix is matching you to jobs.", "success");
-    } catch (err) {
+    } catch {
       hideExtraction();
-      const message = err instanceof Error ? err.message : "Couldn't save your CV right now.";
+      const message = "Couldn't save your CV right now. Please try again.";
       setAdoptMessage(message);
       showToast(message, "error");
     } finally {

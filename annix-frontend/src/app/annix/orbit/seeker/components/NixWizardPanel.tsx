@@ -96,9 +96,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
 
   const result = mutation.data;
   const errorMessage = mutation.error
-    ? mutation.error instanceof Error
-      ? mutation.error.message
-      : "Nix could not review your CV right now."
+    ? "Nix could not review your CV right now. Please try again."
     : null;
 
   const handleRun = () => {

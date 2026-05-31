@@ -69,9 +69,8 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
           if (onUploaded) onUploaded();
           if (inputRef.current) inputRef.current.value = "";
         },
-        onError: (err) => {
-          const message = err instanceof Error ? err.message : "Upload failed";
-          setError(message);
+        onError: () => {
+          setError("Upload failed — please check the file and try again.");
         },
       },
     );

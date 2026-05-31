@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitDeleteMyDocument,
   useOrbitMyDocuments,
@@ -18,6 +19,7 @@ export default function SeekerProfilePage() {
   const statusQuery = useOrbitMyProfileStatus();
   const documentsQuery = useOrbitMyDocuments();
   const deleteMutation = useOrbitDeleteMyDocument();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [warningOpen, setWarningOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -49,14 +51,21 @@ export default function SeekerProfilePage() {
     router.push("/annix/orbit/seeker/jobs");
   };
 
-  const handleDelete = (doc: IndividualDocument) => {
+  const handleDelete = async (doc: IndividualDocument) => {
+    const confirmed = await confirm({
+      title: "Delete this document?",
+      message: "It will be permanently removed from your profile. This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     setDeleteError(null);
     setPendingDeleteId(doc.id);
     deleteMutation.mutate(doc.id, {
       onSuccess: () => setPendingDeleteId(null),
-      onError: (err) => {
+      onError: () => {
         setPendingDeleteId(null);
-        setDeleteError(err instanceof Error ? err.message : "Delete failed");
+        setDeleteError("Couldn't delete the document — please try again.");
       },
     });
   };
@@ -167,6 +176,7 @@ export default function SeekerProfilePage() {
         onCancel={() => setWarningOpen(false)}
         onConfirm={handleConfirmContinue}
       />
+      {ConfirmDialog}
     </div>
   );
 }

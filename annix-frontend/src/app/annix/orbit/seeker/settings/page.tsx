@@ -48,8 +48,8 @@ export default function SeekerSettingsPage() {
         pushEnabled,
       });
       setSavedMessage("Preferences saved");
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not save preferences");
+    } catch {
+      setErrorMessage("Could not save preferences — please try again.");
     }
   };
 
@@ -67,8 +67,8 @@ export default function SeekerSettingsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not export data");
+    } catch {
+      setErrorMessage("Could not export your data — please try again.");
     } finally {
       setIsExporting(false);
     }
@@ -89,8 +89,8 @@ export default function SeekerSettingsPage() {
     try {
       const result = await requestDeletion.mutateAsync();
       setDeletionRequestedFor(result.email);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not request deletion");
+    } catch {
+      setErrorMessage("Could not request deletion — please try again.");
     }
   };
 
@@ -116,8 +116,8 @@ export default function SeekerSettingsPage() {
           `Matching turned off for ${result.candidatesAffected} record${result.candidatesAffected === 1 ? "" : "s"}; ${result.matchesCleared} match${result.matchesCleared === 1 ? "" : "es"} removed.`,
         );
       }
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not stop matching");
+    } catch {
+      setErrorMessage("Could not stop matching — please try again.");
     }
   };
 
@@ -137,8 +137,8 @@ export default function SeekerSettingsPage() {
     try {
       const result = await withdrawConsent.mutateAsync();
       setConsentMessage(result.message);
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Could not withdraw consent");
+    } catch {
+      setErrorMessage("Could not withdraw consent — please try again.");
     }
   };
 

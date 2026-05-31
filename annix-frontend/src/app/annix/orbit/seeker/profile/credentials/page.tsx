@@ -12,6 +12,7 @@ import { DocumentDropzone } from "@/app/components/uploads/DocumentDropzone";
 import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { DateTime, fromISO } from "@/app/lib/datetime";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitAutofillSeekerCredentials,
   useOrbitCreateSeekerCredential,
@@ -24,6 +25,7 @@ import {
 
 export default function SeekerCredentialsPage() {
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const query = useOrbitSeekerCredentials();
   const createMutation = useOrbitCreateSeekerCredential();
   const updateMutation = useOrbitUpdateSeekerCredential();
@@ -76,7 +78,14 @@ export default function SeekerCredentialsPage() {
     );
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
+    const confirmed = await confirm({
+      title: "Delete this credential?",
+      message: "It will be removed from your credentials list. This cannot be undone.",
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
+    if (!confirmed) return;
     deleteMutation.mutate(id, {
       onSuccess: () => showToast("Credential deleted", "success"),
       onError: () => showToast("Could not delete credential", "error"),
@@ -279,6 +288,7 @@ export default function SeekerCredentialsPage() {
           </div>
         )}
       </section>
+      {ConfirmDialog}
     </div>
   );
 }
