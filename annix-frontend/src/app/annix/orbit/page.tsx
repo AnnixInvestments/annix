@@ -143,7 +143,9 @@ function CvHomeCard(props: {
         {props.icon}
       </div>
       <h2 className="text-2xl font-bold text-gray-900">{props.title}</h2>
-      <p className="text-sm text-[#323288] font-medium mt-1">{props.subtitle}</p>
+      <p className="text-sm text-[#323288] dark:text-[#9ea0e8] font-medium mt-1">
+        {props.subtitle}
+      </p>
       <p className="text-gray-600 mt-4 flex-1">{props.description}</p>
       <div className="mt-6 space-y-3">
         <Link
@@ -154,7 +156,7 @@ function CvHomeCard(props: {
         </Link>
         <Link
           href={props.secondaryHref}
-          className="block text-center bg-white text-[#252560] py-3 px-4 rounded-lg font-medium border border-[#c0c0eb] hover:bg-[#f0f0fc] transition-colors"
+          className="block text-center bg-white text-[#252560] py-3 px-4 rounded-lg font-medium border border-[#c0c0eb] hover:bg-[#f0f0fc] dark:text-white dark:border-[#4a4da3] dark:hover:bg-white/10 transition-colors"
         >
           {props.secondaryLabel}
         </Link>
