@@ -26,6 +26,15 @@ export class SeekerApplyClick {
   sourceUrl: string;
 
   @Prop({ type: String, required: false })
+  status: string;
+
+  @Prop({ type: String, required: false })
+  notes: string;
+
+  @Prop({ type: Boolean, default: false })
+  dismissed: boolean;
+
+  @Prop({ type: String, required: false })
   clickedAt: string;
 }
 

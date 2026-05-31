@@ -19,6 +19,15 @@ export class SeekerApplyClick {
   @Column({ name: "source_url", type: "varchar", length: 1000, nullable: true })
   sourceUrl: string | null;
 
+  @Column({ name: "status", type: "varchar", length: 32, nullable: true })
+  status: string | null;
+
+  @Column({ name: "notes", type: "text", nullable: true })
+  notes: string | null;
+
+  @Column({ name: "dismissed", type: "boolean", default: false })
+  dismissed: boolean;
+
   @CreateDateColumn({ name: "clicked_at" })
   clickedAt: Date;
 }

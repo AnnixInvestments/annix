@@ -205,7 +205,11 @@ export {
   useOrbitMatchAccuracy,
   useOrbitTimeToFill,
 } from "./annix-orbit/useOrbitAnalytics";
-export { useOrbitSeekerApplications } from "./annix-orbit/useOrbitApplications";
+export {
+  useOrbitDeleteSeekerApplication,
+  useOrbitSeekerApplications,
+  useOrbitUpdateSeekerApplication,
+} from "./annix-orbit/useOrbitApplications";
 export {
   useOrbitCandidateAction,
   useOrbitCandidateStatusUpdate,

@@ -2071,6 +2071,21 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/me/applications");
   }
 
+  async updateMyApplication(
+    id: number,
+    input: UpdateSeekerApplicationInput,
+  ): Promise<{ success: boolean }> {
+    return this.request(`/annix-orbit/me/applications/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async deleteMyApplication(id: number): Promise<{ success: boolean }> {
+    return this.request(`/annix-orbit/me/applications/${id}`, { method: "DELETE" });
+  }
+
   async seekerEducation(): Promise<SeekerEducationResponse> {
     return this.request("/annix-orbit/education/me");
   }
@@ -2259,6 +2274,8 @@ export interface OrbitCredentialTypeOption {
   active: boolean;
 }
 
+export type SeekerApplicationStatus = "applied" | "interviewing" | "rejected" | "offer";
+
 export interface SeekerApplication {
   id: number;
   externalJobId: number | null;
@@ -2269,7 +2286,14 @@ export interface SeekerApplication {
   salaryMin: number | null;
   salaryMax: number | null;
   salaryCurrency: string | null;
+  status: SeekerApplicationStatus;
+  notes: string | null;
   appliedAt: string;
+}
+
+export interface UpdateSeekerApplicationInput {
+  status?: SeekerApplicationStatus;
+  notes?: string | null;
 }
 
 export interface ExtractedCredentialDocument {
