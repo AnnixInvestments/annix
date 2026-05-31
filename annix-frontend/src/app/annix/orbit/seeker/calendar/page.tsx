@@ -317,6 +317,10 @@ export default function SeekerCalendarPage() {
         <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-8 text-center">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288] mx-auto" />
         </div>
+      ) : bookingsQuery.isError ? (
+        <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6 text-red-700 text-sm">
+          We couldn't load your interviews right now. Please refresh the page.
+        </div>
       ) : sortedDayKeys.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6">
           <p className="text-sm text-gray-700">

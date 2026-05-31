@@ -72,10 +72,22 @@ export default function SeekerProfilePage() {
 
   const isStatusLoading = statusQuery.isLoading;
   const isDocumentsLoading = documentsQuery.isLoading;
+  const isStatusError = statusQuery.isError;
+  const isDocumentsError = documentsQuery.isError;
   if (isStatusLoading || isDocumentsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
+      </div>
+    );
+  }
+
+  if (isStatusError || isDocumentsError) {
+    return (
+      <div className="space-y-6">
+        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
+          We couldn't load your profile right now. Please refresh the page.
+        </div>
       </div>
     );
   }

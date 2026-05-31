@@ -164,6 +164,16 @@ export default function SeekerTradeProfilePage() {
     return <div className="p-6 text-gray-500">Loading…</div>;
   }
 
+  if (query.isError) {
+    return (
+      <div className="p-6">
+        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
+          We couldn't load your trade profile right now. Please refresh the page.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <header className="flex items-start justify-between gap-4">

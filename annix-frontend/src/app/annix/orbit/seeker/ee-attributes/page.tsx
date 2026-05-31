@@ -46,7 +46,7 @@ const NATIONALITY_OPTIONS: Array<{ value: NationalityKey; label: string }> = [
 ];
 
 export default function SeekerEeAttributesPage() {
-  const { data, isLoading } = useMyEeAttributes();
+  const { data, isLoading, isError } = useMyEeAttributes();
   const updateMutation = useUpdateMyEeAttributes();
   const deleteMutation = useDeleteMyEeAttributes();
   const { showToast } = useToast();
@@ -122,6 +122,17 @@ export default function SeekerEeAttributesPage() {
 
   if (isLoading) {
     return <div className="p-6 text-gray-600">Loading…</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className="p-6 max-w-3xl mx-auto">
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          We couldn't load your disclosure right now. Please refresh the page — don't re-submit
+          until it loads, so you don't create a duplicate.
+        </div>
+      </div>
+    );
   }
 
   return (
