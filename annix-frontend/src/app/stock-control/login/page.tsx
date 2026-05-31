@@ -118,14 +118,14 @@ function StockControlLoginContent() {
 
   if (!mounted || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[#FF8A00] mb-4">
@@ -352,7 +352,7 @@ export default function StockControlLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-gradient-to-br from-[#252560] via-[#323288] to-slate-900 flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FF8A00]" />
         </div>
       }

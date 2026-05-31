@@ -85,14 +85,14 @@ function OpsLoginContent() {
 
   if (!mounted || authLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-teal-800 via-teal-700 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-300" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-800 via-teal-700 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-teal-500 mb-4">
@@ -286,7 +286,7 @@ export default function OpsLoginPage() {
     <OpsAuthProvider>
       <Suspense
         fallback={
-          <div className="min-h-screen bg-gradient-to-br from-teal-800 via-teal-700 to-slate-900 flex items-center justify-center">
+          <div className="min-h-screen flex items-center justify-center">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-300" />
           </div>
         }

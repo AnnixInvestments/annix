@@ -152,7 +152,7 @@ function CustomerLoginContent() {
     return (
       <div
         className="min-h-screen flex items-center justify-center"
-        style={{ backgroundColor: screenBg }}
+        style={{ backgroundColor: "transparent" }}
       >
         <div className="text-center">
           <div
@@ -170,7 +170,7 @@ function CustomerLoginContent() {
   return (
     <div
       className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8"
-      style={{ backgroundColor: screenBg }}
+      style={{ backgroundColor: "transparent" }}
     >
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link href="/" className="mb-6 block">
