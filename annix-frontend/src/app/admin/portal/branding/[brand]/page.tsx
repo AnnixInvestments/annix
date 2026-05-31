@@ -21,6 +21,7 @@ const BRAND_HUBS: Record<string, string> = {
   "annix-sentinel": "/admin/portal/annix-sentinel",
   "annix-investments": "/admin/portal/dashboard",
   "annix-forge": "/admin/portal/rfqs",
+  "annix-core": "/admin/portal/core",
 };
 
 export default function AdminBrandingPage() {

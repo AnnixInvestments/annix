@@ -1,6 +1,7 @@
 "use client";
 
 import type { ColumnDef, PaginationState, SortingState } from "@tanstack/react-table";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ErrorDisplay, Icons, StatCard, StatusBadge } from "@/app/admin/components";
@@ -217,10 +218,31 @@ export default function AdminRfqsPage() {
           <h1 className="text-2xl font-bold text-gray-900">RFQ Management</h1>
           <p className="mt-1 text-sm text-gray-600">View all request for quotations (read-only)</p>
         </div>
-        <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
-          <Icons.Document className="w-4 h-4 mr-2 text-gray-500" />
-          Export Report
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/portal/branding/annix-forge"
+            className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50"
+          >
+            <svg
+              className="w-4 h-4 mr-2 text-gray-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42"
+              />
+            </svg>
+            Branding
+          </Link>
+          <button className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50">
+            <Icons.Document className="w-4 h-4 mr-2 text-gray-500" />
+            Export Report
+          </button>
+        </div>
       </div>
 
       {/* Quick Stats */}

@@ -19,19 +19,6 @@ function RfqIcon() {
   );
 }
 
-function RubberIcon() {
-  return (
-    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 010 3.75H5.625a1.875 1.875 0 010-3.75z"
-      />
-    </svg>
-  );
-}
-
 function VoiceFilterIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -40,19 +27,6 @@ function VoiceFilterIcon() {
         strokeLinejoin="round"
         strokeWidth={1.5}
         d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
-      />
-    </svg>
-  );
-}
-
-function StockControlIcon() {
-  return (
-    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
       />
     </svg>
   );
@@ -142,16 +116,53 @@ function AdminPortalIcon() {
   );
 }
 
-function BrandCenterIcon() {
+function CoreIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
         strokeWidth={1.5}
-        d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42"
+        d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25A2.25 2.25 0 0113.5 8.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
       />
     </svg>
+  );
+}
+
+const MASTER_BRAND = {
+  code: "annix-investments",
+  title: "Annix Investments",
+  subtitle: "The master Annix brand. Every app inherits these elements unless it overrides them.",
+};
+
+function MasterBrandLogo() {
+  const brandingQuery = useBranding(MASTER_BRAND.code);
+  const brandingData = brandingQuery.data;
+  const branding = brandingData || brandingFallback(MASTER_BRAND.code);
+  const logoIcon = resolveBrandAssetUrl("logoIcon", branding);
+  return (
+    <div
+      className="w-12 h-12 rounded-xl bg-contain bg-center bg-no-repeat flex-shrink-0 bg-gray-900"
+      style={{ backgroundImage: `url('${logoIcon}')` }}
+    />
+  );
+}
+
+function MasterBrandHero() {
+  return (
+    <Link href={`/admin/portal/branding/${MASTER_BRAND.code}`} className="group block">
+      <div className="bg-gradient-to-r from-[#323288] to-[#4a4da3] rounded-xl p-6 text-white flex items-center gap-4 hover:shadow-lg transition-all">
+        <MasterBrandLogo />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs uppercase tracking-widest text-blue-200 mb-1">Master brand</p>
+          <h2 className="text-2xl font-bold mb-1">{MASTER_BRAND.title}</h2>
+          <p className="text-blue-100">{MASTER_BRAND.subtitle}</p>
+        </div>
+        <span className="hidden sm:inline-flex px-4 py-2 rounded-lg bg-white/15 text-sm font-medium whitespace-nowrap group-hover:bg-white/25 transition-colors">
+          Edit master brand →
+        </span>
+      </div>
+    </Link>
   );
 }
 
@@ -196,14 +207,6 @@ const adminApps: AppCard[] = [
     color: "bg-purple-100 text-purple-600",
     hoverColor: "hover:border-purple-400 group-hover:bg-purple-600 group-hover:text-white",
   },
-  {
-    href: "/admin/portal/branding",
-    title: "Brand Center",
-    description: "Manage the master Annix brand and every app's logo, colours and identity.",
-    icon: <BrandCenterIcon />,
-    color: "bg-violet-100 text-violet-600",
-    hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
-  },
 ];
 
 const platformApps: AppCard[] = [
@@ -217,20 +220,12 @@ const platformApps: AppCard[] = [
     appCode: "rfq",
   },
   {
-    href: "/au-rubber/portal/dashboard",
-    title: "AU Rubber App",
-    description: "Manage rubber lining products, orders, and companies.",
-    icon: <RubberIcon />,
-    color: "bg-yellow-100 text-yellow-600",
-    hoverColor: "hover:border-yellow-400 group-hover:bg-yellow-600 group-hover:text-white",
-  },
-  {
-    href: "/voice-filter",
-    title: "Voice Filter",
-    description: "Speaker verification filter for authorized voice access.",
-    icon: <VoiceFilterIcon />,
-    color: "bg-cyan-100 text-cyan-600",
-    hoverColor: "hover:border-cyan-400 group-hover:bg-cyan-600 group-hover:text-white",
+    href: "/admin/portal/core",
+    title: "Annix Core",
+    description: "Operations platform — AU Rubber, Stock Control, and Core branding.",
+    icon: <CoreIcon />,
+    color: "bg-slate-100 text-slate-600",
+    hoverColor: "hover:border-slate-400 group-hover:bg-slate-600 group-hover:text-white",
   },
   {
     href: "/admin/portal/annix-rep",
@@ -239,14 +234,6 @@ const platformApps: AppCard[] = [
     icon: <AnnixRepIcon />,
     color: "bg-emerald-100 text-emerald-600",
     hoverColor: "hover:border-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
-  },
-  {
-    href: "/stock-control/portal/admin",
-    title: "Stock Control",
-    description: "Manage stock items, job allocations, and inventory tracking.",
-    icon: <StockControlIcon />,
-    color: "bg-teal-100 text-teal-600",
-    hoverColor: "hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white",
   },
   {
     href: "/admin/portal/orbit",
@@ -279,6 +266,14 @@ const platformApps: AppCard[] = [
     icon: <TeacherAssistantIcon />,
     color: "bg-amber-100 text-amber-600",
     hoverColor: "hover:border-amber-400 group-hover:bg-amber-600 group-hover:text-white",
+  },
+  {
+    href: "/voice-filter",
+    title: "Voice Filter",
+    description: "Speaker verification filter for authorized voice access.",
+    icon: <VoiceFilterIcon />,
+    color: "bg-cyan-100 text-cyan-600",
+    hoverColor: "hover:border-cyan-400 group-hover:bg-cyan-600 group-hover:text-white",
   },
 ];
 
@@ -363,6 +358,9 @@ export default function GlobalAppsPage() {
           {adminApps.map((app) => (
             <AppCardComponent key={app.href} app={app} />
           ))}
+        </div>
+        <div className="mt-4">
+          <MasterBrandHero />
         </div>
       </div>
 
