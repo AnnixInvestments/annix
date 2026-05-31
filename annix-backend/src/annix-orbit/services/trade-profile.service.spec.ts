@@ -1,5 +1,6 @@
 import { emptyTradeProfile, type TradeProfile } from "@annix/product-data/sa-market";
 import { Test, TestingModule } from "@nestjs/testing";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { TradeProfileService } from "./trade-profile.service";
@@ -15,11 +16,15 @@ describe("TradeProfileService", () => {
       updateTradeProfile: jest.fn().mockResolvedValue(undefined),
     };
     aiChat = { chat: jest.fn() };
+    const extractionMetricService = {
+      time: jest.fn((_category: string, _operation: string, fn: () => unknown) => fn()),
+    };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TradeProfileService,
         { provide: CandidateRepository, useValue: repo },
         { provide: AiChatService, useValue: aiChat },
+        { provide: ExtractionMetricService, useValue: extractionMetricService },
       ],
     }).compile();
     service = module.get(TradeProfileService);

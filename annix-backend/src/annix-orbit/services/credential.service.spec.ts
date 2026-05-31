@@ -1,10 +1,12 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { CvCredential } from "../entities/cv-credential.entity";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CvCredentialRepository } from "../repositories/cv-credential.repository";
+import { OrbitCredentialTypeRepository } from "../repositories/orbit-credential-type.repository";
 import { CredentialService } from "./credential.service";
 
 describe("CredentialService", () => {
@@ -35,6 +37,10 @@ describe("CredentialService", () => {
     candidateRepo = { findByEmail: jest.fn(), findById: jest.fn() };
     emailService = { sendEmail: jest.fn().mockResolvedValue(true) };
     aiChat = { chat: jest.fn() };
+    const extractionMetricService = {
+      time: jest.fn((_category: string, _operation: string, fn: () => unknown) => fn()),
+    };
+    const credentialTypeRepo = { findByCode: jest.fn().mockResolvedValue(null) };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -43,6 +49,8 @@ describe("CredentialService", () => {
         { provide: CandidateRepository, useValue: candidateRepo },
         { provide: EmailService, useValue: emailService },
         { provide: AiChatService, useValue: aiChat },
+        { provide: ExtractionMetricService, useValue: extractionMetricService },
+        { provide: OrbitCredentialTypeRepository, useValue: credentialTypeRepo },
       ],
     }).compile();
     service = module.get(CredentialService);
