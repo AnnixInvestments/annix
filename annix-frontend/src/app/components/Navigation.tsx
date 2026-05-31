@@ -57,6 +57,8 @@ export default function Navigation() {
 
   const showRfqNav = isRfqRoute(pathname);
   const showHomeNav = isHomePage(pathname);
+  const onLoginScreen = isLoginScreen(pathname);
+  const showLockup = showHomeNav || onLoginScreen;
 
   const isLight = resolvedTheme === "light";
   const lightNav = branding?.navbarColorLight;
@@ -64,7 +66,7 @@ export default function Navigation() {
   const dynamicNavbar = isLight
     ? lightNav || LIGHT_NAVBAR_FALLBACK
     : darkNav || DARK_NAVBAR_FALLBACK;
-  const navbarColor = showHomeNav ? dynamicNavbar : "#323288";
+  const navbarColor = showLockup ? dynamicNavbar : "#323288";
   const accent = branding?.accentOrange;
   const accentColor = accent || ACCENT_FALLBACK;
 
@@ -80,7 +82,7 @@ export default function Navigation() {
               href="/"
               className="flex-shrink-0 cursor-pointer hover:opacity-90 transition-opacity"
             >
-              {showHomeNav ? (
+              {showLockup ? (
                 <BrandNavLockup brand={MASTER_BRAND} />
               ) : (
                 <AnnixLogo size="sm" showText useSignatureFont />
