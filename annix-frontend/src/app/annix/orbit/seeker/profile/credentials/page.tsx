@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  CREDENTIAL_DESCRIPTIONS,
   CREDENTIAL_LABELS,
   CREDENTIAL_TYPES,
   type CredentialType,
@@ -29,6 +30,7 @@ export default function SeekerCredentialsPage() {
 
   const data = query.data;
   const credentials = data ? data.credentials : [];
+  const selectedTypeDescription = CREDENTIAL_DESCRIPTIONS[draft.credentialType];
 
   const handleCreate = () => {
     if (!draft.credentialType) {
@@ -130,6 +132,9 @@ export default function SeekerCredentialsPage() {
                 </option>
               ))}
             </select>
+            {selectedTypeDescription && (
+              <span className="mt-1 block text-xs text-gray-500">{selectedTypeDescription}</span>
+            )}
           </label>
           <label className="block">
             <span className="text-sm text-gray-700">Issued</span>

@@ -1,4 +1,5 @@
 import {
+  CREDENTIAL_DESCRIPTIONS,
   CREDENTIAL_LABELS,
   CREDENTIAL_TYPES,
   type CredentialType,
@@ -248,7 +249,7 @@ export class CredentialService {
     try {
       const { content } = await this.aiChatService.chat(
         [{ role: "user", content: buildCredentialExtractionPrompt(trimmed) }],
-        CREDENTIAL_EXTRACTION_SYSTEM_PROMPT,
+        buildCredentialExtractionSystemPrompt(),
         "gemini",
       );
       const match = content.match(/\{[\s\S]*\}/);
@@ -289,14 +290,22 @@ export class CredentialService {
   }
 }
 
-const CREDENTIAL_EXTRACTION_SYSTEM_PROMPT = `You are extracting workplace credentials and tickets from a South African industrial worker's CV. Look for medicals, mine inductions, blasting tickets, eye tests, lift-driver licences, working-at-heights certs, H2S awareness, first aid, fire fighting, and similar safety/competency documents.
+function buildCredentialExtractionSystemPrompt(): string {
+  const typeUnion = CREDENTIAL_TYPES.map((t) => `"${t}"`).join(" | ");
+  const typeGuide = CREDENTIAL_TYPES.filter((t) => t !== "other")
+    .map((t) => `  - ${t}: ${CREDENTIAL_LABELS[t]} — ${CREDENTIAL_DESCRIPTIONS[t]}`)
+    .join("\n");
+  return `You are extracting workplace credentials and tickets from a South African industrial worker's CV. Look for medicals, mine inductions, blasting tickets, eye tests, forklift / plant / TMM / crane operator licences, rigging, driver's licences and PrDPs, working-at-heights, confined space, scaffolding, H2S awareness, gas testing, first aid, fire fighting, dangerous-goods / Hazchem, coded welding, and similar safety/competency documents.
+
+Credential types and what they mean:
+${typeGuide}
 
 Return STRICT JSON with this shape (no markdown, no prose):
 
 {
   "credentials": [
     {
-      "credentialType": "medical" | "mine_induction" | "blasting" | "eye_test" | "lift_driver" | "working_at_heights" | "h2s_awareness" | "first_aid" | "fire_fighting" | "other",
+      "credentialType": ${typeUnion},
       "issuedAt": "YYYY-MM-DD" | null,
       "expiresAt": "YYYY-MM-DD" | null,
       "issuingAuthority": string | null
@@ -310,6 +319,7 @@ Rules:
 - Use "other" for credentials that don't fit the listed types — DO NOT skip them.
 - issuingAuthority is the body that issued the credential (e.g. "Kathu Mine HSE", "Dr Bones", "Anglo American Platinum").
 - Return {"credentials": []} if nothing applies. Never invent entries.`;
+}
 
 function buildCredentialExtractionPrompt(cvText: string): string {
   return `Extract any workplace credentials/tickets from this CV. Return ONLY JSON.\n\n${cvText}`;
@@ -318,18 +328,51 @@ function buildCredentialExtractionPrompt(cvText: string): string {
 const CREDENTIAL_KEYWORDS = [
   "medical",
   "medical certificate",
+  "certificate of fitness",
+  "red ticket",
   "mine induction",
   "induction",
   "blasting",
   "blast ticket",
   "eye test",
   "lift driver",
+  "forklift",
+  "lift truck",
+  "plant operator",
+  "excavator",
+  "front end loader",
+  "tlb",
+  "dozer",
+  "tmm",
+  "trackless mobile machinery",
+  "crane",
+  "rigging",
+  "rigger",
+  "slinger",
+  "driver's licence",
+  "drivers licence",
+  "drivers license",
+  "code 10",
+  "code 14",
+  "code ec",
+  "prdp",
+  "professional driving permit",
   "working at heights",
   "heights cert",
+  "confined space",
+  "scaffold",
+  "scaffolding",
   "h2s",
+  "gas test",
+  "gas testing",
   "first aid",
   "fire fighting",
   "firefighting",
+  "dangerous goods",
+  "hazchem",
+  "hazmat",
+  "welding",
+  "welder",
 ];
 
 function containsCredentialKeywords(text: string): boolean {
