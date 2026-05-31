@@ -17,14 +17,18 @@ export default function AnnixOrbitHomePage() {
             className="inline-flex w-20 h-20 rounded-2xl mb-6 bg-contain bg-center bg-no-repeat"
             style={{ backgroundImage: `url('${logoIcon}')` }}
           />
-          <h1 className="text-4xl sm:text-5xl font-bold text-white mb-2">Annix Orbit</h1>
+          <h1 className="text-4xl sm:text-5xl font-bold text-[#0A1B3D] dark:text-white mb-2">
+            Annix Orbit
+          </h1>
           <p
             className="text-sm sm:text-base font-semibold tracking-widest uppercase mb-3"
             style={{ color: "var(--brand-accent, #FF8A00)" }}
           >
             {branding.tagline}
           </p>
-          <p className="text-lg text-[#c0c0eb] max-w-2xl mx-auto">{branding.description}</p>
+          <p className="text-lg text-gray-600 dark:text-[#c0c0eb] max-w-2xl mx-auto">
+            {branding.description}
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -114,11 +118,14 @@ export default function AnnixOrbitHomePage() {
         <div className="text-center mt-8 space-y-3">
           <Link
             href="/annix/orbit/jobs"
-            className="block text-[#e0e0f5] hover:text-white text-sm font-medium"
+            className="block text-[#3a3a8a] hover:text-[#1a1a4e] dark:text-[#e0e0f5] dark:hover:text-white text-sm font-medium"
           >
             Just want to look around? Browse jobs without signing up →
           </Link>
-          <Link href="/" className="block text-[#c0c0eb] hover:text-white text-sm">
+          <Link
+            href="/"
+            className="block text-[#3a3a8a] hover:text-[#1a1a4e] dark:text-[#c0c0eb] dark:hover:text-white text-sm"
+          >
             Back to Annix Platform
           </Link>
         </div>

@@ -60,10 +60,14 @@ export function BrandingProvider(props: {
     );
   }
 
+  // Surface base follows the per-mode Main background colour so the light/dark
+  // toggle actually flips the background (was always the dark gradient, which
+  // kept every app dark even in light mode). The page-background image +
+  // watermark layer on top of it, same as the global root background.
+  const surfaceBackground = mode === "light" ? branding.backgroundLight : branding.backgroundDark;
   const surfaceStyle = {
     ...cssVars,
-    backgroundImage:
-      "linear-gradient(to bottom right, var(--brand-grad-from), var(--brand-grad-via), var(--brand-grad-to))",
+    backgroundColor: surfaceBackground,
   } as React.CSSProperties;
 
   return (
