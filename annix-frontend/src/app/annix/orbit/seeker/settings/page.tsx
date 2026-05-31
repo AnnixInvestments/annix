@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
@@ -29,14 +29,25 @@ export default function SeekerSettingsPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [deletionRequestedFor, setDeletionRequestedFor] = useState<string | null>(null);
 
+  const hydratedRef = useRef(false);
   useEffect(() => {
+    if (hydratedRef.current) return;
     const data = prefsQuery.data;
     if (data) {
+      hydratedRef.current = true;
       setThreshold(data.matchAlertThreshold);
       setDigestEnabled(data.digestEnabled);
       setPushEnabled(data.pushEnabled);
     }
   }, [prefsQuery.data]);
+
+  const prefsData = prefsQuery.data;
+  const savedThreshold = prefsData?.matchAlertThreshold;
+  const savedDigest = prefsData?.digestEnabled;
+  const savedPush = prefsData?.pushEnabled;
+  const isDirty =
+    prefsData != null &&
+    (threshold !== savedThreshold || digestEnabled !== savedDigest || pushEnabled !== savedPush);
 
   const handleSavePrefs = async () => {
     setSavedMessage(null);
@@ -203,7 +214,13 @@ export default function SeekerSettingsPage() {
               />
 
               <div className="flex items-center justify-between pt-2">
-                <span className="text-sm text-green-700">{savedMessage}</span>
+                <span className="text-sm">
+                  {isDirty ? (
+                    <span className="text-amber-600">Unsaved changes</span>
+                  ) : savedMessage ? (
+                    <span className="text-green-700">{savedMessage}</span>
+                  ) : null}
+                </span>
                 <button
                   type="button"
                   onClick={handleSavePrefs}

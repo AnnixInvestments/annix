@@ -148,7 +148,8 @@ function ApplicationCard(props: ApplicationCardProps) {
   const statusClass = STATUS_CLASS[app.status];
 
   const commitNotes = () => {
-    if (notes !== initialNotes) {
+    const savedNotes = appNotes || "";
+    if (notes !== savedNotes) {
       props.onNotesSave(app.id, notes);
     }
   };
