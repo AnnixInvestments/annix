@@ -170,6 +170,7 @@ function ApplicationCard(props: ApplicationCardProps) {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <select
+            aria-label={`Status for ${app.title}`}
             value={app.status}
             onChange={(e) =>
               props.onStatusChange(app.id, e.target.value as SeekerApplicationStatus)
@@ -196,6 +197,7 @@ function ApplicationCard(props: ApplicationCardProps) {
             type="button"
             onClick={() => props.onDelete(app)}
             title="Remove from my applications"
+            aria-label={`Remove ${app.title} from my applications`}
             className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

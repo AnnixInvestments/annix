@@ -32,6 +32,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
       <input
         type="search"
+        aria-label="Search jobs by title, company, or location"
         value={state.search}
         onChange={(e) => update({ search: e.target.value })}
         placeholder="Search by title, company, or location"
@@ -40,6 +41,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
         <select
+          aria-label="Filter by province"
           value={state.province}
           onChange={(e) => update({ province: e.target.value, city: "" })}
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -53,6 +55,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         </select>
 
         <select
+          aria-label="Filter by city"
           value={state.city}
           onChange={(e) => update({ city: e.target.value })}
           disabled={cityOptions.length === 0}
@@ -67,6 +70,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         </select>
 
         <select
+          aria-label="Filter by category"
           value={state.category}
           onChange={(e) => update({ category: e.target.value })}
           disabled={props.categories.length === 0}
@@ -81,6 +85,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         </select>
 
         <select
+          aria-label="Filter by source"
           value={state.provider}
           onChange={(e) => update({ provider: e.target.value })}
           disabled={props.providers.length < 2}
@@ -96,6 +101,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
 
         <input
           type="number"
+          aria-label="Minimum salary (ZAR per year)"
           inputMode="numeric"
           min={0}
           step={5000}
