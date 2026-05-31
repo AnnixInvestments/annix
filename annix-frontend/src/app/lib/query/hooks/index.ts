@@ -212,6 +212,7 @@ export {
   useOrbitAutofillSeekerCredentials,
   useOrbitCreateSeekerCredential,
   useOrbitDeleteSeekerCredential,
+  useOrbitExtractCredentialDocument,
   useOrbitSeekerCredentials,
   useOrbitUpdateSeekerCredential,
 } from "./annix-orbit/useOrbitCredentials";

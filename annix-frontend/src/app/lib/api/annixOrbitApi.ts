@@ -2056,6 +2056,13 @@ class AnnixOrbitApiClient {
     });
   }
 
+  async extractCredentialFromDocument(file: File): Promise<ExtractedCredentialDocument> {
+    return apiClient.uploadFile<ExtractedCredentialDocument>(
+      "/annix-orbit/me/credentials/extract-from-document",
+      file,
+    );
+  }
+
   async seekerEducation(): Promise<SeekerEducationResponse> {
     return this.request("/annix-orbit/education/me");
   }
@@ -2233,6 +2240,14 @@ export interface SeekerCredentialInput {
   issuingAuthority?: string | null;
   documentPath?: string | null;
   notes?: string | null;
+}
+
+export interface ExtractedCredentialDocument {
+  credentialType: import("@annix/product-data/sa-market").CredentialType;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  issuingAuthority: string | null;
+  notes: string | null;
 }
 
 export type OrbitEducationCurriculum =

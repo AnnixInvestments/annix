@@ -7,13 +7,17 @@ import {
   type CredentialType,
 } from "@annix/product-data/sa-market";
 import { useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { DocumentDropzone } from "@/app/components/uploads/DocumentDropzone";
 import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/annixOrbitApi";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { DateTime, fromISO } from "@/app/lib/datetime";
 import {
   useOrbitAutofillSeekerCredentials,
   useOrbitCreateSeekerCredential,
   useOrbitDeleteSeekerCredential,
+  useOrbitExtractCredentialDocument,
   useOrbitSeekerCredentials,
   useOrbitUpdateSeekerCredential,
 } from "@/app/lib/query/hooks";
@@ -25,6 +29,8 @@ export default function SeekerCredentialsPage() {
   const updateMutation = useOrbitUpdateSeekerCredential();
   const deleteMutation = useOrbitDeleteSeekerCredential();
   const autofillMutation = useOrbitAutofillSeekerCredentials();
+  const extractDocMutation = useOrbitExtractCredentialDocument();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const [draft, setDraft] = useState<SeekerCredentialInput>(emptyDraft());
 
@@ -61,6 +67,36 @@ export default function SeekerCredentialsPage() {
       onSuccess: () => showToast("Credential deleted", "success"),
       onError: () => showToast("Could not delete credential", "error"),
     });
+  };
+
+  const handleCertificateDrop = async (file: File) => {
+    const stats = await metricsApi
+      .extractionStats("orbit-credential-extract", "document")
+      .catch(() => null);
+    const averageMs = stats?.averageMs;
+    const estimatedDurationMs = averageMs || 12000;
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Nix is reading your certificate…",
+      estimatedDurationMs,
+    });
+    try {
+      const result = await extractDocMutation.mutateAsync(file);
+      const { credentialType, issuedAt, expiresAt, issuingAuthority, notes } = result;
+      setDraft((prev) => ({
+        ...prev,
+        credentialType: credentialType || prev.credentialType,
+        issuedAt: issuedAt || prev.issuedAt,
+        expiresAt: expiresAt || prev.expiresAt,
+        issuingAuthority: issuingAuthority || prev.issuingAuthority,
+        notes: notes || prev.notes,
+      }));
+      showToast("Certificate read — review the details below, then add it", "success");
+    } catch {
+      showToast("Couldn't read that certificate — please fill the form in manually", "error");
+    } finally {
+      hideExtraction();
+    }
   };
 
   const handleAutofill = () => {
@@ -116,6 +152,21 @@ export default function SeekerCredentialsPage() {
 
       <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Add a credential</h2>
+        <div className="rounded-lg border border-dashed border-violet-200 bg-violet-50/40 p-3 space-y-2">
+          <div>
+            <p className="text-sm font-medium text-gray-800">Have the certificate handy?</p>
+            <p className="text-xs text-gray-500">
+              Drop a PDF or photo and Nix will read it and fill in the details below.
+            </p>
+          </div>
+          <DocumentDropzone
+            documents={[]}
+            onAddDocument={handleCertificateDrop}
+            onRemoveDocument={() => {}}
+            maxDocuments={1}
+            maxFileSizeMB={15}
+          />
+        </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block sm:col-span-2">
             <span className="text-sm text-gray-700">Type</span>

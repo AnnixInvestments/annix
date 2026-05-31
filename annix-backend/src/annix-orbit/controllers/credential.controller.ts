@@ -11,11 +11,23 @@ import {
   Patch,
   Post,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { CredentialService } from "../services/credential.service";
+
+const CREDENTIAL_DOC_MAX_BYTES = 15 * 1024 * 1024;
+const ACCEPTED_CREDENTIAL_DOC_MIMES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+]);
 
 interface SeekerAuthRequest {
   user: { id: number; email: string; userType: string };
@@ -128,5 +140,25 @@ export class CredentialController {
   @Post("extract-from-cv")
   async autofillFromCv(@Request() req: SeekerAuthRequest) {
     return this.credentialService.autofillFromCvForSeeker(req.user.email);
+  }
+
+  @Post("extract-from-document")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      fileFilter: (_req, file, cb) => {
+        if (ACCEPTED_CREDENTIAL_DOC_MIMES.has(file.mimetype)) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException("Upload a PDF or image of the certificate"), false);
+        }
+      },
+      limits: { fileSize: CREDENTIAL_DOC_MAX_BYTES },
+    }),
+  )
+  async extractFromDocument(@UploadedFile() file: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("No certificate file was uploaded");
+    }
+    return this.credentialService.extractFromDocument(file.buffer, file.mimetype);
   }
 }

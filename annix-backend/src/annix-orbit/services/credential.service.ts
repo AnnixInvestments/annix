@@ -8,6 +8,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { EmailService } from "../../email/email.service";
 import { DateTime } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { Candidate } from "../entities/candidate.entity";
@@ -35,7 +36,68 @@ export class CredentialService {
     private readonly candidateRepo: CandidateRepository,
     private readonly emailService: EmailService,
     private readonly aiChatService: AiChatService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
+
+  async extractFromDocument(
+    fileBuffer: Buffer,
+    mimeType: string,
+  ): Promise<ExtractedCredentialFields> {
+    return this.extractionMetricService.time(
+      "orbit-credential-extract",
+      "document",
+      () => this.readCredentialFieldsFromDocument(fileBuffer, mimeType),
+      fileBuffer.length,
+    );
+  }
+
+  private async readCredentialFieldsFromDocument(
+    fileBuffer: Buffer,
+    mimeType: string,
+  ): Promise<ExtractedCredentialFields> {
+    const empty: ExtractedCredentialFields = {
+      credentialType: "other",
+      issuedAt: null,
+      expiresAt: null,
+      issuingAuthority: null,
+      notes: null,
+    };
+    try {
+      const { content } = await this.aiChatService.chatWithImage(
+        fileBuffer.toString("base64"),
+        normaliseCredentialMediaType(mimeType),
+        "Extract the credential fields from this document. Return ONLY JSON.",
+        buildCredentialDocumentSystemPrompt(),
+      );
+      const match = content.match(/\{[\s\S]*\}/);
+      if (!match) return empty;
+      const parsed = JSON.parse(match[0]) as {
+        credentialType?: string;
+        issuedAt?: string | null;
+        expiresAt?: string | null;
+        issuingAuthority?: string | null;
+        notes?: string | null;
+      };
+      const rawType = parsed.credentialType;
+      const credentialType =
+        typeof rawType === "string" && CREDENTIAL_TYPES.includes(rawType as CredentialType)
+          ? (rawType as CredentialType)
+          : "other";
+      return {
+        credentialType,
+        issuedAt: typeof parsed.issuedAt === "string" ? parsed.issuedAt : null,
+        expiresAt: typeof parsed.expiresAt === "string" ? parsed.expiresAt : null,
+        issuingAuthority:
+          typeof parsed.issuingAuthority === "string" ? parsed.issuingAuthority.trim() : null,
+        notes: typeof parsed.notes === "string" ? parsed.notes.trim() : null,
+      };
+    } catch (err) {
+      this.logger.warn(
+        `Credential document extraction failed: ${err instanceof Error ? err.message : String(err)}`,
+      );
+      return empty;
+    }
+  }
 
   async listForSeeker(email: string | null): Promise<CvCredential[]> {
     const candidates = await this.candidatesForEmail(email);
@@ -290,11 +352,63 @@ export class CredentialService {
   }
 }
 
-function buildCredentialExtractionSystemPrompt(): string {
-  const typeUnion = CREDENTIAL_TYPES.map((t) => `"${t}"`).join(" | ");
-  const typeGuide = CREDENTIAL_TYPES.filter((t) => t !== "other")
+export interface ExtractedCredentialFields {
+  credentialType: CredentialType;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  issuingAuthority: string | null;
+  notes: string | null;
+}
+
+function credentialTypeUnion(): string {
+  return CREDENTIAL_TYPES.map((t) => `"${t}"`).join(" | ");
+}
+
+function credentialTypeGuide(): string {
+  return CREDENTIAL_TYPES.filter((t) => t !== "other")
     .map((t) => `  - ${t}: ${CREDENTIAL_LABELS[t]} — ${CREDENTIAL_DESCRIPTIONS[t]}`)
     .join("\n");
+}
+
+function normaliseCredentialMediaType(
+  mimeType: string,
+): "image/jpeg" | "image/png" | "image/gif" | "image/webp" | "application/pdf" {
+  if (mimeType === "application/pdf") return "application/pdf";
+  if (mimeType === "image/png") return "image/png";
+  if (mimeType === "image/gif") return "image/gif";
+  if (mimeType === "image/webp") return "image/webp";
+  return "image/jpeg";
+}
+
+function buildCredentialDocumentSystemPrompt(): string {
+  const typeUnion = credentialTypeUnion();
+  const typeGuide = credentialTypeGuide();
+  return `You are reading a single South African workplace credential / ticket / certificate document (an image or PDF) and extracting its key fields.
+
+Credential types and what they mean:
+${typeGuide}
+
+Return STRICT JSON with this shape (no markdown, no prose):
+
+{
+  "credentialType": ${typeUnion},
+  "issuedAt": "YYYY-MM-DD" | null,
+  "expiresAt": "YYYY-MM-DD" | null,
+  "issuingAuthority": string | null,
+  "notes": string | null
+}
+
+Rules:
+- Pick the single credentialType that best matches the document. Use "other" if none fit.
+- issuedAt / expiresAt are the issue and expiry dates printed on the document, or null if not shown.
+- issuingAuthority is the body/clinic/company/training provider that issued it (e.g. "Kathu Mine HSE", "Dr Bones").
+- notes is any short useful detail such as a licence/certificate number or class/category, or null.
+- Never invent values. Use null when a field is not clearly shown.`;
+}
+
+function buildCredentialExtractionSystemPrompt(): string {
+  const typeUnion = credentialTypeUnion();
+  const typeGuide = credentialTypeGuide();
   return `You are extracting workplace credentials and tickets from a South African industrial worker's CV. Look for medicals, mine inductions, blasting tickets, eye tests, forklift / plant / TMM / crane operator licences, rigging, driver's licences and PrDPs, working-at-heights, confined space, scaffolding, H2S awareness, gas testing, first aid, fire fighting, dangerous-goods / Hazchem, coded welding, and similar safety/competency documents.
 
 Credential types and what they mean:
