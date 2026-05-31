@@ -70,7 +70,7 @@ function LoginPageContent() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1d9bf0]" />
       </div>
     );
@@ -78,14 +78,14 @@ function LoginPageContent() {
 
   if (isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1d9bf0]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0f1419] flex flex-col items-center justify-center px-4">
+    <div className="min-h-screen flex flex-col items-center justify-center px-4">
       {error && (
         <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-[#f4212e] text-white px-6 py-3 rounded-lg text-sm font-medium shadow-lg z-50">
           {error}
@@ -244,7 +244,7 @@ export default function VoiceFilterLoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#0f1419] flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1d9bf0]" />
         </div>
       }
