@@ -468,6 +468,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     TradeProfileController,
     CredentialController,
     AdminOrbitCredentialTypesController,
+    AdminOrbitTierCapabilitiesController,
     WorkforceNeedController,
   ],
   providers: [
