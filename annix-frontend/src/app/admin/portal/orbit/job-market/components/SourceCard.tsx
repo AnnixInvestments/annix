@@ -6,6 +6,17 @@ import { fromISO } from "@/app/lib/datetime";
 
 const MATCH_TIERS = ["soft", "medium", "hard"] as const;
 
+const TIER_LABELS: Record<string, string> = {
+  soft: "Soft",
+  medium: "Medium",
+  hard: "Heavy",
+};
+
+function tierLabel(tier: string): string {
+  const mapped = TIER_LABELS[tier];
+  return mapped || tier;
+}
+
 export interface SourceEditPayload {
   ingestionIntervalHours?: number;
   visibleTiers?: string[];
@@ -80,7 +91,7 @@ export function SourceCard({
   const tierSummary = (() => {
     const current = source.visibleTiers;
     if (!current || current.length === 0) return "all tiers";
-    return current.join(", ");
+    return current.map(tierLabel).join(", ");
   })();
 
   return (
@@ -187,13 +198,13 @@ export function SourceCard({
                       key={tier}
                       type="button"
                       onClick={() => toggleTier(tier)}
-                      className={`px-3 py-1 text-xs rounded-full border capitalize transition-colors ${
+                      className={`px-3 py-1 text-xs rounded-full border transition-colors ${
                         checked
                           ? "bg-indigo-100 text-indigo-800 border-indigo-200"
                           : "bg-white text-gray-500 border-gray-300"
                       }`}
                     >
-                      {tier}
+                      {tierLabel(tier)}
                     </button>
                   );
                 })}
