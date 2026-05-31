@@ -4,7 +4,6 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useRef, useState } from "react";
-import { BrandLoginCard } from "@/app/components/BrandLoginCard";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
@@ -85,9 +84,6 @@ function AnnixOrbitLoginContent() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
-        <Link href="/annix/orbit" className="mb-4 block">
-          <BrandLoginCard brand="annix-orbit" />
-        </Link>
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <p className="text-gray-600">
