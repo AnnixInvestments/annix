@@ -11,8 +11,6 @@ interface SeedTier {
     applyToJobs: boolean;
     viewSalaries: boolean;
     nixCvBuilder: boolean;
-    references: boolean;
-    futurePath: boolean;
   };
   displayOrder: number;
 }
@@ -27,8 +25,6 @@ const TIERS: SeedTier[] = [
       applyToJobs: true,
       viewSalaries: false,
       nixCvBuilder: false,
-      references: false,
-      futurePath: false,
     },
     displayOrder: 10,
   },
@@ -41,8 +37,6 @@ const TIERS: SeedTier[] = [
       applyToJobs: true,
       viewSalaries: true,
       nixCvBuilder: true,
-      references: false,
-      futurePath: false,
     },
     displayOrder: 20,
   },
@@ -55,8 +49,6 @@ const TIERS: SeedTier[] = [
       applyToJobs: true,
       viewSalaries: true,
       nixCvBuilder: true,
-      references: true,
-      futurePath: true,
     },
     displayOrder: 30,
   },

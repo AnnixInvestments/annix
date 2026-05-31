@@ -35,8 +35,6 @@ const FEATURE_COLUMNS: Array<{ key: keyof OrbitTierFeatures; label: string }> = 
   { key: "applyToJobs", label: "Apply to jobs" },
   { key: "viewSalaries", label: "View salaries" },
   { key: "nixCvBuilder", label: "Nix CV builder" },
-  { key: "references", label: "References" },
-  { key: "futurePath", label: "FuturePath" },
 ];
 
 interface TierDraft {

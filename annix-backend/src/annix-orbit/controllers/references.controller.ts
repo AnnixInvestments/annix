@@ -1,10 +1,14 @@
 import { Controller, Get, Query, Request, UseGuards } from "@nestjs/common";
+import { RequireFeature } from "../../licensing/feature.decorator";
+import { FeatureLicenseGuard } from "../../licensing/feature-license.guard";
+import { ANNIX_ORBIT_FEATURES, ANNIX_ORBIT_MODULE_KEY } from "../config/annix-orbit-licensing";
 import { ReferenceStatus } from "../entities/candidate-reference.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { ReferenceService } from "../services/reference.service";
 
 @Controller("annix-orbit/references")
-@UseGuards(AnnixOrbitAuthGuard)
+@UseGuards(AnnixOrbitAuthGuard, FeatureLicenseGuard)
+@RequireFeature(ANNIX_ORBIT_MODULE_KEY, ANNIX_ORBIT_FEATURES.REFERENCE_CHECKS)
 export class ReferencesController {
   constructor(private readonly referenceService: ReferenceService) {}
 

@@ -10,6 +10,7 @@ import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { LicensingModule } from "../licensing";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
 import { CompanyRepository } from "../platform/company.repository";
@@ -50,6 +51,7 @@ import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
 import { PostgresUserRepository } from "../user/user.repository.postgres";
+import { AnnixOrbitLicensingRegistrar } from "./annix-orbit-licensing.registrar";
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
@@ -438,6 +440,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     AuditModule,
     AdminModule,
     FeatureFlagsModule,
+    LicensingModule,
   ],
   controllers: [
     AnnixOrbitAuthController,
@@ -520,6 +523,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     EmailTemplateService,
     InterviewBookingService,
     AnnixOrbitCapabilities,
+    AnnixOrbitLicensingRegistrar,
     SeekerJobFeedService,
     SeekerApplicationsService,
     TradeProfileService,
