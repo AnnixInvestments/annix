@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminApiClient,
+  type OrbitSeekerDetail,
   type OrbitSeekerMatchTier,
   type OrbitSeekerSummary,
 } from "@/app/lib/api/adminApi";
@@ -178,6 +179,15 @@ export function useAdminOrbitSeekers(params: {
         limit: params.limit,
       }),
     staleTime: 60 * 1000,
+  });
+}
+
+export function useAdminOrbitSeekerDetail(id: number) {
+  return useQuery<OrbitSeekerDetail>({
+    queryKey: adminKeys.orbitSeekers.detail(id),
+    queryFn: () => adminApiClient.orbitSeekerDetail(id),
+    enabled: Number.isFinite(id) && id > 0,
+    staleTime: 30 * 1000,
   });
 }
 

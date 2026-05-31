@@ -58,6 +58,10 @@ export {
   useAdminUpdateOrbitJobMarketSource,
   useAdminVetPendingOrbitJobs,
 } from "./admin/useAdminOrbitJobMarket";
+export {
+  useAdminOrbitTierCapabilities,
+  useAdminUpdateOrbitTierCapability,
+} from "./admin/useAdminOrbitTierCapabilities";
 export { useAdminRfqDetail, useAdminRfqs } from "./admin/useAdminRfqs";
 export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";

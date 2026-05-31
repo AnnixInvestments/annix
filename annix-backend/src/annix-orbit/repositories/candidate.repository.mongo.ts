@@ -215,6 +215,46 @@ export class MongoCandidateRepository
     await this.documents.findByIdAndUpdate(id, { matchTier }).exec();
   }
 
+  async touchLastActiveByEmail(
+    email: string,
+    now: Date,
+    staleBefore: Date,
+    dayKey: string,
+  ): Promise<void> {
+    const result = await this.documents
+      .updateMany(
+        {
+          email,
+          $or: [{ lastActiveAt: null }, { lastActiveAt: { $lt: staleBefore } }],
+        },
+        { lastActiveAt: now },
+      )
+      .exec();
+    if (result.modifiedCount > 0) {
+      await this.model.db.collection("cv_assistant_seeker_activity_days").updateOne(
+        { email, day: dayKey },
+        {
+          $inc: { count: 1 },
+          $setOnInsert: { email, day: dayKey, createdAt: now },
+          $set: { updatedAt: now },
+        },
+        { upsert: true },
+      );
+    }
+  }
+
+  async seekerActivityDaysForEmail(
+    email: string,
+    sinceKey: string,
+  ): Promise<Array<{ day: string; count: number }>> {
+    const docs = await this.model.db
+      .collection("cv_assistant_seeker_activity_days")
+      .find({ email, day: { $gte: sinceKey } })
+      .sort({ day: 1 })
+      .toArray();
+    return docs.map((d) => ({ day: d.day as string, count: (d.count as number) ?? 0 }));
+  }
+
   async grantMatchingConsent(ids: number[], consentedAt: Date): Promise<void> {
     if (ids.length === 0) return;
     await this.documents

@@ -205,6 +205,28 @@ export class PostgresCandidateRepository
     await this.repository.update(id, { matchTier });
   }
 
+  async touchLastActiveByEmail(
+    email: string,
+    now: Date,
+    staleBefore: Date,
+    _dayKey: string,
+  ): Promise<void> {
+    await this.repository
+      .createQueryBuilder()
+      .update(Candidate)
+      .set({ lastActiveAt: now })
+      .where("email = :email", { email })
+      .andWhere("(last_active_at IS NULL OR last_active_at < :staleBefore)", { staleBefore })
+      .execute();
+  }
+
+  async seekerActivityDaysForEmail(
+    _email: string,
+    _sinceKey: string,
+  ): Promise<Array<{ day: string; count: number }>> {
+    return [];
+  }
+
   async grantMatchingConsent(ids: number[], consentedAt: Date): Promise<void> {
     if (ids.length === 0) return;
     await this.repository

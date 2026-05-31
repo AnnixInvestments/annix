@@ -6,6 +6,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit/annix-orbit.constants";
 import { AnnixOrbitEeConsentTextVersion } from "../annix-orbit/entities/annix-orbit-ee-consent-text-version.entity";
 import { AnnixOrbitProfile } from "../annix-orbit/entities/annix-orbit-profile.entity";
+import { Candidate } from "../annix-orbit/entities/candidate.entity";
 import { AnnixOrbitAuthGuard } from "../annix-orbit/guards/annix-orbit-auth.guard";
 import { AnnixOrbitEeConsentTextVersionRepository } from "../annix-orbit/repositories/annix-orbit-ee-consent-text-version.repository";
 import { MongoAnnixOrbitEeConsentTextVersionRepository } from "../annix-orbit/repositories/annix-orbit-ee-consent-text-version.repository.mongo";
@@ -13,8 +14,12 @@ import { PostgresAnnixOrbitEeConsentTextVersionRepository } from "../annix-orbit
 import { AnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository";
 import { MongoAnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository.mongo";
 import { PostgresAnnixOrbitProfileRepository } from "../annix-orbit/repositories/annix-orbit-profile.repository.postgres";
+import { CandidateRepository } from "../annix-orbit/repositories/candidate.repository";
+import { MongoCandidateRepository } from "../annix-orbit/repositories/candidate.repository.mongo";
+import { PostgresCandidateRepository } from "../annix-orbit/repositories/candidate.repository.postgres";
 import { AnnixOrbitEeConsentTextVersionSchema } from "../annix-orbit/schemas/annix-orbit-ee-consent-text-version.schema";
 import { AnnixOrbitProfileSchema } from "../annix-orbit/schemas/annix-orbit-profile.schema";
+import { CandidateSchema } from "../annix-orbit/schemas/candidate.schema";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
@@ -159,6 +164,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
               schema: AnnixOrbitEeConsentTextVersionSchema,
             },
             { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
+            { name: "Candidate", schema: CandidateSchema },
             { name: "User", schema: UserSchema },
             { name: "UserAppAccess", schema: UserAppAccessSchema },
           ]),
@@ -185,6 +191,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
             EducationScholarship,
             AnnixOrbitEeConsentTextVersion,
             AnnixOrbitProfile,
+            Candidate,
             User,
             UserAppAccess,
           ]),
@@ -309,6 +316,7 @@ import { GuardianLinkService } from "./services/guardian-link.service";
       PostgresUserAppAccessRepository,
       MongoUserAppAccessRepository,
     ),
+    repositoryProvider(CandidateRepository, PostgresCandidateRepository, MongoCandidateRepository),
   ],
   exports: [
     EducationConsentService,

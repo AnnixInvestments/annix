@@ -1,13 +1,19 @@
 import { DEFAULT_MATCH_TIER, isMatchTier, type MatchTier } from "@annix/product-data/sa-market";
-import { BadRequestException, Injectable, Logger } from "@nestjs/common";
+import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
+import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
+import { UserRepository } from "../../user/user.repository";
+import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
+import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
+import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
@@ -59,6 +65,50 @@ export interface AdminSeekerSummary {
   createdAt: string | null;
 }
 
+export interface AdminSeekerDocument {
+  id: number;
+  kind: string;
+  originalFilename: string;
+  sizeBytes: number;
+  label: string | null;
+  uploadedAt: string | null;
+  downloadUrl: string;
+  isCv: boolean;
+}
+
+export interface AdminSeekerDetail extends AdminSeekerSummary {
+  popiaConsent: boolean;
+  popiaConsentedAt: string | null;
+  tradeProfile: unknown;
+  cv: {
+    summary: string | null;
+    experienceYears: number | null;
+    location: string | null;
+    skills: string[];
+    education: string[];
+    certifications: string[];
+    professionalRegistrations: string[];
+    saQualifications: string[];
+  };
+  matchAnalysis: {
+    overallScore: number;
+    recommendation: string;
+    reasoning: string | null;
+  } | null;
+  documents: AdminSeekerDocument[];
+  references: Array<{
+    id: number;
+    name: string;
+    email: string;
+    relationship: string | null;
+    status: string;
+    rating: number | null;
+    submittedAt: string | null;
+  }>;
+  stats: { totalMatches: number; matchesLast7Days: number };
+  activity: Array<{ day: string; count: number }>;
+}
+
 @Injectable()
 export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
@@ -72,6 +122,12 @@ export class SeekerJobFeedService {
     private readonly externalJobRepo: ExternalJobRepository,
     private readonly muteRepo: SeekerMuteRepository,
     private readonly matchingService: CandidateJobMatchingService,
+    private readonly profileRepo: AnnixOrbitProfileRepository,
+    private readonly documentRepo: AnnixOrbitIndividualDocumentRepository,
+    private readonly userRepo: UserRepository,
+    private readonly referenceRepo: CandidateReferenceRepository,
+    @Inject(STORAGE_SERVICE)
+    private readonly storageService: IStorageService,
   ) {}
 
   async muteCompanyForSeeker(
@@ -202,6 +258,103 @@ export class SeekerJobFeedService {
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     }));
     return { seekers, total };
+  }
+
+  async seekerDetail(id: number): Promise<AdminSeekerDetail> {
+    const candidate = await this.candidateRepo.findById(id);
+    if (!candidate) {
+      throw new NotFoundException("Seeker not found");
+    }
+    const email = candidate.email;
+
+    const documents = await this.documentsForSeekerEmail(email);
+    const references = await this.referenceRepo.findByCandidate(id);
+    const activitySinceKey = DateTime.now().minus({ days: 365 }).toFormat("yyyy-LL-dd");
+    const activity = email
+      ? await this.candidateRepo.seekerActivityDaysForEmail(email, activitySinceKey)
+      : [];
+
+    const candidateIds = [candidate.id];
+    const totalMatches = await this.matchRepo.countActiveForCandidates(candidateIds);
+    const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
+    const matchesLast7Days = await this.matchRepo.countActiveForCandidatesSince(
+      candidateIds,
+      sevenDaysAgo,
+    );
+
+    const extracted = candidate.extractedData;
+    const analysis = candidate.matchAnalysis;
+
+    return {
+      id: candidate.id,
+      name: candidate.name,
+      email: candidate.email,
+      matchTier: candidate.matchTier,
+      matchScore: candidate.matchScore,
+      status: candidate.status,
+      hasCv: Boolean(candidate.cvFilePath),
+      lastActiveAt: candidate.lastActiveAt ? candidate.lastActiveAt.toISOString() : null,
+      createdAt: candidate.createdAt ? candidate.createdAt.toISOString() : null,
+      popiaConsent: candidate.popiaConsent,
+      popiaConsentedAt: candidate.popiaConsentedAt
+        ? candidate.popiaConsentedAt.toISOString()
+        : null,
+      tradeProfile: candidate.tradeProfile,
+      cv: {
+        summary: extracted?.summary ?? null,
+        experienceYears: extracted?.experienceYears ?? null,
+        location: extracted?.location ?? null,
+        skills: extracted?.skills ?? [],
+        education: extracted?.education ?? [],
+        certifications: extracted?.certifications ?? [],
+        professionalRegistrations: extracted?.professionalRegistrations ?? [],
+        saQualifications: extracted?.saQualifications ?? [],
+      },
+      matchAnalysis: analysis
+        ? {
+            overallScore: analysis.overallScore,
+            recommendation: analysis.recommendation,
+            reasoning: analysis.reasoning,
+          }
+        : null,
+      documents,
+      references: references.map((ref) => ({
+        id: ref.id,
+        name: ref.name,
+        email: ref.email,
+        relationship: ref.relationship,
+        status: ref.status,
+        rating: ref.feedbackRating,
+        submittedAt: ref.feedbackSubmittedAt ? ref.feedbackSubmittedAt.toISOString() : null,
+      })),
+      stats: { totalMatches, matchesLast7Days },
+      activity,
+    };
+  }
+
+  private async documentsForSeekerEmail(email: string | null): Promise<AdminSeekerDocument[]> {
+    if (!email) return [];
+    const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+    if (!user) return [];
+    const profile = await this.profileRepo.findByUserId(user.id);
+    if (!profile) return [];
+    const docs = await this.documentRepo.findByProfileOrdered(profile.id);
+    return Promise.all(
+      docs.map(async (doc) => {
+        const isCv = doc.kind === IndividualDocumentKind.CV;
+        const downloadUrl = await this.storageService.presignedUrl(doc.filePath, 3600);
+        return {
+          id: doc.id,
+          kind: doc.kind,
+          originalFilename: doc.originalFilename,
+          sizeBytes: doc.sizeBytes,
+          label: doc.label,
+          uploadedAt: doc.uploadedAt ? doc.uploadedAt.toISOString() : null,
+          downloadUrl,
+          isCv,
+        };
+      }),
+    );
   }
 
   async consentStatusForSeeker(

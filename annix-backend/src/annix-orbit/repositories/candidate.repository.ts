@@ -41,6 +41,16 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract clearEmbedding(id: number): Promise<void>;
   abstract updateTradeProfile(id: number, tradeProfile: unknown): Promise<void>;
   abstract updateMatchTier(id: number, matchTier: string): Promise<void>;
+  abstract touchLastActiveByEmail(
+    email: string,
+    now: Date,
+    staleBefore: Date,
+    dayKey: string,
+  ): Promise<void>;
+  abstract seekerActivityDaysForEmail(
+    email: string,
+    sinceKey: string,
+  ): Promise<Array<{ day: string; count: number }>>;
   abstract grantMatchingConsent(ids: number[], consentedAt: Date): Promise<void>;
   abstract withdrawMatching(ids: number[]): Promise<void>;
   abstract candidatesWithEmbedding(): Promise<Candidate[]>;

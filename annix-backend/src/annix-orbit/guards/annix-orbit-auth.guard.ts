@@ -1,10 +1,14 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { now } from "../../lib/datetime";
 import { UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { UserRepository } from "../../user/user.repository";
 import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
+
+const LAST_ACTIVE_THROTTLE_MS = 60_000;
 
 @Injectable()
 export class AnnixOrbitAuthGuard implements CanActivate {
@@ -13,6 +17,7 @@ export class AnnixOrbitAuthGuard implements CanActivate {
     private readonly configService: ConfigService,
     private readonly userRepo: UserRepository,
     private readonly userAppAccessRepo: UserAppAccessRepository,
+    private readonly candidateRepo: CandidateRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -56,10 +61,23 @@ export class AnnixOrbitAuthGuard implements CanActivate {
         companyId: payload.companyId ?? null,
       };
 
+      if (userType === "individual" && user.email) {
+        this.touchLastActive(user.email);
+      }
+
       return true;
     } catch {
       throw new UnauthorizedException("Invalid or expired token");
     }
+  }
+
+  private touchLastActive(email: string): void {
+    const current = now();
+    const staleBefore = current.minus({ milliseconds: LAST_ACTIVE_THROTTLE_MS }).toJSDate();
+    const dayKey = current.toFormat("yyyy-LL-dd");
+    this.candidateRepo
+      .touchLastActiveByEmail(email, current.toJSDate(), staleBefore, dayKey)
+      .catch(() => {});
   }
 
   private async resolveRole(userId: number, fallbackRole: string): Promise<string> {
