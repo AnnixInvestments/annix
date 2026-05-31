@@ -19,6 +19,11 @@ const navItems: NavItem[] = [
     label: "FuturePath",
     icon: "M12 14l9-5-9-5-9 5 9 5z M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z M12 14l-9-5",
   },
+  {
+    href: "/annix/orbit/student/guardian",
+    label: "For Parents",
+    icon: "M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a3 3 0 10-2.83-4M6 11a3 3 0 10-2.83-4",
+  },
 ];
 
 function StudentContent({ children }: { children: React.ReactNode }) {
