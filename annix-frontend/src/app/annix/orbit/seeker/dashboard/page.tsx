@@ -31,13 +31,38 @@ export default function SeekerDashboardPage() {
   const matchesLast7Days = jobStats ? jobStats.matchesLast7Days : 0;
   const totalMatches = jobStats ? jobStats.totalMatches : 0;
 
+  if (statusQuery.isLoading) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Welcome, {firstName}</h1>
+          <p className="text-white/70 mt-2">Loading your workspace…</p>
+        </div>
+        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
+          Loading…
+        </div>
+      </div>
+    );
+  }
+
+  if (statusQuery.isError) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Welcome, {firstName}</h1>
+        </div>
+        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
+          We couldn't load your workspace right now. Please refresh the page.
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-white">Welcome, {firstName}</h1>
-        <p className="text-white/70 mt-2">
-          Your Annix Orbit job seeker workspace. We will be adding more here soon.
-        </p>
+        <p className="text-white/70 mt-2">Your Annix Orbit job seeker workspace.</p>
       </div>
 
       {showJobStats ? (
