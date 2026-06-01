@@ -63,19 +63,20 @@ export function FindDuplicatesModal(props: { isOpen: boolean; onClose: () => voi
   const deleteJob = useAdminDeleteOrbitExternalJob();
   const bulkDelete = useAdminBulkDeleteOrbitExternalJobs();
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const autoResolveMutate = autoResolve.mutate;
 
   // On open, auto-remove EXACT duplicates first (keeping the most-respected
   // source), then list the remaining near-duplicates for manual review.
   useEffect(() => {
     if (!isOpen) {
       autoResolvedRef.current = false;
-      setSelectedIds(new Set());
+      setSelectedIds((prev) => (prev.size === 0 ? prev : new Set()));
       return;
     }
     if (autoResolvedRef.current) return;
     autoResolvedRef.current = true;
-    autoResolve.mutate();
-  }, [isOpen, autoResolve]);
+    autoResolveMutate();
+  }, [isOpen, autoResolveMutate]);
 
   if (!isOpen) return null;
 

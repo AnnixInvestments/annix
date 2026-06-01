@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
@@ -75,8 +76,10 @@ export default function SeekerEeAttributesPage() {
     const notes = data.accommodationNotes;
     setAccommodationNotes(notes || "");
     setNationalityStatus(data.nationalityStatus);
-    setEeReporting(data.purposes.includes("ee_reporting"));
-    setFairnessMonitoring(data.purposes.includes("fairness_monitoring"));
+    const rawPurposes = data.purposes;
+    const purposes = isArray(rawPurposes) ? rawPurposes : [];
+    setEeReporting(purposes.includes("ee_reporting"));
+    setFairnessMonitoring(purposes.includes("fairness_monitoring"));
   }, [data]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
