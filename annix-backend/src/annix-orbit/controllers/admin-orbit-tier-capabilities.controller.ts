@@ -20,6 +20,7 @@ export class AdminOrbitTierCapabilitiesController {
     body: {
       matchStrictness?: string;
       maxJobResults?: number | null;
+      monthlyNixRuns?: number | null;
       features?: Partial<OrbitTierFeatures>;
     },
   ) {

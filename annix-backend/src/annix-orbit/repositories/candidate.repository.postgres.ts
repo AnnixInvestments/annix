@@ -205,6 +205,10 @@ export class PostgresCandidateRepository
     await this.repository.update(id, { matchTier });
   }
 
+  async setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void> {
+    await this.repository.update(id, { trialTier, trialEndsAt });
+  }
+
   async touchLastActiveByEmail(
     email: string,
     now: Date,

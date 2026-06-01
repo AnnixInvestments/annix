@@ -41,6 +41,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract clearEmbedding(id: number): Promise<void>;
   abstract updateTradeProfile(id: number, tradeProfile: unknown): Promise<void>;
   abstract updateMatchTier(id: number, matchTier: string): Promise<void>;
+  abstract setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void>;
   abstract touchLastActiveByEmail(
     email: string,
     now: Date,

@@ -21,11 +21,13 @@ export function useAdminUpdateOrbitTierCapability() {
       tier: string;
       matchStrictness?: string;
       maxJobResults?: number | null;
+      monthlyNixRuns?: number | null;
       features?: Partial<OrbitTierFeatures>;
     }) =>
       adminApiClient.updateOrbitTierCapability(input.tier, {
         matchStrictness: input.matchStrictness,
         maxJobResults: input.maxJobResults,
+        monthlyNixRuns: input.monthlyNixRuns,
         features: input.features,
       }),
     onSuccess: () => {

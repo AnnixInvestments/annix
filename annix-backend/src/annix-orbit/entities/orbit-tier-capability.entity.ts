@@ -30,6 +30,9 @@ export class OrbitTierCapability {
   @Column({ name: "max_job_results", type: "int", nullable: true })
   maxJobResults: number | null;
 
+  @Column({ name: "monthly_nix_runs", type: "int", nullable: true })
+  monthlyNixRuns: number | null;
+
   @Column({ name: "features", type: "jsonb" })
   features: OrbitTierFeatures;
 

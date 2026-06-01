@@ -41,14 +41,17 @@ const FEATURE_COLUMNS: Array<{ key: keyof OrbitTierFeatures; label: string }> = 
 interface TierDraft {
   matchStrictness: string;
   maxJobResults: string;
+  monthlyNixRuns: string;
   features: OrbitTierFeatures;
 }
 
 function toDraft(row: OrbitTierCapability): TierDraft {
   const maxResults = row.maxJobResults;
+  const nixRuns = row.monthlyNixRuns;
   return {
     matchStrictness: row.matchStrictness,
     maxJobResults: maxResults === null ? "" : String(maxResults),
+    monthlyNixRuns: nixRuns === null ? "" : String(nixRuns),
     features: { ...row.features },
   };
 }
@@ -90,6 +93,14 @@ export default function AdminOrbitSeekerTiersPage() {
     });
   };
 
+  const handleNixRunsChange = (tier: string, value: string) => {
+    setDrafts((prev) => {
+      const current = prev[tier];
+      if (!current) return prev;
+      return { ...prev, [tier]: { ...current, monthlyNixRuns: value } };
+    });
+  };
+
   const handleFeatureToggle = (tier: string, feature: keyof OrbitTierFeatures) => {
     setDrafts((prev) => {
       const current = prev[tier];
@@ -108,12 +119,19 @@ export default function AdminOrbitSeekerTiersPage() {
       showToast("Max job results must be a positive number or blank for unlimited.", "error");
       return;
     }
+    const nixTrimmed = draft.monthlyNixRuns.trim();
+    const nixParsed = nixTrimmed === "" ? null : Number(nixTrimmed);
+    if (nixParsed !== null && (!Number.isFinite(nixParsed) || nixParsed < 0)) {
+      showToast("Nix runs / month must be a positive number or blank for unlimited.", "error");
+      return;
+    }
     setSavingTier(tier);
     try {
       await updateCapability.mutateAsync({
         tier,
         matchStrictness: draft.matchStrictness,
         maxJobResults: parsed,
+        monthlyNixRuns: nixParsed,
         features: draft.features,
       });
       showToast(`Saved "${tier}" tier capabilities.`, "success");
@@ -171,6 +189,7 @@ export default function AdminOrbitSeekerTiersPage() {
                   <th className="px-3 py-2 font-medium">Tier</th>
                   <th className="px-3 py-2 font-medium">Match strictness</th>
                   <th className="px-3 py-2 font-medium">Max jobs</th>
+                  <th className="px-3 py-2 font-medium">Nix runs / month</th>
                   {FEATURE_COLUMNS.map((col) => (
                     <th key={col.key} className="px-3 py-2 font-medium text-center">
                       {col.label}
@@ -206,6 +225,16 @@ export default function AdminOrbitSeekerTiersPage() {
                           min={0}
                           value={draft.maxJobResults}
                           onChange={(e) => handleMaxResultsChange(row.tier, e.target.value)}
+                          placeholder="∞"
+                          className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                        />
+                      </td>
+                      <td className="px-3 py-3">
+                        <input
+                          type="number"
+                          min={0}
+                          value={draft.monthlyNixRuns}
+                          onChange={(e) => handleNixRunsChange(row.tier, e.target.value)}
                           placeholder="∞"
                           className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm"
                         />

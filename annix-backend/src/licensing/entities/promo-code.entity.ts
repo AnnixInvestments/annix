@@ -47,6 +47,9 @@ export class PromoCode {
   @Column({ name: "duration_months", type: "integer", nullable: true })
   durationMonths: number | null;
 
+  @Column({ name: "grants_tier", type: "varchar", length: 64, nullable: true })
+  grantsTier: string | null;
+
   @Column({ name: "max_redemptions", type: "integer", nullable: true })
   maxRedemptions: number | null;
 

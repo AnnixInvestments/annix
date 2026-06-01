@@ -56,6 +56,10 @@ export class CreatePromoCodeDto {
   durationMonths?: number;
 
   @IsOptional()
+  @IsString()
+  grantsTier?: string;
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   maxRedemptions?: number;
@@ -109,6 +113,10 @@ export class UpdatePromoCodeDto {
   @IsInt()
   @Min(1)
   durationMonths?: number;
+
+  @IsOptional()
+  @IsString()
+  grantsTier?: string;
 
   @IsOptional()
   @IsInt()

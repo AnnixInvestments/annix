@@ -18,6 +18,7 @@ export interface PromoCode {
   billingCycle: PromoBillingCycle;
   discountDuration: PromoDiscountDuration;
   durationMonths: number | null;
+  grantsTier: string | null;
   maxRedemptions: number | null;
   timesRedeemed: number;
   validFrom: string | null;
@@ -36,6 +37,7 @@ export interface CreatePromoCodePayload {
   billingCycle?: PromoBillingCycle;
   discountDuration?: PromoDiscountDuration;
   durationMonths?: number;
+  grantsTier?: string;
   maxRedemptions?: number;
   validFrom?: string;
   validUntil?: string;

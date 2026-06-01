@@ -142,6 +142,12 @@ export class Candidate {
   @Column({ name: "match_tier", type: "varchar", length: 16, default: "soft" })
   matchTier: string;
 
+  @Column({ name: "trial_tier", type: "varchar", length: 16, nullable: true })
+  trialTier: string | null;
+
+  @Column({ name: "trial_ends_at", type: "timestamptz", nullable: true })
+  trialEndsAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

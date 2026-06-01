@@ -8,6 +8,7 @@ import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capabi
 export interface UpdateTierCapabilityInput {
   matchStrictness?: string;
   maxJobResults?: number | null;
+  monthlyNixRuns?: number | null;
   features?: Partial<OrbitTierFeatures>;
 }
 
@@ -37,6 +38,9 @@ export class OrbitTierCapabilityService {
     }
     if (input.maxJobResults !== undefined) {
       existing.maxJobResults = input.maxJobResults;
+    }
+    if (input.monthlyNixRuns !== undefined) {
+      existing.monthlyNixRuns = input.monthlyNixRuns;
     }
     return this.tierCapabilityRepo.save(existing);
   }

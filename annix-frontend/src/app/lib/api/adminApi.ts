@@ -1181,6 +1181,7 @@ class AdminApiClient {
     data: {
       matchStrictness?: string;
       maxJobResults?: number | null;
+      monthlyNixRuns?: number | null;
       features?: Partial<OrbitTierFeatures>;
     },
   ): Promise<OrbitTierCapability> {
@@ -1348,6 +1349,7 @@ export interface OrbitTierCapability {
   label: string;
   matchStrictness: string;
   maxJobResults: number | null;
+  monthlyNixRuns: number | null;
   features: OrbitTierFeatures;
   displayOrder: number;
 }

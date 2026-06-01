@@ -19,6 +19,9 @@ export class OrbitTierCapability {
   @Prop({ type: Number, default: null })
   maxJobResults: number | null;
 
+  @Prop({ type: Number, default: null })
+  monthlyNixRuns: number | null;
+
   @Prop({ type: Object, required: true })
   features: OrbitTierFeatures;
 

@@ -56,6 +56,7 @@ export class PromoCodeService {
       billingCycle: dto.billingCycle ?? "any",
       discountDuration: dto.discountDuration ?? "first_payment",
       durationMonths: dto.durationMonths ?? null,
+      grantsTier: dto.grantsTier ?? null,
       maxRedemptions: dto.maxRedemptions ?? null,
       validFrom: dto.validFrom ? fromISO(dto.validFrom).toJSDate() : null,
       validUntil: dto.validUntil ? fromISO(dto.validUntil).toJSDate() : null,
@@ -92,6 +93,9 @@ export class PromoCodeService {
     }
     if (dto.durationMonths !== undefined) {
       promo.durationMonths = dto.durationMonths;
+    }
+    if (dto.grantsTier !== undefined) {
+      promo.grantsTier = dto.grantsTier ?? null;
     }
     if (dto.maxRedemptions !== undefined) {
       promo.maxRedemptions = dto.maxRedemptions;

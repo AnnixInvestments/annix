@@ -115,6 +115,7 @@ import { OrbitTierCapability } from "./entities/orbit-tier-capability.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { SeekerMute } from "./entities/seeker-mute.entity";
+import { SeekerUsageCounter } from "./entities/seeker-usage-counter.entity";
 import { SourceRespectRank } from "./entities/source-respect-rank.entity";
 import { AnnixOrbitAuthGuard } from "./guards/annix-orbit-auth.guard";
 import { AnnixOrbitRoleGuard } from "./guards/annix-orbit-role.guard";
@@ -214,6 +215,9 @@ import { PostgresSeekerApplyClickRepository } from "./repositories/seeker-apply-
 import { SeekerMuteRepository } from "./repositories/seeker-mute.repository";
 import { MongoSeekerMuteRepository } from "./repositories/seeker-mute.repository.mongo";
 import { PostgresSeekerMuteRepository } from "./repositories/seeker-mute.repository.postgres";
+import { SeekerUsageCounterRepository } from "./repositories/seeker-usage-counter.repository";
+import { MongoSeekerUsageCounterRepository } from "./repositories/seeker-usage-counter.repository.mongo";
+import { PostgresSeekerUsageCounterRepository } from "./repositories/seeker-usage-counter.repository.postgres";
 import { SourceRespectRankRepository } from "./repositories/source-respect-rank.repository";
 import { MongoSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.mongo";
 import { PostgresSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.postgres";
@@ -249,6 +253,7 @@ import { OrbitTierCapabilitySchema } from "./schemas/orbit-tier-capability.schem
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
 import { SeekerMuteSchema } from "./schemas/seeker-mute.schema";
+import { SeekerUsageCounterSchema } from "./schemas/seeker-usage-counter.schema";
 import { SourceRespectRankSchema } from "./schemas/source-respect-rank.schema";
 import { AssistedPortalAdapters } from "./services/adapters/assisted-portal-adapters.service";
 import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapter.service";
@@ -356,6 +361,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
             { name: "CvCredential", schema: CvCredentialSchema },
             { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
             { name: "OrbitTierCapability", schema: OrbitTierCapabilitySchema },
+            { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
             { name: "CvEscoSkill", schema: CvEscoSkillSchema },
             { name: "CvGeocodeCache", schema: CvGeocodeCacheSchema },
             { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
@@ -413,6 +419,7 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
             CvCredential,
             OrbitCredentialType,
             OrbitTierCapability,
+            SeekerUsageCounter,
             CvEscoSkill,
             CvGeocodeCache,
             Rfq,
@@ -672,6 +679,11 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
       OrbitTierCapabilityRepository,
       PostgresOrbitTierCapabilityRepository,
       MongoOrbitTierCapabilityRepository,
+    ),
+    repositoryProvider(
+      SeekerUsageCounterRepository,
+      PostgresSeekerUsageCounterRepository,
+      MongoSeekerUsageCounterRepository,
     ),
     repositoryProvider(
       CvEscoSkillRepository,

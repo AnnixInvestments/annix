@@ -80,6 +80,15 @@ export class Candidate {
   embedding: string;
 
   @Prop({ type: String, required: false })
+  matchTier: string;
+
+  @Prop({ type: String, required: false })
+  trialTier: string;
+
+  @Prop({ type: Date, required: false })
+  trialEndsAt: Date;
+
+  @Prop({ type: String, required: false })
   createdAt: string;
 
   @Prop({ type: String, required: false })

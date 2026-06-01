@@ -48,6 +48,9 @@ export class PromoCode {
   @Prop({ type: Number, required: false })
   durationMonths: number;
 
+  @Prop({ type: String, required: false })
+  grantsTier: string;
+
   @Prop({ type: Number, required: false })
   maxRedemptions: number;
 
