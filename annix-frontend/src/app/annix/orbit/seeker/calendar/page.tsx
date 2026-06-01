@@ -21,6 +21,7 @@ const rawMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const GOOGLE_MAPS_API_KEY = rawMapsKey || "";
 
 const TRAVEL_BUFFER_MINUTES = 15;
+const CALENDAR_DAY_PAGE_SIZE = 14;
 
 interface BookingConflict {
   bookingId: number;
@@ -270,6 +271,12 @@ export default function SeekerCalendarPage() {
     );
   }, [bookingsByDay]);
 
+  const [visibleDayCount, setVisibleDayCount] = useState(CALENDAR_DAY_PAGE_SIZE);
+  const visibleDayKeys = sortedDayKeys.slice(0, visibleDayCount);
+  const hasMoreDays = sortedDayKeys.length > visibleDayCount;
+  const handleShowMoreDays = () =>
+    setVisibleDayCount((current) => current + CALENDAR_DAY_PAGE_SIZE);
+
   const invitesData = invitesQuery.data;
   const allInvites = invitesData ? invitesData : [];
   const openInvites = allInvites.filter((i) => i.usedAt === null);
@@ -330,7 +337,7 @@ export default function SeekerCalendarPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {sortedDayKeys.map((dayKey) => {
+          {visibleDayKeys.map((dayKey) => {
             const dayBookingsRaw = bookingsByDay.get(dayKey);
             const dayBookings = dayBookingsRaw ? dayBookingsRaw : [];
             const day = fromISO(dayKey);
@@ -398,6 +405,15 @@ export default function SeekerCalendarPage() {
               </div>
             );
           })}
+          {hasMoreDays ? (
+            <button
+              type="button"
+              onClick={handleShowMoreDays}
+              className="w-full py-3 text-sm font-medium rounded-xl border border-[#e0e0f5] bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Show more days ({visibleDayKeys.length} of {sortedDayKeys.length})
+            </button>
+          ) : null}
         </div>
       )}
     </div>

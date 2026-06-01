@@ -12,6 +12,8 @@ import {
   useOrbitUpdateSeekerApplication,
 } from "@/app/lib/query/hooks";
 
+const APPLICATIONS_PAGE_SIZE = 20;
+
 const STATUS_OPTIONS: { value: SeekerApplicationStatus; label: string }[] = [
   { value: "applied", label: "Applied" },
   { value: "interviewing", label: "Interviewing" },
@@ -50,6 +52,10 @@ export default function SeekerApplicationsPage() {
   const deleteMutation = useOrbitDeleteSeekerApplication();
   const data = query.data;
   const applications = data || [];
+  const [visibleCount, setVisibleCount] = useState(APPLICATIONS_PAGE_SIZE);
+  const visibleApplications = applications.slice(0, visibleCount);
+  const hasMore = applications.length > visibleCount;
+  const handleShowMore = () => setVisibleCount((current) => current + APPLICATIONS_PAGE_SIZE);
 
   const handleStatusChange = (id: number, status: SeekerApplicationStatus) => {
     updateMutation.mutate(
@@ -110,7 +116,7 @@ export default function SeekerApplicationsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {applications.map((application) => (
+          {visibleApplications.map((application) => (
             <ApplicationCard
               key={application.id}
               application={application}
@@ -119,6 +125,15 @@ export default function SeekerApplicationsPage() {
               onDelete={handleDelete}
             />
           ))}
+          {hasMore ? (
+            <button
+              type="button"
+              onClick={handleShowMore}
+              className="w-full py-3 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Show more ({visibleApplications.length} of {applications.length})
+            </button>
+          ) : null}
         </div>
       )}
       {ConfirmDialog}
