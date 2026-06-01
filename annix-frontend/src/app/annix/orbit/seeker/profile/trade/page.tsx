@@ -15,11 +15,13 @@ import {
   type TradeKey,
   type TradeProfile,
 } from "@annix/product-data/sa-market";
+import { isEqual } from "es-toolkit/compat";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { DateTime } from "@/app/lib/datetime";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitAutofillSeekerTradeProfile,
   useOrbitSeekerTradeProfile,
@@ -33,7 +35,10 @@ export default function SeekerTradeProfilePage() {
   const autofillMutation = useOrbitAutofillSeekerTradeProfile();
   const { showExtraction, hideExtraction } = useExtractionProgress();
 
+  const { confirm, ConfirmDialog } = useConfirm();
   const [profile, setProfile] = useState<TradeProfile>(emptyTradeProfile());
+  const [formVersion, setFormVersion] = useState(0);
+  const savedProfileRef = useRef<TradeProfile>(emptyTradeProfile());
 
   const queryData = query.data;
   const hydratedRef = useRef(false);
@@ -42,9 +47,12 @@ export default function SeekerTradeProfilePage() {
     const profileData = queryData?.profile;
     if (profileData) {
       setProfile(profileData);
+      savedProfileRef.current = profileData;
       hydratedRef.current = true;
     }
   }, [queryData]);
+
+  const isDirty = !isEqual(profile, savedProfileRef.current);
 
   const shared = profile.shared;
 
@@ -86,17 +94,19 @@ export default function SeekerTradeProfilePage() {
 
   const updateYears = (value: string) => {
     const n = Number.parseInt(value, 10);
+    const clamped = Number.isFinite(n) ? Math.min(60, Math.max(0, n)) : null;
     setProfile({
       ...profile,
-      shared: { ...shared, yearsExperience: Number.isFinite(n) ? n : null },
+      shared: { ...shared, yearsExperience: clamped },
     });
   };
 
   const updateRadius = (value: string) => {
     const n = Number.parseInt(value, 10);
+    const clamped = Number.isFinite(n) ? Math.min(2000, Math.max(0, n)) : null;
     setProfile({
       ...profile,
-      shared: { ...shared, siteRadiusKm: Number.isFinite(n) ? n : null },
+      shared: { ...shared, siteRadiusKm: clamped },
     });
   };
 
@@ -116,13 +126,27 @@ export default function SeekerTradeProfilePage() {
   };
 
   const handleSave = () => {
-    mutation.mutate(profile, {
-      onSuccess: () => showToast("Trade profile saved", "success"),
+    const snapshot = profile;
+    mutation.mutate(snapshot, {
+      onSuccess: () => {
+        savedProfileRef.current = snapshot;
+        showToast("Trade profile saved", "success");
+      },
       onError: () => showToast("Could not save trade profile", "error"),
     });
   };
 
   const handleAutofill = async () => {
+    if (isDirty) {
+      const proceed = await confirm({
+        title: "Replace your trade details?",
+        message:
+          "Auto-fill overwrites the trade details on this page with what Nix reads from your CV. Your unsaved changes here will be lost.",
+        confirmLabel: "Replace with CV data",
+        variant: "warning",
+      });
+      if (!proceed) return;
+    }
     const stats = await metricsApi
       .extractionStats("orbit-trade-extract", "cv-autofill")
       .catch(() => null);
@@ -138,6 +162,7 @@ export default function SeekerTradeProfilePage() {
         hideExtraction();
         if (result.extracted) {
           setProfile(result.profile);
+          setFormVersion((v) => v + 1);
           showToast("Trade profile auto-filled from your CV — review and save", "success");
           return;
         }
@@ -317,7 +342,7 @@ export default function SeekerTradeProfilePage() {
             <div className="space-y-2">
               {shared.shutdownHistory.map((entry, idx) => (
                 <ShutdownEntryRow
-                  key={`shutdown-${idx}-${entry.siteName}-${entry.year}`}
+                  key={`shutdown-${idx}`}
                   entry={entry}
                   onChange={(patch) => updateShutdownEntry(idx, patch)}
                   onRemove={() => removeShutdownEntry(idx)}
@@ -330,6 +355,7 @@ export default function SeekerTradeProfilePage() {
 
       {showPerTradeSections ? (
         <PerTradeSections
+          key={formVersion}
           tradeKeys={shared.tradeKeys}
           perTrade={profile.perTrade}
           onChange={updatePerTrade}
@@ -346,6 +372,7 @@ export default function SeekerTradeProfilePage() {
           {mutation.isPending ? "Saving…" : "Save trade profile"}
         </button>
       </div>
+      {ConfirmDialog}
     </div>
   );
 }
@@ -510,7 +537,7 @@ function BoilermakerForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.codedTickets.join(", ")}
-          onBlur={(e) => set({ codedTickets: csvToArray(e.target.value) })}
+          onChange={(e) => set({ codedTickets: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -519,7 +546,7 @@ function BoilermakerForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.specialisations.join(", ")}
-          onBlur={(e) => set({ specialisations: csvToArray(e.target.value) })}
+          onChange={(e) => set({ specialisations: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -557,7 +584,7 @@ function CodedWelderForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.processes.join(", ")}
-          onBlur={(e) => set({ processes: csvToArray(e.target.value) })}
+          onChange={(e) => set({ processes: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -566,7 +593,7 @@ function CodedWelderForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.positions.join(", ")}
-          onBlur={(e) => set({ positions: csvToArray(e.target.value) })}
+          onChange={(e) => set({ positions: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -575,7 +602,7 @@ function CodedWelderForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.materialsCoded.join(", ")}
-          onBlur={(e) => set({ materialsCoded: csvToArray(e.target.value) })}
+          onChange={(e) => set({ materialsCoded: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -652,7 +679,7 @@ function RubberLinerForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.linerCertifications.join(", ")}
-          onBlur={(e) => set({ linerCertifications: csvToArray(e.target.value) })}
+          onChange={(e) => set({ linerCertifications: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -661,7 +688,7 @@ function RubberLinerForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.adhesiveSystemsUsed.join(", ")}
-          onBlur={(e) => set({ adhesiveSystemsUsed: csvToArray(e.target.value) })}
+          onChange={(e) => set({ adhesiveSystemsUsed: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -710,7 +737,7 @@ function PipeFitterForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.pipeSpecExperience.join(", ")}
-          onBlur={(e) => set({ pipeSpecExperience: csvToArray(e.target.value) })}
+          onChange={(e) => set({ pipeSpecExperience: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -767,7 +794,7 @@ function DieselMechanicForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.enginesWorked.join(", ")}
-          onBlur={(e) => set({ enginesWorked: csvToArray(e.target.value) })}
+          onChange={(e) => set({ enginesWorked: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -778,7 +805,7 @@ function DieselMechanicForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.vehiclesWorked.join(", ")}
-          onBlur={(e) => set({ vehiclesWorked: csvToArray(e.target.value) })}
+          onChange={(e) => set({ vehiclesWorked: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -787,7 +814,7 @@ function DieselMechanicForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.electronicDiagnosticsTools.join(", ")}
-          onBlur={(e) => set({ electronicDiagnosticsTools: csvToArray(e.target.value) })}
+          onChange={(e) => set({ electronicDiagnosticsTools: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
@@ -904,7 +931,7 @@ function ElectricianForm({ perTrade, onChange }: PerTradeFormProps) {
         <input
           type="text"
           defaultValue={current.specialClasses.join(", ")}
-          onBlur={(e) => set({ specialClasses: csvToArray(e.target.value) })}
+          onChange={(e) => set({ specialClasses: csvToArray(e.target.value) })}
           className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
         />
       </label>
