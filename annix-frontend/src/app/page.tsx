@@ -45,8 +45,14 @@ export default function HomePage() {
       </div>
 
       <div className="w-full px-4 sm:px-6 lg:px-8 py-12 -mt-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-          <Link href="/rfq-portal" target="_blank" rel="noopener noreferrer" className="group">
+        <div className="flex flex-wrap justify-center gap-8 max-w-6xl mx-auto">
+          {/* card width: 1-up mobile, 2-up tablet, 3-up desktop — flex-wrap + justify-center keeps the last row centred */}
+          <Link
+            href="/rfq-portal"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]"
+          >
             <div className="relative aspect-[4/5] bg-slate-950 overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
               <BrandLoginCard
                 brand="annix-forge"
@@ -55,7 +61,10 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/core" className="group h-full">
+          <Link
+            href="/core"
+            className="group h-full w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]"
+          >
             <div className="relative aspect-[4/5] bg-slate-950 overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
               <BrandLoginCard
                 brand="annix-core"
@@ -64,7 +73,12 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/annix-rep/setup" target="_blank" rel="noopener noreferrer" className="group">
+          <Link
+            href="/annix-rep/setup"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="group w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]"
+          >
             <div className="relative aspect-[4/5] bg-slate-950 overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-emerald-400 hover:shadow-2xl">
               <BrandLoginCard
                 brand="annix-rep"
@@ -73,7 +87,11 @@ export default function HomePage() {
             </div>
           </Link>
 
-          <Link href="/annix-sentinel" target="_blank" className="group h-full">
+          <Link
+            href="/annix-sentinel"
+            target="_blank"
+            className="group h-full w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]"
+          >
             <div className="relative aspect-[4/5] bg-slate-950 overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-blue-400 hover:shadow-2xl">
               <BrandLoginCard
                 brand="annix-sentinel"
@@ -86,7 +104,7 @@ export default function HomePage() {
             href="/annix/orbit"
             target="_blank"
             rel="noopener noreferrer"
-            className="group h-full"
+            className="group h-full w-full sm:w-[calc(50%-1rem)] lg:w-[calc(33.333%-1.334rem)]"
           >
             <div className="relative aspect-[4/5] bg-slate-950 overflow-hidden rounded-xl border-2 border-transparent shadow-lg transition-all duration-300 hover:border-indigo-400 hover:shadow-2xl">
               <BrandLoginCard

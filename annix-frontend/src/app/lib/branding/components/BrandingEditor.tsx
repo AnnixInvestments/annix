@@ -307,7 +307,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       });
       showToast("Uploaded — preview updated. Publish to go live.", "success");
     } catch {
-      showToast("Upload failed — use a PNG/JPG/SVG under 2MB.", "error");
+      showToast("Upload failed — use a PNG/JPG/SVG under 10MB.", "error");
     } finally {
       setUploadingKey(null);
     }
@@ -319,7 +319,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       setNewImageLabel("");
       showToast("Image added to the gallery.", "success");
     } catch {
-      showToast("Couldn't add the image — use a PNG/JPG/SVG under 2MB.", "error");
+      showToast("Couldn't add the image — use a PNG/JPG/SVG under 10MB.", "error");
     }
   };
 
@@ -541,7 +541,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
             <h2 className="text-lg font-semibold text-gray-900 mb-1">Logo layers</h2>
             <p className="text-xs text-gray-500 mb-3">
               Each layer takes a Light variant (for light backgrounds) and a Dark variant (for dark
-              backgrounds). PNG/JPG/SVG/WebP under 2MB. Leave a variant empty to inherit the{" "}
+              backgrounds). PNG/JPG/SVG/WebP under 10MB. Leave a variant empty to inherit the{" "}
               {MASTER_LABEL} master asset.
             </p>
             <div className="space-y-2">

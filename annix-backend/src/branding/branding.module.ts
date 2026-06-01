@@ -27,7 +27,7 @@ import { AppBrandingImageSchema } from "./schemas/app-branding-image.schema";
           ]),
         ]
       : [TypeOrmModule.forFeature([AppBranding, AppBrandingImage])]),
-    MulterModule.register({ limits: { fileSize: 2 * 1024 * 1024 } }),
+    MulterModule.register({ limits: { fileSize: 10 * 1024 * 1024 } }),
     StorageModule,
     AdminModule,
   ],
