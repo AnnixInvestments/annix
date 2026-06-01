@@ -1191,6 +1191,17 @@ class AdminApiClient {
     });
   }
 
+  async inviteSeekerTrial(
+    email: string,
+    tier: string,
+    freeDays: number,
+  ): Promise<{ candidatesAffected: number; trialEndsAt: string | null }> {
+    return this.request("/admin/annix-orbit/seekers/invite-trial", {
+      method: "POST",
+      body: JSON.stringify({ email, tier, freeDays }),
+    });
+  }
+
   async appBranding(brand: string): Promise<BrandingAdminView> {
     return this.request(`/admin/branding/${brand}`);
   }

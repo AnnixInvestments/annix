@@ -1,6 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Query, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
-import { SetSeekerMatchTierDto } from "../dto/seeker-match-tier.dto";
+import { InviteSeekerTrialDto, SetSeekerMatchTierDto } from "../dto/seeker-match-tier.dto";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
 @Controller("admin/annix-orbit/seekers")
@@ -34,5 +34,10 @@ export class AdminOrbitSeekerController {
   @Patch("match-tier")
   async setMatchTier(@Body() dto: SetSeekerMatchTierDto) {
     return this.feedService.setMatchTierForSeeker(dto.email, dto.tier);
+  }
+
+  @Post("invite-trial")
+  async inviteTrial(@Body() dto: InviteSeekerTrialDto) {
+    return this.feedService.inviteSeekerTrial(dto.email, dto.tier, dto.freeDays);
   }
 }

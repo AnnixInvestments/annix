@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitTierCapability, OrbitTierFeatures } from "@/app/lib/api/adminApi";
 import {
+  useAdminInviteSeekerTrial,
   useAdminOrbitSeekerMatchTier,
   useAdminOrbitTierCapabilities,
   useAdminSetOrbitSeekerMatchTier,
@@ -272,7 +273,110 @@ export default function AdminOrbitSeekerTiersPage() {
       </section>
 
       <SeekerOverrideSection />
+
+      <InviteSeekerTrialSection />
     </div>
+  );
+}
+
+const TRIAL_TIER_OPTIONS = [
+  { key: "soft", label: "Soft (free)" },
+  { key: "medium", label: "Medium" },
+  { key: "hard", label: "Heavy" },
+];
+
+function InviteSeekerTrialSection() {
+  const { showToast } = useToast();
+  const inviteMutation = useAdminInviteSeekerTrial();
+  const [email, setEmail] = useState("");
+  const [tier, setTier] = useState("medium");
+  const [freeDays, setFreeDays] = useState("14");
+
+  const isSaving = inviteMutation.isPending;
+
+  const handleInvite = () => {
+    const trimmed = email.trim();
+    const days = Number(freeDays);
+    if (!trimmed || !Number.isFinite(days) || days <= 0) {
+      showToast("Enter a valid email and number of free days.", "error");
+      return;
+    }
+    inviteMutation.mutate(
+      { email: trimmed, tier, freeDays: days },
+      {
+        onSuccess: (result) => {
+          if (result.candidatesAffected > 0) {
+            showToast(
+              `Granted "${tier}" free for ${days} days to ${result.candidatesAffected} candidate(s).`,
+              "success",
+            );
+            setEmail("");
+          } else {
+            showToast(
+              "No seeker account found for that email yet — they'll get the tier once they sign up and upload a CV.",
+              "info",
+            );
+          }
+        },
+        onError: () => showToast("Could not grant the trial.", "error"),
+      },
+    );
+  };
+
+  return (
+    <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900">Invite a seeker (free trial)</h2>
+        <p className="text-sm text-gray-500 mt-0.5">
+          Grant a seeker free access to a tier for a number of days. After the trial they revert to
+          their normal tier (billing comes later).
+        </p>
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-sm">
+        <label className="flex flex-col sm:col-span-2">
+          <span className="text-gray-500">Seeker email</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="seeker@example.com"
+            className="rounded-lg border border-gray-300 px-2 py-1"
+          />
+        </label>
+        <label className="flex flex-col">
+          <span className="text-gray-500">Tier</span>
+          <select
+            value={tier}
+            onChange={(e) => setTier(e.target.value)}
+            className="rounded-lg border border-gray-300 px-2 py-1"
+          >
+            {TRIAL_TIER_OPTIONS.map((option) => (
+              <option key={option.key} value={option.key}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col">
+          <span className="text-gray-500">Free days</span>
+          <input
+            type="number"
+            min={1}
+            value={freeDays}
+            onChange={(e) => setFreeDays(e.target.value)}
+            className="rounded-lg border border-gray-300 px-2 py-1"
+          />
+        </label>
+      </div>
+      <button
+        type="button"
+        onClick={handleInvite}
+        disabled={isSaving}
+        className="px-4 py-2 rounded-lg bg-violet-600 text-white text-sm font-medium hover:bg-violet-700 disabled:opacity-50"
+      >
+        {isSaving ? "Granting…" : "Grant free trial"}
+      </button>
+    </section>
   );
 }
 

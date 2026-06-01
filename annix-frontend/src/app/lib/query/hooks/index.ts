@@ -59,6 +59,7 @@ export {
   useAdminVetPendingOrbitJobs,
 } from "./admin/useAdminOrbitJobMarket";
 export {
+  useAdminInviteSeekerTrial,
   useAdminOrbitTierCapabilities,
   useAdminUpdateOrbitTierCapability,
 } from "./admin/useAdminOrbitTierCapabilities";

@@ -825,6 +825,29 @@ export class SeekerJobFeedService {
     this.logger.log(`Set match tier "${tier}" for ${candidates.length} candidate(s) of ${email}`);
     return { candidatesAffected: candidates.length, matchTier: tier };
   }
+
+  async inviteSeekerTrial(
+    email: string | null,
+    tier: string,
+    freeDays: number,
+  ): Promise<{ candidatesAffected: number; trialEndsAt: string | null }> {
+    if (!isMatchTier(tier)) {
+      throw new BadRequestException(`Invalid tier: ${tier}`);
+    }
+    if (!Number.isFinite(freeDays) || freeDays <= 0) {
+      throw new BadRequestException("Free days must be a positive number.");
+    }
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) {
+      return { candidatesAffected: 0, trialEndsAt: null };
+    }
+    const trialEndsAt = DateTime.now().plus({ days: freeDays }).toJSDate();
+    await Promise.all(
+      candidates.map((candidate) => this.candidateRepo.setTrial(candidate.id, tier, trialEndsAt)),
+    );
+    this.logger.log(`Granted "${tier}" trial (${freeDays}d) to ${candidates.length} of ${email}`);
+    return { candidatesAffected: candidates.length, trialEndsAt: trialEndsAt.toISOString() };
+  }
 }
 
 function toSeekerMatch(

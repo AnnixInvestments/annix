@@ -16,6 +16,7 @@ import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
 import { PostgresUserRepository } from "../user/user.repository.postgres";
+import { DefaultAppLicensingRegistrar } from "./default-app-licensing.registrar";
 import { ModuleCatalogOverride } from "./entities/module-catalog-override.entity";
 import { ModuleLicense } from "./entities/module-license.entity";
 import { PromoCode } from "./entities/promo-code.entity";
@@ -83,6 +84,7 @@ import { TenancyAdminController } from "./tenancy-admin.controller";
   ],
   providers: [
     FeatureRegistry,
+    DefaultAppLicensingRegistrar,
     LicensingService,
     LicensingCatalogService,
     LicensingSeatService,

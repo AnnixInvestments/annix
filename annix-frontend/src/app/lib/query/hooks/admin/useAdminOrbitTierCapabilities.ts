@@ -35,3 +35,10 @@ export function useAdminUpdateOrbitTierCapability() {
     },
   });
 }
+
+export function useAdminInviteSeekerTrial() {
+  return useMutation({
+    mutationFn: (input: { email: string; tier: string; freeDays: number }) =>
+      adminApiClient.inviteSeekerTrial(input.email, input.tier, input.freeDays),
+  });
+}
