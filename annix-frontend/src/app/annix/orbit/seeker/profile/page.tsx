@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -20,9 +21,9 @@ export default function SeekerProfilePage() {
   const documentsQuery = useOrbitMyDocuments();
   const deleteMutation = useOrbitDeleteMyDocument();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast } = useToast();
   const [warningOpen, setWarningOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [nixAutoRunKey, setNixAutoRunKey] = useState(0);
 
   const status = statusQuery.data;
@@ -59,13 +60,12 @@ export default function SeekerProfilePage() {
       variant: "danger",
     });
     if (!confirmed) return;
-    setDeleteError(null);
     setPendingDeleteId(doc.id);
     deleteMutation.mutate(doc.id, {
       onSuccess: () => setPendingDeleteId(null),
       onError: () => {
         setPendingDeleteId(null);
-        setDeleteError("Couldn't delete the document — please try again.");
+        showToast("Couldn't delete the document — please try again.", "error");
       },
     });
   };
@@ -155,12 +155,6 @@ export default function SeekerProfilePage() {
           ctaLabel={certificates.length > 0 ? "Add another certificate" : "Upload certificate"}
         />
       </SectionCard>
-
-      {deleteError && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {deleteError}
-        </div>
-      )}
 
       {hasCv && (
         <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
