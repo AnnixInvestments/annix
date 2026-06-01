@@ -1937,6 +1937,10 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/seeker/jobs/rematch", { method: "POST" });
   }
 
+  async seekerJobSearchEstimate(): Promise<{ estimatedDurationMs: number }> {
+    return this.request("/annix-orbit/seeker/jobs/search-estimate");
+  }
+
   async withdrawSeekerMatching(): Promise<{ candidatesAffected: number; matchesCleared: number }> {
     return this.request("/annix-orbit/seeker/jobs/withdraw-matching", { method: "POST" });
   }
@@ -2509,16 +2513,32 @@ export interface SeekerJobStats {
   matchesLast7Days: number;
 }
 
+export interface SeekerQuotaStatus {
+  unlimited: boolean;
+  allowance: number | null;
+  used: number;
+  remaining: number | null;
+  resetsAt: string;
+}
+
 export interface SeekerMatchingConsentStatus {
   hasCandidate: boolean;
   consented: boolean;
   consentedAt: string | null;
+  quota: SeekerQuotaStatus | null;
 }
 
 export type SeekerRematchResponse =
   | { triggered: true; rematchedCandidates: number[] }
   | { triggered: false; reason: "no-candidate" }
-  | { triggered: false; reason: "rate-limited"; retryAfterSeconds: number };
+  | { triggered: false; reason: "rate-limited"; retryAfterSeconds: number }
+  | {
+      triggered: false;
+      reason: "quota-exceeded";
+      used: number;
+      allowance: number;
+      resetsAt: string;
+    };
 
 export interface SeekerJobMatchDetails {
   embeddingSimilarity: number;

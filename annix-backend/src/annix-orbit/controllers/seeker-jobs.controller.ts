@@ -157,6 +157,12 @@ export class SeekerJobsController {
     return result;
   }
 
+  @Get("search-estimate")
+  async searchEstimate() {
+    const estimatedDurationMs = await this.feedService.nixSearchEstimateMs();
+    return { estimatedDurationMs };
+  }
+
   @Post("rematch")
   async rematch(@Request() req: SeekerAuthRequest) {
     const result = await this.feedService.rematchForSeeker(req.user.email);

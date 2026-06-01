@@ -49,6 +49,8 @@ export default function SeekerJobsPage() {
   const consentQuery = useOrbitSeekerMatchingConsent(hasCv === true);
   const grantConsentMutation = useOrbitGrantSeekerMatchingConsent();
   const consentData = consentQuery.data;
+  const consentQuota = consentData?.quota;
+  const quotaRemaining = consentQuota ? consentQuota.remaining : null;
   const consentReady = consentData != null;
   const consentHasCandidate = consentData ? consentData.hasCandidate : false;
   const consentGranted = consentData ? consentData.consented : false;
@@ -79,7 +81,18 @@ export default function SeekerJobsPage() {
   });
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
   const [nixSearching, setNixSearching] = useState<boolean>(false);
+  const [nixSearchEstimateMs, setNixSearchEstimateMs] = useState<number>(90_000);
   const consentPromptShown = useRef(false);
+
+  useEffect(() => {
+    annixOrbitApiClient
+      .seekerJobSearchEstimate()
+      .then((result) => {
+        const learned = result.estimatedDurationMs;
+        if (learned > 0) setNixSearchEstimateMs(learned);
+      })
+      .catch(() => {});
+  }, []);
 
   const browseJobsEnabled = profileReady;
   const [browseLimit, setBrowseLimit] = useState(100);
@@ -313,6 +326,7 @@ export default function SeekerJobsPage() {
     setNixSearching(true);
     const recommendedData = recommendedQuery.data;
     const startCount = recommendedData ? recommendedData.matches.length : 0;
+    let quotaBlock: { used: number; allowance: number } | null = null;
     try {
       // The branded progress popup wraps the whole search so it appears the moment
       // Nix starts. The trigger is best-effort: a transient hiccup (backend
@@ -324,17 +338,23 @@ export default function SeekerJobsPage() {
         {
           brand: "annix-orbit",
           label: "Nix is reading your CV and searching the jobs…",
-          estimatedDurationMs: 90_000,
+          estimatedDurationMs: nixSearchEstimateMs,
         },
-        async (): Promise<"found" | "pending" | "cooldown"> => {
+        async (): Promise<"found" | "pending" | "cooldown" | "quota"> => {
           let rateLimited = false;
           try {
             const result = await rematchMutation.mutateAsync();
             if (!result.triggered && result.reason === "rate-limited") {
               rateLimited = true;
             }
+            if (!result.triggered && result.reason === "quota-exceeded") {
+              quotaBlock = { used: result.used, allowance: result.allowance };
+            }
           } catch {
             // best-effort trigger — keep going and poll for results
+          }
+          if (quotaBlock) {
+            return "quota";
           }
           if (rateLimited) {
             await recommendedQuery.refetch().catch(() => {});
@@ -344,7 +364,18 @@ export default function SeekerJobsPage() {
           return found ? "found" : "pending";
         },
       );
-      if (outcome === "found") {
+      if (outcome === "quota") {
+        const block = quotaBlock as { used: number; allowance: number } | null;
+        const allowance = block ? block.allowance : 0;
+        await consentQuery.refetch().catch(() => {});
+        await confirm({
+          title: "You've used your monthly matches",
+          message: `You've used all ${allowance} of your "Help me Find a Job" matches this month. Your matches reset at the start of next month — higher plans with more matches are coming soon.`,
+          confirmLabel: "Got it",
+          variant: "info",
+          hideCancel: true,
+        });
+      } else if (outcome === "found") {
         showToast("Nix found jobs that match your CV.", "success");
       } else if (outcome === "cooldown") {
         showToast("Nix searched recently — your matches are up to date.", "info");
@@ -422,6 +453,7 @@ export default function SeekerJobsPage() {
         hasCv={false}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
+        quotaRemaining={quotaRemaining}
         hasMore={hasMoreBrowse}
         loadingMore={browseLoadingMore}
         onLoadMore={handleLoadMoreBrowse}
@@ -469,6 +501,7 @@ export default function SeekerJobsPage() {
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
+        quotaRemaining={quotaRemaining}
         hasMore={hasMoreBrowse}
         loadingMore={browseLoadingMore}
         onLoadMore={handleLoadMoreBrowse}
@@ -525,6 +558,7 @@ export default function SeekerJobsPage() {
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
+        quotaRemaining={quotaRemaining}
         hasMore={hasMoreBrowse}
         loadingMore={browseLoadingMore}
         onLoadMore={handleLoadMoreBrowse}
@@ -547,6 +581,7 @@ export default function SeekerJobsPage() {
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
+        quotaRemaining={quotaRemaining}
       />
 
       {showColdStart ? (
@@ -596,10 +631,13 @@ function JobsTopBar(props: {
   hasCv: boolean;
   searching: boolean;
   onHelpFindJob: () => void;
+  quotaRemaining: number | null;
 }) {
-  const { jobCount, matchCount, hasCv, searching, onHelpFindJob } = props;
+  const { jobCount, matchCount, hasCv, searching, onHelpFindJob, quotaRemaining } = props;
   const countLabel = jobCount > 0 ? jobCount.toLocaleString() : "—";
   const matchLabel = matchCount > 0 ? matchCount.toLocaleString() : "—";
+  const outOfQuota = quotaRemaining !== null && quotaRemaining <= 0;
+  const quotaNote = quotaRemaining !== null ? `${quotaRemaining} left this month` : null;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -624,15 +662,19 @@ function JobsTopBar(props: {
           <button
             type="button"
             onClick={onHelpFindJob}
-            disabled={searching}
+            disabled={searching || outOfQuota}
             className="rounded-xl p-5 text-left transition-opacity hover:opacity-90 disabled:opacity-60"
             style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
           >
             <p className="text-lg font-bold text-white">
-              {searching ? "Nix is searching…" : "Help me Find a Job"}
+              {searching
+                ? "Nix is searching…"
+                : outOfQuota
+                  ? "Out of matches this month"
+                  : "Help me Find a Job"}
             </p>
             <p className="text-sm text-white/85 mt-1">
-              Let Nix match these jobs to your CV and surface the best fits.
+              {quotaNote ?? "Let Nix match these jobs to your CV and surface the best fits."}
             </p>
           </button>
         ) : (
@@ -664,6 +706,7 @@ interface BrowseAllJobsViewProps {
   hasCv: boolean;
   searching: boolean;
   onHelpFindJob: () => void;
+  quotaRemaining: number | null;
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
@@ -687,6 +730,7 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
         hasCv={props.hasCv}
         searching={props.searching}
         onHelpFindJob={props.onHelpFindJob}
+        quotaRemaining={props.quotaRemaining}
       />
 
       {matchesPending ? (

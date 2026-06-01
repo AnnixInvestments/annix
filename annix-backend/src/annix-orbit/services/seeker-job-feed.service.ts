@@ -1,6 +1,7 @@
 import { DEFAULT_MATCH_TIER, isMatchTier, type MatchTier } from "@annix/product-data/sa-market";
 import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
 import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
@@ -16,14 +17,22 @@ import { CandidateJobMatchRepository } from "../repositories/candidate-job-match
 import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
+import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
 import { SeekerMuteRepository } from "../repositories/seeker-mute.repository";
+import { SeekerUsageCounterRepository } from "../repositories/seeker-usage-counter.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
+
+const HELP_FIND_JOB_OPERATION = "help-find-job";
 
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
 const MAX_COLD_START = 12;
 const MAX_LOCKED_TEASERS = 3;
+
+const NIX_SEARCH_METRIC_CATEGORY = "annix-orbit-nix-seeker";
+const NIX_SEARCH_METRIC_OPERATION = "job-search";
+const NIX_SEARCH_FALLBACK_MS = 90_000;
 
 export interface SeekerJobMatch {
   matchId: number;
@@ -125,13 +134,56 @@ export class SeekerJobFeedService {
     private readonly externalJobRepo: ExternalJobRepository,
     private readonly muteRepo: SeekerMuteRepository,
     private readonly matchingService: CandidateJobMatchingService,
+    private readonly metrics: ExtractionMetricService,
     private readonly profileRepo: AnnixOrbitProfileRepository,
     private readonly documentRepo: AnnixOrbitIndividualDocumentRepository,
     private readonly userRepo: UserRepository,
     private readonly referenceRepo: CandidateReferenceRepository,
+    private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
+    private readonly usageCounterRepo: SeekerUsageCounterRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
+
+  private effectiveTier(candidates: Candidate[]): string {
+    const nowMs = nowMillis();
+    const withTrial = candidates.find(
+      (c) => c.trialTier != null && c.trialEndsAt != null && c.trialEndsAt.getTime() > nowMs,
+    );
+    if (withTrial?.trialTier) {
+      return withTrial.trialTier;
+    }
+    const first = candidates[0];
+    return first?.matchTier ?? "soft";
+  }
+
+  private async quotaForSeeker(
+    email: string | null,
+    candidates: Candidate[],
+  ): Promise<{
+    unlimited: boolean;
+    allowance: number | null;
+    used: number;
+    remaining: number | null;
+    resetsAt: string;
+  }> {
+    const resetsAt = DateTime.now().endOf("month").toISO() ?? "";
+    const tier = this.effectiveTier(candidates);
+    const capability = await this.tierCapabilityRepo.findByTier(tier);
+    const allowance = capability ? capability.monthlyNixRuns : null;
+    if (allowance == null) {
+      return { unlimited: true, allowance: null, used: 0, remaining: null, resetsAt };
+    }
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const monthKey = DateTime.now().toFormat("yyyy-LL");
+    const used = await this.usageCounterRepo.getCount(
+      normalizedEmail,
+      HELP_FIND_JOB_OPERATION,
+      monthKey,
+    );
+    const remaining = Math.max(0, allowance - used);
+    return { unlimited: false, allowance, used, remaining, resetsAt };
+  }
 
   async muteCompanyForSeeker(
     email: string | null,
@@ -360,22 +412,33 @@ export class SeekerJobFeedService {
     );
   }
 
-  async consentStatusForSeeker(
-    email: string | null,
-  ): Promise<{ hasCandidate: boolean; consented: boolean; consentedAt: string | null }> {
+  async consentStatusForSeeker(email: string | null): Promise<{
+    hasCandidate: boolean;
+    consented: boolean;
+    consentedAt: string | null;
+    quota: {
+      unlimited: boolean;
+      allowance: number | null;
+      used: number;
+      remaining: number | null;
+      resetsAt: string;
+    } | null;
+  }> {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) {
-      return { hasCandidate: false, consented: false, consentedAt: null };
+      return { hasCandidate: false, consented: false, consentedAt: null, quota: null };
     }
     const consented = candidates.every((c) => c.popiaConsent);
     const consentedAt = candidates
       .map((c) => c.popiaConsentedAt)
       .filter((d): d is Date => d !== null)
       .sort((a, b) => b.getTime() - a.getTime())[0];
+    const quota = await this.quotaForSeeker(email, candidates);
     return {
       hasCandidate: true,
       consented,
       consentedAt: consentedAt ? consentedAt.toISOString() : null,
+      quota,
     };
   }
 
@@ -477,12 +540,23 @@ export class SeekerJobFeedService {
     return { matches, candidateIds: candidates.map((c) => c.id) };
   }
 
-  async rematchForSeeker(
-    email: string | null,
-  ): Promise<
+  async nixSearchEstimateMs(): Promise<number> {
+    const stats = await this.metrics.stats(NIX_SEARCH_METRIC_CATEGORY, NIX_SEARCH_METRIC_OPERATION);
+    const learned = stats.averageMs;
+    return learned != null && learned > 0 ? Math.round(learned) : NIX_SEARCH_FALLBACK_MS;
+  }
+
+  async rematchForSeeker(email: string | null): Promise<
     | { triggered: true; rematchedCandidates: number[] }
     | { triggered: false; reason: "no-candidate" }
     | { triggered: false; reason: "rate-limited"; retryAfterSeconds: number }
+    | {
+        triggered: false;
+        reason: "quota-exceeded";
+        used: number;
+        allowance: number;
+        resetsAt: string;
+      }
   > {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) {
@@ -503,12 +577,25 @@ export class SeekerJobFeedService {
       return { triggered: false, reason: "rate-limited", retryAfterSeconds };
     }
 
+    const quota = await this.quotaForSeeker(email, candidates);
+    if (!quota.unlimited && quota.allowance != null && quota.used >= quota.allowance) {
+      return {
+        triggered: false,
+        reason: "quota-exceeded",
+        used: quota.used,
+        allowance: quota.allowance,
+        resetsAt: quota.resetsAt,
+      };
+    }
+
     candidates.forEach((c) => this.lastRematchByCandidate.set(c.id, now));
 
     void Promise.all(
       candidates.map((candidate) =>
-        this.matchingService
-          .matchCandidateToJobs(candidate.id)
+        this.metrics
+          .time(NIX_SEARCH_METRIC_CATEGORY, NIX_SEARCH_METRIC_OPERATION, () =>
+            this.matchingService.matchCandidateToJobs(candidate.id),
+          )
           .catch((err) =>
             this.logger.warn(
               `Manual rematch failed for candidate ${candidate.id}: ${err instanceof Error ? err.message : String(err)}`,
@@ -516,6 +603,15 @@ export class SeekerJobFeedService {
           ),
       ),
     );
+
+    if (!quota.unlimited) {
+      const normalizedEmail = email ? email.trim().toLowerCase() : "";
+      await this.usageCounterRepo.increment(
+        normalizedEmail,
+        HELP_FIND_JOB_OPERATION,
+        DateTime.now().toFormat("yyyy-LL"),
+      );
+    }
 
     return { triggered: true, rematchedCandidates: candidates.map((c) => c.id) };
   }
