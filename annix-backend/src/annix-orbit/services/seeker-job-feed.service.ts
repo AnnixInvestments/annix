@@ -21,7 +21,10 @@ import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capabi
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
 import { SeekerMuteRepository } from "../repositories/seeker-mute.repository";
 import { SeekerUsageCounterRepository } from "../repositories/seeker-usage-counter.repository";
-import { CandidateJobMatchingService } from "./candidate-job-matching.service";
+import {
+  CandidateJobMatchingService,
+  type RecommendedJobFilters,
+} from "./candidate-job-matching.service";
 
 const HELP_FIND_JOB_OPERATION = "help-find-job";
 
@@ -457,7 +460,7 @@ export class SeekerJobFeedService {
 
   async recommendedForSeeker(
     email: string | null,
-    options: { includeDismissed?: boolean } = {},
+    options: { includeDismissed?: boolean; filters?: RecommendedJobFilters | null } = {},
   ): Promise<{ matches: SeekerJobMatch[]; candidateIds: number[] }> {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) {
@@ -468,6 +471,7 @@ export class SeekerJobFeedService {
       candidates.map((candidate) =>
         this.matchingService.recommendedJobsForCandidate(candidate.id, {
           includeDismissed: options.includeDismissed ?? false,
+          filters: options.filters ?? null,
         }),
       ),
     );

@@ -50,6 +50,51 @@ export const STRETCH_SCORE_BAND_MIN = 0.6;
 export const STRETCH_SCORE_BAND_MAX = 0.79;
 const RECOMMENDED_FETCH_WINDOW = 200;
 
+export interface RecommendedJobFilters {
+  province?: string | null;
+  city?: string | null;
+  category?: string | null;
+  minSalary?: number | null;
+  search?: string | null;
+}
+
+function jobMatchesRecommendedFilters(job: ExternalJob, filters: RecommendedJobFilters): boolean {
+  const category = filters.category || null;
+  if (category && job.category !== category) {
+    return false;
+  }
+  const locationArea = job.locationArea || "";
+  const locationRaw = job.locationRaw || "";
+  const locationHaystack = `${locationArea} ${locationRaw}`.toLowerCase();
+  const province = filters.province ? filters.province.toLowerCase() : null;
+  if (province && !locationHaystack.includes(province)) {
+    return false;
+  }
+  const city = filters.city ? filters.city.toLowerCase() : null;
+  if (city && !locationHaystack.includes(city)) {
+    return false;
+  }
+  const minSalary = filters.minSalary != null && filters.minSalary > 0 ? filters.minSalary : null;
+  if (minSalary != null) {
+    const best =
+      job.salaryMax != null ? job.salaryMax : job.salaryMin != null ? job.salaryMin : null;
+    if (best != null && best < minSalary) {
+      return false;
+    }
+  }
+  const search = filters.search ? filters.search.trim().toLowerCase() : null;
+  if (search) {
+    const company = job.company || "";
+    const description = job.description || "";
+    const keywordHaystack =
+      `${job.title} ${company} ${locationArea} ${locationRaw} ${description}`.toLowerCase();
+    if (!keywordHaystack.includes(search)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 const TRADE_KEY_KEYWORDS: Record<TradeKey, string[]> = {
   boilermaker: ["boilermaker", "boiler maker"],
   coded_welder: ["coded welder", "saqcc welder", "welder"],
@@ -168,7 +213,7 @@ export class CandidateJobMatchingService {
 
   async recommendedJobsForCandidate(
     candidateId: number,
-    options: { includeDismissed?: boolean } = {},
+    options: { includeDismissed?: boolean; filters?: RecommendedJobFilters | null } = {},
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
     const allMatches = await this.matchRepo.recommendedJobsForCandidate(
       candidateId,
@@ -176,7 +221,14 @@ export class CandidateJobMatchingService {
       RECOMMENDED_FETCH_WINDOW,
     );
 
-    return this.applyStretchMatchDiversity(allMatches);
+    const filters = options.filters;
+    const filtered = filters
+      ? allMatches.filter((match) =>
+          match.externalJob ? jobMatchesRecommendedFilters(match.externalJob, filters) : false,
+        )
+      : allMatches;
+
+    return this.applyStretchMatchDiversity(filtered);
   }
 
   applyStretchMatchDiversity<T extends Pick<CandidateJobMatch, "overallScore">>(

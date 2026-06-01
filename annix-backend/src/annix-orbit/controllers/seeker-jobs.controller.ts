@@ -10,6 +10,7 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
@@ -54,8 +55,24 @@ export class SeekerJobsController {
   constructor(private readonly feedService: SeekerJobFeedService) {}
 
   @Get("recommended")
-  async recommended(@Request() req: SeekerAuthRequest) {
-    const result = await this.feedService.recommendedForSeeker(req.user.email);
+  async recommended(
+    @Request() req: SeekerAuthRequest,
+    @Query("province") province?: string,
+    @Query("city") city?: string,
+    @Query("category") category?: string,
+    @Query("minSalary") minSalary?: string,
+    @Query("search") search?: string,
+  ) {
+    const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
+    const filters = {
+      province: province || null,
+      city: city || null,
+      category: category || null,
+      minSalary:
+        parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
+      search: search || null,
+    };
+    const result = await this.feedService.recommendedForSeeker(req.user.email, { filters });
     return {
       matches: result.matches,
       candidateIds: result.candidateIds,
