@@ -39,6 +39,12 @@ export interface SyncResultDto {
 }
 
 const JOB_METADATA: Record<string, { description: string; module: string; defaultCron: string }> = {
+  "maintenance:drop-empty-collections": {
+    description:
+      "Drop empty (0-document) collections that carry no secondary indexes, keeping the Atlas M0 cluster under its 500-collection cap",
+    module: "Platform",
+    defaultCron: "0 3 * * *",
+  },
   "fieldflow:sync-meetings": {
     description: "Sync completed meetings from calendar providers",
     module: "FieldFlow",

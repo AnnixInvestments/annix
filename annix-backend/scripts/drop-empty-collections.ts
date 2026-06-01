@@ -1,19 +1,8 @@
 import { config as dotenvConfig } from "dotenv";
 import mongoose from "mongoose";
+import { cleanupEmptyCollections } from "../src/lib/persistence/empty-collection-cleanup";
 
 dotenvConfig({ path: ".env" });
-
-const dropBatchSize = 20;
-
-function chunk<T>(items: T[], size: number): T[][] {
-  return items.reduce<T[][]>((batches, item, index) => {
-    const batchIndex = Math.floor(index / size);
-    const current = batches[batchIndex] ?? [];
-    return batchIndex < batches.length
-      ? batches.map((b, i) => (i === batchIndex ? [...b, item] : b))
-      : [...batches, [...current, item]];
-  }, []);
-}
 
 async function main(): Promise<void> {
   const uri = process.env.MONGODB_URI;
@@ -34,53 +23,41 @@ async function main(): Promise<void> {
 
   const connection = await mongoose.createConnection(uri, { dbName: databaseName }).asPromise();
   try {
-    const collections = await connection.listCollections();
-    const names = collections.map((c) => c.name).filter((name) => !name.startsWith("_"));
+    const result = await cleanupEmptyCollections(connection, {
+      apply,
+      onProgress: (dropped, total) => console.log(`Dropped ${dropped}/${total}...`),
+    });
 
-    const withCounts = await Promise.all(
-      names.map(async (name) => ({
-        name,
-        count: await connection.collection(name).estimatedDocumentCount(),
-      })),
-    );
-
-    const empty = withCounts
-      .filter((entry) => entry.count === 0)
-      .map((entry) => entry.name)
-      .sort();
-    const populated = withCounts.length - empty.length;
-
+    const populated = result.scanned - result.empty;
     console.log(`Database: ${databaseName}`);
-    console.log(`Total collections: ${withCounts.length}`);
+    console.log(`Total collections: ${result.scanned}`);
     console.log(`With data: ${populated}`);
-    console.log(`Empty (drop candidates): ${empty.length}`);
+    console.log(`Empty: ${result.empty}`);
+    console.log(`Droppable (empty, no secondary indexes): ${result.droppable.length}`);
+    if (result.keptWithIndexes.length > 0) {
+      console.log(`Kept (empty but carry a secondary index): ${result.keptWithIndexes.length}`);
+      result.keptWithIndexes.forEach((name) => console.log(`  keep ${name}`));
+    }
 
-    if (empty.length === 0) {
+    if (result.droppable.length === 0) {
       console.log("Nothing to drop.");
       return;
     }
 
     if (!apply) {
       console.log("\n--- DRY RUN (no changes). Re-run with --apply to drop these: ---");
-      empty.forEach((name) => console.log(`  ${name}`));
-      console.log(`\nWould drop ${empty.length} empty collections, leaving ${populated}.`);
+      result.droppable.forEach((name) => console.log(`  ${name}`));
+      console.log(
+        `\nWould drop ${result.droppable.length} empty collections, leaving ${populated}.`,
+      );
       return;
     }
 
-    const batches = chunk(empty, dropBatchSize);
-    const dropped = await batches.reduce<Promise<string[]>>(async (accPromise, batch) => {
-      const acc = await accPromise;
-      const results = await Promise.all(
-        batch.map(async (name) => {
-          await connection.dropCollection(name);
-          return name;
-        }),
-      );
-      console.log(`Dropped ${acc.length + results.length}/${empty.length}...`);
-      return [...acc, ...results];
-    }, Promise.resolve([]));
-
-    console.log(`\nDropped ${dropped.length} empty collections from ${databaseName}.`);
+    console.log(`\nDropped ${result.dropped.length} empty collections from ${databaseName}.`);
+    if (result.failed.length > 0) {
+      console.log(`Failed to drop ${result.failed.length}:`);
+      result.failed.forEach((failure) => console.log(`  ${failure.name}: ${failure.reason}`));
+    }
     console.log(`Remaining: ${populated} (collections that held data).`);
   } finally {
     await connection.close();

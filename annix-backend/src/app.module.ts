@@ -25,6 +25,7 @@ import { InboundEmailModule } from "./inbound-email/inbound-email.module";
 import { InsightsModule } from "./insights/insights.module";
 import { isMongoDriver } from "./lib/persistence/database-driver";
 import { MongoConnectionModule } from "./lib/persistence/mongo-connection.module";
+import { MongoMaintenanceModule } from "./lib/persistence/mongo-maintenance.module";
 import { TransactionModule } from "./lib/persistence/transaction.module";
 import { LicensingModule } from "./licensing/licensing.module";
 import { MessagingModule } from "./messaging/messaging.module";
@@ -74,7 +75,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
       ],
     }),
     ...(isMongoDriver()
-      ? [MongoConnectionModule]
+      ? [MongoConnectionModule, MongoMaintenanceModule]
       : [
           TypeOrmModule.forRoot({
             ...typeormConfig(),
