@@ -179,20 +179,19 @@ export default function SeekerJobsPage() {
 
   const handleApply = (match: SeekerRecommendedJob) => {
     const sourceUrl = match.job.sourceUrl;
-    if (sourceUrl) {
-      annixOrbitApiClient
-        .recordSeekerApplyClick({
-          matchId: match.matchId,
-          externalJobId: match.externalJobId,
-          sourceUrl,
-        })
-        .catch((err) => {
-          console.warn("Failed to record apply-click for match", match.matchId, err);
-        });
-      window.open(sourceUrl, "_blank", "noopener,noreferrer");
-    } else {
+    if (!sourceUrl) {
       showToast("No apply link available for this job", "error");
+      return;
     }
+    annixOrbitApiClient
+      .recordSeekerApplyClick({
+        matchId: match.matchId,
+        externalJobId: match.externalJobId,
+        sourceUrl,
+      })
+      .catch((err) => {
+        console.warn("Failed to record apply-click for match", match.matchId, err);
+      });
   };
 
   const handleBrowseApply = (job: PublicJob) => {

@@ -25,14 +25,19 @@ export function useOrbitSeekerRecommendedJobs(
   options: { refetchInterval?: number | false } = {},
 ) {
   const requestedInterval = options.refetchInterval;
-  const refetchInterval = requestedInterval === undefined ? false : requestedInterval;
+  const baseInterval = requestedInterval === undefined ? false : requestedInterval;
   return useQuery<SeekerRecommendedJobsResponse>({
     queryKey: annixOrbitKeys.seekerJobs.recommended(),
     queryFn: () => annixOrbitApiClient.seekerRecommendedJobs(),
     enabled,
     staleTime: 2 * 60 * 1000,
-    // eslint-disable-next-line no-restricted-syntax -- caller-controlled, defaults to off; only the seeker cold-start path opts in at 120s
-    refetchInterval,
+    // eslint-disable-next-line no-restricted-syntax -- caller opts in at 120s; polling self-stops once matches land so cold-start detection doesn't run forever
+    refetchInterval: (query) => {
+      if (baseInterval === false) return false;
+      const data = query.state.data;
+      const hasMatches = data ? data.matches.length > 0 : false;
+      return hasMatches ? false : baseInterval;
+    },
   });
 }
 
