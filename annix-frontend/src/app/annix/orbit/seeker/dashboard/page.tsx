@@ -82,7 +82,7 @@ export default function SeekerDashboardPage() {
               </p>
             </div>
             <span className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar,#323288)] group-hover:bg-[var(--brand-navbar-100,#e0e0f5)]">
-              Browse jobs →
+              Browse jobs <span aria-hidden="true">→</span>
             </span>
           </div>
         </Link>
@@ -126,9 +126,11 @@ export default function SeekerDashboardPage() {
                             </span>
                           ) : null}
                         </p>
-                        <p className="text-xs text-gray-500">
-                          Reply by {formatDateLongZA(invite.expiresAt)}
-                        </p>
+                        {invite.expiresAt ? (
+                          <p className="text-xs text-gray-500">
+                            Reply by {formatDateLongZA(invite.expiresAt)}
+                          </p>
+                        ) : null}
                       </div>
                       <Link
                         href={`/annix/orbit/interview-booking/${invite.token}`}
@@ -165,7 +167,13 @@ export default function SeekerDashboardPage() {
             href="/annix/orbit/seeker/profile"
             className="inline-flex items-center px-6 py-3 text-base bg-[var(--brand-navbar-active,#252560)] text-white hover:bg-[var(--brand-grad-from,#1a1a40)] font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
           >
-            <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg
+              aria-hidden="true"
+              className="w-6 h-6 mr-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
