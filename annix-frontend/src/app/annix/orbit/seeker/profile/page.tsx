@@ -53,9 +53,12 @@ export default function SeekerProfilePage() {
   };
 
   const handleDelete = async (doc: IndividualDocument) => {
+    const isCv = doc.kind === "cv";
     const confirmed = await confirm({
-      title: "Delete this document?",
-      message: "It will be permanently removed from your profile. This cannot be undone.",
+      title: isCv ? "Delete your CV?" : "Delete this document?",
+      message: isCv
+        ? "Your CV will be permanently removed and job matching will stop until you upload a new one. This cannot be undone."
+        : "It will be permanently removed from your profile. This cannot be undone.",
       confirmLabel: "Delete",
       variant: "danger",
     });
@@ -109,7 +112,14 @@ export default function SeekerProfilePage() {
         title="Your CV"
         description="Required. We extract your skills, experience, and education from this file."
       >
-        {cvDoc ? <CurrentCvCard doc={cvDoc} cvUploadedAt={cvUploadedAt} /> : null}
+        {cvDoc ? (
+          <CurrentCvCard
+            doc={cvDoc}
+            cvUploadedAt={cvUploadedAt}
+            onDelete={handleDelete}
+            isDeleting={pendingDeleteId === cvDoc.id}
+          />
+        ) : null}
         <IndividualDocumentUploader
           kind="cv"
           ctaLabel={cvDoc ? "Replace CV" : "Upload CV"}
@@ -242,7 +252,12 @@ function SectionCard(props: {
   );
 }
 
-function CurrentCvCard(props: { doc: IndividualDocument; cvUploadedAt: string | null }) {
+function CurrentCvCard(props: {
+  doc: IndividualDocument;
+  cvUploadedAt: string | null;
+  onDelete: (doc: IndividualDocument) => void;
+  isDeleting: boolean;
+}) {
   const propsCvUploadedAt = props.cvUploadedAt;
   const docUploadedAt = props.doc.uploadedAt;
   const uploadedAt = propsCvUploadedAt ? propsCvUploadedAt : docUploadedAt;
@@ -258,14 +273,24 @@ function CurrentCvCard(props: { doc: IndividualDocument; cvUploadedAt: string | 
           </p>
         </div>
       </div>
-      <a
-        href={props.doc.downloadUrl}
-        target="_blank"
-        rel="noreferrer"
-        className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium whitespace-nowrap"
-      >
-        View
-      </a>
+      <div className="flex items-center gap-3 flex-shrink-0">
+        <a
+          href={props.doc.downloadUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium whitespace-nowrap"
+        >
+          View
+        </a>
+        <button
+          type="button"
+          onClick={() => props.onDelete(props.doc)}
+          disabled={props.isDeleting}
+          className="text-sm text-red-600 hover:text-red-700 font-medium disabled:opacity-50"
+        >
+          {props.isDeleting ? "Deleting..." : "Delete"}
+        </button>
+      </div>
     </div>
   );
 }

@@ -8,7 +8,7 @@ import {
 import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
-import { DocumentDropzone } from "@/app/components/uploads/DocumentDropzone";
+import { DocumentDropzone, type PendingDocument } from "@/app/components/uploads/DocumentDropzone";
 import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { DateTime, fromISO } from "@/app/lib/datetime";
@@ -35,6 +35,7 @@ export default function SeekerCredentialsPage() {
   const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const [draft, setDraft] = useState<SeekerCredentialInput>(emptyDraft());
+  const [certDocs, setCertDocs] = useState<PendingDocument[]>([]);
 
   const data = query.data;
   const credentials = data ? data.credentials : [];
@@ -59,10 +60,15 @@ export default function SeekerCredentialsPage() {
       showToast("Pick a credential type first", "error");
       return;
     }
+    if (!isValidDateOrder(draft.issuedAt, draft.expiresAt)) {
+      showToast("The expiry date can't be before the issue date", "error");
+      return;
+    }
     createMutation.mutate(draft, {
       onSuccess: () => {
         showToast("Credential added", "success");
         setDraft(emptyDraft());
+        setCertDocs([]);
       },
       onError: () => showToast("Could not add credential", "error"),
     });
@@ -93,6 +99,7 @@ export default function SeekerCredentialsPage() {
   };
 
   const handleCertificateDrop = async (file: File) => {
+    setCertDocs([{ file, id: file.name }]);
     const stats = await metricsApi
       .extractionStats("orbit-credential-extract", "document")
       .catch(() => null);
@@ -207,9 +214,9 @@ export default function SeekerCredentialsPage() {
             </p>
           </div>
           <DocumentDropzone
-            documents={[]}
+            documents={certDocs}
             onAddDocument={handleCertificateDrop}
-            onRemoveDocument={() => {}}
+            onRemoveDocument={(id) => setCertDocs((prev) => prev.filter((doc) => doc.id !== id))}
             maxDocuments={1}
             maxFileSizeMB={15}
           />
@@ -302,6 +309,9 @@ export default function SeekerCredentialsPage() {
                   label={label}
                   onUpdate={(patch) => handleUpdate(credential.id, patch)}
                   onDelete={() => handleDelete(credential.id)}
+                  onInvalidDateOrder={() =>
+                    showToast("The expiry date can't be before the issue date", "error")
+                  }
                   isPending={
                     (updateMutation.isPending && updateMutation.variables?.id === credential.id) ||
                     (deleteMutation.isPending && deleteMutation.variables === credential.id)
@@ -322,11 +332,12 @@ interface CredentialRowProps {
   label: string;
   onUpdate: (patch: Partial<SeekerCredentialInput>) => void;
   onDelete: () => void;
+  onInvalidDateOrder: () => void;
   isPending: boolean;
 }
 
 function CredentialRow(props: CredentialRowProps) {
-  const { credential, label, onUpdate, onDelete, isPending } = props;
+  const { credential, label, onUpdate, onDelete, onInvalidDateOrder, isPending } = props;
   const expiryStatus = classifyExpiry(credential.expiresAt);
   const badgeClasses = badgeClassFor(expiryStatus);
   const issuingAuthorityLabel = credential.issuingAuthority
@@ -347,7 +358,13 @@ function CredentialRow(props: CredentialRowProps) {
             defaultValue={emptyIfNull(credential.issuedAt)}
             onBlur={(e) => {
               const next = stringOrNull(e.target.value);
-              if (next !== credential.issuedAt) onUpdate({ issuedAt: next });
+              if (next === credential.issuedAt) return;
+              if (!isValidDateOrder(next, credential.expiresAt)) {
+                e.target.value = emptyIfNull(credential.issuedAt);
+                onInvalidDateOrder();
+                return;
+              }
+              onUpdate({ issuedAt: next });
             }}
             className="mt-1 w-full px-2 py-1 border border-gray-200 rounded text-xs"
           />
@@ -361,7 +378,13 @@ function CredentialRow(props: CredentialRowProps) {
             defaultValue={emptyIfNull(credential.expiresAt)}
             onBlur={(e) => {
               const next = stringOrNull(e.target.value);
-              if (next !== credential.expiresAt) onUpdate({ expiresAt: next });
+              if (next === credential.expiresAt) return;
+              if (!isValidDateOrder(credential.issuedAt, next)) {
+                e.target.value = emptyIfNull(credential.expiresAt);
+                onInvalidDateOrder();
+                return;
+              }
+              onUpdate({ expiresAt: next });
             }}
             className="mt-1 w-full px-2 py-1 border border-gray-200 rounded text-xs"
           />
@@ -428,4 +451,12 @@ function emptyIfNull(value: string | null | undefined): string {
 
 function stringOrNull(value: string): string | null {
   return value === "" ? null : value;
+}
+
+function isValidDateOrder(
+  issuedAt: string | null | undefined,
+  expiresAt: string | null | undefined,
+): boolean {
+  if (!issuedAt || !expiresAt) return true;
+  return fromISO(issuedAt).toMillis() <= fromISO(expiresAt).toMillis();
 }
