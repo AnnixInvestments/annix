@@ -3,6 +3,7 @@
 import { isNumber } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { useToast } from "@/app/components/Toast";
 import type {
   NixSeekerCvAssessment,
   NixSeekerCvImprovement,
@@ -57,6 +58,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   const hasCv = props.hasCv;
   const autoRunKey = props.autoRunKey;
   const mutation = useOrbitNixWizardImprovements();
+  const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
   const lastAutoRunKey = useRef<number | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -64,7 +66,8 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const isLoading = mutation.isPending;
   const cvBuilderFlag = useFeatureFlagEnabled(NIX_CV_BUILDER_FLAG);
-  const cvBuilderEnabled = cvBuilderFlag.enabled;
+  const cvBuilderResolved = !cvBuilderFlag.isLoading;
+  const cvBuilderEnabled = cvBuilderResolved && cvBuilderFlag.enabled;
   const [reviewEstimateMs, setReviewEstimateMs] = useState(NIX_REVIEW_ESTIMATED_MS);
 
   useEffect(() => {
@@ -124,6 +127,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
       })
       .catch(() => {
         setCopied(false);
+        showToast("Couldn't copy to your clipboard — please copy it manually", "error");
       });
   };
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
 import type {
   NixGeneratedCv,
@@ -28,14 +29,35 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const generateMutation = useGenerateNixCv();
   const generatedQuery = useNixGeneratedCv();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { showToast } = useToast();
+  const pdfPreview = usePdfPreview();
   const [copied, setCopied] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [buildEstimateMs, setBuildEstimateMs] = useState(NIX_BUILD_ESTIMATED_MS);
 
   const updateMutation = useUpdateNixGeneratedCv();
   const persistCv = updateMutation.mutate;
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [editedCv, setEditedCv] = useState<NixGeneratedCv | null>(null);
+
+  const scheduleSave = (next: NixGeneratedCv) => {
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+    }
+    saveTimerRef.current = setTimeout(() => {
+      persistCv(next, {
+        onError: () => showToast("Couldn't save your CV edits — please try again.", "error"),
+      });
+    }, 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) {
+        clearTimeout(saveTimerRef.current);
+      }
+    };
+  }, []);
 
   const isBuilding = generateMutation.isPending;
   const generate = generateMutation.mutate;
@@ -80,7 +102,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       coreCompetencies: cv.coreCompetencies.filter((entry) => entry !== value),
     };
     setEditedCv(next);
-    persistCv(next);
+    scheduleSave(next);
   };
 
   const handleRemoveKeySkill = (value: string) => {
@@ -90,7 +112,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       keySkills: cv.keySkills.filter((entry) => entry !== value),
     };
     setEditedCv(next);
-    persistCv(next);
+    scheduleSave(next);
   };
 
   const handleAddCoreCompetency = (value: string) => {
@@ -106,7 +128,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       coreCompetencies: [...cv.coreCompetencies, trimmed],
     };
     setEditedCv(next);
-    persistCv(next);
+    scheduleSave(next);
   };
 
   const handleAddKeySkill = (value: string) => {
@@ -120,7 +142,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       keySkills: [...cv.keySkills, trimmed],
     };
     setEditedCv(next);
-    persistCv(next);
+    scheduleSave(next);
   };
 
   const handleRemoveReference = (reference: NixGeneratedCvReference) => {
@@ -132,7 +154,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       references: references.filter((entry) => entry !== reference),
     };
     setEditedCv(next);
-    persistCv(next);
+    scheduleSave(next);
   };
 
   const handleAddReference = (reference: NixGeneratedCvReference) => {
@@ -144,7 +166,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       references: [...references, reference],
     };
     setEditedCv(next);
-    persistCv(next);
+    scheduleSave(next);
   };
 
   const mutationError = generateMutation.error;
@@ -154,25 +176,16 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   const handleBuild = () => {
     setCopied(false);
-    setDownloadError(null);
     generate();
   };
 
   const handleDownload = async () => {
-    setDownloadError(null);
     setDownloading(true);
     try {
       const blob = await annixOrbitApiClient.nixWizardGeneratedCvPdf();
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "Nix-CV.pdf";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      URL.revokeObjectURL(url);
+      pdfPreview.open(blob, "Nix-CV.pdf");
     } catch {
-      setDownloadError("We couldn't download your PDF right now. Please try again.");
+      showToast("We couldn't open your PDF right now. Please try again.", "error");
     } finally {
       setDownloading(false);
     }
@@ -189,11 +202,11 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       })
       .catch(() => {
         setCopied(false);
+        showToast("Couldn't copy to clipboard — please select and copy manually.", "error");
       });
   };
 
   const adoptMutation = useAdoptNixCv();
-  const { showToast } = useToast();
   const [adopting, setAdopting] = useState(false);
   const [adoptMessage, setAdoptMessage] = useState<string | null>(null);
 
@@ -291,12 +304,6 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
             onAddReference={handleAddReference}
           />
 
-          {downloadError && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-              {downloadError}
-            </div>
-          )}
-
           <div className="flex items-center gap-3 flex-wrap">
             <button
               type="button"
@@ -332,6 +339,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
           )}
         </div>
       )}
+      <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
     </div>
   );
 }
