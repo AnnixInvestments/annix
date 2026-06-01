@@ -9,6 +9,7 @@ import type {
   EePopulationGroupKey,
   MySeekerEeAttributes,
 } from "@/app/lib/api/annixOrbitApi";
+import { BrandedLoader } from "@/app/lib/branding/components/BrandedLoader";
 import { fromISO } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
@@ -60,6 +61,7 @@ export default function SeekerEeAttributesPage() {
   const [nationalityStatus, setNationalityStatus] = useState<NationalityKey>("prefer_not_to_say");
   const [eeReporting, setEeReporting] = useState(true);
   const [fairnessMonitoring, setFairnessMonitoring] = useState(true);
+  const [purposesError, setPurposesError] = useState(false);
 
   const hydratedRef = useRef(false);
   useEffect(() => {
@@ -83,12 +85,14 @@ export default function SeekerEeAttributesPage() {
     if (eeReporting) purposes.push("ee_reporting");
     if (fairnessMonitoring) purposes.push("fairness_monitoring");
     if (purposes.length === 0) {
+      setPurposesError(true);
       showToast(
         "Tick at least one purpose, or choose Withdraw to remove your disclosure.",
         "error",
       );
       return;
     }
+    setPurposesError(false);
     try {
       await updateMutation.mutateAsync({
         populationGroup,
@@ -124,7 +128,11 @@ export default function SeekerEeAttributesPage() {
   };
 
   if (isLoading) {
-    return <div className="p-6 text-gray-600">Loading…</div>;
+    return (
+      <div className="p-6">
+        <BrandedLoader brand="annix-orbit" label="Loading your disclosure…" />
+      </div>
+    );
   }
 
   if (isError) {
@@ -157,8 +165,8 @@ export default function SeekerEeAttributesPage() {
 
       {data ? (
         <p className="text-sm text-gray-600 mb-4">
-          Last updated: {fromISO(data.consentGrantedAt).toFormat("dd MMM yyyy HH:mm")} · consent
-          text v{data.consentTextVersionId}
+          Last updated: {fromISO(data.consentGrantedAt).toFormat("dd MMM yyyy HH:mm")}
+          {data.consentTextVersionId ? ` · consent text v${data.consentTextVersionId}` : ""}
         </p>
       ) : (
         <p className="text-sm text-gray-600 mb-4">
@@ -221,13 +229,16 @@ export default function SeekerEeAttributesPage() {
             I'd like to discuss reasonable accommodation if shortlisted.
           </label>
           {requiresAccommodation ? (
-            <textarea
-              value={accommodationNotes}
-              onChange={(event) => setAccommodationNotes(event.target.value)}
-              placeholder="Optional notes (kept private to HR)"
-              className="w-full border border-gray-300 rounded-lg p-2 text-sm"
-              rows={3}
-            />
+            <label className="block">
+              <span className="text-sm text-gray-700">Accommodation notes (optional)</span>
+              <textarea
+                value={accommodationNotes}
+                onChange={(event) => setAccommodationNotes(event.target.value)}
+                placeholder="Anything that would help — e.g. step-free access, a sign-language interpreter. Kept private to HR."
+                className="mt-1 w-full border border-gray-300 rounded-lg p-2 text-sm"
+                rows={3}
+              />
+            </label>
           ) : null}
         </fieldset>
 
@@ -244,13 +255,25 @@ export default function SeekerEeAttributesPage() {
           ))}
         </Fieldset>
 
-        <fieldset className="space-y-2">
-          <legend className="font-semibold text-gray-900">Purposes of use</legend>
+        <fieldset
+          className="space-y-2"
+          aria-invalid={purposesError}
+          aria-describedby="purposes-hint"
+        >
+          <legend className="font-semibold text-gray-900">
+            Purposes of use <span className="text-red-600">*</span>
+          </legend>
+          <p id="purposes-hint" className="text-xs text-gray-500">
+            Choose at least one. This is what your disclosure may be used for.
+          </p>
           <label className="flex items-center gap-2 text-gray-700 cursor-pointer">
             <input
               type="checkbox"
               checked={eeReporting}
-              onChange={(event) => setEeReporting(event.target.checked)}
+              onChange={(event) => {
+                setEeReporting(event.target.checked);
+                if (event.target.checked) setPurposesError(false);
+              }}
             />
             Employment Equity Act statutory reporting (EEA2 / EEA4)
           </label>
@@ -258,10 +281,16 @@ export default function SeekerEeAttributesPage() {
             <input
               type="checkbox"
               checked={fairnessMonitoring}
-              onChange={(event) => setFairnessMonitoring(event.target.checked)}
+              onChange={(event) => {
+                setFairnessMonitoring(event.target.checked);
+                if (event.target.checked) setPurposesError(false);
+              }}
             />
             AI screening fairness monitoring (POPIA s71)
           </label>
+          {purposesError ? (
+            <p className="text-xs text-red-600">Please select at least one purpose.</p>
+          ) : null}
         </fieldset>
 
         <div className="flex flex-wrap gap-3">
