@@ -1739,10 +1739,16 @@ class AnnixOrbitApiClient {
     file: File,
     kind: IndividualDocumentKind,
     label?: string | null,
+    onProgress?: (fraction: number) => void,
   ): Promise<IndividualDocument> {
     const params: Record<string, string> = { kind };
     if (label) params.label = label;
-    return apiClient.uploadFile<IndividualDocument>("/annix-orbit/me/documents", file, params);
+    return apiClient.uploadFile<IndividualDocument>(
+      "/annix-orbit/me/documents",
+      file,
+      params,
+      onProgress,
+    );
   }
 
   async deleteMyDocument(id: number): Promise<{ message: string }> {

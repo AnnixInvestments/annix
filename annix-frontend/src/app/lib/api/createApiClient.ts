@@ -26,7 +26,12 @@ export interface ApiClient {
   put<T>(endpoint: string, body?: unknown, options?: RequestInit): Promise<T>;
   delete<T>(endpoint: string, options?: RequestInit): Promise<T>;
   requestBlob(endpoint: string, options?: RequestInit): Promise<Blob>;
-  uploadFile<T>(endpoint: string, file: File, extraFields?: Record<string, string>): Promise<T>;
+  uploadFile<T>(
+    endpoint: string,
+    file: File,
+    extraFields?: Record<string, string>,
+    onProgress?: (fraction: number) => void,
+  ): Promise<T>;
   downloadBlob(endpoint: string, filename: string): Promise<void>;
   fetchBlobUrl(endpoint: string): Promise<string>;
   refreshAccessToken(): Promise<boolean>;
@@ -158,6 +163,7 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
     endpoint: string,
     file: File,
     extraFields?: Record<string, string>,
+    onProgress?: (fraction: number) => void,
   ): Promise<T> => {
     const formData = new FormData();
     formData.append("file", file);
@@ -173,6 +179,46 @@ export const createApiClient = (options: ApiClientOptions): ApiClient => {
       if (token) headers.Authorization = `Bearer ${token}`;
       return headers;
     };
+
+    // fetch() cannot report upload progress; when a caller wants a real progress
+    // bar we send via XMLHttpRequest, which exposes upload.onprogress. The
+    // happy/error paths still reuse throwIfNotOk + safeParseJson for consistency.
+    if (onProgress) {
+      const sendViaXhr = (token: string | null): Promise<{ status: number; text: string }> =>
+        new Promise((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open("POST", url);
+          if (token) xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+          xhr.upload.onprogress = (event) => {
+            if (event.lengthComputable) onProgress(event.loaded / event.total);
+          };
+          xhr.onload = () => resolve({ status: xhr.status, text: xhr.responseText });
+          xhr.onerror = () => reject(new Error("Network error during upload. Please try again."));
+          xhr.ontimeout = () => reject(new Error("Upload timed out. Please try again."));
+          xhr.send(formData);
+        });
+
+      let result = await sendViaXhr(tokenStore.accessToken());
+      if (result.status === 401 && tokenStore.refreshToken()) {
+        const refreshed = await refreshAccessToken();
+        if (refreshed) {
+          result = await sendViaXhr(tokenStore.accessToken());
+        } else if (tokenStore.refreshToken()) {
+          throwTransientUnreachable();
+        }
+      }
+      if (result.status >= 200 && result.status < 300) {
+        onProgress(1);
+        const text = result.text;
+        if (!text || text.trim() === "") return {} as T;
+        return safeParseJson<T>(text);
+      }
+      if (result.status === 0) {
+        throw new Error("Upload was interrupted. Please check your connection and try again.");
+      }
+      await throwIfNotOk(new Response(result.text, { status: result.status }));
+      return {} as T;
+    }
 
     const response = await fetch(url, {
       method: "POST",

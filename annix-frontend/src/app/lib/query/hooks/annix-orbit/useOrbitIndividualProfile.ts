@@ -38,11 +38,13 @@ export function useOrbitUploadMyDocument() {
       file,
       kind,
       label,
+      onProgress,
     }: {
       file: File;
       kind: IndividualDocumentKind;
       label?: string | null;
-    }) => annixOrbitApiClient.uploadMyDocument(file, kind, label ?? null),
+      onProgress?: (fraction: number) => void;
+    }) => annixOrbitApiClient.uploadMyDocument(file, kind, label ?? null, onProgress),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.all });
     },

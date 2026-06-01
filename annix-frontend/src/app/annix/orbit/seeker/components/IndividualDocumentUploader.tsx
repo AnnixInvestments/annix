@@ -43,6 +43,7 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
   const uploadMutation = useOrbitUploadMyDocument();
   const isUploading = uploadMutation.isPending;
 
@@ -73,14 +74,17 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
       return;
     }
     setError(null);
+    setProgress(0);
     uploadMutation.mutate(
-      { file, kind },
+      { file, kind, onProgress: (fraction) => setProgress(fraction) },
       {
         onSuccess: () => {
+          setProgress(null);
           if (onUploaded) onUploaded();
           if (inputRef.current) inputRef.current.value = "";
         },
         onError: () => {
+          setProgress(null);
           setError("Upload failed — please check the file and try again.");
         },
       },
@@ -95,7 +99,12 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
   const handleDrop = (event: React.DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    const file = event.dataTransfer.files?.[0];
+    const files = event.dataTransfer.files;
+    if (files.length > 1) {
+      setError("Please drop one file at a time.");
+      return;
+    }
+    const file = files.length > 0 ? files[0] : null;
     if (file) handleFile(file);
   };
 
@@ -137,6 +146,17 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
           Your file's type and size are verified on our servers after upload.
         </p>
       </div>
+      {isUploading && progress !== null ? (
+        <div className="mt-3">
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[var(--brand-navbar,#323288)] transition-all"
+              style={{ width: `${Math.round(progress * 100)}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-1">Uploading… {Math.round(progress * 100)}%</p>
+        </div>
+      ) : null}
       {error && (
         <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
           {error}
