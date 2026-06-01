@@ -19,6 +19,7 @@ const libraries: LibraryName[] = ["places"];
 
 const rawMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 const GOOGLE_MAPS_API_KEY = rawMapsKey || "";
+const MAPS_CONFIGURED = GOOGLE_MAPS_API_KEY !== "";
 
 const TRAVEL_BUFFER_MINUTES = 15;
 const CALENDAR_DAY_PAGE_SIZE = 14;
@@ -83,6 +84,8 @@ export default function SeekerCalendarPage() {
   });
 
   const [travelMinutesByPair, setTravelMinutesByPair] = useState<Record<string, number | null>>({});
+  const [travelCheckFailed, setTravelCheckFailed] = useState(false);
+  const [showPast, setShowPast] = useState(false);
 
   const allBookings = useMemo(() => {
     const data = bookingsQuery.data;
@@ -97,6 +100,22 @@ export default function SeekerCalendarPage() {
       return fromISO(slot.startsAt).toMillis() >= cutoff;
     });
   }, [allBookings]);
+
+  const pastBookings = useMemo(() => {
+    const cutoff = now().toMillis();
+    return allBookings
+      .filter((b) => {
+        const slot = b.slot;
+        if (!slot) return false;
+        return fromISO(slot.startsAt).toMillis() < cutoff;
+      })
+      .sort((a, b) => slotStartMillis(b) - slotStartMillis(a));
+  }, [allBookings]);
+
+  const travelChecksApplicable = useMemo(
+    () => buildMatrixRequests(upcomingBookings).length > 0,
+    [upcomingBookings],
+  );
 
   useEffect(() => {
     if (!GOOGLE_MAPS_API_KEY) return;
@@ -118,7 +137,12 @@ export default function SeekerCalendarPage() {
         unitSystem: window.google.maps.UnitSystem.METRIC,
       },
       (response, status) => {
-        if (status !== "OK" || !response) return;
+        if (status !== "OK" || !response) {
+          console.warn(`Distance Matrix request failed with status "${status}"`);
+          setTravelCheckFailed(true);
+          return;
+        }
+        setTravelCheckFailed(false);
         const updates: Record<string, number | null> = {};
         requests.forEach((req, originIdx) => {
           const row = response.rows[originIdx];
@@ -301,7 +325,10 @@ export default function SeekerCalendarPage() {
               const title = job ? job.title : "An employer";
               const expiryLabel = invite.expiresAt ? formatDateLongZA(invite.expiresAt) : null;
               return (
-                <li key={invite.id} className="flex items-center justify-between gap-3 text-sm">
+                <li
+                  key={invite.id}
+                  className="flex flex-wrap items-center justify-between gap-3 text-sm"
+                >
                   <span className="text-gray-700">
                     {title}
                     {expiryLabel ? (
@@ -318,6 +345,19 @@ export default function SeekerCalendarPage() {
               );
             })}
           </ul>
+        </div>
+      ) : null}
+
+      {!MAPS_CONFIGURED && travelChecksApplicable ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+          Travel-time checks between your same-day interviews are unavailable right now (maps aren't
+          configured), so we can't warn you about tight gaps — please double-check travel times
+          yourself.
+        </div>
+      ) : travelCheckFailed ? (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">
+          We couldn't check travel times between your interviews just now. Refresh the page if you'd
+          like us to try again.
         </div>
       ) : null}
 
@@ -424,6 +464,43 @@ export default function SeekerCalendarPage() {
           ) : null}
         </div>
       )}
+
+      {pastBookings.length > 0 ? (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowPast((v) => !v)}
+            aria-expanded={showPast}
+            className="text-sm font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+          >
+            {showPast ? "Hide" : "Show"} past interviews ({pastBookings.length})
+          </button>
+          {showPast ? (
+            <ul className="mt-3 space-y-2">
+              {pastBookings.map((booking) => {
+                const slot = booking.slot;
+                if (!slot) return null;
+                const job = slot.jobPosting;
+                const title = job ? job.title : "Interview";
+                return (
+                  <li
+                    key={booking.id}
+                    className="bg-white rounded-lg border border-gray-200 p-3 text-sm opacity-80"
+                  >
+                    <p className="font-semibold text-gray-700">
+                      {formatDateLongZA(slot.startsAt)} · {formatTimeZA(slot.startsAt)} –{" "}
+                      {formatTimeZA(slot.endsAt)} · {title}
+                    </p>
+                    {slot.locationLabel ? (
+                      <p className="text-xs text-gray-500 mt-0.5">{slot.locationLabel}</p>
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ul>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }
