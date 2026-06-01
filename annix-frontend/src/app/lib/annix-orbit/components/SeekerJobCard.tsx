@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { providerBadgeLabel } from "@/app/lib/annix-orbit/provider-labels";
 import type { SeekerRecommendedJob } from "@/app/lib/api/annixOrbitApi";
 
 interface SeekerJobCardProps {
@@ -11,15 +12,6 @@ interface SeekerJobCardProps {
   onMuteCategory?: (category: string) => void;
   isDismissing?: boolean;
 }
-
-const PROVIDER_LABELS: Record<string, string> = {
-  adzuna: "via Adzuna",
-  remotive: "via Remotive",
-  dpsa: "via DPSA",
-  executiveplacements: "via Executive Placements",
-  jobplacements: "via Job Placements",
-  jobmail: "via JobMail",
-};
 
 export function SeekerJobCard(props: SeekerJobCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -96,23 +88,45 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
       </div>
 
       {matchedSkills.length > 0 || missingSkills.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {matchedSkills.slice(0, 6).map((skill) => (
-            <span
-              key={`matched-${skill}`}
-              className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
-            >
-              {skill}
-            </span>
-          ))}
-          {missingSkills.slice(0, 4).map((skill) => (
-            <span
-              key={`missing-${skill}`}
-              className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
-            >
-              {skill}
-            </span>
-          ))}
+        <div className="mt-3">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500 mb-1.5">
+            {matchedSkills.length > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <span
+                  aria-hidden="true"
+                  className="w-2 h-2 rounded-full bg-emerald-200 border border-emerald-300"
+                />
+                Skills you have
+              </span>
+            ) : null}
+            {missingSkills.length > 0 ? (
+              <span className="inline-flex items-center gap-1">
+                <span
+                  aria-hidden="true"
+                  className="w-2 h-2 rounded-full bg-amber-200 border border-amber-300"
+                />
+                Skills to develop
+              </span>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {matchedSkills.slice(0, 6).map((skill) => (
+              <span
+                key={`matched-${skill}`}
+                className="text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+              >
+                {skill}
+              </span>
+            ))}
+            {missingSkills.slice(0, 4).map((skill) => (
+              <span
+                key={`missing-${skill}`}
+                className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
         </div>
       ) : null}
 
@@ -227,13 +241,6 @@ function LockedJobCard(props: { match: SeekerRecommendedJob }) {
       </div>
     </div>
   );
-}
-
-function providerBadgeLabel(provider: string | null): string | null {
-  if (!provider) return null;
-  const lookup = PROVIDER_LABELS[provider];
-  if (lookup) return lookup;
-  return `via ${provider}`;
 }
 
 function formatSalary(

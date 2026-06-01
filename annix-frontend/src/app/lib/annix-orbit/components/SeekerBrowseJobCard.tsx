@@ -19,6 +19,11 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
   const rawLocation = job.locationRaw;
   const rawLocationArea = job.locationArea;
   const location = rawLocation || rawLocationArea || null;
+  const rawDescription = job.description;
+  const descriptionPreview = rawDescription ? rawDescription.trim() : "";
+  const skills = job.extractedSkills;
+  const visibleSkills = skills.slice(0, 6);
+  const extraSkillCount = skills.length - visibleSkills.length;
 
   const handleApply = () => {
     props.onApply(job);
@@ -42,9 +47,13 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
         </div>
       </div>
 
-      {job.extractedSkills.length > 0 ? (
+      {descriptionPreview ? (
+        <p className="mt-3 text-sm text-gray-600 line-clamp-2">{descriptionPreview}</p>
+      ) : null}
+
+      {skills.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
-          {job.extractedSkills.slice(0, 6).map((skill) => (
+          {visibleSkills.map((skill) => (
             <span
               key={`skill-${skill}`}
               className="text-xs px-2 py-0.5 rounded-full bg-gray-50 text-gray-700 border border-gray-200"
@@ -52,6 +61,11 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
               {skill}
             </span>
           ))}
+          {extraSkillCount > 0 ? (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200">
+              +{extraSkillCount} more
+            </span>
+          ) : null}
         </div>
       ) : null}
 

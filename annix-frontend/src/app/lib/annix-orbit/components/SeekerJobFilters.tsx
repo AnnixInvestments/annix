@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { providerLabel } from "../provider-labels";
 import { citiesForProvince, SA_PROVINCES } from "../sa-locations";
 
 export interface SeekerFilterState {
@@ -94,7 +95,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
           <option value="all">All sources</option>
           {props.providers.map((p) => (
             <option key={p} value={p}>
-              {p}
+              {providerLabel(p)}
             </option>
           ))}
         </select>
