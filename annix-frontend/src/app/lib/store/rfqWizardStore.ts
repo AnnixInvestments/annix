@@ -148,6 +148,13 @@ interface RfqWizardState {
 
   showCloseConfirmation: boolean;
 
+  // True once the user has made a genuine edit (field, spec, item add/
+  // remove/duplicate or item field change). Automatic on-load mutations
+  // (weight calculations, auto item numbers, auto pressure-class
+  // selection) deliberately do NOT set this, so closing an unchanged
+  // RFQ never prompts. Reset by restoreFromDraft / resetForm.
+  userHasEdited: boolean;
+
   showNixPopup: boolean;
   isNixProcessing: boolean;
   nixProcessingProgress: number;
@@ -195,6 +202,15 @@ interface RfqWizardActions {
     value: RfqFormData[K],
   ) => void;
   updateGlobalSpecs: (specs: GlobalSpecs) => void;
+  // Non-flagging globalSpecs write for automatic on-load adjustments
+  // (e.g. auto-selecting a recommended flange pressure class). Does NOT
+  // set userHasEdited, so it never triggers the unsaved-changes prompt.
+  applyAutoGlobalSpecs: (specs: GlobalSpecs) => void;
+  // Flag the RFQ as edited by the user. Called from the item-edit choke
+  // point in the orchestrator (handleUpdateEntry) where edits flow
+  // through updateItem / updateStraightPipeEntry, which are also used by
+  // automatic calculations and so must not flag on their own.
+  markRfqEdited: () => void;
   // Merge Nix-extracted tender-spec metadata into globalSpecs
   // without clobbering any fields the customer already set. Used by
   // the tender-PDF auto-extraction flow (#288) so 25 stacked spec
@@ -897,6 +913,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         pendingTenderDocuments: [],
 
         showCloseConfirmation: false,
+        userHasEdited: false,
 
         showNixPopup: false,
         isNixProcessing: false,
@@ -941,17 +958,26 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
         updateRfqField: (field, value) =>
           set(
-            (state) => ({ rfqData: { ...state.rfqData, [field]: value } }),
+            (state) => ({ rfqData: { ...state.rfqData, [field]: value }, userHasEdited: true }),
             false,
             "updateRfqField",
           ),
 
         updateGlobalSpecs: (specs) =>
           set(
-            (state) => ({ rfqData: { ...state.rfqData, globalSpecs: specs } }),
+            (state) => ({ rfqData: { ...state.rfqData, globalSpecs: specs }, userHasEdited: true }),
             false,
             "updateGlobalSpecs",
           ),
+
+        applyAutoGlobalSpecs: (specs) =>
+          set(
+            (state) => ({ rfqData: { ...state.rfqData, globalSpecs: specs } }),
+            false,
+            "applyAutoGlobalSpecs",
+          ),
+
+        markRfqEdited: () => set({ userHasEdited: true }, false, "markRfqEdited"),
 
         mergeSpecMetadataIntoGlobalSpecs: (metadata) =>
           set(
@@ -1462,6 +1488,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                   (entry) => entry.id !== id,
                 ),
               },
+              userHasEdited: true,
             }),
             false,
             "removeStraightPipeEntry",
@@ -1528,10 +1555,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                     items: newItems,
                     straightPipeEntries: newStraightPipeEntries,
                   },
+                  userHasEdited: true,
                 };
               }
 
-              return { rfqData: { ...state.rfqData, items: newItems } };
+              return { rfqData: { ...state.rfqData, items: newItems }, userHasEdited: true };
             },
             false,
             "duplicateItem",
@@ -1567,6 +1595,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             {
               currentStep: 1,
               rfqData: initialRfqData(),
+              userHasEdited: false,
               showNixPopup: false,
               isNixProcessing: false,
               nixProcessingProgress: 0,
@@ -1654,7 +1683,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
 
           log.debug("restoreFromDraft:", JSON.stringify(restored, null, 2));
 
-          set({ rfqData: restored }, false, "restoreFromDraft");
+          set({ rfqData: restored, userHasEdited: false }, false, "restoreFromDraft");
 
           if (draft.currentStep) {
             set({ currentStep: draft.currentStep }, false, "restoreFromDraft/step");

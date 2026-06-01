@@ -314,7 +314,9 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
     setCurrentStep,
     rfqData,
     updateRfqField,
-    updateGlobalSpecs,
+    applyAutoGlobalSpecs,
+    markRfqEdited,
+    userHasEdited,
     addStraightPipeEntry,
     addBendEntry,
     addFittingEntry,
@@ -415,7 +417,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
   const router = useRouter();
 
   const scrollContainerRef = React.useRef<HTMLDivElement>(null);
-  const initialDraftDataRef = useRef<string | null>(null);
   // Count of items being submitted — set at the top of handleSubmit
   // so the progress popup can show "Processing N items" instead of
   // a bare spinner. Large BOQs can take minutes to process serially
@@ -680,30 +681,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
     loadRfqForEdit();
   }, [editRfqId, restoreFromDraft, showToast]);
-
-  // Capture initial draft state after loading completes for dirty checking
-  useEffect(() => {
-    if (!isLoadingDraft && currentDraftId && !initialDraftDataRef.current) {
-      // Wait a bit for React state to settle after restoreFromDraft
-      const timer = setTimeout(() => {
-        const rawItems = rfqData.items;
-        const rawStraightPipeEntries = rfqData.straightPipeEntries;
-        const rawGlobalSpecs = rfqData.globalSpecs;
-        const rawRequiredProducts = rfqData.requiredProducts;
-        initialDraftDataRef.current = JSON.stringify({
-          items: rawItems || [],
-          straightPipeEntries: rawStraightPipeEntries || [],
-          globalSpecs: rawGlobalSpecs || {},
-          projectType: rfqData.projectType,
-          description: rfqData.description,
-          notes: rfqData.notes,
-          requiredProducts: rawRequiredProducts || [],
-        });
-        log.info("📸 Captured initial draft state for dirty checking");
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [isLoadingDraft, currentDraftId, rfqData]);
 
   // Load draft from URL parameter (?draft=ID or ?draftId=ID)
   // Requires authentication - redirect to login if not authenticated
@@ -2047,9 +2024,10 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
           rfqData.globalSpecs?.workingTemperatureC,
           materialGroup,
         );
-        // Auto-select if not already set
+        // Auto-select if not already set. Uses the non-flagging setter
+        // so this automatic adjustment never marks the RFQ as edited.
         if (recommendedId && !rfqData.globalSpecs?.flangePressureClassId) {
-          updateGlobalSpecs({
+          applyAutoGlobalSpecs({
             ...rfqData.globalSpecs,
             flangePressureClassId: recommendedId,
           });
@@ -3952,38 +3930,20 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                   log.debug("Close button clicked - isDraft:", isDraft);
                   log.debug("searchParams:", searchParams);
 
-                  if (isDraft && initialDraftDataRef.current) {
-                    const rawItems4 = rfqData.items;
-                    const rawStraightPipeEntries2 = rfqData.straightPipeEntries;
-                    const rawGlobalSpecs2 = rfqData.globalSpecs;
-                    const rawRequiredProducts3 = rfqData.requiredProducts;
-                    // For drafts, check if data has changed since loading
-                    const currentData = JSON.stringify({
-                      items: rawItems4 || [],
-                      straightPipeEntries: rawStraightPipeEntries2 || [],
-                      globalSpecs: rawGlobalSpecs2 || {},
-                      projectType: rfqData.projectType,
-                      description: rfqData.description,
-                      notes: rfqData.notes,
-                      requiredProducts: rawRequiredProducts3 || [],
-                    });
-                    const hasChanges = currentData !== initialDraftDataRef.current;
-
-                    const rawGlobalSpecs3 = rfqData.globalSpecs;
-
-                    log.info("🔍 Draft dirty check:", {
-                      hasChanges,
-                      itemsCount: rfqData.items?.length,
-                      straightPipesCount: rfqData.straightPipeEntries?.length,
-                      globalSpecsKeys: keys(rawGlobalSpecs3 || {}).length,
-                    });
-
-                    if (hasChanges) {
+                  if (isDraft || isEditing) {
+                    // Existing RFQ/draft: prompt only if the user made a
+                    // genuine edit. userHasEdited is flipped by real user
+                    // actions, never by automatic on-load mutations
+                    // (weight calcs, auto item numbers, auto pressure
+                    // class), so opening and closing an untouched RFQ
+                    // closes silently.
+                    log.info("🔍 Edit/draft dirty check:", { userHasEdited });
+                    if (userHasEdited) {
                       setShowCloseConfirmation(true);
                     } else {
                       onCancel();
                     }
-                  } else if (!isDraft) {
+                  } else {
                     const rawLength6 = rfqData.items?.length;
                     const rawLength7 = rfqData.straightPipeEntries?.length;
                     const rawLength8 = rfqData.description?.trim().length;
@@ -4027,9 +3987,6 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
                       log.debug("No changes, calling onCancel");
                       onCancel();
                     }
-                  } else {
-                    // Draft but initial state not yet captured, just close
-                    onCancel();
                   }
                 }}
                 className="text-gray-400 hover:text-gray-600 text-xl px-2"
@@ -4043,7 +4000,27 @@ export default function StraightPipeRfqOrchestrator(props: Props) {
 
         <div className="p-4">
           <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="px-4 py-4">
+            {/* onInput/onChange fire from genuine user input on native
+                form controls, and a click inside a Select's listbox is a
+                real dropdown selection. Programmatic store writes (weight
+                calcs, auto item numbers, auto spec derivations) emit none
+                of these, so the RFQ is marked edited only when the user
+                actually changes a value — never on load. */}
+            <div
+              className="px-4 py-4"
+              onInput={() => {
+                if (!userHasEdited) markRfqEdited();
+              }}
+              onChange={() => {
+                if (!userHasEdited) markRfqEdited();
+              }}
+              onClickCapture={(e) => {
+                if (userHasEdited) return;
+                if ((e.target as HTMLElement).closest('[role="listbox"]')) {
+                  markRfqEdited();
+                }
+              }}
+            >
               {isLoadingMasterData ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="flex items-center space-x-3">

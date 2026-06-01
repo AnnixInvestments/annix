@@ -59,6 +59,7 @@ const OffsetBend3DPreview = dynamic(
   },
 );
 
+import { LazyVisible } from "@/app/components/LazyVisible";
 import { FirstItemMaterialSelector } from "@/app/components/rfq/selectors/MaterialTypeSelector";
 import { AddItemButtonsBar } from "@/app/components/rfq/steps/AddItemButtonsBar";
 import type { PipeMaterialType } from "@/app/lib/hooks/useRfqForm";
@@ -838,74 +839,75 @@ export default function ItemUploadStep(props: {
 
           <div className="space-y-3">
             {entries.map((entry: any, index: number) => (
-              <ItemWrapper
-                key={entry.id}
-                entry={entry}
-                index={index}
-                entriesCount={entries.length}
-                globalSpecs={globalSpecs}
-                masterData={masterData}
-                onUpdateEntry={onUpdateEntry}
-                onRemoveEntry={onRemoveEntry}
-                onDuplicateEntry={duplicateItem}
-                onCopyEntry={copyItemToClipboard}
-                copiedItemId={copiedItemId}
-                onCalculate={onCalculate}
-                onCalculateBend={onCalculateBend}
-                onCalculateFitting={onCalculateFitting}
-                generateItemDescription={generateItemDescription}
-                Pipe3DPreview={
-                  isUnregisteredCustomer
-                    ? Pipe3DPreview
-                    : effectiveDrawingsHidden
-                      ? null
-                      : Pipe3DPreview
-                }
-                Bend3DPreview={
-                  isUnregisteredCustomer
-                    ? Bend3DPreview
-                    : effectiveDrawingsHidden
-                      ? null
-                      : Bend3DPreview
-                }
-                Tee3DPreview={
-                  isUnregisteredCustomer
-                    ? Tee3DPreview
-                    : effectiveDrawingsHidden
-                      ? null
-                      : Tee3DPreview
-                }
-                Lateral3DPreview={
-                  isUnregisteredCustomer
-                    ? Lateral3DPreview
-                    : effectiveDrawingsHidden
-                      ? null
-                      : Lateral3DPreview
-                }
-                Reducer3DPreview={
-                  isUnregisteredCustomer
-                    ? Reducer3DPreview
-                    : effectiveDrawingsHidden
-                      ? null
-                      : Reducer3DPreview
-                }
-                OffsetBend3DPreview={
-                  isUnregisteredCustomer
-                    ? OffsetBend3DPreview
-                    : effectiveDrawingsHidden
-                      ? null
-                      : OffsetBend3DPreview
-                }
-                availableNominalBores={availableNominalBores}
-                availableSchedulesMap={availableSchedulesMap}
-                setAvailableSchedulesMap={setAvailableSchedulesMap}
-                fetchAvailableSchedules={fetchAvailableSchedules}
-                pressureClassesByStandard={pressureClassesByStandard}
-                getFilteredPressureClasses={getFilteredPressureClasses}
-                requiredProducts={requiredProducts}
-                isUnregisteredCustomer={isUnregisteredCustomer}
-                onShowRestrictionPopup={showRestrictionPopup}
-              />
+              <LazyVisible key={entry.id} placeholderMinHeight={440}>
+                <ItemWrapper
+                  entry={entry}
+                  index={index}
+                  entriesCount={entries.length}
+                  globalSpecs={globalSpecs}
+                  masterData={masterData}
+                  onUpdateEntry={onUpdateEntry}
+                  onRemoveEntry={onRemoveEntry}
+                  onDuplicateEntry={duplicateItem}
+                  onCopyEntry={copyItemToClipboard}
+                  copiedItemId={copiedItemId}
+                  onCalculate={onCalculate}
+                  onCalculateBend={onCalculateBend}
+                  onCalculateFitting={onCalculateFitting}
+                  generateItemDescription={generateItemDescription}
+                  Pipe3DPreview={
+                    isUnregisteredCustomer
+                      ? Pipe3DPreview
+                      : effectiveDrawingsHidden
+                        ? null
+                        : Pipe3DPreview
+                  }
+                  Bend3DPreview={
+                    isUnregisteredCustomer
+                      ? Bend3DPreview
+                      : effectiveDrawingsHidden
+                        ? null
+                        : Bend3DPreview
+                  }
+                  Tee3DPreview={
+                    isUnregisteredCustomer
+                      ? Tee3DPreview
+                      : effectiveDrawingsHidden
+                        ? null
+                        : Tee3DPreview
+                  }
+                  Lateral3DPreview={
+                    isUnregisteredCustomer
+                      ? Lateral3DPreview
+                      : effectiveDrawingsHidden
+                        ? null
+                        : Lateral3DPreview
+                  }
+                  Reducer3DPreview={
+                    isUnregisteredCustomer
+                      ? Reducer3DPreview
+                      : effectiveDrawingsHidden
+                        ? null
+                        : Reducer3DPreview
+                  }
+                  OffsetBend3DPreview={
+                    isUnregisteredCustomer
+                      ? OffsetBend3DPreview
+                      : effectiveDrawingsHidden
+                        ? null
+                        : OffsetBend3DPreview
+                  }
+                  availableNominalBores={availableNominalBores}
+                  availableSchedulesMap={availableSchedulesMap}
+                  setAvailableSchedulesMap={setAvailableSchedulesMap}
+                  fetchAvailableSchedules={fetchAvailableSchedules}
+                  pressureClassesByStandard={pressureClassesByStandard}
+                  getFilteredPressureClasses={getFilteredPressureClasses}
+                  requiredProducts={requiredProducts}
+                  isUnregisteredCustomer={isUnregisteredCustomer}
+                  onShowRestrictionPopup={showRestrictionPopup}
+                />
+              </LazyVisible>
             ))}
           </div>
 
