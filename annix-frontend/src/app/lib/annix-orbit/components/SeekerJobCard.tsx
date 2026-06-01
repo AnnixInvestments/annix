@@ -87,7 +87,7 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
           <span className="font-medium">Match {overall}%</span>
           <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-blue-500 rounded-full"
+              className="h-full bg-[var(--brand-navbar,#323288)] rounded-full"
               style={{ width: `${Math.min(100, Math.max(0, overall))}%` }}
             />
           </div>
@@ -172,7 +172,7 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
         <button
           type="button"
           onClick={handleApply}
-          className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+          className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
         >
           View &amp; apply
         </button>

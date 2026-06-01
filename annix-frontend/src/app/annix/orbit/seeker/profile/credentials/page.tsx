@@ -277,7 +277,7 @@ export default function SeekerCredentialsPage() {
             type="button"
             onClick={handleCreate}
             disabled={createMutation.isPending}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50"
           >
             {createMutation.isPending ? "Adding…" : "Add credential"}
           </button>

@@ -268,7 +268,7 @@ export default function SeekerEeAttributesPage() {
           <button
             type="submit"
             disabled={updateMutation.isPending}
-            className="bg-[#1a1a40] text-white px-4 py-2 rounded font-semibold disabled:opacity-50"
+            className="bg-[var(--brand-grad-from,#1a1a40)] text-white px-4 py-2 rounded font-semibold disabled:opacity-50"
           >
             {updateMutation.isPending ? "Saving…" : data ? "Update disclosure" : "Submit"}
           </button>

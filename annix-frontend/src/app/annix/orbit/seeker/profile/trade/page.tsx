@@ -211,7 +211,7 @@ export default function SeekerTradeProfilePage() {
                 key={key}
                 className={`flex items-center gap-2 px-3 py-2 rounded-lg border cursor-pointer ${
                   checked
-                    ? "border-blue-500 bg-blue-50 text-blue-700"
+                    ? "border-[var(--brand-navbar,#323288)] bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar,#323288)]"
                     : "border-gray-200 text-gray-700"
                 }`}
               >
@@ -303,7 +303,7 @@ export default function SeekerTradeProfilePage() {
             <button
               type="button"
               onClick={addShutdownEntry}
-              className="text-xs text-blue-600 hover:text-blue-700"
+              className="text-xs text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
             >
               + Add shutdown
             </button>
@@ -341,7 +341,7 @@ export default function SeekerTradeProfilePage() {
           type="button"
           onClick={handleSave}
           disabled={mutation.isPending}
-          className="px-5 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+          className="px-5 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50"
         >
           {mutation.isPending ? "Saving…" : "Save trade profile"}
         </button>

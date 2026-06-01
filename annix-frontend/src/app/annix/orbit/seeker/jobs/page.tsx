@@ -702,7 +702,7 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
           </span>
           <Link
             href="/annix/orbit/seeker/profile"
-            className="inline-block px-3 py-1.5 text-xs font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 whitespace-nowrap"
+            className="inline-block px-3 py-1.5 text-xs font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)] whitespace-nowrap"
           >
             Upload my CV
           </Link>

@@ -81,7 +81,7 @@ export default function SeekerDashboardPage() {
                 {totalMatches} active match{totalMatches === 1 ? "" : "es"} in total
               </p>
             </div>
-            <span className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 group-hover:bg-blue-100">
+            <span className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar,#323288)] group-hover:bg-[var(--brand-navbar-100,#e0e0f5)]">
               Browse jobs →
             </span>
           </div>
@@ -89,13 +89,19 @@ export default function SeekerDashboardPage() {
       ) : null}
 
       {openInvites.length > 0 ? (
-        <div className="bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] rounded-xl shadow-lg p-5">
+        <div
+          className="rounded-xl shadow-lg p-5"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom right, var(--brand-accent,#FF8A00), var(--brand-accent-light,#FF9C33))",
+          }}
+        >
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-2xl shrink-0">
               ✉
             </div>
             <div className="flex-1 min-w-0">
-              <h2 className="text-lg font-bold text-[#1a1a40]">
+              <h2 className="text-lg font-bold text-[var(--brand-grad-from,#1a1a40)]">
                 {openInvites.length === 1
                   ? "You have an interview invitation"
                   : `${openInvites.length} interview invitations`}
@@ -111,7 +117,7 @@ export default function SeekerDashboardPage() {
                       className="bg-white/95 rounded-lg px-3 py-2 flex items-center justify-between gap-3"
                     >
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-[#1a1a40] truncate">
+                        <p className="text-sm font-semibold text-[var(--brand-grad-from,#1a1a40)] truncate">
                           {jobTitle}
                           {jobLocation ? (
                             <span className="text-gray-600 font-normal">
@@ -126,7 +132,7 @@ export default function SeekerDashboardPage() {
                       </div>
                       <Link
                         href={`/annix/orbit/interview-booking/${invite.token}`}
-                        className="text-xs font-semibold px-3 py-1.5 bg-[#252560] text-white rounded-lg hover:bg-[#1a1a40] whitespace-nowrap"
+                        className="text-xs font-semibold px-3 py-1.5 bg-[var(--brand-navbar-active,#252560)] text-white rounded-lg hover:bg-[var(--brand-grad-from,#1a1a40)] whitespace-nowrap"
                       >
                         Pick a time
                       </Link>
@@ -140,18 +146,24 @@ export default function SeekerDashboardPage() {
       ) : null}
 
       {!hasCv && (
-        <div className="rounded-xl bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div
+          className="rounded-xl shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom right, var(--brand-accent,#FF8A00), var(--brand-accent-light,#FF9C33))",
+          }}
+        >
           <div className="space-y-1">
-            <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
+            <h2 className="text-xl sm:text-2xl font-bold text-[var(--brand-grad-from,#1a1a40)]">
               Ready to find your next role?
             </h2>
-            <p className="text-[#1a1a40]/80">
+            <p className="text-[var(--brand-grad-from,#1a1a40)]/80">
               Upload your CV and let Annix Orbit match you to suitable jobs.
             </p>
           </div>
           <Link
             href="/annix/orbit/seeker/profile"
-            className="inline-flex items-center px-6 py-3 text-base bg-[#252560] text-white hover:bg-[#1a1a40] font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
+            className="inline-flex items-center px-6 py-3 text-base bg-[var(--brand-navbar-active,#252560)] text-white hover:bg-[var(--brand-grad-from,#1a1a40)] font-semibold rounded-lg shadow-md hover:shadow-lg transition-all"
           >
             <svg className="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
@@ -211,12 +223,12 @@ export default function SeekerDashboardPage() {
 
 function DashboardTile(props: { title: string; description: string; href: string; cta: string }) {
   return (
-    <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col">
+    <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 flex flex-col">
       <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
       <p className="text-sm text-gray-600 mt-2 flex-1">{props.description}</p>
       <Link
         href={props.href}
-        className="mt-4 inline-flex items-center justify-center bg-[#323288] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors"
+        className="mt-4 inline-flex items-center justify-center bg-[var(--brand-navbar,#323288)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
       >
         {props.cta}
       </Link>

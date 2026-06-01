@@ -77,7 +77,7 @@ export default function SeekerProfilePage() {
   if (isStatusLoading || isDocumentsLoading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--brand-navbar,#323288)]" />
       </div>
     );
   }
@@ -163,7 +163,7 @@ export default function SeekerProfilePage() {
       )}
 
       {hasCv && (
-        <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-gray-900">Profile ready</h3>
             <p className="text-sm text-gray-600 mt-1">
@@ -174,7 +174,7 @@ export default function SeekerProfilePage() {
           <button
             type="button"
             onClick={handleStartSearch}
-            className="bg-[#323288] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors whitespace-nowrap"
+            className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors whitespace-nowrap"
           >
             Start job search
           </button>
@@ -195,10 +195,10 @@ export default function SeekerProfilePage() {
 
 function CvRequiredBanner() {
   return (
-    <div className="bg-[#f0f0fc] border border-[#c0c0eb] rounded-xl p-4 flex items-start gap-3">
-      <div className="flex items-center justify-center w-8 h-8 bg-[#e0e0f5] rounded-full flex-shrink-0">
+    <div className="bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-xl p-4 flex items-start gap-3">
+      <div className="flex items-center justify-center w-8 h-8 bg-[var(--brand-navbar-100,#e0e0f5)] rounded-full flex-shrink-0">
         <svg
-          className="w-4 h-4 text-[#323288]"
+          className="w-4 h-4 text-[var(--brand-navbar,#323288)]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -212,8 +212,10 @@ function CvRequiredBanner() {
         </svg>
       </div>
       <div>
-        <p className="text-sm font-medium text-[#1a1a40]">Upload your CV to get started</p>
-        <p className="text-xs text-[#252560] mt-1">
+        <p className="text-sm font-medium text-[var(--brand-grad-from,#1a1a40)]">
+          Upload your CV to get started
+        </p>
+        <p className="text-xs text-[var(--brand-navbar-active,#252560)] mt-1">
           We need a CV before we can find jobs for you. Qualifications and certificates are optional
           but make matches more accurate.
         </p>
@@ -229,7 +231,7 @@ function SectionCard(props: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 space-y-4">
+    <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 space-y-4">
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
@@ -252,7 +254,7 @@ function CurrentCvCard(props: { doc: IndividualDocument; cvUploadedAt: string | 
   const uploadedAt = propsCvUploadedAt ? propsCvUploadedAt : docUploadedAt;
   const sizeKb = Math.round(props.doc.sizeBytes / 1024);
   return (
-    <div className="bg-gray-50 border border-[#e0e0f5] rounded-lg p-4 flex items-center justify-between gap-4">
+    <div className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg p-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 min-w-0">
         <FileBadge kind="cv" />
         <div className="min-w-0">
@@ -266,7 +268,7 @@ function CurrentCvCard(props: { doc: IndividualDocument; cvUploadedAt: string | 
         href={props.doc.downloadUrl}
         target="_blank"
         rel="noreferrer"
-        className="text-sm text-[#323288] hover:text-[#252560] font-medium whitespace-nowrap"
+        className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium whitespace-nowrap"
       >
         View
       </a>
@@ -292,7 +294,7 @@ function DocumentList(props: {
         return (
           <li
             key={doc.id}
-            className="bg-gray-50 border border-[#e0e0f5] rounded-lg p-4 flex items-center justify-between gap-4"
+            className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg p-4 flex items-center justify-between gap-4"
           >
             <div className="flex items-center gap-3 min-w-0">
               <FileBadge kind={doc.kind} />
@@ -308,7 +310,7 @@ function DocumentList(props: {
                 href={doc.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm text-[#323288] hover:text-[#252560] font-medium"
+                className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium"
               >
                 View
               </a>
@@ -331,7 +333,7 @@ function DocumentList(props: {
 function FileBadge(props: { kind: IndividualDocumentKind }) {
   const palette =
     props.kind === "cv"
-      ? "bg-[#e0e0f5] text-[#252560]"
+      ? "bg-[var(--brand-navbar-100,#e0e0f5)] text-[var(--brand-navbar-active,#252560)]"
       : props.kind === "qualification"
         ? "bg-blue-100 text-blue-700"
         : "bg-emerald-100 text-emerald-700";

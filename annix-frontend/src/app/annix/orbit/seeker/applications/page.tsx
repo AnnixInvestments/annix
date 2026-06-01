@@ -109,7 +109,7 @@ export default function SeekerApplicationsPage() {
           </p>
           <Link
             href="/annix/orbit/seeker/jobs"
-            className="inline-block mt-4 px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+            className="inline-block mt-4 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
           >
             Browse jobs
           </Link>
@@ -203,7 +203,7 @@ function ApplicationCard(props: ApplicationCardProps) {
               href={sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
             >
               View
             </a>

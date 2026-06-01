@@ -223,10 +223,18 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-[#f0f0fc] to-white rounded-xl border border-[#c0c0eb] p-6 space-y-4">
+    <div
+      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] p-6 space-y-4"
+      style={{
+        backgroundImage:
+          "linear-gradient(to bottom right, var(--brand-navbar-50,#f0f0fc), #ffffff)",
+      }}
+    >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-xl">
-          <h3 className="text-base font-semibold text-[#252560]">Get Nix to build my CV</h3>
+          <h3 className="text-base font-semibold text-[var(--brand-navbar-active,#252560)]">
+            Get Nix to build my CV
+          </h3>
           <p className="text-sm text-gray-600 mt-1">
             Nix takes the genuinely strong parts of your CV, applies the Wizard's suggestions, and
             writes a complete, recruiter-ready CV you can download as a PDF.
@@ -236,7 +244,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
           type="button"
           onClick={handleBuild}
           disabled={!hasCv || isBuilding}
-          className="bg-[#323288] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+          className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
           title={hasCv ? undefined : "Upload your CV first to use the Nix CV builder"}
         >
           {isBuilding ? "Nix is building…" : cv ? "Rebuild my CV" : "Get Nix to build my CV"}
@@ -258,14 +266,14 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       {cv && !isBuilding && (
         <div className="space-y-4">
           {cv.improvementsApplied.length > 0 && (
-            <div className="bg-white rounded-lg border border-[#e0e0f5] p-4">
-              <h4 className="text-sm font-semibold text-[#252560] uppercase tracking-wide mb-2">
+            <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] p-4">
+              <h4 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] uppercase tracking-wide mb-2">
                 What Nix changed
               </h4>
               <ul className="space-y-1.5">
                 {cv.improvementsApplied.map((change) => (
                   <li key={change} className="text-sm text-gray-700 flex gap-2">
-                    <span className="text-[#7373c2] flex-shrink-0">•</span>
+                    <span className="text-[var(--brand-navbar-400,#7373c2)] flex-shrink-0">•</span>
                     <span>{change}</span>
                   </li>
                 ))}
@@ -304,21 +312,21 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
               type="button"
               onClick={handleDownload}
               disabled={downloading}
-              className="bg-[#323288] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               {downloading ? "Preparing PDF…" : "Download PDF"}
             </button>
             <button
               type="button"
               onClick={handleCopy}
-              className="border border-[#c0c0eb] text-[#323288] px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[#f0f0fc] transition-colors"
+              className="border border-[var(--brand-navbar-200,#c0c0eb)] text-[var(--brand-navbar,#323288)] px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] transition-colors"
             >
               {copied ? "Copied!" : "Copy text"}
             </button>
           </div>
 
           {adoptMessage && (
-            <p className="text-sm text-[#252560] bg-[#f0f0fc] border border-[#c0c0eb] rounded-lg px-4 py-2">
+            <p className="text-sm text-[var(--brand-navbar-active,#252560)] bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg px-4 py-2">
               {adoptMessage}
             </p>
           )}
@@ -352,11 +360,11 @@ function NixCvDocument(props: {
   const contactLine = contactParts.join("  •  ");
 
   return (
-    <div className="bg-white rounded-lg border border-[#e0e0f5] shadow-sm p-8 space-y-5">
-      <div className="border-b-2 border-[#323288] pb-3">
-        <h2 className="text-2xl font-bold text-[#252560]">{fullName}</h2>
+    <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] shadow-sm p-8 space-y-5">
+      <div className="border-b-2 border-[var(--brand-navbar,#323288)] pb-3">
+        <h2 className="text-2xl font-bold text-[var(--brand-navbar-active,#252560)]">{fullName}</h2>
         {cv.headlineTitle && (
-          <p className="text-sm font-semibold text-[#323288] uppercase tracking-wide mt-1">
+          <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)] uppercase tracking-wide mt-1">
             {cv.headlineTitle}
           </p>
         )}
@@ -426,7 +434,7 @@ function NixCvDocument(props: {
 function CvSection(props: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-bold text-[#252560] uppercase tracking-wide border-b border-[#e0e0f5] pb-1">
+      <h3 className="text-sm font-bold text-[var(--brand-navbar-active,#252560)] uppercase tracking-wide border-b border-[var(--brand-navbar-100,#e0e0f5)] pb-1">
         {props.title}
       </h3>
       {props.children}
@@ -492,12 +500,12 @@ function CvSkillList(props: {
             }}
             placeholder="New entry"
             autoFocus
-            className="text-sm border border-[#c0c0eb] rounded px-2 py-0.5 w-40 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+            className="text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-0.5 w-40 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <button
             type="button"
             onClick={commit}
-            className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+            className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
           >
             Add
           </button>
@@ -513,7 +521,7 @@ function CvSkillList(props: {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
         >
           + Add
         </button>
@@ -527,7 +535,7 @@ function CvList(props: { values: string[] }) {
     <ul className="space-y-1">
       {props.values.map((value) => (
         <li key={value} className="text-sm text-gray-800 flex gap-2">
-          <span className="text-[#7373c2] flex-shrink-0">•</span>
+          <span className="text-[var(--brand-navbar-400,#7373c2)] flex-shrink-0">•</span>
           <span>{value}</span>
         </li>
       ))}
@@ -613,7 +621,7 @@ function CvReferenceList(props: {
           >
             <div>
               <p className="text-sm font-bold text-gray-900">{reference.name}</p>
-              {roleLine && <p className="text-sm text-[#323288]">{roleLine}</p>}
+              {roleLine && <p className="text-sm text-[var(--brand-navbar,#323288)]">{roleLine}</p>}
               {contactLine && <p className="text-xs text-gray-500">{contactLine}</p>}
             </div>
             <button
@@ -629,49 +637,49 @@ function CvReferenceList(props: {
         );
       })}
       {adding ? (
-        <div className="space-y-2 border border-[#c0c0eb] rounded-lg p-3 bg-[#f8f8fd]">
+        <div className="space-y-2 border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg p-3 bg-[var(--brand-navbar-50,#f8f8fd)]">
           <input
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Name (required)"
             autoFocus
-            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="text"
             value={position}
             onChange={(event) => setPosition(event.target.value)}
             placeholder="Position"
-            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="text"
             value={company}
             onChange={(event) => setCompany(event.target.value)}
             placeholder="Company"
-            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="text"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             placeholder="Phone"
-            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="Email (required)"
-            className="w-full text-sm border border-[#c0c0eb] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[#323288]"
+            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           {emailError && <p className="text-xs text-red-600">{emailError}</p>}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={commit}
-              className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+              className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
             >
               Add reference
             </button>
@@ -688,7 +696,7 @@ function CvReferenceList(props: {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs font-medium text-[#323288] hover:text-[#252560]"
+          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
         >
           + Add reference
         </button>
@@ -705,7 +713,7 @@ function CvExperienceItem(props: { experience: NixGeneratedCvExperience }) {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="text-sm font-bold text-gray-900">{exp.role}</p>
-          <p className="text-sm font-semibold text-[#323288]">{employerLine}</p>
+          <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)]">{employerLine}</p>
         </div>
         <span className="text-xs text-gray-500 whitespace-nowrap">{exp.period}</span>
       </div>

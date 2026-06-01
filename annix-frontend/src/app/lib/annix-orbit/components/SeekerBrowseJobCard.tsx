@@ -67,7 +67,7 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleApply}
-            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700"
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
           >
             View &amp; apply
           </a>
