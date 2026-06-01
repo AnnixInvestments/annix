@@ -291,7 +291,7 @@ export default function SeekerCalendarPage() {
       </div>
 
       {openInvites.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-4 space-y-2">
+        <div className="bg-white rounded-xl shadow-sm border border-[var(--brand-navbar-100,#e0e0f5)] p-4 space-y-2">
           <p className="text-sm font-semibold text-gray-900">
             Open invitations ({openInvites.length})
           </p>
@@ -299,17 +299,18 @@ export default function SeekerCalendarPage() {
             {openInvites.map((invite) => {
               const job = invite.jobPosting;
               const title = job ? job.title : "An employer";
+              const expiryLabel = invite.expiresAt ? formatDateLongZA(invite.expiresAt) : null;
               return (
                 <li key={invite.id} className="flex items-center justify-between gap-3 text-sm">
                   <span className="text-gray-700">
-                    {title} —{" "}
-                    <span className="text-gray-500">
-                      reply by {formatDateLongZA(invite.expiresAt)}
-                    </span>
+                    {title}
+                    {expiryLabel ? (
+                      <span className="text-gray-500"> — reply by {expiryLabel}</span>
+                    ) : null}
                   </span>
                   <Link
                     href={`/annix/orbit/interview-booking/${invite.token}`}
-                    className="text-xs font-semibold px-3 py-1.5 bg-[#FF8A00] text-[#1a1a40] rounded-lg hover:bg-[#FF9C33] whitespace-nowrap"
+                    className="text-xs font-semibold px-3 py-1.5 bg-[var(--brand-accent,#FF8A00)] text-[var(--brand-grad-from,#1a1a40)] rounded-lg hover:bg-[var(--brand-accent-light,#FF9C33)] whitespace-nowrap"
                   >
                     Pick a time
                   </Link>
@@ -321,15 +322,22 @@ export default function SeekerCalendarPage() {
       ) : null}
 
       {bookingsQuery.isLoading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-8 text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288] mx-auto" />
+        <div
+          role="status"
+          className="bg-white rounded-xl shadow-sm border border-[var(--brand-navbar-100,#e0e0f5)] p-8 text-center"
+        >
+          <div
+            aria-hidden="true"
+            className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--brand-navbar,#323288)] mx-auto"
+          />
+          <span className="sr-only">Loading your interviews…</span>
         </div>
       ) : bookingsQuery.isError ? (
         <div className="bg-white rounded-xl shadow-sm border border-red-200 p-6 text-red-700 text-sm">
           We couldn't load your interviews right now. Please refresh the page.
         </div>
       ) : sortedDayKeys.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-6">
+        <div className="bg-white rounded-xl shadow-sm border border-[var(--brand-navbar-100,#e0e0f5)] p-6">
           <p className="text-sm text-gray-700">
             You have no interviews booked yet. When a company sends you an interview invitation,
             it'll show up here.
@@ -344,7 +352,7 @@ export default function SeekerCalendarPage() {
             return (
               <div
                 key={dayKey}
-                className="bg-white rounded-xl shadow-sm border border-[#e0e0f5] p-4 space-y-3"
+                className="bg-white rounded-xl shadow-sm border border-[var(--brand-navbar-100,#e0e0f5)] p-4 space-y-3"
               >
                 <div className="flex items-baseline justify-between">
                   <h2 className="text-lg font-bold text-gray-900">{day.toFormat("EEEE d LLLL")}</h2>
@@ -409,7 +417,7 @@ export default function SeekerCalendarPage() {
             <button
               type="button"
               onClick={handleShowMoreDays}
-              className="w-full py-3 text-sm font-medium rounded-xl border border-[#e0e0f5] bg-white text-gray-700 hover:bg-gray-50 transition-colors"
+              className="w-full py-3 text-sm font-medium rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] bg-white text-gray-700 hover:bg-gray-50 transition-colors"
             >
               Show more days ({visibleDayKeys.length} of {sortedDayKeys.length})
             </button>
@@ -428,13 +436,21 @@ interface ConflictAdvisoryProps {
 function ConflictAdvisory(props: ConflictAdvisoryProps) {
   const message = props.nixMessage;
   if (message) {
-    return <p className="text-xs text-red-800 font-medium">⚠ {message}</p>;
+    return (
+      <p className="text-xs text-red-800 font-medium">
+        <span aria-hidden="true">⚠ </span>
+        <span className="sr-only">Warning: </span>
+        {message}
+      </p>
+    );
   }
   return (
     <>
       {props.fallbackConflicts.map((c, idx) => (
         <p key={`${c.type}-${idx}`} className="text-xs text-red-800 font-medium">
-          ⚠ {c.message}
+          <span aria-hidden="true">⚠ </span>
+          <span className="sr-only">Warning: </span>
+          {c.message}
         </p>
       ))}
     </>
