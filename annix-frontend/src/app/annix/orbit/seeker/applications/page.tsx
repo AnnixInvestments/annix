@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { SeekerApplication, SeekerApplicationStatus } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -60,7 +60,10 @@ export default function SeekerApplicationsPage() {
   const handleStatusChange = (id: number, status: SeekerApplicationStatus) => {
     updateMutation.mutate(
       { id, input: { status } },
-      { onError: () => showToast("Couldn't update the status — please try again", "error") },
+      {
+        onSuccess: () => showToast("Status updated", "success"),
+        onError: () => showToast("Couldn't update the status — please try again", "error"),
+      },
     );
   };
 
@@ -116,15 +119,23 @@ export default function SeekerApplicationsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {visibleApplications.map((application) => (
-            <ApplicationCard
-              key={application.id}
-              application={application}
-              onStatusChange={handleStatusChange}
-              onNotesSave={handleNotesSave}
-              onDelete={handleDelete}
-            />
-          ))}
+          {visibleApplications.map((application) => {
+            const mutatingVars = updateMutation.variables;
+            const statusPending =
+              updateMutation.isPending &&
+              mutatingVars?.id === application.id &&
+              mutatingVars.input.status !== undefined;
+            return (
+              <ApplicationCard
+                key={application.id}
+                application={application}
+                statusPending={statusPending}
+                onStatusChange={handleStatusChange}
+                onNotesSave={handleNotesSave}
+                onDelete={handleDelete}
+              />
+            );
+          })}
           {hasMore ? (
             <button
               type="button"
@@ -143,6 +154,7 @@ export default function SeekerApplicationsPage() {
 
 interface ApplicationCardProps {
   application: SeekerApplication;
+  statusPending: boolean;
   onStatusChange: (id: number, status: SeekerApplicationStatus) => void;
   onNotesSave: (id: number, notes: string) => void;
   onDelete: (application: SeekerApplication) => void;
@@ -151,8 +163,14 @@ interface ApplicationCardProps {
 function ApplicationCard(props: ApplicationCardProps) {
   const app = props.application;
   const appNotes = app.notes;
-  const initialNotes = appNotes || "";
-  const [notes, setNotes] = useState(initialNotes);
+  const savedNotes = appNotes || "";
+  const [notes, setNotes] = useState(savedNotes);
+  const notesFocused = useRef(false);
+
+  useEffect(() => {
+    if (notesFocused.current) return;
+    setNotes((current) => (current === savedNotes ? current : savedNotes));
+  }, [savedNotes]);
 
   const company = app.company;
   const location = app.location;
@@ -163,7 +181,7 @@ function ApplicationCard(props: ApplicationCardProps) {
   const statusClass = STATUS_CLASS[app.status];
 
   const commitNotes = () => {
-    const savedNotes = appNotes || "";
+    notesFocused.current = false;
     if (notes !== savedNotes) {
       props.onNotesSave(app.id, notes);
     }
@@ -187,10 +205,11 @@ function ApplicationCard(props: ApplicationCardProps) {
           <select
             aria-label={`Status for ${app.title}`}
             value={app.status}
+            disabled={props.statusPending}
             onChange={(e) =>
               props.onStatusChange(app.id, e.target.value as SeekerApplicationStatus)
             }
-            className={`text-sm font-medium rounded-lg border px-2.5 py-1.5 ${statusClass}`}
+            className={`text-sm font-medium rounded-lg border px-2.5 py-1.5 disabled:opacity-60 ${statusClass}`}
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -230,6 +249,9 @@ function ApplicationCard(props: ApplicationCardProps) {
       <input
         type="text"
         value={notes}
+        onFocus={() => {
+          notesFocused.current = true;
+        }}
         onChange={(e) => setNotes(e.target.value)}
         onBlur={commitNotes}
         placeholder="Add a note — interview date, contact person, reference number…"
