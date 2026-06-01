@@ -169,6 +169,14 @@ fi
 #    import-graph grep to find spec files since naming is not always
 #    ${basename}.spec.ts (e.g. rfq.controller.ts is tested by
 #    rfq-pump.controller.spec.ts).
+#    The related specs are run IN FULL (not filtered to a "should be defined"
+#    test). Filtering by `-t "should be defined"` silently SKIPPED any spec
+#    that lacks a literally-named "should be defined" test — Jest reported
+#    "1 skipped, 0 of 1 total" and exited 0, so its beforeEach (where
+#    createTestingModule resolves DI) never ran and a missing mock provider
+#    slipped through to pre-push. Running the full file guarantees the
+#    TestingModule compilation executes, which is what throws on a missing
+#    provider regardless of how the spec names its tests.
 STAGED_BACKEND_SERVICES=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.service\.ts$' | grep -v '\.spec\.ts$' || true)
 STAGED_BACKEND_CONTROLLERS=$(echo "$STAGED_TS_FILES" | grep -E '^annix-backend/src/.*\.controller\.ts$' | grep -v '\.spec\.ts$' || true)
 
@@ -208,8 +216,8 @@ if [ -n "$STAGED_BACKEND_SERVICES" ] || [ -n "$STAGED_BACKEND_CONTROLLERS" ]; th
 
     for spec_file in $SPECS_TO_RUN; do
         spec_rel="${spec_file#annix-backend/}"
-        if ! (cd "$ROOT_DIR/annix-backend" && npx jest "$spec_rel" --no-coverage -t "should be defined" --silent 2>/dev/null); then
-            echo "  FAIL: $spec_file — spec cannot resolve dependencies"
+        if ! (cd "$ROOT_DIR/annix-backend" && npx jest "$spec_rel" --no-coverage --silent --passWithNoTests 2>/dev/null); then
+            echo "  FAIL: $spec_file — spec cannot resolve dependencies (or a test in it is failing)"
             echo "        A new dependency was likely added to a service/controller imported by this spec without updating the mock providers."
             SPEC_FAIL=1
         fi
