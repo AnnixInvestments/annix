@@ -1,9 +1,8 @@
 "use client";
 
-import { isArray } from "es-toolkit/compat";
+import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useToast } from "@/app/components/Toast";
 import type {
   EeDisabilityKey,
   EeGenderKey,
@@ -47,12 +46,26 @@ const NATIONALITY_OPTIONS: Array<{ value: NationalityKey; label: string }> = [
   { value: "prefer_not_to_say", label: "Prefer not to say" },
 ];
 
+function serverMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof Error)) return fallback;
+  const jsonStart = error.message.indexOf("{");
+  if (jsonStart < 0) return fallback;
+  try {
+    const body = JSON.parse(error.message.slice(jsonStart)) as { message?: unknown };
+    const message = body.message;
+    if (isString(message) && message.trim().length > 0) return message;
+    if (isArray(message) && message.length > 0) return String(message[0]);
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export default function SeekerEeAttributesPage() {
   const { data, isLoading, isError } = useMyEeAttributes();
+  const { confirm, ConfirmDialog } = useConfirm();
   const updateMutation = useUpdateMyEeAttributes();
   const deleteMutation = useDeleteMyEeAttributes();
-  const { showToast } = useToast();
-  const { confirm, ConfirmDialog } = useConfirm();
 
   const [populationGroup, setPopulationGroup] = useState<EePopulationGroupKey>("prefer_not_to_say");
   const [gender, setGender] = useState<EeGenderKey>("prefer_not_to_say");
@@ -89,10 +102,13 @@ export default function SeekerEeAttributesPage() {
     if (fairnessMonitoring) purposes.push("fairness_monitoring");
     if (purposes.length === 0) {
       setPurposesError(true);
-      showToast(
-        "Tick at least one purpose, or choose Withdraw to remove your disclosure.",
-        "error",
-      );
+      await confirm({
+        title: "Choose at least one purpose",
+        message: "Tick at least one purpose, or choose Withdraw to remove your disclosure.",
+        confirmLabel: "OK",
+        hideCancel: true,
+        variant: "warning",
+      });
       return;
     }
     setPurposesError(false);
@@ -107,9 +123,21 @@ export default function SeekerEeAttributesPage() {
         consentTextVersionId: null,
         purposes,
       });
-      showToast("Your disclosure has been updated.", "success");
-    } catch {
-      showToast("Couldn't update your disclosure — please try again.", "error");
+      await confirm({
+        title: "Disclosure updated",
+        message: "Your Employment Equity disclosure has been saved across your applications.",
+        confirmLabel: "Done",
+        hideCancel: true,
+        variant: "info",
+      });
+    } catch (err) {
+      await confirm({
+        title: "Couldn't update disclosure",
+        message: serverMessage(err, "Please try again in a moment."),
+        confirmLabel: "OK",
+        hideCancel: true,
+        variant: "warning",
+      });
     }
   };
 
@@ -124,9 +152,22 @@ export default function SeekerEeAttributesPage() {
     if (!ok) return;
     try {
       await deleteMutation.mutateAsync();
-      showToast("Disclosure withdrawn.", "success");
-    } catch {
-      showToast("Couldn't withdraw your disclosure — please try again.", "error");
+      await confirm({
+        title: "Disclosure withdrawn",
+        message:
+          "Your demographic disclosure has been tombstoned on every job you've applied to. You can re-disclose at any time.",
+        confirmLabel: "Done",
+        hideCancel: true,
+        variant: "info",
+      });
+    } catch (err) {
+      await confirm({
+        title: "Couldn't withdraw disclosure",
+        message: serverMessage(err, "Please try again in a moment."),
+        confirmLabel: "OK",
+        hideCancel: true,
+        variant: "warning",
+      });
     }
   };
 
