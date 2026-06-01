@@ -19,7 +19,9 @@ export default async function SeekerHowToGuidePage(props: PageProps) {
 
   const headings = extractHeadings(guide.body);
   const all = loadAllGuides();
-  const sameCategory = all.filter((g) => g.category === guide.category);
+  const sameCategory = all
+    .filter((g) => g.category === guide.category)
+    .sort((a, b) => a.order - b.order);
   const currentIdx = sameCategory.findIndex((g) => g.slug === guide.slug);
   const prev = currentIdx > 0 ? sameCategory[currentIdx - 1] : null;
   const next =

@@ -17,12 +17,20 @@ interface SeekerHowToIndexClientProps {
 }
 
 export default function HowToIndexClient(props: SeekerHowToIndexClientProps) {
-  const { user } = useAnnixOrbitAuth();
+  const { user, isLoading } = useAnnixOrbitAuth();
   const userRole = user?.role;
   const role =
     userRole && (CV_ASSISTANT_HOW_TO_ROLES as readonly string[]).includes(userRole)
       ? (userRole as AnnixOrbitHowToRole)
       : "seeker";
+
+  if (isLoading) {
+    return (
+      <div className="p-12 text-center text-gray-500" role="status">
+        Loading guides…
+      </div>
+    );
+  }
 
   return (
     <SharedHowToIndexClient
