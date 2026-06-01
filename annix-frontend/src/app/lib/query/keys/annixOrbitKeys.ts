@@ -102,7 +102,13 @@ export const annixOrbitKeys = {
 
   seekerJobs: {
     all: ["annix-orbit", "seeker", "jobs"] as const,
-    recommended: () => ["annix-orbit", "seeker", "jobs", "recommended"] as const,
+    recommended: (filters?: {
+      province?: string;
+      city?: string;
+      category?: string;
+      minSalary?: string;
+      search?: string;
+    }) => ["annix-orbit", "seeker", "jobs", "recommended", filters ?? null] as const,
     coldStart: () => ["annix-orbit", "seeker", "jobs", "cold-start"] as const,
     browse: (params?: CvExternalJobQueryParams) =>
       ["annix-orbit", "seeker", "jobs", "browse", params ?? {}] as const,

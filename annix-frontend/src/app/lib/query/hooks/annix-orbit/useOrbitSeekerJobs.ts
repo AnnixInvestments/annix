@@ -6,6 +6,7 @@ import {
   type SeekerJobStats,
   type SeekerMatchingConsentStatus,
   type SeekerMute,
+  type SeekerRecommendedFilters,
   type SeekerRecommendedJobsResponse,
   type SeekerRematchResponse,
 } from "@/app/lib/api/annixOrbitApi";
@@ -22,13 +23,15 @@ export function useOrbitSeekerJobStats(enabled: boolean = true) {
 
 export function useOrbitSeekerRecommendedJobs(
   enabled: boolean = true,
-  options: { refetchInterval?: number | false } = {},
+  options: { refetchInterval?: number | false; filters?: SeekerRecommendedFilters } = {},
 ) {
   const requestedInterval = options.refetchInterval;
   const baseInterval = requestedInterval === undefined ? false : requestedInterval;
+  const optionFilters = options.filters;
+  const filters = optionFilters === undefined ? {} : optionFilters;
   return useQuery<SeekerRecommendedJobsResponse>({
-    queryKey: annixOrbitKeys.seekerJobs.recommended(),
-    queryFn: () => annixOrbitApiClient.seekerRecommendedJobs(),
+    queryKey: annixOrbitKeys.seekerJobs.recommended(filters),
+    queryFn: () => annixOrbitApiClient.seekerRecommendedJobs(filters),
     enabled,
     staleTime: 2 * 60 * 1000,
     // eslint-disable-next-line no-restricted-syntax -- caller opts in at 120s; polling self-stops once matches land so cold-start detection doesn't run forever

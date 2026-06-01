@@ -18,10 +18,12 @@ import {
 import {
   annixOrbitApiClient,
   type PublicJob,
+  type SeekerRecommendedFilters,
   type SeekerRecommendedJob,
 } from "@/app/lib/api/annixOrbitApi";
 import { nowMillis } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
+import { useDebouncedValue } from "@/app/lib/hooks/useDebouncedValue";
 import {
   useOrbitDismissSeekerMatch,
   useOrbitGrantSeekerMatchingConsent,
@@ -58,21 +60,6 @@ export default function SeekerJobsPage() {
   const consentGranted = consentData ? consentData.consented : false;
   const consentEnabled = consentReady && consentHasCandidate && consentGranted;
 
-  const recommendedRefetchInterval: number | false = consentEnabled ? 120_000 : false;
-  const recommendedQuery = useOrbitSeekerRecommendedJobs(consentEnabled, {
-    // eslint-disable-next-line no-restricted-syntax -- 120s is the project floor; cold-start needs to detect embedding completion
-    refetchInterval: recommendedRefetchInterval,
-  });
-  const recommendedHasMatches = recommendedQuery.data
-    ? recommendedQuery.data.matches.length > 0
-    : false;
-  const recommendedReady = recommendedQuery.data != null;
-  const coldStartEnabled = consentEnabled && recommendedReady && !recommendedHasMatches;
-  const coldStartQuery = useOrbitSeekerColdStartJobs(coldStartEnabled);
-  const dismissMutation = useOrbitDismissSeekerMatch();
-  const rematchMutation = useOrbitSeekerRematch();
-  const muteCompanyMutation = useOrbitMuteSeekerCompany();
-  const muteCategoryMutation = useOrbitMuteSeekerCategory();
   const [filters, setFilters] = useState<SeekerFilterState>({
     search: "",
     provider: "all",
@@ -81,6 +68,43 @@ export default function SeekerJobsPage() {
     category: "",
     minSalary: "",
   });
+  const filtersActive =
+    filters.search !== "" ||
+    filters.provider !== "all" ||
+    filters.province !== "" ||
+    filters.city !== "" ||
+    filters.category !== "" ||
+    filters.minSalary !== "";
+  const serverFilters = useMemo<SeekerRecommendedFilters>(() => {
+    const next: SeekerRecommendedFilters = {};
+    const search = filters.search.trim();
+    if (search) next.search = search;
+    if (filters.province) next.province = filters.province;
+    if (filters.city) next.city = filters.city;
+    if (filters.category) next.category = filters.category;
+    if (filters.minSalary) next.minSalary = filters.minSalary;
+    return next;
+  }, [filters]);
+  const debouncedServerFilters = useDebouncedValue(serverFilters, 350);
+
+  const recommendedRefetchInterval: number | false =
+    consentEnabled && !filtersActive ? 120_000 : false;
+  const recommendedQuery = useOrbitSeekerRecommendedJobs(consentEnabled, {
+    // eslint-disable-next-line no-restricted-syntax -- 120s is the project floor; cold-start needs to detect embedding completion
+    refetchInterval: recommendedRefetchInterval,
+    filters: debouncedServerFilters,
+  });
+  const recommendedHasMatches = recommendedQuery.data
+    ? recommendedQuery.data.matches.length > 0
+    : false;
+  const recommendedReady = recommendedQuery.data != null;
+  const coldStartEnabled =
+    consentEnabled && recommendedReady && !recommendedHasMatches && !filtersActive;
+  const coldStartQuery = useOrbitSeekerColdStartJobs(coldStartEnabled);
+  const dismissMutation = useOrbitDismissSeekerMatch();
+  const rematchMutation = useOrbitSeekerRematch();
+  const muteCompanyMutation = useOrbitMuteSeekerCompany();
+  const muteCategoryMutation = useOrbitMuteSeekerCategory();
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
   const [nixSearching, setNixSearching] = useState<boolean>(false);
   const [nixSearchEstimateMs, setNixSearchEstimateMs] = useState<number>(90_000);
@@ -105,7 +129,8 @@ export default function SeekerJobsPage() {
   const data = recommendedQuery.data;
   const coldStartData = coldStartQuery.data;
   const coldStartJobsCount = coldStartData ? coldStartData.jobs.length : 0;
-  const showColdStart = recommendedReady && !recommendedHasMatches && coldStartJobsCount > 0;
+  const showColdStart =
+    recommendedReady && !recommendedHasMatches && coldStartJobsCount > 0 && !filtersActive;
   const matches = useMemo(() => {
     if (showColdStart && coldStartData) return coldStartData.jobs;
     return data ? data.matches : [];
@@ -584,7 +609,7 @@ export default function SeekerJobsPage() {
     );
   }
 
-  if (matches.length === 0) {
+  if (matches.length === 0 && !filtersActive) {
     return (
       <BrowseAllJobsView
         jobs={browseJobs}
