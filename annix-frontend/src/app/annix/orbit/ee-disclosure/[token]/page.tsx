@@ -191,7 +191,16 @@ export default function EeDisclosurePage() {
           {jobRef ? ` · Ref ${jobRef}` : ""}
         </p>
         <p className="text-sm text-gray-500 mb-6">
-          Voluntary. Used only for Employment Equity Act reporting and AI fairness monitoring.
+          Voluntary. Used only for Employment Equity Act reporting and AI fairness monitoring.{" "}
+          <a
+            href="/annix/orbit/ee-attributes/privacy-notice"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[#1a1a40] font-medium underline"
+          >
+            Read the full privacy notice
+          </a>
+          .
         </p>
 
         <details className="mb-6 border border-gray-200 rounded-lg p-4 bg-gray-50">
