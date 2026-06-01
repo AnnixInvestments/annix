@@ -160,10 +160,12 @@ export default function SeekerJobsPage() {
       }
 
       if (minSalary !== null) {
+        const currency = m.job.salaryCurrency;
+        const isRand = currency == null || currency.toUpperCase() === "ZAR";
         const max = m.job.salaryMax;
         const min = m.job.salaryMin;
         const best = max != null ? max : min != null ? min : null;
-        if (best != null && best < minSalary) {
+        if (isRand && best != null && best < minSalary) {
           return false;
         }
       }

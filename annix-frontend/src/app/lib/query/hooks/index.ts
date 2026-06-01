@@ -200,6 +200,7 @@ export {
   useTenants,
   useTransferTenantOwner,
 } from "./admin/useTenancy";
+export { useCreateTierInvite, useTierInvites } from "./admin/useTierInvites";
 export {
   useOrbitConversionFunnel,
   useOrbitMarketTrends,

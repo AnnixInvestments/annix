@@ -102,13 +102,13 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
 
         <input
           type="number"
-          aria-label="Minimum salary (ZAR per year)"
+          aria-label="Minimum salary in Rand"
           inputMode="numeric"
           min={0}
           step={5000}
           value={state.minSalary}
           onChange={(e) => update({ minSalary: e.target.value })}
-          placeholder="Min salary (ZAR / yr)"
+          placeholder="Min salary (R)"
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>

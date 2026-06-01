@@ -4,6 +4,7 @@ import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { AppTierEditor } from "@/app/components/access/AppTierEditor";
+import { InviteToTierForm } from "@/app/components/access/InviteToTierForm";
 import { PromoCodeManager } from "@/app/components/access/PromoCodeManager";
 import { accessAppByModuleKey } from "@/app/lib/access/accessApps";
 import { useAdminLicensingCatalog } from "@/app/lib/query/hooks";
@@ -75,6 +76,24 @@ export default function AppAccessPage() {
           </p>
         ) : (
           <CompanyTiers moduleKey={moduleKey} />
+        )}
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="text-lg font-bold text-gray-900">Invite users (free trial)</h2>
+        {isSeeker ? (
+          <p className="text-sm text-gray-600">
+            Invite seekers to a trial on the{" "}
+            <Link
+              href="/admin/portal/orbit/seeker-tiers"
+              className="font-medium text-indigo-600 hover:underline"
+            >
+              Seeker tiers page
+            </Link>
+            .
+          </p>
+        ) : (
+          <InviteToTierForm moduleKey={moduleKey} />
         )}
       </section>
 

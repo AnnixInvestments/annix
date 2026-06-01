@@ -171,6 +171,47 @@ export class EmailService {
     });
   }
 
+  async sendTierInviteEmail(
+    email: string,
+    appName: string,
+    tierName: string,
+    freeDays: number,
+    acceptUrl: string,
+  ): Promise<boolean> {
+    const html = emailLayout({
+      title: `You're invited to ${appName}`,
+      heading: `Welcome to ${appName}`,
+      headingColor: "#4f46e5",
+      bodyHtml: `
+          <p>You've been invited to <strong>${appName}</strong> on the <strong>${tierName}</strong> plan.</p>
+          <p>You get <strong>${freeDays} days of free access</strong> to this plan before you'll be asked to subscribe.</p>`,
+      cta: {
+        href: acceptUrl,
+        label: "Accept your invite",
+        color: "#4f46e5",
+        expiryNote: `This invite expires soon — accept it to start your ${freeDays}-day free access.`,
+      },
+      footerText: "If you did not expect this invite, you can ignore this email.",
+    });
+
+    const text = `
+      Welcome to ${appName}
+
+      You've been invited to ${appName} on the ${tierName} plan, with ${freeDays} days of free access before you'll be asked to subscribe.
+
+      Accept your invite: ${acceptUrl}
+
+      If you did not expect this invite, you can ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `You're invited to ${appName} (${tierName} plan)`,
+      html,
+      text,
+    });
+  }
+
   async sendSupplierApprovalEmail(email: string, companyName: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/supplier/portal/dashboard`;

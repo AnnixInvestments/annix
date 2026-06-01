@@ -2,6 +2,7 @@ import { Module } from "@nestjs/common";
 import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
+import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
@@ -21,6 +22,7 @@ import { ModuleCatalogOverride } from "./entities/module-catalog-override.entity
 import { ModuleLicense } from "./entities/module-license.entity";
 import { PromoCode } from "./entities/promo-code.entity";
 import { PromoCodeRedemption } from "./entities/promo-code-redemption.entity";
+import { TierInvite } from "./entities/tier-invite.entity";
 import { FeatureLicenseGuard } from "./feature-license.guard";
 import { FeatureRegistry } from "./feature-registry.service";
 import { LicensingService } from "./licensing.service";
@@ -42,12 +44,18 @@ import { PostgresPromoCodeRepository } from "./repositories/promo-code.repositor
 import { PromoCodeRedemptionRepository } from "./repositories/promo-code-redemption.repository";
 import { MongoPromoCodeRedemptionRepository } from "./repositories/promo-code-redemption.repository.mongo";
 import { PostgresPromoCodeRedemptionRepository } from "./repositories/promo-code-redemption.repository.postgres";
+import { TierInviteRepository } from "./repositories/tier-invite.repository";
+import { MongoTierInviteRepository } from "./repositories/tier-invite.repository.mongo";
+import { PostgresTierInviteRepository } from "./repositories/tier-invite.repository.postgres";
 import { ModuleCatalogOverrideSchema } from "./schemas/module-catalog-override.schema";
 import { ModuleLicenseSchema } from "./schemas/module-license.schema";
 import { PromoCodeSchema } from "./schemas/promo-code.schema";
 import { PromoCodeRedemptionSchema } from "./schemas/promo-code-redemption.schema";
+import { TierInviteSchema } from "./schemas/tier-invite.schema";
 import { TenancyService } from "./tenancy.service";
 import { TenancyAdminController } from "./tenancy-admin.controller";
+import { TierInviteService } from "./tier-invite.service";
+import { TierInviteAdminController } from "./tier-invite-admin.controller";
 
 @Module({
   imports: [
@@ -58,6 +66,7 @@ import { TenancyAdminController } from "./tenancy-admin.controller";
             { name: "ModuleCatalogOverride", schema: ModuleCatalogOverrideSchema },
             { name: "PromoCode", schema: PromoCodeSchema },
             { name: "PromoCodeRedemption", schema: PromoCodeRedemptionSchema },
+            { name: "TierInvite", schema: TierInviteSchema },
             { name: "Company", schema: CompanySchema },
             { name: "User", schema: UserSchema },
           ]),
@@ -68,6 +77,7 @@ import { TenancyAdminController } from "./tenancy-admin.controller";
             ModuleCatalogOverride,
             PromoCode,
             PromoCodeRedemption,
+            TierInvite,
             Company,
             User,
           ]),
@@ -75,12 +85,14 @@ import { TenancyAdminController } from "./tenancy-admin.controller";
     FeatureFlagsModule,
     AdminModule,
     RbacModule,
+    EmailModule,
   ],
   controllers: [
     LicensingCatalogController,
     LicensingAdminController,
     PromoCodeAdminController,
     TenancyAdminController,
+    TierInviteAdminController,
   ],
   providers: [
     FeatureRegistry,
@@ -90,7 +102,13 @@ import { TenancyAdminController } from "./tenancy-admin.controller";
     LicensingSeatService,
     PromoCodeService,
     TenancyService,
+    TierInviteService,
     FeatureLicenseGuard,
+    repositoryProvider(
+      TierInviteRepository,
+      PostgresTierInviteRepository,
+      MongoTierInviteRepository,
+    ),
     repositoryProvider(
       ModuleLicenseRepository,
       PostgresModuleLicenseRepository,

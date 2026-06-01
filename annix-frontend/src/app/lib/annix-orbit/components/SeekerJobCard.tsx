@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { providerBadgeLabel } from "@/app/lib/annix-orbit/provider-labels";
 import type { SeekerRecommendedJob } from "@/app/lib/api/annixOrbitApi";
 
@@ -14,7 +15,6 @@ interface SeekerJobCardProps {
 }
 
 export function SeekerJobCard(props: SeekerJobCardProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const match = props.match;
   const job = match.job;
   const isLocked = match.locked === true;
@@ -141,46 +141,12 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
             Not for me
           </button>
           {hasMuteOptions ? (
-            <>
-              <button
-                type="button"
-                onClick={() => setMenuOpen((v) => !v)}
-                className="ml-2 text-sm text-gray-400 hover:text-gray-600"
-                aria-label="More options"
-              >
-                ⋯
-              </button>
-              {menuOpen ? (
-                <div className="absolute left-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[180px]">
-                  {muteCompanyHandler && job.company ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const jobCompany = job.company;
-                        if (jobCompany) muteCompanyHandler(jobCompany);
-                        setMenuOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Mute "{job.company}"
-                    </button>
-                  ) : null}
-                  {muteCategoryHandler && job.category ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const jobCategory = job.category;
-                        if (jobCategory) muteCategoryHandler(jobCategory);
-                        setMenuOpen(false);
-                      }}
-                      className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                    >
-                      Hide "{job.category}" roles
-                    </button>
-                  ) : null}
-                </div>
-              ) : null}
-            </>
+            <MoreOptionsMenu
+              company={muteCompanyHandler ? job.company : null}
+              category={muteCategoryHandler ? job.category : null}
+              onMuteCompany={muteCompanyHandler}
+              onMuteCategory={muteCategoryHandler}
+            />
           ) : null}
         </div>
         <a
@@ -194,6 +160,110 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
         </a>
       </div>
     </div>
+  );
+}
+
+interface MoreOptionsMenuProps {
+  company: string | null;
+  category: string | null;
+  onMuteCompany?: (company: string) => void;
+  onMuteCategory?: (category: string) => void;
+}
+
+function MoreOptionsMenu(props: MoreOptionsMenuProps) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    setCoords({ top: rect.bottom + 4, left: rect.left });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const trigger = triggerRef.current;
+      const menu = menuRef.current;
+      if (trigger?.contains(target)) return;
+      if (menu?.contains(target)) return;
+      setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  const company = props.company;
+  const category = props.category;
+  const muteCompany = props.onMuteCompany;
+  const muteCategory = props.onMuteCategory;
+  const showCompany = Boolean(muteCompany && company);
+  const showCategory = Boolean(muteCategory && category);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="ml-2 text-sm text-gray-400 hover:text-gray-600"
+        aria-label="More options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        ⋯
+      </button>
+      {open && coords
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px]"
+              style={{ top: coords.top, left: coords.left }}
+            >
+              {showCompany && company ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    if (muteCompany) muteCompany(company);
+                    setOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Mute "{company}"
+                </button>
+              ) : null}
+              {showCategory && category ? (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    if (muteCategory) muteCategory(category);
+                    setOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  Hide "{category}" roles
+                </button>
+              ) : null}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 
