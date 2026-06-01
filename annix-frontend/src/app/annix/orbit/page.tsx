@@ -31,7 +31,7 @@ export default function AnnixOrbitHomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           <CvHomeCard
             title="Company Postings"
             subtitle="Recruiter, HR, or hiring manager"
@@ -113,6 +113,32 @@ export default function AnnixOrbitHomePage() {
               </svg>
             }
           />
+
+          <CvHomeCard
+            title="Teacher"
+            subtitle="Educator or school"
+            description="AI assignment & workbook generator — process-based tasks that grade thinking, evidence, and AI critique, not recall."
+            primaryHref="#"
+            primaryLabel=""
+            secondaryHref="#"
+            secondaryLabel=""
+            comingSoon
+            icon={
+              <svg
+                className="w-7 h-7 text-[#323288]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
+                />
+              </svg>
+            }
+          />
         </div>
 
         <div className="text-center mt-8 space-y-3">
@@ -143,7 +169,33 @@ function CvHomeCard(props: {
   secondaryHref: string;
   secondaryLabel: string;
   icon: React.ReactNode;
+  comingSoon?: boolean;
 }) {
+  const isComingSoon = props.comingSoon === true;
+  if (isComingSoon) {
+    return (
+      <div className="relative bg-white rounded-2xl shadow-2xl p-8 flex flex-col opacity-60">
+        <span className="absolute top-4 right-4 text-xs font-semibold uppercase tracking-wide bg-gray-100 text-gray-500 px-2.5 py-1 rounded-full">
+          Coming soon
+        </span>
+        <div className="inline-flex items-center justify-center w-14 h-14 bg-gray-100 rounded-xl mb-5 grayscale">
+          {props.icon}
+        </div>
+        <h2 className="text-2xl font-bold text-gray-500">{props.title}</h2>
+        <p className="text-sm text-gray-400 font-medium mt-1">{props.subtitle}</p>
+        <p className="text-gray-400 mt-4 flex-1">{props.description}</p>
+        <div className="mt-6">
+          <button
+            type="button"
+            disabled
+            className="block w-full text-center bg-gray-200 text-gray-400 py-3 px-4 rounded-lg font-medium cursor-not-allowed"
+          >
+            Coming soon
+          </button>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="bg-white rounded-2xl shadow-2xl p-8 flex flex-col">
       <div className="inline-flex items-center justify-center w-14 h-14 bg-[#e0e0f5] rounded-xl mb-5">
