@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
+  useOrbitMyDataExport,
   useOrbitMyNotificationPreferences,
   useOrbitRequestMyAccountDeletion,
   useOrbitUpdateMyNotificationPreferences,
@@ -13,21 +14,17 @@ import {
 
 export default function SeekerSettingsPage() {
   const { confirm, ConfirmDialog } = useConfirm();
+  const { showToast } = useToast();
   const prefsQuery = useOrbitMyNotificationPreferences();
   const updatePrefs = useOrbitUpdateMyNotificationPreferences();
   const requestDeletion = useOrbitRequestMyAccountDeletion();
   const withdrawConsent = useOrbitWithdrawMyConsent();
   const withdrawMatching = useOrbitWithdrawSeekerMatching();
+  const dataExport = useOrbitMyDataExport();
 
   const [threshold, setThreshold] = useState(80);
   const [digestEnabled, setDigestEnabled] = useState(true);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [savedMessage, setSavedMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [consentMessage, setConsentMessage] = useState<string | null>(null);
-  const [matchingMessage, setMatchingMessage] = useState<string | null>(null);
-  const [isExporting, setIsExporting] = useState(false);
-  const [deletionRequestedFor, setDeletionRequestedFor] = useState<string | null>(null);
 
   const hydratedRef = useRef(false);
   useEffect(() => {
@@ -45,30 +42,27 @@ export default function SeekerSettingsPage() {
   const savedThreshold = prefsData?.matchAlertThreshold;
   const savedDigest = prefsData?.digestEnabled;
   const savedPush = prefsData?.pushEnabled;
+  const deletionRequested = prefsData?.accountDeletionRequested === true;
   const isDirty =
     prefsData != null &&
     (threshold !== savedThreshold || digestEnabled !== savedDigest || pushEnabled !== savedPush);
 
   const handleSavePrefs = async () => {
-    setSavedMessage(null);
-    setErrorMessage(null);
     try {
       await updatePrefs.mutateAsync({
         matchAlertThreshold: threshold,
         digestEnabled,
         pushEnabled,
       });
-      setSavedMessage("Preferences saved");
+      showToast("Preferences saved.", "success");
     } catch {
-      setErrorMessage("Could not save preferences — please try again.");
+      showToast("Could not save preferences — please try again.", "error");
     }
   };
 
   const handleExport = async () => {
-    setErrorMessage(null);
-    setIsExporting(true);
     try {
-      const data = await annixOrbitApiClient.myDataExport();
+      const data = await dataExport.mutateAsync();
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -78,15 +72,13 @@ export default function SeekerSettingsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
+      showToast("Your data export has downloaded.", "success");
     } catch {
-      setErrorMessage("Could not export your data — please try again.");
-    } finally {
-      setIsExporting(false);
+      showToast("Could not export your data — please try again.", "error");
     }
   };
 
   const handleDelete = async () => {
-    setErrorMessage(null);
     const confirmed = await confirm({
       title: "Delete your account?",
       message:
@@ -99,15 +91,19 @@ export default function SeekerSettingsPage() {
 
     try {
       const result = await requestDeletion.mutateAsync();
-      setDeletionRequestedFor(result.email);
+      await confirm({
+        title: "Check your email",
+        message: `We sent a confirmation link to ${result.email}. Click it within 1 hour to permanently delete your account. You'll stay signed in until you confirm.`,
+        confirmLabel: "Got it",
+        hideCancel: true,
+        variant: "info",
+      });
     } catch {
-      setErrorMessage("Could not request deletion — please try again.");
+      showToast("Could not request deletion — please try again.", "error");
     }
   };
 
   const handleWithdrawMatching = async () => {
-    setErrorMessage(null);
-    setMatchingMessage(null);
     const confirmed = await confirm({
       title: "Stop matching me to jobs?",
       message:
@@ -120,21 +116,25 @@ export default function SeekerSettingsPage() {
 
     try {
       const result = await withdrawMatching.mutateAsync();
-      if (result.candidatesAffected === 0) {
-        setMatchingMessage("Nothing to clear — no candidate records on file.");
-      } else {
-        setMatchingMessage(
-          `Matching turned off for ${result.candidatesAffected} record${result.candidatesAffected === 1 ? "" : "s"}; ${result.matchesCleared} match${result.matchesCleared === 1 ? "" : "es"} removed.`,
-        );
-      }
+      const affected = result.candidatesAffected;
+      const cleared = result.matchesCleared;
+      const outcomeMessage =
+        affected === 0
+          ? "Nothing to clear — no candidate records on file."
+          : `Matching turned off for ${affected} record${affected === 1 ? "" : "s"}; ${cleared} match${cleared === 1 ? "" : "es"} removed.`;
+      await confirm({
+        title: "Matching stopped",
+        message: outcomeMessage,
+        confirmLabel: "Done",
+        hideCancel: true,
+        variant: "info",
+      });
     } catch {
-      setErrorMessage("Could not stop matching — please try again.");
+      showToast("Could not stop matching — please try again.", "error");
     }
   };
 
   const handleWithdrawConsent = async () => {
-    setErrorMessage(null);
-    setConsentMessage(null);
     const confirmed = await confirm({
       title: "Withdraw POPIA consent?",
       message:
@@ -147,9 +147,15 @@ export default function SeekerSettingsPage() {
 
     try {
       const result = await withdrawConsent.mutateAsync();
-      setConsentMessage(result.message);
+      await confirm({
+        title: "Consent withdrawn",
+        message: result.message,
+        confirmLabel: "Done",
+        hideCancel: true,
+        variant: "info",
+      });
     } catch {
-      setErrorMessage("Could not withdraw consent — please try again.");
+      showToast("Could not withdraw consent — please try again.", "error");
     }
   };
 
@@ -159,12 +165,6 @@ export default function SeekerSettingsPage() {
         <h1 className="text-3xl font-bold text-white">Settings</h1>
         <p className="text-white/70 mt-2">Manage your notifications and account.</p>
       </div>
-
-      {errorMessage && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-          {errorMessage}
-        </div>
-      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
         <SectionCard
@@ -217,11 +217,7 @@ export default function SeekerSettingsPage() {
 
               <div className="flex items-center justify-between pt-2">
                 <span className="text-sm">
-                  {isDirty ? (
-                    <span className="text-amber-600">Unsaved changes</span>
-                  ) : savedMessage ? (
-                    <span className="text-green-700">{savedMessage}</span>
-                  ) : null}
+                  {isDirty ? <span className="text-amber-600">Unsaved changes</span> : null}
                 </span>
                 <button
                   type="button"
@@ -252,10 +248,10 @@ export default function SeekerSettingsPage() {
               <button
                 type="button"
                 onClick={handleExport}
-                disabled={isExporting}
+                disabled={dataExport.isPending}
                 className="bg-white text-[var(--brand-navbar-active,#252560)] border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
               >
-                {isExporting ? "Preparing..." : "Download data"}
+                {dataExport.isPending ? "Preparing..." : "Download data"}
               </button>
             </div>
 
@@ -278,12 +274,6 @@ export default function SeekerSettingsPage() {
               </button>
             </div>
 
-            {matchingMessage !== null && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-sm">
-                {matchingMessage}
-              </div>
-            )}
-
             <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-sm font-medium text-amber-700">Withdraw POPIA consent</h3>
@@ -299,12 +289,6 @@ export default function SeekerSettingsPage() {
               />
             </div>
 
-            {consentMessage !== null && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-sm">
-                {consentMessage}
-              </div>
-            )}
-
             <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-sm font-medium text-red-700">Delete my account</h3>
@@ -315,21 +299,20 @@ export default function SeekerSettingsPage() {
               </div>
               <DeleteRequestButton
                 isPending={requestDeletion.isPending}
-                alreadyRequested={deletionRequestedFor !== null}
+                alreadyRequested={deletionRequested}
                 onClick={handleDelete}
               />
             </div>
 
-            {deletionRequestedFor !== null && (
+            {deletionRequested ? (
               <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-sm">
-                <p className="font-medium">Check your email</p>
+                <p className="font-medium">Deletion pending</p>
                 <p className="text-xs mt-1">
-                  We sent a confirmation link to <strong>{deletionRequestedFor}</strong>. Click it
-                  within 1 hour to permanently delete your account. You will stay signed in until
-                  you confirm.
+                  We've emailed you a confirmation link. Click it within 1 hour to permanently
+                  delete your account. You will stay signed in until you confirm.
                 </p>
               </div>
-            )}
+            ) : null}
           </div>
         </SectionCard>
       </div>

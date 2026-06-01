@@ -563,6 +563,7 @@ export interface IndividualNotificationPreferences {
   digestEnabled: boolean;
   pushEnabled: boolean;
   jobAlertsOptIn?: boolean;
+  accountDeletionRequested?: boolean;
 }
 
 export interface PublicJob {

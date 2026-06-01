@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
+  type IndividualDataExport,
   type IndividualDocument,
   type IndividualDocumentKind,
   type IndividualNotificationPreferences,
@@ -84,8 +85,18 @@ export function useOrbitUpdateMyNotificationPreferences() {
 }
 
 export function useOrbitRequestMyAccountDeletion() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => annixOrbitApiClient.requestMyAccountDeletion(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.all });
+    },
+  });
+}
+
+export function useOrbitMyDataExport() {
+  return useMutation<IndividualDataExport, unknown, void>({
+    mutationFn: () => annixOrbitApiClient.myDataExport(),
   });
 }
 

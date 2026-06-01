@@ -51,6 +51,7 @@ export interface IndividualNotificationPreferences {
   matchAlertThreshold: number;
   digestEnabled: boolean;
   pushEnabled: boolean;
+  accountDeletionRequested: boolean;
 }
 
 export interface IndividualDataExport {
@@ -402,12 +403,21 @@ export class IndividualProfileService {
     });
   }
 
+  private accountDeletionRequested(profile: AnnixOrbitProfile): boolean {
+    return (
+      profile.deletionToken != null &&
+      profile.deletionTokenExpires != null &&
+      profile.deletionTokenExpires.getTime() > now().toMillis()
+    );
+  }
+
   async notificationPreferences(userId: number): Promise<IndividualNotificationPreferences> {
     const profile = await this.profileForUser(userId);
     return {
       matchAlertThreshold: profile.matchAlertThreshold,
       digestEnabled: profile.digestEnabled,
       pushEnabled: profile.pushEnabled,
+      accountDeletionRequested: this.accountDeletionRequested(profile),
     };
   }
 
@@ -432,6 +442,7 @@ export class IndividualProfileService {
       matchAlertThreshold: profile.matchAlertThreshold,
       digestEnabled: profile.digestEnabled,
       pushEnabled: profile.pushEnabled,
+      accountDeletionRequested: this.accountDeletionRequested(profile),
     };
   }
 

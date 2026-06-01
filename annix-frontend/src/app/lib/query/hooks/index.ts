@@ -273,6 +273,7 @@ export {
   useNixGeneratedCv,
   useOrbitConfirmMyAccountDeletion,
   useOrbitDeleteMyDocument,
+  useOrbitMyDataExport,
   useOrbitMyDocuments,
   useOrbitMyNotificationPreferences,
   useOrbitMyProfileStatus,
