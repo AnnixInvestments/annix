@@ -19,19 +19,6 @@ function RfqIcon() {
   );
 }
 
-function VoiceFilterIcon() {
-  return (
-    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
-      />
-    </svg>
-  );
-}
-
 function AnnixRepIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -245,14 +232,6 @@ const platformApps: AppCard[] = [
     icon: <InsightsIcon />,
     color: "bg-sky-100 text-sky-600",
     hoverColor: "hover:border-sky-400 group-hover:bg-sky-600 group-hover:text-white",
-  },
-  {
-    href: "/voice-filter",
-    title: "Voice Filter",
-    description: "Speaker verification filter for authorized voice access.",
-    icon: <VoiceFilterIcon />,
-    color: "bg-cyan-100 text-cyan-600",
-    hoverColor: "hover:border-cyan-400 group-hover:bg-cyan-600 group-hover:text-white",
   },
 ];
 

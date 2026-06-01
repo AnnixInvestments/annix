@@ -634,6 +634,40 @@ export default function ManagerDashboardPage() {
           <ActivityFeedSection />
         </div>
       </div>
+
+      <div>
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Admin Tools</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <Link
+            href="/annix-pulse/voice-filter"
+            className="group bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6 hover:shadow-md hover:border-blue-300 dark:hover:border-blue-700 transition-all"
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
+                <svg
+                  className="w-6 h-6 text-blue-600 dark:text-blue-400"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z"
+                  />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="font-semibold text-gray-900 dark:text-white">Voice Filter</h3>
+                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                  Speaker verification and AI meeting capture
+                </p>
+              </div>
+            </div>
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

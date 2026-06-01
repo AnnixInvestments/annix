@@ -1,4 +1,3 @@
-import { AudioLines } from "lucide-react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { BrandLoginCard } from "@/app/components/BrandLoginCard";
@@ -9,8 +8,6 @@ export const metadata: Metadata = {
   description:
     "Build • Connect • Innovate • Grow. Creating intelligent platforms that help businesses work smarter, move faster, and grow stronger.",
 };
-
-const iconProps = { className: "w-12 h-12", strokeWidth: 1.5 };
 
 const ANNIX_PILLARS = ["BUILD", "CONNECT", "INNOVATE", "GROW"];
 
@@ -96,36 +93,6 @@ export default function HomePage() {
                 brand="annix-orbit"
                 className="absolute inset-0 h-full w-full object-cover"
               />
-            </div>
-          </Link>
-
-          <Link href="/voice-filter/login" className="group">
-            <div className="bg-white bg-opacity-95 backdrop-blur-sm rounded-xl shadow-lg p-8 border-2 border-transparent hover:border-cyan-400 hover:shadow-xl transition-all duration-300 aspect-[4/5] flex flex-col items-center justify-center">
-              <div className="text-center">
-                <div className="inline-flex items-center justify-center w-20 h-20 bg-cyan-100 rounded-2xl text-cyan-600 mb-6 group-hover:bg-cyan-600 group-hover:text-white transition-colors">
-                  <AudioLines {...iconProps} />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">Voice Filter</h3>
-                <p className="text-gray-600 mb-6">
-                  Speaker verification filter that only passes through your authorized voice.
-                </p>
-                <span className="inline-flex items-center text-cyan-600 font-semibold group-hover:translate-x-1 transition-transform">
-                  Login
-                  <svg
-                    className="w-5 h-5 ml-2"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5l7 7-7 7"
-                    />
-                  </svg>
-                </span>
-              </div>
             </div>
           </Link>
         </div>

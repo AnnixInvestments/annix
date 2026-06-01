@@ -145,6 +145,16 @@ export const annixRepKeys = {
     profile: () => [...annixRepKeys.repProfile.all, "profile"] as const,
     searchTerms: () => [...annixRepKeys.repProfile.all, "searchTerms"] as const,
   },
+  voiceProfile: {
+    all: ["annixRep", "voiceProfile"] as const,
+    status: () => [...annixRepKeys.voiceProfile.all, "status"] as const,
+  },
+  voiceAgent: {
+    all: ["annixRep", "voiceAgent"] as const,
+    health: () => [...annixRepKeys.voiceAgent.all, "health"] as const,
+    devices: () => [...annixRepKeys.voiceAgent.all, "devices"] as const,
+    filterStatus: () => [...annixRepKeys.voiceAgent.all, "filterStatus"] as const,
+  },
   discovery: {
     all: ["annixRep", "discovery"] as const,
     search: (lat: number, lng: number, radiusKm?: number, sources?: string[]) =>

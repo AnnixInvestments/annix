@@ -591,6 +591,22 @@ export {
   useTranscript,
   useUpdateTranscript,
 } from "./annix-rep/useTranscript";
+export {
+  useStartEnrollment,
+  useStartFilter,
+  useStartVoiceMeeting,
+  useStopFilter,
+  useStopVoiceMeeting,
+  useVoiceAgentDevices,
+  useVoiceAgentStatus,
+  useVoiceEnrollmentStatus,
+  useVoiceFilterStatus,
+} from "./annix-rep/useVoiceAgent";
+export {
+  useResetVoiceProfile,
+  useUpsertVoiceProfile,
+  useVoiceProfile,
+} from "./annix-rep/useVoiceProfile";
 export type {
   AdvisorCalendarEntry,
   AdvisorDashboardData,

@@ -40,10 +40,6 @@ export const shouldShowGlobalNavigation = (pathname: string): boolean => {
     return false;
   }
 
-  if (pathname.startsWith("/voice-filter")) {
-    return false;
-  }
-
   if (pathname.startsWith("/insights")) {
     return false;
   }

@@ -61,6 +61,23 @@ export interface RepProfileStatus {
   profile: RepProfile | null;
 }
 
+export interface VoiceProfile {
+  id: number;
+  userId: number;
+  enrolled: boolean;
+  awsSpeakerId: string | null;
+  awsDomainId: string | null;
+  enrolledAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UpsertVoiceProfileDto {
+  enrolled: boolean;
+  awsSpeakerId?: string;
+  awsDomainId?: string;
+}
+
 export type CalendarProvider = "google" | "outlook" | "apple" | "caldav";
 export type CalendarSyncStatus = "active" | "paused" | "error" | "expired";
 export type CalendarEventStatus = "confirmed" | "tentative" | "cancelled";

@@ -49,6 +49,19 @@ const nextConfig: NextConfig = {
         destination: "/annix-pulse/:path*",
         permanent: true,
       },
+      // Voice Filter became a module of Annix Pulse; its standalone routes were
+      // removed. Redirect old /voice-filter* URLs (including the former login
+      // and calendar pages) to the Pulse module so bookmarks keep working.
+      {
+        source: "/voice-filter",
+        destination: "/annix-pulse/voice-filter",
+        permanent: true,
+      },
+      {
+        source: "/voice-filter/:path*",
+        destination: "/annix-pulse/voice-filter",
+        permanent: true,
+      },
     ];
   },
 

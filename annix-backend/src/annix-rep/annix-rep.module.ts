@@ -212,6 +212,7 @@ import { PostgresTerritoryRepository } from "./territory.repository.postgres";
 import { VisitRepository } from "./visit.repository";
 import { MongoVisitRepository } from "./visit.repository.mongo";
 import { PostgresVisitRepository } from "./visit.repository.postgres";
+import { VoiceFilterModule } from "./voice-filter";
 
 @Module({
   imports: [
@@ -280,6 +281,7 @@ import { PostgresVisitRepository } from "./visit.repository.postgres";
     AdminModule,
     EmailModule,
     RepProfileModule,
+    VoiceFilterModule,
     AnnixRepAuthModule,
     DiscoveryModule,
     forwardRef(() => NixModule),

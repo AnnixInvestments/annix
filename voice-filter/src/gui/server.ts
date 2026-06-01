@@ -276,6 +276,65 @@ let meetingSession: MeetingSession | null = null;
 let detectedDevice: { id: number; name: string } | null = null;
 let wsClient: WebSocket | null = null;
 
+const ANNIX_API_URL = process.env.ANNIX_API_URL ?? "http://localhost:4001";
+const ANNIX_WEB_ORIGINS = (process.env.ANNIX_WEB_ORIGIN ?? "http://localhost:3000")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter((origin) => origin.length > 0);
+
+const PULSE_TOKEN_TTL_MS = 5 * 60 * 1000;
+const pulseTokenCache = new Map<string, { userId: number; expiresAt: number }>();
+
+let filterRunning = false;
+let filterMuted = false;
+let filterLevel = 0;
+let filterVerifiedCount = 0;
+let filterBlockedCount = 0;
+
+type EnrollmentRunState = "idle" | "recording" | "processing" | "complete" | "error";
+let enrollmentRunState: EnrollmentRunState = "idle";
+let enrollmentProgress = 0;
+let enrollmentMessage: string | null = null;
+
+function bearerToken(req: IncomingMessage): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  return null;
+}
+
+async function authenticatePulseUser(req: IncomingMessage): Promise<number | null> {
+  const token = bearerToken(req);
+  if (!token) {
+    return null;
+  }
+
+  const nowMs = Date.now();
+  const cached = pulseTokenCache.get(token);
+  if (cached && cached.expiresAt > nowMs) {
+    return cached.userId;
+  }
+
+  try {
+    const response = await fetch(`${ANNIX_API_URL}/annix-rep/auth/profile`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) {
+      return null;
+    }
+    const profile = (await response.json()) as { userId?: number };
+    const userId = profile.userId ?? null;
+    if (userId === null) {
+      return null;
+    }
+    pulseTokenCache.set(token, { userId, expiresAt: nowMs + PULSE_TOKEN_TTL_MS });
+    return userId;
+  } catch {
+    return null;
+  }
+}
+
 function parseJsonBody(req: IncomingMessage): Promise<Record<string, unknown>> {
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
@@ -306,11 +365,14 @@ function setTokenCookie(res: ServerResponse, token: string): void {
 
 function setCorsHeaders(res: ServerResponse, req: IncomingMessage): void {
   const origin = req.headers.origin;
-  if (origin === "http://localhost:3000" || origin === "http://localhost:47823") {
+  const allowed =
+    origin === `http://localhost:${PORT}` ||
+    (origin !== undefined && ANNIX_WEB_ORIGINS.includes(origin));
+  if (origin && allowed) {
     res.setHeader("Access-Control-Allow-Origin", origin);
     res.setHeader("Access-Control-Allow-Credentials", "true");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   }
 }
 
@@ -1008,6 +1070,10 @@ async function startEnrollment(): Promise<void> {
   console.log("Starting enrollment...");
   stopAudioCapture();
 
+  enrollmentRunState = "recording";
+  enrollmentProgress = 0;
+  enrollmentMessage = null;
+
   const settings = loadSettings();
   const domainId = settings.awsVoiceIdDomainId ?? "local";
   const speakerId = "default";
@@ -1038,6 +1104,8 @@ async function startEnrollment(): Promise<void> {
       percentComplete: number;
       isSpeech: boolean;
     }) => {
+      enrollmentRunState = "recording";
+      enrollmentProgress = progress.percentComplete;
       sendMessage("enrollment-progress", progress);
     },
   );
@@ -1052,6 +1120,8 @@ async function startEnrollment(): Promise<void> {
       speakerId: result.speakerId,
       inputDeviceId: detectedDevice!.id,
     });
+    enrollmentRunState = "complete";
+    enrollmentProgress = 100;
     sendMessage("enrollment-complete", result);
   });
 
@@ -1061,6 +1131,8 @@ async function startEnrollment(): Promise<void> {
 
   enrollmentSession.on("error", (error: Error) => {
     console.error("Enrollment error:", error);
+    enrollmentRunState = "error";
+    enrollmentMessage = error.message;
     sendMessage("enrollment-error", { message: error.message });
   });
 
@@ -1118,18 +1190,28 @@ async function startVoiceFilter(): Promise<void> {
 
   voiceFilter.on("started", (status: VoiceFilterStatus) => {
     console.log("Voice filter started");
+    filterRunning = true;
+    filterVerifiedCount = 0;
+    filterBlockedCount = 0;
     sendMessage("filter-started", status);
   });
 
   voiceFilter.on("verification", (result: VerificationResult) => {
+    if (result.decision === "authorized") {
+      filterVerifiedCount += 1;
+    } else if (result.decision === "unauthorized") {
+      filterBlockedCount += 1;
+    }
     sendMessage("filter-verification", result);
   });
 
   voiceFilter.on("muted", () => {
+    filterMuted = true;
     sendMessage("filter-muted", true);
   });
 
   voiceFilter.on("unmuted", () => {
+    filterMuted = false;
     sendMessage("filter-unmuted", true);
   });
 
@@ -1147,6 +1229,8 @@ async function startVoiceFilter(): Promise<void> {
       }
       const avg = sum / data.samples.length;
       const level = Math.min(1, avg * 10);
+      filterLevel = level;
+      filterMuted = data.muted;
       sendMessage("volume-level", level);
       sendMessage("vad-level", data.probability);
     },
@@ -1166,6 +1250,9 @@ function stopVoiceFilter(): void {
     console.log("Stopping voice filter...");
     voiceFilter.stop();
     voiceFilter = null;
+    filterRunning = false;
+    filterMuted = false;
+    filterLevel = 0;
     sendMessage("filter-stopped", true);
   }
 }
@@ -1463,6 +1550,122 @@ function handleMessage(message: string): void {
   }
 }
 
+function filterStatusPayload(): {
+  running: boolean;
+  muted: boolean;
+  level: number;
+  verifiedCount: number;
+  blockedCount: number;
+} {
+  return {
+    running: filterRunning,
+    muted: filterMuted,
+    level: filterLevel,
+    verifiedCount: filterVerifiedCount,
+    blockedCount: filterBlockedCount,
+  };
+}
+
+function enrollmentStatusPayload(): {
+  state: EnrollmentRunState;
+  progress: number;
+  message: string | null;
+} {
+  return {
+    state: enrollmentRunState,
+    progress: enrollmentProgress,
+    message: enrollmentMessage,
+  };
+}
+
+function isVirtualDeviceName(name: string): boolean {
+  const lower = name.toLowerCase();
+  return lower.includes("cable") || lower.includes("vb-audio") || lower.includes("virtual");
+}
+
+function handleApiHealth(res: ServerResponse): void {
+  const profile = checkExistingProfile();
+  sendJson(res, 200, {
+    status: "ok",
+    version: process.env.npm_package_version ?? null,
+    enrolled: profile.exists,
+  });
+}
+
+function handleApiDevices(res: ServerResponse): void {
+  const inputs = listInputDevices().map((device) => ({
+    id: String(device.id),
+    name: device.name,
+    isVirtual: isVirtualDeviceName(device.name),
+  }));
+  const outputs = listOutputDevices().map((device) => ({
+    id: String(device.id),
+    name: device.name,
+    isVirtual: isVirtualDeviceName(device.name),
+  }));
+  sendJson(res, 200, { inputs, outputs });
+}
+
+async function handleApiFilterStart(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  try {
+    const body = await parseJsonBody(req).catch((): Record<string, unknown> => ({}));
+    const inputDeviceId = body.inputDeviceId;
+    if (typeof inputDeviceId === "string" && inputDeviceId.length > 0) {
+      const numericId = Number.parseInt(inputDeviceId, 10);
+      const device = listInputDevices().find((candidate) => candidate.id === numericId);
+      if (device) {
+        detectedDevice = { id: device.id, name: device.name };
+      }
+    } else {
+      startMicTest();
+    }
+    await startVoiceFilter();
+    sendJson(res, 200, filterStatusPayload());
+  } catch (error) {
+    sendJson(res, 500, { error: (error as Error).message });
+  }
+}
+
+function handleApiFilterStop(res: ServerResponse): void {
+  stopVoiceFilter();
+  sendJson(res, 200, filterStatusPayload());
+}
+
+function handleApiFilterStatus(res: ServerResponse): void {
+  sendJson(res, 200, filterStatusPayload());
+}
+
+async function handleApiEnrollmentStart(res: ServerResponse): Promise<void> {
+  if (!detectedDevice) {
+    startMicTest();
+  }
+  await startEnrollment();
+  sendJson(res, 200, enrollmentStatusPayload());
+}
+
+function handleApiEnrollmentStatus(res: ServerResponse): void {
+  sendJson(res, 200, enrollmentStatusPayload());
+}
+
+async function handleApiMeetingStart(req: IncomingMessage, res: ServerResponse): Promise<void> {
+  try {
+    const body = await parseJsonBody(req).catch((): Record<string, unknown> => ({}));
+    const name = typeof body.name === "string" && body.name.length > 0 ? body.name : "Meeting";
+    handleMeetingCreate({ title: name, attendeeCount: 1 });
+    handleMeetingStart();
+    const meetingId = meetingSession ? meetingSession.sessionId_() : null;
+    sendJson(res, 200, { meetingId });
+  } catch (error) {
+    sendJson(res, 500, { error: (error as Error).message });
+  }
+}
+
+function handleApiMeetingStop(res: ServerResponse): void {
+  const meetingId = meetingSession ? meetingSession.sessionId_() : null;
+  handleMeetingEnd();
+  sendJson(res, 200, { meetingId });
+}
+
 export async function startGuiServer(): Promise<void> {
   initDatabase();
   initCalendarService();
@@ -1494,96 +1697,65 @@ export async function startGuiServer(): Promise<void> {
       return;
     }
 
-    if (url === "/api/register" && req.method === "POST") {
-      handleApiRegister(req, res);
-      return;
-    }
+    authenticatePulseUser(req)
+      .then((userId) => {
+        if (!userId) {
+          sendJson(res, 401, { error: "Not authenticated" });
+          return;
+        }
 
-    if (url === "/api/login" && req.method === "POST") {
-      handleApiLogin(req, res);
-      return;
-    }
-
-    if (url === "/api/logout" && req.method === "POST") {
-      handleApiLogout(req, res);
-      return;
-    }
-
-    if (url === "/api/oauth/exchange" && req.method === "POST") {
-      handleApiOAuthExchange(req, res);
-      return;
-    }
-
-    const userId = authenticatedUserId(req);
-    if (!userId) {
-      sendJson(res, 401, { error: "Not authenticated" });
-      return;
-    }
-
-    if (url === "/api/check-credentials") {
-      handleApiCheckCredentials(req, res);
-    } else if (url === "/api/user") {
-      handleApiUserInfo(req, res);
-    } else if (url === "/api/calendar/providers") {
-      handleApiCalendarProviders(req, res);
-    } else if (url.startsWith("/api/calendar/events/") && req.method === "GET") {
-      const eventId = parseInt(url.replace("/api/calendar/events/", ""), 10);
-      if (Number.isNaN(eventId)) {
-        sendJson(res, 400, { error: "Invalid event ID." });
-      } else {
-        handleApiCalendarEventById(req, res, eventId);
-      }
-    } else if (url.startsWith("/api/calendar/events") && req.method === "GET") {
-      handleApiCalendarEvents(req, res);
-    } else if (url.startsWith("/api/calendar/upcoming") && req.method === "GET") {
-      handleApiCalendarUpcoming(req, res);
-    } else if (url === "/api/calendar/sync" && req.method === "POST") {
-      handleApiCalendarSync(req, res);
-    } else if (url === "/api/calendar/sync-status" && req.method === "GET") {
-      handleApiCalendarSyncStatus(req, res);
-    } else if (url.startsWith("/api/calendar/disconnect/") && req.method === "POST") {
-      const provider = url.replace("/api/calendar/disconnect/", "");
-      handleApiCalendarDisconnect(req, res, provider);
-    } else if (url === "/api/post-meeting/jobs" && req.method === "GET") {
-      handleApiPostMeetingJobs(req, res);
-    } else if (url.match(/^\/api\/post-meeting\/jobs\/\d+$/) && req.method === "GET") {
-      const jobId = parseInt(url.replace("/api/post-meeting/jobs/", ""), 10);
-      handleApiPostMeetingJobById(req, res, jobId);
-    } else if (url === "/api/post-meeting/jobs" && req.method === "POST") {
-      handleApiPostMeetingCreate(req, res);
-    } else if (url.match(/^\/api\/post-meeting\/jobs\/\d+\/process$/) && req.method === "POST") {
-      const jobId = parseInt(url.replace("/api/post-meeting/jobs/", "").replace("/process", ""), 10);
-      handleApiPostMeetingProcess(req, res, jobId);
-    } else if (url.match(/^\/api\/post-meeting\/jobs\/\d+\/cancel$/) && req.method === "POST") {
-      const jobId = parseInt(url.replace("/api/post-meeting/jobs/", "").replace("/cancel", ""), 10);
-      handleApiPostMeetingCancel(req, res, jobId);
-    } else if (url === "/api/post-meeting/status" && req.method === "GET") {
-      handleApiPostMeetingStatus(req, res);
-    } else {
-      sendJson(res, 404, { error: "Not found" });
-    }
+        if (url === "/api/health" && req.method === "GET") {
+          handleApiHealth(res);
+        } else if (url === "/api/devices" && req.method === "GET") {
+          handleApiDevices(res);
+        } else if (url === "/api/filter/start" && req.method === "POST") {
+          handleApiFilterStart(req, res);
+        } else if (url === "/api/filter/stop" && req.method === "POST") {
+          handleApiFilterStop(res);
+        } else if (url === "/api/filter/status" && req.method === "GET") {
+          handleApiFilterStatus(res);
+        } else if (url === "/api/enrollment/start" && req.method === "POST") {
+          handleApiEnrollmentStart(res);
+        } else if (url === "/api/enrollment/status" && req.method === "GET") {
+          handleApiEnrollmentStatus(res);
+        } else if (url === "/api/meeting/start" && req.method === "POST") {
+          handleApiMeetingStart(req, res);
+        } else if (url === "/api/meeting/stop" && req.method === "POST") {
+          handleApiMeetingStop(res);
+        } else {
+          sendJson(res, 404, { error: "Not found" });
+        }
+      })
+      .catch(() => {
+        sendJson(res, 500, { error: "Internal error" });
+      });
   });
 
   const wss = new WebSocketServer({ server });
 
   wss.on("connection", (ws, req) => {
-    const userId = authenticatedUserId(req);
-    if (!userId) {
-      ws.close(4401, "Unauthorized");
-      return;
-    }
+    authenticatePulseUser(req)
+      .then((userId) => {
+        if (!userId) {
+          ws.close(4401, "Unauthorized");
+          return;
+        }
 
-    wsClient = ws;
+        wsClient = ws;
 
-    ws.on("message", (data) => {
-      handleMessage(data.toString());
-    });
+        ws.on("message", (data) => {
+          handleMessage(data.toString());
+        });
 
-    ws.on("close", () => {
-      console.log("WebSocket closed");
-      stopAudioCapture();
-      wsClient = null;
-    });
+        ws.on("close", () => {
+          console.log("WebSocket closed");
+          stopAudioCapture();
+          wsClient = null;
+        });
+      })
+      .catch(() => {
+        ws.close(4401, "Unauthorized");
+      });
   });
 
   server.listen(PORT, () => {

@@ -97,8 +97,10 @@ import {
   UpdateRecurringMeetingDto,
   UpdateRepProfileDto,
   UpdateTranscriptDto,
+  UpsertVoiceProfileDto,
   Visit,
   VisitOutcome,
+  VoiceProfile,
   WeeklyActivityReport,
   WinLossRateTrend,
 } from "./annixRepApi.types";
@@ -988,6 +990,25 @@ export const annixRepApi = {
 
     searchTerms: createEndpoint<[], string[]>(apiClient, "GET", {
       path: "/annix-rep/rep-profile/search-terms",
+    }),
+  },
+
+  voiceProfile: {
+    profile: async (): Promise<VoiceProfile | null> => {
+      const response = await fetch(`${browserBaseUrl()}/annix-rep/voice-filter/profile`, {
+        headers: annixRepAuthHeaders(),
+      });
+      if (response.status === 404) return null;
+      return handleResponse<VoiceProfile | null>(response);
+    },
+
+    upsert: createEndpoint<[dto: UpsertVoiceProfileDto], VoiceProfile>(apiClient, "PUT", {
+      path: "/annix-rep/voice-filter/profile",
+      body: (dto) => dto,
+    }),
+
+    reset: createEndpoint<[], VoiceProfile | null>(apiClient, "DELETE", {
+      path: "/annix-rep/voice-filter/profile",
     }),
   },
 

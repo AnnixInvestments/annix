@@ -1,7 +1,8 @@
 import open from "open";
 import { startGuiServer } from "./server.js";
 
-const FRONTEND_URL = "http://localhost:3000/voice-filter";
+const FRONTEND_URL =
+  process.env.ANNIX_VOICE_FILTER_URL ?? "http://localhost:3000/annix-pulse/voice-filter";
 
 async function launchMini(): Promise<void> {
   await startGuiServer();

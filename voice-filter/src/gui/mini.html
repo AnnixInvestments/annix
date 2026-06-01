@@ -175,7 +175,7 @@
       <span class="title">Voice Filter</span>
     </div>
     <div class="header-btns">
-      <a href="http://localhost:47823/" class="header-btn" title="Back to Home">🏠</a>
+      <a href="http://localhost:3000/annix-pulse/voice-filter" class="header-btn" title="Back to Home">🏠</a>
       <button class="close-btn" id="close-btn">✕</button>
     </div>
   </div>
@@ -385,20 +385,22 @@
       window.close();
     };
 
+    var ANNIX_VOICE_FILTER_URL = "http://localhost:3000/annix-pulse/voice-filter";
+
     document.getElementById("btn-meeting").onclick = function() {
-      window.open("http://localhost:47823/meeting", "_blank", "width=1000,height=700");
+      window.open(ANNIX_VOICE_FILTER_URL + "/meeting", "_blank", "width=1000,height=700");
     };
 
     document.getElementById("btn-enroll").onclick = function() {
-      window.open("http://localhost:47823/filter", "_blank", "width=1100,height=800");
+      window.open(ANNIX_VOICE_FILTER_URL + "/filter", "_blank", "width=1100,height=800");
     };
 
     document.getElementById("btn-dashboard").onclick = function() {
-      window.open("http://localhost:47823", "_blank", "width=1100,height=800");
+      window.open(ANNIX_VOICE_FILTER_URL, "_blank", "width=1100,height=800");
     };
 
     document.getElementById("btn-enroll-new").onclick = function() {
-      window.open("http://localhost:47823/filter", "_blank", "width=1100,height=800");
+      window.open(ANNIX_VOICE_FILTER_URL + "/filter", "_blank", "width=1100,height=800");
     };
 
     if (!hasProfile) {
