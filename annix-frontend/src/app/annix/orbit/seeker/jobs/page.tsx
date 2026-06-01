@@ -1,7 +1,9 @@
 "use client";
 
+import { isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
   useExtractionProgress,
   withExtractionProgress,
@@ -147,12 +149,13 @@ export default function SeekerJobsPage() {
       const locationArea = rawLocationArea || "";
       const locationRaw = rawLocationRaw || "";
       const description = rawDescription || "";
-      const haystack = `${locationArea} ${locationRaw} ${description}`.toLowerCase();
+      const locationHaystack = `${locationArea} ${locationRaw}`.toLowerCase();
+      const keywordHaystack = `${locationArea} ${locationRaw} ${description}`.toLowerCase();
 
-      if (provinceLower && !haystack.includes(provinceLower)) {
+      if (provinceLower && !locationHaystack.includes(provinceLower)) {
         return false;
       }
-      if (cityLower && !haystack.includes(cityLower)) {
+      if (cityLower && !locationHaystack.includes(cityLower)) {
         return false;
       }
 
@@ -169,7 +172,7 @@ export default function SeekerJobsPage() {
       const company = rawCompany || "";
       const titleMatch = m.job.title.toLowerCase().includes(term);
       const companyMatch = company.toLowerCase().includes(term);
-      const locationMatch = haystack.includes(term);
+      const locationMatch = keywordHaystack.includes(term);
       return titleMatch || companyMatch || locationMatch;
     });
   }, [matches, filters]);
@@ -183,7 +186,9 @@ export default function SeekerJobsPage() {
           externalJobId: match.externalJobId,
           sourceUrl,
         })
-        .catch(() => {});
+        .catch((err) => {
+          console.warn("Failed to record apply-click for match", match.matchId, err);
+        });
       window.open(sourceUrl, "_blank", "noopener,noreferrer");
     } else {
       showToast("No apply link available for this job", "error");
@@ -203,10 +208,19 @@ export default function SeekerJobsPage() {
         externalJobId,
         sourceUrl,
       })
-      .catch(() => {});
+      .catch((err) => {
+        console.warn("Failed to record apply-click for external job", externalJobId, err);
+      });
   };
 
-  const handleDismiss = (matchId: number) => {
+  const handleDismiss = async (matchId: number) => {
+    const confirmed = await confirm({
+      title: "Hide this match?",
+      message: "This removes it from your matches and it won't come back. You can't undo this.",
+      confirmLabel: "Hide it",
+      variant: "warning",
+    });
+    if (!confirmed) return;
     dismissMutation.mutate(matchId, {
       onSuccess: () => {
         showToast("Match dismissed", "success");
@@ -217,7 +231,14 @@ export default function SeekerJobsPage() {
     });
   };
 
-  const handleMuteCompany = (company: string) => {
+  const handleMuteCompany = async (company: string) => {
+    const confirmed = await confirm({
+      title: `Mute "${company}"?`,
+      message: `You'll stop seeing jobs from "${company}" in your matches.`,
+      confirmLabel: "Mute company",
+      variant: "warning",
+    });
+    if (!confirmed) return;
     muteCompanyMutation.mutate(company, {
       onSuccess: (res) => {
         showToast(res.created ? `Muted "${company}"` : `"${company}" was already muted`, "success");
@@ -228,7 +249,14 @@ export default function SeekerJobsPage() {
     });
   };
 
-  const handleMuteCategory = (category: string) => {
+  const handleMuteCategory = async (category: string) => {
+    const confirmed = await confirm({
+      title: `Hide "${category}" roles?`,
+      message: `You'll stop seeing "${category}" roles in your matches.`,
+      confirmLabel: "Hide roles",
+      variant: "warning",
+    });
+    if (!confirmed) return;
     muteCategoryMutation.mutate(category, {
       onSuccess: (res) => {
         showToast(
@@ -431,9 +459,13 @@ export default function SeekerJobsPage() {
     return (
       <div className="space-y-6">
         <PageHeader subtitle="Browse open jobs." />
-        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
-          We couldn't load this page right now. Try refreshing.
-        </div>
+        <BrandedErrorScreen
+          area="Browse Jobs"
+          error={toError(profileStatusQuery.error)}
+          reset={() => void profileStatusQuery.refetch()}
+          backHref="/annix/orbit/seeker/dashboard"
+          brandButtonClass="bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)]"
+        />
         {ConfirmDialog}
       </div>
     );
@@ -445,6 +477,7 @@ export default function SeekerJobsPage() {
         jobs={browseJobs}
         loading={browseJobsQuery.isLoading}
         error={browseJobsQuery.isError}
+        onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
         confirmDialog={ConfirmDialog}
         variant="no-cv"
@@ -476,12 +509,17 @@ export default function SeekerJobsPage() {
   }
 
   if (consentError || (consentEnabled && matchesError)) {
+    const failedQuery = consentError ? consentQuery : recommendedQuery;
     return (
       <div className="space-y-6">
         <PageHeader subtitle={matchedSubtitle} />
-        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
-          We couldn't load your matches right now. Try refreshing the page.
-        </div>
+        <BrandedErrorScreen
+          area="your job matches"
+          error={toError(failedQuery.error)}
+          reset={() => void failedQuery.refetch()}
+          backHref="/annix/orbit/seeker/dashboard"
+          brandButtonClass="bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)]"
+        />
         {ConfirmDialog}
       </div>
     );
@@ -493,6 +531,7 @@ export default function SeekerJobsPage() {
         jobs={browseJobs}
         loading={browseJobsQuery.isLoading}
         error={browseJobsQuery.isError}
+        onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
@@ -550,6 +589,7 @@ export default function SeekerJobsPage() {
         jobs={browseJobs}
         loading={browseJobsQuery.isLoading}
         error={browseJobsQuery.isError}
+        onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
@@ -694,10 +734,16 @@ function JobsTopBar(props: {
   );
 }
 
+function toError(value: unknown): Error {
+  if (value instanceof Error) return value;
+  return new Error(isString(value) ? value : "Something went wrong");
+}
+
 interface BrowseAllJobsViewProps {
   jobs: PublicJob[];
   loading: boolean;
   error: boolean;
+  onRetry: () => void;
   onApply: (job: PublicJob) => void;
   confirmDialog: React.ReactNode;
   variant: "no-cv" | "matches-pending";
@@ -758,9 +804,13 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
           Loading open jobs…
         </div>
       ) : props.error ? (
-        <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
-          We couldn't load open jobs right now. Try refreshing the page.
-        </div>
+        <BrandedErrorScreen
+          area="Browse Jobs"
+          error={new Error("Failed to load open jobs")}
+          reset={props.onRetry}
+          backHref="/annix/orbit/seeker/dashboard"
+          brandButtonClass="bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)]"
+        />
       ) : jobs.length === 0 ? (
         <div className="bg-white rounded-xl border border-dashed border-gray-300 p-12 text-center">
           <h2 className="text-lg font-semibold text-gray-900">No open jobs right now</h2>
