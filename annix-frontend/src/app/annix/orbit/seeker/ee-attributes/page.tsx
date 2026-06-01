@@ -69,13 +69,13 @@ export default function SeekerEeAttributesPage() {
     if (hydratedRef.current) return;
     if (!data) return;
     hydratedRef.current = true;
-    setPopulationGroup(data.populationGroup);
-    setGender(data.gender);
-    setDisabilityStatus(data.disabilityStatus);
-    setRequiresAccommodation(data.requiresAccommodation);
+    if (data.populationGroup) setPopulationGroup(data.populationGroup);
+    if (data.gender) setGender(data.gender);
+    if (data.disabilityStatus) setDisabilityStatus(data.disabilityStatus);
+    setRequiresAccommodation(data.requiresAccommodation === true);
     const notes = data.accommodationNotes;
     setAccommodationNotes(notes || "");
-    setNationalityStatus(data.nationalityStatus);
+    if (data.nationalityStatus) setNationalityStatus(data.nationalityStatus);
     const rawPurposes = data.purposes;
     const purposes = isArray(rawPurposes) ? rawPurposes : [];
     setEeReporting(purposes.includes("ee_reporting"));
@@ -149,6 +149,12 @@ export default function SeekerEeAttributesPage() {
     );
   }
 
+  const rawConsentGrantedAt = data?.consentGrantedAt;
+  const consentGrantedAt = rawConsentGrantedAt ? fromISO(rawConsentGrantedAt) : null;
+  const lastUpdatedLabel = consentGrantedAt?.isValid
+    ? consentGrantedAt.toFormat("dd MMM yyyy HH:mm")
+    : null;
+
   return (
     <div className="p-6 max-w-3xl mx-auto">
       <header className="mb-6">
@@ -168,7 +174,7 @@ export default function SeekerEeAttributesPage() {
 
       {data ? (
         <p className="text-sm text-gray-600 mb-4">
-          Last updated: {fromISO(data.consentGrantedAt).toFormat("dd MMM yyyy HH:mm")}
+          {lastUpdatedLabel ? `Last updated: ${lastUpdatedLabel}` : "Disclosure on file."}
           {data.consentTextVersionId ? ` · consent text v${data.consentTextVersionId}` : ""}
         </p>
       ) : (
