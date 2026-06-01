@@ -14,6 +14,7 @@ const ACCEPTED_MIME_TYPES = new Set([
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ]);
+const ACCEPTED_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"]);
 const MAX_BYTES = 10 * 1024 * 1024;
 
 const KIND_LABELS: Record<IndividualDocumentKind, string> = {
@@ -46,7 +47,17 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
   const isUploading = uploadMutation.isPending;
 
   const validateFile = (file: File): string | null => {
-    if (!ACCEPTED_MIME_TYPES.has(file.type)) {
+    // Convenience check only. file.type is frequently empty (drag-drop, some
+    // browsers/OSes) and is trivially spoofable, so we accept on either a known
+    // extension or a known MIME and let the server be the source of truth — it
+    // re-validates the content type and size on upload (see
+    // individual-profile.service.ts). Never treat this as a security boundary.
+    const lowerName = file.name.toLowerCase();
+    const dotIndex = lowerName.lastIndexOf(".");
+    const extension = dotIndex >= 0 ? lowerName.slice(dotIndex) : "";
+    const extensionOk = ACCEPTED_EXTENSIONS.has(extension);
+    const mimeOk = file.type !== "" && ACCEPTED_MIME_TYPES.has(file.type);
+    if (!extensionOk && !mimeOk) {
       return "Unsupported file type. Please upload PDF, Word, Excel, or PowerPoint.";
     }
     if (file.size > MAX_BYTES) {
@@ -122,6 +133,9 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
         </label>
         <p className="text-xs text-gray-500 mt-3">{helperText}</p>
         <p className="text-xs text-gray-400 mt-1">or drag and drop a file here</p>
+        <p className="text-xs text-gray-400 mt-2">
+          Your file's type and size are verified on our servers after upload.
+        </p>
       </div>
       {error && (
         <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
