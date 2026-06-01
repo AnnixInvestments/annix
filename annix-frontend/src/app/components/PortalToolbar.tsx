@@ -23,7 +23,7 @@ export interface NavItem {
 
 export interface UserInfo {
   firstName?: string;
-  lastName?: string;
+  lastName?: string | null;
   email?: string;
   companyName?: string;
   roles?: string[];
@@ -61,12 +61,18 @@ const NAV_TOOLTIPS: Record<string, string> = {
   "Submitted BOQs": "View and amend your submitted quotes",
   "Products & Services": "Select the products and services you can offer",
   "Rubber Lining": "Manage rubber lining products and orders",
+  "My CV": "Upload, edit, and improve your CV",
+  "Trade profile": "Add structured trade details for mining and shutdown roles",
+  Credentials: "Manage your licences and certificates",
+  "Browse Jobs": "See jobs matched to your CV and apply",
+  Applications: "Track the jobs you've applied to",
+  Settings: "Manage your account and notification preferences",
+  Help: "Step-by-step how-to guides",
 };
 
 const getNavTooltip = (label: string): string => {
-  const rawLabel = NAV_TOOLTIPS[label];
-  const rawLabel2 = NAV_TOOLTIPS[label];
-  return rawLabel2 || label;
+  const tooltip = NAV_TOOLTIPS[label];
+  return tooltip || label;
 };
 
 export default function PortalToolbar(props: PortalToolbarProps) {
@@ -485,7 +491,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
           </div>
         </div>
 
-        {/* Mobile/tablet navigation - icons only with styled tooltips */}
+        {/* Mobile/tablet navigation - icon + label (tooltips don't fire on touch) */}
         <div
           className="xl:hidden py-2 border-t"
           style={{ borderColor: corpId.colors.primary.navyLight }}
@@ -497,7 +503,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                 <Tooltip key={item.href} text={getNavTooltip(item.label)} position="top">
                   <Link
                     href={item.href}
-                    className="inline-flex items-center justify-center p-3 rounded-md transition-colors"
+                    className="inline-flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-md transition-colors min-w-[68px]"
                     style={{
                       color: accentColor,
                       backgroundColor: isActive ? navActive : "transparent",
@@ -521,6 +527,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                         d={item.icon}
                       />
                     </svg>
+                    <span className="text-[11px] leading-tight text-center">{item.label}</span>
                   </Link>
                 </Tooltip>
               );

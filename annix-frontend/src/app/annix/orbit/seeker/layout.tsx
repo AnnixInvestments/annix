@@ -57,8 +57,9 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { isAuthenticated, isLoading, user, profile, logout } = useAnnixOrbitAuth();
-  const isIndividual =
-    user?.userType === "individual" || (profile !== null && profile.companyId === null);
+  const userType = user?.userType;
+  const hasIndividualProfile = profile !== null && profile.companyId === null;
+  const isIndividual = userType === "individual" || hasIndividualProfile;
   const profileStatusQuery = useOrbitMyProfileStatus(isAuthenticated && isIndividual);
   const profileStatus = profileStatusQuery.data;
   const hasCv = profileStatus ? profileStatus.hasCv : null;
@@ -113,6 +114,26 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     return null;
   }
 
+  if (isIndividual && profileStatusQuery.isError && !cvGateExempt) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="bg-white rounded-xl border border-red-200 p-6 text-center max-w-md">
+          <p className="text-sm text-red-700">
+            We couldn't check your profile just now, so we can't safely load your workspace. Please
+            try again.
+          </p>
+          <button
+            type="button"
+            onClick={() => void profileStatusQuery.refetch()}
+            className="mt-4 px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const handleLogout = async () => {
     await logout();
     router.push("/annix/orbit/login?type=individual");
@@ -121,7 +142,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const userName = user?.name;
   const nameParts = (userName || "").split(" ");
   const firstName = nameParts[0];
-  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : undefined;
+  const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
 
   return (
     <div className="min-h-screen">
