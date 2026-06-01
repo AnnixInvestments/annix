@@ -31,12 +31,12 @@ export class AnnixOrbitAuthController {
 
   @Post("register/individual")
   async registerIndividual(@Body() dto: RegisterIndividualDto) {
-    return this.authService.registerIndividual(dto.email, dto.password, dto.name);
+    return this.authService.registerIndividual(dto.email, dto.password, dto.name, dto.eeDisclosure);
   }
 
   @Post("register/student")
   async registerStudent(@Body() dto: RegisterStudentDto) {
-    return this.authService.registerStudent(dto.email, dto.password, dto.name);
+    return this.authService.registerStudent(dto.email, dto.password, dto.name, dto.eeDisclosure);
   }
 
   @Post("login")

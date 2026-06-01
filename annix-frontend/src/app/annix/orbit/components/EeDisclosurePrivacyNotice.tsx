@@ -51,11 +51,16 @@ export function EeDisclosurePrivacyNotice() {
         architecturally prevented from reading these fields.
       </p>
 
-      <h2>Where it is stored and who can see it</h2>
+      <h2>When we collect it and where it is stored</h2>
       <ul>
         <li>
-          Stored in a separate database table from your CV and application data, with stricter
-          access controls.
+          You can share it once — during registration or from your account menu — and it is kept on
+          your profile so you never have to re-enter it. When you apply to a job, that saved
+          disclosure is applied to the application for reporting.
+        </li>
+        <li>
+          The per-application reporting copies are kept in a separate database table from your CV
+          and application data, with stricter access controls.
         </li>
         <li>
           Read-access is limited to: your account (this page), the hiring company's HR users with a

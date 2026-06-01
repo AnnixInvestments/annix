@@ -2,6 +2,6 @@
 
 import { EeDisclosureManager } from "@/app/annix/orbit/components/EeDisclosureManager";
 
-export default function SeekerEeAttributesPage() {
+export default function StudentEeAttributesPage() {
   return <EeDisclosureManager />;
 }

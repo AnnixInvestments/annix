@@ -15,7 +15,7 @@ import {
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
-import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { CandidateStatus } from "../entities/candidate.entity";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -155,6 +155,18 @@ export class IndividualProfileService {
     candidate.rawCvText = profile.rawCvText;
     candidate.extractedData = profile.extractedCvData;
     const saved = await this.candidateRepo.save(candidate);
+
+    if (profile.eeDisclosure) {
+      try {
+        await this.applyIndividualDisclosureToCandidate(profile, saved.id);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to apply individual EE disclosure to candidate ${saved.id}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
 
     try {
       const embedded = await this.embeddingService.embedCandidate(saved.id);
@@ -526,20 +538,20 @@ export class IndividualProfileService {
   }
 
   async eeAttributesForUser(userId: number): Promise<EeAttributesView | null> {
-    const user = await this.userRepo.findById(userId);
-    if (!user?.email) return null;
-
-    const candidates = await this.candidateRepo.findByEmail(user.email);
-    const views = await Promise.all(
-      candidates.map((c) =>
-        this.popiaService.eeAttributesForCandidate(c.id, "candidate_self", userId),
-      ),
-    );
-    const active = views.filter((v): v is EeAttributesView => v !== null);
-    if (active.length === 0) return null;
-    return active.reduce((latest, current) =>
-      current.consentGrantedAt.getTime() > latest.consentGrantedAt.getTime() ? current : latest,
-    );
+    const profile = await this.profileForUser(userId);
+    const ee = profile.eeDisclosure;
+    if (!ee) return null;
+    return {
+      populationGroup: ee.populationGroup,
+      gender: ee.gender,
+      disabilityStatus: ee.disabilityStatus,
+      requiresAccommodation: ee.requiresAccommodation,
+      accommodationNotes: ee.accommodationNotes,
+      nationalityStatus: ee.nationalityStatus,
+      consentTextVersionId: ee.consentTextVersionId,
+      consentGrantedAt: ee.consentGrantedAt,
+      purposes: ee.purposes,
+    };
   }
 
   async updateEeAttributesForUser(
@@ -549,15 +561,25 @@ export class IndividualProfileService {
     const user = await this.userRepo.findById(userId);
     if (!user?.email) throw new NotFoundException("User not found");
 
-    const candidates = await this.candidateRepo.findByEmail(user.email);
-    if (candidates.length === 0) {
-      throw new BadRequestException(
-        "No candidacies found for your account; apply to a job first before disclosing.",
-      );
-    }
-
+    const profile = await this.profileForUser(userId);
     const consentTextVersionId = await this.resolveConsentTextVersionId(input.consentTextVersionId);
 
+    profile.eeDisclosure = {
+      populationGroup: input.populationGroup,
+      gender: input.gender,
+      disabilityStatus: input.disabilityStatus,
+      requiresAccommodation: input.requiresAccommodation,
+      accommodationNotes: input.accommodationNotes,
+      nationalityStatus: input.nationalityStatus,
+      purposes: input.purposes,
+      consentTextVersionId,
+      consentGrantedAt: now().toJSDate(),
+      consentSource: EeConsentSource.SEEKER_PORTAL,
+      updatedAt: now().toJSDate(),
+    };
+    await this.profileRepo.save(profile);
+
+    const candidates = await this.candidateRepo.findByEmail(user.email);
     await Promise.all(
       candidates.map((candidate) =>
         this.popiaService.recordEeConsent({
@@ -569,7 +591,7 @@ export class IndividualProfileService {
           accommodationNotes: input.accommodationNotes,
           nationalityStatus: input.nationalityStatus,
           consentTextVersionId,
-          consentSource: EeConsentSource.CANDIDATE_PORTAL,
+          consentSource: EeConsentSource.SEEKER_PORTAL,
           purposes: input.purposes,
           actorId: userId,
         }),
@@ -577,6 +599,28 @@ export class IndividualProfileService {
     );
 
     return { updated: candidates.length, consentTextVersionId };
+  }
+
+  async applyIndividualDisclosureToCandidate(
+    profile: AnnixOrbitProfile,
+    candidateId: number,
+  ): Promise<boolean> {
+    const ee = profile.eeDisclosure;
+    if (!ee) return false;
+    await this.popiaService.recordEeConsent({
+      candidateId,
+      populationGroup: ee.populationGroup,
+      gender: ee.gender,
+      disabilityStatus: ee.disabilityStatus,
+      requiresAccommodation: ee.requiresAccommodation,
+      accommodationNotes: ee.accommodationNotes,
+      nationalityStatus: ee.nationalityStatus,
+      consentTextVersionId: ee.consentTextVersionId,
+      consentSource: ee.consentSource,
+      purposes: ee.purposes,
+      actorId: profile.userId,
+    });
+    return true;
   }
 
   private async resolveConsentTextVersionId(provided: number | null): Promise<number> {
@@ -593,6 +637,10 @@ export class IndividualProfileService {
   async deleteEeAttributesForUser(userId: number): Promise<{ tombstoned: number }> {
     const user = await this.userRepo.findById(userId);
     if (!user?.email) throw new NotFoundException("User not found");
+
+    const profile = await this.profileForUser(userId);
+    profile.eeDisclosure = null;
+    await this.profileRepo.save(profile);
 
     const candidates = await this.candidateRepo.findByEmail(user.email);
     await Promise.all(candidates.map((c) => this.popiaService.tombstoneEeAttributes(c.id, userId)));

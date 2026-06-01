@@ -266,6 +266,11 @@ export class PopiaService {
     };
   }
 
+  async hasActiveEeAttributes(candidateId: number): Promise<boolean> {
+    const row = await this.eeAttributesRepo.findActiveForCandidate(candidateId);
+    return row !== null;
+  }
+
   async tombstoneEeAttributes(candidateId: number, actorId: number | null): Promise<void> {
     const tombstonedCount = await this.eeAttributesRepo.tombstoneActiveForCandidate(
       candidateId,

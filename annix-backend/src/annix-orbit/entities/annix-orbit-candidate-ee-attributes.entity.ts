@@ -41,6 +41,8 @@ export enum EeConsentSource {
   CANDIDATE_PORTAL = "candidate_portal",
   POST_APPLICATION_EMAIL = "post_application_email",
   HR_RECORDED = "hr_recorded",
+  REGISTRATION = "registration",
+  SEEKER_PORTAL = "seeker_portal",
 }
 
 export type EePurpose = "ee_reporting" | "fairness_monitoring";

@@ -1,6 +1,41 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength } from "class-validator";
+import { Type } from "class-transformer";
+import {
+  IsArray,
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+  ValidateNested,
+} from "class-validator";
 import { COMPANY_SIZE_VALUES } from "../../lib/dto/common-company.dto";
 import { RequiredIn, RequiredString } from "../../lib/dto/validation-decorators";
+
+export class RegisterEeDisclosureDto {
+  @IsString()
+  populationGroup: string;
+
+  @IsString()
+  gender: string;
+
+  @IsString()
+  disabilityStatus: string;
+
+  @IsBoolean()
+  requiresAccommodation: boolean;
+
+  @IsOptional()
+  @IsString()
+  accommodationNotes?: string | null;
+
+  @IsString()
+  nationalityStatus: string;
+
+  @IsArray()
+  @IsString({ each: true })
+  purposes: string[];
+}
 
 export const SA_PROVINCES = [
   "Eastern Cape",
@@ -53,6 +88,11 @@ export class RegisterIndividualDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RegisterEeDisclosureDto)
+  eeDisclosure?: RegisterEeDisclosureDto;
 }
 
 export class RegisterStudentDto {
@@ -66,6 +106,11 @@ export class RegisterStudentDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => RegisterEeDisclosureDto)
+  eeDisclosure?: RegisterEeDisclosureDto;
 }
 
 export class LoginDto {

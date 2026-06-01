@@ -3,9 +3,11 @@
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { EeRegistrationStep } from "@/app/annix/orbit/components/EeRegistrationStep";
+import { annixOrbitApiClient, type RegisterEeDisclosurePayload } from "@/app/lib/api/annixOrbitApi";
 
 export default function AnnixOrbitRegisterIndividualPage() {
+  const [step, setStep] = useState<"account" | "ee">("account");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -15,13 +17,17 @@ export default function AnnixOrbitRegisterIndividualPage() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleAccountSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setIsLoading(true);
+    setStep("ee");
+  };
 
+  const finishRegistration = async (eeDisclosure: RegisterEeDisclosurePayload | null) => {
+    setError(null);
+    setIsLoading(true);
     try {
-      await annixOrbitApiClient.registerIndividual({ name, email, password });
+      await annixOrbitApiClient.registerIndividual({ name, email, password, eeDisclosure });
       setSuccess(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
@@ -67,6 +73,14 @@ export default function AnnixOrbitRegisterIndividualPage() {
     );
   }
 
+  if (step === "ee") {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 py-12">
+        <EeRegistrationStep submitting={isLoading} error={error} onComplete={finishRegistration} />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
@@ -91,7 +105,7 @@ export default function AnnixOrbitRegisterIndividualPage() {
             <p className="text-gray-600 mt-2">Build your CV profile and find your next role</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleAccountSubmit} className="space-y-5">
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
@@ -178,7 +192,7 @@ export default function AnnixOrbitRegisterIndividualPage() {
               disabled={isLoading || !popiaConsent}
               className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc]0 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? "Creating account..." : "Create account"}
+              Continue
             </button>
           </form>
 

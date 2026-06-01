@@ -899,6 +899,16 @@ export interface MySeekerEeAttributes {
   purposes: Array<"ee_reporting" | "fairness_monitoring">;
 }
 
+export interface RegisterEeDisclosurePayload {
+  populationGroup: EePopulationGroupKey;
+  gender: EeGenderKey;
+  disabilityStatus: EeDisabilityKey;
+  requiresAccommodation: boolean;
+  accommodationNotes?: string | null;
+  nationalityStatus: MySeekerEeAttributes["nationalityStatus"];
+  purposes: Array<"ee_reporting" | "fairness_monitoring">;
+}
+
 export interface UpdateMyEeAttributesInput {
   populationGroup: EePopulationGroupKey;
   gender: EeGenderKey;
@@ -1038,6 +1048,7 @@ class AnnixOrbitApiClient {
     email: string;
     password: string;
     name: string;
+    eeDisclosure?: RegisterEeDisclosurePayload | null;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/annix-orbit/auth/register/individual", {
       method: "POST",
@@ -1049,6 +1060,7 @@ class AnnixOrbitApiClient {
     email: string;
     password: string;
     name: string;
+    eeDisclosure?: RegisterEeDisclosurePayload | null;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/annix-orbit/auth/register/student", {
       method: "POST",

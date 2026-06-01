@@ -154,6 +154,14 @@ export default function PortalToolbar(props: PortalToolbarProps) {
     return `${firstInitial}${lastInitial}` || "U";
   })();
 
+  const rawRoles = user?.roles;
+  const roles = rawRoles ? rawRoles : [];
+  const showEeDisclosure =
+    portalType === "annixOrbit" && (roles.includes("individual") || roles.includes("student"));
+  const eeDisclosureHref = roles.includes("student")
+    ? "/annix/orbit/student/ee-attributes"
+    : "/annix/orbit/seeker/ee-attributes";
+
   const visibleNavItems = navItems.filter((item) => {
     const roleCheck = !item.roles || item.roles.some((role) => user?.roles?.includes(role));
     const flagCheck = !item.featureFlag || featureFlags?.[item.featureFlag] === true;
@@ -335,6 +343,31 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                         {portalType === "annixOrbit" ? "Settings" : "My Profile"}
                       </div>
                     </Link>
+
+                    {showEeDisclosure && (
+                      <Link
+                        href={eeDisclosureHref}
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setIsUserMenuOpen(false)}
+                      >
+                        <div className="flex items-center">
+                          <svg
+                            className="w-4 h-4 mr-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a4 4 0 00-3-3.87"
+                            />
+                          </svg>
+                          EE disclosure
+                        </div>
+                      </Link>
+                    )}
 
                     {portalType === "admin" && (
                       <Link

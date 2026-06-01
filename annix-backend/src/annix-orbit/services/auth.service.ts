@@ -21,9 +21,23 @@ import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
 import { UserRepository } from "../../user/user.repository";
 import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
-import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import type { RegisterEeDisclosureDto } from "../dto/auth.dto";
+import {
+  EeConsentSource,
+  type EeDisabilityStatus,
+  type EeGender,
+  type EeNationalityStatus,
+  type EePopulationGroup,
+  type EePurpose,
+} from "../entities/annix-orbit-candidate-ee-attributes.entity";
+import {
+  AnnixOrbitProfile,
+  type AnnixOrbitProfileEeDisclosure,
+  AnnixOrbitUserType,
+} from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
+import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-orbit-ee-consent-text-version.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
@@ -44,7 +58,28 @@ export class AnnixOrbitAuthService {
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly passwordService: PasswordService,
+    private readonly eeConsentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
   ) {}
+
+  private async buildRegistrationDisclosure(
+    ee: RegisterEeDisclosureDto,
+  ): Promise<AnnixOrbitProfileEeDisclosure> {
+    const active = await this.eeConsentTextVersionRepo.activeOpenEnded(now().toJSDate());
+    const grantedAt = now().toJSDate();
+    return {
+      populationGroup: ee.populationGroup as EePopulationGroup,
+      gender: ee.gender as EeGender,
+      disabilityStatus: ee.disabilityStatus as EeDisabilityStatus,
+      requiresAccommodation: ee.requiresAccommodation,
+      accommodationNotes: ee.accommodationNotes ?? null,
+      nationalityStatus: ee.nationalityStatus as EeNationalityStatus,
+      purposes: ee.purposes as EePurpose[],
+      consentTextVersionId: active ? active.id : 0,
+      consentGrantedAt: grantedAt,
+      consentSource: EeConsentSource.REGISTRATION,
+      updatedAt: grantedAt,
+    };
+  }
 
   private jwtSecret(): string {
     return this.configService.get<string>("ANNIX_ORBIT_JWT_SECRET", ANNIX_ORBIT_JWT_SECRET_DEFAULT);
@@ -174,7 +209,12 @@ export class AnnixOrbitAuthService {
     };
   }
 
-  async registerIndividual(email: string, password: string, name: string) {
+  async registerIndividual(
+    email: string,
+    password: string,
+    name: string,
+    eeDisclosure?: RegisterEeDisclosureDto,
+  ) {
     const existing = await this.userRepo.findOneByEmail(email);
     if (existing) {
       throw new ConflictException("Email already registered");
@@ -196,11 +236,13 @@ export class AnnixOrbitAuthService {
       emailVerificationExpires: verificationExpires,
     } as Partial<User>);
 
+    const disclosure = eeDisclosure ? await this.buildRegistrationDisclosure(eeDisclosure) : null;
     await this.profileRepo.create({
       userId: savedUser.id,
       companyId: null,
       userType: AnnixOrbitUserType.INDIVIDUAL,
-    });
+      eeDisclosure: disclosure,
+    } as Partial<AnnixOrbitProfile>);
 
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
 
@@ -216,7 +258,12 @@ export class AnnixOrbitAuthService {
     };
   }
 
-  async registerStudent(email: string, password: string, name: string) {
+  async registerStudent(
+    email: string,
+    password: string,
+    name: string,
+    eeDisclosure?: RegisterEeDisclosureDto,
+  ) {
     const existing = await this.userRepo.findOneByEmail(email);
     if (existing) {
       throw new ConflictException("Email already registered");
@@ -238,11 +285,13 @@ export class AnnixOrbitAuthService {
       emailVerificationExpires: verificationExpires,
     } as Partial<User>);
 
+    const disclosure = eeDisclosure ? await this.buildRegistrationDisclosure(eeDisclosure) : null;
     await this.profileRepo.create({
       userId: savedUser.id,
       companyId: null,
       userType: AnnixOrbitUserType.STUDENT,
-    });
+      eeDisclosure: disclosure,
+    } as Partial<AnnixOrbitProfile>);
 
     await this.assignOrbitRbacRole(savedUser.id, "student");
 

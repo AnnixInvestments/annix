@@ -17,7 +17,12 @@ export type ErasureReason = "inactive" | "requested";
 
 export type EeAccessReason = "hr_view" | "candidate_self" | "ee_report" | "fairness_monitor";
 export type EeAttributesAction = "consent_recorded" | "correction_recorded" | "tombstoned";
-export type EeConsentChannel = "candidate_portal" | "post_application_email" | "hr_recorded";
+export type EeConsentChannel =
+  | "candidate_portal"
+  | "post_application_email"
+  | "hr_recorded"
+  | "registration"
+  | "seeker_portal";
 
 @Injectable()
 export class CvAuditService {

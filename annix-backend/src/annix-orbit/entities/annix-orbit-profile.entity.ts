@@ -11,12 +11,34 @@ import {
 import { Company } from "../../platform/entities/company.entity";
 import { User } from "../../user/entities/user.entity";
 import type { NixGeneratedCv } from "../services/nix-prompts";
+import type {
+  EeConsentSource,
+  EeDisabilityStatus,
+  EeGender,
+  EeNationalityStatus,
+  EePopulationGroup,
+  EePurpose,
+} from "./annix-orbit-candidate-ee-attributes.entity";
 import type { ExtractedCvData } from "./candidate.entity";
 
 export enum AnnixOrbitUserType {
   COMPANY = "company",
   INDIVIDUAL = "individual",
   STUDENT = "student",
+}
+
+export interface AnnixOrbitProfileEeDisclosure {
+  populationGroup: EePopulationGroup;
+  gender: EeGender;
+  disabilityStatus: EeDisabilityStatus;
+  requiresAccommodation: boolean;
+  accommodationNotes: string | null;
+  nationalityStatus: EeNationalityStatus;
+  purposes: EePurpose[];
+  consentTextVersionId: number;
+  consentGrantedAt: Date;
+  consentSource: EeConsentSource;
+  updatedAt: Date;
 }
 
 @Entity("cv_assistant_profiles")
@@ -68,6 +90,9 @@ export class AnnixOrbitProfile {
 
   @Column({ name: "cv_uploaded_at", type: "timestamptz", nullable: true })
   cvUploadedAt: Date | null;
+
+  @Column({ name: "ee_disclosure", type: "jsonb", nullable: true })
+  eeDisclosure: AnnixOrbitProfileEeDisclosure | null;
 
   @Column({ name: "deletion_token", type: "varchar", length: 255, nullable: true })
   deletionToken: string | null;

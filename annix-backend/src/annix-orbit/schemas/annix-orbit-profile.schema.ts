@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type { HydratedDocument } from "mongoose";
+import type { AnnixOrbitProfileEeDisclosure } from "../entities/annix-orbit-profile.entity";
 
 export type AnnixOrbitProfileDocument = HydratedDocument<AnnixOrbitProfile>;
 
@@ -48,6 +49,25 @@ export class AnnixOrbitProfile {
 
   @Prop({ type: Date, required: false })
   cvUploadedAt: Date;
+
+  @Prop({
+    type: {
+      populationGroup: String,
+      gender: String,
+      disabilityStatus: String,
+      requiresAccommodation: Boolean,
+      accommodationNotes: String,
+      nationalityStatus: String,
+      purposes: [String],
+      consentTextVersionId: Number,
+      consentGrantedAt: Date,
+      consentSource: String,
+      updatedAt: Date,
+    },
+    required: false,
+    _id: false,
+  })
+  eeDisclosure: AnnixOrbitProfileEeDisclosure | null;
 
   @Prop({ type: String, required: false })
   deletionToken: string;

@@ -165,6 +165,11 @@ export class EeDisclosureService {
       throw new BadRequestException("Candidate has no email address on file.");
     }
 
+    const alreadyDisclosed = await this.popiaService.hasActiveEeAttributes(candidate.id);
+    if (alreadyDisclosed) {
+      return { sent: false, disclosureLink: "", alreadyUsed: true };
+    }
+
     const company = await this.companyRepo.findById(companyId);
     if (!company) throw new NotFoundException("Company not found");
     if (!company.isDesignatedEmployer) {
