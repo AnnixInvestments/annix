@@ -9,6 +9,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Stock control, quality certificates and inventory intelligence for fabrication and manufacturing teams.",
     iconSlot: "Boxes",
+    imageUrl: null,
     comingSoon: false,
     detailSlug: "annix-core",
   },
@@ -20,6 +21,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "RFQ, bills of quantity and weld-aware quoting built around ASME, API and NACE engineering standards.",
     iconSlot: "Hammer",
+    imageUrl: null,
     comingSoon: false,
     detailSlug: "annix-forge",
   },
@@ -31,6 +33,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Recruitment, CV building and a live job market connecting seekers, recruiters and education pathways.",
     iconSlot: "Orbit",
+    imageUrl: null,
     comingSoon: false,
     detailSlug: "annix-orbit",
   },
@@ -42,6 +45,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Field reps, routes and voice-driven activity capture that keep distributed teams moving and accountable.",
     iconSlot: "Radio",
+    imageUrl: null,
     comingSoon: false,
     detailSlug: "annix-pulse",
   },
@@ -53,19 +57,9 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Secure document handling, audit trails and compliance workflows for regulated industrial operations.",
     iconSlot: "ShieldCheck",
+    imageUrl: null,
     comingSoon: false,
     detailSlug: "annix-sentinel",
-  },
-  {
-    appKey: "teacher-assistant",
-    portalCode: "teacher-assistant",
-    name: "Annix Learn",
-    category: "Education & Development",
-    blurb:
-      "Teaching tools and the FuturePath education-to-funding lifecycle that grows the next generation of talent.",
-    iconSlot: "GraduationCap",
-    comingSoon: false,
-    detailSlug: "annix-learn",
   },
   {
     appKey: "insights",
@@ -75,19 +69,9 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Cross-product reporting and financial intelligence that turn operational data into decisions.",
     iconSlot: "LineChart",
+    imageUrl: null,
     comingSoon: false,
     detailSlug: "annix-insights",
-  },
-  {
-    appKey: "annix-investments",
-    portalCode: null,
-    name: "Annix Labs",
-    category: "Coming Soon",
-    blurb:
-      "An incubator for the next wave of Annix products. Built on the same shared platform, the same intelligence.",
-    iconSlot: "Sparkles",
-    comingSoon: true,
-    detailSlug: "annix-labs",
   },
 ];
 
@@ -260,40 +244,6 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
       { metric: "Auditable", label: "by design" },
       { metric: "Controlled", label: "document access" },
       { metric: "Lower", label: "compliance risk" },
-    ],
-  },
-  {
-    slug: "annix-learn",
-    appKey: "teacher-assistant",
-    portalCode: "teacher-assistant",
-    name: "Annix Learn",
-    headline: "Build the next generation of talent.",
-    subheading:
-      "Teaching tools and the FuturePath education-to-funding lifecycle that grows skills from the classroom to the workplace.",
-    problem:
-      "Education and the job market rarely speak to each other, so potential is lost between the classroom and a career.",
-    features: [
-      {
-        title: "Teaching tools",
-        blurb: "Practical assistance for educators.",
-        iconSlot: "GraduationCap",
-      },
-      {
-        title: "FuturePath",
-        blurb: "Education-to-funding pathways tied to real opportunities.",
-        iconSlot: "Compass",
-      },
-      {
-        title: "Connected to Orbit",
-        blurb: "Learning that flows straight into the live job market.",
-        iconSlot: "Orbit",
-      },
-    ],
-    industries: ["Education"],
-    roi: [
-      { metric: "Connected", label: "learning and work" },
-      { metric: "Guided", label: "funding pathways" },
-      { metric: "Practical", label: "teaching tools" },
     ],
   },
   {

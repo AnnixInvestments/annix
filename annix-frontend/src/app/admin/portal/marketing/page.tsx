@@ -1,11 +1,12 @@
 "use client";
 
-import type { MarketingSiteContent } from "@annix/product-data/marketing";
+import type { MarketingProduct, MarketingSiteContent } from "@annix/product-data/marketing";
 import { cloneDeep } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { formatDateLongZA } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
+import { marketingAdminApi } from "@/app/lib/marketing/api";
 import {
   useDiscardMarketingDraft,
   useMarketingDraft,
@@ -94,6 +95,194 @@ function StringList(props: {
           className="rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
         >
           + Add
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ProductRow(props: {
+  product: MarketingProduct;
+  patch: (mutate: (product: MarketingProduct) => void) => void;
+  onRemove: () => void;
+  onError: (message: string) => void;
+}) {
+  const product = props.product;
+  const [uploading, setUploading] = useState(false);
+  const portalCodeValue = product.portalCode === null ? "" : product.portalCode;
+  const appKey = product.appKey;
+  const imageUrl = product.imageUrl ? product.imageUrl : "";
+
+  async function handleFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files;
+    const file = files && files.length > 0 ? files[0] : null;
+    if (!file) return;
+    setUploading(true);
+    try {
+      const result = await marketingAdminApi.uploadImage(file);
+      props.patch((p) => {
+        p.imageUrl = result.url;
+      });
+    } catch {
+      props.onError("Could not upload the image. Please try again.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function useBrandArtwork() {
+    if (!appKey) {
+      props.onError("Set an App key (brand) first to pull its card artwork.");
+      return;
+    }
+    props.patch((p) => {
+      p.imageUrl = `/api/public/branding/${appKey}/asset/loginCard`;
+    });
+  }
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Text
+          label="Name"
+          value={product.name}
+          onChange={(v) =>
+            props.patch((p) => {
+              p.name = v;
+            })
+          }
+        />
+        <Text
+          label="Category"
+          value={product.category}
+          onChange={(v) =>
+            props.patch((p) => {
+              p.category = v;
+            })
+          }
+        />
+      </div>
+      <div className="mt-3">
+        <Text
+          label="Blurb"
+          textarea
+          value={product.blurb}
+          onChange={(v) =>
+            props.patch((p) => {
+              p.blurb = v;
+            })
+          }
+        />
+      </div>
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Text
+          label="App key (brand)"
+          value={appKey}
+          onChange={(v) =>
+            props.patch((p) => {
+              p.appKey = v;
+            })
+          }
+        />
+        <Text
+          label="Portal code"
+          value={portalCodeValue}
+          onChange={(v) =>
+            props.patch((p) => {
+              p.portalCode = v ? v : null;
+            })
+          }
+        />
+        <Text
+          label="Icon (fallback)"
+          value={product.iconSlot}
+          onChange={(v) =>
+            props.patch((p) => {
+              p.iconSlot = v;
+            })
+          }
+        />
+        <Text
+          label="Detail slug"
+          value={product.detailSlug}
+          onChange={(v) =>
+            props.patch((p) => {
+              p.detailSlug = v;
+            })
+          }
+        />
+      </div>
+
+      <div className="mt-3">
+        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Card artwork
+        </span>
+        <div className="flex items-center gap-3">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              className="h-16 w-16 rounded-lg border border-gray-200 object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+              No image
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <label className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+              {uploading ? "Uploading…" : "Upload"}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleFile}
+                disabled={uploading}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={useBrandArtwork}
+              className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Use branding card
+            </button>
+            {imageUrl ? (
+              <button
+                type="button"
+                onClick={() =>
+                  props.patch((p) => {
+                    p.imageUrl = null;
+                  })
+                }
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 flex items-center justify-between">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={product.comingSoon}
+            onChange={(event) =>
+              props.patch((p) => {
+                p.comingSoon = event.target.checked;
+              })
+            }
+          />
+          Coming soon
+        </label>
+        <button
+          type="button"
+          onClick={props.onRemove}
+          className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+        >
+          Remove product
         </button>
       </div>
     </div>
@@ -410,86 +599,44 @@ export default function MarketingCmsPage() {
           }
         />
         <div className="space-y-3">
-          {ecosystem.products.map((product, index) => {
-            const portalCodeValue = product.portalCode === null ? "" : product.portalCode;
-            return (
-              <div key={product.appKey} className="rounded-lg border border-gray-200 p-3">
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  <Text
-                    label="Name"
-                    value={product.name}
-                    onChange={(v) =>
-                      update((d) => {
-                        d.ecosystem.products[index].name = v;
-                      })
-                    }
-                  />
-                  <Text
-                    label="Category"
-                    value={product.category}
-                    onChange={(v) =>
-                      update((d) => {
-                        d.ecosystem.products[index].category = v;
-                      })
-                    }
-                  />
-                </div>
-                <div className="mt-3">
-                  <Text
-                    label="Blurb"
-                    textarea
-                    value={product.blurb}
-                    onChange={(v) =>
-                      update((d) => {
-                        d.ecosystem.products[index].blurb = v;
-                      })
-                    }
-                  />
-                </div>
-                <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <Text
-                    label="Icon"
-                    value={product.iconSlot}
-                    onChange={(v) =>
-                      update((d) => {
-                        d.ecosystem.products[index].iconSlot = v;
-                      })
-                    }
-                  />
-                  <Text
-                    label="Detail slug"
-                    value={product.detailSlug}
-                    onChange={(v) =>
-                      update((d) => {
-                        d.ecosystem.products[index].detailSlug = v;
-                      })
-                    }
-                  />
-                  <Text
-                    label="Portal code"
-                    value={portalCodeValue}
-                    onChange={(v) =>
-                      update((d) => {
-                        d.ecosystem.products[index].portalCode = v ? v : null;
-                      })
-                    }
-                  />
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={product.comingSoon}
-                    onChange={(e) =>
-                      update((d) => {
-                        d.ecosystem.products[index].comingSoon = e.target.checked;
-                      })
-                    }
-                  />
-                  Coming soon
-                </label>
-              </div>
-            );
-          })}
+          {ecosystem.products.map((product, index) => (
+            <ProductRow
+              key={`product-${index}`}
+              product={product}
+              patch={(mutate) =>
+                update((d) => {
+                  mutate(d.ecosystem.products[index]);
+                })
+              }
+              onRemove={() =>
+                update((d) => {
+                  d.ecosystem.products = d.ecosystem.products.filter((_, i) => i !== index);
+                })
+              }
+              onError={(message) => showToast(message, "error")}
+            />
+          ))}
+          <button
+            type="button"
+            onClick={() =>
+              update((d) => {
+                d.ecosystem.products.push({
+                  appKey: "",
+                  portalCode: null,
+                  name: "New product",
+                  category: "",
+                  blurb: "",
+                  iconSlot: "Sparkles",
+                  imageUrl: null,
+                  comingSoon: false,
+                  detailSlug: "new-product",
+                });
+              })
+            }
+            className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+          >
+            + Add product
+          </button>
         </div>
       </Section>
 

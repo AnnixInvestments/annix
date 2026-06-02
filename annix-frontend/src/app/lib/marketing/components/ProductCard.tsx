@@ -6,6 +6,7 @@ import { MarketingIcon } from "./MarketingIcon";
 export function ProductCard(props: { product: MarketingProduct }) {
   const product = props.product;
   const href = product.comingSoon ? "/labs" : `/products/${product.detailSlug}`;
+  const imageUrl = product.imageUrl ? product.imageUrl : "";
   return (
     <Link
       href={href}
@@ -16,12 +17,22 @@ export function ProductCard(props: { product: MarketingProduct }) {
           Coming soon
         </span>
       ) : null}
-      <div
-        className="flex h-12 w-12 items-center justify-center rounded-xl text-white"
-        style={{ backgroundColor: "color-mix(in srgb, var(--brand-accent) 22%, transparent)" }}
-      >
-        <MarketingIcon slot={product.iconSlot} className="h-6 w-6" />
-      </div>
+      {imageUrl ? (
+        <div className="mb-4 overflow-hidden rounded-xl">
+          <img
+            src={imageUrl}
+            alt={product.name}
+            className="aspect-[16/10] w-full object-cover transition duration-300 group-hover:scale-105"
+          />
+        </div>
+      ) : (
+        <div
+          className="flex h-12 w-12 items-center justify-center rounded-xl text-white"
+          style={{ backgroundColor: "color-mix(in srgb, var(--brand-accent) 22%, transparent)" }}
+        >
+          <MarketingIcon slot={product.iconSlot} className="h-6 w-6" />
+        </div>
+      )}
       <div className="mt-4 text-xs font-semibold uppercase tracking-wide text-white/40">
         {product.category}
       </div>

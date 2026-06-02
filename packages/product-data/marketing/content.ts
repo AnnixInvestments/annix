@@ -25,6 +25,7 @@ export interface MarketingProduct {
   category: string;
   blurb: string;
   iconSlot: string;
+  imageUrl: string | null;
   comingSoon: boolean;
   detailSlug: string;
 }
