@@ -613,6 +613,18 @@ export class StockTakeReconciliationService {
     receivedDate: string,
     receivedBy: string | null,
   ): Promise<CreateMissingDeliveryResult> {
+    return this.extractionMetricService.time("stock-take-reconcile", "create-delivery", () =>
+      this.createMissingDeliveryInner(companyId, buffer, invoice, receivedDate, receivedBy),
+    );
+  }
+
+  private async createMissingDeliveryInner(
+    companyId: number,
+    buffer: Buffer,
+    invoice: string,
+    receivedDate: string,
+    receivedBy: string | null,
+  ): Promise<CreateMissingDeliveryResult> {
     const parsed = await this.parseMatrix(buffer);
     const targetNorm = this.normalizeRef(invoice);
     const ref = parsed.invoiceRefs.find((r) => this.normalizeRef(r.invoice) === targetNorm);

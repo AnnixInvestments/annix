@@ -38,7 +38,7 @@ Nix detects the matrix layout automatically:
 4. Click **Analyse & Reconcile** and wait for the progress popup to finish.
 5. Review the results:
    - **Summary cards** — items, matched/unmatched, missing documents, intake gaps, issue gaps.
-   - **Missing documents** — invoices/deliveries on the sheet with no record in the app. Click **Create delivery** on any of these to record it (with confirmation); stock is increased by the quantities received against that invoice on the sheet.
+   - **Missing documents** — invoices/deliveries on the sheet with no record in the app. Click **Create delivery** on any of these to record it (with confirmation); stock is increased by the quantities received against that invoice on the sheet. When several are missing, use **Create all** to record them in one run with a progress popup.
    - **Item analysis** — per item, the sheet vs app intake and issues, the closing/count/diff, and flags. Tick *Show only items with discrepancies* to focus on problems. On any **Issues ≠ app** row, click **Fix issues** to record the difference — choose a plain stock adjustment, or attribute it to a staff member or job card. Both directions are handled (sheet shows more issues → stock out; app shows more → reversal in).
 
 ## Reading the flags

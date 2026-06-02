@@ -13,6 +13,7 @@ import type {
   ReconciliationReport,
 } from "@/app/lib/api/stockControlApi";
 import { DateTime, monthEndPeriodOptions } from "@/app/lib/datetime";
+import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAnalyzeStockTakeReconciliation,
@@ -48,6 +49,7 @@ export default function ReconcilePage() {
   const analyzeMutation = useAnalyzeStockTakeReconciliation();
   const createDeliveryMutation = useCreateReconciliationDelivery();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { runBulk } = useAdaptiveExtractionProgress();
   const { confirm, ConfirmDialog } = useConfirm();
 
   const isAnalyzing = analyzeMutation.isPending;
@@ -102,6 +104,57 @@ export default function ReconcilePage() {
     } finally {
       setCreatingInvoice(null);
     }
+  };
+
+  const handleCreateAllDeliveries = async () => {
+    if (!file || report === null) return;
+    const pending = report.missingDocuments.filter((doc) => !createdInvoices.has(doc.invoice));
+    if (pending.length === 0) return;
+    const confirmed = await confirm({
+      title: `Create ${pending.length} deliveries?`,
+      message: `This records ${pending.length} missing delivery note(s) from the sheet and increases stock for each one's items. Continue?`,
+      confirmLabel: "Create all",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+
+    setError(null);
+    const receivedDate = report.periodEnd;
+    const result = await runBulk({
+      brand: "stock-control",
+      metricCategory: "stock-take-reconcile",
+      metricOperation: "create-delivery",
+      items: pending,
+      itemId: (doc) => doc.invoice,
+      itemLabel: (doc, i, t) => `Creating delivery ${i + 1} of ${t}: ${doc.invoice}…`,
+      run: async (doc) => {
+        const res = await createDeliveryMutation.mutateAsync({
+          file,
+          invoice: doc.invoice,
+          receivedDate,
+        });
+        if (!res.created) {
+          throw new Error(res.message);
+        }
+        setCreatedInvoices((prev) => {
+          const next = new Set(prev);
+          next.add(doc.invoice);
+          return next;
+        });
+      },
+    });
+
+    const failedNote =
+      result.failed.length === 0
+        ? ""
+        : ` ${result.failed.length} could not be created (see the remaining red entries).`;
+    await confirm({
+      title: "Deliveries created",
+      message: `Created ${result.succeeded.length} of ${pending.length} delivery note(s).${failedNote}`,
+      confirmLabel: "Done",
+      hideCancel: true,
+      variant: result.failed.length === 0 ? "info" : "warning",
+    });
   };
 
   const handleAnalyze = async () => {
@@ -268,6 +321,7 @@ export default function ReconcilePage() {
           createdInvoices={createdInvoices}
           creatingInvoice={creatingInvoice}
           onCreateDelivery={handleCreateDelivery}
+          onCreateAllDeliveries={handleCreateAllDeliveries}
           fixedRows={fixedRows}
           onFixIssuance={(item) => setFixingItem(item)}
         />
@@ -300,6 +354,7 @@ interface ResultProps {
   createdInvoices: Set<string>;
   creatingInvoice: string | null;
   onCreateDelivery: (doc: ReconciliationDocumentCheck) => void;
+  onCreateAllDeliveries: () => void;
   fixedRows: Set<number>;
   onFixIssuance: (item: ReconciliationItemAnalysis) => void;
 }
@@ -309,6 +364,9 @@ function ReconciliationResult(props: ResultProps) {
   const periodLabel = report.periodLabel;
   const periodTitle = periodLabel ?? "Reconciliation";
   const matchedCount = report.itemCount - report.unmatchedItemCount;
+  const pendingMissingCount = report.missingDocuments.filter(
+    (doc) => !props.createdInvoices.has(doc.invoice),
+  ).length;
   const visibleItems = props.issuesOnly
     ? report.items.filter((item) => item.flags.length > 0)
     : report.items;
@@ -353,9 +411,20 @@ function ReconciliationResult(props: ResultProps) {
 
       {report.missingDocuments.length > 0 && (
         <div className="bg-white shadow rounded-lg p-6">
-          <h3 className="text-sm font-semibold text-gray-900 mb-2">
-            Invoices/deliveries on the sheet but NOT in the app ({report.missingDocuments.length})
-          </h3>
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <h3 className="text-sm font-semibold text-gray-900">
+              Invoices/deliveries on the sheet but NOT in the app ({report.missingDocuments.length})
+            </h3>
+            {pendingMissingCount > 1 ? (
+              <button
+                type="button"
+                onClick={props.onCreateAllDeliveries}
+                className="shrink-0 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+              >
+                Create all ({pendingMissingCount})
+              </button>
+            ) : null}
+          </div>
           <p className="text-xs text-gray-500 mb-3">
             These documents are referenced on your stock sheet but have no matching delivery or
             supplier invoice captured in the app — likely the source of intake shortfalls. Click
