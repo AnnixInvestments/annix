@@ -47,6 +47,18 @@ export const JOB_SOURCE_PROVIDERS: JobSourceProviderInfo[] = [
     description: "SA job listings crawled from the JobMail sitemap (no API key)",
     credentialFields: [],
   },
+  {
+    id: JobSourceProvider.CAREERJET,
+    label: "Careerjet",
+    description: "SA job listings via the free Careerjet publisher API",
+    credentialFields: [{ key: "apiKey", label: "Affiliate ID", secret: true }],
+  },
+  {
+    id: JobSourceProvider.JOOBLE,
+    label: "Jooble",
+    description: "SA job listings via the free Jooble REST API",
+    credentialFields: [{ key: "apiKey", label: "API Key", secret: true }],
+  },
 ];
 
 // Fallback source-respect ranking (higher = kept when de-duplicating). The
@@ -59,6 +71,8 @@ export const SOURCE_RESPECT_RANK: Record<string, number> = {
   [JobSourceProvider.JOB_PLACEMENTS]: 70,
   [JobSourceProvider.ADZUNA]: 50,
   [JobSourceProvider.REMOTIVE]: 40,
+  [JobSourceProvider.CAREERJET]: 30,
+  [JobSourceProvider.JOOBLE]: 25,
 };
 
 export function sourceRespectRank(provider: string): number {

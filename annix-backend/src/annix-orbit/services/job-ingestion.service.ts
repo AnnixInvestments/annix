@@ -22,6 +22,7 @@ import { JobPostingRepository } from "../repositories/job-posting.repository";
 import { SourceRespectRankRepository } from "../repositories/source-respect-rank.repository";
 import { AdzunaService } from "./adzuna.service";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
+import { CareerjetService } from "./careerjet.service";
 import { SitemapCrawlIngestionService } from "./crawl/sitemap-crawl-ingestion.service";
 import { isSitemapCrawlProvider } from "./crawl/sitemap-crawl-profiles";
 import { DpsaCircularService } from "./dpsa-circular.service";
@@ -30,6 +31,7 @@ import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
 import { JobCategorizationService } from "./job-categorization.service";
 import { JobVettingService } from "./job-vetting.service";
+import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -85,6 +87,8 @@ export class JobIngestionService {
     private readonly companyRepo: AnnixOrbitCompanyRepository,
     private readonly adzunaService: AdzunaService,
     private readonly remotiveService: RemotiveService,
+    private readonly careerjetService: CareerjetService,
+    private readonly joobleService: JoobleService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
     private readonly emailService: EmailService,
@@ -689,6 +693,12 @@ export class JobIngestionService {
     if (isSitemapCrawlProvider(source.provider)) {
       return true;
     }
+    if (
+      source.provider === JobSourceProvider.CAREERJET ||
+      source.provider === JobSourceProvider.JOOBLE
+    ) {
+      return Boolean(source.apiKeyEncrypted);
+    }
     return Boolean(source.apiId && source.apiKeyEncrypted);
   }
 
@@ -702,6 +712,20 @@ export class JobIngestionService {
       const { jobs } = await this.remotiveService.searchJobs({
         category: category ?? undefined,
         resultsPerPage: 200,
+      });
+      return jobs;
+    }
+    if (source.provider === JobSourceProvider.CAREERJET) {
+      source.requestsToday += 1;
+      const { jobs } = await this.careerjetService.searchJobs(source.apiKeyEncrypted!, {
+        keywords: category ?? undefined,
+      });
+      return jobs;
+    }
+    if (source.provider === JobSourceProvider.JOOBLE) {
+      source.requestsToday += 1;
+      const { jobs } = await this.joobleService.searchJobs(source.apiKeyEncrypted!, {
+        keywords: category ?? undefined,
       });
       return jobs;
     }
