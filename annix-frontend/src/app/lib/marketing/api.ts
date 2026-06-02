@@ -15,9 +15,24 @@ export function mergeMarketingDefaults(
   if (!content) {
     return base;
   }
-  return mergeWith(base, content, (_baseValue, value) =>
+  const merged = mergeWith(base, content, (_baseValue, value) =>
     isArray(value) ? value : undefined,
   ) as MarketingSiteContent;
+  merged.industries.items.forEach((item) => {
+    if (item.imageUrl === undefined) {
+      const def = base.industries.items.find((entry) => entry.slug === item.slug);
+      const defImage = def ? def.imageUrl : null;
+      item.imageUrl = defImage;
+    }
+  });
+  merged.ecosystem.products.forEach((product) => {
+    if (product.imageUrl === undefined) {
+      const def = base.ecosystem.products.find((entry) => entry.detailSlug === product.detailSlug);
+      const defImage = def ? def.imageUrl : null;
+      product.imageUrl = defImage;
+    }
+  });
+  return merged;
 }
 
 export interface MarketingContactPayload {

@@ -16,9 +16,22 @@ function withDefaults(stored: MarketingSiteContentTree | null): MarketingSiteCon
   if (!stored) {
     return base;
   }
-  return mergeWith(base, stored, (_baseValue, storedValue) =>
+  const merged = mergeWith(base, stored, (_baseValue, storedValue) =>
     isArray(storedValue) ? storedValue : undefined,
   ) as MarketingSiteContentTree;
+  merged.industries.items.forEach((item) => {
+    if (item.imageUrl === undefined) {
+      const def = base.industries.items.find((entry) => entry.slug === item.slug);
+      item.imageUrl = def ? def.imageUrl : null;
+    }
+  });
+  merged.ecosystem.products.forEach((product) => {
+    if (product.imageUrl === undefined) {
+      const def = base.ecosystem.products.find((entry) => entry.detailSlug === product.detailSlug);
+      product.imageUrl = def ? def.imageUrl : null;
+    }
+  });
+  return merged;
 }
 
 @Injectable()
