@@ -46,7 +46,7 @@ export class ExternalJob {
   @Prop({ type: String, required: false })
   description: string;
 
-  @Prop({ type: Object, required: true })
+  @Prop({ type: Object, required: false, default: [] })
   extractedSkills: Record<string, unknown>;
 
   @Prop({ type: String, required: false })
