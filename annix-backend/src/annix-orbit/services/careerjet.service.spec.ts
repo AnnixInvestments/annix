@@ -59,6 +59,36 @@ describe("CareerjetService", () => {
     expect(job.redirectUrl).toBe("https://www.careerjet.co.za/jobad/abc123");
     expect(job.description).not.toContain("<p>");
     expect(job.id).toHaveLength(32);
+    expect(calledUrl).not.toContain("location=");
+  });
+
+  it("parses the RFC-2822 date format Careerjet returns", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        jobs: [
+          {
+            title: "Welder",
+            url: "https://www.careerjet.co.za/jobad/d1",
+            date: "Wed,15 Nov 2025 19:13:43 GMT",
+          },
+        ],
+      }),
+    }) as unknown as typeof fetch;
+
+    const job = (await service.searchJobs("AFF")).jobs[0];
+    expect(job.created).not.toBeNull();
+    expect(job.created).toContain("2025-11-15");
+  });
+
+  it("stops when the API enters location mode", async () => {
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ type: "LOCATIONS", locations: [], jobs: [] }),
+    }) as unknown as typeof fetch;
+
+    const result = await service.searchJobs("AFF");
+    expect(result.jobs).toHaveLength(0);
   });
 
   it("derives a stable id from the job url", async () => {

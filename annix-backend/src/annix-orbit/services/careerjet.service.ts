@@ -22,7 +22,6 @@ interface CareerjetApiResponse {
 
 const CAREERJET_BASE_URL = "https://search.api.careerjet.net/v4/query";
 const CAREERJET_LOCALE = "en_ZA";
-const CAREERJET_LOCATION = "South Africa";
 const CAREERJET_PAGE_SIZE = 100;
 const CAREERJET_MAX_PAGES = 5;
 const CAREERJET_TARGET = 200;
@@ -46,7 +45,6 @@ export class CareerjetService {
 
       const params = new URLSearchParams({
         locale_code: CAREERJET_LOCALE,
-        location: CAREERJET_LOCATION,
         sort: "date",
         page: String(page),
         page_size: String(CAREERJET_PAGE_SIZE),
@@ -66,6 +64,12 @@ export class CareerjetService {
       }
 
       const data: CareerjetApiResponse = await response.json();
+      if (data.type && data.type !== "JOBS") {
+        this.logger.warn(
+          `Careerjet returned type=${data.type} (no jobs) on page ${page} — check locale/location scoping`,
+        );
+        break;
+      }
       const rawJobs = data.jobs ?? [];
       if (rawJobs.length === 0) break;
 
@@ -87,8 +91,7 @@ export class CareerjetService {
           .digest("hex")
           .slice(0, 32);
     const location = result.locations ?? null;
-    const posted = result.date ? DateTime.fromISO(result.date) : null;
-    const created = posted?.isValid ? posted.toISO() : null;
+    const created = parseCareerjetDate(result.date ?? null);
     return {
       id: externalId,
       title: result.title ?? "",
@@ -103,4 +106,18 @@ export class CareerjetService {
       created,
     };
   }
+}
+
+function parseCareerjetDate(raw: string | null): string | null {
+  if (!raw) return null;
+  const iso = DateTime.fromISO(raw);
+  if (iso.isValid) return iso.toISO();
+  const withoutWeekday = raw
+    .replace(/^[A-Za-z]{3},?\s*/, "")
+    .replace(/\b(GMT|UTC)\b/i, "+0000")
+    .trim();
+  const formatted = DateTime.fromFormat(withoutWeekday, "d MMM yyyy HH:mm:ss ZZZ");
+  if (formatted.isValid) return formatted.toISO();
+  const rfc = DateTime.fromRFC2822(raw);
+  return rfc.isValid ? rfc.toISO() : null;
 }
