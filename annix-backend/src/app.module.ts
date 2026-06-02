@@ -28,6 +28,7 @@ import { MongoConnectionModule } from "./lib/persistence/mongo-connection.module
 import { MongoMaintenanceModule } from "./lib/persistence/mongo-maintenance.module";
 import { TransactionModule } from "./lib/persistence/transaction.module";
 import { LicensingModule } from "./licensing/licensing.module";
+import { MarketingModule } from "./marketing/marketing.module";
 import { MessagingModule } from "./messaging/messaging.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { NbNpsLookupModule } from "./nb-nps-lookup/nb-nps-lookup.module";
@@ -141,6 +142,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
 
     InsightsModule,
     BrandingModule,
+    MarketingModule,
     SsoModule,
 
     // AnnixSentinelModule (formerly Comply-SA) is still TypeORM-only — origin

@@ -1,0 +1,23 @@
+export type {
+  MarketingAbout,
+  MarketingAboutValue,
+  MarketingCta,
+  MarketingCtaBand,
+  MarketingEcosystem,
+  MarketingFooter,
+  MarketingFooterColumn,
+  MarketingHero,
+  MarketingIndustries,
+  MarketingIndustry,
+  MarketingLabs,
+  MarketingLabsItem,
+  MarketingProduct,
+  MarketingProductFeature,
+  MarketingProductPage,
+  MarketingProductRoi,
+  MarketingSiteContent,
+  MarketingSiteStatus,
+  MarketingStat,
+  MarketingTrustBar,
+} from "./content";
+export { defaultMarketingContent } from "./defaults";

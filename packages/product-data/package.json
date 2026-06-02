@@ -148,6 +148,16 @@
       "types": "./orbit-education/*.ts",
       "browser": "./orbit-education/*.ts",
       "default": "./dist/orbit-education/*.js"
+    },
+    "./marketing": {
+      "types": "./marketing/index.ts",
+      "browser": "./marketing/index.ts",
+      "default": "./dist/marketing/index.js"
+    },
+    "./marketing/*": {
+      "types": "./marketing/*.ts",
+      "browser": "./marketing/*.ts",
+      "default": "./dist/marketing/*.js"
     }
   }
 }

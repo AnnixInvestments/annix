@@ -10,6 +10,7 @@ export enum StorageArea {
   AU_INDUSTRIES = "au-industries",
   PLATFORM = "platform",
   TEACHER_ASSISTANT = "teacher-assistant",
+  ANNIX_MARKETING = "annix-marketing",
 }
 
 export function companyStoragePath(companyId: number, category: string, subPath?: string): string {

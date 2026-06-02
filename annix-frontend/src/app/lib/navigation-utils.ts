@@ -8,9 +8,24 @@ export const isLoginScreen = (pathname: string): boolean => {
   );
 };
 
+const MARKETING_ROUTE_PREFIXES = [
+  "/about",
+  "/contact",
+  "/labs",
+  "/resources",
+  "/products",
+  "/industries",
+];
+
 export const shouldShowGlobalNavigation = (pathname: string): boolean => {
   if (isLoginScreen(pathname)) {
     return true;
+  }
+
+  // The annix.co.za ecosystem marketing site renders its own nav/footer shell,
+  // so the legacy global Annix nav must never overlay it (#338).
+  if (pathname === "/" || MARKETING_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
+    return false;
   }
 
   if (pathname.includes("/portal/")) {

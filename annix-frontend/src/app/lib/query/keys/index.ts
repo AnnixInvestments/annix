@@ -16,6 +16,7 @@ export { fittingKeys } from "./fittingKeys";
 export { flangeWeightKeys } from "./flangeWeightKeys";
 export { insightsKeys } from "./insightsKeys";
 export { licensingKeys } from "./licensingKeys";
+export { marketingKeys } from "./marketingKeys";
 export { materialValidationKeys } from "./materialValidationKeys";
 export { messagingKeys } from "./messagingKeys";
 export type { NixSessionQueryParams } from "./nixKeys";

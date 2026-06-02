@@ -913,6 +913,13 @@ export type {
 } from "./licensing/useLicensingCatalog";
 export { useLicensingCatalog } from "./licensing/useLicensingCatalog";
 export {
+  useDiscardMarketingDraft,
+  useMarketingDraft,
+  useMarketingStatus,
+  usePublishMarketing,
+  useSaveMarketingDraft,
+} from "./marketing/useMarketingAdmin";
+export {
   type ConvertToJobCardInput,
   type ConvertToJobCardResultDto,
   useConvertQuoteToJobCard,
