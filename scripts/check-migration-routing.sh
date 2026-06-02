@@ -11,10 +11,11 @@
 # the wrong database: at best it does nothing (the Orbit data is not on core),
 # at worst a destructive operation mutates the core production ERP database.
 #
-# This check only governs migrations ADDED in the commits being pushed
-# (origin/main..HEAD). Historical core migrations that legitimately ran against
-# Orbit collections BEFORE the Orbit cutover are already in the core changelog
-# and are deliberately left untouched.
+# Every migration in the core directory is scanned: the core directory must
+# never contain a migration that references Orbit collections. (All Orbit
+# migrations were moved to migrations-mongo-orbit/ in the Orbit-split work; the
+# data was moved core->Orbit by an out-of-band sync, not by these migrations,
+# so the changelog is not a historical record we need to preserve.)
 
 set -e
 
@@ -29,36 +30,30 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 NC='\033[0m'
 
-RANGE="origin/main..HEAD"
-if ! git rev-parse origin/main >/dev/null 2>&1; then
-  RANGE="HEAD"
-fi
+core_migrations=$(git ls-files "$CORE_DIR" 2>/dev/null | grep -E "^${CORE_DIR}/[0-9].*\.ts$" || true)
 
-added_core_migrations=$(git diff --name-only --diff-filter=A "$RANGE" -- "$CORE_DIR" 2>/dev/null \
-  | grep -E "^${CORE_DIR}/[0-9].*\.ts$" || true)
-
-if [ -z "$added_core_migrations" ]; then
-  echo -e "${GREEN}Migration routing OK${NC} — no new core migrations in this push."
+if [ -z "$core_migrations" ]; then
+  echo -e "${GREEN}Migration routing OK${NC} — no core migrations to check."
   exit 0
 fi
 
 offenders=""
 while IFS= read -r file; do
   [ -z "$file" ] && continue
+  [ -f "$file" ] || continue
   if grep -qE "$ORBIT_COLLECTION_PATTERN" "$file"; then
     hit=$(grep -oE "$ORBIT_COLLECTION_PATTERN" "$file" | sort -u | head -3 | paste -sd ', ' -)
     offenders="${offenders}  - ${file}  (references: ${hit})\n"
   fi
 done <<EOF
-$added_core_migrations
+$core_migrations
 EOF
 
 if [ -n "$offenders" ]; then
   echo -e "${RED}Migration routing check FAILED${NC}"
   echo ""
-  echo "These newly added migrations live in ${CORE_DIR}/ (the CORE cluster) but"
-  echo "reference Orbit collections, so the deploy would run them against the wrong"
-  echo "database:"
+  echo "These migrations live in ${CORE_DIR}/ (the CORE cluster) but reference"
+  echo "Orbit collections, so the deploy would run them against the wrong database:"
   echo ""
   echo -e "$offenders"
   echo "Orbit migrations belong in ${ORBIT_DIR}/. To fix:"
@@ -71,5 +66,5 @@ if [ -n "$offenders" ]; then
   exit 1
 fi
 
-echo -e "${GREEN}Migration routing OK${NC} — new core migrations reference no Orbit collections."
+echo -e "${GREEN}Migration routing OK${NC} — core migrations reference no Orbit collections."
 exit 0
