@@ -439,7 +439,9 @@ export default function MarketingCmsPage() {
       </div>
 
       {mode === "preview" ? (
-        <MarketingSitePreview content={content} />
+        <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
+          <MarketingSitePreview content={content} />
+        </div>
       ) : (
         <>
           <Section title="Brand & logo">

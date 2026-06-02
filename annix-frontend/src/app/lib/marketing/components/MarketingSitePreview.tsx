@@ -37,8 +37,8 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
   const industry = content.industries.items.find((item) => item.slug === activeIndustrySlug);
 
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200">
-      <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-gray-50 px-3 py-2">
+    <div>
+      <div className="flex flex-wrap items-center gap-2 border-y border-gray-200 bg-gray-50 px-3 py-2">
         {TABS.map((entry) => (
           <button
             key={entry.key}
