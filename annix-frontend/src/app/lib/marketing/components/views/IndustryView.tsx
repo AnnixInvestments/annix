@@ -1,36 +1,16 @@
-import type { Metadata } from "next";
+import type { MarketingIndustry, MarketingProductPage } from "@annix/product-data/marketing";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { fetchPublishedMarketingContent } from "@/app/lib/marketing/api";
-import { MarketingShell } from "@/app/lib/marketing/components/MarketingShell";
 
-interface PageProps {
-  params: Promise<{ slug: string }>;
-}
-
-export async function generateMetadata(props: PageProps): Promise<Metadata> {
-  const { slug } = await props.params;
-  const content = await fetchPublishedMarketingContent();
-  const industry = content.industries.items.find((entry) => entry.slug === slug);
-  if (!industry) {
-    return { title: "Industries — Annix" };
-  }
-  return { title: `Annix for ${industry.name}`, description: industry.blurb };
-}
-
-export default async function IndustryPage(props: PageProps) {
-  const { slug } = await props.params;
-  const content = await fetchPublishedMarketingContent();
-  const industry = content.industries.items.find((entry) => entry.slug === slug);
-  if (!industry) {
-    notFound();
-  }
-  const relevant = content.productPages.filter((page) =>
+export function IndustryView(props: {
+  industry: MarketingIndustry;
+  productPages: MarketingProductPage[];
+}) {
+  const industry = props.industry;
+  const relevant = props.productPages.filter((page) =>
     page.industries.some((name) => name.toLowerCase() === industry.name.toLowerCase()),
   );
-
   return (
-    <MarketingShell content={content}>
+    <>
       <section
         className="px-4 py-24 sm:px-6 lg:px-8"
         style={{
@@ -75,17 +55,8 @@ export default async function IndustryPage(props: PageProps) {
               Products for this industry are coming soon.
             </p>
           )}
-          <div className="mt-12 text-center">
-            <Link
-              href="/contact"
-              className="rounded-lg px-6 py-3 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
-              style={{ backgroundColor: "var(--brand-accent)" }}
-            >
-              Talk to us about {industry.name}
-            </Link>
-          </div>
         </div>
       </section>
-    </MarketingShell>
+    </>
   );
 }

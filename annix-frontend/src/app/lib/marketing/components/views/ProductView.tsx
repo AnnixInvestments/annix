@@ -1,36 +1,13 @@
-import type { Metadata } from "next";
+import type { MarketingProductPage } from "@annix/product-data/marketing";
 import Link from "next/link";
-import { notFound } from "next/navigation";
-import { fetchPublishedMarketingContent } from "@/app/lib/marketing/api";
-import { MarketingIcon } from "@/app/lib/marketing/components/MarketingIcon";
-import { MarketingShell } from "@/app/lib/marketing/components/MarketingShell";
 import { loginHrefForPortal } from "@/app/lib/marketing/links";
+import { MarketingIcon } from "../MarketingIcon";
 
-interface PageProps {
-  params: Promise<{ slug: string }>;
-}
-
-export async function generateMetadata(props: PageProps): Promise<Metadata> {
-  const { slug } = await props.params;
-  const content = await fetchPublishedMarketingContent();
-  const page = content.productPages.find((entry) => entry.slug === slug);
-  if (!page) {
-    return { title: "Product — Annix" };
-  }
-  return { title: `${page.name} — Annix`, description: page.subheading };
-}
-
-export default async function ProductDetailPage(props: PageProps) {
-  const { slug } = await props.params;
-  const content = await fetchPublishedMarketingContent();
-  const page = content.productPages.find((entry) => entry.slug === slug);
-  if (!page) {
-    notFound();
-  }
+export function ProductView(props: { page: MarketingProductPage }) {
+  const page = props.page;
   const loginHref = loginHrefForPortal(page.portalCode);
-
   return (
-    <MarketingShell content={content}>
+    <>
       <section
         className="px-4 py-24 sm:px-6 lg:px-8"
         style={{
@@ -131,6 +108,6 @@ export default async function ProductDetailPage(props: PageProps) {
           </div>
         </section>
       ) : null}
-    </MarketingShell>
+    </>
   );
 }

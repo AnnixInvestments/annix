@@ -1,17 +1,9 @@
-import type { Metadata } from "next";
-import { fetchPublishedMarketingContent } from "@/app/lib/marketing/api";
-import { MarketingShell } from "@/app/lib/marketing/components/MarketingShell";
+import type { MarketingLabs } from "@annix/product-data/marketing";
 
-export const metadata: Metadata = {
-  title: "Annix Labs — What's next",
-  description: "The next wave of Annix products, built on the same shared platform.",
-};
-
-export default async function LabsPage() {
-  const content = await fetchPublishedMarketingContent();
-  const labs = content.labs;
+export function LabsView(props: { labs: MarketingLabs }) {
+  const labs = props.labs;
   return (
-    <MarketingShell content={content}>
+    <>
       <section
         className="px-4 py-24 sm:px-6 lg:px-8"
         style={{
@@ -42,6 +34,6 @@ export default async function LabsPage() {
           ))}
         </div>
       </section>
-    </MarketingShell>
+    </>
   );
 }
