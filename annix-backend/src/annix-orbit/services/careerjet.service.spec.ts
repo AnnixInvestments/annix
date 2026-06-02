@@ -48,6 +48,7 @@ describe("CareerjetService", () => {
     expect(calledUrl).toContain("locale_code=en_ZA");
     const headers = mockFetch.mock.calls[0][1].headers;
     expect(headers.Authorization).toBe(`Basic ${Buffer.from("AFFID123:").toString("base64")}`);
+    expect(headers.Referer).toBe("https://annix.co.za");
 
     expect(result.jobs).toHaveLength(1);
     const job = result.jobs[0];

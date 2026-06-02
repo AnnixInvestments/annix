@@ -4,6 +4,7 @@ import {
   LoginDto,
   RegisterDto,
   RegisterIndividualDto,
+  RegisterRecruiterDto,
   RegisterStudentDto,
   ResendVerificationDto,
   ResetPasswordDto,
@@ -24,6 +25,18 @@ export class AnnixOrbitAuthController {
       companyName: dto.companyName,
       industry: dto.industry,
       companySize: dto.companySize,
+      province: dto.province,
+      city: dto.city,
+    });
+  }
+
+  @Post("register/recruiter")
+  async registerRecruiter(@Body() dto: RegisterRecruiterDto) {
+    return this.authService.registerRecruiter({
+      email: dto.email,
+      password: dto.password,
+      name: dto.name,
+      agencyName: dto.agencyName,
       province: dto.province,
       city: dto.city,
     });

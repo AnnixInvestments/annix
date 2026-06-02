@@ -31,6 +31,29 @@ export const annixOrbitKeys = {
     popiaStats: () => ["annix-orbit", "candidates", "popia-stats"] as const,
   },
 
+  clients: {
+    all: ["annix-orbit", "clients"] as const,
+    list: () => ["annix-orbit", "clients", "list"] as const,
+    detail: (id: number) => ["annix-orbit", "clients", "detail", id] as const,
+  },
+
+  placements: {
+    all: ["annix-orbit", "placements"] as const,
+    list: () => ["annix-orbit", "placements", "list"] as const,
+    detail: (id: number) => ["annix-orbit", "placements", "detail", id] as const,
+  },
+
+  talentCandidates: {
+    all: ["annix-orbit", "talent-candidates"] as const,
+    list: () => ["annix-orbit", "talent-candidates", "list"] as const,
+    detail: (id: number) => ["annix-orbit", "talent-candidates", "detail", id] as const,
+  },
+
+  submissions: {
+    all: ["annix-orbit", "submissions"] as const,
+    list: () => ["annix-orbit", "submissions", "list"] as const,
+  },
+
   jobPostings: {
     all: ["annix-orbit", "job-postings"] as const,
     list: (status?: string) => ["annix-orbit", "job-postings", "list", status ?? "all"] as const,

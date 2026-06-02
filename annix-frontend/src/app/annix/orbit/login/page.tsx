@@ -14,14 +14,16 @@ function postLoginPath(userType: string | undefined, returnUrl: string | null): 
   if (returnUrl) return returnUrl;
   if (userType === "student") return "/annix/orbit/student/dashboard";
   if (userType === "individual") return "/annix/orbit/seeker/dashboard";
+  if (userType === "recruiter") return "/annix/orbit/recruiter/dashboard";
   return "/annix/orbit/portal/dashboard";
 }
 
-const ORBIT_LOGIN_TYPES = new Set(["individual", "company", "student"]);
+const ORBIT_LOGIN_TYPES = new Set(["individual", "company", "recruiter", "student"]);
 
 function orbitUserTypeLabel(userType: string): string {
   if (userType === "individual") return "job seeker";
   if (userType === "company") return "company";
+  if (userType === "recruiter") return "recruitment agency";
   if (userType === "student") return "student";
   return "account";
 }
@@ -77,9 +79,11 @@ function AnnixOrbitLoginContent() {
       ? "/annix/orbit/register/individual"
       : accountType === "company"
         ? "/annix/orbit/register/company"
-        : accountType === "student"
-          ? "/annix/orbit/register/student"
-          : "/annix/orbit";
+        : accountType === "recruiter"
+          ? "/annix/orbit/register/recruiter"
+          : accountType === "student"
+            ? "/annix/orbit/register/student"
+            : "/annix/orbit";
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
@@ -91,9 +95,11 @@ function AnnixOrbitLoginContent() {
                 ? "Sign in to your job seeker account"
                 : accountType === "company"
                   ? "Sign in to your company account"
-                  : accountType === "student"
-                    ? "Sign in to your student account"
-                    : "Sign in"}
+                  : accountType === "recruiter"
+                    ? "Sign in to your recruitment agency account"
+                    : accountType === "student"
+                      ? "Sign in to your student account"
+                      : "Sign in"}
             </p>
           </div>
 

@@ -209,6 +209,68 @@ export class AnnixOrbitAuthService {
     };
   }
 
+  async registerRecruiter(input: {
+    email: string;
+    password: string;
+    name: string;
+    agencyName: string;
+    province: string;
+    city: string;
+  }) {
+    const { email, password, name, agencyName, province, city } = input;
+    const existing = await this.userRepo.findOneByEmail(email);
+    if (existing) {
+      throw new ConflictException("Email already registered");
+    }
+
+    const passwordHash = await this.passwordService.hashSimple(password);
+    const verificationToken = uuidv4();
+    const verificationExpires = now().plus({ hours: VERIFICATION_EXPIRY_HOURS }).toJSDate();
+
+    const savedCompany = await this.companyRepo.create({
+      name: agencyName,
+      companyType: "CUSTOMER" as any,
+      industry: "Staffing & Recruitment",
+      companySize: null,
+      province,
+      city,
+    });
+    await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, agencyName);
+
+    const savedUser = await this.userRepo.create({
+      email,
+      username: email,
+      passwordHash,
+      firstName: name.split(" ")[0],
+      lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
+      status: "pending",
+      emailVerified: false,
+      emailVerificationToken: verificationToken,
+      emailVerificationExpires: verificationExpires,
+    } as Partial<User>);
+
+    await this.profileRepo.create({
+      userId: savedUser.id,
+      companyId: savedCompany.id,
+      userType: AnnixOrbitUserType.RECRUITER,
+    });
+
+    await this.bridgeToRbac(savedUser.id, "admin");
+
+    await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
+
+    return {
+      message: "Registration successful. Please check your email to verify your account.",
+      user: {
+        id: savedUser.id,
+        email: savedUser.email,
+        name,
+        role: AnnixOrbitRole.ADMIN,
+        userType: AnnixOrbitUserType.RECRUITER,
+      },
+    };
+  }
+
   async registerIndividual(
     email: string,
     password: string,

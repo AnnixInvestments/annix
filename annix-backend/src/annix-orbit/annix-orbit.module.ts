@@ -59,6 +59,10 @@ import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-mar
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
 import { AdminOrbitTierCapabilitiesController } from "./controllers/admin-orbit-tier-capabilities.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
+import { AnnixOrbitClientController } from "./controllers/annix-orbit-client.controller";
+import { AnnixOrbitPlacementController } from "./controllers/annix-orbit-placement.controller";
+import { AnnixOrbitSubmissionController } from "./controllers/annix-orbit-submission.controller";
+import { AnnixOrbitTalentCandidateController } from "./controllers/annix-orbit-talent-candidate.controller";
 import { AnnixOrbitAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { ComplianceController } from "./controllers/compliance.controller";
@@ -84,13 +88,17 @@ import { SettingsController } from "./controllers/settings.controller";
 import { TradeProfileController } from "./controllers/trade-profile.controller";
 import { WorkforceNeedController } from "./controllers/workforce-need.controller";
 import { AnnixOrbitCandidateEeAttributes } from "./entities/annix-orbit-candidate-ee-attributes.entity";
+import { AnnixOrbitClient } from "./entities/annix-orbit-client.entity";
 import { AnnixOrbitCompany } from "./entities/annix-orbit-company.entity";
 import { AnnixOrbitEeConsentTextVersion } from "./entities/annix-orbit-ee-consent-text-version.entity";
 import { AnnixOrbitEeDisclosureInvite } from "./entities/annix-orbit-ee-disclosure-invite.entity";
 import { AnnixOrbitEeSectoralTarget } from "./entities/annix-orbit-ee-sectoral-target.entity";
 import { AnnixOrbitEmailTemplate } from "./entities/annix-orbit-email-template.entity";
 import { AnnixOrbitIndividualDocument } from "./entities/annix-orbit-individual-document.entity";
+import { AnnixOrbitPlacement } from "./entities/annix-orbit-placement.entity";
 import { AnnixOrbitProfile } from "./entities/annix-orbit-profile.entity";
+import { AnnixOrbitSubmission } from "./entities/annix-orbit-submission.entity";
+import { AnnixOrbitTalentCandidate } from "./entities/annix-orbit-talent-candidate.entity";
 import { AnnixOrbitUser } from "./entities/annix-orbit-user.entity";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
@@ -122,6 +130,9 @@ import { AnnixOrbitRoleGuard } from "./guards/annix-orbit-role.guard";
 import { AnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository";
 import { MongoAnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository.mongo";
 import { PostgresAnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository.postgres";
+import { AnnixOrbitClientRepository } from "./repositories/annix-orbit-client.repository";
+import { MongoAnnixOrbitClientRepository } from "./repositories/annix-orbit-client.repository.mongo";
+import { PostgresAnnixOrbitClientRepository } from "./repositories/annix-orbit-client.repository.postgres";
 import { AnnixOrbitCompanyRepository } from "./repositories/annix-orbit-company.repository";
 import { MongoAnnixOrbitCompanyRepository } from "./repositories/annix-orbit-company.repository.mongo";
 import { PostgresAnnixOrbitCompanyRepository } from "./repositories/annix-orbit-company.repository.postgres";
@@ -140,9 +151,18 @@ import { PostgresAnnixOrbitEmailTemplateRepository } from "./repositories/annix-
 import { AnnixOrbitIndividualDocumentRepository } from "./repositories/annix-orbit-individual-document.repository";
 import { MongoAnnixOrbitIndividualDocumentRepository } from "./repositories/annix-orbit-individual-document.repository.mongo";
 import { PostgresAnnixOrbitIndividualDocumentRepository } from "./repositories/annix-orbit-individual-document.repository.postgres";
+import { AnnixOrbitPlacementRepository } from "./repositories/annix-orbit-placement.repository";
+import { MongoAnnixOrbitPlacementRepository } from "./repositories/annix-orbit-placement.repository.mongo";
+import { PostgresAnnixOrbitPlacementRepository } from "./repositories/annix-orbit-placement.repository.postgres";
 import { AnnixOrbitProfileRepository } from "./repositories/annix-orbit-profile.repository";
 import { MongoAnnixOrbitProfileRepository } from "./repositories/annix-orbit-profile.repository.mongo";
 import { PostgresAnnixOrbitProfileRepository } from "./repositories/annix-orbit-profile.repository.postgres";
+import { AnnixOrbitSubmissionRepository } from "./repositories/annix-orbit-submission.repository";
+import { MongoAnnixOrbitSubmissionRepository } from "./repositories/annix-orbit-submission.repository.mongo";
+import { PostgresAnnixOrbitSubmissionRepository } from "./repositories/annix-orbit-submission.repository.postgres";
+import { AnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository";
+import { MongoAnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository.mongo";
+import { PostgresAnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository.postgres";
 import { AnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository";
 import { MongoAnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository.mongo";
 import { PostgresAnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository.postgres";
@@ -222,13 +242,17 @@ import { SourceRespectRankRepository } from "./repositories/source-respect-rank.
 import { MongoSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.mongo";
 import { PostgresSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.postgres";
 import { AnnixOrbitCandidateEeAttributesSchema } from "./schemas/annix-orbit-candidate-ee-attributes.schema";
+import { AnnixOrbitClientSchema } from "./schemas/annix-orbit-client.schema";
 import { AnnixOrbitCompanySchema } from "./schemas/annix-orbit-company.schema";
 import { AnnixOrbitEeConsentTextVersionSchema } from "./schemas/annix-orbit-ee-consent-text-version.schema";
 import { AnnixOrbitEeDisclosureInviteSchema } from "./schemas/annix-orbit-ee-disclosure-invite.schema";
 import { AnnixOrbitEeSectoralTargetSchema } from "./schemas/annix-orbit-ee-sectoral-target.schema";
 import { AnnixOrbitEmailTemplateSchema } from "./schemas/annix-orbit-email-template.schema";
 import { AnnixOrbitIndividualDocumentSchema } from "./schemas/annix-orbit-individual-document.schema";
+import { AnnixOrbitPlacementSchema } from "./schemas/annix-orbit-placement.schema";
 import { AnnixOrbitProfileSchema } from "./schemas/annix-orbit-profile.schema";
+import { AnnixOrbitSubmissionSchema } from "./schemas/annix-orbit-submission.schema";
+import { AnnixOrbitTalentCandidateSchema } from "./schemas/annix-orbit-talent-candidate.schema";
 import { AnnixOrbitUserSchema } from "./schemas/annix-orbit-user.schema";
 import { CandidateSchema } from "./schemas/candidate.schema";
 import { CandidateJobMatchSchema } from "./schemas/candidate-job-match.schema";
@@ -262,6 +286,10 @@ import { IndeedPortalAdapter } from "./services/adapters/indeed-portal-adapter.s
 import { LinkedInPortalAdapter } from "./services/adapters/linkedin-portal-adapter.service";
 import { AdzunaService } from "./services/adzuna.service";
 import { AnalyticsService } from "./services/analytics.service";
+import { AnnixOrbitClientService } from "./services/annix-orbit-client.service";
+import { AnnixOrbitPlacementService } from "./services/annix-orbit-placement.service";
+import { AnnixOrbitSubmissionService } from "./services/annix-orbit-submission.service";
+import { AnnixOrbitTalentCandidateService } from "./services/annix-orbit-talent-candidate.service";
 import { AnnixOrbitAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
@@ -318,6 +346,10 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
             { name: "JobPosting", schema: JobPostingSchema },
             { name: "Candidate", schema: CandidateSchema },
             { name: "CandidateReference", schema: CandidateReferenceSchema },
+            { name: "AnnixOrbitClient", schema: AnnixOrbitClientSchema },
+            { name: "AnnixOrbitPlacement", schema: AnnixOrbitPlacementSchema },
+            { name: "AnnixOrbitTalentCandidate", schema: AnnixOrbitTalentCandidateSchema },
+            { name: "AnnixOrbitSubmission", schema: AnnixOrbitSubmissionSchema },
             { name: "JobMarketSource", schema: JobMarketSourceSchema },
             { name: "ExternalJob", schema: ExternalJobSchema },
             { name: "ExternalJobAlternate", schema: ExternalJobAlternateSchema },
@@ -394,6 +426,10 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
             JobPosting,
             Candidate,
             CandidateReference,
+            AnnixOrbitClient,
+            AnnixOrbitPlacement,
+            AnnixOrbitTalentCandidate,
+            AnnixOrbitSubmission,
             JobMarketSource,
             ExternalJob,
             ExternalJobAlternate,
@@ -459,6 +495,10 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     DashboardController,
     SettingsController,
     ReferencesController,
+    AnnixOrbitClientController,
+    AnnixOrbitPlacementController,
+    AnnixOrbitTalentCandidateController,
+    AnnixOrbitSubmissionController,
     JobMarketController,
     AnalyticsController,
     NotificationController,
@@ -493,6 +533,10 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     CvExtractionService,
     JobMatchService,
     ReferenceService,
+    AnnixOrbitClientService,
+    AnnixOrbitPlacementService,
+    AnnixOrbitTalentCandidateService,
+    AnnixOrbitSubmissionService,
     CvEmailAdapterService,
     CvScreeningService,
     EeDisclosureService,
@@ -563,6 +607,26 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
       CandidateReferenceRepository,
       PostgresCandidateReferenceRepository,
       MongoCandidateReferenceRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitClientRepository,
+      PostgresAnnixOrbitClientRepository,
+      MongoAnnixOrbitClientRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitPlacementRepository,
+      PostgresAnnixOrbitPlacementRepository,
+      MongoAnnixOrbitPlacementRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitTalentCandidateRepository,
+      PostgresAnnixOrbitTalentCandidateRepository,
+      MongoAnnixOrbitTalentCandidateRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitSubmissionRepository,
+      PostgresAnnixOrbitSubmissionRepository,
+      MongoAnnixOrbitSubmissionRepository,
     ),
     repositoryProvider(
       ExternalJobRepository,

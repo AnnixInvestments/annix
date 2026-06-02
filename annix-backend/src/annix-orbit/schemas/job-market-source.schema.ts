@@ -25,19 +25,22 @@ export class JobMarketSource {
   @Prop({ type: String, required: false })
   apiKeyEncrypted: string;
 
-  @Prop({ type: Object, required: true })
+  @Prop({ type: Object, required: true, default: ["za"] })
   countryCodes: Record<string, unknown>;
 
-  @Prop({ type: Object, required: true })
+  @Prop({ type: Object, required: true, default: [] })
   categories: Record<string, unknown>;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: [String], required: false, default: null })
+  visibleTiers: string[] | null;
+
+  @Prop({ type: Boolean, required: true, default: true })
   enabled: boolean;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 250 })
   rateLimitPerDay: number;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 0 })
   requestsToday: number;
 
   @Prop({ type: Date, required: false })
@@ -46,11 +49,14 @@ export class JobMarketSource {
   @Prop({ type: Date, required: false })
   lastIngestedAt: Date;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, required: true, default: 6 })
   ingestionIntervalHours: number;
 
-  @Prop({ type: Number, required: true })
-  companyId: number;
+  @Prop({ type: Boolean, required: true, default: true })
+  requiresVetting: boolean;
+
+  @Prop({ type: Number, required: false, default: null })
+  companyId: number | null;
 
   @Prop({ type: String, required: false })
   createdAt: string;

@@ -27,6 +27,7 @@ const CAREERJET_MAX_PAGES = 5;
 const CAREERJET_TARGET = 200;
 const CAREERJET_USER_IP = "196.10.52.1";
 const CAREERJET_USER_AGENT = "AnnixOrbitJobBot/1.0 (+https://annix.co.za)";
+const CAREERJET_REFERER = "https://annix.co.za";
 
 @Injectable()
 export class CareerjetService {
@@ -54,7 +55,11 @@ export class CareerjetService {
       if (options.keywords) params.set("keywords", options.keywords);
 
       const response = await fetch(`${CAREERJET_BASE_URL}?${params.toString()}`, {
-        headers: { Authorization: authHeader, Accept: "application/json" },
+        headers: {
+          Authorization: authHeader,
+          Accept: "application/json",
+          Referer: CAREERJET_REFERER,
+        },
       });
 
       if (!response.ok) {

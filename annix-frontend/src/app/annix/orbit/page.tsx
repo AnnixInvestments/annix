@@ -31,7 +31,7 @@ export default function AnnixOrbitHomePage() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           <CvHomeCard
             title="Company Postings"
             subtitle="Recruiter, HR, or hiring manager"
@@ -52,6 +52,31 @@ export default function AnnixOrbitHomePage() {
                   strokeLinejoin="round"
                   strokeWidth={1.5}
                   d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                />
+              </svg>
+            }
+          />
+
+          <CvHomeCard
+            title="Recruitment Agency"
+            subtitle="Recruiter or staffing agency"
+            description="Manage clients, build talent pools, match candidates to vacancies with AI, and track submissions through to placement."
+            primaryHref="/annix/orbit/register/recruiter"
+            primaryLabel="Sign up as a recruiter"
+            secondaryHref="/annix/orbit/login?type=recruiter"
+            secondaryLabel="Sign in"
+            icon={
+              <svg
+                className="w-7 h-7 text-[#323288]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a3 3 0 10-2.5-1.34M7 11a3 3 0 10-2.5-1.34"
                 />
               </svg>
             }

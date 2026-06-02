@@ -7,7 +7,7 @@ export interface AnnixOrbitLoginDto {
   password: string;
 }
 
-export type AnnixOrbitUserType = "company" | "individual" | "student";
+export type AnnixOrbitUserType = "company" | "recruiter" | "individual" | "student";
 
 export interface AnnixOrbitUser {
   id: number;
@@ -32,6 +32,146 @@ export interface AnnixOrbitUserProfile {
   companyId: number | null;
   companyName: string | null;
   createdAt: string;
+}
+
+export interface OrbitClient {
+  id: number;
+  companyId: number;
+  name: string;
+  industry: string | null;
+  province: string | null;
+  city: string | null;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  feePercentage: number | null;
+  paymentTerms: string | null;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitClientInput {
+  name: string;
+  industry?: string | null;
+  province?: string | null;
+  city?: string | null;
+  contactName?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  feePercentage?: number | null;
+  paymentTerms?: string | null;
+  status?: string;
+  notes?: string | null;
+}
+
+export interface OrbitPlacement {
+  id: number;
+  companyId: number;
+  clientId: number | null;
+  candidateName: string;
+  jobTitle: string;
+  salary: number | null;
+  placementFee: number | null;
+  startDate: string | null;
+  guaranteeUntil: string | null;
+  status: string;
+  invoiceStatus: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitPlacementInput {
+  clientId?: number | null;
+  candidateName: string;
+  jobTitle: string;
+  salary?: number | null;
+  placementFee?: number | null;
+  startDate?: string | null;
+  guaranteeUntil?: string | null;
+  status?: string;
+  invoiceStatus?: string;
+  notes?: string | null;
+}
+
+export interface OrbitTalentCandidate {
+  id: number;
+  companyId: number;
+  ownerUserId: number;
+  visibility: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  currentRole: string | null;
+  province: string | null;
+  city: string | null;
+  yearsExperience: number | null;
+  skills: string[] | null;
+  salaryExpectation: number | null;
+  availability: string | null;
+  noticePeriod: string | null;
+  willingToRelocate: boolean;
+  status: string;
+  notes: string | null;
+  consentToShare: boolean;
+  consentGivenAt: string | null;
+  consentSource: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitTalentCandidateInput {
+  visibility?: string;
+  fullName: string;
+  email?: string | null;
+  phone?: string | null;
+  currentRole?: string | null;
+  province?: string | null;
+  city?: string | null;
+  yearsExperience?: number | null;
+  skills?: string[] | null;
+  salaryExpectation?: number | null;
+  availability?: string | null;
+  noticePeriod?: string | null;
+  willingToRelocate?: boolean;
+  status?: string;
+  notes?: string | null;
+  consentToShare?: boolean;
+  consentGivenAt?: string | null;
+  consentSource?: string | null;
+}
+
+export interface OrbitSubmission {
+  id: number;
+  companyId: number;
+  candidateId: number;
+  clientId: number | null;
+  jobTitle: string;
+  status: string;
+  submittedAt: string | null;
+  feedback: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitSubmissionCreateInput {
+  candidateId: number;
+  clientId?: number | null;
+  jobTitle: string;
+  status?: string;
+  feedback?: string | null;
+  notes?: string | null;
+}
+
+export interface OrbitSubmissionUpdateInput {
+  clientId?: number | null;
+  jobTitle: string;
+  status?: string;
+  feedback?: string | null;
+  notes?: string | null;
 }
 
 export type EmploymentType =
@@ -1042,6 +1182,123 @@ class AnnixOrbitApiClient {
       method: "POST",
       body: JSON.stringify(dto),
     });
+  }
+
+  async registerRecruiter(dto: {
+    email: string;
+    password: string;
+    name: string;
+    agencyName: string;
+    province: string;
+    city: string;
+  }): Promise<{ message: string; user: AnnixOrbitUser }> {
+    return this.request("/annix-orbit/auth/register/recruiter", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async clients(): Promise<OrbitClient[]> {
+    return this.request("/annix-orbit/clients");
+  }
+
+  async clientById(id: number): Promise<OrbitClient> {
+    return this.request(`/annix-orbit/clients/${id}`);
+  }
+
+  async createClient(data: OrbitClientInput): Promise<OrbitClient> {
+    return this.request("/annix-orbit/clients", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateClient(id: number, data: OrbitClientInput): Promise<OrbitClient> {
+    return this.request(`/annix-orbit/clients/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteClient(id: number): Promise<void> {
+    return this.request(`/annix-orbit/clients/${id}`, { method: "DELETE" });
+  }
+
+  async placements(): Promise<OrbitPlacement[]> {
+    return this.request("/annix-orbit/placements");
+  }
+
+  async placementById(id: number): Promise<OrbitPlacement> {
+    return this.request(`/annix-orbit/placements/${id}`);
+  }
+
+  async createPlacement(data: OrbitPlacementInput): Promise<OrbitPlacement> {
+    return this.request("/annix-orbit/placements", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updatePlacement(id: number, data: OrbitPlacementInput): Promise<OrbitPlacement> {
+    return this.request(`/annix-orbit/placements/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deletePlacement(id: number): Promise<void> {
+    return this.request(`/annix-orbit/placements/${id}`, { method: "DELETE" });
+  }
+
+  async talentCandidates(): Promise<OrbitTalentCandidate[]> {
+    return this.request("/annix-orbit/talent-candidates");
+  }
+
+  async talentCandidateById(id: number): Promise<OrbitTalentCandidate> {
+    return this.request(`/annix-orbit/talent-candidates/${id}`);
+  }
+
+  async createTalentCandidate(data: OrbitTalentCandidateInput): Promise<OrbitTalentCandidate> {
+    return this.request("/annix-orbit/talent-candidates", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTalentCandidate(
+    id: number,
+    data: OrbitTalentCandidateInput,
+  ): Promise<OrbitTalentCandidate> {
+    return this.request(`/annix-orbit/talent-candidates/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTalentCandidate(id: number): Promise<void> {
+    return this.request(`/annix-orbit/talent-candidates/${id}`, { method: "DELETE" });
+  }
+
+  async submissions(): Promise<OrbitSubmission[]> {
+    return this.request("/annix-orbit/submissions");
+  }
+
+  async createSubmission(data: OrbitSubmissionCreateInput): Promise<OrbitSubmission> {
+    return this.request("/annix-orbit/submissions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateSubmission(id: number, data: OrbitSubmissionUpdateInput): Promise<OrbitSubmission> {
+    return this.request(`/annix-orbit/submissions/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteSubmission(id: number): Promise<void> {
+    return this.request(`/annix-orbit/submissions/${id}`, { method: "DELETE" });
   }
 
   async registerIndividual(dto: {

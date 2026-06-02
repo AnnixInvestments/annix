@@ -23,6 +23,7 @@ import type { ExtractedCvData } from "./candidate.entity";
 
 export enum AnnixOrbitUserType {
   COMPANY = "company",
+  RECRUITER = "recruiter",
   INDIVIDUAL = "individual",
   STUDENT = "student",
 }

@@ -1,0 +1,292 @@
+"use client";
+
+import { toPairs as entries } from "es-toolkit/compat";
+import Link from "next/link";
+import { useState } from "react";
+import { useToast } from "@/app/components/Toast";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { isApiError } from "@/app/lib/api/apiError";
+import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
+
+export default function AnnixOrbitRegisterRecruiterPage() {
+  const { showToast } = useToast();
+  const [popiaConsent, setPopiaConsent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState("");
+  const [success, setSuccess] = useState(false);
+
+  const readField = (form: HTMLFormElement, fieldName: string): string => {
+    const el = form.elements.namedItem(fieldName) as HTMLInputElement | HTMLSelectElement | null;
+    if (!el) return "";
+    el.focus();
+    el.blur();
+    const value = el.value;
+    return value || "";
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+
+    const payload = {
+      name: readField(form, "name").trim(),
+      email: readField(form, "email").trim(),
+      password: readField(form, "password"),
+      agencyName: readField(form, "agencyName").trim(),
+      province: readField(form, "province"),
+      city: readField(form, "city").trim(),
+    };
+
+    const missing = entries(payload)
+      .filter(([, value]) => !value)
+      .map(([key]) => key);
+
+    if (missing.length > 0) {
+      showToast("Please fill in all required fields.", "error");
+      return;
+    }
+
+    if (payload.password.length < 8) {
+      showToast("Password must be at least 8 characters.", "error");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await annixOrbitApiClient.registerRecruiter(payload);
+      setSubmittedEmail(payload.email);
+      setSuccess(true);
+    } catch (err) {
+      if (isApiError(err)) {
+        if (err.isValidation()) {
+          showToast("Please check your details and try again.", "error");
+        } else if (err.status === 409) {
+          showToast("An account with this email already exists.", "error");
+        } else {
+          showToast("Registration failed. Please try again.", "error");
+        }
+      } else {
+        showToast("Registration failed. Please try again.", "error");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md w-full">
+          <div className="bg-white rounded-2xl shadow-2xl p-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mb-4">
+              <svg
+                className="w-8 h-8 text-green-600"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Check your email</h2>
+            <p className="text-gray-600 mb-6">
+              We have sent a verification link to <strong>{submittedEmail}</strong>. Please check
+              your inbox and click the link to verify your account.
+            </p>
+            <Link
+              href="/annix/orbit/login?type=recruiter"
+              className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
+            >
+              Back to login
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      <div className="max-w-md w-full">
+        <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <div className="text-center mb-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
+              <svg
+                className="w-8 h-8 text-[#323288]"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M17 20h5v-2a4 4 0 00-3-3.87M9 20H4v-2a4 4 0 013-3.87m6-1.13a4 4 0 10-4-4 4 4 0 004 4zm6 0a3 3 0 10-2.5-1.34M7 11a3 3 0 10-2.5-1.34"
+                />
+              </svg>
+            </div>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Create your recruitment agency account
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Manage clients, talent pools and placements with AI
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+                Your name
+              </label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                autoComplete="name"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                placeholder="John Smith"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                Email address
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                autoComplete="email"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                placeholder="you@example.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="agencyName" className="block text-sm font-medium text-gray-700 mb-1">
+                Agency name
+              </label>
+              <input
+                id="agencyName"
+                name="agencyName"
+                type="text"
+                autoComplete="organization"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                placeholder="Your Recruitment Agency"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="province" className="block text-sm font-medium text-gray-700 mb-1">
+                  Province
+                </label>
+                <select
+                  id="province"
+                  name="province"
+                  autoComplete="address-level1"
+                  defaultValue=""
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent bg-white"
+                >
+                  <option value="" disabled>
+                    Select province
+                  </option>
+                  {SOUTH_AFRICAN_PROVINCES.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
+                  City / town
+                </label>
+                <input
+                  id="city"
+                  name="city"
+                  type="text"
+                  autoComplete="address-level2"
+                  required
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                  placeholder="Johannesburg"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="new-password"
+                required
+                minLength={8}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                placeholder="At least 8 characters"
+              />
+            </div>
+
+            <div className="flex items-start">
+              <input
+                id="popiaConsent"
+                type="checkbox"
+                checked={popiaConsent}
+                onChange={(e) => setPopiaConsent(e.target.checked)}
+                required
+                className="mt-1 h-4 w-4 text-[#323288] focus:ring-[#f0f0fc]0 border-gray-300 rounded"
+              />
+              <label htmlFor="popiaConsent" className="ml-2 text-sm text-gray-600">
+                I consent to the processing of my personal information in accordance with the{" "}
+                <span className="text-[#323288] font-medium">
+                  Protection of Personal Information Act (POPIA)
+                </span>
+                . I understand that candidate data I manage must only be shared with my consent and
+                for its stated purpose, and that my data will be retained for 12 months from my last
+                activity.
+              </label>
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading || !popiaConsent}
+              className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc]0 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isLoading ? "Creating account..." : "Create account"}
+            </button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <p className="text-gray-600">
+              Already have an account?{" "}
+              <Link
+                href="/annix/orbit/login?type=recruiter"
+                className="text-[#323288] hover:text-[#252560] font-medium"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+
+        <div className="text-center mt-6 space-x-4">
+          <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+            Choose a different account type
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -77,6 +77,28 @@ export class RegisterDto {
   city: string;
 }
 
+export class RegisterRecruiterDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  password: string;
+
+  @IsString()
+  @IsNotEmpty()
+  name: string;
+
+  @RequiredString({ maxLength: 255 })
+  agencyName: string;
+
+  @RequiredIn(SA_PROVINCES)
+  province: string;
+
+  @RequiredString({ maxLength: 100 })
+  city: string;
+}
+
 export class RegisterIndividualDto {
   @IsEmail()
   email: string;

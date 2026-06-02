@@ -221,6 +221,13 @@ export {
   useOrbitUploadCv,
 } from "./annix-orbit/useOrbitCandidates";
 export {
+  useOrbitClient,
+  useOrbitClients,
+  useOrbitCreateClient,
+  useOrbitDeleteClient,
+  useOrbitUpdateClient,
+} from "./annix-orbit/useOrbitClients";
+export {
   useDeleteMyEeAttributes,
   useEeReport,
   useMyEeAttributes,
@@ -328,6 +335,12 @@ export {
   useOrbitUpdateJobPosting,
   useOrbitUpdateJobWizard,
 } from "./annix-orbit/useOrbitJobPostings";
+export {
+  useOrbitCreatePlacement,
+  useOrbitDeletePlacement,
+  useOrbitPlacements,
+  useOrbitUpdatePlacement,
+} from "./annix-orbit/useOrbitPlacements";
 export { useOrbitReferences } from "./annix-orbit/useOrbitReferences";
 export {
   useOrbitDismissSeekerMatch,
@@ -352,6 +365,18 @@ export {
   useOrbitUpdateImapSettings,
   useOrbitUpdateNotificationPreferences,
 } from "./annix-orbit/useOrbitSettings";
+export {
+  useOrbitCreateSubmission,
+  useOrbitDeleteSubmission,
+  useOrbitSubmissions,
+  useOrbitUpdateSubmission,
+} from "./annix-orbit/useOrbitSubmissions";
+export {
+  useOrbitCreateTalentCandidate,
+  useOrbitDeleteTalentCandidate,
+  useOrbitTalentCandidates,
+  useOrbitUpdateTalentCandidate,
+} from "./annix-orbit/useOrbitTalentCandidates";
 export {
   useOrbitAutofillSeekerTradeProfile,
   useOrbitSeekerTradeProfile,
