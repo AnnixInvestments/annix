@@ -2,7 +2,7 @@
 
 import { toPairs as entries, keys } from "es-toolkit/compat";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type {
   ImportMatchRow,
   ImportUploadResponse,
@@ -10,7 +10,7 @@ import type {
   ReviewedImportResult,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
-import { DateTime } from "@/app/lib/datetime";
+import { DateTime, monthEndPeriodOptions } from "@/app/lib/datetime";
 import { useMatchImportRows, useUploadImportFile } from "@/app/lib/query/hooks";
 import { ImportReviewStep } from "./ImportReviewStep";
 
@@ -32,6 +32,8 @@ export default function ImportPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isStockTake, setIsStockTake] = useState(false);
   const [stockTakeDate, setStockTakeDate] = useState<string | null>(null);
+  const [stockTakePeriod, setStockTakePeriod] = useState<string | null>(null);
+  const monthEndOptions = useMemo(() => monthEndPeriodOptions(false), []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadMutation = useUploadImportFile();
   const matchMutation = useMatchImportRows();
@@ -93,7 +95,12 @@ export default function ImportPage() {
 
   const buildImportRows = () => {
     if (importFormat === "excel" && importMapping) {
-      return importRawRows.map((row) => {
+      const mapping = importMapping;
+      const seed: { category: string | null; rows: Record<string, unknown>[] } = {
+        category: null,
+        rows: [],
+      };
+      const built = importRawRows.reduce((acc, row) => {
         const cellAt = (idx: number | null): string | undefined => {
           if (idx === null || idx < 0 || idx >= row.length) {
             return undefined;
@@ -109,18 +116,44 @@ export default function ImportPage() {
           const num = Number(val);
           return Number.isNaN(num) ? undefined : num;
         };
-        return {
-          sku: cellAt(importMapping.sku),
-          name: cellAt(importMapping.name),
-          description: cellAt(importMapping.description),
-          category: cellAt(importMapping.category),
-          unitOfMeasure: cellAt(importMapping.unitOfMeasure),
-          costPerUnit: numAt(importMapping.costPerUnit),
-          quantity: numAt(importMapping.quantity),
-          minStockLevel: numAt(importMapping.minStockLevel),
-          location: cellAt(importMapping.location),
+
+        const name = cellAt(mapping.name);
+        const sku = cellAt(mapping.sku);
+        const quantity = numAt(mapping.quantity);
+        const costPerUnit = numAt(mapping.costPerUnit);
+        const minStockLevel = numAt(mapping.minStockLevel);
+
+        const isBlank = name == null && sku == null;
+        if (isBlank) {
+          return acc;
+        }
+
+        const hasNumericValue =
+          (quantity != null && quantity !== 0) ||
+          (costPerUnit != null && costPerUnit !== 0) ||
+          (minStockLevel != null && minStockLevel !== 0);
+        const hasDigit = name != null && /\d/.test(name);
+        const isSectionHeader = name != null && sku == null && !hasNumericValue && !hasDigit;
+        if (isSectionHeader) {
+          return { category: name, rows: acc.rows };
+        }
+
+        const mappedCategory = cellAt(mapping.category);
+        const category = mappedCategory ?? acc.category ?? undefined;
+        const item = {
+          sku,
+          name,
+          description: cellAt(mapping.description),
+          category,
+          unitOfMeasure: cellAt(mapping.unitOfMeasure),
+          costPerUnit,
+          quantity,
+          minStockLevel,
+          location: cellAt(mapping.location),
         };
-      });
+        return { category: acc.category, rows: [...acc.rows, item] };
+      }, seed);
+      return built.rows;
     }
     return parsedRows;
   };
@@ -155,7 +188,14 @@ export default function ImportPage() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `stock-variances-${DateTime.now().toISODate()}.xlsx`;
+      const periodSlug =
+        stockTakePeriod == null
+          ? DateTime.now().toISODate()
+          : stockTakePeriod
+              .toLowerCase()
+              .replace(/[^a-z0-9]+/g, "-")
+              .replace(/^-|-$/g, "");
+      a.download = `stock-variances-${periodSlug}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -180,6 +220,25 @@ export default function ImportPage() {
     setError(null);
     setIsStockTake(false);
     setStockTakeDate(null);
+    setStockTakePeriod(null);
+  };
+
+  const applyStockTakePeriod = (label: string) => {
+    const option = monthEndOptions.find((o) => o.label === label);
+    setStockTakePeriod(label);
+    if (option) {
+      setStockTakeDate(option.isoDate);
+    }
+  };
+
+  const handleStockTakeToggle = (checked: boolean) => {
+    setIsStockTake(checked);
+    if (checked && stockTakePeriod === null) {
+      const current = monthEndOptions[0];
+      if (current) {
+        applyStockTakePeriod(current.label);
+      }
+    }
   };
 
   const previewRowCount = importFormat === "excel" ? importRawRows.length : parsedRows.length;
@@ -315,7 +374,7 @@ export default function ImportPage() {
                   <input
                     type="checkbox"
                     checked={isStockTake}
-                    onChange={(e) => setIsStockTake(e.target.checked)}
+                    onChange={(e) => handleStockTakeToggle(e.target.checked)}
                     className="mt-0.5 h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
                   />
                   <div className="ml-3">
@@ -327,24 +386,47 @@ export default function ImportPage() {
                   </div>
                 </label>
                 {isStockTake && (
-                  <div className="mt-3 pl-7">
-                    <label className="block text-sm font-medium text-amber-800 mb-1">
-                      Stock Take Date (optional)
-                    </label>
-                    <input
-                      type="date"
-                      value={stockTakeDate ?? ""}
-                      onChange={(e) => {
-                        const targetValue = e.target.value;
-                        setStockTakeDate(targetValue || null);
-                      }}
-                      className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900"
-                      style={{ colorScheme: "light" }}
-                    />
-                    <p className="text-xs text-amber-600 mt-1">
-                      If set, deliveries and issuances after this date will be replayed on top of
-                      the counted quantities.
-                    </p>
+                  <div className="mt-3 pl-7 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-amber-800 mb-1">
+                        Month-End Period
+                      </label>
+                      <select
+                        value={stockTakePeriod ?? ""}
+                        onChange={(e) => applyStockTakePeriod(e.target.value)}
+                        className="block w-64 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900 bg-white"
+                      >
+                        {monthEndOptions.map((opt) => (
+                          <option key={opt.label} value={opt.label}>
+                            {opt.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-amber-600 mt-1">
+                        Which month-end this count reconciles. Sets the count date to the last day
+                        of that month — adjust the date below if you counted on a different day.
+                      </p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-amber-800 mb-1">
+                        Actual Count Date
+                      </label>
+                      <input
+                        type="date"
+                        value={stockTakeDate ?? ""}
+                        onChange={(e) => {
+                          const targetValue = e.target.value;
+                          setStockTakeDate(targetValue || null);
+                        }}
+                        className="block w-48 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900"
+                        style={{ colorScheme: "light" }}
+                      />
+                      <p className="text-xs text-amber-600 mt-1">
+                        The day you physically counted. Deliveries and issuances recorded after this
+                        date are replayed on top of the counted quantities, so a late upload still
+                        balances correctly.
+                      </p>
+                    </div>
                   </div>
                 )}
               </div>
@@ -468,6 +550,7 @@ export default function ImportPage() {
           matchedRows={matchedRows}
           isStockTake={isStockTake}
           stockTakeDate={stockTakeDate}
+          stockTakePeriod={stockTakePeriod}
           onComplete={handleReviewComplete}
           onCancel={() => setStep("preview")}
         />

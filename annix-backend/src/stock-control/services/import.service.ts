@@ -652,11 +652,14 @@ export class ImportService {
     companyId: number,
     isStockTake: boolean,
     stockTakeDate: string | null,
+    stockTakePeriod: string | null = null,
   ): Promise<{ finalSoh: number; movementNotes: string }> {
+    const periodPrefix = stockTakePeriod ? `${stockTakePeriod} — ` : "";
+
     if (!isStockTake || !stockTakeDate) {
       return {
         finalSoh: importedQty,
-        movementNotes: isStockTake ? "Stock take adjustment" : "Updated via import",
+        movementNotes: isStockTake ? `${periodPrefix}Stock take adjustment` : "Updated via import",
       };
     }
 
@@ -677,7 +680,7 @@ export class ImportService {
     }, 0);
 
     const finalSoh = importedQty + netDelta;
-    const movementNotes = `Stock take (${stockTakeDate}): counted ${importedQty}, +${postMovements.filter((m) => m.movementType === MovementType.IN).reduce((s, m) => s + m.quantity, 0)} in / -${postMovements.filter((m) => m.movementType === MovementType.OUT).reduce((s, m) => s + m.quantity, 0)} out since count = ${finalSoh}`;
+    const movementNotes = `${periodPrefix}Stock take (${stockTakeDate}): counted ${importedQty}, +${postMovements.filter((m) => m.movementType === MovementType.IN).reduce((s, m) => s + m.quantity, 0)} in / -${postMovements.filter((m) => m.movementType === MovementType.OUT).reduce((s, m) => s + m.quantity, 0)} out since count = ${finalSoh}`;
 
     return { finalSoh, movementNotes };
   }
@@ -894,6 +897,7 @@ export class ImportService {
     isStockTake: boolean,
     stockTakeDate: string | null,
     zeroMissing = false,
+    stockTakePeriod: string | null = null,
   ): Promise<ReviewedImportResult> {
     const result: ReviewedImportResult = {
       totalRows: rows.length,
@@ -951,6 +955,7 @@ export class ImportService {
               companyId,
               isStockTake,
               stockTakeDate,
+              stockTakePeriod,
             );
 
             if (finalSoh !== existing.quantity) {
@@ -1001,7 +1006,9 @@ export class ImportService {
               movementType: MovementType.IN,
               quantity: row.quantity,
               referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
-              notes: isStockTake ? "Stock take - new item" : "Initial import (reviewed)",
+              notes: isStockTake
+                ? `${stockTakePeriod ? `${stockTakePeriod} — ` : ""}Stock take - new item`
+                : "Initial import (reviewed)",
               createdBy,
               companyId,
             });
@@ -1035,6 +1042,7 @@ export class ImportService {
             companyId,
             true,
             stockTakeDate,
+            stockTakePeriod,
           );
           if (finalSoh !== item.quantity) {
             const delta = finalSoh - item.quantity;

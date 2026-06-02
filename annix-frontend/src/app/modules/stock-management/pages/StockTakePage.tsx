@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { fromISO, now } from "@/app/lib/datetime";
+import { fromISO, monthEndPeriodOptions, now } from "@/app/lib/datetime";
 import { StockManagementApiClient } from "../api/stockManagementApi";
 import { useStockTake, useStockTakeMutations, useStockTakes } from "../hooks/useStockTakeQueries";
 import {
@@ -22,13 +22,7 @@ const STOCK_HOLD_REASON_OPTIONS: ReadonlyArray<{ value: StockHoldReason; label: 
 ];
 
 function buildMonthEndOptions(): Array<{ label: string; value: string }> {
-  const current = now();
-  const offsets = [1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12];
-  return offsets.map((offset) => {
-    const month = current.plus({ months: offset });
-    const label = `${month.toFormat("MMMM yyyy")} Month-End`;
-    return { label, value: label };
-  });
+  return monthEndPeriodOptions().map((o) => ({ label: o.label, value: o.label }));
 }
 
 const STATUS_BADGE: Record<StockTakeStatus, string> = {

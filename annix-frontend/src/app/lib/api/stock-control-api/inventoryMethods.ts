@@ -91,6 +91,7 @@ declare module "./base" {
       isStockTake?: boolean,
       stockTakeDate?: string | null,
       zeroMissing?: boolean,
+      stockTakePeriod?: string | null,
     ): Promise<ReviewedImportResult>;
     exportStockTakeVariances(variances: StockTakeVariance[]): Promise<Blob>;
     autoCategorize(): Promise<{
@@ -261,10 +262,11 @@ proto.confirmReviewedImport = async function (
   isStockTake = false,
   stockTakeDate = null,
   zeroMissing = false,
+  stockTakePeriod = null,
 ) {
   return this.request("/stock-control/import/confirm-reviewed", {
     method: "POST",
-    body: JSON.stringify({ rows, isStockTake, stockTakeDate, zeroMissing }),
+    body: JSON.stringify({ rows, isStockTake, stockTakeDate, zeroMissing, stockTakePeriod }),
   });
 };
 

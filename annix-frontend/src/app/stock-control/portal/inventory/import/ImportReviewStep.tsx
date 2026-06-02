@@ -13,6 +13,7 @@ interface ImportReviewStepProps {
   matchedRows: ImportMatchRow[];
   isStockTake: boolean;
   stockTakeDate: string | null;
+  stockTakePeriod: string | null;
   onComplete: (result: ReviewedImportResult) => void;
   onCancel: () => void;
 }
@@ -160,7 +161,7 @@ function buildCorrections(
 }
 
 export function ImportReviewStep(props: ImportReviewStepProps) {
-  const { matchedRows, isStockTake, stockTakeDate, onComplete, onCancel } = props;
+  const { matchedRows, isStockTake, stockTakeDate, stockTakePeriod, onComplete, onCancel } = props;
   const [rows, setRows] = useState<EditableRow[]>(() => initEditableRows(matchedRows));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -254,6 +255,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
         isStockTake ? stockTakeDate : null,
         // Full stock take: align everything to the count and zero items not on it.
         isStockTake,
+        isStockTake ? stockTakePeriod : null,
       );
       onComplete(result);
     } catch (err) {

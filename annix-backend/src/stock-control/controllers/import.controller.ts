@@ -85,6 +85,7 @@ export class ImportController {
       isStockTake?: boolean;
       stockTakeDate?: string;
       zeroMissing?: boolean;
+      stockTakePeriod?: string;
     },
     @Req() req: any,
   ) {
@@ -95,6 +96,7 @@ export class ImportController {
       body.isStockTake ?? false,
       body.stockTakeDate ?? null,
       body.zeroMissing ?? false,
+      body.stockTakePeriod ?? null,
     );
   }
 

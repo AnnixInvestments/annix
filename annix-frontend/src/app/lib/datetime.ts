@@ -148,3 +148,21 @@ export const getYear = (): number => DateTime.now().year;
 export const formatIcsDate = (iso: string): string => {
   return DateTime.fromISO(iso).toFormat("yyyyMMdd'T'HHmmss'Z'");
 };
+
+export interface MonthEndPeriodOption {
+  label: string;
+  isoDate: string;
+}
+
+export const monthEndPeriodOptions = (includeNextMonth = true): MonthEndPeriodOption[] => {
+  const offsets = includeNextMonth
+    ? [1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12]
+    : [0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12];
+  return offsets.map((offset) => {
+    const month = DateTime.now().plus({ months: offset });
+    return {
+      label: `${month.toFormat("MMMM yyyy")} Month-End`,
+      isoDate: month.endOf("month").toISODate() ?? "",
+    };
+  });
+};
