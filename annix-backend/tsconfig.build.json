@@ -8,6 +8,8 @@
     "query-docs.ts",
     "**/*spec.ts",
     "migrations-mongo",
-    "migrate-mongo-config.ts"
+    "migrate-mongo-config.ts",
+    "migrations-mongo-orbit",
+    "migrate-mongo-orbit-config.ts"
   ]
 }

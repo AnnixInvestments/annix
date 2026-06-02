@@ -163,6 +163,22 @@ jobs:
           echo "All deploy attempts failed"
           exit 1
 
+      - name: Verify app is serving traffic (${{ matrix.environment }})
+        run: |
+          URL="https://${{ matrix.app_name }}.fly.dev/health"
+          echo "Probing $URL until healthy..."
+          for i in $(seq 1 30); do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo "000")
+            if [ "$CODE" = "200" ]; then
+              echo "App healthy after $i attempt(s) (HTTP $CODE)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $CODE - not serving yet, retrying in 10s..."
+            sleep 10
+          done
+          echo "App did not return HTTP 200 on /health within timeout - deploy is unhealthy"
+          exit 1
+
       - name: Get Logs on Failure
         if: failure()
         run: flyctl logs -a ${{ matrix.app_name }} --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
