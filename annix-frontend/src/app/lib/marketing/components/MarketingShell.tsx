@@ -9,6 +9,7 @@ import { MarketingNav } from "./MarketingNav";
 
 export function MarketingShell(props: { content: MarketingSiteContent; children: ReactNode }) {
   const content = props.content;
+  const accent = content.site.accentColor ? content.site.accentColor : "var(--brand-accent)";
   return (
     <BrandingProvider brand={MASTER_BRAND_CODE} surface={false}>
       <div
@@ -16,6 +17,9 @@ export function MarketingShell(props: { content: MarketingSiteContent; children:
         style={
           {
             "--site-navy": "#0a1733",
+            "--brand-accent": accent,
+            "--brand-accent-light": `color-mix(in srgb, ${accent} 80%, white)`,
+            "--brand-accent-dark": `color-mix(in srgb, ${accent} 82%, black)`,
             backgroundColor: "#0a1733",
             backgroundImage: "linear-gradient(180deg, #0b1b3a 0%, #0a1733 45%, #070f24 100%)",
           } as React.CSSProperties

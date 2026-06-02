@@ -4,7 +4,7 @@ import { ProductCard } from "../ProductCard";
 export function EcosystemSection(props: { ecosystem: MarketingEcosystem }) {
   const ecosystem = props.ecosystem;
   return (
-    <section id="ecosystem" className="relative z-10 px-4 pb-20 pt-6 sm:px-6 lg:-mt-10 lg:px-8">
+    <section id="ecosystem" className="relative z-10 px-4 pb-4 pt-6 sm:px-6 lg:-mt-10 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <p
@@ -21,7 +21,7 @@ export function EcosystemSection(props: { ecosystem: MarketingEcosystem }) {
           </h2>
           <p className="mt-3 text-base text-white/60">{ecosystem.subheading}</p>
         </div>
-        <div className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+        <div className="mt-7 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           {ecosystem.products.map((product) => (
             <ProductCard key={`${product.appKey}-${product.detailSlug}`} product={product} />
           ))}

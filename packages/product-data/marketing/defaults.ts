@@ -299,6 +299,7 @@ export function defaultMarketingContent(): MarketingSiteContent {
     site: {
       logoUrl: "/api/public/branding/annix-investments/asset/logoLockup",
       wordmark: "ANNIX INVESTMENTS",
+      accentColor: "#E0B44A",
     },
     hero: {
       eyebrow: "Built in South Africa. Built for the world.",

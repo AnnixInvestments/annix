@@ -6,7 +6,7 @@ import { MarketingIcon } from "../MarketingIcon";
 export function IndustriesSection(props: { industries: MarketingIndustries }) {
   const industries = props.industries;
   return (
-    <section id="industries" className="px-4 py-16 sm:px-6 lg:px-8">
+    <section id="industries" className="px-4 pb-4 pt-2 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
@@ -64,12 +64,6 @@ export function IndustriesSection(props: { industries: MarketingIndustries }) {
               </Link>
             );
           })}
-          <Link
-            href="#ecosystem"
-            className="flex aspect-[4/3] items-center justify-center rounded-xl border border-white/10 bg-white/5 text-sm font-semibold text-white/70 transition hover:bg-white/10"
-          >
-            And More
-          </Link>
         </div>
       </div>
     </section>

@@ -498,6 +498,34 @@ export default function MarketingCmsPage() {
                 })
               }
             />
+            <div>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Accent colour (buttons, links, highlights)
+              </span>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={site.accentColor}
+                  onChange={(event) =>
+                    update((d) => {
+                      d.site.accentColor = event.target.value;
+                    })
+                  }
+                  className="h-9 w-12 cursor-pointer rounded border border-gray-300 bg-white"
+                />
+                <input
+                  type="text"
+                  value={site.accentColor}
+                  onChange={(event) =>
+                    update((d) => {
+                      d.site.accentColor = event.target.value;
+                    })
+                  }
+                  className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="#E0B44A"
+                />
+              </div>
+            </div>
           </Section>
 
           <Section title="Hero">

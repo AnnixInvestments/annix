@@ -11,37 +11,40 @@ import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
 export function mergeMarketingDefaults(
   content: MarketingSiteContent | null | undefined,
 ): MarketingSiteContent {
-  const base = defaultMarketingContent();
   if (!content) {
-    return base;
+    return defaultMarketingContent();
   }
-  const merged = mergeWith(base, content, (_baseValue, value) =>
+  // mergeWith mutates its first arg, so keep a separate untouched copy for lookups.
+  const defaults = defaultMarketingContent();
+  const merged = mergeWith(defaultMarketingContent(), content, (_baseValue, value) =>
     isArray(value) ? value : undefined,
   ) as MarketingSiteContent;
   merged.industries.items.forEach((item) => {
     if (!item.imageUrl) {
-      const def = base.industries.items.find((entry) => entry.slug === item.slug);
+      const def = defaults.industries.items.find((entry) => entry.slug === item.slug);
       if (def?.imageUrl) {
         item.imageUrl = def.imageUrl;
       }
     }
   });
   const haveIndustrySlugs = new Set(merged.industries.items.map((entry) => entry.slug));
-  base.industries.items.forEach((def) => {
+  defaults.industries.items.forEach((def) => {
     if (!haveIndustrySlugs.has(def.slug)) {
       merged.industries.items.push(def);
     }
   });
   merged.ecosystem.products.forEach((product) => {
     if (!product.imageUrl) {
-      const def = base.ecosystem.products.find((entry) => entry.detailSlug === product.detailSlug);
+      const def = defaults.ecosystem.products.find(
+        (entry) => entry.detailSlug === product.detailSlug,
+      );
       if (def?.imageUrl) {
         product.imageUrl = def.imageUrl;
       }
     }
   });
   const haveProductSlugs = new Set(merged.ecosystem.products.map((entry) => entry.detailSlug));
-  base.ecosystem.products.forEach((def) => {
+  defaults.ecosystem.products.forEach((def) => {
     if (!haveProductSlugs.has(def.detailSlug)) {
       merged.ecosystem.products.push(def);
     }

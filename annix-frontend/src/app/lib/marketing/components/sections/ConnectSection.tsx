@@ -17,7 +17,7 @@ export function ConnectSection(props: {
   const hasPartners = partners.partners.length > 0;
 
   return (
-    <section className="px-4 py-16 sm:px-6 lg:px-8">
+    <section className="px-4 pb-16 pt-4 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 lg:grid-cols-12">
         <div className="lg:col-span-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
