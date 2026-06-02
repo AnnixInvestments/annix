@@ -78,6 +78,8 @@ export class JobIngestionService {
   private readonly logger = new Logger(JobIngestionService.name);
   private readonly lastHealthAlertBySource = new Map<number, number>();
   private readonly lastIngestionErrorBySource = new Map<number, string>();
+  private pollInFlight = false;
+  private readonly ingestingSourceIds = new Set<number>();
 
   constructor(
     private readonly sourceRepo: JobMarketSourceRepository,
@@ -105,6 +107,19 @@ export class JobIngestionService {
   @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
   async pollSources(): Promise<void> {
     if (!isAnnixOrbitCronEnabled()) return;
+    if (this.pollInFlight) {
+      this.logger.warn("Skipping scheduled poll — a previous ingestion run is still in progress");
+      return;
+    }
+    this.pollInFlight = true;
+    try {
+      await this.runPollCycle();
+    } finally {
+      this.pollInFlight = false;
+    }
+  }
+
+  private async runPollCycle(): Promise<void> {
     const sources = await this.sourceRepo.findEnabled();
 
     const dueForIngestion = sources.filter((source) => this.isDueForIngestion(source));
@@ -175,6 +190,22 @@ export class JobIngestionService {
   }
 
   async ingestFromSource(
+    source: JobMarketSource,
+    options: { vetInline?: boolean } = {},
+  ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
+    if (this.ingestingSourceIds.has(source.id)) {
+      this.logger.warn(`Skipping ingest for ${source.name} (${source.id}) — already in progress`);
+      return { ingested: 0, skipped: 0, savedIds: [] };
+    }
+    this.ingestingSourceIds.add(source.id);
+    try {
+      return await this.performIngestFromSource(source, options);
+    } finally {
+      this.ingestingSourceIds.delete(source.id);
+    }
+  }
+
+  private async performIngestFromSource(
     source: JobMarketSource,
     options: { vetInline?: boolean } = {},
   ): Promise<{ ingested: number; skipped: number; savedIds: number[] }> {
@@ -874,32 +905,41 @@ export class JobIngestionService {
       );
     }
 
-    const savedJobs = await Promise.all(
-      fresh.map((job) =>
-        this.externalJobRepo.create({
-          title: job.title,
-          company: job.company,
-          country,
-          locationRaw: job.locationDisplayName,
-          locationArea: job.locationArea,
-          salaryMin: job.salaryMin,
-          salaryMax: job.salaryMax,
-          salaryCurrency: country === "za" ? "ZAR" : null,
-          description: job.description,
-          category: job.category,
-          canonicalCategory: this.jobCategorizationService.ruleBased({
+    const savedJobsRaw = await Promise.all(
+      fresh.map(async (job) => {
+        try {
+          return await this.externalJobRepo.create({
             title: job.title,
-            providerCategory: job.category,
-          }),
-          sourceExternalId: job.id,
-          sourceUrl: job.redirectUrl,
-          postedAt: job.created ? fromISO(job.created).toJSDate() : null,
-          expiresAt: this.estimateExpiryForSource(source, job.created),
-          lastSeenAt: seenAt,
-          sourceId: source.id,
-        }),
-      ),
+            company: job.company,
+            country,
+            locationRaw: job.locationDisplayName,
+            locationArea: job.locationArea,
+            salaryMin: job.salaryMin,
+            salaryMax: job.salaryMax,
+            salaryCurrency: country === "za" ? "ZAR" : null,
+            description: job.description,
+            category: job.category,
+            canonicalCategory: this.jobCategorizationService.ruleBased({
+              title: job.title,
+              providerCategory: job.category,
+            }),
+            sourceExternalId: job.id,
+            sourceUrl: job.redirectUrl,
+            postedAt: job.created ? fromISO(job.created).toJSDate() : null,
+            expiresAt: this.estimateExpiryForSource(source, job.created),
+            lastSeenAt: seenAt,
+            sourceId: source.id,
+          });
+        } catch (error) {
+          if (isDuplicateKeyError(error)) {
+            await this.externalJobRepo.stampLastSeenByExternalIds(source.id, [job.id], seenAt);
+            return null;
+          }
+          throw error;
+        }
+      }),
     );
+    const savedJobs = savedJobsRaw.filter((job): job is ExternalJob => job !== null);
 
     savedJobs.forEach((saved) => {
       if (!saved.canonicalCategory) {
@@ -1062,6 +1102,10 @@ function normaliseCompanyName(raw: string | null): string {
     .replace(/[\s.,'"]+$/u, "")
     .trim();
   return stripped;
+}
+
+function isDuplicateKeyError(error: unknown): boolean {
+  return typeof error === "object" && error !== null && (error as { code?: number }).code === 11000;
 }
 
 function escapeHtml(value: string): string {
