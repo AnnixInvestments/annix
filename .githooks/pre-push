@@ -39,6 +39,12 @@ collection_budget_check() {
   fi
 }
 
+migration_routing_check() {
+  if [ -f "${ROOT_DIR}/scripts/check-migration-routing.sh" ]; then
+    bash "${ROOT_DIR}/scripts/check-migration-routing.sh"
+  fi
+}
+
 biome_check() {
   if ! pnpm biome check .; then
     echo ""
@@ -93,6 +99,7 @@ timed_step "legal risk check" legal_risk_check
 timed_step "duplication check" duplication_check
 timed_step "git pull --rebase" pull_rebase
 timed_step "collection budget" collection_budget_check
+timed_step "migration routing" migration_routing_check
 
 # ──────────────────────────────────────────────────────────────────────────
 # Path-based scoping: only run test/build for workspaces actually touched
