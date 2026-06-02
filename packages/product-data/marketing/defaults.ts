@@ -9,7 +9,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Streamline operations, inventory, production and supplier management with quality certificates built in.",
     iconSlot: "Boxes",
-    imageUrl: null,
+    imageUrl: "/api/public/branding/annix-core/asset/loginCard",
     comingSoon: false,
     detailSlug: "annix-core",
   },
@@ -21,7 +21,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "RFQ, bills of quantity and weld-aware quoting built around ASME, API and NACE engineering standards.",
     iconSlot: "Hammer",
-    imageUrl: null,
+    imageUrl: "/api/public/branding/annix-forge/asset/loginCard",
     comingSoon: false,
     detailSlug: "annix-forge",
   },
@@ -33,7 +33,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Attract, screen and place the right talent faster with AI-powered recruitment and a live job market.",
     iconSlot: "Orbit",
-    imageUrl: null,
+    imageUrl: "/api/public/branding/annix-orbit/asset/loginCard",
     comingSoon: false,
     detailSlug: "annix-orbit",
   },
@@ -45,7 +45,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Empower field teams and sales reps with routes, real-time data and voice-driven activity capture.",
     iconSlot: "Radio",
-    imageUrl: null,
+    imageUrl: "/api/public/branding/annix-rep/asset/loginCard",
     comingSoon: false,
     detailSlug: "annix-pulse",
   },
@@ -57,7 +57,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     blurb:
       "Ensure compliance, manage risk and keep your business audit-ready with secure document workflows.",
     iconSlot: "ShieldCheck",
-    imageUrl: null,
+    imageUrl: "/api/public/branding/annix-sentinel/asset/loginCard",
     comingSoon: false,
     detailSlug: "annix-sentinel",
   },
@@ -297,7 +297,7 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
 export function defaultMarketingContent(): MarketingSiteContent {
   return {
     site: {
-      logoUrl: null,
+      logoUrl: "/api/public/branding/annix-investments/asset/logoLockup",
       wordmark: "ANNIX INVESTMENTS",
     },
     hero: {
@@ -335,49 +335,49 @@ export function defaultMarketingContent(): MarketingSiteContent {
           name: "Mining",
           blurb: "Operations and compliance for the mining sector.",
           iconSlot: "Mountain",
-          imageUrl: null,
+          imageUrl: "/marketing/industries/mining.png",
           slug: "mining",
         },
         {
           name: "Manufacturing",
           blurb: "Stock, quality and field operations for manufacturers.",
           iconSlot: "Factory",
-          imageUrl: null,
+          imageUrl: "/marketing/industries/manufacturing.png",
           slug: "manufacturing",
         },
         {
           name: "Engineering",
           blurb: "Standards-aware quoting and procurement.",
           iconSlot: "Wrench",
-          imageUrl: null,
+          imageUrl: "/marketing/industries/engineering.png",
           slug: "engineering",
         },
         {
           name: "Construction",
           blurb: "Built for construction and fabrication teams.",
           iconSlot: "Hammer",
-          imageUrl: null,
+          imageUrl: "/marketing/industries/construction.png",
           slug: "construction",
         },
         {
           name: "Energy",
           blurb: "For energy and resource operations.",
           iconSlot: "Flame",
-          imageUrl: null,
+          imageUrl: "/marketing/industries/energy.png",
           slug: "energy",
         },
         {
           name: "Logistics",
           blurb: "Move goods and teams with confidence.",
           iconSlot: "Map",
-          imageUrl: null,
+          imageUrl: "/marketing/industries/logistics.png",
           slug: "logistics",
         },
         {
           name: "Education",
           blurb: "Teaching tools and pathways to careers.",
           iconSlot: "GraduationCap",
-          imageUrl: null,
+          imageUrl: "/marketing/industries/education.png",
           slug: "education",
         },
       ],
