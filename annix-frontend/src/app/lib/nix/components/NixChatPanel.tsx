@@ -384,6 +384,11 @@ const persistSessionId = (sessionId: number | null): void => {
   }
 };
 
+const isSessionNotFoundError = (error: unknown): boolean => {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.toLowerCase().includes("not found");
+};
+
 export function NixChatPanel(props: NixChatPanelProps) {
   const {
     sessionId: initialSessionId,
@@ -472,8 +477,7 @@ export function NixChatPanel(props: NixChatPanelProps) {
     if (!historyError) {
       return;
     }
-    const message = historyError instanceof Error ? historyError.message : String(historyError);
-    if (message.toLowerCase().includes("not found")) {
+    if (isSessionNotFoundError(historyError)) {
       persistSessionId(null);
       setMessages([]);
       setSessionId(null);
@@ -665,54 +669,80 @@ export function NixChatPanel(props: NixChatPanelProps) {
         }
       : {};
 
-    sendMessageMutation.mutate(
-      {
-        sessionId,
-        message: userMessage,
-        context: {
-          currentRfqItems,
-          lastValidationIssues: validationIssues,
-          pageContext: pageContext ?? { currentPage: "unknown", portalContext },
-          ...guidedModeContext,
+    const messageContext = {
+      currentRfqItems,
+      lastValidationIssues: validationIssues,
+      pageContext: pageContext ?? { currentPage: "unknown", portalContext },
+      ...guidedModeContext,
+    };
+
+    const showSendError = (error: unknown) => {
+      setStreamingContent("");
+      const errorContent =
+        error instanceof Error ? error.message : "Something went wrong. Please try again.";
+      const errorMessage: ChatMessage = {
+        id: nowMillis() + 1,
+        role: "assistant",
+        content: errorContent,
+        metadata: { intent: "error" },
+        createdAt: nowISO(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setIsStreaming(false);
+    };
+
+    const dispatchMessage = (targetSessionId: number, allowSessionRecovery: boolean) => {
+      sendMessageMutation.mutate(
+        {
+          sessionId: targetSessionId,
+          message: userMessage,
+          context: messageContext,
+          portalContext,
         },
-        portalContext,
-      },
-      {
-        onSuccess: (result) => {
-          processResponseActions(result.content);
+        {
+          onSuccess: (result) => {
+            processResponseActions(result.content);
 
-          const displayContent = stripActionBlocks(result.content);
-          const assistantMessage: ChatMessage = {
-            id: result.messageId,
-            role: "assistant",
-            content: displayContent,
-            metadata: result.metadata as ChatMessage["metadata"],
-            createdAt: nowISO(),
-          };
-          setMessages((prev) => [...prev, assistantMessage]);
-          setStreamingContent("");
-          setIsStreaming(false);
+            const displayContent = stripActionBlocks(result.content);
+            const assistantMessage: ChatMessage = {
+              id: result.messageId,
+              role: "assistant",
+              content: displayContent,
+              metadata: result.metadata as ChatMessage["metadata"],
+              createdAt: nowISO(),
+            };
+            setMessages((prev) => [...prev, assistantMessage]);
+            setStreamingContent("");
+            setIsStreaming(false);
+          },
+          onError: (error) => {
+            if (allowSessionRecovery && isSessionNotFoundError(error)) {
+              persistSessionId(null);
+              createSessionMutation.mutate(
+                { rfqId, portalContext },
+                {
+                  onSuccess: (data) => {
+                    setSessionId(data.sessionId);
+                    persistSessionId(data.sessionId);
+                    onSessionCreated?.(data.sessionId);
+                    dispatchMessage(data.sessionId, false);
+                  },
+                  onError: (createError) => {
+                    console.error("Failed to recover chat session:", createError);
+                    showSendError(createError);
+                  },
+                },
+              );
+              return;
+            }
+            console.error("Failed to send message:", error);
+            showSendError(error);
+          },
         },
-        onError: (error) => {
-          console.error("Failed to send message:", error);
-          setStreamingContent("");
+      );
+    };
 
-          const errorContent =
-            error instanceof Error ? error.message : "Something went wrong. Please try again.";
-
-          const errorMessage: ChatMessage = {
-            id: nowMillis() + 1,
-            role: "assistant",
-            content: errorContent,
-            metadata: { intent: "error" },
-            createdAt: nowISO(),
-          };
-
-          setMessages((prev) => [...prev, errorMessage]);
-          setIsStreaming(false);
-        },
-      },
-    );
+    dispatchMessage(sessionId, true);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
