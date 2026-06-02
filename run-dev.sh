@@ -329,11 +329,19 @@ install_backend() {
   pushd "$BACKEND_DIR" >/dev/null
   info "Installing backend dependencies..."
   pnpm install >/dev/null
-  info "Running backend migrations..."
-  if ! pnpm migration:run; then
-    fail "Migration failed. Please check the error above and fix any issues before restarting."
+  local driver="${DATABASE_DRIVER:-}"
+  if [ -z "$driver" ] && [ -f .env ]; then
+    driver="$(grep -E '^DATABASE_DRIVER=' .env | head -1 | cut -d= -f2- | tr -d '[:space:]"')"
   fi
-  info "Migrations completed successfully."
+  if [ "$driver" = "mongo" ]; then
+    info "DATABASE_DRIVER=mongo — skipping legacy Postgres (TypeORM) migrations."
+  else
+    info "Running backend migrations..."
+    if ! pnpm migration:run; then
+      fail "Migration failed. Please check the error above and fix any issues before restarting."
+    fi
+    info "Migrations completed successfully."
+  fi
   popd >/dev/null
 }
 
