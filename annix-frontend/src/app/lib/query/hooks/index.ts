@@ -378,14 +378,10 @@ export {
   useOrbitUpdateTalentCandidate,
 } from "./annix-orbit/useOrbitTalentCandidates";
 export {
-  useOrbitAutofillSeekerTradeProfile,
-  useOrbitSeekerTradeProfile,
-  useOrbitUpsertSeekerTradeProfile,
-} from "./annix-orbit/useOrbitTradeProfile";
-export {
-  useOrbitUpsertWorkforceNeed,
-  useOrbitWorkforceNeed,
-} from "./annix-orbit/useOrbitWorkforceNeed";
+  useOrbitAutofillSeekerWorkProfile,
+  useOrbitSeekerWorkProfile,
+  useOrbitUpsertSeekerWorkProfile,
+} from "./annix-orbit/useOrbitWorkProfile";
 export {
   useActivityHeatmap,
   useAnalyticsSummary,

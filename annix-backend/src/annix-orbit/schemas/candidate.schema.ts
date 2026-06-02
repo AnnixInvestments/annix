@@ -62,7 +62,7 @@ export class Candidate {
   isTestFixture: boolean;
 
   @Prop({ type: Object, required: false })
-  tradeProfile: Record<string, unknown>;
+  workProfile: Record<string, unknown>;
 
   @Prop({ type: Number, required: false })
   locationLat: number;
@@ -81,6 +81,9 @@ export class Candidate {
 
   @Prop({ type: String, required: false })
   matchTier: string;
+
+  @Prop({ type: [String], required: false })
+  targetCategories: string[];
 
   @Prop({ type: String, required: false })
   trialTier: string;

@@ -114,113 +114,100 @@ describe("CandidateJobMatchingService", () => {
     });
   });
 
-  describe("calculateTradeProfileBoost", () => {
-    it("returns score=null when candidate has no trade profile", () => {
-      const candidate = { tradeProfile: null } as Candidate;
+  function candidateWith(fields: string[], primaryRole: string | null): Candidate {
+    return {
+      workProfile: {
+        shared: {
+          fields,
+          primaryRole,
+          yearsExperience: null,
+          availability: null,
+          willingToTravelKm: null,
+          topSkills: [],
+          certifications: [],
+        },
+      },
+    } as unknown as Candidate;
+  }
+
+  describe("calculateWorkProfileBoost", () => {
+    it("returns score=null when candidate has no work profile", () => {
+      const candidate = { workProfile: null } as Candidate;
       const job = {
-        title: "Boilermaker on coal shutdown",
-        description: "Gold mine shutdown crew",
-        category: null,
+        title: "Software Developer",
+        description: "",
+        canonicalCategory: "it-software",
       } as ExternalJob;
-      const result = service.calculateTradeProfileBoost(candidate, job);
+      const result = service.calculateWorkProfileBoost(candidate, job);
       expect(result.score).toBeNull();
-      expect(result.tradeKeyMatches).toEqual([]);
+      expect(result.fieldMatched).toBe(false);
     });
 
-    it("returns score=null when tradeKeys is empty", () => {
-      const candidate = {
-        tradeProfile: {
-          shared: {
-            tradeKeys: [],
-            yearsExperience: null,
-            commoditiesWorked: [],
-            shutdownHistory: [],
-            siteRadiusKm: null,
-            availability: null,
-          },
-          perTrade: {},
-        },
-      } as unknown as Candidate;
-      const job = { title: "Boilermaker", description: "", category: null } as ExternalJob;
-      expect(service.calculateTradeProfileBoost(candidate, job).score).toBeNull();
-    });
-
-    it("matches trade key in job title (boilermaker)", () => {
-      const candidate = {
-        tradeProfile: {
-          shared: {
-            tradeKeys: ["boilermaker"],
-            yearsExperience: null,
-            commoditiesWorked: [],
-            shutdownHistory: [],
-            siteRadiusKm: null,
-            availability: null,
-          },
-          perTrade: {},
-        },
-      } as unknown as Candidate;
+    it("returns score=null when fields is empty", () => {
+      const candidate = candidateWith([], "Software Developer");
       const job = {
-        title: "Senior Boilermaker - Shutdown Crew",
-        description: "Pressure vessel work",
-        category: null,
+        title: "Software Developer",
+        description: "",
+        canonicalCategory: "it-software",
       } as ExternalJob;
-      const result = service.calculateTradeProfileBoost(candidate, job);
-      expect(result.tradeKeyMatches).toContain("Boilermaker");
+      expect(service.calculateWorkProfileBoost(candidate, job).score).toBeNull();
+    });
+
+    it("scores an exact field match at 0.6 when the role does not match", () => {
+      const candidate = candidateWith(["it-software"], "Software Developer");
+      const job = {
+        title: "Registered Nurse",
+        description: "Ward duties",
+        canonicalCategory: "it-software",
+      } as ExternalJob;
+      const result = service.calculateWorkProfileBoost(candidate, job);
+      expect(result.fieldMatched).toBe(true);
+      expect(result.roleMatched).toBe(false);
       expect(result.score).toBeCloseTo(0.6, 2);
     });
 
-    it("scores commodity overlap proportionally", () => {
-      const candidate = {
-        tradeProfile: {
-          shared: {
-            tradeKeys: ["boilermaker"],
-            yearsExperience: null,
-            commoditiesWorked: ["gold", "platinum", "coal"],
-            shutdownHistory: [],
-            siteRadiusKm: null,
-            availability: null,
-          },
-          perTrade: {},
-        },
-      } as unknown as Candidate;
+    it("scores field + role match at 1.0", () => {
+      const candidate = candidateWith(["it-software"], "Software Developer");
       const job = {
-        title: "Boilermaker",
-        description: "Coal mine shutdown crew, also some gold exposure",
-        category: null,
+        title: "Senior Software Developer",
+        description: "Build web platforms",
+        canonicalCategory: "it-software",
       } as ExternalJob;
-      const result = service.calculateTradeProfileBoost(candidate, job);
-      expect(result.commodityMatches.sort()).toEqual(["coal", "gold"]);
-      // tradeKey=1.0 * 0.6 + commodity=(2/3) * 0.4 = 0.6 + 0.2667 = 0.8667
-      expect(result.score).toBeCloseTo(0.867, 2);
+      const result = service.calculateWorkProfileBoost(candidate, job);
+      expect(result.fieldMatched).toBe(true);
+      expect(result.roleMatched).toBe(true);
+      // field=1.0 * 0.6 + role=1.0 * 0.4 = 1.0
+      expect(result.score).toBeCloseTo(1.0, 2);
     });
 
-    it("returns score=0 when nothing in candidate's profile matches the job", () => {
-      const candidate = {
-        tradeProfile: {
-          shared: {
-            tradeKeys: ["coded_welder"],
-            yearsExperience: null,
-            commoditiesWorked: ["gold"],
-            shutdownHistory: [],
-            siteRadiusKm: null,
-            availability: null,
-          },
-          perTrade: {},
-        },
-      } as unknown as Candidate;
+    it("scores an adjacent field at half weight", () => {
+      const candidate = candidateWith(["it-software"], null);
       const job = {
-        title: "Marketing Manager",
-        description: "Retail merchandising in Sandton",
-        category: null,
+        title: "Mechanical Technologist",
+        description: "",
+        canonicalCategory: "engineering-technical",
       } as ExternalJob;
-      const result = service.calculateTradeProfileBoost(candidate, job);
-      expect(result.tradeKeyMatches).toEqual([]);
-      expect(result.commodityMatches).toEqual([]);
+      const result = service.calculateWorkProfileBoost(candidate, job);
+      expect(result.fieldMatched).toBe(true);
+      // adjacent field=0.5 * 0.6 = 0.3
+      expect(result.score).toBeCloseTo(0.3, 2);
+    });
+
+    it("returns score=0 when neither field nor role matches", () => {
+      const candidate = candidateWith(["it-software"], "Software Developer");
+      const job = {
+        title: "Chef de Partie",
+        description: "Restaurant kitchen",
+        canonicalCategory: "hospitality-tourism",
+      } as ExternalJob;
+      const result = service.calculateWorkProfileBoost(candidate, job);
+      expect(result.fieldMatched).toBe(false);
+      expect(result.roleMatched).toBe(false);
       expect(result.score).toBe(0);
     });
   });
 
-  describe("distance + siteRadiusKm", () => {
+  describe("distance + willingToTravelKm", () => {
     it("calculateDistance returns km when both sides have coords", () => {
       const candidate = { locationLat: -26.2, locationLon: 28.04 } as Candidate;
       const job = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;
@@ -235,54 +222,54 @@ describe("CandidateJobMatchingService", () => {
       expect(service.calculateDistance(candidate, job)).toBeNull();
     });
 
-    it("isOutsideTradeRadius=false when no tradeProfile", () => {
+    it("isOutsideTravelRadius=false when no work profile", () => {
       const candidate = {
         locationLat: -26.2,
         locationLon: 28.04,
-        tradeProfile: null,
+        workProfile: null,
       } as Candidate;
       const job = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;
-      expect(service.isOutsideTradeRadius(candidate, job)).toBe(false);
+      expect(service.isOutsideTravelRadius(candidate, job)).toBe(false);
     });
 
-    it("isOutsideTradeRadius=true when distance > siteRadiusKm", () => {
+    it("isOutsideTravelRadius=true when distance > willingToTravelKm", () => {
       const candidate = {
         locationLat: -26.2,
         locationLon: 28.04,
-        tradeProfile: {
+        workProfile: {
           shared: {
-            tradeKeys: ["coded_welder"],
+            fields: ["it-software"],
+            primaryRole: null,
             yearsExperience: null,
-            commoditiesWorked: [],
-            shutdownHistory: [],
-            siteRadiusKm: 100,
             availability: null,
+            willingToTravelKm: 100,
+            topSkills: [],
+            certifications: [],
           },
-          perTrade: {},
         },
       } as unknown as Candidate;
       const capeTownJob = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;
-      expect(service.isOutsideTradeRadius(candidate, capeTownJob)).toBe(true);
+      expect(service.isOutsideTravelRadius(candidate, capeTownJob)).toBe(true);
     });
 
-    it("isOutsideTradeRadius=false when distance is within siteRadiusKm", () => {
+    it("isOutsideTravelRadius=false when distance is within willingToTravelKm", () => {
       const candidate = {
         locationLat: -26.2,
         locationLon: 28.04,
-        tradeProfile: {
+        workProfile: {
           shared: {
-            tradeKeys: ["coded_welder"],
+            fields: ["it-software"],
+            primaryRole: null,
             yearsExperience: null,
-            commoditiesWorked: [],
-            shutdownHistory: [],
-            siteRadiusKm: 100,
             availability: null,
+            willingToTravelKm: 100,
+            topSkills: [],
+            certifications: [],
           },
-          perTrade: {},
         },
       } as unknown as Candidate;
       const pretoriaJob = { locationLat: -25.74, locationLon: 28.19 } as ExternalJob;
-      expect(service.isOutsideTradeRadius(candidate, pretoriaJob)).toBe(false);
+      expect(service.isOutsideTravelRadius(candidate, pretoriaJob)).toBe(false);
     });
   });
 });

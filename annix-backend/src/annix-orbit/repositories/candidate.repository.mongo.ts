@@ -99,15 +99,6 @@ export class MongoCandidateRepository
     return this.toDomainList(docs);
   }
 
-  async candidatesMatchingTrades(tradeKeys: string[]): Promise<Candidate[]> {
-    if (tradeKeys.length === 0) return [];
-    const docs = await this.documents
-      .find({ "tradeProfile.shared.tradeKeys": { $in: tradeKeys } })
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
-  }
-
   async candidatesMissingEmbedding(): Promise<Candidate[]> {
     const docs = await this.documents
       .find({
@@ -208,8 +199,12 @@ export class MongoCandidateRepository
     await this.documents.findByIdAndUpdate(id, { embedding: null }).exec();
   }
 
-  async updateTradeProfile(id: number, tradeProfile: unknown): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { tradeProfile }).exec();
+  async updateWorkProfile(id: number, workProfile: unknown): Promise<void> {
+    await this.documents.findByIdAndUpdate(id, { workProfile }).exec();
+  }
+
+  async updateTargetCategories(id: number, targetCategories: string[]): Promise<void> {
+    await this.documents.findByIdAndUpdate(id, { targetCategories }).exec();
   }
 
   async updateMatchTier(id: number, matchTier: string): Promise<void> {

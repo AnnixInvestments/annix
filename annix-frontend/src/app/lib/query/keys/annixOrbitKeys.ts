@@ -139,9 +139,9 @@ export const annixOrbitKeys = {
     consent: () => ["annix-orbit", "seeker", "jobs", "consent"] as const,
     mutes: () => ["annix-orbit", "seeker", "jobs", "mutes"] as const,
   },
-  seekerTradeProfile: {
-    all: ["annix-orbit", "seeker", "trade-profile"] as const,
-    detail: () => ["annix-orbit", "seeker", "trade-profile", "detail"] as const,
+  seekerWorkProfile: {
+    all: ["annix-orbit", "seeker", "work-profile"] as const,
+    detail: () => ["annix-orbit", "seeker", "work-profile", "detail"] as const,
   },
   seekerCredentials: {
     all: ["annix-orbit", "seeker", "credentials"] as const,
@@ -169,10 +169,6 @@ export const annixOrbitKeys = {
   guardian: {
     all: ["annix-orbit", "guardian"] as const,
     students: () => ["annix-orbit", "guardian", "students"] as const,
-  },
-  workforceNeed: {
-    all: ["annix-orbit", "admin", "workforce-needs"] as const,
-    forRfq: (rfqId: number) => ["annix-orbit", "admin", "workforce-needs", "rfq", rfqId] as const,
   },
   branding: {
     all: ["annix-orbit", "branding"] as const,

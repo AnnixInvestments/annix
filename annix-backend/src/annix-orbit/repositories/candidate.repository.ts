@@ -22,7 +22,6 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   ): Promise<Candidate[]>;
   abstract topCandidates(companyId: number, limit: number): Promise<Candidate[]>;
   abstract candidatesForCompany(companyId: number): Promise<Candidate[]>;
-  abstract candidatesMatchingTrades(tradeKeys: string[]): Promise<Candidate[]>;
   abstract candidatesMissingEmbedding(): Promise<Candidate[]>;
   abstract embeddingCoverage(): Promise<CandidateEmbeddingCoverageRow>;
   abstract listNonFixture(params: {
@@ -39,7 +38,8 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract deleteTestFixturesForJob(jobPostingId: number): Promise<number>;
   abstract setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void>;
   abstract clearEmbedding(id: number): Promise<void>;
-  abstract updateTradeProfile(id: number, tradeProfile: unknown): Promise<void>;
+  abstract updateWorkProfile(id: number, workProfile: unknown): Promise<void>;
+  abstract updateTargetCategories(id: number, targetCategories: string[]): Promise<void>;
   abstract updateMatchTier(id: number, matchTier: string): Promise<void>;
   abstract setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void>;
   abstract touchLastActiveByEmail(

@@ -1,4 +1,3 @@
-import type { TradeKey } from "@annix/product-data/sa-market";
 import { ApiProperty } from "@nestjs/swagger";
 import {
   Column,
@@ -111,13 +110,6 @@ export class Rfq {
     nullable: true,
   })
   totalCost?: number;
-
-  @ApiProperty({
-    description: "Trades required to deliver this project (for workforce-need linker)",
-    required: false,
-  })
-  @Column({ name: "required_trades", type: "jsonb", nullable: true })
-  requiredTrades?: TradeKey[] | null;
 
   @ApiProperty({ description: "Estimated headcount for the project", required: false })
   @Column({ name: "estimated_headcount", type: "int", nullable: true })

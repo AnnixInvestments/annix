@@ -49,9 +49,6 @@ export class Rfq {
   @Prop({ type: Number, required: false })
   totalCost: number;
 
-  @Prop({ type: Object, required: false })
-  requiredTrades: Record<string, unknown>;
-
   @Prop({ type: Number, required: false })
   estimatedHeadcount: number;
 

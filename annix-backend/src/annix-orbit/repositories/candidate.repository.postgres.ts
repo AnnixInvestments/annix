@@ -98,14 +98,6 @@ export class PostgresCandidateRepository
       .getMany();
   }
 
-  candidatesMatchingTrades(tradeKeys: string[]): Promise<Candidate[]> {
-    if (tradeKeys.length === 0) return Promise.resolve([]);
-    return this.repository
-      .createQueryBuilder("c")
-      .where(`c.trade_profile -> 'shared' -> 'tradeKeys' ?| ARRAY[:...keys]`, { keys: tradeKeys })
-      .getMany();
-  }
-
   candidatesMissingEmbedding(): Promise<Candidate[]> {
     return this.repository
       .createQueryBuilder("c")
@@ -197,8 +189,12 @@ export class PostgresCandidateRepository
       .execute();
   }
 
-  async updateTradeProfile(id: number, tradeProfile: unknown): Promise<void> {
-    await this.repository.update(id, { tradeProfile } as never);
+  async updateWorkProfile(id: number, workProfile: unknown): Promise<void> {
+    await this.repository.update(id, { workProfile } as never);
+  }
+
+  async updateTargetCategories(id: number, targetCategories: string[]): Promise<void> {
+    await this.repository.update(id, { targetCategories } as never);
   }
 
   async updateMatchTier(id: number, matchTier: string): Promise<void> {

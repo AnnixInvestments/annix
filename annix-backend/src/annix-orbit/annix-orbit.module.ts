@@ -86,8 +86,7 @@ import { ReferencesController } from "./controllers/references.controller";
 import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
 import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SettingsController } from "./controllers/settings.controller";
-import { TradeProfileController } from "./controllers/trade-profile.controller";
-import { WorkforceNeedController } from "./controllers/workforce-need.controller";
+import { WorkProfileController } from "./controllers/work-profile.controller";
 import { AnnixOrbitCandidateEeAttributes } from "./entities/annix-orbit-candidate-ee-attributes.entity";
 import { AnnixOrbitClient } from "./entities/annix-orbit-client.entity";
 import { AnnixOrbitCompany } from "./entities/annix-orbit-company.entity";
@@ -335,9 +334,8 @@ import { SeekerApplicationsService } from "./services/seeker-applications.servic
 import { SeekerJobFeedService } from "./services/seeker-job-feed.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
-import { TradeProfileService } from "./services/trade-profile.service";
+import { WorkProfileService } from "./services/work-profile.service";
 import { WorkflowAutomationService } from "./services/workflow-automation.service";
-import { WorkforceNeedService } from "./services/workforce-need.service";
 
 @Module({
   imports: [
@@ -523,11 +521,10 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     AdminOrbitSeekerController,
     SeekerJobsController,
     SeekerApplicationsController,
-    TradeProfileController,
+    WorkProfileController,
     CredentialController,
     AdminOrbitCredentialTypesController,
     AdminOrbitTierCapabilitiesController,
-    WorkforceNeedController,
   ],
   providers: [
     AnnixOrbitAuthGuard,
@@ -587,11 +584,10 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
     AnnixOrbitLicensingRegistrar,
     SeekerJobFeedService,
     SeekerApplicationsService,
-    TradeProfileService,
+    WorkProfileService,
     CredentialService,
     OrbitCredentialTypeService,
     OrbitTierCapabilityService,
-    WorkforceNeedService,
     repositoryProvider(CandidateRepository, PostgresCandidateRepository, MongoCandidateRepository),
     repositoryProvider(
       JobPostingRepository,

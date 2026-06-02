@@ -94,7 +94,7 @@ export interface AdminSeekerDocument {
 export interface AdminSeekerDetail extends AdminSeekerSummary {
   popiaConsent: boolean;
   popiaConsentedAt: string | null;
-  tradeProfile: unknown;
+  workProfile: unknown;
   cv: {
     summary: string | null;
     experienceYears: number | null;
@@ -357,7 +357,7 @@ export class SeekerJobFeedService {
       popiaConsentedAt: candidate.popiaConsentedAt
         ? candidate.popiaConsentedAt.toISOString()
         : null,
-      tradeProfile: candidate.tradeProfile,
+      workProfile: candidate.workProfile,
       cv: {
         summary: extracted?.summary ?? null,
         experienceYears: extracted?.experienceYears ?? null,

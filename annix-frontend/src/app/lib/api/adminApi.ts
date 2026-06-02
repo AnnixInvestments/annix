@@ -1317,7 +1317,7 @@ export interface OrbitSeekerActivityDay {
 export interface OrbitSeekerDetail extends OrbitSeekerSummary {
   popiaConsent: boolean;
   popiaConsentedAt: string | null;
-  tradeProfile: unknown;
+  workProfile: unknown;
   cv: {
     summary: string | null;
     experienceYears: number | null;

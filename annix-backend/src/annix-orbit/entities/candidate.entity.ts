@@ -1,4 +1,4 @@
-import type { TradeProfile } from "@annix/product-data/sa-market";
+import type { WorkProfile } from "@annix/product-data/sa-market";
 import {
   Column,
   CreateDateColumn,
@@ -104,8 +104,8 @@ export class Candidate {
   @Column({ name: "is_test_fixture", type: "boolean", default: false })
   isTestFixture: boolean;
 
-  @Column({ name: "trade_profile", type: "jsonb", nullable: true })
-  tradeProfile: TradeProfile | null;
+  @Column({ name: "work_profile", type: "jsonb", nullable: true })
+  workProfile: WorkProfile | null;
 
   @Column({ name: "location_lat", type: "double precision", nullable: true })
   locationLat: number | null;

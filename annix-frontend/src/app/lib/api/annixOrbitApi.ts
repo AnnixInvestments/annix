@@ -2279,30 +2279,30 @@ class AnnixOrbitApiClient {
     return this.request(`/annix-orbit/seeker/jobs/mutes/${muteId}`, { method: "DELETE" });
   }
 
-  async seekerTradeProfile(): Promise<{
-    profile: import("@annix/product-data/sa-market").TradeProfile;
+  async seekerWorkProfile(): Promise<{
+    profile: import("@annix/product-data/sa-market").WorkProfile;
     candidateIds: number[];
   }> {
-    return this.request("/annix-orbit/seeker/trade-profile");
+    return this.request("/annix-orbit/seeker/work-profile");
   }
 
-  async upsertSeekerTradeProfile(
-    profile: import("@annix/product-data/sa-market").TradeProfile,
+  async upsertSeekerWorkProfile(
+    profile: import("@annix/product-data/sa-market").WorkProfile,
   ): Promise<{ saved: boolean; candidateIds: number[] }> {
-    return this.request("/annix-orbit/seeker/trade-profile", {
+    return this.request("/annix-orbit/seeker/work-profile", {
       method: "PUT",
       body: JSON.stringify(profile),
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  async autofillSeekerTradeProfileFromCv(): Promise<{
+  async autofillSeekerWorkProfileFromCv(): Promise<{
     extracted: boolean;
-    profile: import("@annix/product-data/sa-market").TradeProfile;
+    profile: import("@annix/product-data/sa-market").WorkProfile;
     candidateIds: number[];
-    reason?: "no-candidate" | "no-cv-text" | "no-trade-keywords" | "ai-failed";
+    reason?: "no-candidate" | "no-cv-text" | "ai-failed";
   }> {
-    return this.request("/annix-orbit/seeker/trade-profile/extract-from-cv", {
+    return this.request("/annix-orbit/seeker/work-profile/extract-from-cv", {
       method: "POST",
     });
   }
@@ -2492,45 +2492,6 @@ class AnnixOrbitApiClient {
       method: "POST",
     });
   }
-
-  async adminWorkforceNeedSummary(rfqId: number): Promise<WorkforceNeedSummary> {
-    return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`);
-  }
-
-  async adminUpsertWorkforceNeed(
-    rfqId: number,
-    input: WorkforceNeedInput,
-  ): Promise<WorkforceNeedSummary> {
-    return this.request(`/admin/annix-orbit/workforce-needs/${rfqId}`, {
-      method: "PUT",
-      body: JSON.stringify(input),
-      headers: { "Content-Type": "application/json" },
-    });
-  }
-}
-
-export interface WorkforceNeedSummary {
-  rfqId: number;
-  projectLocation: string | null;
-  hasProjectCoords: boolean;
-  requiredTrades: import("@annix/product-data/sa-market").TradeKey[];
-  estimatedHeadcount: number | null;
-  radiusKm: number | null;
-  counts: {
-    totalMatching: number;
-    withValidMedical: number;
-    withValidMineInduction: number;
-    availableNowOr14d: number;
-  };
-  unmetHeadcount: number | null;
-  reason?: "no-required-trades" | "no-radius" | "no-project-location";
-}
-
-export interface WorkforceNeedInput {
-  requiredTrades: import("@annix/product-data/sa-market").TradeKey[];
-  estimatedHeadcount?: number | null;
-  radiusKm?: number | null;
-  projectLocation?: string | null;
 }
 
 export interface SeekerCredential {

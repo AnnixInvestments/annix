@@ -21,8 +21,8 @@ const navItems: NavItem[] = [
     icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9h6m-6 4h3",
   },
   {
-    href: "/annix/orbit/seeker/profile/trade",
-    label: "Trade profile",
+    href: "/annix/orbit/seeker/profile/work",
+    label: "Work profile",
     icon: "M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z",
   },
   {

@@ -1,13 +1,10 @@
 import {
-  type Commodity,
   DEFAULT_MATCH_TIER,
   expandWithAdjacentCategories,
   isJobCategoryKey,
   isMatchTier,
   type JobCategoryKey,
   type MatchTier,
-  TRADE_LABELS,
-  type TradeKey,
 } from "@annix/product-data/sa-market";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
 import { Candidate } from "../entities/candidate.entity";
@@ -24,9 +21,10 @@ const WEIGHT_SKILLS = 0.25;
 const WEIGHT_EXPERIENCE = 0.15;
 const WEIGHT_LOCATION = 0.1;
 
-const TRADE_PROFILE_BOOST_CAP = 0.1;
-const TRADE_KEY_WEIGHT_WITHIN_BOOST = 0.6;
-const COMMODITY_WEIGHT_WITHIN_BOOST = 0.4;
+const WORK_PROFILE_BOOST_CAP = 0.1;
+const FIELD_WEIGHT_WITHIN_BOOST = 0.6;
+const ROLE_WEIGHT_WITHIN_BOOST = 0.4;
+const ADJACENT_FIELD_SCORE = 0.5;
 const OUTSIDE_RADIUS_PENALTY = 0.4;
 
 const TOP_MATCHES_LIMIT = 20;
@@ -95,28 +93,19 @@ function jobMatchesRecommendedFilters(job: ExternalJob, filters: RecommendedJobF
   return true;
 }
 
-const TRADE_KEY_KEYWORDS: Record<TradeKey, string[]> = {
-  boilermaker: ["boilermaker", "boiler maker"],
-  coded_welder: ["coded welder", "saqcc welder", "welder"],
-  rubber_liner: ["rubber liner", "rubber lining"],
-  pipe_fitter: ["pipe fitter", "pipefitter"],
-  diesel_mechanic: ["diesel mechanic", "diesel mech"],
-  rigger: ["rigger", "rigging"],
-  electrician: ["electrician", "section 13"],
-};
+function roleTokens(role: string): string[] {
+  return role
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((token) => token.length >= 3);
+}
 
-const COMMODITY_KEYWORDS: Record<Commodity, string[]> = {
-  gold: ["gold"],
-  coal: ["coal"],
-  platinum: ["platinum", "pgm"],
-  iron_ore: ["iron ore", "iron-ore"],
-  manganese: ["manganese"],
-  chrome: ["chrome", "chromite"],
-  copper: ["copper"],
-  diamond: ["diamond"],
-  uranium: ["uranium"],
-  nickel: ["nickel"],
-};
+function roleAppearsInText(role: string, haystack: string): boolean {
+  const tokens = roleTokens(role);
+  if (tokens.length === 0) return false;
+  const matched = tokens.filter((token) => haystack.includes(token));
+  return matched.length >= Math.ceil(tokens.length / 2);
+}
 
 @Injectable()
 export class CandidateJobMatchingService {
@@ -370,43 +359,41 @@ export class CandidateJobMatchingService {
     }
   }
 
-  calculateTradeProfileBoost(
+  calculateWorkProfileBoost(
     candidate: Candidate,
     job: ExternalJob,
   ): {
     score: number | null;
-    tradeKeyMatches: string[];
-    commodityMatches: Commodity[];
+    fieldMatched: boolean;
+    roleMatched: boolean;
   } {
-    const profile = candidate.tradeProfile;
-    if (!profile || profile.shared.tradeKeys.length === 0) {
-      return { score: null, tradeKeyMatches: [], commodityMatches: [] };
+    const profile = candidate.workProfile;
+    if (!profile || profile.shared.fields.length === 0) {
+      return { score: null, fieldMatched: false, roleMatched: false };
     }
-    const haystack =
-      `${job.title ?? ""}\n${job.description ?? ""}\n${job.category ?? ""}`.toLowerCase();
+    const fields = profile.shared.fields;
+    const jobCategory = isJobCategoryKey(job.canonicalCategory) ? job.canonicalCategory : null;
 
-    const tradeKeyMatches = profile.shared.tradeKeys.filter((key) =>
-      TRADE_KEY_KEYWORDS[key].some((kw) => haystack.includes(kw)),
-    );
-    const tradeKeyScore = tradeKeyMatches.length > 0 ? 1 : 0;
+    let fieldScore = 0;
+    let fieldMatched = false;
+    if (jobCategory !== null) {
+      if (fields.includes(jobCategory)) {
+        fieldScore = 1;
+        fieldMatched = true;
+      } else if (expandWithAdjacentCategories(fields).includes(jobCategory)) {
+        fieldScore = ADJACENT_FIELD_SCORE;
+        fieldMatched = true;
+      }
+    }
 
-    const commodityMatches = profile.shared.commoditiesWorked.filter((c) =>
-      COMMODITY_KEYWORDS[c].some((kw) => haystack.includes(kw)),
-    );
-    const commodityScore =
-      profile.shared.commoditiesWorked.length === 0
-        ? 0
-        : commodityMatches.length / profile.shared.commoditiesWorked.length;
+    const role = profile.shared.primaryRole;
+    const haystack = `${job.title ?? ""}\n${job.description ?? ""}`.toLowerCase();
+    const roleMatched = role !== null && role.length > 0 && roleAppearsInText(role, haystack);
+    const roleScore = roleMatched ? 1 : 0;
 
-    const score =
-      tradeKeyScore * TRADE_KEY_WEIGHT_WITHIN_BOOST +
-      commodityScore * COMMODITY_WEIGHT_WITHIN_BOOST;
+    const score = fieldScore * FIELD_WEIGHT_WITHIN_BOOST + roleScore * ROLE_WEIGHT_WITHIN_BOOST;
 
-    return {
-      score,
-      tradeKeyMatches: tradeKeyMatches.map((k) => TRADE_LABELS[k]),
-      commodityMatches,
-    };
+    return { score, fieldMatched, roleMatched };
   }
 
   private async scoreAndSaveMatch(
@@ -420,9 +407,9 @@ export class CandidateJobMatchingService {
     const skillsResult = this.calculateSkillsOverlap(candidate, job);
     const experienceMatch = this.calculateExperienceMatch(candidate, job);
     const locationMatch = this.calculateLocationMatch(candidate, job);
-    const tradeBoost = this.calculateTradeProfileBoost(candidate, job);
+    const workBoost = this.calculateWorkProfileBoost(candidate, job);
     const distanceKm = this.calculateDistance(candidate, job);
-    const outsideRadius = this.isOutsideTradeRadius(candidate, job);
+    const outsideRadius = this.isOutsideTravelRadius(candidate, job);
 
     const baseScore =
       embeddingSimilarity * WEIGHT_EMBEDDING +
@@ -430,11 +417,11 @@ export class CandidateJobMatchingService {
       experienceMatch * WEIGHT_EXPERIENCE +
       locationMatch * WEIGHT_LOCATION;
 
-    const withTradeBoost =
-      tradeBoost.score === null
+    const withWorkBoost =
+      workBoost.score === null
         ? baseScore
-        : Math.min(1, baseScore + tradeBoost.score * TRADE_PROFILE_BOOST_CAP);
-    const withBoost = Math.min(1, withTradeBoost + categoryBoost);
+        : Math.min(1, baseScore + workBoost.score * WORK_PROFILE_BOOST_CAP);
+    const withBoost = Math.min(1, withWorkBoost + categoryBoost);
     const overallScore = outsideRadius ? withBoost * OUTSIDE_RADIUS_PENALTY : withBoost;
 
     const matchDetails: MatchDetails = {
@@ -452,7 +439,7 @@ export class CandidateJobMatchingService {
         experienceMatch,
         locationMatch,
         job,
-        tradeBoost,
+        workBoost,
         distanceKm,
         outsideRadius,
       ),
@@ -540,8 +527,8 @@ export class CandidateJobMatchingService {
     return 0.3;
   }
 
-  isOutsideTradeRadius(candidate: Candidate, job: ExternalJob): boolean {
-    const radius = candidate.tradeProfile?.shared.siteRadiusKm;
+  isOutsideTravelRadius(candidate: Candidate, job: ExternalJob): boolean {
+    const radius = candidate.workProfile?.shared.willingToTravelKm;
     if (radius == null || radius <= 0) return false;
     const distance = this.calculateDistance(candidate, job);
     if (distance === null) return false;
@@ -554,7 +541,7 @@ export class CandidateJobMatchingService {
     experienceMatch: number,
     locationMatch: number,
     job: ExternalJob,
-    tradeBoost: { score: number | null; tradeKeyMatches: string[]; commodityMatches: Commodity[] },
+    workBoost: { score: number | null; fieldMatched: boolean; roleMatched: boolean },
     distanceKm: number | null,
     outsideRadius: boolean,
   ): string {
@@ -585,12 +572,8 @@ export class CandidateJobMatchingService {
         : []),
       `Experience level: ${experienceLevel}`,
       locationPart,
-      ...(tradeBoost.tradeKeyMatches.length > 0
-        ? [`Trade match: ${tradeBoost.tradeKeyMatches.join(", ")}`]
-        : []),
-      ...(tradeBoost.commodityMatches.length > 0
-        ? [`Commodity overlap: ${tradeBoost.commodityMatches.join(", ")}`]
-        : []),
+      ...(workBoost.fieldMatched ? ["Field match for your selected industry"] : []),
+      ...(workBoost.roleMatched ? ["Role title matches your profile"] : []),
       ...(outsideRadius ? ["Outside your stated travel radius — score reduced"] : []),
     ];
 

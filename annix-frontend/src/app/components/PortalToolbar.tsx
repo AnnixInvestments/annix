@@ -62,7 +62,7 @@ const NAV_TOOLTIPS: Record<string, string> = {
   "Products & Services": "Select the products and services you can offer",
   "Rubber Lining": "Manage rubber lining products and orders",
   "My CV": "Upload, edit, and improve your CV",
-  "Trade profile": "Add structured trade details for mining and shutdown roles",
+  "Work profile": "Add your field, role, skills and certifications to sharpen job matches",
   Credentials: "Manage your licences and certificates",
   "Browse Jobs": "See jobs matched to your CV and apply",
   Applications: "Track the jobs you've applied to",
@@ -199,14 +199,14 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                 )}
               </Link>
             </div>
-            <div className="hidden xl:ml-8 xl:flex xl:items-center xl:space-x-1">
+            <div className="hidden xl:ml-6 xl:flex xl:items-center xl:space-x-0.5">
               {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
                 return (
                   <Tooltip key={item.href} text={getNavTooltip(item.label)} position="bottom">
                     <Link
                       href={item.href}
-                      className="inline-flex items-center px-4 py-2 text-base font-medium rounded-md transition-colors"
+                      className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap"
                       style={{
                         color: navForeground,
                         backgroundColor: isActive ? navActive : "transparent",
@@ -223,7 +223,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                       }}
                     >
                       <svg
-                        className="w-6 h-6 mr-2 flex-shrink-0"
+                        className="w-5 h-5 mr-1.5 flex-shrink-0"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -237,8 +237,8 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                       </svg>
                       {item.sublabel ? (
                         <span className="flex flex-col leading-tight">
-                          <span className="text-base font-semibold">{item.label}</span>
-                          <span className="text-sm">{item.sublabel}</span>
+                          <span className="text-sm font-semibold">{item.label}</span>
+                          <span className="text-xs">{item.sublabel}</span>
                         </span>
                       ) : (
                         item.label
@@ -264,7 +264,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                 >
                   <div className="flex items-center space-x-2">
                     <span
-                      className="hidden md:block text-base font-medium"
+                      className="hidden md:block text-sm font-medium whitespace-nowrap"
                       style={{ color: accentColor }}
                     >
                       {user?.firstName} {user?.lastName}
