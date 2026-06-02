@@ -4,6 +4,7 @@ import "./globals.css";
 import ConditionalNavigation from "./components/ConditionalNavigation";
 import { GlobalBrandBackground } from "./components/GlobalBrandBackground";
 import { Providers } from "./components/Providers";
+import DevServiceWorkerCleanup from "./components/pwa/DevServiceWorkerCleanup";
 import SessionExpiredModal from "./components/SessionExpiredModal";
 
 const geistSans = Geist({
@@ -88,6 +89,7 @@ export default function RootLayout(
         suppressHydrationWarning
       >
         <Providers>
+          <DevServiceWorkerCleanup />
           <GlobalBrandBackground />
           <ConditionalNavigation />
           {children}
