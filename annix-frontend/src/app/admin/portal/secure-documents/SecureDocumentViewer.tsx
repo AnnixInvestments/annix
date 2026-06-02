@@ -375,6 +375,11 @@ export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
                   }
                   return <pre>{children}</pre>;
                 },
+                table: ({ node: _node, ...rest }) => (
+                  <div className="overflow-x-auto">
+                    <table {...rest} />
+                  </div>
+                ),
               }}
             />
           )}
