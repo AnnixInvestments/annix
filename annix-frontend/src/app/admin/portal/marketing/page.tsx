@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { formatDateLongZA } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
-import { marketingAdminApi } from "@/app/lib/marketing/api";
+import { marketingAdminApi, mergeMarketingDefaults } from "@/app/lib/marketing/api";
 import { MarketingSitePreview } from "@/app/lib/marketing/components/MarketingSitePreview";
 import {
   useDiscardMarketingDraft,
@@ -279,7 +279,7 @@ export default function MarketingCmsPage() {
 
   useEffect(() => {
     if (draftQuery.data) {
-      setContent(cloneDeep(draftQuery.data));
+      setContent(mergeMarketingDefaults(draftQuery.data));
     }
   }, [draftQuery.data]);
 
@@ -342,7 +342,7 @@ export default function MarketingCmsPage() {
     if (!confirmed) return;
     try {
       const reverted = await discard.mutateAsync();
-      setContent(cloneDeep(reverted));
+      setContent(mergeMarketingDefaults(reverted));
       showToast("Draft reverted to the live content", "success");
     } catch {
       showToast("Could not discard the draft. Please try again.", "error");

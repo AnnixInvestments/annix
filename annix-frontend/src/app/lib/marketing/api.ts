@@ -3,10 +3,22 @@ import {
   type MarketingSiteContent,
   type MarketingSiteStatus,
 } from "@annix/product-data/marketing";
-import { isString } from "es-toolkit/compat";
+import { isArray, isString, mergeWith } from "es-toolkit/compat";
 import { createApiClient } from "@/app/lib/api/createApiClient";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
+
+export function mergeMarketingDefaults(
+  content: MarketingSiteContent | null | undefined,
+): MarketingSiteContent {
+  const base = defaultMarketingContent();
+  if (!content) {
+    return base;
+  }
+  return mergeWith(base, content, (_baseValue, value) =>
+    isArray(value) ? value : undefined,
+  ) as MarketingSiteContent;
+}
 
 export interface MarketingContactPayload {
   name: string;
