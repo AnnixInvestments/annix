@@ -1,7 +1,7 @@
 "use client";
 
 import type { MarketingProduct } from "@annix/product-data/marketing";
-import { ChevronDown, LogIn, Menu, X } from "lucide-react";
+import { ChevronDown, Globe, LogIn, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
@@ -20,15 +20,14 @@ function BrandMark() {
   const hasLockup = branding ? brandHasAsset("logoLockup", branding) : false;
   if (branding && hasLockup) {
     const url = resolveBrandAssetUrl("logoLockup", branding);
-    return <img src={url} alt="Annix" className="h-8 w-auto" />;
+    return <img src={url} alt="Annix Investments" className="h-8 w-auto sm:h-9" />;
   }
   return (
     <span
       className="text-xl font-bold tracking-tight text-white"
       style={{ fontFamily: "var(--brand-font-display)" }}
     >
-      Annix
-      <span style={{ color: "var(--brand-accent)" }}>.</span>
+      ANNIX <span style={{ color: "var(--brand-accent)" }}>INVESTMENTS</span>
     </span>
   );
 }
@@ -41,11 +40,8 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
   const portals = loginPortals();
 
   return (
-    <header
-      className="sticky top-0 z-50 border-b border-white/10 backdrop-blur-md"
-      style={{ backgroundColor: "color-mix(in srgb, var(--brand-navbar) 88%, transparent)" }}
-    >
-      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+    <header className="absolute inset-x-0 top-0 z-50">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
           <BrandMark />
         </Link>
@@ -58,7 +54,7 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
           >
             <button
               type="button"
-              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:text-white"
             >
               Products
               <ChevronDown className="h-4 w-4" />
@@ -69,7 +65,7 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
                   const href = product.comingSoon ? "/labs" : `/products/${product.detailSlug}`;
                   return (
                     <Link
-                      key={product.appKey}
+                      key={`${product.appKey}-${product.detailSlug}`}
                       href={href}
                       className="block rounded-lg px-3 py-2 transition hover:bg-white/5"
                     >
@@ -86,14 +82,18 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+              className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:text-white"
             >
               {link.label}
             </Link>
           ))}
         </div>
 
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden items-center gap-3 lg:flex">
+          <span className="flex items-center gap-1 text-sm text-white/70">
+            <Globe className="h-4 w-4" />
+            EN
+          </span>
           <div
             className="relative"
             onMouseEnter={() => setLoginOpen(true)}
@@ -101,7 +101,7 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
           >
             <button
               type="button"
-              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:bg-white/10 hover:text-white"
+              className="flex items-center gap-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
             >
               <LogIn className="h-4 w-4" />
               Login
@@ -124,10 +124,10 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
 
           <Link
             href="/contact"
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-white shadow-lg transition hover:opacity-90"
+            className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg transition hover:opacity-90"
             style={{ backgroundColor: "var(--brand-accent)" }}
           >
-            Book a demo
+            Book a Demo
           </Link>
         </div>
 
@@ -142,7 +142,7 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
       </nav>
 
       {mobileOpen ? (
-        <div className="border-t border-white/10 bg-slate-900 px-4 py-4 lg:hidden">
+        <div className="mx-4 rounded-2xl border border-white/10 bg-slate-900 px-4 py-4 lg:hidden">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
             Products
           </div>
@@ -150,7 +150,7 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
             const href = product.comingSoon ? "/labs" : `/products/${product.detailSlug}`;
             return (
               <Link
-                key={product.appKey}
+                key={`${product.appKey}-${product.detailSlug}`}
                 href={href}
                 className="block rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/5"
                 onClick={() => setMobileOpen(false)}
@@ -188,11 +188,11 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
           </div>
           <Link
             href="/contact"
-            className="mt-3 block rounded-lg px-4 py-2 text-center text-sm font-semibold text-white"
+            className="mt-3 block rounded-lg px-4 py-2 text-center text-sm font-semibold text-slate-900"
             style={{ backgroundColor: "var(--brand-accent)" }}
             onClick={() => setMobileOpen(false)}
           >
-            Book a demo
+            Book a Demo
           </Link>
         </div>
       ) : null}

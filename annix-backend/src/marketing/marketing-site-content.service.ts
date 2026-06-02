@@ -4,12 +4,22 @@ import {
   type MarketingSiteStatus,
 } from "@annix/product-data/marketing";
 import { Injectable, Logger } from "@nestjs/common";
-import { cloneDeep } from "es-toolkit/compat";
+import { cloneDeep, isArray, mergeWith } from "es-toolkit/compat";
 import { nowISO } from "../lib/datetime";
 import { MarketingSiteContent } from "./entities/marketing-site-content.entity";
 import { MarketingSiteContentRepository } from "./repositories/marketing-site-content.repository";
 
 const SINGLETON_ID = "annix";
+
+function withDefaults(stored: MarketingSiteContentTree | null): MarketingSiteContentTree {
+  const base = defaultMarketingContent();
+  if (!stored) {
+    return base;
+  }
+  return mergeWith(base, stored, (_baseValue, storedValue) =>
+    isArray(storedValue) ? storedValue : undefined,
+  ) as MarketingSiteContentTree;
+}
 
 @Injectable()
 export class MarketingSiteContentService {
@@ -19,12 +29,12 @@ export class MarketingSiteContentService {
 
   async draftContent(): Promise<MarketingSiteContentTree> {
     const record = await this.ensure();
-    return record.draft;
+    return withDefaults(record.draft);
   }
 
   async publishedContent(): Promise<MarketingSiteContentTree> {
     const record = await this.ensure();
-    return record.published;
+    return withDefaults(record.published);
   }
 
   async status(): Promise<MarketingSiteStatus> {

@@ -3,9 +3,10 @@ export interface MarketingCta {
   href: string;
 }
 
-export interface MarketingStat {
-  value: string;
-  label: string;
+export interface MarketingHighlight {
+  iconSlot: string;
+  title: string;
+  subtitle: string;
 }
 
 export interface MarketingHero {
@@ -15,7 +16,9 @@ export interface MarketingHero {
   subheading: string;
   primaryCta: MarketingCta;
   secondaryCta: MarketingCta;
-  stats: MarketingStat[];
+  highlights: MarketingHighlight[];
+  globalReachTitle: string;
+  globalReachBody: string;
 }
 
 export interface MarketingProduct {
@@ -31,6 +34,7 @@ export interface MarketingProduct {
 }
 
 export interface MarketingEcosystem {
+  eyebrow: string;
   heading: string;
   subheading: string;
   products: MarketingProduct[];
@@ -40,18 +44,38 @@ export interface MarketingIndustry {
   name: string;
   blurb: string;
   iconSlot: string;
+  imageUrl: string | null;
   slug: string;
 }
 
 export interface MarketingIndustries {
+  eyebrow: string;
   heading: string;
   subheading: string;
+  ctaLabel: string;
   items: MarketingIndustry[];
 }
 
-export interface MarketingTrustBar {
+export interface MarketingPartner {
+  name: string;
+  logoUrl: string;
+}
+
+export interface MarketingPartners {
   heading: string;
-  regions: string[];
+  partners: MarketingPartner[];
+}
+
+export interface MarketingPresenceItem {
+  region: string;
+  label: string;
+  detail: string;
+  flag: string;
+}
+
+export interface MarketingGlobalPresence {
+  heading: string;
+  items: MarketingPresenceItem[];
 }
 
 export interface MarketingCtaBand {
@@ -59,6 +83,11 @@ export interface MarketingCtaBand {
   subheading: string;
   primaryCta: MarketingCta;
   secondaryCta: MarketingCta;
+}
+
+export interface MarketingSocialLink {
+  platform: string;
+  href: string;
 }
 
 export interface MarketingFooterColumn {
@@ -69,6 +98,10 @@ export interface MarketingFooterColumn {
 export interface MarketingFooter {
   tagline: string;
   columns: MarketingFooterColumn[];
+  newsletterHeading: string;
+  newsletterBody: string;
+  socialLinks: MarketingSocialLink[];
+  legalLinks: MarketingCta[];
   legal: string;
 }
 
@@ -123,7 +156,8 @@ export interface MarketingSiteContent {
   hero: MarketingHero;
   ecosystem: MarketingEcosystem;
   industries: MarketingIndustries;
-  trustBar: MarketingTrustBar;
+  partners: MarketingPartners;
+  globalPresence: MarketingGlobalPresence;
   ctaBand: MarketingCtaBand;
   footer: MarketingFooter;
   productPages: MarketingProductPage[];

@@ -11,7 +11,13 @@ export function MarketingShell(props: { content: MarketingSiteContent; children:
   const content = props.content;
   return (
     <BrandingProvider brand={MASTER_BRAND_CODE} surface={false}>
-      <div className="min-h-screen bg-slate-950 text-white">
+      <div
+        className="min-h-screen text-white"
+        style={{
+          backgroundImage:
+            "linear-gradient(180deg, var(--brand-grad-from), var(--brand-grad-via) 45%, var(--brand-grad-to))",
+        }}
+      >
         <MarketingNav products={content.ecosystem.products} />
         <main>{props.children}</main>
         <MarketingFooter footer={content.footer} />

@@ -7,7 +7,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     name: "Annix Core",
     category: "Industrial Operations",
     blurb:
-      "Stock control, quality certificates and inventory intelligence for fabrication and manufacturing teams.",
+      "Streamline operations, inventory, production and supplier management with quality certificates built in.",
     iconSlot: "Boxes",
     imageUrl: null,
     comingSoon: false,
@@ -31,7 +31,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     name: "Annix Orbit",
     category: "Workforce & Recruitment",
     blurb:
-      "Recruitment, CV building and a live job market connecting seekers, recruiters and education pathways.",
+      "Attract, screen and place the right talent faster with AI-powered recruitment and a live job market.",
     iconSlot: "Orbit",
     imageUrl: null,
     comingSoon: false,
@@ -43,7 +43,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     name: "Annix Pulse",
     category: "Field Operations",
     blurb:
-      "Field reps, routes and voice-driven activity capture that keep distributed teams moving and accountable.",
+      "Empower field teams and sales reps with routes, real-time data and voice-driven activity capture.",
     iconSlot: "Radio",
     imageUrl: null,
     comingSoon: false,
@@ -55,7 +55,7 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     name: "Annix Sentinel",
     category: "Compliance & Governance",
     blurb:
-      "Secure document handling, audit trails and compliance workflows for regulated industrial operations.",
+      "Ensure compliance, manage risk and keep your business audit-ready with secure document workflows.",
     iconSlot: "ShieldCheck",
     imageUrl: null,
     comingSoon: false,
@@ -67,11 +67,23 @@ const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
     name: "Annix Insights",
     category: "Financial Intelligence",
     blurb:
-      "Cross-product reporting and financial intelligence that turn operational data into decisions.",
+      "Gain insight, track performance and make smarter decisions with cross-product reporting.",
     iconSlot: "LineChart",
     imageUrl: null,
     comingSoon: false,
     detailSlug: "annix-insights",
+  },
+  {
+    appKey: "annix-investments",
+    portalCode: null,
+    name: "Annix Labs",
+    category: "What's Next",
+    blurb:
+      "Where we build what's next — custom apps for our own portfolio and for clients, on the same shared Annix platform.",
+    iconSlot: "Sparkles",
+    imageUrl: null,
+    comingSoon: true,
+    detailSlug: "annix-labs",
   },
 ];
 
@@ -83,7 +95,7 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
     name: "Annix Core",
     headline: "Industrial operations, under control.",
     subheading:
-      "Stock, quality and inventory intelligence in one place — so your fabrication floor always knows what it has and what it is certified to do.",
+      "Stock, quality and inventory intelligence in one place — so your floor always knows what it has and what it is certified to do.",
     problem:
       "Spreadsheets, paper certificates and disconnected systems make it impossible to trust your stock numbers or prove material traceability when it matters.",
     features: [
@@ -285,98 +297,160 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
 export function defaultMarketingContent(): MarketingSiteContent {
   return {
     hero: {
-      eyebrow: "The Annix Platform",
-      headlineLead: "One platform.",
-      headlineEmphasis: "Every product.",
+      eyebrow: "Built in South Africa. Built for the world.",
+      headlineLead: "Intelligent software for industries",
+      headlineEmphasis: "that move the world.",
       subheading:
-        "Annix builds intelligent platforms for industry — operations, engineering, workforce, compliance and beyond — all on one shared foundation.",
-      primaryCta: { label: "Explore the ecosystem", href: "#ecosystem" },
-      secondaryCta: { label: "Book a demo", href: "/contact" },
-      stats: [
-        { value: "7", label: "Products" },
-        { value: "1", label: "Shared platform" },
-        { value: "AI", label: "Built in" },
+        "Annix develops powerful, industry-specific platforms that help businesses recruit better, operate smarter, stay compliant and grow with confidence.",
+      primaryCta: { label: "Explore Products", href: "#ecosystem" },
+      secondaryCta: { label: "Book a Demo", href: "/contact" },
+      highlights: [
+        { iconSlot: "Globe", title: "Built in", subtitle: "South Africa" },
+        { iconSlot: "ShieldCheck", title: "Enterprise grade", subtitle: "Security" },
+        { iconSlot: "Boxes", title: "Scalable", subtitle: "Secure. Reliable." },
+        { iconSlot: "LineChart", title: "AI", subtitle: "Built in" },
       ],
+      globalReachTitle: "Global reach. Local excellence.",
+      globalReachBody:
+        "Headquartered in South Africa, delivering world-class software solutions to businesses across the globe.",
     },
     ecosystem: {
-      heading: "One brand. Many products.",
-      subheading:
-        "Every Annix product shares the same backend, intelligence and design language — so they work together out of the box.",
+      eyebrow: "The Annix Ecosystem",
+      heading: "One platform. Multiple solutions.",
+      subheading: "Integrated products that work together. Built for your industry.",
       products: ECOSYSTEM_PRODUCTS,
     },
     industries: {
-      heading: "Built for the industries that build everything else.",
+      eyebrow: "Built for",
+      heading: "Every Industry. Anywhere.",
       subheading: "Annix is designed for the realities of heavy, regulated and field-driven work.",
+      ctaLabel: "View All Industries",
       items: [
         {
           name: "Mining",
-          blurb: "Operations, compliance and supply chains built for the mining sector.",
+          blurb: "Operations and compliance for the mining sector.",
           iconSlot: "Mountain",
+          imageUrl: null,
           slug: "mining",
         },
         {
           name: "Manufacturing",
           blurb: "Stock, quality and field operations for manufacturers.",
           iconSlot: "Factory",
+          imageUrl: null,
           slug: "manufacturing",
         },
         {
           name: "Engineering",
-          blurb: "Standards-aware quoting and procurement for engineering teams.",
+          blurb: "Standards-aware quoting and procurement.",
           iconSlot: "Wrench",
+          imageUrl: null,
           slug: "engineering",
         },
         {
+          name: "Construction",
+          blurb: "Built for construction and fabrication teams.",
+          iconSlot: "Hammer",
+          imageUrl: null,
+          slug: "construction",
+        },
+        {
+          name: "Energy",
+          blurb: "For energy and resource operations.",
+          iconSlot: "Flame",
+          imageUrl: null,
+          slug: "energy",
+        },
+        {
+          name: "Logistics",
+          blurb: "Move goods and teams with confidence.",
+          iconSlot: "Map",
+          imageUrl: null,
+          slug: "logistics",
+        },
+        {
           name: "Education",
-          blurb: "Teaching tools and pathways that connect learning to careers.",
+          blurb: "Teaching tools and pathways to careers.",
           iconSlot: "GraduationCap",
+          imageUrl: null,
           slug: "education",
         },
       ],
     },
-    trustBar: {
-      heading: "Built for industrial teams across Southern Africa.",
-      regions: ["Mining", "Manufacturing", "Engineering", "Fabrication", "Education"],
+    partners: {
+      heading: "Trusted by leading companies around the world",
+      partners: [],
+    },
+    globalPresence: {
+      heading: "Global presence, local support",
+      items: [
+        { region: "South Africa", label: "Head Office", detail: "Cape Town", flag: "🇿🇦" },
+        { region: "Australia", label: "Sales Office", detail: "Perth", flag: "🇦🇺" },
+        { region: "Europe", label: "Partners", detail: "Across EU", flag: "🇪🇺" },
+        { region: "Americas", label: "Partners", detail: "Across USA", flag: "🇺🇸" },
+      ],
     },
     ctaBand: {
-      headline: "See the Annix platform in action.",
-      subheading: "Book a walkthrough and we will show you the products that fit your operation.",
-      primaryCta: { label: "Book a demo", href: "/contact" },
-      secondaryCta: { label: "Explore products", href: "#ecosystem" },
+      headline: "Ready to transform your business?",
+      subheading:
+        "Book a demo with our team and see how Annix solutions can help you work smarter and grow faster.",
+      primaryCta: { label: "Book a Demo", href: "/contact" },
+      secondaryCta: { label: "Contact Us", href: "/contact" },
     },
     footer: {
-      tagline: "Build • Connect • Innovate • Grow",
+      tagline: "Intelligent software solutions built in South Africa.",
       columns: [
         {
-          heading: "Platform",
+          heading: "Products",
           links: [
-            { label: "Products", href: "#ecosystem" },
-            { label: "Industries", href: "#industries" },
-            { label: "Annix Labs", href: "/labs" },
+            { label: "Annix Core", href: "/products/annix-core" },
+            { label: "Annix Forge", href: "/products/annix-forge" },
+            { label: "Annix Orbit", href: "/products/annix-orbit" },
+            { label: "Annix Sentinel", href: "/products/annix-sentinel" },
+          ],
+        },
+        {
+          heading: "Industries",
+          links: [
+            { label: "Mining", href: "/industries/mining" },
+            { label: "Manufacturing", href: "/industries/manufacturing" },
+            { label: "Engineering", href: "/industries/engineering" },
+          ],
+        },
+        {
+          heading: "Resources",
+          links: [
+            { label: "Resources", href: "/resources" },
+            { label: "Contact", href: "/contact" },
           ],
         },
         {
           heading: "Company",
           links: [
-            { label: "About", href: "/about" },
-            { label: "Resources", href: "/resources" },
+            { label: "About Annix", href: "/about" },
             { label: "Contact", href: "/contact" },
           ],
         },
+      ],
+      newsletterHeading: "Stay connected",
+      newsletterBody: "Get the latest updates and insights straight to your inbox.",
+      socialLinks: [
+        { platform: "LinkedIn", href: "#" },
+        { platform: "Facebook", href: "#" },
+        { platform: "YouTube", href: "#" },
+        { platform: "Instagram", href: "#" },
+      ],
+      legalLinks: [
+        { label: "Privacy Policy", href: "#" },
+        { label: "Terms of Use", href: "#" },
       ],
       legal: "All rights reserved.",
     },
     productPages: PRODUCT_PAGES,
     labs: {
-      heading: "Annix Labs",
+      heading: "What's next",
       subheading: "The next wave of Annix products, built on the same shared platform.",
-      items: [
-        {
-          name: "New product",
-          blurb: "We are always building. The next Annix product starts in the Labs.",
-          status: "Coming soon",
-        },
-      ],
+      items: [],
     },
     about: {
       heading: "We build intelligent platforms for industry.",
