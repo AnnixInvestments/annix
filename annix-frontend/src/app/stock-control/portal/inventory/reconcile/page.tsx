@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
+  IssuanceFixMode,
   ReconciliationDocumentCheck,
   ReconciliationFlag,
   ReconciliationItemAnalysis,
@@ -15,6 +17,9 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAnalyzeStockTakeReconciliation,
   useCreateReconciliationDelivery,
+  useCreateReconciliationIssuance,
+  useIssueStockStaffMembers,
+  useJobCards,
 } from "@/app/lib/query/hooks";
 
 const FLAG_LABELS: Record<ReconciliationFlag, { label: string; className: string }> = {
@@ -37,6 +42,8 @@ export default function ReconcilePage() {
   const [issuesOnly, setIssuesOnly] = useState(true);
   const [createdInvoices, setCreatedInvoices] = useState<Set<string>>(new Set());
   const [creatingInvoice, setCreatingInvoice] = useState<string | null>(null);
+  const [fixingItem, setFixingItem] = useState<ReconciliationItemAnalysis | null>(null);
+  const [fixedRows, setFixedRows] = useState<Set<number>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
   const analyzeMutation = useAnalyzeStockTakeReconciliation();
   const createDeliveryMutation = useCreateReconciliationDelivery();
@@ -143,6 +150,8 @@ export default function ReconcilePage() {
     setReport(null);
     setError(null);
     setCreatedInvoices(new Set());
+    setFixedRows(new Set());
+    setFixingItem(null);
   };
 
   return (
@@ -259,8 +268,25 @@ export default function ReconcilePage() {
           createdInvoices={createdInvoices}
           creatingInvoice={creatingInvoice}
           onCreateDelivery={handleCreateDelivery}
+          fixedRows={fixedRows}
+          onFixIssuance={(item) => setFixingItem(item)}
         />
       )}
+      {fixingItem !== null && report !== null ? (
+        <IssuanceFixModal
+          item={fixingItem}
+          periodLabel={report.periodLabel}
+          onClose={() => setFixingItem(null)}
+          onFixed={(rowIndex) => {
+            setFixedRows((prev) => {
+              const next = new Set(prev);
+              next.add(rowIndex);
+              return next;
+            });
+            setFixingItem(null);
+          }}
+        />
+      ) : null}
       {ConfirmDialog}
     </div>
   );
@@ -274,6 +300,8 @@ interface ResultProps {
   createdInvoices: Set<string>;
   creatingInvoice: string | null;
   onCreateDelivery: (doc: ReconciliationDocumentCheck) => void;
+  fixedRows: Set<number>;
+  onFixIssuance: (item: ReconciliationItemAnalysis) => void;
 }
 
 function ReconciliationResult(props: ResultProps) {
@@ -400,11 +428,17 @@ function ReconciliationResult(props: ResultProps) {
                 <th className="px-2 py-2 text-right font-medium text-gray-500">Count</th>
                 <th className="px-2 py-2 text-right font-medium text-gray-500">Diff</th>
                 <th className="px-2 py-2 text-left font-medium text-gray-500">Flags</th>
+                <th className="px-2 py-2 text-right font-medium text-gray-500">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {visibleItems.map((item) => (
-                <ItemRow key={item.rowIndex} item={item} />
+                <ItemRow
+                  key={item.rowIndex}
+                  item={item}
+                  isFixed={props.fixedRows.has(item.rowIndex)}
+                  onFixIssuance={props.onFixIssuance}
+                />
               ))}
             </tbody>
           </table>
@@ -419,10 +453,15 @@ function ReconciliationResult(props: ResultProps) {
   );
 }
 
-function ItemRow(props: { item: ReconciliationItemAnalysis }) {
+function ItemRow(props: {
+  item: ReconciliationItemAnalysis;
+  isFixed: boolean;
+  onFixIssuance: (item: ReconciliationItemAnalysis) => void;
+}) {
   const item = props.item;
   const intakeMismatch = item.flags.includes("INTAKE_MISMATCH");
   const issueMismatch = item.flags.includes("ISSUE_MISMATCH");
+  const canFixIssuance = issueMismatch && item.matchedStockItemId !== null;
   const diff =
     item.sheetActualCount === null ? null : item.sheetActualCount - item.sheetStatedClosing;
   const diffClass =
@@ -483,6 +522,21 @@ function ItemRow(props: { item: ReconciliationItemAnalysis }) {
           })}
         </div>
       </td>
+      <td className="px-2 py-1.5 text-right">
+        {props.isFixed ? (
+          <span className="text-[11px] font-semibold text-green-700">✓ fixed</span>
+        ) : canFixIssuance ? (
+          <button
+            type="button"
+            onClick={() => props.onFixIssuance(item)}
+            className="rounded bg-orange-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-orange-700"
+          >
+            Fix issues
+          </button>
+        ) : (
+          <span className="text-gray-300">—</span>
+        )}
+      </td>
     </tr>
   );
 }
@@ -503,5 +557,174 @@ function SummaryCard(props: { label: string; value: number; tone: string }) {
       <div className="text-xl font-bold">{props.value}</div>
       <div className="text-xs">{props.label}</div>
     </div>
+  );
+}
+
+interface IssuanceFixModalProps {
+  item: ReconciliationItemAnalysis;
+  periodLabel: string | null;
+  onClose: () => void;
+  onFixed: (rowIndex: number) => void;
+}
+
+function IssuanceFixModal(props: IssuanceFixModalProps) {
+  const item = props.item;
+  const delta = item.sheetIssues - item.appIssueTotal;
+  const direction: "out" | "in" = delta >= 0 ? "out" : "in";
+  const quantity = Math.abs(delta);
+  const [mode, setMode] = useState<IssuanceFixMode>("adjustment");
+  const [staffName, setStaffName] = useState<string>("");
+  const [jobCardId, setJobCardId] = useState<string>("");
+  const [error, setError] = useState<string | null>(null);
+
+  const staffQuery = useIssueStockStaffMembers();
+  const jobCardsQuery = useJobCards("all");
+  const mutation = useCreateReconciliationIssuance();
+  const staffData = staffQuery.data;
+  const staff = staffData ?? [];
+  const jobCardsData = jobCardsQuery.data;
+  const jobCards = jobCardsData ?? [];
+
+  const sheetName = item.name;
+  const fallbackName = item.matchedName;
+  const itemName = sheetName ?? fallbackName ?? "this item";
+  const directionLabel =
+    direction === "out"
+      ? "The sheet shows more issues than the app recorded — record the shortfall as stock going OUT."
+      : "The app recorded more issues than the sheet — record a reversal bringing stock back IN.";
+
+  const submit = async () => {
+    setError(null);
+    if (mode === "staff" && staffName === "") {
+      setError("Choose a staff member.");
+      return;
+    }
+    if (mode === "jobcard" && jobCardId === "") {
+      setError("Choose a job card.");
+      return;
+    }
+    const chosenJobCard = jobCards.find((jc) => String(jc.id) === jobCardId);
+    const jobCardLabel =
+      chosenJobCard === undefined
+        ? null
+        : `JC ${chosenJobCard.jobNumber} — ${chosenJobCard.jobName}`;
+    try {
+      await mutation.mutateAsync({
+        stockItemId: item.matchedStockItemId as number,
+        quantity,
+        direction,
+        mode,
+        staffName: mode === "staff" ? staffName : null,
+        jobCardId: mode === "jobcard" && chosenJobCard !== undefined ? chosenJobCard.id : null,
+        jobCardLabel: mode === "jobcard" ? jobCardLabel : null,
+        periodLabel: props.periodLabel,
+      });
+      props.onFixed(item.rowIndex);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to record the issuance");
+    }
+  };
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-lg bg-white shadow-xl">
+        <div className="border-b border-gray-200 px-5 py-4">
+          <h2 className="text-base font-semibold text-gray-900">Record missing issuance</h2>
+          <p className="mt-1 text-xs text-gray-500">{itemName}</p>
+        </div>
+        <div className="space-y-4 px-5 py-4">
+          <div className="rounded-md bg-gray-50 p-3 text-xs text-gray-600">
+            Sheet issues <span className="font-mono font-semibold">{item.sheetIssues}</span> · app
+            issues <span className="font-mono font-semibold">{item.appIssueTotal}</span> ·{" "}
+            <span className="font-semibold">
+              {quantity} unit(s) {direction === "out" ? "OUT" : "back IN"}
+            </span>
+            <div className="mt-1 text-gray-500">{directionLabel}</div>
+          </div>
+
+          <div>
+            <span className="mb-1 block text-xs font-medium text-gray-700">Record as</span>
+            <div className="space-y-1.5">
+              {(
+                [
+                  ["adjustment", "Stock adjustment (no recipient)"],
+                  ["staff", "Issuance to a staff member"],
+                  ["jobcard", "Issuance to a job card"],
+                ] as Array<[IssuanceFixMode, string]>
+              ).map(([value, label]) => (
+                <label key={value} className="flex items-center gap-2 text-sm text-gray-700">
+                  <input
+                    type="radio"
+                    name="issuance-mode"
+                    checked={mode === value}
+                    onChange={() => setMode(value)}
+                    className="h-4 w-4 text-teal-600"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {mode === "staff" ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Staff member</label>
+              <select
+                value={staffName}
+                onChange={(e) => setStaffName(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Select…</option>
+                {staff.map((member) => (
+                  <option key={member.id} value={member.name}>
+                    {member.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {mode === "jobcard" ? (
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-700">Job card</label>
+              <select
+                value={jobCardId}
+                onChange={(e) => setJobCardId(e.target.value)}
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+              >
+                <option value="">Select…</option>
+                {jobCards.map((jc) => (
+                  <option key={jc.id} value={String(jc.id)}>
+                    {jc.jobNumber} — {jc.jobName}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {error !== null ? (
+            <div className="rounded-md bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+          ) : null}
+        </div>
+        <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-3">
+          <button
+            type="button"
+            onClick={props.onClose}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={mutation.isPending}
+            className="rounded-md bg-orange-600 px-4 py-2 text-sm font-medium text-white hover:bg-orange-700 disabled:opacity-50"
+          >
+            {mutation.isPending ? "Recording…" : "Record issuance"}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

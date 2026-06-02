@@ -2,6 +2,8 @@ import { toPairs as entries } from "es-toolkit/compat";
 import { StockControlApiClient } from "./base";
 import type {
   CreateMissingDeliveryResult,
+  CreateMissingIssuanceRequest,
+  CreateMissingIssuanceResult,
   ImportMatchRow,
   ImportResult,
   ImportUploadResponse,
@@ -107,6 +109,9 @@ declare module "./base" {
       invoice: string,
       receivedDate: string,
     ): Promise<CreateMissingDeliveryResult>;
+    createReconciliationIssuance(
+      body: CreateMissingIssuanceRequest,
+    ): Promise<CreateMissingIssuanceResult>;
     autoCategorize(): Promise<{
       categorized: number;
       total: number;
@@ -302,6 +307,13 @@ proto.createReconciliationDelivery = async function (file, invoice, receivedDate
   return this.uploadFile("/stock-control/reconciliation/create-delivery", file, {
     invoice,
     receivedDate,
+  });
+};
+
+proto.createReconciliationIssuance = async function (body) {
+  return this.request("/stock-control/reconciliation/create-issuance", {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 };
 

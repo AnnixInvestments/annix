@@ -2976,6 +2976,27 @@ export interface CreateMissingDeliveryResult {
   message: string;
 }
 
+export type IssuanceFixMode = "adjustment" | "staff" | "jobcard";
+
+export interface CreateMissingIssuanceRequest {
+  stockItemId: number;
+  quantity: number;
+  direction: "out" | "in";
+  mode: IssuanceFixMode;
+  staffName: string | null;
+  jobCardId: number | null;
+  jobCardLabel: string | null;
+  periodLabel: string | null;
+}
+
+export interface CreateMissingIssuanceResult {
+  created: boolean;
+  movementId: number | null;
+  quantity: number;
+  direction: "out" | "in";
+  message: string;
+}
+
 export interface ReconciliationReport {
   periodLabel: string | null;
   periodStart: string;

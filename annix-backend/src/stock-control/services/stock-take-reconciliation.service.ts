@@ -1,12 +1,13 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { fromISO } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
-import { ReferenceType } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
 import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
 import { DeliveryService } from "./delivery.service";
 import { ImportService } from "./import.service";
+import { MovementService } from "./movement.service";
 
 export interface ReconciliationInvoiceRef {
   invoice: string;
@@ -85,6 +86,27 @@ export interface CreateMissingDeliveryResult {
   message: string;
 }
 
+export type IssuanceFixMode = "adjustment" | "staff" | "jobcard";
+
+export interface CreateMissingIssuanceInput {
+  stockItemId: number;
+  quantity: number;
+  direction: "out" | "in";
+  mode: IssuanceFixMode;
+  staffName: string | null;
+  jobCardId: number | null;
+  jobCardLabel: string | null;
+  periodLabel: string | null;
+}
+
+export interface CreateMissingIssuanceResult {
+  created: boolean;
+  movementId: number | null;
+  quantity: number;
+  direction: "out" | "in";
+  message: string;
+}
+
 export interface ReconciliationReport {
   periodLabel: string | null;
   periodStart: string;
@@ -130,8 +152,60 @@ export class StockTakeReconciliationService {
     private readonly supplierInvoiceRepo: SupplierInvoiceRepository,
     private readonly importService: ImportService,
     private readonly deliveryService: DeliveryService,
+    private readonly movementService: MovementService,
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
+
+  async createMissingIssuance(
+    companyId: number,
+    input: CreateMissingIssuanceInput,
+    createdBy: string | null,
+  ): Promise<CreateMissingIssuanceResult> {
+    if (input.quantity <= 0) {
+      return {
+        created: false,
+        movementId: null,
+        quantity: 0,
+        direction: input.direction,
+        message: "There is no issue difference to record for this item.",
+      };
+    }
+
+    const movementType = input.direction === "out" ? MovementType.OUT : MovementType.IN;
+    const referenceType =
+      input.mode === "adjustment" ? ReferenceType.MANUAL : ReferenceType.ISSUANCE;
+    const attribution =
+      input.mode === "staff" && input.staffName !== null
+        ? ` — issued to ${input.staffName}`
+        : input.mode === "jobcard" && input.jobCardLabel !== null
+          ? ` — issued to ${input.jobCardLabel}`
+          : "";
+    const periodSuffix = input.periodLabel === null ? "" : ` (${input.periodLabel})`;
+    const reason =
+      input.direction === "out"
+        ? "unrecorded issues from stock-take"
+        : "reversed over-recorded issues from stock-take";
+    const notes = `Stock-take reconciliation${periodSuffix}: ${reason}${attribution}`;
+
+    const movement = await this.movementService.createManualAdjustment(companyId, {
+      stockItemId: input.stockItemId,
+      movementType,
+      quantity: input.quantity,
+      notes,
+      createdBy: createdBy ?? undefined,
+      referenceType,
+      referenceId:
+        input.mode === "jobcard" && input.jobCardId !== null ? input.jobCardId : undefined,
+    });
+
+    return {
+      created: true,
+      movementId: movement.id,
+      quantity: input.quantity,
+      direction: input.direction,
+      message: `Recorded ${input.quantity} unit(s) ${input.direction === "out" ? "out" : "back in"}${attribution}.`,
+    };
+  }
 
   async analyzeUpload(
     companyId: number,

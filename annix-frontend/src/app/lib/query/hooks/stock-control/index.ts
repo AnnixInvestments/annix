@@ -95,6 +95,7 @@ export {
   useCreateJobCard,
   useCreateManualAdjustment,
   useCreateReconciliationDelivery,
+  useCreateReconciliationIssuance,
   useCreateStaffMember,
   useCreateStockItem,
   useCustomerDeliveries,

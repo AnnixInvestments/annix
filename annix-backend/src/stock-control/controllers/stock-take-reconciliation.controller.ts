@@ -16,7 +16,10 @@ import {
   StockControlRoleGuard,
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
-import { StockTakeReconciliationService } from "../services/stock-take-reconciliation.service";
+import {
+  type CreateMissingIssuanceInput,
+  StockTakeReconciliationService,
+} from "../services/stock-take-reconciliation.service";
 
 @ApiTags("Stock Control - Stock Take Reconciliation")
 @Controller("stock-control/reconciliation")
@@ -56,6 +59,16 @@ export class StockTakeReconciliationController {
       file.buffer,
       body.invoice ?? "",
       body.receivedDate ?? "",
+      req.user.name ?? null,
+    );
+  }
+
+  @Post("create-issuance")
+  @ApiOperation({ summary: "Record a missing/over-recorded issuance found during reconciliation" })
+  async createIssuance(@Body() body: CreateMissingIssuanceInput, @Req() req: any) {
+    return this.reconciliationService.createMissingIssuance(
+      req.user.companyId,
+      body,
       req.user.name ?? null,
     );
   }

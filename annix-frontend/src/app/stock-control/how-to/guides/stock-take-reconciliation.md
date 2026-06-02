@@ -19,7 +19,7 @@ It answers two questions you previously had to chase by hand:
 1. **Which documents are missing in the app?** Every invoice/delivery number on your sheet is checked against the app's delivery notes and supplier invoices. Anything on the sheet with no match is flagged.
 2. **Why do my counts differ?** For each item it compares the sheet's intake and issues against the app's recorded deliveries and issuances, so a variance can be traced to a missing invoice, a missing issue, an item that didn't match, or genuine shrinkage.
 
-The analysis itself is read-only. From the **missing documents** list you can then create any delivery the app is missing in one click — this records the delivery and raises stock for its items (creating missing issuances is a planned follow-up).
+The analysis itself is read-only. From the report you can then fix what it finds: create any missing delivery from the **missing documents** list (records the delivery and raises stock), and record a missing/over-recorded issuance from any **Issues ≠ app** row (as a stock adjustment, or attributed to a staff member or job card).
 
 ## How the sheet is read
 
@@ -39,7 +39,7 @@ Nix detects the matrix layout automatically:
 5. Review the results:
    - **Summary cards** — items, matched/unmatched, missing documents, intake gaps, issue gaps.
    - **Missing documents** — invoices/deliveries on the sheet with no record in the app. Click **Create delivery** on any of these to record it (with confirmation); stock is increased by the quantities received against that invoice on the sheet.
-   - **Item analysis** — per item, the sheet vs app intake and issues, the closing/count/diff, and flags. Tick *Show only items with discrepancies* to focus on problems.
+   - **Item analysis** — per item, the sheet vs app intake and issues, the closing/count/diff, and flags. Tick *Show only items with discrepancies* to focus on problems. On any **Issues ≠ app** row, click **Fix issues** to record the difference — choose a plain stock adjustment, or attribute it to a staff member or job card. Both directions are handled (sheet shows more issues → stock out; app shows more → reversal in).
 
 ## Reading the flags
 

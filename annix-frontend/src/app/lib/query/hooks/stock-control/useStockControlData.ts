@@ -924,6 +924,12 @@ export const useCreateReconciliationDelivery = createMutationHook(
   [stockControlKeys.inventory.all],
 );
 
+export const useCreateReconciliationIssuance = createMutationHook(
+  (body: Parameters<typeof stockControlApiClient.createReconciliationIssuance>[0]) =>
+    stockControlApiClient.createReconciliationIssuance(body),
+  [stockControlKeys.inventory.all],
+);
+
 export function useStockControlSuppliers() {
   return useQuery<StockControlSupplierDto[]>({
     queryKey: stockControlKeys.suppliers.list(),

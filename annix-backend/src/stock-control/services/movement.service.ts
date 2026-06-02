@@ -49,6 +49,8 @@ export class MovementService {
       quantity: number;
       notes?: string;
       createdBy?: string;
+      referenceType?: ReferenceType;
+      referenceId?: number;
     },
   ): Promise<StockMovement> {
     const { saved, stockItem } = await this.txRunner.run(async (ctx) => {
@@ -76,7 +78,8 @@ export class MovementService {
         stockItem,
         movementType: data.movementType,
         quantity: data.quantity,
-        referenceType: ReferenceType.MANUAL,
+        referenceType: data.referenceType ?? ReferenceType.MANUAL,
+        referenceId: data.referenceId ?? null,
         notes: data.notes || null,
         createdBy: data.createdBy || null,
         companyId,
