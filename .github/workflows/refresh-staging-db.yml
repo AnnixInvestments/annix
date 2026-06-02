@@ -23,10 +23,12 @@ jobs:
           PROD_MONGO_DATABASE: ${{ secrets.PROD_MONGO_DATABASE }}
           STAGING_MONGODB_URI: ${{ secrets.STAGING_MONGODB_URI }}
           STAGING_MONGO_DATABASE: ${{ secrets.STAGING_MONGO_DATABASE }}
+          ORBIT_MONGODB_URI: ${{ secrets.ORBIT_MONGODB_URI }}
         run: |
           set -euo pipefail
           test -n "${PROD_MONGODB_URI}"
           test -n "${PROD_MONGO_DATABASE}"
+          test -n "${ORBIT_MONGODB_URI}"
           test -n "${STAGING_MONGODB_URI}"
           test -n "${STAGING_MONGO_DATABASE}"
 
@@ -68,6 +70,20 @@ jobs:
           set -euo pipefail
           mongorestore --uri="${STAGING_MONGODB_URI}" --archive="${RUNNER_TEMP}/production.archive.gz" --gzip \
             --nsFrom="${PROD_MONGO_DATABASE}.*" --nsTo="${STAGING_MONGO_DATABASE}.*"
+
+      - name: Refresh staging Orbit DB from production Orbit
+        # Annix Orbit lives on its own cluster (see #331), so its data is refreshed
+        # separately: copy orbit_production -> orbit_staging on the Orbit cluster.
+        # The prod->staging restore above no longer carries Orbit collections because
+        # they no longer exist in the core annix_production database.
+        env:
+          ORBIT_MONGODB_URI: ${{ secrets.ORBIT_MONGODB_URI }}
+        run: |
+          set -euo pipefail
+          mongodump --uri="${ORBIT_MONGODB_URI}" --db=orbit_production \
+            --archive="${RUNNER_TEMP}/orbit_production.archive.gz" --gzip
+          mongorestore --uri="${ORBIT_MONGODB_URI}" --archive="${RUNNER_TEMP}/orbit_production.archive.gz" --gzip --drop \
+            --nsFrom="orbit_production.*" --nsTo="orbit_staging.*"
 
       - name: Seed staging MongoDB counters
         env:
