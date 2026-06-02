@@ -106,15 +106,18 @@ export default function AnnixOrbitHomePage() {
               </svg>
             }
           />
+        </div>
 
+        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-3xl mx-auto">
           <CvHomeCard
             title="Student"
             subtitle="Learner planning your future"
             description="Plan your subjects and marks, see what you need for the qualification you want, and explore your options with FuturePath."
-            primaryHref="/annix/orbit/register/student"
-            primaryLabel="Sign up as a student"
-            secondaryHref="/annix/orbit/login?type=student"
-            secondaryLabel="Sign in"
+            primaryHref="#"
+            primaryLabel=""
+            secondaryHref="#"
+            secondaryLabel=""
+            comingSoon
             icon={
               <svg
                 className="w-7 h-7 text-[#323288]"
