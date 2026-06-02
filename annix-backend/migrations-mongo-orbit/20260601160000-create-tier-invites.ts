@@ -7,6 +7,11 @@ const atlasCollectionCapReached = (error: unknown): boolean =>
   error.message.includes("already using") &&
   error.message.includes("collections of");
 
+const collectionAlreadyExists = (error: unknown): boolean =>
+  error instanceof Error &&
+  (error.message.includes("already exists") ||
+    (error as { codeName?: string }).codeName === "NamespaceExists");
+
 export const up = async (db: mongo.Db): Promise<void> => {
   try {
     await db.createCollection(COLLECTION);
@@ -16,6 +21,9 @@ export const up = async (db: mongo.Db): Promise<void> => {
         `[migration] Atlas collection cap reached — deferring ${COLLECTION} and its indexes until capacity is freed (#324).`,
       );
       return;
+    }
+    if (!collectionAlreadyExists(error)) {
+      throw error;
     }
   }
   await db.collection(COLLECTION).createIndex({ token: 1 }, { unique: true, name: "token_1" });
