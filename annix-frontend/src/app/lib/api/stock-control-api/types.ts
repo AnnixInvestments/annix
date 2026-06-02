@@ -2965,6 +2965,17 @@ export interface ReconciliationItemAnalysis {
   flags: ReconciliationFlag[];
 }
 
+export interface CreateMissingDeliveryResult {
+  created: boolean;
+  deliveryId: number | null;
+  deliveryNumber: string;
+  supplierName: string;
+  lineCount: number;
+  totalQuantity: number;
+  skippedItems: string[];
+  message: string;
+}
+
 export interface ReconciliationReport {
   periodLabel: string | null;
   periodStart: string;

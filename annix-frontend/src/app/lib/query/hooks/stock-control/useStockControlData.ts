@@ -918,6 +918,12 @@ export const useAnalyzeStockTakeReconciliation = createMutationHook(
     ),
 );
 
+export const useCreateReconciliationDelivery = createMutationHook(
+  (vars: { file: File; invoice: string; receivedDate: string }) =>
+    stockControlApiClient.createReconciliationDelivery(vars.file, vars.invoice, vars.receivedDate),
+  [stockControlKeys.inventory.all],
+);
+
 export function useStockControlSuppliers() {
   return useQuery<StockControlSupplierDto[]>({
     queryKey: stockControlKeys.suppliers.list(),

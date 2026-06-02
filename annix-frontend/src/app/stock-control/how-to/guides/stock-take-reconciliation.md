@@ -19,7 +19,7 @@ It answers two questions you previously had to chase by hand:
 1. **Which documents are missing in the app?** Every invoice/delivery number on your sheet is checked against the app's delivery notes and supplier invoices. Anything on the sheet with no match is flagged.
 2. **Why do my counts differ?** For each item it compares the sheet's intake and issues against the app's recorded deliveries and issuances, so a variance can be traced to a missing invoice, a missing issue, an item that didn't match, or genuine shrinkage.
 
-It does **not** change any stock — it is a read-only analysis. (Creating the missing deliveries/issues from the report is a separate, upcoming step.)
+The analysis itself is read-only. From the **missing documents** list you can then create any delivery the app is missing in one click — this records the delivery and raises stock for its items (creating missing issuances is a planned follow-up).
 
 ## How the sheet is read
 
@@ -38,7 +38,7 @@ Nix detects the matrix layout automatically:
 4. Click **Analyse & Reconcile** and wait for the progress popup to finish.
 5. Review the results:
    - **Summary cards** — items, matched/unmatched, missing documents, intake gaps, issue gaps.
-   - **Missing documents** — invoices/deliveries on the sheet with no record in the app.
+   - **Missing documents** — invoices/deliveries on the sheet with no record in the app. Click **Create delivery** on any of these to record it (with confirmation); stock is increased by the quantities received against that invoice on the sheet.
    - **Item analysis** — per item, the sheet vs app intake and issues, the closing/count/diff, and flags. Tick *Show only items with discrepancies* to focus on problems.
 
 ## Reading the flags
@@ -51,6 +51,6 @@ Nix detects the matrix layout automatically:
 
 ## Rules and constraints
 
-- Read-only: reconciliation never changes stock quantities.
+- The analysis is read-only; the only action that changes data is **Create delivery**, which records a delivery note and raises stock for its items (it will not create a duplicate if that delivery number already exists).
 - Deliveries and issues are compared within the selected month only.
 - Document matching ignores spacing and punctuation (e.g. "INV 1338" matches "INV1338").

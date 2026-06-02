@@ -1,6 +1,7 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { StockControlApiClient } from "./base";
 import type {
+  CreateMissingDeliveryResult,
   ImportMatchRow,
   ImportResult,
   ImportUploadResponse,
@@ -101,6 +102,11 @@ declare module "./base" {
       periodStart: string,
       periodEnd: string,
     ): Promise<ReconciliationReport>;
+    createReconciliationDelivery(
+      file: File,
+      invoice: string,
+      receivedDate: string,
+    ): Promise<CreateMissingDeliveryResult>;
     autoCategorize(): Promise<{
       categorized: number;
       total: number;
@@ -289,6 +295,13 @@ proto.analyzeStockTakeReconciliation = async function (file, periodLabel, period
     periodLabel,
     periodStart,
     periodEnd,
+  });
+};
+
+proto.createReconciliationDelivery = async function (file, invoice, receivedDate) {
+  return this.uploadFile("/stock-control/reconciliation/create-delivery", file, {
+    invoice,
+    receivedDate,
   });
 };
 

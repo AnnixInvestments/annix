@@ -1,9 +1,11 @@
 import { Injectable, Logger } from "@nestjs/common";
+import { fromISO } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { ReferenceType } from "../entities/stock-movement.entity";
 import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
 import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
+import { DeliveryService } from "./delivery.service";
 import { ImportService } from "./import.service";
 
 export interface ReconciliationInvoiceRef {
@@ -72,6 +74,17 @@ export interface ReconciliationItemAnalysis {
   flags: ReconciliationFlag[];
 }
 
+export interface CreateMissingDeliveryResult {
+  created: boolean;
+  deliveryId: number | null;
+  deliveryNumber: string;
+  supplierName: string;
+  lineCount: number;
+  totalQuantity: number;
+  skippedItems: string[];
+  message: string;
+}
+
 export interface ReconciliationReport {
   periodLabel: string | null;
   periodStart: string;
@@ -116,6 +129,7 @@ export class StockTakeReconciliationService {
     private readonly deliveryNoteRepo: DeliveryNoteRepository,
     private readonly supplierInvoiceRepo: SupplierInvoiceRepository,
     private readonly importService: ImportService,
+    private readonly deliveryService: DeliveryService,
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
@@ -516,6 +530,98 @@ export class StockTakeReconciliationService {
     );
 
     return checks;
+  }
+
+  async createMissingDelivery(
+    companyId: number,
+    buffer: Buffer,
+    invoice: string,
+    receivedDate: string,
+    receivedBy: string | null,
+  ): Promise<CreateMissingDeliveryResult> {
+    const parsed = await this.parseMatrix(buffer);
+    const targetNorm = this.normalizeRef(invoice);
+    const ref = parsed.invoiceRefs.find((r) => this.normalizeRef(r.invoice) === targetNorm);
+    if (!ref) {
+      return {
+        created: false,
+        deliveryId: null,
+        deliveryNumber: invoice,
+        supplierName: "",
+        lineCount: 0,
+        totalQuantity: 0,
+        skippedItems: [],
+        message: `Invoice ${invoice} was not found on the sheet.`,
+      };
+    }
+
+    const lines = parsed.items
+      .map((item) => {
+        const entry = item.intakeByInvoice.find((e) => this.normalizeRef(e.invoice) === targetNorm);
+        return entry === undefined ? null : { item, quantity: entry.quantity };
+      })
+      .filter(
+        (line): line is { item: ParsedReconciliationItem; quantity: number } => line !== null,
+      );
+
+    const matches = await this.importService.matchRowsToInventory(
+      companyId,
+      lines.map((line) => ({
+        sku: line.item.sku ?? undefined,
+        name: line.item.name ?? undefined,
+        quantity: line.quantity,
+      })),
+    );
+    const matchByIndex = new Map(matches.map((m) => [m.index, m]));
+
+    const deliveryItems = lines
+      .map((line, index) => {
+        const matched = matchByIndex.get(index)?.match ?? null;
+        return matched === null
+          ? null
+          : { stockItemId: matched.id, quantityReceived: line.quantity };
+      })
+      .filter(
+        (entry): entry is { stockItemId: number; quantityReceived: number } => entry !== null,
+      );
+    const skippedItems = lines
+      .filter((line, index) => (matchByIndex.get(index)?.match ?? null) === null)
+      .map((line) => line.item.name ?? line.item.sku ?? "Unknown item");
+
+    if (deliveryItems.length === 0) {
+      return {
+        created: false,
+        deliveryId: null,
+        deliveryNumber: ref.invoice,
+        supplierName: ref.supplier ?? "",
+        lineCount: 0,
+        totalQuantity: 0,
+        skippedItems,
+        message: "None of the items on this invoice could be matched to existing stock items.",
+      };
+    }
+
+    const supplierName = ref.supplier ?? "Unknown supplier";
+    const delivery = await this.deliveryService.create(companyId, {
+      deliveryNumber: ref.invoice,
+      supplierName,
+      receivedDate: receivedDate === "" ? null : fromISO(receivedDate).toJSDate(),
+      notes: "Created from stock-take reconciliation",
+      receivedBy: receivedBy ?? undefined,
+      items: deliveryItems,
+    });
+    const totalQuantity = deliveryItems.reduce((sum, item) => sum + item.quantityReceived, 0);
+
+    return {
+      created: true,
+      deliveryId: delivery.id,
+      deliveryNumber: ref.invoice,
+      supplierName,
+      lineCount: deliveryItems.length,
+      totalQuantity,
+      skippedItems,
+      message: `Created delivery ${ref.invoice} with ${deliveryItems.length} item(s).`,
+    };
   }
 
   private normalizeRef(value: string | null | undefined): string {

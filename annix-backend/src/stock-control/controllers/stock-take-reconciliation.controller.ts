@@ -42,4 +42,21 @@ export class StockTakeReconciliationController {
       body.periodEnd ?? "",
     );
   }
+
+  @Post("create-delivery")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({ summary: "Create a missing delivery from a stock-take invoice column" })
+  async createDelivery(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { invoice?: string; receivedDate?: string },
+    @Req() req: any,
+  ) {
+    return this.reconciliationService.createMissingDelivery(
+      req.user.companyId,
+      file.buffer,
+      body.invoice ?? "",
+      body.receivedDate ?? "",
+      req.user.name ?? null,
+    );
+  }
 }

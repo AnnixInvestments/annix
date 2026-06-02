@@ -5,12 +5,17 @@ import { useMemo, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
+  ReconciliationDocumentCheck,
   ReconciliationFlag,
   ReconciliationItemAnalysis,
   ReconciliationReport,
 } from "@/app/lib/api/stockControlApi";
 import { DateTime, monthEndPeriodOptions } from "@/app/lib/datetime";
-import { useAnalyzeStockTakeReconciliation } from "@/app/lib/query/hooks";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
+import {
+  useAnalyzeStockTakeReconciliation,
+  useCreateReconciliationDelivery,
+} from "@/app/lib/query/hooks";
 
 const FLAG_LABELS: Record<ReconciliationFlag, { label: string; className: string }> = {
   UNMATCHED_ITEM: { label: "Unmatched", className: "bg-gray-200 text-gray-700" },
@@ -30,11 +35,67 @@ export default function ReconcilePage() {
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [issuesOnly, setIssuesOnly] = useState(true);
+  const [createdInvoices, setCreatedInvoices] = useState<Set<string>>(new Set());
+  const [creatingInvoice, setCreatingInvoice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const analyzeMutation = useAnalyzeStockTakeReconciliation();
+  const createDeliveryMutation = useCreateReconciliationDelivery();
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const isAnalyzing = analyzeMutation.isPending;
+
+  const handleCreateDelivery = async (doc: ReconciliationDocumentCheck) => {
+    if (!file || report === null) return;
+    const supplierSuffix = doc.supplier === null ? "" : ` from ${doc.supplier}`;
+    const confirmed = await confirm({
+      title: `Create delivery ${doc.invoice}?`,
+      message: `This records delivery ${doc.invoice}${supplierSuffix} and increases stock for the items received against it on the sheet. Continue?`,
+      confirmLabel: "Create delivery",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+
+    setCreatingInvoice(doc.invoice);
+    setError(null);
+    try {
+      const result = await createDeliveryMutation.mutateAsync({
+        file,
+        invoice: doc.invoice,
+        receivedDate: report.periodEnd,
+      });
+      if (result.created) {
+        setCreatedInvoices((prev) => {
+          const next = new Set(prev);
+          next.add(doc.invoice);
+          return next;
+        });
+        const skippedNote =
+          result.skippedItems.length === 0
+            ? ""
+            : ` ${result.skippedItems.length} item(s) had no stock match and were skipped.`;
+        await confirm({
+          title: "Delivery created",
+          message: `${result.message} Stock increased by ${result.totalQuantity} unit(s) across ${result.lineCount} item(s).${skippedNote}`,
+          confirmLabel: "Done",
+          hideCancel: true,
+          variant: "info",
+        });
+      } else {
+        await confirm({
+          title: "Could not create delivery",
+          message: result.message,
+          confirmLabel: "OK",
+          hideCancel: true,
+          variant: "warning",
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create the delivery");
+    } finally {
+      setCreatingInvoice(null);
+    }
+  };
 
   const handleAnalyze = async () => {
     if (!file) return;
@@ -81,6 +142,7 @@ export default function ReconcilePage() {
     setFile(null);
     setReport(null);
     setError(null);
+    setCreatedInvoices(new Set());
   };
 
   return (
@@ -194,8 +256,12 @@ export default function ReconcilePage() {
           issuesOnly={issuesOnly}
           onToggleIssuesOnly={() => setIssuesOnly((v) => !v)}
           onReset={reset}
+          createdInvoices={createdInvoices}
+          creatingInvoice={creatingInvoice}
+          onCreateDelivery={handleCreateDelivery}
         />
       )}
+      {ConfirmDialog}
     </div>
   );
 }
@@ -205,6 +271,9 @@ interface ResultProps {
   issuesOnly: boolean;
   onToggleIssuesOnly: () => void;
   onReset: () => void;
+  createdInvoices: Set<string>;
+  creatingInvoice: string | null;
+  onCreateDelivery: (doc: ReconciliationDocumentCheck) => void;
 }
 
 function ReconciliationResult(props: ResultProps) {
@@ -261,19 +330,38 @@ function ReconciliationResult(props: ResultProps) {
           </h3>
           <p className="text-xs text-gray-500 mb-3">
             These documents are referenced on your stock sheet but have no matching delivery or
-            supplier invoice captured in the app — likely the source of intake shortfalls.
+            supplier invoice captured in the app — likely the source of intake shortfalls. Click
+            "Create delivery" to record one from the sheet's quantities.
           </p>
           <div className="flex flex-wrap gap-2">
             {report.missingDocuments.map((doc) => {
               const supplier = doc.supplier;
+              const isCreated = props.createdInvoices.has(doc.invoice);
+              const isCreating = props.creatingInvoice === doc.invoice;
               return (
-                <span
+                <div
                   key={`${doc.invoice}-${supplier ?? ""}`}
-                  className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs text-red-800"
+                  className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs ${
+                    isCreated
+                      ? "border-green-200 bg-green-50 text-green-800"
+                      : "border-red-200 bg-red-50 text-red-800"
+                  }`}
                 >
                   <span className="font-medium">{doc.invoice}</span>
-                  {supplier ? <span className="text-red-500">· {supplier}</span> : null}
-                </span>
+                  {supplier ? <span className="opacity-70">· {supplier}</span> : null}
+                  {isCreated ? (
+                    <span className="font-semibold">✓ created</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => props.onCreateDelivery(doc)}
+                      disabled={isCreating}
+                      className="rounded bg-teal-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                    >
+                      {isCreating ? "Creating…" : "Create delivery"}
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
