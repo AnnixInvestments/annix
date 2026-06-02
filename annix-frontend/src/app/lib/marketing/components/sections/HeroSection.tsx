@@ -16,13 +16,13 @@ export function HeroSection(props: { hero: MarketingHero }) {
             className="absolute inset-0"
             style={{
               backgroundImage:
-                "linear-gradient(90deg, var(--brand-grad-from) 0%, color-mix(in srgb, var(--brand-grad-from) 55%, transparent) 42%, transparent 72%)",
+                "linear-gradient(90deg, #0a1733 0%, color-mix(in srgb, #0a1733 55%, transparent) 42%, transparent 72%)",
             }}
           />
           <div
             className="absolute inset-x-0 bottom-0 h-40"
             style={{
-              backgroundImage: "linear-gradient(180deg, transparent, var(--brand-grad-from))",
+              backgroundImage: "linear-gradient(180deg, transparent, #0a1733)",
             }}
           />
         </>

@@ -13,10 +13,13 @@ export function MarketingShell(props: { content: MarketingSiteContent; children:
     <BrandingProvider brand={MASTER_BRAND_CODE} surface={false}>
       <div
         className="relative min-h-screen overflow-hidden text-white"
-        style={{
-          backgroundImage:
-            "linear-gradient(180deg, var(--brand-grad-from), var(--brand-grad-via) 45%, var(--brand-grad-to))",
-        }}
+        style={
+          {
+            "--site-navy": "#0a1733",
+            backgroundColor: "#0a1733",
+            backgroundImage: "linear-gradient(180deg, #0b1b3a 0%, #0a1733 45%, #070f24 100%)",
+          } as React.CSSProperties
+        }
       >
         <MarketingNav products={content.ecosystem.products} />
         <main>{props.children}</main>
