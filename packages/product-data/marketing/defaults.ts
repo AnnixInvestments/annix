@@ -310,6 +310,7 @@ export function defaultMarketingContent(): MarketingSiteContent {
         { iconSlot: "Boxes", title: "Scalable", subtitle: "Secure. Reliable." },
         { iconSlot: "LineChart", title: "AI", subtitle: "Built in" },
       ],
+      imageUrl: null,
       globalReachTitle: "Global reach. Local excellence.",
       globalReachBody:
         "Headquartered in South Africa, delivering world-class software solutions to businesses across the globe.",

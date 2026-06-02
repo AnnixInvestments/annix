@@ -4,9 +4,26 @@ import { MarketingIcon } from "../MarketingIcon";
 
 export function HeroSection(props: { hero: MarketingHero }) {
   const hero = props.hero;
+  const imageUrl = hero.imageUrl ? hero.imageUrl : "";
   return (
     <section className="relative overflow-hidden px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:pb-24 lg:pt-36">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
+      {imageUrl ? (
+        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 lg:block">
+          <img
+            src={imageUrl}
+            alt=""
+            className="h-full w-full object-cover object-left opacity-90"
+          />
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage: "linear-gradient(90deg, var(--brand-grad-from), transparent 35%)",
+            }}
+          />
+        </div>
+      ) : null}
+
+      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
         <div>
           <p
             className="text-xs font-semibold uppercase tracking-[0.2em] sm:text-sm"
@@ -14,11 +31,8 @@ export function HeroSection(props: { hero: MarketingHero }) {
           >
             {hero.eyebrow}
           </p>
-          <h1
-            className="mt-5 text-4xl font-bold leading-tight text-white sm:text-5xl lg:text-6xl"
-            style={{ fontFamily: "var(--brand-font-display)" }}
-          >
-            {hero.headlineLead} <span className="text-white/90">{hero.headlineEmphasis}</span>
+          <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl">
+            {hero.headlineLead} <span className="text-white/85">{hero.headlineEmphasis}</span>
           </h1>
           <p className="mt-6 max-w-xl text-base text-white/70 sm:text-lg">{hero.subheading}</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -57,20 +71,23 @@ export function HeroSection(props: { hero: MarketingHero }) {
         </div>
 
         <div className="relative">
-          <div className="relative mx-auto aspect-square w-full max-w-md">
-            <div
-              className="absolute inset-0 rounded-full opacity-90"
-              style={{
-                backgroundImage:
-                  "radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--brand-accent) 28%, transparent), transparent 55%), radial-gradient(circle at 70% 70%, rgba(56,120,220,0.35), transparent 60%), radial-gradient(circle at 50% 50%, rgba(20,40,80,0.9), rgba(8,16,32,0.95))",
-                boxShadow: "0 0 120px rgba(40,90,180,0.25)",
-              }}
-            />
-            <div className="absolute inset-6 rounded-full border border-white/10" />
-            <div className="absolute inset-16 rounded-full border border-white/10" />
-            <div className="absolute inset-0 rounded-full border border-white/5" />
-          </div>
-          <div className="mt-6 rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur lg:absolute lg:bottom-2 lg:right-0 lg:mt-0 lg:max-w-xs">
+          {imageUrl ? (
+            <img src={imageUrl} alt="" className="mx-auto w-full max-w-md lg:hidden" />
+          ) : (
+            <div className="relative mx-auto aspect-square w-full max-w-md">
+              <div
+                className="absolute inset-0 rounded-full opacity-90"
+                style={{
+                  backgroundImage:
+                    "radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--brand-accent) 28%, transparent), transparent 55%), radial-gradient(circle at 70% 70%, rgba(56,120,220,0.35), transparent 60%), radial-gradient(circle at 50% 50%, rgba(20,40,80,0.9), rgba(8,16,32,0.95))",
+                  boxShadow: "0 0 120px rgba(40,90,180,0.25)",
+                }}
+              />
+              <div className="absolute inset-6 rounded-full border border-white/10" />
+              <div className="absolute inset-16 rounded-full border border-white/10" />
+            </div>
+          )}
+          <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur lg:absolute lg:bottom-2 lg:right-0 lg:mt-0 lg:max-w-xs">
             <div className="text-base font-semibold text-white">{hero.globalReachTitle}</div>
             <div className="mt-2 h-0.5 w-10" style={{ backgroundColor: "var(--brand-accent)" }} />
             <p className="mt-3 text-sm text-white/60">{hero.globalReachBody}</p>

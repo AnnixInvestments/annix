@@ -17,6 +17,7 @@ export interface MarketingHero {
   primaryCta: MarketingCta;
   secondaryCta: MarketingCta;
   highlights: MarketingHighlight[];
+  imageUrl: string | null;
   globalReachTitle: string;
   globalReachBody: string;
 }

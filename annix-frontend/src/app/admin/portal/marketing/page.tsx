@@ -540,6 +540,46 @@ export default function MarketingCmsPage() {
                 })
               }
             />
+            <div>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Hero background / globe image
+              </span>
+              <div className="flex items-center gap-3">
+                {hero.imageUrl ? (
+                  <img
+                    src={hero.imageUrl}
+                    alt=""
+                    className="h-16 w-28 rounded-lg border border-gray-200 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                    No image
+                  </div>
+                )}
+                <ImageUploadButton
+                  label="Upload image"
+                  onUploaded={(url) =>
+                    update((d) => {
+                      d.hero.imageUrl = url;
+                    })
+                  }
+                  onError={(m) => showToast(m, "error")}
+                />
+                {hero.imageUrl ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update((d) => {
+                        d.hero.imageUrl = null;
+                      })
+                    }
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </div>
             <div className="space-y-2">
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Highlights
