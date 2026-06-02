@@ -35,7 +35,7 @@ import { RemotiveService } from "./remotive.service";
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
-const ADZUNA_CATEGORIES_PER_DAY = 5;
+const ADZUNA_CATEGORIES_PER_DAY = 29;
 const ADZUNA_MAX_DAYS_OLD = 21;
 const CRAWL_MAX_PAGES_PER_RUN = 150;
 const ADZUNA_ZA_CATEGORIES = [
