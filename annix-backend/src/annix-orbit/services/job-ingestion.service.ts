@@ -39,6 +39,7 @@ const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
 const ADZUNA_CATEGORIES_PER_DAY = 29;
 const ADZUNA_MAX_DAYS_OLD = 21;
+const UPSERT_BATCH_SIZE = 50;
 const CRAWL_MAX_PAGES_PER_RUN = 150;
 const ADZUNA_ZA_CATEGORIES = [
   "accounting-finance-jobs",
@@ -212,7 +213,18 @@ export class JobIngestionService {
         try {
           const jobs = await this.fetchJobsFromProvider(source, country, category ?? null);
 
-          const result = await this.upsertJobs(jobs, source, country, { vetInline });
+          const result = await chunk(jobs, UPSERT_BATCH_SIZE).reduce(
+            async (batchAccPromise, batch) => {
+              const batchAcc = await batchAccPromise;
+              const batchResult = await this.upsertJobs(batch, source, country, { vetInline });
+              return {
+                ingested: batchAcc.ingested + batchResult.ingested,
+                skipped: batchAcc.skipped + batchResult.skipped,
+                savedIds: [...batchAcc.savedIds, ...batchResult.savedIds],
+              };
+            },
+            Promise.resolve({ ingested: 0, skipped: 0, savedIds: [] as number[] }),
+          );
           return {
             ingested: acc.ingested + result.ingested,
             skipped: acc.skipped + result.skipped,
