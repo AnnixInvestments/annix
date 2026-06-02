@@ -19,17 +19,31 @@ export function mergeMarketingDefaults(
     isArray(value) ? value : undefined,
   ) as MarketingSiteContent;
   merged.industries.items.forEach((item) => {
-    if (item.imageUrl === undefined) {
+    if (!item.imageUrl) {
       const def = base.industries.items.find((entry) => entry.slug === item.slug);
-      const defImage = def ? def.imageUrl : null;
-      item.imageUrl = defImage;
+      if (def?.imageUrl) {
+        item.imageUrl = def.imageUrl;
+      }
+    }
+  });
+  const haveIndustrySlugs = new Set(merged.industries.items.map((entry) => entry.slug));
+  base.industries.items.forEach((def) => {
+    if (!haveIndustrySlugs.has(def.slug)) {
+      merged.industries.items.push(def);
     }
   });
   merged.ecosystem.products.forEach((product) => {
-    if (product.imageUrl === undefined) {
+    if (!product.imageUrl) {
       const def = base.ecosystem.products.find((entry) => entry.detailSlug === product.detailSlug);
-      const defImage = def ? def.imageUrl : null;
-      product.imageUrl = defImage;
+      if (def?.imageUrl) {
+        product.imageUrl = def.imageUrl;
+      }
+    }
+  });
+  const haveProductSlugs = new Set(merged.ecosystem.products.map((entry) => entry.detailSlug));
+  base.ecosystem.products.forEach((def) => {
+    if (!haveProductSlugs.has(def.detailSlug)) {
+      merged.ecosystem.products.push(def);
     }
   });
   return merged;
