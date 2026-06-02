@@ -6,7 +6,7 @@ export function HeroSection(props: { hero: MarketingHero }) {
   const hero = props.hero;
   const imageUrl = hero.imageUrl ? hero.imageUrl : "";
   return (
-    <section className="relative overflow-hidden px-4 pb-16 pt-28 sm:px-6 lg:min-h-[680px] lg:px-8 lg:pb-24 lg:pt-36">
+    <section className="relative overflow-hidden px-4 pb-8 pt-28 sm:px-6 lg:px-8 lg:pb-10 lg:pt-32">
       {imageUrl ? (
         <>
           <div className="absolute inset-0">
@@ -20,7 +20,7 @@ export function HeroSection(props: { hero: MarketingHero }) {
             }}
           />
           <div
-            className="absolute inset-x-0 bottom-0 h-40"
+            className="absolute inset-x-0 bottom-0 h-24"
             style={{
               backgroundImage: "linear-gradient(180deg, transparent, #0a1733)",
             }}

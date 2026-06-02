@@ -4,7 +4,7 @@ import { ProductCard } from "../ProductCard";
 export function EcosystemSection(props: { ecosystem: MarketingEcosystem }) {
   const ecosystem = props.ecosystem;
   return (
-    <section id="ecosystem" className="px-4 py-20 sm:px-6 lg:px-8">
+    <section id="ecosystem" className="relative z-10 -mt-8 px-4 pb-20 sm:px-6 lg:-mt-28 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-2xl text-center">
           <p
