@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { type DeepPartial } from "../../lib/persistence/crud-repository";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { EducationRequirementDraft } from "../entities/education-requirement-draft.entity";
 import {
@@ -15,7 +16,10 @@ export class MongoEducationRequirementDraftRepository
   extends MongoCrudRepository<EducationRequirementDraft>
   implements EducationRequirementDraftRepository
 {
-  constructor(@InjectModel("EducationRequirementDraft") model: Model<EducationRequirementDraft>) {
+  constructor(
+    @InjectModel("EducationRequirementDraft", ORBIT_CONNECTION)
+    model: Model<EducationRequirementDraft>,
+  ) {
     super(model);
   }
 

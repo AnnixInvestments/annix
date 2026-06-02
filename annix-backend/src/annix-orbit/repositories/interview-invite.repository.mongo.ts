@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { InterviewInvite } from "../entities/interview-invite.entity";
 import { InterviewInviteRepository } from "./interview-invite.repository";
@@ -10,7 +11,7 @@ export class MongoInterviewInviteRepository
   extends MongoCrudRepository<InterviewInvite>
   implements InterviewInviteRepository
 {
-  constructor(@InjectModel("InterviewInvite") model: Model<InterviewInvite>) {
+  constructor(@InjectModel("InterviewInvite", ORBIT_CONNECTION) model: Model<InterviewInvite>) {
     super(model);
   }
 

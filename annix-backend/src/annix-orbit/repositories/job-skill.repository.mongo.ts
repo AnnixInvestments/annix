@@ -1,6 +1,7 @@
 import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { ClientSession, Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import {
   MongoTransactionContext,
@@ -15,7 +16,7 @@ export class MongoJobSkillRepository
   implements JobSkillRepository
 {
   constructor(
-    @InjectModel("JobSkill") model: Model<JobSkill>,
+    @InjectModel("JobSkill", ORBIT_CONNECTION) model: Model<JobSkill>,
     @Optional() session: ClientSession | null = null,
   ) {
     super(model, session);

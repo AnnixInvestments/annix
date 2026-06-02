@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobMarketSourceRepository } from "./job-market-source.repository";
@@ -10,7 +11,7 @@ export class MongoJobMarketSourceRepository
   extends MongoCrudRepository<JobMarketSource>
   implements JobMarketSourceRepository
 {
-  constructor(@InjectModel("JobMarketSource") model: Model<JobMarketSource>) {
+  constructor(@InjectModel("JobMarketSource", ORBIT_CONNECTION) model: Model<JobMarketSource>) {
     super(model);
   }
 

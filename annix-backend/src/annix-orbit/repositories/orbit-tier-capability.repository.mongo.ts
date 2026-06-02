@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { OrbitTierCapability } from "../entities/orbit-tier-capability.entity";
 import { OrbitTierCapabilityRepository } from "./orbit-tier-capability.repository";
@@ -10,7 +11,9 @@ export class MongoOrbitTierCapabilityRepository
   extends MongoCrudRepository<OrbitTierCapability>
   implements OrbitTierCapabilityRepository
 {
-  constructor(@InjectModel("OrbitTierCapability") model: Model<OrbitTierCapability>) {
+  constructor(
+    @InjectModel("OrbitTierCapability", ORBIT_CONNECTION) model: Model<OrbitTierCapability>,
+  ) {
     super(model);
   }
 

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { GuardianLink } from "../entities/guardian-link.entity";
 import { GuardianLinkRepository } from "./guardian-link.repository";
@@ -10,7 +11,7 @@ export class MongoGuardianLinkRepository
   extends MongoCrudRepository<GuardianLink>
   implements GuardianLinkRepository
 {
-  constructor(@InjectModel("GuardianLink") model: Model<GuardianLink>) {
+  constructor(@InjectModel("GuardianLink", ORBIT_CONNECTION) model: Model<GuardianLink>) {
     super(model);
   }
 

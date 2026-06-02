@@ -1,6 +1,7 @@
 import { Injectable, NotImplementedException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
 import {
@@ -23,7 +24,7 @@ export class MongoExternalJobRepository
   extends MongoCrudRepository<ExternalJob>
   implements ExternalJobRepository
 {
-  constructor(@InjectModel("ExternalJob") model: Model<ExternalJob>) {
+  constructor(@InjectModel("ExternalJob", ORBIT_CONNECTION) model: Model<ExternalJob>) {
     super(model);
   }
 

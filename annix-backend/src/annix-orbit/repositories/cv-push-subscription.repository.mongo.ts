@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { CvPushSubscription } from "../entities/cv-push-subscription.entity";
 import { CvPushSubscriptionRepository } from "./cv-push-subscription.repository";
@@ -10,7 +11,9 @@ export class MongoCvPushSubscriptionRepository
   extends MongoCrudRepository<CvPushSubscription>
   implements CvPushSubscriptionRepository
 {
-  constructor(@InjectModel("CvPushSubscription") model: Model<CvPushSubscription>) {
+  constructor(
+    @InjectModel("CvPushSubscription", ORBIT_CONNECTION) model: Model<CvPushSubscription>,
+  ) {
     super(model);
   }
 

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { OrbitCredentialType } from "../entities/orbit-credential-type.entity";
 import { OrbitCredentialTypeRepository } from "./orbit-credential-type.repository";
@@ -10,7 +11,9 @@ export class MongoOrbitCredentialTypeRepository
   extends MongoCrudRepository<OrbitCredentialType>
   implements OrbitCredentialTypeRepository
 {
-  constructor(@InjectModel("OrbitCredentialType") model: Model<OrbitCredentialType>) {
+  constructor(
+    @InjectModel("OrbitCredentialType", ORBIT_CONNECTION) model: Model<OrbitCredentialType>,
+  ) {
     super(model);
   }
 

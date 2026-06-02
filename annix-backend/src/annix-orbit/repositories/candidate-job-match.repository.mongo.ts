@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
@@ -12,7 +13,7 @@ export class MongoCandidateJobMatchRepository
   extends MongoCrudRepository<CandidateJobMatch>
   implements CandidateJobMatchRepository
 {
-  constructor(@InjectModel("CandidateJobMatch") model: Model<CandidateJobMatch>) {
+  constructor(@InjectModel("CandidateJobMatch", ORBIT_CONNECTION) model: Model<CandidateJobMatch>) {
     super(model);
   }
 

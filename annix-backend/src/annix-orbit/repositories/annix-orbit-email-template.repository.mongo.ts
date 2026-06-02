@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import {
   AnnixOrbitEmailTemplate,
@@ -14,7 +15,7 @@ export class MongoAnnixOrbitEmailTemplateRepository
   implements AnnixOrbitEmailTemplateRepository
 {
   constructor(
-    @InjectModel("AnnixOrbitEmailTemplate")
+    @InjectModel("AnnixOrbitEmailTemplate", ORBIT_CONNECTION)
     model: Model<AnnixOrbitEmailTemplate>,
   ) {
     super(model);

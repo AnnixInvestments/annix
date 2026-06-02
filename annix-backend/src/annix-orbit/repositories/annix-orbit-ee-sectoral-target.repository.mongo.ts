@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { AnnixOrbitEeSectoralTarget } from "../entities/annix-orbit-ee-sectoral-target.entity";
 import { AnnixOrbitEeSectoralTargetRepository } from "./annix-orbit-ee-sectoral-target.repository";
@@ -11,7 +12,7 @@ export class MongoAnnixOrbitEeSectoralTargetRepository
   implements AnnixOrbitEeSectoralTargetRepository
 {
   constructor(
-    @InjectModel("AnnixOrbitEeSectoralTarget")
+    @InjectModel("AnnixOrbitEeSectoralTarget", ORBIT_CONNECTION)
     model: Model<AnnixOrbitEeSectoralTarget>,
   ) {
     super(model);

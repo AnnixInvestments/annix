@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { AnnixOrbitEeConsentTextVersion } from "../entities/annix-orbit-ee-consent-text-version.entity";
 import { AnnixOrbitEeConsentTextVersionRepository } from "./annix-orbit-ee-consent-text-version.repository";
@@ -11,7 +12,7 @@ export class MongoAnnixOrbitEeConsentTextVersionRepository
   implements AnnixOrbitEeConsentTextVersionRepository
 {
   constructor(
-    @InjectModel("AnnixOrbitEeConsentTextVersion")
+    @InjectModel("AnnixOrbitEeConsentTextVersion", ORBIT_CONNECTION)
     model: Model<AnnixOrbitEeConsentTextVersion>,
   ) {
     super(model);

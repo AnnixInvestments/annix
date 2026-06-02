@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { AnnixOrbitClient } from "../entities/annix-orbit-client.entity";
 import { AnnixOrbitClientRepository } from "./annix-orbit-client.repository";
@@ -10,7 +11,7 @@ export class MongoAnnixOrbitClientRepository
   extends MongoCrudRepository<AnnixOrbitClient>
   implements AnnixOrbitClientRepository
 {
-  constructor(@InjectModel("AnnixOrbitClient") model: Model<AnnixOrbitClient>) {
+  constructor(@InjectModel("AnnixOrbitClient", ORBIT_CONNECTION) model: Model<AnnixOrbitClient>) {
     super(model);
   }
 

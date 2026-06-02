@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { AdminModule } from "../admin/admin.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
+import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
@@ -69,32 +70,35 @@ import { EducationDraftReviewService } from "./services/education-draft-review.s
   imports: [
     ...(isMongoDriver()
       ? [
-          MongooseModule.forFeature([
-            { name: "EducationInstitution", schema: EducationInstitutionSchema },
-            { name: "EducationFaculty", schema: EducationFacultySchema },
-            { name: "EducationProgramme", schema: EducationProgrammeSchema },
-            {
-              name: "EducationRequirementVersion",
-              schema: EducationRequirementVersionSchema,
-            },
-            {
-              name: "EducationRequirementDraft",
-              schema: EducationRequirementDraftSchema,
-            },
-            {
-              name: "EducationExtractionCorrection",
-              schema: EducationExtractionCorrectionSchema,
-            },
-            {
-              name: "EducationAdmissionDistribution",
-              schema: EducationAdmissionDistributionSchema,
-            },
-            {
-              name: "EducationProgrammeOutcomeSignal",
-              schema: EducationProgrammeOutcomeSignalSchema,
-            },
-            { name: "EducationScholarship", schema: EducationScholarshipSchema },
-          ]),
+          MongooseModule.forFeature(
+            [
+              { name: "EducationInstitution", schema: EducationInstitutionSchema },
+              { name: "EducationFaculty", schema: EducationFacultySchema },
+              { name: "EducationProgramme", schema: EducationProgrammeSchema },
+              {
+                name: "EducationRequirementVersion",
+                schema: EducationRequirementVersionSchema,
+              },
+              {
+                name: "EducationRequirementDraft",
+                schema: EducationRequirementDraftSchema,
+              },
+              {
+                name: "EducationExtractionCorrection",
+                schema: EducationExtractionCorrectionSchema,
+              },
+              {
+                name: "EducationAdmissionDistribution",
+                schema: EducationAdmissionDistributionSchema,
+              },
+              {
+                name: "EducationProgrammeOutcomeSignal",
+                schema: EducationProgrammeOutcomeSignalSchema,
+              },
+              { name: "EducationScholarship", schema: EducationScholarshipSchema },
+            ],
+            ORBIT_CONNECTION,
+          ),
         ]
       : [
           TypeOrmModule.forFeature([

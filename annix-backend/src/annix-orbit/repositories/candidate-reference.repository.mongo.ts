@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { CandidateReference, ReferenceStatus } from "../entities/candidate-reference.entity";
 import { CandidateReferenceRepository } from "./candidate-reference.repository";
@@ -10,7 +11,9 @@ export class MongoCandidateReferenceRepository
   extends MongoCrudRepository<CandidateReference>
   implements CandidateReferenceRepository
 {
-  constructor(@InjectModel("CandidateReference") model: Model<CandidateReference>) {
+  constructor(
+    @InjectModel("CandidateReference", ORBIT_CONNECTION) model: Model<CandidateReference>,
+  ) {
     super(model);
   }
 

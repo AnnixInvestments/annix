@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { SalaryBenchmark } from "../entities/salary-benchmark.entity";
 import { SalaryBenchmarkRepository } from "./salary-benchmark.repository";
@@ -10,7 +11,7 @@ export class MongoSalaryBenchmarkRepository
   extends MongoCrudRepository<SalaryBenchmark>
   implements SalaryBenchmarkRepository
 {
-  constructor(@InjectModel("SalaryBenchmark") model: Model<SalaryBenchmark>) {
+  constructor(@InjectModel("SalaryBenchmark", ORBIT_CONNECTION) model: Model<SalaryBenchmark>) {
     super(model);
   }
 

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { SeekerApplyClick } from "../entities/seeker-apply-click.entity";
 import { SeekerApplyClickRepository } from "./seeker-apply-click.repository";
@@ -10,7 +11,7 @@ export class MongoSeekerApplyClickRepository
   extends MongoCrudRepository<SeekerApplyClick>
   implements SeekerApplyClickRepository
 {
-  constructor(@InjectModel("SeekerApplyClick") model: Model<SeekerApplyClick>) {
+  constructor(@InjectModel("SeekerApplyClick", ORBIT_CONNECTION) model: Model<SeekerApplyClick>) {
     super(model);
   }
 

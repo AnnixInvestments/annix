@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { InterviewBooking, InterviewBookingStatus } from "../entities/interview-booking.entity";
 import { InterviewBookingRepository } from "./interview-booking.repository";
@@ -10,7 +11,7 @@ export class MongoInterviewBookingRepository
   extends MongoCrudRepository<InterviewBooking>
   implements InterviewBookingRepository
 {
-  constructor(@InjectModel("InterviewBooking") model: Model<InterviewBooking>) {
+  constructor(@InjectModel("InterviewBooking", ORBIT_CONNECTION) model: Model<InterviewBooking>) {
     super(model);
   }
 

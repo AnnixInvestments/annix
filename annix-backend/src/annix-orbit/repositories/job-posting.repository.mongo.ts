@@ -1,6 +1,7 @@
 import { Injectable, Optional } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { ClientSession, Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import {
   MongoTransactionContext,
@@ -15,7 +16,8 @@ export class MongoJobPostingRepository
   implements JobPostingRepository
 {
   constructor(
-    @InjectModel("JobPosting") model: Model<JobPosting>,
+    @InjectModel("JobPosting", ORBIT_CONNECTION) model: Model<JobPosting>,
+    @InjectModel("Company") private readonly companyModel: Model<{ _id: number }>,
     @Optional() session: ClientSession | null = null,
   ) {
     super(model, session);
@@ -25,7 +27,7 @@ export class MongoJobPostingRepository
     if (!(context instanceof MongoTransactionContext)) {
       throw new Error("MongoJobPostingRepository requires a MongoTransactionContext");
     }
-    return new MongoJobPostingRepository(this.model, context.session);
+    return new MongoJobPostingRepository(this.model, this.companyModel, context.session);
   }
 
   async findByCompany(companyId: number, status?: string): Promise<JobPosting[]> {
@@ -64,12 +66,12 @@ export class MongoJobPostingRepository
   }
 
   async findByIdForCompanyWithCompany(id: number, companyId: number): Promise<JobPosting | null> {
-    const doc = await this.documents
-      .findOne({ _id: id, companyId })
-      .populate("company")
-      .lean()
-      .exec();
-    return this.toDomain(doc);
+    const doc = await this.documents.findOne({ _id: id, companyId }).lean().exec();
+    if (!doc) {
+      return null;
+    }
+    const company = await this.companyModel.findById(companyId).lean().exec();
+    return this.toDomain({ ...doc, company: company ?? null });
   }
 
   findByIdForCompanyWithWizardRelations(id: number, companyId: number): Promise<JobPosting | null> {

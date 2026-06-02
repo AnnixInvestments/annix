@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { EducationFaculty } from "../entities/education-faculty.entity";
 import { EducationFacultyRepository } from "./education-faculty.repository";
@@ -10,7 +11,7 @@ export class MongoEducationFacultyRepository
   extends MongoCrudRepository<EducationFaculty>
   implements EducationFacultyRepository
 {
-  constructor(@InjectModel("EducationFaculty") model: Model<EducationFaculty>) {
+  constructor(@InjectModel("EducationFaculty", ORBIT_CONNECTION) model: Model<EducationFaculty>) {
     super(model);
   }
 

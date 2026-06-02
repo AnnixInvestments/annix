@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { SeekerUsageCounter } from "../entities/seeker-usage-counter.entity";
 import { SeekerUsageCounterRepository } from "./seeker-usage-counter.repository";
@@ -10,7 +11,9 @@ export class MongoSeekerUsageCounterRepository
   extends MongoCrudRepository<SeekerUsageCounter>
   implements SeekerUsageCounterRepository
 {
-  constructor(@InjectModel("SeekerUsageCounter") model: Model<SeekerUsageCounter>) {
+  constructor(
+    @InjectModel("SeekerUsageCounter", ORBIT_CONNECTION) model: Model<SeekerUsageCounter>,
+  ) {
     super(model);
   }
 

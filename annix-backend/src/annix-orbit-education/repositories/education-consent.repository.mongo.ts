@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { EducationConsent } from "../entities/education-consent.entity";
 import { EducationConsentRepository } from "./education-consent.repository";
@@ -10,7 +11,7 @@ export class MongoEducationConsentRepository
   extends MongoCrudRepository<EducationConsent>
   implements EducationConsentRepository
 {
-  constructor(@InjectModel("EducationConsent") model: Model<EducationConsent>) {
+  constructor(@InjectModel("EducationConsent", ORBIT_CONNECTION) model: Model<EducationConsent>) {
     super(model);
   }
 

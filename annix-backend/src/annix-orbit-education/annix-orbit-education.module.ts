@@ -21,9 +21,11 @@ import { AnnixOrbitEeConsentTextVersionSchema } from "../annix-orbit/schemas/ann
 import { AnnixOrbitProfileSchema } from "../annix-orbit/schemas/annix-orbit-profile.schema";
 import { CandidateSchema } from "../annix-orbit/schemas/candidate.schema";
 import { isMongoDriver } from "../lib/persistence/database-driver";
+import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
+import { CompanySchema } from "../platform/schemas/company.schema";
 import { UserAppAccess } from "../rbac/entities/user-app-access.entity";
 import { UserAppAccessRepository } from "../rbac/rbac.repository";
 import { MongoUserAppAccessRepository } from "../rbac/rbac.repository.mongo";
@@ -128,45 +130,51 @@ import { GuardianLinkService } from "./services/guardian-link.service";
   imports: [
     ...(isMongoDriver()
       ? [
+          MongooseModule.forFeature(
+            [
+              { name: "EducationProfile", schema: EducationProfileSchema },
+              { name: "AcademicResult", schema: AcademicResultSchema },
+              { name: "GuardianLink", schema: GuardianLinkSchema },
+              { name: "EducationConsent", schema: EducationConsentSchema },
+              { name: "EducationAiAdviceLog", schema: EducationAiAdviceLogSchema },
+              { name: "EducationInstitution", schema: EducationInstitutionSchema },
+              { name: "EducationFaculty", schema: EducationFacultySchema },
+              { name: "EducationProgramme", schema: EducationProgrammeSchema },
+              {
+                name: "EducationRequirementVersion",
+                schema: EducationRequirementVersionSchema,
+              },
+              {
+                name: "EducationRequirementDraft",
+                schema: EducationRequirementDraftSchema,
+              },
+              {
+                name: "EducationAdmissionDistribution",
+                schema: EducationAdmissionDistributionSchema,
+              },
+              {
+                name: "EducationRecommendationSnapshot",
+                schema: EducationRecommendationSnapshotSchema,
+              },
+              { name: "EducationApplication", schema: EducationApplicationSchema },
+              { name: "EducationScholarship", schema: EducationScholarshipSchema },
+              {
+                name: "EducationProgrammeOutcomeSignal",
+                schema: EducationProgrammeOutcomeSignalSchema,
+              },
+              {
+                name: "AnnixOrbitEeConsentTextVersion",
+                schema: AnnixOrbitEeConsentTextVersionSchema,
+              },
+              { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
+              { name: "Candidate", schema: CandidateSchema },
+            ],
+            ORBIT_CONNECTION,
+          ),
           MongooseModule.forFeature([
-            { name: "EducationProfile", schema: EducationProfileSchema },
-            { name: "AcademicResult", schema: AcademicResultSchema },
-            { name: "GuardianLink", schema: GuardianLinkSchema },
-            { name: "EducationConsent", schema: EducationConsentSchema },
-            { name: "EducationAiAdviceLog", schema: EducationAiAdviceLogSchema },
-            { name: "EducationInstitution", schema: EducationInstitutionSchema },
-            { name: "EducationFaculty", schema: EducationFacultySchema },
-            { name: "EducationProgramme", schema: EducationProgrammeSchema },
-            {
-              name: "EducationRequirementVersion",
-              schema: EducationRequirementVersionSchema,
-            },
-            {
-              name: "EducationRequirementDraft",
-              schema: EducationRequirementDraftSchema,
-            },
-            {
-              name: "EducationAdmissionDistribution",
-              schema: EducationAdmissionDistributionSchema,
-            },
-            {
-              name: "EducationRecommendationSnapshot",
-              schema: EducationRecommendationSnapshotSchema,
-            },
-            { name: "EducationApplication", schema: EducationApplicationSchema },
-            { name: "EducationScholarship", schema: EducationScholarshipSchema },
-            {
-              name: "EducationProgrammeOutcomeSignal",
-              schema: EducationProgrammeOutcomeSignalSchema,
-            },
-            {
-              name: "AnnixOrbitEeConsentTextVersion",
-              schema: AnnixOrbitEeConsentTextVersionSchema,
-            },
-            { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
-            { name: "Candidate", schema: CandidateSchema },
             { name: "User", schema: UserSchema },
             { name: "UserAppAccess", schema: UserAppAccessSchema },
+            { name: "Company", schema: CompanySchema },
           ]),
         ]
       : []),

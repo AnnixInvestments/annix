@@ -3,7 +3,10 @@
   "apps": [
     {
       "name": "backend",
-      "start": { "mac": "./run-backend.sh", "windows": ".\\run-backend.ps1" },
+      "start": {
+        "mac": "./run-backend.sh",
+        "windows": ".\\run-backend.ps1"
+      },
       "readyPattern": "Nest application successfully started",
       "readyTimeoutMs": 360000,
       "port": 4001,
@@ -11,7 +14,10 @@
     },
     {
       "name": "frontend",
-      "start": { "mac": "./run-frontend.sh", "windows": ".\\run-frontend.ps1" },
+      "start": {
+        "mac": "./run-frontend.sh",
+        "windows": ".\\run-frontend.ps1"
+      },
       "readyPattern": "Ready in",
       "readyTimeoutMs": 120000,
       "port": 3000
@@ -42,7 +48,8 @@
       "localOverrides": {
         "FRONTEND_URL": "http://localhost:3000",
         "CORS_ORIGINS": "http://localhost:3000",
-        "EMAIL_DELIVERY_DISABLED": "true"
+        "EMAIL_DELIVERY_DISABLED": "true",
+        "ORBIT_MONGO_DATABASE": "orbit_staging"
       }
     },
     "test": {
@@ -68,7 +75,8 @@
       "localOverrides": {
         "FRONTEND_URL": "http://localhost:3000",
         "CORS_ORIGINS": "http://localhost:3000",
-        "EMAIL_DELIVERY_DISABLED": "true"
+        "EMAIL_DELIVERY_DISABLED": "true",
+        "ORBIT_MONGO_DATABASE": "orbit_test"
       }
     },
     "production": {
@@ -94,7 +102,8 @@
       "localOverrides": {
         "FRONTEND_URL": "http://localhost:3000",
         "CORS_ORIGINS": "http://localhost:3000",
-        "EMAIL_DELIVERY_DISABLED": "true"
+        "EMAIL_DELIVERY_DISABLED": "true",
+        "ORBIT_MONGO_DATABASE": "orbit_production"
       }
     }
   }

@@ -28,7 +28,9 @@ import { PostgresCustomerProfileRepository } from "../customer/customer-profile.
 import { CustomerProfile } from "../customer/entities/customer-profile.entity";
 import { CustomerProfileSchema } from "../customer/schemas/customer-profile.schema";
 import { isMongoDriver } from "../lib/persistence/database-driver";
+import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { CompanySchema } from "../platform/schemas/company.schema";
 import { App } from "../rbac/entities/app.entity";
 import { AppPermission } from "../rbac/entities/app-permission.entity";
 import { AppRole } from "../rbac/entities/app-role.entity";
@@ -83,16 +85,22 @@ import { SsoAdminController } from "./sso-admin.controller";
             { name: "App", schema: AppSchema },
             { name: "AppRole", schema: AppRoleSchema },
             { name: "UserAppAccess", schema: UserAppAccessSchema },
+            { name: "Company", schema: CompanySchema },
             { name: "CustomerProfile", schema: CustomerProfileSchema },
             { name: "SupplierProfile", schema: SupplierProfileSchema },
             { name: "StockControlProfile", schema: StockControlProfileSchema },
-            { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
             { name: "AnnixSentinelProfile", schema: AnnixSentinelProfileSchema },
             { name: "RepProfile", schema: RepProfileSchema },
             { name: "TeacherAssistantUser", schema: TeacherAssistantUserSchema },
             { name: "StockControlUser", schema: StockControlUserSchema },
-            { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
           ]),
+          MongooseModule.forFeature(
+            [
+              { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
+              { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
+            ],
+            ORBIT_CONNECTION,
+          ),
         ]
       : [
           TypeOrmModule.forFeature([

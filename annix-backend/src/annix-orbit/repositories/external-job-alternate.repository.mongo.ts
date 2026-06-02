@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { ExternalJobAlternate } from "../entities/external-job-alternate.entity";
 import { ExternalJobAlternateRepository } from "./external-job-alternate.repository";
@@ -10,7 +11,9 @@ export class MongoExternalJobAlternateRepository
   extends MongoCrudRepository<ExternalJobAlternate>
   implements ExternalJobAlternateRepository
 {
-  constructor(@InjectModel("ExternalJobAlternate") model: Model<ExternalJobAlternate>) {
+  constructor(
+    @InjectModel("ExternalJobAlternate", ORBIT_CONNECTION) model: Model<ExternalJobAlternate>,
+  ) {
     super(model);
   }
 

@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import {
   JobPostingPortalPosting,
@@ -14,7 +15,7 @@ export class MongoJobPostingPortalPostingRepository
   implements JobPostingPortalPostingRepository
 {
   constructor(
-    @InjectModel("JobPostingPortalPosting")
+    @InjectModel("JobPostingPortalPosting", ORBIT_CONNECTION)
     model: Model<JobPostingPortalPosting>,
   ) {
     super(model);

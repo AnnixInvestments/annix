@@ -1,13 +1,14 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { CvGeocodeCache } from "../entities/cv-geocode-cache.entity";
 import { CvGeocodeCacheRepository } from "./cv-geocode-cache.repository";
 
 @Injectable()
 export class MongoCvGeocodeCacheRepository implements CvGeocodeCacheRepository {
   constructor(
-    @InjectModel("CvGeocodeCache")
+    @InjectModel("CvGeocodeCache", ORBIT_CONNECTION)
     private readonly model: Model<Record<string, unknown>>,
   ) {}
 

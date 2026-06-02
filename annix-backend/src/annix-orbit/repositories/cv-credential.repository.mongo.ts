@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { CvCredential } from "../entities/cv-credential.entity";
 import { CvCredentialRepository } from "./cv-credential.repository";
@@ -10,7 +11,7 @@ export class MongoCvCredentialRepository
   extends MongoCrudRepository<CvCredential>
   implements CvCredentialRepository
 {
-  constructor(@InjectModel("CvCredential") model: Model<CvCredential>) {
+  constructor(@InjectModel("CvCredential", ORBIT_CONNECTION) model: Model<CvCredential>) {
     super(model);
   }
 

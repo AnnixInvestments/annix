@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { EducationProgrammeOutcomeSignal } from "../entities/education-programme-outcome-signal.entity";
 import { EducationProgrammeOutcomeSignalRepository } from "./education-programme-outcome-signal.repository";
@@ -11,7 +12,7 @@ export class MongoEducationProgrammeOutcomeSignalRepository
   implements EducationProgrammeOutcomeSignalRepository
 {
   constructor(
-    @InjectModel("EducationProgrammeOutcomeSignal")
+    @InjectModel("EducationProgrammeOutcomeSignal", ORBIT_CONNECTION)
     model: Model<EducationProgrammeOutcomeSignal>,
   ) {
     super(model);

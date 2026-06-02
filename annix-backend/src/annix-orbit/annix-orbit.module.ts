@@ -9,6 +9,7 @@ import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
+import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { LicensingModule } from "../licensing";
 import { MetricsModule } from "../metrics/metrics.module";
@@ -342,63 +343,68 @@ import { WorkforceNeedService } from "./services/workforce-need.service";
   imports: [
     ...(isMongoDriver()
       ? [
+          MongooseModule.forFeature(
+            [
+              { name: "JobPosting", schema: JobPostingSchema },
+              { name: "Candidate", schema: CandidateSchema },
+              { name: "CandidateReference", schema: CandidateReferenceSchema },
+              { name: "JobMarketSource", schema: JobMarketSourceSchema },
+              { name: "ExternalJob", schema: ExternalJobSchema },
+              { name: "ExternalJobAlternate", schema: ExternalJobAlternateSchema },
+              { name: "CandidateJobMatch", schema: CandidateJobMatchSchema },
+              { name: "CvPushSubscription", schema: CvPushSubscriptionSchema },
+              { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
+              {
+                name: "AnnixOrbitIndividualDocument",
+                schema: AnnixOrbitIndividualDocumentSchema,
+              },
+              { name: "AnnixOrbitCompany", schema: AnnixOrbitCompanySchema },
+              {
+                name: "AnnixOrbitCandidateEeAttributes",
+                schema: AnnixOrbitCandidateEeAttributesSchema,
+              },
+              {
+                name: "AnnixOrbitEeConsentTextVersion",
+                schema: AnnixOrbitEeConsentTextVersionSchema,
+              },
+              {
+                name: "AnnixOrbitEeDisclosureInvite",
+                schema: AnnixOrbitEeDisclosureInviteSchema,
+              },
+              {
+                name: "AnnixOrbitEeSectoralTarget",
+                schema: AnnixOrbitEeSectoralTargetSchema,
+              },
+              { name: "AnnixOrbitEmailTemplate", schema: AnnixOrbitEmailTemplateSchema },
+              { name: "InterviewSlot", schema: InterviewSlotSchema },
+              { name: "InterviewBooking", schema: InterviewBookingSchema },
+              { name: "InterviewInvite", schema: InterviewInviteSchema },
+              {
+                name: "JobPostingPortalPosting",
+                schema: JobPostingPortalPostingSchema,
+              },
+              { name: "JobSkill", schema: JobSkillSchema },
+              { name: "JobSuccessMetric", schema: JobSuccessMetricSchema },
+              { name: "JobScreeningQuestion", schema: JobScreeningQuestionSchema },
+              { name: "SalaryBenchmark", schema: SalaryBenchmarkSchema },
+              { name: "SeekerApplyClick", schema: SeekerApplyClickSchema },
+              { name: "SeekerMute", schema: SeekerMuteSchema },
+              { name: "SourceRespectRank", schema: SourceRespectRankSchema },
+              { name: "CvCredential", schema: CvCredentialSchema },
+              { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
+              { name: "OrbitTierCapability", schema: OrbitTierCapabilitySchema },
+              { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
+              { name: "CvEscoSkill", schema: CvEscoSkillSchema },
+              { name: "CvGeocodeCache", schema: CvGeocodeCacheSchema },
+              { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
+              { name: "AnnixOrbitClient", schema: AnnixOrbitClientSchema },
+              { name: "AnnixOrbitPlacement", schema: AnnixOrbitPlacementSchema },
+              { name: "AnnixOrbitTalentCandidate", schema: AnnixOrbitTalentCandidateSchema },
+              { name: "AnnixOrbitSubmission", schema: AnnixOrbitSubmissionSchema },
+            ],
+            ORBIT_CONNECTION,
+          ),
           MongooseModule.forFeature([
-            { name: "JobPosting", schema: JobPostingSchema },
-            { name: "Candidate", schema: CandidateSchema },
-            { name: "CandidateReference", schema: CandidateReferenceSchema },
-            { name: "AnnixOrbitClient", schema: AnnixOrbitClientSchema },
-            { name: "AnnixOrbitPlacement", schema: AnnixOrbitPlacementSchema },
-            { name: "AnnixOrbitTalentCandidate", schema: AnnixOrbitTalentCandidateSchema },
-            { name: "AnnixOrbitSubmission", schema: AnnixOrbitSubmissionSchema },
-            { name: "JobMarketSource", schema: JobMarketSourceSchema },
-            { name: "ExternalJob", schema: ExternalJobSchema },
-            { name: "ExternalJobAlternate", schema: ExternalJobAlternateSchema },
-            { name: "CandidateJobMatch", schema: CandidateJobMatchSchema },
-            { name: "CvPushSubscription", schema: CvPushSubscriptionSchema },
-            { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
-            {
-              name: "AnnixOrbitIndividualDocument",
-              schema: AnnixOrbitIndividualDocumentSchema,
-            },
-            { name: "AnnixOrbitCompany", schema: AnnixOrbitCompanySchema },
-            {
-              name: "AnnixOrbitCandidateEeAttributes",
-              schema: AnnixOrbitCandidateEeAttributesSchema,
-            },
-            {
-              name: "AnnixOrbitEeConsentTextVersion",
-              schema: AnnixOrbitEeConsentTextVersionSchema,
-            },
-            {
-              name: "AnnixOrbitEeDisclosureInvite",
-              schema: AnnixOrbitEeDisclosureInviteSchema,
-            },
-            {
-              name: "AnnixOrbitEeSectoralTarget",
-              schema: AnnixOrbitEeSectoralTargetSchema,
-            },
-            { name: "AnnixOrbitEmailTemplate", schema: AnnixOrbitEmailTemplateSchema },
-            { name: "InterviewSlot", schema: InterviewSlotSchema },
-            { name: "InterviewBooking", schema: InterviewBookingSchema },
-            { name: "InterviewInvite", schema: InterviewInviteSchema },
-            {
-              name: "JobPostingPortalPosting",
-              schema: JobPostingPortalPostingSchema,
-            },
-            { name: "JobSkill", schema: JobSkillSchema },
-            { name: "JobSuccessMetric", schema: JobSuccessMetricSchema },
-            { name: "JobScreeningQuestion", schema: JobScreeningQuestionSchema },
-            { name: "SalaryBenchmark", schema: SalaryBenchmarkSchema },
-            { name: "SeekerApplyClick", schema: SeekerApplyClickSchema },
-            { name: "SeekerMute", schema: SeekerMuteSchema },
-            { name: "SourceRespectRank", schema: SourceRespectRankSchema },
-            { name: "CvCredential", schema: CvCredentialSchema },
-            { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
-            { name: "OrbitTierCapability", schema: OrbitTierCapabilitySchema },
-            { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
-            { name: "CvEscoSkill", schema: CvEscoSkillSchema },
-            { name: "CvGeocodeCache", schema: CvGeocodeCacheSchema },
-            { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
             { name: "User", schema: UserSchema },
             { name: "Company", schema: CompanySchema },
             { name: "App", schema: AppSchema },

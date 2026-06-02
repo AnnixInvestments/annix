@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { SeekerMute } from "../entities/seeker-mute.entity";
 import { SeekerMuteRepository } from "./seeker-mute.repository";
@@ -14,7 +15,7 @@ export class MongoSeekerMuteRepository
   extends MongoCrudRepository<SeekerMute>
   implements SeekerMuteRepository
 {
-  constructor(@InjectModel("SeekerMute") model: Model<SeekerMute>) {
+  constructor(@InjectModel("SeekerMute", ORBIT_CONNECTION) model: Model<SeekerMute>) {
     super(model);
   }
 
