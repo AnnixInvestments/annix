@@ -10,6 +10,7 @@ const DESCRIPTIONS: Record<string, string> = {
   "inventory-stock": "View and manage all stock items, quantities, and locations",
   "inventory-stock-value": "Stock valuation report across all locations",
   "inventory-import": "Bulk import stock items from spreadsheets",
+  "stock-reconcile": "Reconcile a month-end stock sheet against app deliveries and issues",
   "inventory-identify": "Scan or photograph items to identify stock",
   "issue-stock": "Issue consumables, paint, and rubber to job cards or CPOs",
   returns: "Return paint, consumables, and rubber offcuts to stock",

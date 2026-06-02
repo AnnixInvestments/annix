@@ -9,6 +9,7 @@ import { EmailModule } from "../email/email.module";
 import { FlangeDimensionModule } from "../flange-dimension/flange-dimension.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { MetricsModule } from "../metrics/metrics.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixLearning } from "../nix/entities/nix-learning.entity";
 import { NixModule } from "../nix/nix.module";
@@ -63,6 +64,7 @@ import { RequisitionsController } from "./controllers/requisitions.controller";
 import { SearchController } from "./controllers/search.controller";
 import { SignatureController } from "./controllers/signature.controller";
 import { StaffController } from "./controllers/staff.controller";
+import { StockTakeReconciliationController } from "./controllers/stock-take-reconciliation.controller";
 import { SupplierController } from "./controllers/supplier.controller";
 import { SupplierDocumentController } from "./controllers/supplier-document.controller";
 import { WorkflowController } from "./controllers/workflow.controller";
@@ -528,6 +530,7 @@ import { SearchService } from "./services/search.service";
 import { SignatureService } from "./services/signature.service";
 import { StaffService } from "./services/staff.service";
 import { StockAllocationService } from "./services/stock-allocation.service";
+import { StockTakeReconciliationService } from "./services/stock-take-reconciliation.service";
 import { SupplierDocumentService } from "./services/supplier-document.service";
 import { WebPushService } from "./services/web-push.service";
 import { WorkflowAssignmentService } from "./services/workflow-assignment.service";
@@ -765,6 +768,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     }),
     QcModule,
     NixModule,
+    MetricsModule,
     NbOdLookupModule,
     PipeScheduleModule,
     RubberLiningModule,
@@ -782,6 +786,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     DeliveriesController,
     MovementsController,
     ImportController,
+    StockTakeReconciliationController,
     JobCardImportController,
     DashboardController,
     ReportsController,
@@ -819,6 +824,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     DeliveryService,
     MovementService,
     ImportService,
+    StockTakeReconciliationService,
     JobCardImportService,
     M2CalculationService,
     CoatingAnalysisService,

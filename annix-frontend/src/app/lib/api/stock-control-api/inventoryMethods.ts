@@ -4,6 +4,7 @@ import type {
   ImportMatchRow,
   ImportResult,
   ImportUploadResponse,
+  ReconciliationReport,
   ReviewedImportResult,
   ReviewedRow,
   StockItem,
@@ -94,6 +95,12 @@ declare module "./base" {
       stockTakePeriod?: string | null,
     ): Promise<ReviewedImportResult>;
     exportStockTakeVariances(variances: StockTakeVariance[]): Promise<Blob>;
+    analyzeStockTakeReconciliation(
+      file: File,
+      periodLabel: string,
+      periodStart: string,
+      periodEnd: string,
+    ): Promise<ReconciliationReport>;
     autoCategorize(): Promise<{
       categorized: number;
       total: number;
@@ -274,6 +281,14 @@ proto.exportStockTakeVariances = async function (variances) {
   return this.requestBlob("/stock-control/import/stock-take-variances/export", {
     method: "POST",
     body: JSON.stringify({ variances }),
+  });
+};
+
+proto.analyzeStockTakeReconciliation = async function (file, periodLabel, periodStart, periodEnd) {
+  return this.uploadFile("/stock-control/reconciliation/analyze", file, {
+    periodLabel,
+    periodStart,
+    periodEnd,
   });
 };
 

@@ -1112,6 +1112,7 @@ export {
   useAnalyzeCertificateDocument,
   useAnalyzeDeliveryNote,
   useAnalyzeDeliveryNotePhoto,
+  useAnalyzeStockTakeReconciliation,
   useApproveInvoice,
   useApproveOverAllocation,
   useApproveWorkflowStep,

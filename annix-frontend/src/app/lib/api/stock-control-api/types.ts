@@ -2927,3 +2927,58 @@ export interface SageJcDumpImportResult {
   totalCreated: number;
   totalMerged: number;
 }
+
+export type ReconciliationFlag =
+  | "UNMATCHED_ITEM"
+  | "INTAKE_MISMATCH"
+  | "ISSUE_MISMATCH"
+  | "COUNT_VARIANCE"
+  | "SHEET_MATH_MISMATCH";
+
+export interface ReconciliationDocumentCheck {
+  invoice: string;
+  supplier: string | null;
+  foundAs: "supplier_invoice" | "delivery_note" | null;
+  foundId: number | null;
+  status: "present" | "missing";
+}
+
+export interface ReconciliationItemAnalysis {
+  rowIndex: number;
+  name: string | null;
+  sku: string | null;
+  category: string | null;
+  matchedStockItemId: number | null;
+  matchedName: string | null;
+  matchConfidence: number;
+  sheetOpening: number;
+  sheetIntake: number;
+  sheetIssues: number;
+  sheetExpectedClosing: number;
+  sheetStatedClosing: number;
+  sheetActualCount: number | null;
+  sheetDiff: number | null;
+  sheetTotalValue: number | null;
+  appCurrentSoh: number | null;
+  appDeliveryTotal: number;
+  appIssueTotal: number;
+  flags: ReconciliationFlag[];
+}
+
+export interface ReconciliationReport {
+  periodLabel: string | null;
+  periodStart: string;
+  periodEnd: string;
+  itemCount: number;
+  totalInvoices: number;
+  missingDocuments: ReconciliationDocumentCheck[];
+  presentDocuments: ReconciliationDocumentCheck[];
+  items: ReconciliationItemAnalysis[];
+  unmatchedItemCount: number;
+  intakeMismatchCount: number;
+  issueMismatchCount: number;
+  countVarianceCount: number;
+  missingDocumentCount: number;
+  totalCountVarianceValue: number;
+  warnings: string[];
+}

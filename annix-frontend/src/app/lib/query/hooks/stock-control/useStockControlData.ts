@@ -908,6 +908,16 @@ export const useMatchImportRows = createMutationHook((rows: Record<string, unkno
   stockControlApiClient.matchImportRows(rows),
 );
 
+export const useAnalyzeStockTakeReconciliation = createMutationHook(
+  (vars: { file: File; periodLabel: string; periodStart: string; periodEnd: string }) =>
+    stockControlApiClient.analyzeStockTakeReconciliation(
+      vars.file,
+      vars.periodLabel,
+      vars.periodStart,
+      vars.periodEnd,
+    ),
+);
+
 export function useStockControlSuppliers() {
   return useQuery<StockControlSupplierDto[]>({
     queryKey: stockControlKeys.suppliers.list(),
