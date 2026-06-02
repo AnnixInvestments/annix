@@ -9,6 +9,8 @@ import { UserRepository } from "./user.repository";
 type UserRoleLink = { userId: number; userRoleId: number };
 type UserRoleRow = { _id: number; name: string };
 
+const NON_ORBIT_SCOPE_FILTER = { appScope: { $not: /^orbit:/ } };
+
 @Injectable()
 export class MongoUserRepository extends MongoCrudRepository<User> implements UserRepository {
   constructor(@InjectModel("User") model: Model<User>) {
@@ -84,7 +86,10 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
   }
 
   async findByEmailWithRoles(email: string): Promise<User | null> {
-    const doc = await this.documents.findOne({ email }).lean().exec();
+    const doc = await this.documents
+      .findOne({ email, ...NON_ORBIT_SCOPE_FILTER })
+      .lean()
+      .exec();
     return this.withRolesAttached(doc);
   }
 
@@ -133,7 +138,18 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
   }
 
   async findOneByEmail(email: string): Promise<User | null> {
-    const doc = await this.documents.findOne({ email }).lean().exec();
+    const doc = await this.documents
+      .findOne({ email, ...NON_ORBIT_SCOPE_FILTER })
+      .lean()
+      .exec();
+    return this.toDomain(doc);
+  }
+
+  async findOneByEmailAndScope(email: string, appScope: string): Promise<User | null> {
+    const doc = await this.documents
+      .findOne({ email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" }, appScope })
+      .lean()
+      .exec();
     return this.toDomain(doc);
   }
 
@@ -164,7 +180,10 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
 
   async findOneByEmailCaseInsensitive(email: string): Promise<User | null> {
     const doc = await this.documents
-      .findOne({ email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" } })
+      .findOne({
+        email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" },
+        ...NON_ORBIT_SCOPE_FILTER,
+      })
       .lean()
       .exec();
     return this.toDomain(doc);
@@ -172,7 +191,10 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
 
   async findOneByEmailCaseInsensitiveWithRoles(email: string): Promise<User | null> {
     const doc = await this.documents
-      .findOne({ email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" } })
+      .findOne({
+        email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" },
+        ...NON_ORBIT_SCOPE_FILTER,
+      })
       .lean()
       .exec();
     return this.withRolesAttached(doc);
@@ -181,7 +203,7 @@ export class MongoUserRepository extends MongoCrudRepository<User> implements Us
   async updateByEmailCaseInsensitive(email: string, changes: DeepPartial<User>): Promise<void> {
     await this.documents
       .updateMany(
-        { email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" } },
+        { email: { $regex: `^${escapeRegExp(email)}$`, $options: "i" }, ...NON_ORBIT_SCOPE_FILTER },
         { $set: changes },
       )
       .exec();

@@ -42,9 +42,59 @@ import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
+const ORBIT_SCOPE_BY_USER_TYPE: Record<AnnixOrbitUserType, string> = {
+  [AnnixOrbitUserType.COMPANY]: "orbit:company",
+  [AnnixOrbitUserType.RECRUITER]: "orbit:recruiter",
+  [AnnixOrbitUserType.INDIVIDUAL]: "orbit:seeker",
+  [AnnixOrbitUserType.STUDENT]: "orbit:student",
+};
+
+function parseOrbitUserType(value?: string | null): AnnixOrbitUserType | null {
+  if (value === AnnixOrbitUserType.COMPANY) return AnnixOrbitUserType.COMPANY;
+  if (value === AnnixOrbitUserType.RECRUITER) return AnnixOrbitUserType.RECRUITER;
+  if (value === AnnixOrbitUserType.INDIVIDUAL) return AnnixOrbitUserType.INDIVIDUAL;
+  if (value === AnnixOrbitUserType.STUDENT) return AnnixOrbitUserType.STUDENT;
+  return null;
+}
+
 @Injectable()
 export class AnnixOrbitAuthService {
   private readonly logger = new Logger(AnnixOrbitAuthService.name);
+
+  private orbitScope(userType: AnnixOrbitUserType): string {
+    return ORBIT_SCOPE_BY_USER_TYPE[userType];
+  }
+
+  private async assertOrbitAccountAvailable(
+    email: string,
+    userType: AnnixOrbitUserType,
+  ): Promise<void> {
+    const scope = this.orbitScope(userType);
+    const scopedExisting = await this.userRepo.findOneByEmailAndScope(email, scope);
+    if (scopedExisting) {
+      throw new ConflictException("Email already registered");
+    }
+    const legacy = await this.userRepo.findOneByEmail(email);
+    if (legacy) {
+      const legacyProfile = await this.profileRepo.findByUserId(legacy.id);
+      if (legacyProfile && this.orbitScope(legacyProfile.userType) === scope) {
+        throw new ConflictException("Email already registered");
+      }
+    }
+  }
+
+  private async resolveOrbitLoginUser(
+    email: string,
+    userType: AnnixOrbitUserType | null,
+  ): Promise<User | null> {
+    if (userType) {
+      const scoped = await this.userRepo.findOneByEmailAndScope(email, this.orbitScope(userType));
+      if (scoped) {
+        return scoped;
+      }
+    }
+    return this.userRepo.findOneByEmail(email);
+  }
 
   constructor(
     private readonly userRepo: UserRepository,
@@ -156,10 +206,7 @@ export class AnnixOrbitAuthService {
     city: string;
   }) {
     const { email, password, name, companyName, industry, companySize, province, city } = input;
-    const existing = await this.userRepo.findOneByEmail(email);
-    if (existing) {
-      throw new ConflictException("Email already registered");
-    }
+    await this.assertOrbitAccountAvailable(email, AnnixOrbitUserType.COMPANY);
 
     const passwordHash = await this.passwordService.hashSimple(password);
     const verificationToken = uuidv4();
@@ -179,6 +226,7 @@ export class AnnixOrbitAuthService {
       email,
       username: email,
       passwordHash,
+      appScope: this.orbitScope(AnnixOrbitUserType.COMPANY),
       firstName: name.split(" ")[0],
       lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
       status: "pending",
@@ -218,10 +266,7 @@ export class AnnixOrbitAuthService {
     city: string;
   }) {
     const { email, password, name, agencyName, province, city } = input;
-    const existing = await this.userRepo.findOneByEmail(email);
-    if (existing) {
-      throw new ConflictException("Email already registered");
-    }
+    await this.assertOrbitAccountAvailable(email, AnnixOrbitUserType.RECRUITER);
 
     const passwordHash = await this.passwordService.hashSimple(password);
     const verificationToken = uuidv4();
@@ -241,6 +286,7 @@ export class AnnixOrbitAuthService {
       email,
       username: email,
       passwordHash,
+      appScope: this.orbitScope(AnnixOrbitUserType.RECRUITER),
       firstName: name.split(" ")[0],
       lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
       status: "pending",
@@ -277,10 +323,7 @@ export class AnnixOrbitAuthService {
     name: string,
     eeDisclosure?: RegisterEeDisclosureDto,
   ) {
-    const existing = await this.userRepo.findOneByEmail(email);
-    if (existing) {
-      throw new ConflictException("Email already registered");
-    }
+    await this.assertOrbitAccountAvailable(email, AnnixOrbitUserType.INDIVIDUAL);
 
     const passwordHash = await this.passwordService.hashSimple(password);
     const verificationToken = uuidv4();
@@ -290,6 +333,7 @@ export class AnnixOrbitAuthService {
       email,
       username: email,
       passwordHash,
+      appScope: this.orbitScope(AnnixOrbitUserType.INDIVIDUAL),
       firstName: name.split(" ")[0],
       lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
       status: "pending",
@@ -326,10 +370,7 @@ export class AnnixOrbitAuthService {
     name: string,
     eeDisclosure?: RegisterEeDisclosureDto,
   ) {
-    const existing = await this.userRepo.findOneByEmail(email);
-    if (existing) {
-      throw new ConflictException("Email already registered");
-    }
+    await this.assertOrbitAccountAvailable(email, AnnixOrbitUserType.STUDENT);
 
     const passwordHash = await this.passwordService.hashSimple(password);
     const verificationToken = uuidv4();
@@ -339,6 +380,7 @@ export class AnnixOrbitAuthService {
       email,
       username: email,
       passwordHash,
+      appScope: this.orbitScope(AnnixOrbitUserType.STUDENT),
       firstName: name.split(" ")[0],
       lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
       status: "pending",
@@ -479,8 +521,8 @@ export class AnnixOrbitAuthService {
     return { message: "Password reset successfully. You can now sign in with your new password." };
   }
 
-  async login(email: string, password: string) {
-    const user = await this.userRepo.findOneByEmail(email);
+  async login(email: string, password: string, accountType?: string | null) {
+    const user = await this.resolveOrbitLoginUser(email, parseOrbitUserType(accountType));
     if (!user) {
       throw new UnauthorizedException("Invalid credentials");
     }

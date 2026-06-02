@@ -17,7 +17,12 @@ interface AnnixOrbitAuthState {
 }
 
 interface AnnixOrbitAuthContextType extends AnnixOrbitAuthState {
-  login: (email: string, password: string, rememberMe: boolean) => Promise<AnnixOrbitUserProfile>;
+  login: (
+    email: string,
+    password: string,
+    rememberMe: boolean,
+    accountType?: string | null,
+  ) => Promise<AnnixOrbitUserProfile>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
 }
@@ -86,12 +91,21 @@ export function AnnixOrbitAuthProvider(props: { children: ReactNode }) {
     checkAuth();
   }, [checkAuth]);
 
-  const login = async (email: string, password: string, rememberMe: boolean) => {
+  const login = async (
+    email: string,
+    password: string,
+    rememberMe: boolean,
+    accountType?: string | null,
+  ) => {
     setState((prev) => ({ ...prev, isLoading: true }));
 
     try {
       annixOrbitApiClient.setRememberMe(rememberMe);
-      const response = await annixOrbitApiClient.login({ email, password });
+      const response = await annixOrbitApiClient.login({
+        email,
+        password,
+        accountType: accountType || undefined,
+      });
 
       const profile = await annixOrbitApiClient.currentUser();
 

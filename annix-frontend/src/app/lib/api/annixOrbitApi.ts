@@ -5,6 +5,7 @@ import { API_BASE_URL } from "@/lib/api-config";
 export interface AnnixOrbitLoginDto {
   email: string;
   password: string;
+  accountType?: string;
 }
 
 export type AnnixOrbitUserType = "company" | "recruiter" | "individual" | "student";

@@ -12,11 +12,9 @@ import { EeDisclosureFields } from "./EeDisclosureFields";
 
 export function EeRegistrationStep(props: {
   submitting: boolean;
-  error: string | null;
   onComplete: (disclosure: RegisterEeDisclosurePayload | null) => void;
 }) {
   const submitting = props.submitting;
-  const error = props.error;
   const [form, setForm] = useState<EeDisclosureFormState>(DEFAULT_EE_FORM_STATE);
   const [purposesError, setPurposesError] = useState(false);
 
@@ -57,12 +55,6 @@ export function EeRegistrationStep(props: {
             .
           </p>
         </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-            {error}
-          </div>
-        )}
 
         <EeDisclosureFields value={form} onChange={setForm} purposesError={purposesError} />
 

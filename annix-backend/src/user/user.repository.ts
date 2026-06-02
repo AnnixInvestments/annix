@@ -10,6 +10,7 @@ export abstract class UserRepository extends CrudRepository<User> {
   abstract findByIdsWithRoles(ids: number[]): Promise<User[]>;
   abstract deleteById(id: number): Promise<number>;
   abstract findOneByEmail(email: string): Promise<User | null>;
+  abstract findOneByEmailAndScope(email: string, appScope: string): Promise<User | null>;
   abstract findByValidEmailVerificationToken(
     token: string,
     notExpiredAfter: Date,

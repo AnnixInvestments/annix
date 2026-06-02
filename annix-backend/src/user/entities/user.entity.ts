@@ -71,6 +71,14 @@ export class User {
   @Column({ nullable: true })
   oauthId?: string;
 
+  @ApiProperty({
+    description:
+      "Identity scope — which app/module owns this account (e.g. 'orbit:seeker'). Null = legacy shared account. The same email may hold one account per scope.",
+    example: "orbit:seeker",
+  })
+  @Column({ name: "app_scope", type: "varchar", length: 64, nullable: true })
+  appScope: string | null;
+
   @ApiProperty({ description: "User account status", example: "active" })
   @Column({ default: "active" })
   status: string;

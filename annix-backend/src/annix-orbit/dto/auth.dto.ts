@@ -141,6 +141,10 @@ export class LoginDto {
 
   @IsString()
   password: string;
+
+  @IsOptional()
+  @IsString()
+  accountType?: string;
 }
 
 export class ForgotPasswordDto {

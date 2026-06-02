@@ -2,11 +2,16 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { EeRegistrationStep } from "@/app/annix/orbit/components/EeRegistrationStep";
+import { parseRegistrationError } from "@/app/annix/orbit/config/registration-errors";
 import { annixOrbitApiClient, type RegisterEeDisclosurePayload } from "@/app/lib/api/annixOrbitApi";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 
 export default function AnnixOrbitRegisterStudentPage() {
+  const router = useRouter();
+  const { confirm, ConfirmDialog } = useConfirm();
   const [step, setStep] = useState<"account" | "ee">("account");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -14,23 +19,46 @@ export default function AnnixOrbitRegisterStudentPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [popiaConsent, setPopiaConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   const handleAccountSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
     setStep("ee");
   };
 
+  const presentRegistrationError = async (err: unknown) => {
+    const info = parseRegistrationError(err);
+    if (info.alreadyExists) {
+      const goSignIn = await confirm({
+        title: "Email already registered",
+        message: info.message,
+        confirmLabel: "Sign in",
+        cancelLabel: "Use a different email",
+        variant: "info",
+      });
+      if (goSignIn) {
+        router.push("/annix/orbit/login?type=student");
+      } else {
+        setStep("account");
+      }
+      return;
+    }
+    await confirm({
+      title: "Registration failed",
+      message: info.message,
+      confirmLabel: "OK",
+      hideCancel: true,
+      variant: "warning",
+    });
+  };
+
   const finishRegistration = async (eeDisclosure: RegisterEeDisclosurePayload | null) => {
-    setError(null);
     setIsLoading(true);
     try {
       await annixOrbitApiClient.registerStudent({ name, email, password, eeDisclosure });
       setSuccess(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      await presentRegistrationError(err);
     } finally {
       setIsLoading(false);
     }
@@ -76,7 +104,8 @@ export default function AnnixOrbitRegisterStudentPage() {
   if (step === "ee") {
     return (
       <div className="min-h-screen flex items-center justify-center px-4 py-12">
-        <EeRegistrationStep submitting={isLoading} error={error} onComplete={finishRegistration} />
+        <EeRegistrationStep submitting={isLoading} onComplete={finishRegistration} />
+        {ConfirmDialog}
       </div>
     );
   }
@@ -115,12 +144,6 @@ export default function AnnixOrbitRegisterStudentPage() {
           </div>
 
           <form onSubmit={handleAccountSubmit} className="space-y-5">
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-                {error}
-              </div>
-            )}
-
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
                 Full name

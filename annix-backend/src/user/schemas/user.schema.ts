@@ -49,6 +49,9 @@ export class User {
   @Prop({ type: String, required: false })
   oauthId: string;
 
+  @Prop({ type: String, required: false })
+  appScope: string;
+
   @Prop({ type: String, required: true })
   status: string;
 

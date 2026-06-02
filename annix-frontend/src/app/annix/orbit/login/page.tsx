@@ -61,7 +61,7 @@ function AnnixOrbitLoginContent() {
     setError(null);
 
     try {
-      const profile = await login(submitEmail, submitPassword, rememberMe);
+      const profile = await login(submitEmail, submitPassword, rememberMe, accountType);
       const mismatch = loginTypeMismatch(accountType, profile.userType);
       if (mismatch) {
         await logout().catch(() => {});

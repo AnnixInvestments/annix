@@ -54,7 +54,7 @@ export class AnnixOrbitAuthController {
 
   @Post("login")
   async login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto.email, dto.password, dto.accountType);
   }
 
   @Get("verify-email")
