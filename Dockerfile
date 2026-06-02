@@ -107,6 +107,8 @@ COPY --from=backend-builder /app/annix-backend/src/migrations ./annix-backend/sr
 COPY --from=backend-builder /app/annix-backend/tsconfig.json ./annix-backend/tsconfig.json
 COPY --from=backend-builder /app/annix-backend/migrate-mongo-config.ts ./annix-backend/migrate-mongo-config.ts
 COPY --from=backend-builder /app/annix-backend/migrations-mongo ./annix-backend/migrations-mongo
+COPY --from=backend-builder /app/annix-backend/migrate-mongo-orbit-config.ts ./annix-backend/migrate-mongo-orbit-config.ts
+COPY --from=backend-builder /app/annix-backend/migrations-mongo-orbit ./annix-backend/migrations-mongo-orbit
 
 # Frontend build output
 COPY --from=frontend-builder /app/annix-frontend/.next ./annix-frontend/.next
