@@ -296,6 +296,10 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
 
 export function defaultMarketingContent(): MarketingSiteContent {
   return {
+    site: {
+      logoUrl: null,
+      wordmark: "ANNIX INVESTMENTS",
+    },
     hero: {
       eyebrow: "Built in South Africa. Built for the world.",
       headlineLead: "Intelligent software for industries",

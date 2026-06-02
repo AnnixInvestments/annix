@@ -357,6 +357,7 @@ export default function MarketingCmsPage() {
   const status = statusQuery.data;
   const lastPublishedAt = status ? status.lastPublishedAt : null;
   const hasDraft = status ? status.hasDraft : false;
+  const site = content.site;
   const hero = content.hero;
   const ecosystem = content.ecosystem;
   const industries = content.industries;
@@ -441,6 +442,62 @@ export default function MarketingCmsPage() {
         <MarketingSitePreview content={content} />
       ) : (
         <>
+          <Section title="Brand & logo">
+            <div>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Company logo (nav + footer)
+              </span>
+              <div className="flex items-center gap-3">
+                {site.logoUrl ? (
+                  <img
+                    src={site.logoUrl}
+                    alt=""
+                    className="h-12 w-auto rounded border border-gray-200 bg-slate-900 px-2"
+                  />
+                ) : (
+                  <div className="flex h-12 w-28 items-center justify-center rounded border border-dashed border-gray-300 text-[10px] text-gray-400">
+                    Using brand logo
+                  </div>
+                )}
+                <ImageUploadButton
+                  label="Upload logo"
+                  onUploaded={(url) =>
+                    update((d) => {
+                      d.site.logoUrl = url;
+                    })
+                  }
+                  onError={(m) => showToast(m, "error")}
+                />
+                {site.logoUrl ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update((d) => {
+                        d.site.logoUrl = null;
+                      })
+                    }
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+              <p className="mt-1 text-xs text-gray-400">
+                Leave empty to use the Annix brand logo. The wordmark below shows if no logo is
+                available.
+              </p>
+            </div>
+            <Text
+              label="Company wordmark text"
+              value={site.wordmark}
+              onChange={(v) =>
+                update((d) => {
+                  d.site.wordmark = v;
+                })
+              }
+            />
+          </Section>
+
           <Section title="Hero">
             <Text
               label="Eyebrow"
@@ -775,6 +832,17 @@ export default function MarketingCmsPage() {
                         onChange={(v) =>
                           update((d) => {
                             d.industries.items[index].slug = v;
+                          })
+                        }
+                      />
+                    </div>
+                    <div className="mt-3">
+                      <Text
+                        label="Caption / text"
+                        value={item.blurb}
+                        onChange={(v) =>
+                          update((d) => {
+                            d.industries.items[index].blurb = v;
                           })
                         }
                       />

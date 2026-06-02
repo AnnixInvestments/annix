@@ -1,4 +1,7 @@
-import type { MarketingFooter as MarketingFooterContent } from "@annix/product-data/marketing";
+import type {
+  MarketingFooter as MarketingFooterContent,
+  MarketingSite,
+} from "@annix/product-data/marketing";
 import { Facebook, Instagram, Linkedin, type LucideIcon, Send, Youtube } from "lucide-react";
 import Link from "next/link";
 import { MARKETING_VERSION } from "@/app/config/marketing/version";
@@ -13,37 +16,35 @@ const SOCIAL_ICONS: Record<string, LucideIcon | undefined> = {
   Instagram,
 };
 
-function FooterBrand() {
+function FooterBrand(props: { site: MarketingSite }) {
   const branding = useBrandingContext();
+  const logoUrl = props.site.logoUrl ? props.site.logoUrl : "";
+  if (logoUrl) {
+    return <img src={logoUrl} alt={props.site.wordmark} className="h-8 w-auto" />;
+  }
   const hasLockup = branding ? brandHasAsset("logoLockup", branding) : false;
   if (branding && hasLockup) {
     return (
       <img
         src={resolveBrandAssetUrl("logoLockup", branding)}
-        alt="Annix Investments"
+        alt={props.site.wordmark}
         className="h-8 w-auto"
       />
     );
   }
-  return (
-    <span
-      className="text-xl font-bold tracking-tight text-white"
-      style={{ fontFamily: "var(--brand-font-display)" }}
-    >
-      ANNIX <span style={{ color: "var(--brand-accent)" }}>INVESTMENTS</span>
-    </span>
-  );
+  return <span className="text-xl font-bold tracking-tight text-white">{props.site.wordmark}</span>;
 }
 
-export function MarketingFooter(props: { footer: MarketingFooterContent }) {
+export function MarketingFooter(props: { footer: MarketingFooterContent; site: MarketingSite }) {
   const footer = props.footer;
+  const site = props.site;
   const year = now().year;
   return (
     <footer className="border-t border-white/10 px-4 py-14 text-white/70 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="grid grid-cols-2 gap-8 md:grid-cols-3 lg:grid-cols-6">
           <div className="col-span-2 lg:col-span-2">
-            <FooterBrand />
+            <FooterBrand site={site} />
             <p className="mt-3 max-w-xs text-sm text-white/50">{footer.tagline}</p>
           </div>
           {footer.columns.map((column) => (

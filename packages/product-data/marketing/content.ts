@@ -3,6 +3,11 @@ export interface MarketingCta {
   href: string;
 }
 
+export interface MarketingSite {
+  logoUrl: string | null;
+  wordmark: string;
+}
+
 export interface MarketingHighlight {
   iconSlot: string;
   title: string;
@@ -154,6 +159,7 @@ export interface MarketingAbout {
 }
 
 export interface MarketingSiteContent {
+  site: MarketingSite;
   hero: MarketingHero;
   ecosystem: MarketingEcosystem;
   industries: MarketingIndustries;

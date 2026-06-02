@@ -21,9 +21,9 @@ export function MarketingShell(props: { content: MarketingSiteContent; children:
           } as React.CSSProperties
         }
       >
-        <MarketingNav products={content.ecosystem.products} />
+        <MarketingNav products={content.ecosystem.products} site={content.site} />
         <main>{props.children}</main>
-        <MarketingFooter footer={content.footer} />
+        <MarketingFooter footer={content.footer} site={content.site} />
       </div>
     </BrandingProvider>
   );

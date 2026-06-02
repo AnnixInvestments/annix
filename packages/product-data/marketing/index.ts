@@ -20,6 +20,7 @@ export type {
   MarketingProductFeature,
   MarketingProductPage,
   MarketingProductRoi,
+  MarketingSite,
   MarketingSiteContent,
   MarketingSiteStatus,
   MarketingSocialLink,

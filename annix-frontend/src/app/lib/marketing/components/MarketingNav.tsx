@@ -1,6 +1,6 @@
 "use client";
 
-import type { MarketingProduct } from "@annix/product-data/marketing";
+import type { MarketingProduct, MarketingSite } from "@annix/product-data/marketing";
 import { ChevronDown, Globe, LogIn, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -15,25 +15,28 @@ const PRIMARY_LINKS = [
   { label: "Contact", href: "/contact" },
 ];
 
-function BrandMark() {
+function BrandMark(props: { site: MarketingSite }) {
   const branding = useBrandingContext();
+  const logoUrl = props.site.logoUrl ? props.site.logoUrl : "";
+  if (logoUrl) {
+    return <img src={logoUrl} alt={props.site.wordmark} className="h-8 w-auto sm:h-9" />;
+  }
   const hasLockup = branding ? brandHasAsset("logoLockup", branding) : false;
   if (branding && hasLockup) {
-    const url = resolveBrandAssetUrl("logoLockup", branding);
-    return <img src={url} alt="Annix Investments" className="h-8 w-auto sm:h-9" />;
+    return (
+      <img
+        src={resolveBrandAssetUrl("logoLockup", branding)}
+        alt={props.site.wordmark}
+        className="h-8 w-auto sm:h-9"
+      />
+    );
   }
-  return (
-    <span
-      className="text-xl font-bold tracking-tight text-white"
-      style={{ fontFamily: "var(--brand-font-display)" }}
-    >
-      ANNIX <span style={{ color: "var(--brand-accent)" }}>INVESTMENTS</span>
-    </span>
-  );
+  return <span className="text-xl font-bold tracking-tight text-white">{props.site.wordmark}</span>;
 }
 
-export function MarketingNav(props: { products: MarketingProduct[] }) {
+export function MarketingNav(props: { products: MarketingProduct[]; site: MarketingSite }) {
   const products = props.products;
+  const site = props.site;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -43,7 +46,7 @@ export function MarketingNav(props: { products: MarketingProduct[] }) {
     <header className="absolute inset-x-0 top-0 z-50">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-2">
-          <BrandMark />
+          <BrandMark site={site} />
         </Link>
 
         <div className="hidden items-center gap-1 lg:flex">
