@@ -21,7 +21,7 @@ export function EcosystemSection(props: { ecosystem: MarketingEcosystem }) {
           </h2>
           <p className="mt-3 text-base text-white/60">{ecosystem.subheading}</p>
         </div>
-        <div className="mt-14 grid gap-5 [grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))]">
+        <div className="mt-14 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           {ecosystem.products.map((product) => (
             <ProductCard key={`${product.appKey}-${product.detailSlug}`} product={product} />
           ))}
