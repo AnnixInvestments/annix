@@ -6,21 +6,26 @@ export function HeroSection(props: { hero: MarketingHero }) {
   const hero = props.hero;
   const imageUrl = hero.imageUrl ? hero.imageUrl : "";
   return (
-    <section className="relative overflow-hidden px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:pb-24 lg:pt-36">
+    <section className="relative overflow-hidden px-4 pb-16 pt-28 sm:px-6 lg:min-h-[680px] lg:px-8 lg:pb-24 lg:pt-36">
       {imageUrl ? (
-        <div className="pointer-events-none absolute inset-y-0 right-0 hidden w-1/2 lg:block">
-          <img
-            src={imageUrl}
-            alt=""
-            className="h-full w-full object-cover object-left opacity-90"
-          />
+        <>
+          <div className="absolute inset-0">
+            <img src={imageUrl} alt="" className="h-full w-full object-cover object-right" />
+          </div>
           <div
             className="absolute inset-0"
             style={{
-              backgroundImage: "linear-gradient(90deg, var(--brand-grad-from), transparent 35%)",
+              backgroundImage:
+                "linear-gradient(90deg, var(--brand-grad-from) 0%, color-mix(in srgb, var(--brand-grad-from) 55%, transparent) 42%, transparent 72%)",
             }}
           />
-        </div>
+          <div
+            className="absolute inset-x-0 bottom-0 h-40"
+            style={{
+              backgroundImage: "linear-gradient(180deg, transparent, var(--brand-grad-from))",
+            }}
+          />
+        </>
       ) : null}
 
       <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
@@ -54,7 +59,7 @@ export function HeroSection(props: { hero: MarketingHero }) {
             {hero.highlights.map((highlight) => (
               <div key={highlight.subtitle} className="flex items-center gap-3">
                 <span
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/15 bg-slate-900/40"
                   style={{ color: "var(--brand-accent)" }}
                 >
                   <MarketingIcon slot={highlight.iconSlot} className="h-4 w-4" />
@@ -70,10 +75,8 @@ export function HeroSection(props: { hero: MarketingHero }) {
           </div>
         </div>
 
-        <div className="relative">
-          {imageUrl ? (
-            <img src={imageUrl} alt="" className="mx-auto w-full max-w-md lg:hidden" />
-          ) : (
+        <div className="relative min-h-[220px]">
+          {imageUrl ? null : (
             <div className="relative mx-auto aspect-square w-full max-w-md">
               <div
                 className="absolute inset-0 rounded-full opacity-90"
@@ -87,7 +90,7 @@ export function HeroSection(props: { hero: MarketingHero }) {
               <div className="absolute inset-16 rounded-full border border-white/10" />
             </div>
           )}
-          <div className="mt-6 rounded-2xl border border-white/10 bg-slate-900/60 p-5 backdrop-blur lg:absolute lg:bottom-2 lg:right-0 lg:mt-0 lg:max-w-xs">
+          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-5 backdrop-blur lg:absolute lg:bottom-0 lg:right-0 lg:max-w-xs">
             <div className="text-base font-semibold text-white">{hero.globalReachTitle}</div>
             <div className="mt-2 h-0.5 w-10" style={{ backgroundColor: "var(--brand-accent)" }} />
             <p className="mt-3 text-sm text-white/60">{hero.globalReachBody}</p>
