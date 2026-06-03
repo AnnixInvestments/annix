@@ -26,4 +26,13 @@ export class MongoSeekerInterviewEventRepository
       .exec();
     return this.toDomainList(docs);
   }
+
+  async startingBetween(from: Date, to: Date): Promise<SeekerInterviewEvent[]> {
+    const docs = await this.documents
+      .find({ startsAt: { $gt: from, $lte: to } })
+      .sort({ startsAt: 1 })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
 }

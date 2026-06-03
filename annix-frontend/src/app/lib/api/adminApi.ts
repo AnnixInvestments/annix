@@ -1352,6 +1352,7 @@ export interface OrbitTierFeatures {
   viewSalaries: boolean;
   nixCvBuilder: boolean;
   jobListingSite: boolean;
+  multiChannelReminders?: boolean;
 }
 
 export interface OrbitTierCapability {

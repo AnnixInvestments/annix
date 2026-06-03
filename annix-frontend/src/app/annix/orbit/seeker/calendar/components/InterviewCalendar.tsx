@@ -12,6 +12,7 @@ import {
   useOrbitSeekerInterviewEvents,
   useOrbitUpdateSeekerInterviewEvent,
 } from "@/app/lib/query/hooks";
+import { AddToCalendarButtons, type CalendarLinkEvent } from "./calendarLinks";
 
 export interface InterviewCalendarPrefill {
   applyClickId: number | null;
@@ -25,6 +26,7 @@ interface CalendarItem {
   selfId: number | null;
   startsAt: string;
   title: string;
+  linkEvent: CalendarLinkEvent;
 }
 
 const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -94,6 +96,7 @@ export function InterviewCalendar(props: {
 
   const [monthAnchor, setMonthAnchor] = useState(() => now().startOf("month"));
   const [form, setForm] = useState<EventFormState | null>(null);
+  const [viewEvent, setViewEvent] = useState<CalendarLinkEvent | null>(null);
 
   const prefill = props.prefill;
   const [prefillConsumed, setPrefillConsumed] = useState(false);
@@ -122,12 +125,22 @@ export function InterviewCalendar(props: {
       const slot = booking.slot;
       if (!slot) return;
       const job = slot.jobPosting;
+      const title = job ? job.title : "Interview";
+      const location = slot.locationLabel ? slot.locationLabel : slot.locationAddress;
       pushItem({
         key: `booking-${booking.id}`,
         kind: "booking",
         selfId: null,
         startsAt: slot.startsAt,
-        title: job ? job.title : "Interview",
+        title,
+        linkEvent: {
+          uid: `booking-${booking.id}@orbit.annix`,
+          title: `Interview: ${title}`,
+          startsAt: slot.startsAt,
+          endsAt: slot.endsAt,
+          location: location ? location : null,
+          description: null,
+        },
       });
     });
     selfEvents.forEach((event) => {
@@ -140,6 +153,14 @@ export function InterviewCalendar(props: {
         selfId: event.id,
         startsAt: event.startsAt,
         title,
+        linkEvent: {
+          uid: `self-${event.id}@orbit.annix`,
+          title: `Interview: ${title}`,
+          startsAt: event.startsAt,
+          endsAt: event.endsAt,
+          location: event.locationLabel,
+          description: event.notes,
+        },
       });
     });
     Array.from(map.values()).forEach((list) => {
@@ -224,6 +245,26 @@ export function InterviewCalendar(props: {
   const updating = updateMutation.isPending;
   const saving = creating || updating;
   const editing = form?.editingId != null;
+
+  const editLinkEvent: CalendarLinkEvent | null = (() => {
+    if (!form || form.editingId == null) return null;
+    const startsAtIso = combineDateTime(form.dateStr, form.startTimeStr);
+    if (!startsAtIso) return null;
+    const endsAtIso = form.endTimeStr ? combineDateTime(form.dateStr, form.endTimeStr) : null;
+    const role = form.roleTitle.trim();
+    const company = form.companyName.trim();
+    const titleCore = role ? role : company ? company : "Interview";
+    const location = form.locationLabel.trim();
+    const notes = form.notes.trim();
+    return {
+      uid: `self-${form.editingId}@orbit.annix`,
+      title: `Interview: ${titleCore}`,
+      startsAt: startsAtIso,
+      endsAt: endsAtIso,
+      location: location ? location : null,
+      description: notes ? notes : null,
+    };
+  })();
   const inputClass =
     "mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-[var(--brand-navbar-100,#e0e0f5)] focus:border-transparent";
 
@@ -313,14 +354,14 @@ export function InterviewCalendar(props: {
                     <span
                       key={item.key}
                       onClick={(e) => {
+                        e.stopPropagation();
                         if (isSelf && item.selfId != null) {
-                          e.stopPropagation();
                           openEditEvent(item.selfId);
+                        } else {
+                          setViewEvent(item.linkEvent);
                         }
                       }}
-                      className={`block truncate rounded px-1 py-0.5 text-[10px] leading-tight ${chipClass} ${
-                        isSelf ? "cursor-pointer" : ""
-                      }`}
+                      className={`block truncate rounded px-1 py-0.5 text-[10px] leading-tight cursor-pointer ${chipClass}`}
                       title={`${formatTimeZA(item.startsAt)} · ${item.title}`}
                     >
                       {formatTimeZA(item.startsAt)} {item.title}
@@ -430,6 +471,34 @@ export function InterviewCalendar(props: {
                 className={inputClass}
               />
             </label>
+            {editLinkEvent ? (
+              <div className="pt-3 border-t border-gray-100">
+                <AddToCalendarButtons event={editLinkEvent} />
+              </div>
+            ) : null}
+          </div>
+        </FormModal>
+      ) : null}
+
+      {viewEvent ? (
+        <FormModal
+          isOpen={true}
+          onClose={() => setViewEvent(null)}
+          onSubmit={() => setViewEvent(null)}
+          title={viewEvent.title.replace(/^Interview:\s*/, "")}
+          hideFooter
+        >
+          <div className="space-y-3">
+            <p className="text-sm text-gray-700">
+              {fromISO(viewEvent.startsAt).toFormat("EEEE d LLLL yyyy")} ·{" "}
+              {formatTimeZA(viewEvent.startsAt)}
+            </p>
+            {viewEvent.location ? (
+              <p className="text-sm text-gray-600">{viewEvent.location}</p>
+            ) : null}
+            <div className="pt-2 border-t border-gray-100">
+              <AddToCalendarButtons event={viewEvent} />
+            </div>
           </div>
         </FormModal>
       ) : null}

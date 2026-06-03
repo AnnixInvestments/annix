@@ -37,6 +37,7 @@ const FEATURE_COLUMNS: Array<{ key: keyof OrbitTierFeatures; label: string }> = 
   { key: "viewSalaries", label: "View salaries" },
   { key: "nixCvBuilder", label: "Nix CV builder" },
   { key: "jobListingSite", label: "Job listing site" },
+  { key: "multiChannelReminders", label: "SMS/WhatsApp reminders" },
 ];
 
 interface TierDraft {
@@ -241,7 +242,7 @@ export default function AdminOrbitSeekerTiersPage() {
                         />
                       </td>
                       {FEATURE_COLUMNS.map((col) => {
-                        const checked = draft.features[col.key];
+                        const checked = draft.features[col.key] === true;
                         return (
                           <td key={col.key} className="px-3 py-3 text-center">
                             <input

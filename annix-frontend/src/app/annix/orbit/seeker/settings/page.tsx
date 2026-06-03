@@ -11,6 +11,7 @@ import {
   useOrbitWithdrawMyConsent,
   useOrbitWithdrawSeekerMatching,
 } from "@/app/lib/query/hooks";
+import { ReminderPreferencesCard } from "./components/ReminderPreferencesCard";
 
 export default function SeekerSettingsPage() {
   const { confirm, ConfirmDialog } = useConfirm();
@@ -231,6 +232,8 @@ export default function SeekerSettingsPage() {
             </div>
           )}
         </SectionCard>
+
+        <ReminderPreferencesCard />
 
         <SectionCard
           title="Your data (POPIA)"

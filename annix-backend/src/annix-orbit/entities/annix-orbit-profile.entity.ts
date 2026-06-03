@@ -101,6 +101,24 @@ export class AnnixOrbitProfile {
   @Column({ name: "deletion_token_expires", type: "timestamptz", nullable: true })
   deletionTokenExpires: Date | null;
 
+  @Column({ name: "calendar_feed_token", type: "varchar", length: 255, nullable: true })
+  calendarFeedToken: string | null;
+
+  @Column({ name: "calendar_feed_token_created_at", type: "timestamptz", nullable: true })
+  calendarFeedTokenCreatedAt: Date | null;
+
+  @Column({ name: "phone", type: "varchar", length: 40, nullable: true })
+  phone: string | null;
+
+  @Column({ name: "interview_reminder_email", type: "boolean", default: true })
+  interviewReminderEmail: boolean;
+
+  @Column({ name: "interview_reminder_sms", type: "boolean", default: false })
+  interviewReminderSms: boolean;
+
+  @Column({ name: "interview_reminder_whatsapp", type: "boolean", default: false })
+  interviewReminderWhatsapp: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

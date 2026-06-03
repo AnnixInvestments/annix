@@ -94,6 +94,11 @@ export class MongoAnnixOrbitProfileRepository
     return this.toDomain(doc);
   }
 
+  async findByCalendarFeedToken(token: string): Promise<AnnixOrbitProfile | null> {
+    const doc = await this.documents.findOne({ calendarFeedToken: token }).lean().exec();
+    return this.toDomain(doc);
+  }
+
   async setPushEnabledForUser(userId: number, enabled: boolean): Promise<void> {
     await this.documents.updateMany({ userId }, { pushEnabled: enabled }).exec();
   }

@@ -9,5 +9,6 @@ export abstract class AnnixOrbitProfileRepository extends CrudRepository<AnnixOr
   abstract findDigestEnabledForCompany(companyId: number): Promise<AnnixOrbitProfile[]>;
   abstract digestEnabledCompanyIds(): Promise<number[]>;
   abstract findByValidDeletionToken(token: string, now: Date): Promise<AnnixOrbitProfile | null>;
+  abstract findByCalendarFeedToken(token: string): Promise<AnnixOrbitProfile | null>;
   abstract setPushEnabledForUser(userId: number, enabled: boolean): Promise<void>;
 }

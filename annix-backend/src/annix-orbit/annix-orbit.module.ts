@@ -81,12 +81,15 @@ import { PublicEeDisclosureController } from "./controllers/public-ee-disclosure
 import { PublicInterviewBookingController } from "./controllers/public-interview-booking.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
+import { PublicSeekerCalendarController } from "./controllers/public-seeker-calendar.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
+import { SeekerCalendarController } from "./controllers/seeker-calendar.controller";
 import { SeekerEmploymentController } from "./controllers/seeker-employment.controller";
 import { SeekerInterviewEventsController } from "./controllers/seeker-interview-events.controller";
 import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
+import { SeekerReminderPreferencesController } from "./controllers/seeker-reminder-preferences.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { WorkProfileController } from "./controllers/work-profile.controller";
 import { AnnixOrbitCandidateEeAttributes } from "./entities/annix-orbit-candidate-ee-attributes.entity";
@@ -126,6 +129,7 @@ import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { SeekerEmploymentRecord } from "./entities/seeker-employment-record.entity";
 import { SeekerInterviewEvent } from "./entities/seeker-interview-event.entity";
+import { SeekerInterviewReminder } from "./entities/seeker-interview-reminder.entity";
 import { SeekerMute } from "./entities/seeker-mute.entity";
 import { SeekerUsageCounter } from "./entities/seeker-usage-counter.entity";
 import { SourceRespectRank } from "./entities/source-respect-rank.entity";
@@ -242,6 +246,9 @@ import { PostgresSeekerEmploymentRecordRepository } from "./repositories/seeker-
 import { SeekerInterviewEventRepository } from "./repositories/seeker-interview-event.repository";
 import { MongoSeekerInterviewEventRepository } from "./repositories/seeker-interview-event.repository.mongo";
 import { PostgresSeekerInterviewEventRepository } from "./repositories/seeker-interview-event.repository.postgres";
+import { SeekerInterviewReminderRepository } from "./repositories/seeker-interview-reminder.repository";
+import { MongoSeekerInterviewReminderRepository } from "./repositories/seeker-interview-reminder.repository.mongo";
+import { PostgresSeekerInterviewReminderRepository } from "./repositories/seeker-interview-reminder.repository.postgres";
 import { SeekerMuteRepository } from "./repositories/seeker-mute.repository";
 import { MongoSeekerMuteRepository } from "./repositories/seeker-mute.repository.mongo";
 import { PostgresSeekerMuteRepository } from "./repositories/seeker-mute.repository.postgres";
@@ -288,6 +295,7 @@ import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
 import { SeekerEmploymentRecordSchema } from "./schemas/seeker-employment-record.schema";
 import { SeekerInterviewEventSchema } from "./schemas/seeker-interview-event.schema";
+import { SeekerInterviewReminderSchema } from "./schemas/seeker-interview-reminder.schema";
 import { SeekerMuteSchema } from "./schemas/seeker-mute.schema";
 import { SeekerUsageCounterSchema } from "./schemas/seeker-usage-counter.schema";
 import { SourceRespectRankSchema } from "./schemas/source-respect-rank.schema";
@@ -322,6 +330,7 @@ import { EscoNormalisationService } from "./services/esco-normalisation.service"
 import { GeocodeService } from "./services/geocode.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { InterviewBookingService } from "./services/interview-booking.service";
+import { InterviewReminderService } from "./services/interview-reminder.service";
 import { JobCategorizationService } from "./services/job-categorization.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
@@ -343,10 +352,12 @@ import { ReferenceService } from "./services/reference.service";
 import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SeekerApplicationsService } from "./services/seeker-applications.service";
+import { SeekerCalendarService } from "./services/seeker-calendar.service";
 import { SeekerCompanyResearchService } from "./services/seeker-company-research.service";
 import { SeekerEmploymentService } from "./services/seeker-employment.service";
 import { SeekerInterviewEventsService } from "./services/seeker-interview-events.service";
 import { SeekerJobFeedService } from "./services/seeker-job-feed.service";
+import { SeekerReminderPreferencesService } from "./services/seeker-reminder-preferences.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
 import { WorkProfileService } from "./services/work-profile.service";
@@ -403,6 +414,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "SeekerApplyClick", schema: SeekerApplyClickSchema },
               { name: "SeekerEmploymentRecord", schema: SeekerEmploymentRecordSchema },
               { name: "SeekerInterviewEvent", schema: SeekerInterviewEventSchema },
+              { name: "SeekerInterviewReminder", schema: SeekerInterviewReminderSchema },
               { name: "SeekerMute", schema: SeekerMuteSchema },
               { name: "SourceRespectRank", schema: SourceRespectRankSchema },
               { name: "CvCredential", schema: CvCredentialSchema },
@@ -475,6 +487,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             SeekerApplyClick,
             SeekerEmploymentRecord,
             SeekerInterviewEvent,
+            SeekerInterviewReminder,
             SeekerMute,
             SourceRespectRank,
             CvCredential,
@@ -540,8 +553,11 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdminOrbitSeekerController,
     SeekerJobsController,
     SeekerApplicationsController,
+    SeekerCalendarController,
+    PublicSeekerCalendarController,
     SeekerEmploymentController,
     SeekerInterviewEventsController,
+    SeekerReminderPreferencesController,
     WorkProfileController,
     CredentialController,
     AdminOrbitCredentialTypesController,
@@ -605,9 +621,12 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitLicensingRegistrar,
     SeekerJobFeedService,
     SeekerApplicationsService,
+    SeekerCalendarService,
     SeekerCompanyResearchService,
     SeekerEmploymentService,
     SeekerInterviewEventsService,
+    SeekerReminderPreferencesService,
+    InterviewReminderService,
     WorkProfileService,
     CredentialService,
     OrbitCredentialTypeService,
@@ -758,6 +777,11 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       SeekerInterviewEventRepository,
       PostgresSeekerInterviewEventRepository,
       MongoSeekerInterviewEventRepository,
+    ),
+    repositoryProvider(
+      SeekerInterviewReminderRepository,
+      PostgresSeekerInterviewReminderRepository,
+      MongoSeekerInterviewReminderRepository,
     ),
     repositoryProvider(
       SeekerMuteRepository,

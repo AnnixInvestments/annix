@@ -76,6 +76,24 @@ export class AnnixOrbitProfile {
   deletionTokenExpires: Date;
 
   @Prop({ type: String, required: false })
+  calendarFeedToken: string;
+
+  @Prop({ type: Date, required: false })
+  calendarFeedTokenCreatedAt: Date;
+
+  @Prop({ type: String, required: false })
+  phone: string;
+
+  @Prop({ type: Boolean, required: false, default: true })
+  interviewReminderEmail: boolean;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  interviewReminderSms: boolean;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  interviewReminderWhatsapp: boolean;
+
+  @Prop({ type: String, required: false })
   createdAt: string;
 
   @Prop({ type: String, required: false })

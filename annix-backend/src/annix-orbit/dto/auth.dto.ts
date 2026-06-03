@@ -6,6 +6,7 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   MinLength,
   ValidateNested,
 } from "class-validator";
@@ -110,6 +111,11 @@ export class RegisterIndividualDto {
   @IsString()
   @IsNotEmpty()
   name: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  phone?: string;
 
   @IsOptional()
   @ValidateNested()

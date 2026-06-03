@@ -19,8 +19,6 @@ import {
   useOrbitUpdateSeekerApplication,
 } from "@/app/lib/query/hooks";
 
-const APPLICATIONS_PAGE_SIZE = 20;
-
 const STATUS_OPTIONS: { value: SeekerApplicationStatus; label: string }[] = [
   { value: "applied", label: "Applied" },
   { value: "interviewing", label: "Interviewing" },
@@ -96,19 +94,12 @@ export default function SeekerApplicationsPage() {
   };
   const data = query.data;
   const applications = data || [];
-  const [activeTab, setActiveTab] = useState<SeekerApplicationStatus>("applied");
-  const [visibleCount, setVisibleCount] = useState(APPLICATIONS_PAGE_SIZE);
-  const tabApplications = applications.filter((application) => application.status === activeTab);
-  const visibleApplications = tabApplications.slice(0, visibleCount);
-  const hasMore = tabApplications.length > visibleCount;
-  const handleShowMore = () => setVisibleCount((current) => current + APPLICATIONS_PAGE_SIZE);
-
-  const activeOption = STATUS_OPTIONS.find((option) => option.value === activeTab);
-  const activeLabel = activeOption ? activeOption.label : "";
 
   const handleTabChange = (status: SeekerApplicationStatus) => {
-    setActiveTab(status);
-    setVisibleCount(APPLICATIONS_PAGE_SIZE);
+    const target = document.getElementById(`app-status-${status}`);
+    if (target) {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   };
 
   const [acceptingApp, setAcceptingApp] = useState<SeekerApplication | null>(null);
@@ -218,63 +209,68 @@ export default function SeekerApplicationsPage() {
           </Link>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-6">
           <div className="flex flex-wrap gap-2">
             {STATUS_OPTIONS.map((option) => {
               const count = applications.filter((app) => app.status === option.value).length;
-              const isActive = activeTab === option.value;
-              const tabClass = isActive
-                ? "bg-[var(--brand-navbar,#323288)] text-white border-transparent"
-                : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50";
-              const badgeClass = isActive ? "bg-white/20 text-white" : "bg-gray-100 text-gray-600";
               return (
                 <button
                   key={option.value}
                   type="button"
                   onClick={() => handleTabChange(option.value)}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${tabClass}`}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border bg-white text-gray-700 border-gray-200 hover:bg-gray-50 transition-colors"
                 >
                   {option.label}
-                  <span className={`px-2 py-0.5 rounded-full text-xs ${badgeClass}`}>{count}</span>
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-gray-100 text-gray-600">
+                    {count}
+                  </span>
                 </button>
               );
             })}
           </div>
 
-          {tabApplications.length === 0 ? (
-            <div className="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center text-gray-600">
-              No applications marked “{activeLabel}” yet.
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {visibleApplications.map((application) => {
-                const mutatingVars = updateMutation.variables;
-                const statusPending =
-                  updateMutation.isPending &&
-                  mutatingVars?.id === application.id &&
-                  mutatingVars.input.status !== undefined;
-                return (
-                  <ApplicationCard
-                    key={application.id}
-                    application={application}
-                    statusPending={statusPending}
-                    onStatusChange={handleStatusChange}
-                    onNotesSave={handleNotesSave}
-                    onDelete={handleDelete}
-                  />
-                );
-              })}
-              {hasMore ? (
-                <button
-                  type="button"
-                  onClick={handleShowMore}
-                  className="w-full py-3 text-sm font-medium rounded-xl border border-gray-200 bg-white text-gray-700 hover:bg-gray-50 transition-colors"
-                >
-                  Show more ({visibleApplications.length} of {tabApplications.length})
-                </button>
-              ) : null}
-            </div>
-          )}
+          {STATUS_OPTIONS.map((option) => {
+            const sectionApps = applications.filter((app) => app.status === option.value);
+            return (
+              <section
+                key={option.value}
+                id={`app-status-${option.value}`}
+                className="scroll-mt-24 space-y-3"
+              >
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-white">{option.label}</h2>
+                  <span className="px-2 py-0.5 rounded-full text-xs bg-white/20 text-white">
+                    {sectionApps.length}
+                  </span>
+                </div>
+                {sectionApps.length === 0 ? (
+                  <div className="bg-white/60 rounded-xl border border-dashed border-white/50 p-6 text-center text-sm text-gray-600">
+                    Nothing marked “{option.label}” yet.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {sectionApps.map((application) => {
+                      const mutatingVars = updateMutation.variables;
+                      const statusPending =
+                        updateMutation.isPending &&
+                        mutatingVars?.id === application.id &&
+                        mutatingVars.input.status !== undefined;
+                      return (
+                        <ApplicationCard
+                          key={application.id}
+                          application={application}
+                          statusPending={statusPending}
+                          onStatusChange={handleStatusChange}
+                          onNotesSave={handleNotesSave}
+                          onDelete={handleDelete}
+                        />
+                      );
+                    })}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
       {acceptingApp ? (

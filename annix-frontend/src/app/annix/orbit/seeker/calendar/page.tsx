@@ -13,6 +13,7 @@ import {
   useOrbitMyInterviewBookings,
   useOrbitMyInterviewInvites,
 } from "@/app/lib/query/hooks";
+import { CalendarSyncButton } from "./components/CalendarSyncButton";
 import { InterviewCalendar, type InterviewCalendarPrefill } from "./components/InterviewCalendar";
 
 type LibraryName = "places";
@@ -322,11 +323,14 @@ export default function SeekerCalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-white">My interviews</h1>
-        <p className="text-white/70 mt-1 text-sm">
-          Every upcoming interview across the companies you've applied to.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold text-white">My interviews</h1>
+          <p className="text-white/70 mt-1 text-sm">
+            Every upcoming interview across the companies you've applied to.
+          </p>
+        </div>
+        <CalendarSyncButton />
       </div>
 
       {openInvites.length > 0 ? (

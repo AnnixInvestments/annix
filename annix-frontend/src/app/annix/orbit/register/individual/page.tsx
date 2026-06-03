@@ -15,6 +15,7 @@ export default function AnnixOrbitRegisterIndividualPage() {
   const [step, setStep] = useState<"account" | "ee">("account");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [popiaConsent, setPopiaConsent] = useState(false);
@@ -55,7 +56,14 @@ export default function AnnixOrbitRegisterIndividualPage() {
   const finishRegistration = async (eeDisclosure: RegisterEeDisclosurePayload | null) => {
     setIsLoading(true);
     try {
-      await annixOrbitApiClient.registerIndividual({ name, email, password, eeDisclosure });
+      const trimmedPhone = phone.trim();
+      await annixOrbitApiClient.registerIndividual({
+        name,
+        email,
+        password,
+        phone: trimmedPhone.length > 0 ? trimmedPhone : null,
+        eeDisclosure,
+      });
       setSuccess(true);
     } catch (err) {
       await presentRegistrationError(err);
@@ -163,6 +171,23 @@ export default function AnnixOrbitRegisterIndividualPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
                 placeholder="you@example.com"
               />
+            </div>
+
+            <div>
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+                Mobile number <span className="text-gray-400">(optional)</span>
+              </label>
+              <input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+                placeholder="+27 ..."
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                For interview reminders by SMS or WhatsApp.
+              </p>
             </div>
 
             <div>

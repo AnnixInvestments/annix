@@ -322,6 +322,7 @@ export class AnnixOrbitAuthService {
     password: string,
     name: string,
     eeDisclosure?: RegisterEeDisclosureDto,
+    phone?: string,
   ) {
     await this.assertOrbitAccountAvailable(email, AnnixOrbitUserType.INDIVIDUAL);
 
@@ -343,11 +344,13 @@ export class AnnixOrbitAuthService {
     } as Partial<User>);
 
     const disclosure = eeDisclosure ? await this.buildRegistrationDisclosure(eeDisclosure) : null;
+    const trimmedPhone = phone ? phone.trim() : "";
     await this.profileRepo.create({
       userId: savedUser.id,
       companyId: null,
       userType: AnnixOrbitUserType.INDIVIDUAL,
       eeDisclosure: disclosure,
+      phone: trimmedPhone.length > 0 ? trimmedPhone : null,
     } as Partial<AnnixOrbitProfile>);
 
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);

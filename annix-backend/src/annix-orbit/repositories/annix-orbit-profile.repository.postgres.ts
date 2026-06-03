@@ -59,6 +59,10 @@ export class PostgresAnnixOrbitProfileRepository
     });
   }
 
+  findByCalendarFeedToken(token: string): Promise<AnnixOrbitProfile | null> {
+    return this.repository.findOne({ where: { calendarFeedToken: token } });
+  }
+
   async setPushEnabledForUser(userId: number, enabled: boolean): Promise<void> {
     await this.repository.update({ userId }, { pushEnabled: enabled });
   }

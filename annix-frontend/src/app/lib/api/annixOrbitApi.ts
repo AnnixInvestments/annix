@@ -1029,6 +1029,21 @@ export interface CreateSeekerEmploymentInput {
   startDate: string;
 }
 
+export interface ReminderPreferences {
+  phone: string | null;
+  interviewReminderEmail: boolean;
+  interviewReminderSms: boolean;
+  interviewReminderWhatsapp: boolean;
+  multiChannelReminders: boolean;
+}
+
+export interface UpdateReminderPreferencesInput {
+  phone?: string | null;
+  interviewReminderEmail?: boolean;
+  interviewReminderSms?: boolean;
+  interviewReminderWhatsapp?: boolean;
+}
+
 export interface NixCalendarAdvisoryConflict {
   bookingId: number;
   type: "overlap" | "insufficient-travel";
@@ -1366,6 +1381,7 @@ class AnnixOrbitApiClient {
     email: string;
     password: string;
     name: string;
+    phone?: string | null;
     eeDisclosure?: RegisterEeDisclosurePayload | null;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/annix-orbit/auth/register/individual", {
@@ -2481,6 +2497,24 @@ class AnnixOrbitApiClient {
 
   async reactivateJobSearch(): Promise<{ refreshed: number }> {
     return this.request("/annix-orbit/me/employment/reactivate", { method: "POST" });
+  }
+
+  async calendarFeedToken(): Promise<{ token: string }> {
+    return this.request("/annix-orbit/me/calendar/feed");
+  }
+
+  async reminderPreferences(): Promise<ReminderPreferences> {
+    return this.request("/annix-orbit/me/reminder-preferences");
+  }
+
+  async updateReminderPreferences(
+    input: UpdateReminderPreferencesInput,
+  ): Promise<ReminderPreferences> {
+    return this.request("/annix-orbit/me/reminder-preferences", {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   async seekerEducation(): Promise<SeekerEducationResponse> {

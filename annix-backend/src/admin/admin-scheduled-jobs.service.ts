@@ -148,6 +148,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 7 * * *",
   },
+  "annix-orbit:interview-reminders": {
+    description: "Remind seekers of upcoming interviews (email; SMS/WhatsApp for top tier)",
+    module: "Annix Orbit",
+    defaultCron: "*/30 * * * *",
+  },
   "insights:daily-snapshot": {
     description:
       "Annix Insights — morning run: pull OHLCV, news, signals, execute trades, snapshot portfolios (06:00 SAST)",

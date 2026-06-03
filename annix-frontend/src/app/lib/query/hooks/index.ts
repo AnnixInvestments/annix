@@ -212,6 +212,7 @@ export {
   useOrbitSeekerApplications,
   useOrbitUpdateSeekerApplication,
 } from "./annix-orbit/useOrbitApplications";
+export { useOrbitCalendarFeed } from "./annix-orbit/useOrbitCalendarFeed";
 export {
   useOrbitCandidateAction,
   useOrbitCandidateStatusUpdate,
@@ -342,6 +343,10 @@ export {
   useOrbitUpdatePlacement,
 } from "./annix-orbit/useOrbitPlacements";
 export { useOrbitReferences } from "./annix-orbit/useOrbitReferences";
+export {
+  useOrbitReminderPreferences,
+  useOrbitUpdateReminderPreferences,
+} from "./annix-orbit/useOrbitReminderPreferences";
 export {
   useOrbitCreateSeekerEmployment,
   useOrbitReactivateJobSearch,

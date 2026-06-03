@@ -44,7 +44,13 @@ export class AnnixOrbitAuthController {
 
   @Post("register/individual")
   async registerIndividual(@Body() dto: RegisterIndividualDto) {
-    return this.authService.registerIndividual(dto.email, dto.password, dto.name, dto.eeDisclosure);
+    return this.authService.registerIndividual(
+      dto.email,
+      dto.password,
+      dto.name,
+      dto.eeDisclosure,
+      dto.phone,
+    );
   }
 
   @Post("register/student")
