@@ -166,6 +166,34 @@ export interface MarketingAbout {
   values: MarketingAboutValue[];
 }
 
+export const RESOURCE_CATEGORIES = [
+  "Guides & Playbooks",
+  "Standards & Compliance",
+  "Industry Briefs",
+  "Platform",
+  "Developers",
+  "Trust & Security",
+] as const;
+
+export type MarketingResourceCategory = (typeof RESOURCE_CATEGORIES)[number];
+
+export interface MarketingResource {
+  slug: string;
+  category: string;
+  title: string;
+  excerpt: string;
+  body: string;
+  imageUrl: string | null;
+  productSlug: string;
+  published: boolean;
+}
+
+export interface MarketingResources {
+  heading: string;
+  subheading: string;
+  items: MarketingResource[];
+}
+
 export interface MarketingSiteContent {
   site: MarketingSite;
   hero: MarketingHero;
@@ -178,6 +206,7 @@ export interface MarketingSiteContent {
   productPages: MarketingProductPage[];
   labs: MarketingLabs;
   about: MarketingAbout;
+  resources: MarketingResources;
 }
 
 export interface MarketingSiteStatus {

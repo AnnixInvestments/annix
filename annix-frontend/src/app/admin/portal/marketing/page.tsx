@@ -3,7 +3,9 @@
 import {
   defaultMarketingContent,
   type MarketingProduct,
+  type MarketingResource,
   type MarketingSiteContent,
+  RESOURCE_CATEGORIES,
 } from "@annix/product-data/marketing";
 import { cloneDeep } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
@@ -27,8 +29,10 @@ function Text(props: {
   value: string;
   onChange: (value: string) => void;
   textarea?: boolean;
+  rows?: number;
 }) {
   const isTextarea = props.textarea === true;
+  const rows = props.rows ? props.rows : 3;
   return (
     <label className="block">
       <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
@@ -36,7 +40,7 @@ function Text(props: {
       </span>
       {isTextarea ? (
         <textarea
-          rows={3}
+          rows={rows}
           value={props.value}
           onChange={(event) => props.onChange(event.target.value)}
           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#323288] focus:outline-none"
@@ -377,6 +381,164 @@ function ProductRow(props: {
   );
 }
 
+function ResourceRow(props: {
+  resource: MarketingResource;
+  patch: (mutate: (resource: MarketingResource) => void) => void;
+  onRemove: () => void;
+  onError: (message: string) => void;
+}) {
+  const resource = props.resource;
+  const imageUrl = resource.imageUrl ? resource.imageUrl : "";
+  const categoryKnown = (RESOURCE_CATEGORIES as readonly string[]).includes(resource.category);
+  return (
+    <div className="rounded-lg border border-gray-200 p-3">
+      <Text
+        label="Title"
+        value={resource.title}
+        onChange={(v) =>
+          props.patch((r) => {
+            r.title = v;
+          })
+        }
+      />
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <label className="block">
+          <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+            Category
+          </span>
+          <select
+            value={resource.category}
+            onChange={(event) =>
+              props.patch((r) => {
+                r.category = event.target.value;
+              })
+            }
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-[#323288] focus:outline-none"
+          >
+            {categoryKnown ? null : <option value={resource.category}>{resource.category}</option>}
+            {RESOURCE_CATEGORIES.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Text
+          label="Linked product slug (optional)"
+          value={resource.productSlug}
+          onChange={(v) =>
+            props.patch((r) => {
+              r.productSlug = v;
+            })
+          }
+        />
+      </div>
+      <div className="mt-3">
+        <Text
+          label="Excerpt (shown on the card)"
+          textarea
+          value={resource.excerpt}
+          onChange={(v) =>
+            props.patch((r) => {
+              r.excerpt = v;
+            })
+          }
+        />
+      </div>
+      <div className="mt-3">
+        <Text
+          label="Body (full article — leave a blank line between paragraphs)"
+          textarea
+          rows={8}
+          value={resource.body}
+          onChange={(v) =>
+            props.patch((r) => {
+              r.body = v;
+            })
+          }
+        />
+      </div>
+
+      <div className="mt-3">
+        <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+          Cover image (optional)
+        </span>
+        <div className="flex items-center gap-3">
+          {imageUrl ? (
+            <img
+              src={imageUrl}
+              alt=""
+              className="h-16 w-28 rounded-lg border border-gray-200 object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+              No image
+            </div>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <ImageUploadButton
+              label="Upload"
+              onUploaded={(url) =>
+                props.patch((r) => {
+                  r.imageUrl = url;
+                })
+              }
+              onError={props.onError}
+            />
+            {imageUrl ? (
+              <button
+                type="button"
+                onClick={() =>
+                  props.patch((r) => {
+                    r.imageUrl = null;
+                  })
+                }
+                className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                Clear
+              </button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Text
+          label="Slug"
+          value={resource.slug}
+          onChange={(v) =>
+            props.patch((r) => {
+              r.slug = v;
+            })
+          }
+        />
+      </div>
+
+      <div className="mt-3 flex items-center justify-between">
+        <label className="flex items-center gap-2 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={resource.published}
+            onChange={(event) =>
+              props.patch((r) => {
+                r.published = event.target.checked;
+              })
+            }
+          />
+          Published (visible on the site)
+        </label>
+        <button
+          type="button"
+          onClick={props.onRemove}
+          className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+        >
+          Remove resource
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function MarketingCmsPage() {
   const draftQuery = useMarketingDraft();
   const statusQuery = useMarketingStatus();
@@ -478,6 +640,7 @@ export default function MarketingCmsPage() {
   const ctaBand = content.ctaBand;
   const about = content.about;
   const footer = content.footer;
+  const resources = content.resources;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
@@ -1455,6 +1618,69 @@ export default function MarketingCmsPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </Section>
+
+          <Section title="Resources">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <Text
+                label="Heading"
+                value={resources.heading}
+                onChange={(v) =>
+                  update((d) => {
+                    d.resources.heading = v;
+                  })
+                }
+              />
+            </div>
+            <Text
+              label="Subheading"
+              textarea
+              value={resources.subheading}
+              onChange={(v) =>
+                update((d) => {
+                  d.resources.subheading = v;
+                })
+              }
+            />
+            <div className="space-y-3">
+              {resources.items.map((item, index) => (
+                <ResourceRow
+                  key={`resource-${index}`}
+                  resource={item}
+                  patch={(mutate) =>
+                    update((d) => {
+                      mutate(d.resources.items[index]);
+                    })
+                  }
+                  onRemove={() =>
+                    update((d) => {
+                      d.resources.items = d.resources.items.filter((_, i) => i !== index);
+                    })
+                  }
+                  onError={(message) => showToast(message, "error")}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  update((d) => {
+                    d.resources.items.push({
+                      slug: "new-resource",
+                      category: "Guides & Playbooks",
+                      title: "",
+                      excerpt: "",
+                      body: "",
+                      imageUrl: null,
+                      productSlug: "",
+                      published: true,
+                    });
+                  })
+                }
+                className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                + Add resource
+              </button>
             </div>
           </Section>
 

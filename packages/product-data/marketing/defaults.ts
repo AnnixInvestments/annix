@@ -1,4 +1,9 @@
-import type { MarketingProduct, MarketingProductPage, MarketingSiteContent } from "./content";
+import type {
+  MarketingProduct,
+  MarketingProductPage,
+  MarketingResource,
+  MarketingSiteContent,
+} from "./content";
 
 const ECOSYSTEM_PRODUCTS: MarketingProduct[] = [
   {
@@ -294,6 +299,233 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
   },
 ];
 
+const RESOURCES: MarketingResource[] = [
+  {
+    slug: "operations-traceability-guide",
+    category: "Guides & Playbooks",
+    title: "Digitising stock, quality and CoCs on the fabrication floor",
+    excerpt:
+      "A practical guide to getting real-time stock, quality records and certificates of conformance under one roof.",
+    body: 'Most industrial operations still run inventory in one system, quality in another, and certificates in a filing cabinet. The result is slow stock takes, lost certificates, and a floor that never quite knows what it has or what it is certified to do.\n\nAnnix Core brings inventory, jobs, deliveries, quality certificates and material traceability into a single platform. Goods-in, supplier invoices, job cards and batch assignments share one data model, so a batch number on the floor traces straight back to its certificate.\n\nStart by getting goods-in and stock valuation live, then layer on job cards and quality certificates. Within a few weeks your floor moves from "where is that cert?" to full job-level traceability — audit-ready by default.',
+    imageUrl: null,
+    productSlug: "annix-core",
+    published: true,
+  },
+  {
+    slug: "standards-aware-quoting-playbook",
+    category: "Guides & Playbooks",
+    title: "RFQ to award: a standards-aware quoting playbook",
+    excerpt:
+      "How to turn drawings and specs into accurate, weld-aware quotes — and win more work without under-pricing.",
+    body: "Quoting fabrication work is where margin is made or lost. Miss a weld length, forget a coating area, or price against the wrong standard, and the job is unprofitable before it starts.\n\nAnnix Forge structures the whole pipeline — RFQ, bill of quantities, quote, award. Items consolidate into a BOQ with weld lengths, coating areas and quantities calculated for you, and pricing is built around the ASME, API, NACE and SANS standards your customers audit against.\n\nThe playbook is simple: capture the RFQ with its drawings and specs, let the BOQ do the weld math, price with material, labour and engineering allowances, then compare quotes and award with full visibility. Every number traces back to the spec.",
+    imageUrl: null,
+    productSlug: "annix-forge",
+    published: true,
+  },
+  {
+    slug: "compliance-program-guide",
+    category: "Guides & Playbooks",
+    title: "Building a POPIA, B-BBEE and King IV-ready compliance program",
+    excerpt:
+      "A starting framework for South African businesses to get compliant, manage risk and stay audit-ready year-round.",
+    body: "Compliance in South Africa is not one thing — it is POPIA, B-BBEE, tax deadlines, King IV governance and a moving target of regulation. Most businesses only discover a gap when an audit or a deadline is already on them.\n\nAnnix Sentinel turns that reactive scramble into a continuous program. Map the regulations that apply to your business, track requirements and evidence in one view, work out your B-BBEE scorecard, and get proactive alerts before statutory deadlines.\n\nThe practical sequence: build your requirement register, attach evidence to each item, set the deadline calendar, then let the advisor flag risks and surface daily regulatory updates. Audit-ready becomes a state you stay in, not a project you panic over.",
+    imageUrl: null,
+    productSlug: "annix-sentinel",
+    published: true,
+  },
+  {
+    slug: "ee-compliant-hiring-guide",
+    category: "Guides & Playbooks",
+    title: "Hiring in regulated industries without tripping up on EE",
+    excerpt:
+      "How to recruit faster while keeping Employment Equity reporting and POPIA in good standing.",
+    body: "Industrial and regulated employers carry a double burden: they need talent quickly, and they need to hire in a way that stands up to Employment Equity reporting and POPIA.\n\nAnnix Orbit is a live job market that connects seekers, recruiters and employers, with AI matching on skills, experience, location and work profile. Employment Equity reporting and POPIA-compliant data handling are built in rather than bolted on.\n\nFor employers the workflow is end-to-end — post a role, screen with AI, schedule interviews, manage references — while the compliance layer keeps your equity picture accurate. For students, FuturePath guides subject planning, careers and funding, feeding a pipeline of work-ready talent.",
+    imageUrl: null,
+    productSlug: "annix-orbit",
+    published: true,
+  },
+  {
+    slug: "field-sales-playbook",
+    category: "Guides & Playbooks",
+    title: "The field-sales playbook: turning meetings into pipeline",
+    excerpt:
+      "A mobile-first approach to finding prospects, running better meetings and capturing every insight.",
+    body: "Field sales lives and dies on what happens between meetings — the prospect you did not follow up, the insight you forgot to log, the route that wasted half a day.\n\nAnnix Pulse is a mobile-first sales assistant that helps reps discover and qualify prospects nearby, plan routes and schedules, and record, transcribe and summarise every meeting automatically. Pipeline and performance update in real time.\n\nThe playbook: let location-based discovery fill the top of the funnel, use smart scheduling to cut travel time, and let AI meeting intelligence capture the detail so reps sell instead of typing.",
+    imageUrl: null,
+    productSlug: "annix-pulse",
+    published: true,
+  },
+  {
+    slug: "asme-b16-5-explained",
+    category: "Standards & Compliance",
+    title: "ASME B16.5, in plain English",
+    excerpt:
+      "What the pipe-flange standard covers, why pressure-temperature class matters, and where it bites on a quote.",
+    body: "ASME B16.5 is the standard that governs pipe flanges and flanged fittings up to NPS 24. In practice it tells you which flange — by material, class and rating — is fit for a given pressure and temperature.\n\nThe part that matters commercially is the pressure-temperature class (150 through 2500). Quote against the wrong class and you have either over-specified and lost the job, or under-specified and created a safety and liability problem.\n\nAnnix Forge keeps the standard's intent in your quoting flow so the right class follows the spec. We reference the standard by name; we do not republish its rating tables — the standard itself, or your engineering team, remains the source of truth on the numbers.",
+    imageUrl: null,
+    productSlug: "annix-forge",
+    published: true,
+  },
+  {
+    slug: "api-5l-psl1-vs-psl2",
+    category: "Standards & Compliance",
+    title: "API 5L: PSL1 vs PSL2, and why it matters for line pipe",
+    excerpt:
+      "The two product specification levels of line pipe, and how the choice flows into your pricing.",
+    body: "API 5L specifies line pipe for oil and gas. The headline decision is the product specification level: PSL1, a basic standard, or PSL2, with tighter chemistry, testing and documentation requirements.\n\nPSL2 costs more — more testing, more traceability — but it is what many operators and harsher services demand. Picking the wrong level either prices you out or commits you to scope you did not quote for.\n\nForge keeps the PSL choice visible on the BOQ so the material, testing and documentation allowances match what the customer actually requires. We reference API 5L by name and keep its requirements out of the data you maintain by hand.",
+    imageUrl: null,
+    productSlug: "annix-forge",
+    published: true,
+  },
+  {
+    slug: "nace-mr0175-sour-service",
+    category: "Standards & Compliance",
+    title: "NACE MR0175 / ISO 15156 and sour service",
+    excerpt:
+      'What "sour service" means and why material selection for H2S environments cannot be guessed.',
+    body: 'NACE MR0175, also published as ISO 15156, governs material selection for equipment exposed to hydrogen sulphide — "sour service". In those environments the wrong material can crack and fail catastrophically.\n\nThe standard exists because sour service is unforgiving: material, hardness and processing all have to be right. For a fabricator, it means the quote has to reflect compliant materials and the testing to prove it.\n\nAnnix Forge surfaces sour-service requirements alongside the rest of the spec so they are priced, not discovered after award. As with all standards, we reference MR0175 by name — the standard remains the authority on what is compliant.',
+    imageUrl: null,
+    productSlug: "annix-forge",
+    published: true,
+  },
+  {
+    slug: "popia-for-smes",
+    category: "Standards & Compliance",
+    title: "POPIA for South African businesses",
+    excerpt:
+      "The plain-language version of what POPIA asks of you, and how to stay on the right side of it.",
+    body: "The Protection of Personal Information Act sets the rules for how South African businesses collect, store and use personal data. It applies to almost everyone — customers, employees, suppliers — and the penalties for getting it wrong are real.\n\nAt its core POPIA asks you to collect only what you need, keep it secure, use it for the purpose you stated, and let people see and erase their data. The hard part is not the principles; it is evidencing them continuously.\n\nAnnix Sentinel tracks your POPIA obligations as live requirements with attached evidence and audit trails, and the whole Annix platform is built POPIA-first — data is secured, scoped per company, and retained only as long as it should be.",
+    imageUrl: null,
+    productSlug: "annix-sentinel",
+    published: true,
+  },
+  {
+    slug: "bbbee-scorecard-explained",
+    category: "Standards & Compliance",
+    title: "The B-BBEE scorecard, explained",
+    excerpt:
+      "How the scorecard elements fit together and why your level changes who you can do business with.",
+    body: "Broad-Based Black Economic Empowerment is measured on a scorecard made up of elements — ownership, management control, skills development, enterprise and supplier development, and socio-economic development. Your points across those elements determine your B-BBEE level.\n\nThat level matters commercially: it affects which tenders you qualify for and how attractive you are as a supplier to larger, compliance-conscious customers.\n\nAnnix Sentinel lets you manage each element, calculate your score, and model what moves the needle — so B-BBEE becomes something you plan for, not something you scramble to certify once a year.",
+    imageUrl: null,
+    productSlug: "annix-sentinel",
+    published: true,
+  },
+  {
+    slug: "industry-brief-mining",
+    category: "Industry Briefs",
+    title: "Annix for Mining",
+    excerpt:
+      "Operations, compliance and supply chains built for the realities of the mining sector.",
+    body: "Mining runs on heavy assets, strict compliance and unforgiving supply chains. Annix Core keeps stock, quality and certificates traceable on the floor; Forge prices engineering and fabrication procurement around the right standards; Sentinel keeps safety and statutory compliance continuous; and Orbit keeps a skilled, equity-compliant workforce flowing.\n\nThe common thread is one platform with shared data and complete traceability — so a certificate, a quote and a hire all live in the same audit-ready system.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "industry-brief-manufacturing",
+    category: "Industry Briefs",
+    title: "Annix for Manufacturing",
+    excerpt: "Production, quality and procurement on one shared, traceable foundation.",
+    body: "Manufacturers juggle production, inventory, quality and a constant flow of RFQs. Annix Core gives real-time stock and quality with proper valuation; Forge turns enquiries into weld-aware, standards-correct quotes; Sentinel keeps quality and regulatory compliance evidenced; Orbit keeps the line staffed.\n\nBecause every product sits on the same backend and design language, your shop floor, your quoting desk and your compliance team finally see the same data.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "industry-brief-engineering",
+    category: "Industry Briefs",
+    title: "Annix for Engineering",
+    excerpt: "Standards-aware quoting and operations for engineering-led businesses.",
+    body: "Engineering work lives or dies on getting the standards right and the numbers tight. Annix Forge is built for exactly that — RFQ to BOQ to quote, with weld math and ASME, API, NACE and SANS awareness baked in. Core keeps the operational side traceable, Sentinel keeps compliance continuous, and Orbit keeps the right talent in the building.\n\nIt is one ecosystem, so an engineering quote, the job that follows, and its compliance record never live in separate silos.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "industry-brief-construction",
+    category: "Industry Briefs",
+    title: "Annix for Construction",
+    excerpt: "Quoting, materials and compliance for construction and built-environment teams.",
+    body: "Construction projects move fast and carry heavy compliance and safety obligations. Annix Forge handles standards-aware quoting and bills of quantity; Core tracks materials and operations; Sentinel keeps safety and statutory compliance evidenced; Orbit keeps crews staffed and equity-compliant.\n\nOne platform means the quote, the materials and the compliance file for a project all share a single, traceable source of truth.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "industry-brief-energy",
+    category: "Industry Briefs",
+    title: "Annix for Energy",
+    excerpt: "Built for the standards, scale and compliance demands of the energy sector.",
+    body: "Energy projects involve specialised piping, harsh-service materials and intense regulatory scrutiny. Annix Forge prices the engineering and fabrication around the right standards, including sour-service and pressure ratings; Core keeps operations traceable; Sentinel keeps compliance continuous; Orbit keeps a skilled workforce flowing.\n\nThe payoff is a single, audit-ready ecosystem from quote to compliance, built for high-stakes work.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "industry-brief-logistics",
+    category: "Industry Briefs",
+    title: "Annix for Logistics",
+    excerpt: "Inventory, workforce and compliance for moving goods and teams with confidence.",
+    body: "Logistics operations need tight inventory, mobile teams and dependable compliance. Annix Core keeps stock and movements accurate; Orbit keeps the workforce flowing; Pulse keeps distributed field teams moving and accountable; Sentinel keeps the compliance picture clean.\n\nOne connected platform means your stock, your people and your obligations are visible in the same place, wherever the work happens.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "industry-brief-education",
+    category: "Industry Briefs",
+    title: "Annix for Education",
+    excerpt: "Career pathways, compliance and workforce tools for the education sector.",
+    body: "Education is where the future workforce is shaped. Annix Orbit's FuturePath helps students plan subjects, explore careers and find funding, while connecting them to a live job market. Sentinel keeps institutions on the right side of POPIA and governance.\n\nIt is the workforce pipeline and the compliance backbone in one ecosystem — preparing people for industry and keeping institutions accountable.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "nix-ai-document-extraction",
+    category: "Platform",
+    title: "Nix AI: how document extraction works across Annix",
+    excerpt:
+      "The AI layer that reads your documents — certificates, RFQs, compliance evidence — and turns them into structured data.",
+    body: "Every Annix app deals in documents: certificates of conformance, RFQ drawings and specs, compliance evidence, CVs. Nix is the shared AI that reads them and turns them into structured, reviewable data instead of manual capture.\n\nUpload a document and Nix extracts the fields, presents a draft for review, and lets a person confirm before anything is committed. The same extraction engine powers Core's certificates, Forge's quote documents and Sentinel's evidence matching.\n\nBecause it is built once and shared, every app gets smarter together — and because there is always a human-in-the-loop review step, you get the speed of AI without giving up control.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "one-platform-shared-foundation",
+    category: "Platform",
+    title: "One platform, one backend: why Annix products work together",
+    excerpt:
+      "What it means that every Annix product shares the same backend, intelligence and design language.",
+    body: "Most businesses end up with a scattered collection of apps that do not talk to each other. Annix is built the other way around: every product — Core, Forge, Orbit, Pulse, Sentinel, Insights — sits on one shared backend, one AI layer and one design language.\n\nThat means shared company data, consistent roles and permissions, audit logs everywhere, and the same Nix AI across apps. Adopt one product and the next one already knows your business.\n\nIt is the difference between integrating five vendors and switching on a module — and it is why an operation can grow across sites, teams and functions without re-platforming.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+  {
+    slug: "nexus-one-api-every-model",
+    category: "Developers",
+    title: "Annix Nexus: one API for every model",
+    excerpt:
+      "The AI gateway that powers every Annix app — and gives developers one integration for many models.",
+    body: "Annix Nexus is the central AI gateway behind the whole ecosystem. Instead of wiring each app to a different AI provider, Nexus exposes one API and routes each request to the best model for the job, with smart routing, cost optimisation and full observability.\n\nFor developers that means one integration, no vendor lock-in, and enterprise controls: security, company-scoped access, rate limits and audit trails. The same gateway that powers Annix's document extraction and matching is available to build on.\n\nNexus is private-access and company-scoped today; request access to build against it.",
+    imageUrl: null,
+    productSlug: "annix-nexus",
+    published: true,
+  },
+  {
+    slug: "security-popia-data-residency",
+    category: "Trust & Security",
+    title: "Security, POPIA and data residency at Annix",
+    excerpt: "How Annix keeps your data secure, compliant and scoped to your company.",
+    body: "Annix is built for businesses that take data seriously. Access is role-based and scoped per company, every sensitive action is logged, and the platform is designed POPIA-first — you collect what you need, keep it secure and retain it only as long as you should.\n\nData lives on managed cloud infrastructure with per-environment isolation, and AI features run through a controlled gateway rather than ad-hoc calls to third parties.\n\nIf you need specifics for a security review — data residency, retention, access controls — our team can walk you through them. Start with Book a Demo.",
+    imageUrl: null,
+    productSlug: "",
+    published: true,
+  },
+];
+
 export function defaultMarketingContent(): MarketingSiteContent {
   return {
     site: {
@@ -481,6 +713,12 @@ export function defaultMarketingContent(): MarketingSiteContent {
           body: "Designed for the realities of heavy, regulated and field-driven work.",
         },
       ],
+    },
+    resources: {
+      heading: "Resources",
+      subheading:
+        "Guides, standards explainers and industry briefs to help you get the most out of Annix.",
+      items: RESOURCES,
     },
   };
 }

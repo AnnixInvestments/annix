@@ -172,11 +172,21 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
             ) : null
           ) : null}
           {tab === "industries" && industry ? (
-            <IndustryView industry={industry} productPages={content.productPages} />
+            <IndustryView
+              industry={industry}
+              products={content.ecosystem.products}
+              heroImageUrl={content.hero.imageUrl}
+              bottomImageUrl={content.ctaBand.backgroundImageUrl}
+            />
           ) : null}
           {tab === "about" ? <AboutView about={content.about} /> : null}
           {tab === "resources" ? <ResourcesView content={content} /> : null}
-          {tab === "contact" ? <ContactView /> : null}
+          {tab === "contact" ? (
+            <ContactView
+              heroImageUrl={content.hero.imageUrl}
+              bottomImageUrl={content.ctaBand.backgroundImageUrl}
+            />
+          ) : null}
         </MarketingShell>
       </div>
     </div>

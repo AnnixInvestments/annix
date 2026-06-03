@@ -20,9 +20,13 @@ export type {
   MarketingProductFeature,
   MarketingProductPage,
   MarketingProductRoi,
+  MarketingResource,
+  MarketingResourceCategory,
+  MarketingResources,
   MarketingSite,
   MarketingSiteContent,
   MarketingSiteStatus,
   MarketingSocialLink,
 } from "./content";
+export { RESOURCE_CATEGORIES } from "./content";
 export { defaultMarketingContent } from "./defaults";

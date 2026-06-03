@@ -1,15 +1,18 @@
 "use client";
 
-import type { MarketingProduct, MarketingSite } from "@annix/product-data/marketing";
+import type {
+  MarketingIndustry,
+  MarketingProduct,
+  MarketingSite,
+} from "@annix/product-data/marketing";
 import { ChevronDown, Globe, LogIn, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
-import { loginPortals } from "@/app/lib/marketing/links";
+import { loginPortalsForProducts } from "@/app/lib/marketing/links";
 
 const PRIMARY_LINKS = [
-  { label: "Industries", href: "/#industries" },
   { label: "Resources", href: "/resources" },
   { label: "About", href: "/about" },
   { label: "Contact", href: "/contact" },
@@ -44,13 +47,19 @@ function BrandMark(props: { site: MarketingSite }) {
   return <span className="text-xl font-bold tracking-tight text-white">{props.site.wordmark}</span>;
 }
 
-export function MarketingNav(props: { products: MarketingProduct[]; site: MarketingSite }) {
+export function MarketingNav(props: {
+  products: MarketingProduct[];
+  industries: MarketingIndustry[];
+  site: MarketingSite;
+}) {
   const products = props.products;
+  const industries = props.industries;
   const site = props.site;
   const [mobileOpen, setMobileOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
+  const [industriesOpen, setIndustriesOpen] = useState(false);
   const [loginOpen, setLoginOpen] = useState(false);
-  const portals = loginPortals();
+  const portals = loginPortalsForProducts(products);
 
   return (
     <header className="absolute inset-x-0 top-0 z-50">
@@ -87,6 +96,33 @@ export function MarketingNav(props: { products: MarketingProduct[]; site: Market
                     </Link>
                   );
                 })}
+              </div>
+            ) : null}
+          </div>
+
+          <div
+            className="relative"
+            onMouseEnter={() => setIndustriesOpen(true)}
+            onMouseLeave={() => setIndustriesOpen(false)}
+          >
+            <button
+              type="button"
+              className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:text-white"
+            >
+              Industries
+              <ChevronDown className="h-4 w-4" />
+            </button>
+            {industriesOpen ? (
+              <div className="absolute left-0 top-full w-64 rounded-xl border border-white/10 bg-slate-900 p-2 shadow-2xl">
+                {industries.map((item) => (
+                  <Link
+                    key={item.slug}
+                    href={`/industries/${item.slug}`}
+                    className="block rounded-lg px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/5"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
               </div>
             ) : null}
           </div>
@@ -172,6 +208,21 @@ export function MarketingNav(props: { products: MarketingProduct[]; site: Market
               </Link>
             );
           })}
+          <div className="mt-3 border-t border-white/10 pt-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
+              Industries
+            </div>
+            {industries.map((item) => (
+              <Link
+                key={item.slug}
+                href={`/industries/${item.slug}`}
+                className="block rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+                onClick={() => setMobileOpen(false)}
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
           <div className="mt-3 border-t border-white/10 pt-3">
             {PRIMARY_LINKS.map((link) => (
               <Link
