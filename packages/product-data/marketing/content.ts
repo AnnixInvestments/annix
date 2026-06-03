@@ -5,6 +5,7 @@ export interface MarketingCta {
 
 export interface MarketingSite {
   logoUrl: string | null;
+  wordmarkImageUrl: string | null;
   wordmark: string;
   accentColor: string;
 }

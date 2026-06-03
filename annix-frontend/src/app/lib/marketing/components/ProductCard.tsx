@@ -15,7 +15,7 @@ export function ProductCard(props: { product: MarketingProduct }) {
     const showComingImage = comingImage !== "" && !imgFailed;
     return (
       <div className="flex flex-col">
-        <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-white/10 bg-white/5">
+        <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-[#ff6c00]/60 bg-white/5">
           {showComingImage ? (
             <img
               src={comingImage}
@@ -54,7 +54,7 @@ export function ProductCard(props: { product: MarketingProduct }) {
 
   return (
     <Link href={`/products/${product.detailSlug}`} className="group flex flex-col">
-      <div className="aspect-[4/5] overflow-hidden rounded-xl border border-white/10 bg-slate-900">
+      <div className="aspect-[4/5] overflow-hidden rounded-xl border border-[#ff6c00]/60 bg-slate-900">
         {showImage ? (
           <img
             src={src}

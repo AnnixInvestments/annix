@@ -73,7 +73,7 @@ export function ConnectSection(props: {
                     key={partner.name}
                     src={partner.logoUrl}
                     alt={partner.name}
-                    className="h-12 w-full object-contain"
+                    className="h-[4.5rem] w-full object-contain"
                   />
                 );
                 const href = externalHref(partner.url);

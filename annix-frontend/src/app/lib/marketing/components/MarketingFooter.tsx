@@ -20,8 +20,16 @@ const SOCIAL_ICONS: Record<string, LucideIcon | undefined> = {
 function FooterBrand(props: { site: MarketingSite }) {
   const branding = useBrandingContext();
   const logoUrl = props.site.logoUrl ? props.site.logoUrl : "";
-  if (logoUrl) {
-    return <img src={logoUrl} alt={props.site.wordmark} className="h-8 w-auto" />;
+  const wordmarkUrl = props.site.wordmarkImageUrl ? props.site.wordmarkImageUrl : "";
+  if (logoUrl || wordmarkUrl) {
+    return (
+      <span className="flex items-center gap-2 sm:gap-3">
+        {logoUrl ? <img src={logoUrl} alt={props.site.wordmark} className="h-9 w-auto" /> : null}
+        {wordmarkUrl ? (
+          <img src={wordmarkUrl} alt={props.site.wordmark} className="h-6 w-auto" />
+        ) : null}
+      </span>
+    );
   }
   const hasLockup = branding ? brandHasAsset("logoLockup", branding) : false;
   if (branding && hasLockup) {

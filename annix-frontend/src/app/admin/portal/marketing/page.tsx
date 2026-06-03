@@ -556,51 +556,7 @@ export default function MarketingCmsPage() {
         </div>
       ) : (
         <>
-          <Section title="Brand & logo">
-            <div>
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Company logo (nav + footer)
-              </span>
-              <div className="flex items-center gap-3">
-                {site.logoUrl ? (
-                  <img
-                    src={site.logoUrl}
-                    alt=""
-                    className="h-12 w-auto rounded border border-gray-200 bg-slate-900 px-2"
-                  />
-                ) : (
-                  <div className="flex h-12 w-28 items-center justify-center rounded border border-dashed border-gray-300 text-[10px] text-gray-400">
-                    Using brand logo
-                  </div>
-                )}
-                <ImageUploadButton
-                  label="Upload logo"
-                  onUploaded={(url) =>
-                    update((d) => {
-                      d.site.logoUrl = url;
-                    })
-                  }
-                  onError={(m) => showToast(m, "error")}
-                />
-                {site.logoUrl ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update((d) => {
-                        d.site.logoUrl = null;
-                      })
-                    }
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    Clear
-                  </button>
-                ) : null}
-              </div>
-              <p className="mt-1 text-xs text-gray-400">
-                Leave empty to use the Annix brand logo. The wordmark below shows if no logo is
-                available.
-              </p>
-            </div>
+          <Section title="Brand & colours">
             <Text
               label="Company wordmark text"
               value={site.wordmark}
@@ -740,83 +696,180 @@ export default function MarketingCmsPage() {
               }
             />
             <div>
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Hero background / globe image
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Home page images
               </span>
-              <div className="flex items-center gap-3">
-                {hero.imageUrl ? (
-                  <img
-                    src={hero.imageUrl}
-                    alt=""
-                    className="h-16 w-28 rounded-lg border border-gray-200 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
-                    No image
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    Hero background / globe
+                  </span>
+                  {hero.imageUrl ? (
+                    <img
+                      src={hero.imageUrl}
+                      alt=""
+                      className="h-20 w-full rounded-lg border border-gray-200 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                      No image
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <ImageUploadButton
+                      label="Upload"
+                      onUploaded={(url) =>
+                        update((d) => {
+                          d.hero.imageUrl = url;
+                        })
+                      }
+                      onError={(m) => showToast(m, "error")}
+                    />
+                    {hero.imageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update((d) => {
+                            d.hero.imageUrl = null;
+                          })
+                        }
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
                   </div>
-                )}
-                <ImageUploadButton
-                  label="Upload image"
-                  onUploaded={(url) =>
-                    update((d) => {
-                      d.hero.imageUrl = url;
-                    })
-                  }
-                  onError={(m) => showToast(m, "error")}
-                />
-                {hero.imageUrl ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update((d) => {
-                        d.hero.imageUrl = null;
-                      })
-                    }
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    Clear
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <div>
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Bottom section background image
-              </span>
-              <div className="flex items-center gap-3">
-                {ctaBand.backgroundImageUrl ? (
-                  <img
-                    src={ctaBand.backgroundImageUrl}
-                    alt=""
-                    className="h-16 w-28 rounded-lg border border-gray-200 object-cover"
-                  />
-                ) : (
-                  <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
-                    No image
+                </div>
+
+                <div>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    Bottom section background
+                  </span>
+                  {ctaBand.backgroundImageUrl ? (
+                    <img
+                      src={ctaBand.backgroundImageUrl}
+                      alt=""
+                      className="h-20 w-full rounded-lg border border-gray-200 object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                      No image
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <ImageUploadButton
+                      label="Upload"
+                      onUploaded={(url) =>
+                        update((d) => {
+                          d.ctaBand.backgroundImageUrl = url;
+                        })
+                      }
+                      onError={(m) => showToast(m, "error")}
+                    />
+                    {ctaBand.backgroundImageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update((d) => {
+                            d.ctaBand.backgroundImageUrl = null;
+                          })
+                        }
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
                   </div>
-                )}
-                <ImageUploadButton
-                  label="Upload image"
-                  onUploaded={(url) =>
-                    update((d) => {
-                      d.ctaBand.backgroundImageUrl = url;
-                    })
-                  }
-                  onError={(m) => showToast(m, "error")}
-                />
-                {ctaBand.backgroundImageUrl ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      update((d) => {
-                        d.ctaBand.backgroundImageUrl = null;
-                      })
-                    }
-                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    Clear
-                  </button>
-                ) : null}
+                </div>
+
+                <div>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    Company logo (nav + footer)
+                  </span>
+                  {site.logoUrl ? (
+                    <img
+                      src={site.logoUrl}
+                      alt=""
+                      className="h-20 w-full rounded-lg border border-gray-200 bg-slate-900 object-contain p-2"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                      Using brand logo
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <ImageUploadButton
+                      label="Upload"
+                      onUploaded={(url) =>
+                        update((d) => {
+                          d.site.logoUrl = url;
+                        })
+                      }
+                      onError={(m) => showToast(m, "error")}
+                    />
+                    {site.logoUrl ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update((d) => {
+                            d.site.logoUrl = null;
+                          })
+                        }
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    Leave empty to use the Annix brand logo.
+                  </p>
+                </div>
+
+                <div>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400">
+                    Wordmark image
+                  </span>
+                  {site.wordmarkImageUrl ? (
+                    <img
+                      src={site.wordmarkImageUrl}
+                      alt=""
+                      className="h-20 w-full rounded-lg border border-gray-200 bg-slate-900 object-contain p-2"
+                    />
+                  ) : (
+                    <div className="flex h-20 w-full items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                      Using wordmark text
+                    </div>
+                  )}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <ImageUploadButton
+                      label="Upload"
+                      removeBackground
+                      onUploaded={(url) =>
+                        update((d) => {
+                          d.site.wordmarkImageUrl = url;
+                        })
+                      }
+                      onError={(m) => showToast(m, "error")}
+                    />
+                    {site.wordmarkImageUrl ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          update((d) => {
+                            d.site.wordmarkImageUrl = null;
+                          })
+                        }
+                        className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                      >
+                        Clear
+                      </button>
+                    ) : null}
+                  </div>
+                  <p className="mt-1 text-[10px] text-gray-400">
+                    Shown when no company logo is set. Falls back to the wordmark text.
+                  </p>
+                </div>
               </div>
             </div>
             <div className="space-y-2">

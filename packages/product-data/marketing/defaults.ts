@@ -297,7 +297,8 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
 export function defaultMarketingContent(): MarketingSiteContent {
   return {
     site: {
-      logoUrl: "/api/public/branding/annix-investments/asset/logoLockup",
+      logoUrl: null,
+      wordmarkImageUrl: null,
       wordmark: "ANNIX INVESTMENTS",
       accentColor: "#E0B44A",
     },

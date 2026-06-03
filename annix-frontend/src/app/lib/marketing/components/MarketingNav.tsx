@@ -18,8 +18,18 @@ const PRIMARY_LINKS = [
 function BrandMark(props: { site: MarketingSite }) {
   const branding = useBrandingContext();
   const logoUrl = props.site.logoUrl ? props.site.logoUrl : "";
-  if (logoUrl) {
-    return <img src={logoUrl} alt={props.site.wordmark} className="h-8 w-auto sm:h-9" />;
+  const wordmarkUrl = props.site.wordmarkImageUrl ? props.site.wordmarkImageUrl : "";
+  if (logoUrl || wordmarkUrl) {
+    return (
+      <span className="flex items-center gap-2 sm:gap-3">
+        {logoUrl ? (
+          <img src={logoUrl} alt={props.site.wordmark} className="h-14 w-auto sm:h-16" />
+        ) : null}
+        {wordmarkUrl ? (
+          <img src={wordmarkUrl} alt={props.site.wordmark} className="h-9 w-auto sm:h-11" />
+        ) : null}
+      </span>
+    );
   }
   const hasLockup = branding ? brandHasAsset("logoLockup", branding) : false;
   if (branding && hasLockup) {
