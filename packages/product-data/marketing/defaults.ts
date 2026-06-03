@@ -390,10 +390,10 @@ export function defaultMarketingContent(): MarketingSiteContent {
     globalPresence: {
       heading: "Global presence, local support",
       items: [
-        { region: "South Africa", label: "Head Office", detail: "Cape Town", flag: "🇿🇦" },
-        { region: "Australia", label: "Sales Office", detail: "Perth", flag: "🇦🇺" },
-        { region: "Europe", label: "Partners", detail: "Across EU", flag: "🇪🇺" },
-        { region: "Americas", label: "Partners", detail: "Across USA", flag: "🇺🇸" },
+        { region: "South Africa", label: "Head Office", detail: "Cape Town", flag: "ZA" },
+        { region: "Australia", label: "Sales Office", detail: "Perth", flag: "AU" },
+        { region: "Europe", label: "Partners", detail: "Across EU", flag: "EU" },
+        { region: "Americas", label: "Partners", detail: "Across USA", flag: "US" },
       ],
     },
     ctaBand: {
@@ -402,6 +402,7 @@ export function defaultMarketingContent(): MarketingSiteContent {
         "Book a demo with our team and see how Annix solutions can help you work smarter and grow faster.",
       primaryCta: { label: "Book a Demo", href: "/contact" },
       secondaryCta: { label: "Contact Us", href: "/contact" },
+      backgroundImageUrl: "/marketing/connect-bg.png",
     },
     footer: {
       tagline: "Intelligent software solutions built in South Africa.",
@@ -451,6 +452,10 @@ export function defaultMarketingContent(): MarketingSiteContent {
         { label: "Terms of Use", href: "#" },
       ],
       legal: "All rights reserved.",
+      designedByLogoUrl: null,
+      designedByUrl: "",
+      hostedByLogoUrl: null,
+      hostedByUrl: "",
     },
     productPages: PRODUCT_PAGES,
     labs: {

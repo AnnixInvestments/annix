@@ -8,6 +8,7 @@ import { MARKETING_VERSION } from "@/app/config/marketing/version";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { now } from "@/app/lib/datetime";
+import { externalHref } from "../url";
 
 const SOCIAL_ICONS: Record<string, LucideIcon | undefined> = {
   LinkedIn: Linkedin,
@@ -35,10 +36,36 @@ function FooterBrand(props: { site: MarketingSite }) {
   return <span className="text-xl font-bold tracking-tight text-white">{props.site.wordmark}</span>;
 }
 
+function FooterCredit(props: { label: string; logoUrl: string; href: string }) {
+  const href = externalHref(props.href);
+  const logo = <img src={props.logoUrl} alt={props.label} className="h-9 w-auto object-contain" />;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs uppercase tracking-wide text-white/40">{props.label}</span>
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={props.label}
+          className="transition hover:opacity-80"
+        >
+          {logo}
+        </a>
+      ) : (
+        logo
+      )}
+    </div>
+  );
+}
+
 export function MarketingFooter(props: { footer: MarketingFooterContent; site: MarketingSite }) {
   const footer = props.footer;
   const site = props.site;
   const year = now().year;
+  const designedByLogoUrl = footer.designedByLogoUrl ? footer.designedByLogoUrl : "";
+  const hostedByLogoUrl = footer.hostedByLogoUrl ? footer.hostedByLogoUrl : "";
+  const hasCredits = designedByLogoUrl !== "" || hostedByLogoUrl !== "";
   return (
     <footer className="border-t border-white/10 px-4 py-14 text-white/70 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
@@ -101,6 +128,21 @@ export function MarketingFooter(props: { footer: MarketingFooterContent; site: M
             </div>
           </div>
         </div>
+
+        {hasCredits ? (
+          <div className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-white/10 pt-6">
+            {designedByLogoUrl ? (
+              <FooterCredit
+                label="Designed by"
+                logoUrl={designedByLogoUrl}
+                href={footer.designedByUrl}
+              />
+            ) : null}
+            {hostedByLogoUrl ? (
+              <FooterCredit label="Hosted by" logoUrl={hostedByLogoUrl} href={footer.hostedByUrl} />
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-white/10 pt-6 text-xs text-white/40 sm:flex-row">
           <span>

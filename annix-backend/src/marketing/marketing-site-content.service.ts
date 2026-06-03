@@ -29,12 +29,6 @@ function withDefaults(stored: MarketingSiteContentTree | null): MarketingSiteCon
       }
     }
   });
-  const haveIndustrySlugs = new Set(merged.industries.items.map((entry) => entry.slug));
-  defaults.industries.items.forEach((def) => {
-    if (!haveIndustrySlugs.has(def.slug)) {
-      merged.industries.items.push(def);
-    }
-  });
   merged.ecosystem.products.forEach((product) => {
     if (!product.imageUrl) {
       const def = defaults.ecosystem.products.find(
@@ -43,12 +37,6 @@ function withDefaults(stored: MarketingSiteContentTree | null): MarketingSiteCon
       if (def?.imageUrl) {
         product.imageUrl = def.imageUrl;
       }
-    }
-  });
-  const haveProductSlugs = new Set(merged.ecosystem.products.map((entry) => entry.detailSlug));
-  defaults.ecosystem.products.forEach((def) => {
-    if (!haveProductSlugs.has(def.detailSlug)) {
-      merged.ecosystem.products.push(def);
     }
   });
   return merged;

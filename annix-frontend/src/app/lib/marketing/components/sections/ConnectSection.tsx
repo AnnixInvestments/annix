@@ -5,6 +5,28 @@ import type {
 } from "@annix/product-data/marketing";
 import { ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { externalHref } from "../../url";
+
+const FLAG_CODE_ALIASES: Record<string, string> = { uk: "gb" };
+
+function flagImageCode(flag: string): string | null {
+  const trimmed = flag.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const codePoints = Array.from(trimmed).map((char) => char.codePointAt(0) ?? 0);
+  const allRegionalIndicators =
+    codePoints.length >= 2 && codePoints.every((cp) => cp >= 0x1f1e6 && cp <= 0x1f1ff);
+  const letters = allRegionalIndicators
+    ? codePoints.map((cp) => String.fromCharCode(cp - 0x1f1e6 + 65)).join("")
+    : trimmed.replace(/[^a-zA-Z]/g, "");
+  if (letters.length < 2) {
+    return null;
+  }
+  const code = letters.slice(0, 2).toLowerCase();
+  const aliased = FLAG_CODE_ALIASES[code];
+  return aliased ? aliased : code;
+}
 
 export function ConnectSection(props: {
   partners: MarketingPartners;
@@ -14,25 +36,64 @@ export function ConnectSection(props: {
   const partners = props.partners;
   const globalPresence = props.globalPresence;
   const ctaBand = props.ctaBand;
-  const hasPartners = partners.partners.length > 0;
+  const visiblePartners = partners.partners.filter((partner) => partner.logoUrl !== "");
+  const hasPartners = visiblePartners.length > 0;
+  const backgroundImageUrl = ctaBand.backgroundImageUrl ? ctaBand.backgroundImageUrl : "";
 
   return (
-    <section className="px-4 pb-16 pt-4 sm:px-6 lg:px-8">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 lg:grid-cols-12">
+    <section className="relative overflow-hidden px-4 pb-16 pt-4 sm:px-6 lg:px-8">
+      {backgroundImageUrl ? (
+        <>
+          <div className="absolute inset-0">
+            <img
+              src={backgroundImageUrl}
+              alt=""
+              className="h-full w-full object-cover object-bottom"
+            />
+          </div>
+          <div
+            className="absolute inset-x-0 top-0 h-32"
+            style={{
+              backgroundImage: "linear-gradient(180deg, #0a1733, transparent)",
+            }}
+          />
+        </>
+      ) : null}
+
+      <div className="relative mx-auto grid max-w-7xl grid-cols-1 gap-10 lg:grid-cols-12">
         <div className="lg:col-span-4">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-white/40">
             {partners.heading}
           </p>
           {hasPartners ? (
             <div className="mt-5 grid grid-cols-3 items-center gap-x-6 gap-y-5">
-              {partners.partners.map((partner) => (
-                <img
-                  key={partner.name}
-                  src={partner.logoUrl}
-                  alt={partner.name}
-                  className="h-8 w-full object-contain opacity-70 grayscale transition hover:opacity-100"
-                />
-              ))}
+              {visiblePartners.map((partner) => {
+                const logo = (
+                  <img
+                    key={partner.name}
+                    src={partner.logoUrl}
+                    alt={partner.name}
+                    className="h-12 w-full object-contain"
+                  />
+                );
+                const href = externalHref(partner.url);
+                return href ? (
+                  <a
+                    key={partner.name}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    title={partner.name}
+                    className="block transition hover:opacity-80"
+                  >
+                    {logo}
+                  </a>
+                ) : (
+                  <span key={partner.name} className="block">
+                    {logo}
+                  </span>
+                );
+              })}
             </div>
           ) : (
             <div className="mt-5 rounded-xl border border-dashed border-white/15 p-5">
@@ -53,16 +114,27 @@ export function ConnectSection(props: {
             {globalPresence.heading}
           </p>
           <div className="mt-5 grid grid-cols-2 gap-4">
-            {globalPresence.items.map((item) => (
-              <div key={item.region} className="flex items-start gap-2">
-                <span className="text-lg leading-none">{item.flag}</span>
-                <span className="leading-tight">
-                  <span className="block text-sm font-semibold text-white">{item.region}</span>
-                  <span className="block text-xs text-white/50">{item.label}</span>
-                  <span className="block text-xs text-white/50">{item.detail}</span>
-                </span>
-              </div>
-            ))}
+            {globalPresence.items.map((item) => {
+              const flagCode = flagImageCode(item.flag);
+              return (
+                <div key={item.region} className="flex items-start gap-2">
+                  {flagCode ? (
+                    <img
+                      src={`https://flagcdn.com/${flagCode}.svg`}
+                      alt=""
+                      className="mt-0.5 h-4 w-6 shrink-0 rounded-sm object-cover ring-1 ring-white/10"
+                    />
+                  ) : (
+                    <span className="text-lg leading-none">{item.flag}</span>
+                  )}
+                  <span className="leading-tight">
+                    <span className="block text-sm font-semibold text-white">{item.region}</span>
+                    <span className="block text-xs text-white/50">{item.label}</span>
+                    <span className="block text-xs text-white/50">{item.detail}</span>
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </div>
 

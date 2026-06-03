@@ -66,6 +66,7 @@ export interface MarketingIndustries {
 export interface MarketingPartner {
   name: string;
   logoUrl: string;
+  url: string;
 }
 
 export interface MarketingPartners {
@@ -90,6 +91,7 @@ export interface MarketingCtaBand {
   subheading: string;
   primaryCta: MarketingCta;
   secondaryCta: MarketingCta;
+  backgroundImageUrl: string | null;
 }
 
 export interface MarketingSocialLink {
@@ -110,6 +112,10 @@ export interface MarketingFooter {
   socialLinks: MarketingSocialLink[];
   legalLinks: MarketingCta[];
   legal: string;
+  designedByLogoUrl: string | null;
+  designedByUrl: string;
+  hostedByLogoUrl: string | null;
+  hostedByUrl: string;
 }
 
 export interface MarketingProductFeature {

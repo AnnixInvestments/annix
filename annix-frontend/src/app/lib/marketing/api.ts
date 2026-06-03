@@ -27,12 +27,6 @@ export function mergeMarketingDefaults(
       }
     }
   });
-  const haveIndustrySlugs = new Set(merged.industries.items.map((entry) => entry.slug));
-  defaults.industries.items.forEach((def) => {
-    if (!haveIndustrySlugs.has(def.slug)) {
-      merged.industries.items.push(def);
-    }
-  });
   merged.ecosystem.products.forEach((product) => {
     if (!product.imageUrl) {
       const def = defaults.ecosystem.products.find(
@@ -43,10 +37,9 @@ export function mergeMarketingDefaults(
       }
     }
   });
-  const haveProductSlugs = new Set(merged.ecosystem.products.map((entry) => entry.detailSlug));
-  defaults.ecosystem.products.forEach((def) => {
-    if (!haveProductSlugs.has(def.detailSlug)) {
-      merged.ecosystem.products.push(def);
+  merged.partners.partners.forEach((partner) => {
+    if (!isString(partner.url)) {
+      partner.url = "";
     }
   });
   return merged;
@@ -71,7 +64,7 @@ export async function fetchPublishedMarketingContent(): Promise<MarketingSiteCon
     if (!res.ok) {
       return defaultMarketingContent();
     }
-    return (await res.json()) as MarketingSiteContent;
+    return mergeMarketingDefaults((await res.json()) as MarketingSiteContent);
   } catch {
     return defaultMarketingContent();
   }

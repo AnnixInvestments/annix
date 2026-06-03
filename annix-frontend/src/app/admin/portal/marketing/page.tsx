@@ -62,36 +62,124 @@ function Section(props: { title: string; children: React.ReactNode }) {
   );
 }
 
+function clearEdgeBackground(imageData: ImageData): void {
+  const data = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  if (data.length < 4 || data[3] === 0) {
+    return;
+  }
+  const bgR = data[0];
+  const bgG = data[1];
+  const bgB = data[2];
+  const tolerance = 36;
+  const visited = new Uint8Array(width * height);
+  const stack: number[] = [];
+  const consider = (x: number, y: number) => {
+    if (x < 0 || y < 0 || x >= width || y >= height) {
+      return;
+    }
+    const pixel = y * width + x;
+    if (visited[pixel] === 1) {
+      return;
+    }
+    visited[pixel] = 1;
+    const offset = pixel * 4;
+    const withinTolerance =
+      Math.abs(data[offset] - bgR) <= tolerance &&
+      Math.abs(data[offset + 1] - bgG) <= tolerance &&
+      Math.abs(data[offset + 2] - bgB) <= tolerance;
+    if (withinTolerance) {
+      data[offset + 3] = 0;
+      stack.push(x, y);
+    }
+  };
+  Array.from({ length: width }, (_, x) => x).forEach((x) => {
+    consider(x, 0);
+    consider(x, height - 1);
+  });
+  Array.from({ length: height }, (_, y) => y).forEach((y) => {
+    consider(0, y);
+    consider(width - 1, y);
+  });
+  // eslint-disable-next-line no-restricted-syntax -- BFS flood-fill needs a dynamic work stack; not expressible as a declarative array op
+  while (stack.length > 0) {
+    const y = stack.pop() as number;
+    const x = stack.pop() as number;
+    consider(x - 1, y);
+    consider(x + 1, y);
+    consider(x, y - 1);
+    consider(x, y + 1);
+  }
+}
+
+async function stripImageBackground(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas not supported");
+  }
+  ctx.drawImage(bitmap, 0, 0);
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  clearEdgeBackground(imageData);
+  ctx.putImageData(imageData, 0, 0);
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((result) => resolve(result), "image/png");
+  });
+  if (!blob) {
+    throw new Error("Could not export image");
+  }
+  const baseName = file.name.replace(/\.[^./\\]+$/, "");
+  const safeName = baseName ? baseName : "logo";
+  return new File([blob], `${safeName}.png`, { type: "image/png" });
+}
+
 function ImageUploadButton(props: {
   label: string;
   onUploaded: (url: string) => void;
   onError: (message: string) => void;
+  removeBackground?: boolean;
 }) {
-  const [uploading, setUploading] = useState(false);
+  const [phase, setPhase] = useState<"idle" | "removing" | "uploading">("idle");
   async function handle(event: React.ChangeEvent<HTMLInputElement>) {
     const files = event.target.files;
     const file = files && files.length > 0 ? files[0] : null;
     if (!file) return;
-    setUploading(true);
+    let toUpload = file;
     try {
-      const result = await marketingAdminApi.uploadImage(file);
+      if (props.removeBackground) {
+        setPhase("removing");
+        try {
+          toUpload = await stripImageBackground(file);
+        } catch {
+          props.onError("Couldn't remove the background — uploading the original image instead.");
+          toUpload = file;
+        }
+      }
+      setPhase("uploading");
+      const result = await marketingAdminApi.uploadImage(toUpload);
       props.onUploaded(result.url);
     } catch {
       props.onError("Could not upload the image. Please try again.");
     } finally {
-      setUploading(false);
+      setPhase("idle");
+      event.target.value = "";
     }
   }
+  const busy = phase !== "idle";
+  const label =
+    phase === "removing"
+      ? "Removing background…"
+      : phase === "uploading"
+        ? "Uploading…"
+        : props.label;
   return (
     <label className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
-      {uploading ? "Uploading…" : props.label}
-      <input
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={handle}
-        disabled={uploading}
-      />
+      {label}
+      <input type="file" accept="image/*" className="hidden" onChange={handle} disabled={busy} />
     </label>
   );
 }
@@ -101,6 +189,10 @@ function ProductRow(props: {
   patch: (mutate: (product: MarketingProduct) => void) => void;
   onRemove: () => void;
   onError: (message: string) => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }) {
   const product = props.product;
   const portalCodeValue = product.portalCode === null ? "" : product.portalCode;
@@ -253,13 +345,33 @@ function ProductRow(props: {
           />
           Coming soon
         </label>
-        <button
-          type="button"
-          onClick={props.onRemove}
-          className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          Remove product
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={props.onMoveUp}
+            disabled={!props.canMoveUp}
+            title="Move card earlier"
+            className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ↑ Up
+          </button>
+          <button
+            type="button"
+            onClick={props.onMoveDown}
+            disabled={!props.canMoveDown}
+            title="Move card later"
+            className="rounded-lg border border-gray-300 px-2.5 py-1.5 text-sm text-gray-600 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            ↓ Down
+          </button>
+          <button
+            type="button"
+            onClick={props.onRemove}
+            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+          >
+            Remove product
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -667,6 +779,46 @@ export default function MarketingCmsPage() {
                 ) : null}
               </div>
             </div>
+            <div>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Bottom section background image
+              </span>
+              <div className="flex items-center gap-3">
+                {ctaBand.backgroundImageUrl ? (
+                  <img
+                    src={ctaBand.backgroundImageUrl}
+                    alt=""
+                    className="h-16 w-28 rounded-lg border border-gray-200 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                    No image
+                  </div>
+                )}
+                <ImageUploadButton
+                  label="Upload image"
+                  onUploaded={(url) =>
+                    update((d) => {
+                      d.ctaBand.backgroundImageUrl = url;
+                    })
+                  }
+                  onError={(m) => showToast(m, "error")}
+                />
+                {ctaBand.backgroundImageUrl ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update((d) => {
+                        d.ctaBand.backgroundImageUrl = null;
+                      })
+                    }
+                    className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    Clear
+                  </button>
+                ) : null}
+              </div>
+            </div>
             <div className="space-y-2">
               <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Highlights
@@ -777,6 +929,26 @@ export default function MarketingCmsPage() {
                       d.ecosystem.products = d.ecosystem.products.filter((_, i) => i !== index);
                     })
                   }
+                  canMoveUp={index > 0}
+                  canMoveDown={index < ecosystem.products.length - 1}
+                  onMoveUp={() =>
+                    update((d) => {
+                      const items = [...d.ecosystem.products];
+                      const moved = items[index];
+                      items[index] = items[index - 1];
+                      items[index - 1] = moved;
+                      d.ecosystem.products = items;
+                    })
+                  }
+                  onMoveDown={() =>
+                    update((d) => {
+                      const items = [...d.ecosystem.products];
+                      const moved = items[index];
+                      items[index] = items[index + 1];
+                      items[index + 1] = moved;
+                      d.ecosystem.products = items;
+                    })
+                  }
                   onError={(message) => showToast(message, "error")}
                 />
               ))}
@@ -787,7 +959,7 @@ export default function MarketingCmsPage() {
                     d.ecosystem.products.push({
                       appKey: "",
                       portalCode: null,
-                      name: "New product",
+                      name: "",
                       category: "",
                       blurb: "",
                       iconSlot: "Sparkles",
@@ -931,7 +1103,7 @@ export default function MarketingCmsPage() {
                 onClick={() =>
                   update((d) => {
                     d.industries.items.push({
-                      name: "New industry",
+                      name: "",
                       blurb: "",
                       iconSlot: "Factory",
                       imageUrl: null,
@@ -956,6 +1128,10 @@ export default function MarketingCmsPage() {
                 })
               }
             />
+            <p className="text-xs text-gray-500">
+              Logo backgrounds are removed automatically on upload (processed in your browser) and
+              shown in full colour. Upload any logo — no need to pre-cut it.
+            </p>
             <div className="space-y-3">
               {partners.partners.map((partner, index) => (
                 <div
@@ -973,19 +1149,33 @@ export default function MarketingCmsPage() {
                       No logo
                     </div>
                   )}
-                  <input
-                    type="text"
-                    value={partner.name}
-                    onChange={(e) =>
-                      update((d) => {
-                        d.partners.partners[index].name = e.target.value;
-                      })
-                    }
-                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="Partner name"
-                  />
+                  <div className="flex flex-1 flex-col gap-2">
+                    <input
+                      type="text"
+                      value={partner.name}
+                      onChange={(e) =>
+                        update((d) => {
+                          d.partners.partners[index].name = e.target.value;
+                        })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="Partner name"
+                    />
+                    <input
+                      type="url"
+                      value={partner.url ? partner.url : ""}
+                      onChange={(e) =>
+                        update((d) => {
+                          d.partners.partners[index].url = e.target.value;
+                        })
+                      }
+                      className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                      placeholder="Website URL (optional) — e.g. auind.co.za"
+                    />
+                  </div>
                   <ImageUploadButton
                     label="Upload logo"
+                    removeBackground
                     onUploaded={(url) =>
                       update((d) => {
                         d.partners.partners[index].logoUrl = url;
@@ -1010,7 +1200,7 @@ export default function MarketingCmsPage() {
                 type="button"
                 onClick={() =>
                   update((d) => {
-                    d.partners.partners.push({ name: "New partner", logoUrl: "" });
+                    d.partners.partners.push({ name: "", logoUrl: "", url: "" });
                   })
                 }
                 className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
@@ -1042,7 +1232,8 @@ export default function MarketingCmsPage() {
                       })
                     }
                     className="w-16 rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                    placeholder="Flag"
+                    placeholder="ZA"
+                    title="2-letter country code (e.g. ZA, GB, US, AU) — shown as a flag"
                   />
                   <input
                     type="text"
@@ -1254,6 +1445,112 @@ export default function MarketingCmsPage() {
                 })
               }
             />
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Designed by — logo
+                </span>
+                <div className="flex items-center gap-3">
+                  {footer.designedByLogoUrl ? (
+                    <img
+                      src={footer.designedByLogoUrl}
+                      alt=""
+                      className="h-12 w-24 rounded-lg border border-gray-200 object-contain p-1"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-24 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                      No image
+                    </div>
+                  )}
+                  <ImageUploadButton
+                    label="Upload logo"
+                    removeBackground
+                    onUploaded={(url) =>
+                      update((d) => {
+                        d.footer.designedByLogoUrl = url;
+                      })
+                    }
+                    onError={(m) => showToast(m, "error")}
+                  />
+                  {footer.designedByLogoUrl ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        update((d) => {
+                          d.footer.designedByLogoUrl = null;
+                        })
+                      }
+                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+                <input
+                  type="url"
+                  value={footer.designedByUrl ? footer.designedByUrl : ""}
+                  onChange={(e) =>
+                    update((d) => {
+                      d.footer.designedByUrl = e.target.value;
+                    })
+                  }
+                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="Website URL (optional) — e.g. designer.com"
+                />
+              </div>
+              <div>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                  Hosted by — logo
+                </span>
+                <div className="flex items-center gap-3">
+                  {footer.hostedByLogoUrl ? (
+                    <img
+                      src={footer.hostedByLogoUrl}
+                      alt=""
+                      className="h-12 w-24 rounded-lg border border-gray-200 object-contain p-1"
+                    />
+                  ) : (
+                    <div className="flex h-12 w-24 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+                      No image
+                    </div>
+                  )}
+                  <ImageUploadButton
+                    label="Upload logo"
+                    removeBackground
+                    onUploaded={(url) =>
+                      update((d) => {
+                        d.footer.hostedByLogoUrl = url;
+                      })
+                    }
+                    onError={(m) => showToast(m, "error")}
+                  />
+                  {footer.hostedByLogoUrl ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        update((d) => {
+                          d.footer.hostedByLogoUrl = null;
+                        })
+                      }
+                      className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+                <input
+                  type="url"
+                  value={footer.hostedByUrl ? footer.hostedByUrl : ""}
+                  onChange={(e) =>
+                    update((d) => {
+                      d.footer.hostedByUrl = e.target.value;
+                    })
+                  }
+                  className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                  placeholder="Website URL (optional) — e.g. host.com"
+                />
+              </div>
+            </div>
           </Section>
         </>
       )}
