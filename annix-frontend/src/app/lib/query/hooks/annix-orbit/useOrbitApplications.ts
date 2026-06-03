@@ -20,10 +20,27 @@ export function useOrbitUpdateSeekerApplication() {
   return useMutation<
     { success: boolean },
     Error,
-    { id: number; input: UpdateSeekerApplicationInput }
+    { id: number; input: UpdateSeekerApplicationInput },
+    { previous: SeekerApplication[] | undefined }
   >({
     mutationFn: ({ id, input }) => annixOrbitApiClient.updateMyApplication(id, input),
-    onSuccess: () => {
+    onMutate: async ({ id, input }) => {
+      const listKey = annixOrbitKeys.seekerApplications.list();
+      await queryClient.cancelQueries({ queryKey: annixOrbitKeys.seekerApplications.all });
+      const previous = queryClient.getQueryData<SeekerApplication[]>(listKey);
+      if (previous) {
+        const next = previous.map((app) => (app.id === id ? { ...app, ...input } : app));
+        queryClient.setQueryData<SeekerApplication[]>(listKey, next);
+      }
+      return { previous };
+    },
+    onError: (_error, _variables, context) => {
+      const previous = context?.previous;
+      if (previous) {
+        queryClient.setQueryData(annixOrbitKeys.seekerApplications.list(), previous);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerApplications.all });
     },
   });
