@@ -11,6 +11,7 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import {
   useAcceptAnalyzedDeliveryNote,
+  useAcceptAnalyzedInvoice,
   useAnalyzeDeliveryNotePhoto,
   useSavePendingDeliveryNote,
 } from "@/app/lib/query/hooks";
@@ -26,12 +27,19 @@ export default function ScanDeliveryNotePage() {
 
   const analyzeMutation = useAnalyzeDeliveryNotePhoto();
   const acceptDnMutation = useAcceptAnalyzedDeliveryNote();
+  const acceptInvoiceMutation = useAcceptAnalyzedInvoice();
   const savePendingMutation = useSavePendingDeliveryNote();
+
+  const [docType, setDocType] = useState<"SUPPLIER_DELIVERY" | "SUPPLIER_INVOICE">(
+    "SUPPLIER_DELIVERY",
+  );
+  const isInvoice = docType === "SUPPLIER_INVOICE";
 
   const isAnalyzing = analyzeMutation.isPending;
   const aLoading = acceptDnMutation.isPending;
   const cLoading = savePendingMutation.isPending;
-  const isSubmitting = aLoading || cLoading;
+  const iLoading = acceptInvoiceMutation.isPending;
+  const isSubmitting = aLoading || cLoading || iLoading;
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -97,12 +105,15 @@ export default function ScanDeliveryNotePage() {
       onSuccess: (analysisResult) => {
         setResult(analysisResult);
 
-        // This is the Delivery Note scanner, so the user's intent is a delivery note:
-        // always review + add to stock, even when the document is laid out as a (tax)
-        // invoice — some suppliers use their invoice as the delivery note. Routing it to
-        // the invoice flow here would skip the stock-in, which is the bug we're fixing.
+        // The user explicitly chooses the document type via the toggle above — the
+        // chosen type is always honoured, never overridden by what the document looks
+        // like. A tax invoice scanned as a Delivery Note still adds stock; the same
+        // document scanned as a Tax Invoice is filed as an STI without adding stock.
         setShowConfirmModal(true);
-        showToast("Delivery note analyzed — review the data below", "success");
+        showToast(
+          `${isInvoice ? "Tax invoice" : "Delivery note"} analyzed — review the data below`,
+          "success",
+        );
       },
       onError: (err) => {
         showError("Analysis Failed", extractErrorMessage(err, "Failed to analyze delivery note"));
@@ -121,6 +132,22 @@ export default function ScanDeliveryNotePage() {
 
   const handleConfirmAndAddToStock = (editedData: AnalyzedDeliveryNoteData) => {
     if (!selectedFile) return;
+    if (isInvoice) {
+      acceptInvoiceMutation.mutate(
+        { file: selectedFile, analyzedData: editedData },
+        {
+          onSuccess: (invoice) => {
+            const invNum = invoice.invoiceNumber;
+            showToast(`Tax invoice ${invNum ? invNum : ""} created`, "success");
+            router.push("/stock-control/portal/invoices");
+          },
+          onError: (err) => {
+            showError("Create Failed", extractErrorMessage(err, "Failed to create tax invoice"));
+          },
+        },
+      );
+      return;
+    }
     acceptDnMutation.mutate(
       { file: selectedFile, analyzedData: editedData, documentType: "SUPPLIER_DELIVERY" },
       {
@@ -165,9 +192,11 @@ export default function ScanDeliveryNotePage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Scan Delivery Note</h1>
+          <h1 className="text-2xl font-bold text-gray-900">
+            Scan {isInvoice ? "Tax Invoice" : "Delivery Note"}
+          </h1>
           <p className="mt-1 text-sm text-gray-500">
-            Take a photo or upload an image/PDF of a delivery note to extract information
+            Take a photo or upload an image/PDF to extract information
           </p>
         </div>
       </div>
@@ -178,6 +207,37 @@ export default function ScanDeliveryNotePage() {
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
+        <div className="mb-4">
+          <span className="block text-sm font-medium text-gray-700 mb-1">
+            What are you scanning?
+          </span>
+          <div className="inline-flex rounded-md border border-gray-300 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setDocType("SUPPLIER_DELIVERY")}
+              className={`px-4 py-2 text-sm font-medium ${
+                isInvoice ? "bg-white text-gray-700 hover:bg-gray-50" : "bg-teal-600 text-white"
+              }`}
+            >
+              Delivery Note (SDN)
+            </button>
+            <button
+              type="button"
+              onClick={() => setDocType("SUPPLIER_INVOICE")}
+              className={`px-4 py-2 text-sm font-medium ${
+                isInvoice ? "bg-teal-600 text-white" : "bg-white text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              Tax Invoice (STI)
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">
+            {isInvoice
+              ? "Creates a supplier tax invoice — it will NOT add stock."
+              : "Creates a delivery note and adds the items to stock."}
+          </p>
+        </div>
+
         <h2 className="text-lg font-medium text-gray-900 mb-4">Upload Document</h2>
 
         {isDragOver && (
@@ -374,6 +434,9 @@ export default function ScanDeliveryNotePage() {
           onConfirmAndAddToStock={handleConfirmAndAddToStock}
           onSaveForReview={handleSaveForReview}
           isSubmitting={isSubmitting}
+          title={isInvoice ? "Confirm Tax Invoice" : "Confirm Delivery Note"}
+          confirmLabel={isInvoice ? "Create Tax Invoice" : "Confirm & Add to Stock"}
+          showSaveForReview={!isInvoice}
         />
       )}
     </div>
