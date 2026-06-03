@@ -1899,6 +1899,64 @@ export default function MarketingCmsPage() {
                 })
               }
             />
+            <div className="space-y-2">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                Social links
+              </span>
+              <p className="text-xs text-gray-400">
+                Paste the full profile URL. Use the platform names LinkedIn, Facebook, YouTube or
+                Instagram so the matching icon shows. Leave a URL blank (or "#") to keep an icon
+                inactive.
+              </p>
+              {footer.socialLinks.map((social, index) => (
+                <div key={`social-${index}`} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={social.platform}
+                    onChange={(e) =>
+                      update((d) => {
+                        d.footer.socialLinks[index].platform = e.target.value;
+                      })
+                    }
+                    className="w-32 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    placeholder="Platform"
+                  />
+                  <input
+                    type="url"
+                    value={social.href}
+                    onChange={(e) =>
+                      update((d) => {
+                        d.footer.socialLinks[index].href = e.target.value;
+                      })
+                    }
+                    className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-sm"
+                    placeholder="https://www.linkedin.com/company/…"
+                  />
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update((d) => {
+                        d.footer.socialLinks = d.footer.socialLinks.filter((_, i) => i !== index);
+                      })
+                    }
+                    className="rounded-lg border border-gray-300 px-3 text-sm text-gray-600 hover:bg-gray-50"
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+              <button
+                type="button"
+                onClick={() =>
+                  update((d) => {
+                    d.footer.socialLinks.push({ platform: "LinkedIn", href: "" });
+                  })
+                }
+                className="rounded-lg border border-dashed border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+              >
+                + Add social link
+              </button>
+            </div>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">

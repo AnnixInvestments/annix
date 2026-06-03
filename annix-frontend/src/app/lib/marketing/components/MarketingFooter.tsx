@@ -161,17 +161,26 @@ export function MarketingFooter(props: {
               . You can unsubscribe at any time.
             </p>
             <div className="mt-4 flex gap-3">
-              {footer.socialLinks.map((social) => {
+              {footer.socialLinks.map((social, index) => {
                 const Icon = SOCIAL_ICONS[social.platform];
+                const href = externalHref(social.href);
+                const iconClass =
+                  "flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:text-white";
+                const inner = Icon ? <Icon className="h-4 w-4" /> : social.platform.slice(0, 1);
+                if (!href) {
+                  return null;
+                }
                 return (
-                  <Link
-                    key={social.platform}
-                    href={social.href}
+                  <a
+                    key={`${social.platform}-${index}`}
+                    href={href}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     aria-label={social.platform}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-white/15 text-white/60 transition hover:text-white"
+                    className={iconClass}
                   >
-                    {Icon ? <Icon className="h-4 w-4" /> : social.platform.slice(0, 1)}
-                  </Link>
+                    {inner}
+                  </a>
                 );
               })}
             </div>

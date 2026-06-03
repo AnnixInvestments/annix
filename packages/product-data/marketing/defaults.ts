@@ -937,10 +937,10 @@ export function defaultMarketingContent(): MarketingSiteContent {
       newsletterHeading: "Stay connected",
       newsletterBody: "Get the latest updates and insights straight to your inbox.",
       socialLinks: [
-        { platform: "LinkedIn", href: "#" },
-        { platform: "Facebook", href: "#" },
-        { platform: "YouTube", href: "#" },
-        { platform: "Instagram", href: "#" },
+        { platform: "LinkedIn", href: "https://www.linkedin.com/company/126324129/" },
+        { platform: "Facebook", href: "https://www.facebook.com/profile.php?id=61590388749937" },
+        { platform: "YouTube", href: "https://www.youtube.com/@AnnixInvestments" },
+        { platform: "Instagram", href: "https://www.instagram.com/annixinvestments" },
       ],
       legalLinks: [
         { label: "Privacy Policy", href: "/privacy" },
