@@ -69,12 +69,23 @@ export function ConnectSection(props: {
             <div className="mt-5 grid grid-cols-3 items-center gap-x-6 gap-y-5">
               {visiblePartners.map((partner) => {
                 const logo = (
-                  <img
+                  <span
                     key={partner.name}
-                    src={partner.logoUrl}
-                    alt={partner.name}
-                    className="h-[4.5rem] w-full object-contain"
-                  />
+                    className="flex h-full w-full items-center justify-center rounded-2xl p-3"
+                    style={{
+                      backgroundColor: "rgba(255,255,255,0.06)",
+                      WebkitMaskImage:
+                        "radial-gradient(ellipse 82% 82% at 50% 50%, #000 56%, transparent 100%)",
+                      maskImage:
+                        "radial-gradient(ellipse 82% 82% at 50% 50%, #000 56%, transparent 100%)",
+                    }}
+                  >
+                    <img
+                      src={partner.logoUrl}
+                      alt={partner.name}
+                      className="h-[4.5rem] w-full object-contain"
+                    />
+                  </span>
                 );
                 const href = externalHref(partner.url);
                 return href ? (

@@ -104,7 +104,7 @@ const FUNNEL = [
 
 function PulseHero() {
   return (
-    <section className="relative overflow-hidden px-4 pb-16 pt-16 sm:px-6 lg:px-8">
+    <section className="relative overflow-hidden px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:pt-32">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
         <div>
           <p
@@ -436,15 +436,46 @@ function PulseCtaBand() {
   );
 }
 
-export function PulseLandingView() {
+export function PulseLandingView(props: {
+  heroImageUrl: string | null;
+  bottomImageUrl: string | null;
+}) {
+  const heroImageUrl = props.heroImageUrl ? props.heroImageUrl : "";
+  const bottomImageUrl = props.bottomImageUrl ? props.bottomImageUrl : "";
   return (
-    <div className="bg-[#0a1733]">
-      <PulseHero />
-      <PulseFeatureRow />
-      <PulsePlatformGrid />
-      <PulseVoiceFilter />
-      <PulseTrustedBy />
-      <PulseCtaBand />
+    <div className="relative overflow-hidden bg-[#0a1733]">
+      {heroImageUrl ? (
+        <>
+          <div className="absolute inset-x-0 top-0 h-[28rem]">
+            <img src={heroImageUrl} alt="" className="h-full w-full object-cover object-top" />
+          </div>
+          <div
+            className="absolute inset-x-0 top-0 h-[28rem]"
+            style={{
+              backgroundImage: "linear-gradient(180deg, rgba(10,23,51,0.45) 0%, #0a1733 92%)",
+            }}
+          />
+        </>
+      ) : null}
+      {bottomImageUrl ? (
+        <>
+          <div className="absolute inset-x-0 bottom-0 h-[22rem]">
+            <img src={bottomImageUrl} alt="" className="h-full w-full object-cover object-bottom" />
+          </div>
+          <div
+            className="absolute inset-x-0 bottom-0 h-[22rem]"
+            style={{ backgroundImage: "linear-gradient(0deg, transparent 0%, #0a1733 78%)" }}
+          />
+        </>
+      ) : null}
+      <div className="relative">
+        <PulseHero />
+        <PulseFeatureRow />
+        <PulsePlatformGrid />
+        <PulseVoiceFilter />
+        <PulseTrustedBy />
+        <PulseCtaBand />
+      </div>
     </div>
   );
 }

@@ -164,9 +164,16 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
           {tab === "home" ? <HomeView content={content} /> : null}
           {tab === "products" ? (
             isPulseProduct ? (
-              <PulseLandingView />
+              <PulseLandingView
+                heroImageUrl={content.hero.imageUrl}
+                bottomImageUrl={content.ctaBand.backgroundImageUrl}
+              />
             ) : landingConfig ? (
-              <ProductLandingView config={landingConfig} />
+              <ProductLandingView
+                config={landingConfig}
+                heroImageUrl={content.hero.imageUrl}
+                bottomImageUrl={content.ctaBand.backgroundImageUrl}
+              />
             ) : product ? (
               <ProductView page={product} />
             ) : null

@@ -23,10 +23,12 @@ function FooterBrand(props: { site: MarketingSite }) {
   const wordmarkUrl = props.site.wordmarkImageUrl ? props.site.wordmarkImageUrl : "";
   if (logoUrl || wordmarkUrl) {
     return (
-      <span className="flex items-center gap-2 sm:gap-3">
-        {logoUrl ? <img src={logoUrl} alt={props.site.wordmark} className="h-9 w-auto" /> : null}
+      <span className="flex items-center gap-3 sm:gap-5">
+        {logoUrl ? (
+          <img src={logoUrl} alt={props.site.wordmark} className="h-[4.5rem] w-auto" />
+        ) : null}
         {wordmarkUrl ? (
-          <img src={wordmarkUrl} alt={props.site.wordmark} className="h-6 w-auto" />
+          <img src={wordmarkUrl} alt={props.site.wordmark} className="h-12 w-auto" />
         ) : null}
       </span>
     );
@@ -37,11 +39,13 @@ function FooterBrand(props: { site: MarketingSite }) {
       <img
         src={resolveBrandAssetUrl("logoLockup", branding)}
         alt={props.site.wordmark}
-        className="h-8 w-auto"
+        className="h-16 w-auto"
       />
     );
   }
-  return <span className="text-xl font-bold tracking-tight text-white">{props.site.wordmark}</span>;
+  return (
+    <span className="text-4xl font-bold tracking-tight text-white">{props.site.wordmark}</span>
+  );
 }
 
 function FooterCredit(props: { label: string; logoUrl: string; href: string }) {

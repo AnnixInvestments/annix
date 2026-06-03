@@ -93,16 +93,48 @@ function resolveIcon(key: string): LucideIcon {
   return Sparkles;
 }
 
-export function ProductLandingView(props: { config: ProductLandingConfig }) {
+export function ProductLandingView(props: {
+  config: ProductLandingConfig;
+  heroImageUrl: string | null;
+  bottomImageUrl: string | null;
+}) {
   const config = props.config;
+  const heroImageUrl = props.heroImageUrl ? props.heroImageUrl : "";
+  const bottomImageUrl = props.bottomImageUrl ? props.bottomImageUrl : "";
   return (
-    <div className="bg-[#0a1733]">
-      <Hero config={config} />
-      <FeatureRow config={config} />
-      <Grid config={config} />
-      <Strip config={config} />
-      <TrustedBy />
-      <CtaBand config={config} />
+    <div className="relative overflow-hidden bg-[#0a1733]">
+      {heroImageUrl ? (
+        <>
+          <div className="absolute inset-x-0 top-0 h-[28rem]">
+            <img src={heroImageUrl} alt="" className="h-full w-full object-cover object-top" />
+          </div>
+          <div
+            className="absolute inset-x-0 top-0 h-[28rem]"
+            style={{
+              backgroundImage: "linear-gradient(180deg, rgba(10,23,51,0.45) 0%, #0a1733 92%)",
+            }}
+          />
+        </>
+      ) : null}
+      {bottomImageUrl ? (
+        <>
+          <div className="absolute inset-x-0 bottom-0 h-[22rem]">
+            <img src={bottomImageUrl} alt="" className="h-full w-full object-cover object-bottom" />
+          </div>
+          <div
+            className="absolute inset-x-0 bottom-0 h-[22rem]"
+            style={{ backgroundImage: "linear-gradient(0deg, transparent 0%, #0a1733 78%)" }}
+          />
+        </>
+      ) : null}
+      <div className="relative">
+        <Hero config={config} />
+        <FeatureRow config={config} />
+        <Grid config={config} />
+        <Strip config={config} />
+        <TrustedBy />
+        <CtaBand config={config} />
+      </div>
     </div>
   );
 }
@@ -110,7 +142,7 @@ export function ProductLandingView(props: { config: ProductLandingConfig }) {
 function Hero(props: { config: ProductLandingConfig }) {
   const config = props.config;
   return (
-    <section className="px-4 pb-16 pt-16 sm:px-6 lg:px-8">
+    <section className="px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:pt-32">
       <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
         <div>
           <p
