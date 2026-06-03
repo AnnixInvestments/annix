@@ -40,8 +40,8 @@ collection_budget_check() {
 }
 
 migration_routing_check() {
-  if [ -f "${ROOT_DIR}/scripts/check-migration-routing.sh" ]; then
-    bash "${ROOT_DIR}/scripts/check-migration-routing.sh"
+  if [ -f "${ROOT_DIR}/scripts/check-migration-routing.ts" ]; then
+    node "${ROOT_DIR}/scripts/check-migration-routing.ts"
   fi
 }
 
