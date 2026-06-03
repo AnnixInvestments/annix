@@ -72,6 +72,9 @@ jobs:
       - uses: actions/checkout@v6
       - uses: ./.github/actions/setup-monorepo
 
+      - name: Check migration routing (no Orbit migrations in the core dir)
+        run: bash scripts/check-migration-routing.sh
+
       - name: Run Biome check
         run: pnpm biome check .
 
