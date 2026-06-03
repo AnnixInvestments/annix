@@ -199,6 +199,35 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                 )}
               </Link>
             </div>
+            {portalType === "admin" && pathname !== "/admin/portal/global-apps" && (
+              <Link
+                href="/admin/portal/global-apps"
+                className="ml-2 sm:ml-3 inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap"
+                style={{ color: navForeground, backgroundColor: navActive }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = navHover;
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = navActive;
+                }}
+                aria-label="Back to main admin hub"
+              >
+                <svg
+                  className="w-5 h-5 flex-shrink-0"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M15 19l-7-7 7-7"
+                  />
+                </svg>
+                <span className="hidden sm:inline">Main Hub</span>
+              </Link>
+            )}
             <div className="hidden xl:ml-6 xl:flex xl:items-center xl:space-x-0.5">
               {visibleNavItems.map((item) => {
                 const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
