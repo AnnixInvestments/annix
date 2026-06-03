@@ -793,7 +793,7 @@ export class ImportService {
         {} as Record<string, string>,
       );
 
-    return rows.map((row, index) => {
+    const results = rows.map((row, index) => {
       const importSku = row.sku?.trim() || "";
       const importName = row.name?.trim() || "";
 
@@ -868,6 +868,38 @@ export class ImportService {
         match: null,
         matchConfidence: 0,
         matchReason: null,
+      };
+    });
+
+    return this.dedupeMatchesByItem(results);
+  }
+
+  private dedupeMatchesByItem(results: ImportMatchRow[]): ImportMatchRow[] {
+    const bestConfidenceByItem = results.reduce((acc, r) => {
+      const match = r.match;
+      if (match === null) return acc;
+      const prev = acc.get(match.id);
+      if (prev === undefined || r.matchConfidence > prev) {
+        acc.set(match.id, r.matchConfidence);
+      }
+      return acc;
+    }, new Map<number, number>());
+
+    const claimed = new Set<number>();
+    return results.map((r) => {
+      const match = r.match;
+      if (match === null) return r;
+      const isBest = r.matchConfidence === bestConfidenceByItem.get(match.id);
+      if (isBest && !claimed.has(match.id)) {
+        claimed.add(match.id);
+        return r;
+      }
+      return {
+        index: r.index,
+        imported: r.imported,
+        match: null,
+        matchConfidence: 0,
+        matchReason: `Another row matched "${match.name}" more closely — treated as new. Give this item a unique product code so it isn't merged.`,
       };
     });
   }
@@ -965,6 +997,17 @@ export class ImportService {
             continue;
           }
 
+          if (countedItemIds.has(existing.id)) {
+            result.errors = [
+              ...result.errors,
+              {
+                row: row.index + 1,
+                message: `"${existing.name}" (${existing.sku}) was already counted on an earlier row — this row was skipped to avoid double-counting. These are likely distinct products that share a name; give each a unique product code.`,
+              },
+            ];
+            continue;
+          }
+
           const systemQtyBefore = Number(existing.quantity) || 0;
           countedItemIds.add(existing.id);
 
@@ -977,6 +1020,17 @@ export class ImportService {
             existing.costPerUnit = row.costPerUnit ?? existing.costPerUnit;
             existing.minStockLevel = row.minStockLevel ?? existing.minStockLevel;
             existing.location = row.location ?? existing.location;
+          } else {
+            row.corrections.forEach((correction) => {
+              const value = correction.correctedValue;
+              if (correction.field === "name" && value) existing.name = value;
+              else if (correction.field === "sku" && value) existing.sku = value;
+              else if (correction.field === "description") existing.description = value;
+              else if (correction.field === "category") existing.category = value;
+            });
+            if (row.location && row.location !== existing.location) {
+              existing.location = row.location;
+            }
           }
 
           if (row.quantity !== null && row.quantity !== undefined) {
