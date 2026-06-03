@@ -1161,6 +1161,7 @@ export {
   useCpos,
   useCreateCompanyRole,
   useCreateDeliveryNote,
+  useCreateInventoryLocation,
   useCreateJobCard,
   useCreateLeaveRecord,
   useCreateManualAdjustment,

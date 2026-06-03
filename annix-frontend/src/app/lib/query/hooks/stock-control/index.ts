@@ -93,6 +93,7 @@ export {
   useCpoOverdueInvoices,
   useCpos,
   useCreateDeliveryNote,
+  useCreateInventoryLocation,
   useCreateJobCard,
   useCreateManualAdjustment,
   useCreateReconciliationDelivery,

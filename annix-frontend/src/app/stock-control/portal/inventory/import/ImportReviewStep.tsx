@@ -1,13 +1,18 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
+import { useToast } from "@/app/components/Toast";
 import type {
   ImportMatchRow,
   ReviewedImportResult,
   ReviewedRow,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useCreateInventoryLocation, useInventoryLocations } from "@/app/lib/query/hooks";
+
+const ADD_NEW_LOCATION = "__add_new_location__";
 
 interface ImportReviewStepProps {
   matchedRows: ImportMatchRow[];
@@ -167,10 +172,42 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "matched" | "new">("all");
   const [confirmZeroOpen, setConfirmZeroOpen] = useState(false);
+  const [addLocationRowIndex, setAddLocationRowIndex] = useState<number | null>(null);
+  const [newLocationName, setNewLocationName] = useState("");
+
+  const { showToast } = useToast();
+  const { data: locations } = useInventoryLocations();
+  const createLocation = useCreateInventoryLocation();
+  const isCreatingLocation = createLocation.isPending;
+  const locationNames = (locations ?? []).map((l) => l.name);
 
   const updateRow = useCallback((index: number, field: keyof EditableRow, value: string) => {
     setRows((prev) => prev.map((r) => (r.index === index ? { ...r, [field]: value } : r)));
   }, []);
+
+  const handleLocationChange = (index: number, value: string) => {
+    if (value === ADD_NEW_LOCATION) {
+      setNewLocationName("");
+      setAddLocationRowIndex(index);
+      return;
+    }
+    updateRow(index, "location", value);
+  };
+
+  const saveNewLocation = async () => {
+    const name = newLocationName.trim();
+    const rowIndex = addLocationRowIndex;
+    if (name === "" || rowIndex === null) return;
+    try {
+      await createLocation.mutateAsync({ name });
+      updateRow(rowIndex, "location", name);
+      setAddLocationRowIndex(null);
+      setNewLocationName("");
+      showToast(`Location "${name}" added`, "success");
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Failed to add location", "error");
+    }
+  };
 
   const toggleAction = useCallback((index: number) => {
     setRows((prev) =>
@@ -296,6 +333,50 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
         onConfirm={doSubmit}
         onCancel={() => setConfirmZeroOpen(false)}
       />
+      {addLocationRowIndex !== null &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
+            <div className="w-full max-w-sm rounded-lg bg-white shadow-xl">
+              <div className="border-b border-gray-200 px-5 py-3">
+                <h2 className="text-base font-semibold text-gray-900">Add store location</h2>
+              </div>
+              <div className="px-5 py-4 space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Location name</label>
+                <input
+                  type="text"
+                  value={newLocationName}
+                  onChange={(e) => setNewLocationName(e.target.value)}
+                  placeholder="e.g. Main Store, Paint Room"
+                  className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+                  // biome-ignore lint/a11y/noAutofocus: focus the only field in a just-opened modal
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500">
+                  This is added to your store locations and will be available everywhere, including
+                  Settings.
+                </p>
+              </div>
+              <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-3">
+                <button
+                  type="button"
+                  onClick={() => setAddLocationRowIndex(null)}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={saveNewLocation}
+                  disabled={isCreatingLocation || newLocationName.trim() === ""}
+                  className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {isCreatingLocation ? "Adding…" : "Add location"}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -521,13 +602,23 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
                       />
                     </td>
                     <td className="px-2 py-1.5">
-                      <input
-                        type="text"
+                      <select
                         value={row.location}
-                        onChange={(e) => updateRow(row.index, "location", e.target.value)}
-                        className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs"
+                        onChange={(e) => handleLocationChange(row.index, e.target.value)}
+                        className="w-full rounded border border-gray-200 px-1.5 py-0.5 text-xs bg-white"
                         disabled={isSkipped}
-                      />
+                      >
+                        <option value="">— location —</option>
+                        {row.location !== "" && !locationNames.includes(row.location) && (
+                          <option value={row.location}>{row.location}</option>
+                        )}
+                        {locationNames.map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                        <option value={ADD_NEW_LOCATION}>+ Add new location…</option>
+                      </select>
                     </td>
                     <td className="px-1 py-1.5">
                       <button

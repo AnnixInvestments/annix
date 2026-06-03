@@ -104,6 +104,12 @@ export const useInventoryLocations = createArrayQueryHook<StockControlLocation>(
   { staleTime: 60_000 },
 );
 
+export const useCreateInventoryLocation = createMutationHook(
+  (vars: { name: string; description?: string; displayOrder?: number }) =>
+    stockControlApiClient.createLocation(vars.name, vars.description, vars.displayOrder),
+  [stockControlKeys.inventory.locations()],
+);
+
 export const useInvoices = createArrayQueryHook<SupplierInvoice>(
   () => stockControlKeys.invoices.list(),
   () => stockControlApiClient.supplierInvoices(),
