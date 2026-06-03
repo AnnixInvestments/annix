@@ -526,132 +526,218 @@ const RESOURCES: MarketingResource[] = [
   },
 ];
 
-const PRIVACY_BODY = `Annix ("Annix", "we", "us" or "our") is committed to protecting your privacy and handling your personal information responsibly and in accordance with the Protection of Personal Information Act, 2013 ("POPIA") and other applicable South African law. This Privacy Policy explains what personal information we collect, how we use it, who we share it with, and the rights available to you.
-
-This policy applies to our websites, applications and services (together, the "Services"), and to personal information we process as the responsible party. By using the Services you acknowledge that you have read and understood this policy.
+const PRIVACY_BODY = `Annix ("Annix", "we", "us" or "our") is committed to protecting your privacy and to processing your personal information lawfully, reasonably and in a manner that does not infringe your privacy, in accordance with the Protection of Personal Information Act, 2013 ("POPIA") and other applicable South African law. This Privacy Policy explains what personal information we collect, how we use it, when we share it, how long we keep it, and the rights available to you when you use our websites, applications, products and services (together, the "Services"). It should be read together with our Terms of Use and our Cookie Policy.
 
 ## Who we are
-Annix is a company incorporated in the Republic of South Africa. For the purposes of POPIA, Annix is the "responsible party" for the personal information described in this policy. Our registration and contact details are set out at the end of this policy and on our Contact page.
+Annix is a company incorporated in the Republic of South Africa and is the "responsible party" for the personal information described in this policy. Our company and contact details are set out in the "Information Officer and contact details" section below.
 
 ## Information we collect
-We collect personal information in the following ways:
+Depending on how you interact with the Services, we may collect:
 
-- Information you provide — such as your name, email address, telephone number, company name, job title, and the contents of enquiries or messages you send us, including through our book-a-demo and contact forms.
-- Information collected automatically — such as your IP address, device and browser type, pages viewed and usage data, collected through cookies and similar technologies.
-- Information from third parties — such as our service providers, business partners and publicly available sources, where lawful.
+- Identity details — such as your name, surname and title.
+- Contact details — such as email address, telephone number and postal or physical address.
+- Account details — such as username, password and profile information.
+- Transaction and billing details — such as orders, invoices, payment status and billing information.
+- Technical and usage data — such as IP address, device identifiers, browser type, operating system and website usage data, collected through cookies and similar technologies.
+- Communication details — such as enquiries, support requests, feedback and records of communications with us.
+- Any other information you choose to provide through forms, uploads or communications.
 
-We do not deliberately collect special personal information (as defined in POPIA) unless it is necessary for a specific, lawful purpose for which we have an appropriate legal basis.
+We only process special personal information (as defined in POPIA) where permitted by POPIA and for a lawful, specified purpose.
 
-## How we use your information
+## Voluntary or mandatory information
+Where we request information, we will indicate whether it is required or optional. Some information is required to provide the Services, complete a transaction or comply with the law. If you do not provide required information, we may be unable to create your account, deliver a requested service, process a payment, or respond to your request. Optional information helps us improve your experience but is not required.
+
+## How we collect information
+We collect personal information directly from you (for example when you create an account, complete a form, transact, subscribe or contact us), automatically through cookies, analytics tools and server logs, and from third parties such as service providers, business partners and publicly available sources, where lawful.
+
+## Why we process personal information
 We process personal information to:
 
 - provide, operate, maintain and improve the Services;
-- respond to your enquiries, demo requests and support requests;
-- communicate with you about the Services, including service and, where permitted, marketing messages;
-- administer accounts, billing and security;
-- comply with our legal and regulatory obligations; and
-- protect our rights, property and safety and those of our users and the public.
+- create and manage accounts;
+- process payments, billing and refunds;
+- respond to enquiries and provide support;
+- personalise and secure the Services;
+- send service and administrative communications;
+- send marketing communications where permitted by law and with consent where required;
+- detect, prevent and investigate fraud, abuse and security incidents; and
+- comply with legal obligations and enforce our agreements.
 
-We rely on lawful bases recognised by POPIA, including consent, performance of a contract, compliance with a legal obligation, and the pursuit of our or a third party's legitimate interests.
+## Lawful basis
+We process personal information only where permitted under POPIA and only for a lawful and specified purpose. Depending on the circumstances, this may include processing that is necessary for the performance of a contract, compliance with a legal obligation, the protection of a legitimate interest, or where you have consented. Where processing is based on consent, you may withdraw it at any time.
 
-## Marketing communications
-Where we send electronic marketing, we do so in accordance with applicable law. You may opt out at any time using the unsubscribe mechanism in the message or by contacting us.
-
-## How we share your information
+## Sharing and disclosure
 We do not sell your personal information. We may share it with:
 
-- service providers who process information on our behalf — for example hosting, email delivery, analytics and AI processing providers — under appropriate confidentiality and data-protection obligations;
-- professional advisers, regulators and authorities where required or permitted by law;
-- a successor entity in connection with a merger, acquisition or sale of assets; and
-- other parties with your consent.
+- our employees, contractors and authorised personnel;
+- service providers and operators who process information on our behalf — for example hosting, cloud, analytics, payment, communications, IT and AI-processing providers — under appropriate confidentiality and data-protection obligations;
+- professional advisers such as auditors, insurers and lawyers;
+- regulators, courts, law-enforcement and public bodies where required or permitted by law; and
+- a successor or other party in connection with a merger, acquisition or restructuring, or with your consent.
 
-## International transfers
-Some service providers may process personal information outside South Africa. Where we transfer personal information across borders, we take steps to ensure it remains protected in accordance with POPIA, including by requiring that recipients are subject to laws, binding rules or agreements that provide an adequate level of protection.
+Where we engage operators, we require them to process personal information only on our instructions and to apply appropriate security safeguards.
 
-## Information security
-We implement appropriate, reasonable technical and organisational measures to protect personal information against loss, damage, unauthorised access and unlawful processing, including access controls, encryption where appropriate, audit logging and per-company data scoping. No method of transmission or storage is entirely secure, and we cannot guarantee absolute security.
+## Cross-border transfers
+Some of our service providers or systems may be located outside South Africa, and your personal information may be processed and stored in other jurisdictions. Where we transfer personal information across borders, we take the steps required by POPIA to ensure that the recipient is subject to a law, binding rules, contractual terms or other safeguards that provide an adequate level of protection. If you are outside South Africa, your information may be transferred to countries with different data-protection laws.
+
+## Cookies and similar technologies
+We use cookies and similar technologies to operate the website, remember preferences, analyse traffic and improve functionality. We use both session and persistent cookies, including analytics cookies, to understand and improve how the Services are used. You can control cookies through your browser settings, and where required we will request consent for non-essential cookies. Disabling some cookies may affect functionality. For more detail, see our Cookie Policy.
+
+## Information security and breach notification
+We take reasonable, appropriate technical and organisational measures to protect personal information against loss, damage, unauthorised access and unlawful processing, including access controls, encryption where appropriate, secure hosting, audit logging and per-company data scoping. No method of transmission or storage is completely secure, and we cannot guarantee absolute security. If we become aware of a security compromise affecting your personal information, we will take the steps required by POPIA, including notifying affected data subjects and the Information Regulator where appropriate, as soon as reasonably possible.
 
 ## Retention
-We retain personal information only for as long as necessary to fulfil the purposes for which it was collected, including to meet legal, accounting, regulatory or reporting requirements, after which it is deleted or de-identified.
+We retain personal information only for as long as necessary to fulfil the purposes for which it was collected, to comply with legal, accounting, regulatory or reporting requirements, to resolve disputes and to enforce agreements, after which we securely delete, destroy or de-identify it unless the law requires longer retention.
 
 ## Your rights
 Subject to POPIA and applicable law, you have the right to:
 
-- request access to the personal information we hold about you;
-- request correction or deletion of your personal information;
-- object to processing in certain circumstances;
-- withdraw consent where processing is based on consent; and
+- request confirmation of whether we hold personal information about you;
+- request access to that information;
+- request correction, deletion or destruction of inaccurate, irrelevant, excessive, out-of-date, incomplete, misleading or unlawfully obtained information;
+- object, on reasonable grounds, to the processing of your personal information;
+- object at any time to processing for direct marketing;
+- withdraw consent where processing is based on consent;
+- where applicable, request your information in a portable format; and
 - lodge a complaint with the Information Regulator.
 
 To exercise these rights, contact our Information Officer using the details below. We may need to verify your identity before responding.
 
-## Cookies and similar technologies
-We use cookies and similar technologies to operate our websites, remember your preferences and understand how the Services are used. You can control cookies through your browser settings; disabling some cookies may affect functionality.
+## Direct marketing
+We send electronic marketing only where permitted by law. You may opt out at any time using the unsubscribe mechanism in the message or by contacting us. Where consent is required for direct marketing by electronic communication, we will obtain it before sending.
 
 ## Children
-The Services are not directed at children, and we do not knowingly collect personal information from children without the consent of a competent person, except where permitted by law.
+The Services are not directed at children, and we do not knowingly collect personal information from children without the consent of a competent person or another lawful basis. If we become aware that we have collected such information unlawfully, we will take appropriate steps to delete it.
+
+## Third-party links
+Our website may link to third-party websites or services we do not control. Their privacy practices are governed by their own policies, and we are not responsible for them. Review their policies before providing personal information.
+
+## Your responsibilities
+You are responsible for ensuring that personal information you provide is accurate, complete and up to date. If you submit information about another person, you confirm that you have the authority or consent required to do so.
+
+## Automated decision-making and profiling
+Some Services use automated processing, including AI-based analysis, scoring, ranking or recommendations (for example in recruitment, matching or compliance features). AI-generated outputs are provided as decision-support only and should be independently reviewed and verified. Where a decision producing legal or similarly significant effects about you would be based solely on automated processing, we will not rely solely on that processing without a lawful basis, and you may request human review of, express your view on, or contest such a decision, as provided by applicable law.
+
+## Your rights under the GDPR
+If you are located in the European Economic Area (EEA) or the United Kingdom, the General Data Protection Regulation (GDPR) or the UK GDPR may apply to our processing of your personal data, in addition to POPIA. Where it applies:
+
+- Our legal bases for processing are consent, the performance of a contract, compliance with a legal obligation, the protection of vital interests, the performance of a task in the public interest, or our or a third party's legitimate interests, as appropriate.
+- You have the right to access, rectify, erase ("right to be forgotten"), restrict or object to the processing of your personal data, and the right to data portability.
+- Where processing is based on consent, you may withdraw consent at any time without affecting processing carried out before withdrawal.
+- You have the right not to be subject to a decision based solely on automated processing that produces legal or similarly significant effects, except as permitted by law.
+- Where we transfer personal data outside the EEA or the UK, we use appropriate safeguards such as Standard Contractual Clauses or an adequacy decision.
+- You have the right to lodge a complaint with your local data-protection supervisory authority.
+
+If we are required to appoint an EU or UK representative under Article 27 of the GDPR, their details will be provided here: [insert EU/UK representative details, if applicable].
+
+## Information Officer and contact details
+For any question, request or complaint about this policy or our handling of personal information, contact our Information Officer:
+
+- Responsible party: [insert registered company name]
+- Information Officer: [insert Information Officer name]
+- Email: [insert privacy contact email]
+- Telephone: [insert telephone number]
+- Registered address: [insert physical address]
+- Company registration number: [insert CIPC registration number]
+
+## Complaints to the Information Regulator
+You have the right to lodge a complaint with the Information Regulator (South Africa). You can contact the Information Regulator at:
+
+- General enquiries: enquiries@inforegulator.org.za
+- POPIA complaints: POPIAComplaints@inforegulator.org.za
+- Website: www.inforegulator.org.za
+
+The Information Regulator's current physical address and other contact details are published on its official website.
 
 ## Changes to this policy
-We may update this policy from time to time. The current version is always available on our website and the "last updated" date reflects the most recent changes. We will bring material changes to your attention where required by law.
+We may update this policy from time to time to reflect changes in our practices, the Services or the law. The current version is always available on our website, and the "last updated" date reflects the most recent changes. Continued use of the Services after an update constitutes acceptance of the revised policy.`;
 
-## How to contact us
-If you have questions about this policy or wish to exercise your rights, please contact our Information Officer:
+const TERMS_BODY = `These Terms of Use ("Terms") govern your access to and use of Annix's websites, applications, products and services (together, the "Services"). By accessing or using the Services, you agree to be bound by these Terms. If you do not agree, you must not use the Services. Please read these Terms together with our Privacy Policy.
 
-- Responsible party: Annix
-- Information Officer: [insert Information Officer name]
-- Contact email: [insert privacy contact email]
-- Registered address: [insert registered address]
-- Company registration number: [insert registration number]
+## Who we are and how to contact us
+The Services are provided by Annix, a company incorporated in the Republic of South Africa ("Annix", "we", "us" or "our"). In accordance with the Electronic Communications and Transactions Act, 2002 ("ECTA"), our details are:
 
-You also have the right to lodge a complaint with the Information Regulator (South Africa). The Regulator's current contact details are available on its official website.`;
+- Legal name: [insert registered company name]
+- Registration number: [insert CIPC registration number]
+- Physical address: [insert registered physical address]
+- Email: [insert contact email]
+- Telephone: [insert telephone number]
 
-const TERMS_BODY = `These Terms of Use ("Terms") govern your access to and use of Annix's websites, applications and services (together, the "Services"). By accessing or using the Services, you agree to be bound by these Terms. If you do not agree, you must not use the Services.
-
-## Who we are
-The Services are provided by Annix, a company incorporated in the Republic of South Africa ("Annix", "we", "us" or "our"). Our registration and contact details are available on our Contact page.
-
-## Eligibility
-You may use the Services only if you can form a binding contract with Annix and are not barred from doing so under applicable law. If you use the Services on behalf of an organisation, you confirm that you are authorised to bind that organisation to these Terms.
+## Eligibility and age
+You may use the Services only if you can form a binding contract with Annix and are not barred under applicable law. You must be at least 18 years old, or the age of majority in your jurisdiction, to create an account or transact. If you use the Services on behalf of an organisation, you confirm that you are authorised to bind that organisation to these Terms.
 
 ## Accounts and security
-Some Services require an account. You are responsible for maintaining the confidentiality of your login credentials and for all activity under your account. You must notify us promptly of any unauthorised use. We may suspend or terminate accounts that are inactive, compromised, or used in breach of these Terms.
+Some Services require an account. You are responsible for keeping your login credentials confidential and for all activity under your account, and you must not share credentials. You must notify us promptly of any unauthorised use. We may suspend or terminate accounts that are inactive, compromised, or used in breach of these Terms.
 
 ## Acceptable use
 You agree not to:
 
-- use the Services unlawfully or for any harmful or fraudulent purpose;
+- use the Services unlawfully or for any harmful, fraudulent, infringing or deceptive purpose;
 - interfere with or disrupt the integrity, security or performance of the Services;
-- attempt to gain unauthorised access to the Services or related systems or data;
+- attempt to gain unauthorised access to the Services, related systems or data;
 - reverse engineer, decompile or copy any part of the Services except as permitted by law;
-- upload malicious code or content that infringes the rights of others; or
-- use the Services to send unsolicited communications or to misrepresent your identity.
+- scrape, harvest or extract data from the Services by automated means without our consent;
+- share, resell or sublicense access, or use the Services to build or benchmark a competing product;
+- upload malicious code, or content that is unlawful, that is discriminatory in breach of employment-equity or anti-discrimination law, or that infringes the rights of others;
+- use the Services to send unsolicited communications or to misrepresent your identity; or
+- use the Services in violation of applicable export-control, sanctions or trade laws.
+
+## Customer Data and content
+You retain ownership of the data and content you submit to the Services ("Customer Data"). You grant us a licence to host, process and use Customer Data as necessary to provide and improve the Services and as described in our Privacy Policy. You are responsible for ensuring that you have the rights and any necessary consents to provide Customer Data, including the personal information of third parties, and that it does not infringe any law or third-party right.
+
+## Artificial intelligence outputs
+Certain Services generate content, recommendations, analyses, scores, rankings, forecasts or other outputs using artificial-intelligence technologies. Such outputs are provided for informational purposes only, may contain errors, inaccuracies or omissions, and do not constitute professional advice. You remain solely responsible for independently reviewing and verifying all outputs before relying on or acting on them.
+
+## Recruitment and workforce features
+Where the Services facilitate recruitment, candidate ranking, CV analysis or workforce matching, Annix does not guarantee the suitability, qualifications, accuracy, performance or legality of any candidate, applicant, recruiter or employer. All hiring, employment and related decisions remain solely the responsibility of the relevant user, who is responsible for compliance with applicable employment, equity and data-protection laws.
+
+## No professional advice
+Information provided through the Services, including compliance, regulatory, tax, financial, engineering or standards-related information, does not constitute legal, regulatory, tax, accounting, employment, engineering or other professional advice. You should obtain independent professional advice regarding your specific circumstances before acting.
 
 ## Intellectual property
-The Services, including all software, text, graphics, logos and other content (excluding your content), are owned by or licensed to Annix and are protected by intellectual-property laws. We grant you a limited, non-exclusive, non-transferable, revocable right to use the Services for their intended purpose, subject to these Terms. No other rights are granted.
+The Services, including all software, text, graphics, logos and other content (excluding Customer Data), are owned by or licensed to Annix and are protected by intellectual-property laws. We grant you a limited, non-exclusive, non-transferable, revocable right to use the Services for their intended purpose, subject to these Terms. No other rights are granted.
 
-## Your content and data
-You retain ownership of the data and content you submit to the Services ("Customer Data"). You grant us a licence to host, process and use Customer Data only as necessary to provide and improve the Services, and as described in our Privacy Policy. You are responsible for ensuring that you have the rights and any necessary consents to provide Customer Data and that it does not infringe any law or third-party rights.
+## Feedback
+If you submit feedback, suggestions, enhancement requests or other recommendations to us, we may use them without restriction, attribution or compensation to you.
+
+## Beta and experimental features
+Certain features may be designated as beta, preview or experimental. They may be incomplete, may change, and may be modified, suspended or discontinued at any time, and are provided "as is" without warranties of any kind.
 
 ## Third-party services
-The Services may integrate with or link to third-party products and services. We are not responsible for third-party services, and your use of them is governed by their own terms and policies.
+The Services may integrate with or link to third-party products and services, including cloud-hosting and AI providers. We are not responsible for third-party services, and your use of them is governed by their own terms and policies.
+
+## Fees, subscriptions and payment
+Some Services are or may become paid. Where they are, the applicable pricing, billing cycles, taxes (including VAT where applicable), renewals, cancellations and refunds will be set out at the point of sale or in a separate agreement. Unless otherwise stated, fees are payable in advance and are non-refundable except as required by law. We may suspend or terminate paid Services for non-payment. Where the Consumer Protection Act, 2008 or ECTA grants you a cooling-off or cancellation right in respect of a transaction, that right applies and is not limited by these Terms.
 
 ## Service availability and changes
-We aim to keep the Services available and reliable, but we provide them on an "as is" and "as available" basis. We may modify, suspend or discontinue any part of the Services at any time, and may set out additional terms for specific products or paid services in a separate agreement, which will prevail over these Terms to the extent of any conflict.
+We aim to keep the Services available and reliable, but provide them on an "as is" and "as available" basis. We may modify, suspend or discontinue any part of the Services at any time. Additional or different terms may apply to specific products or paid Services in a separate agreement (for example a Master Services Agreement), which will prevail over these Terms to the extent of any conflict.
+
+## Privacy and data protection
+We process personal information in accordance with applicable data-protection law, including the Protection of Personal Information Act, 2013 ("POPIA") and, where applicable, other privacy laws. You acknowledge that personal information may be processed, stored and transferred as described in our Privacy Policy. Where personal information is transferred outside South Africa, we take the steps required by POPIA to ensure an adequate level of protection.
+
+## Security
+We implement reasonable, appropriate technical and organisational security measures, but no system can be guaranteed completely secure. You acknowledge the inherent risks of internet-based services and are responsible for maintaining the security of your own systems and credentials.
 
 ## Disclaimers
 To the maximum extent permitted by law, the Services are provided without warranties of any kind, whether express or implied, including any implied warranties of merchantability, fitness for a particular purpose, accuracy or non-infringement. We do not warrant that the Services will be uninterrupted, error-free or secure. Nothing in these Terms excludes or limits any rights you may have under the Consumer Protection Act, 2008 or other applicable law that cannot lawfully be excluded.
 
 ## Limitation of liability
-To the maximum extent permitted by law, Annix will not be liable for any indirect, incidental, special, consequential or punitive damages, or for any loss of profits, revenue, data or goodwill, arising out of or relating to your use of the Services. To the extent our liability cannot be excluded, it is limited to the amount you paid us for the relevant Service in the three months preceding the event giving rise to the claim, or, where no fee was paid, to a reasonable amount determined in accordance with law.
+To the maximum extent permitted by law, Annix will not be liable for any indirect, incidental, special, consequential or punitive damages, or for any loss of profits, revenue, data or goodwill, arising out of or relating to your use of the Services. To the extent our liability cannot be excluded, our aggregate liability shall not exceed the total fees paid by you for the relevant Service during the twelve months preceding the event giving rise to the claim, or, where no fee was paid, a reasonable amount determined in accordance with law.
 
 ## Indemnity
 You agree to indemnify and hold Annix harmless against claims, losses and expenses arising from your breach of these Terms, your misuse of the Services, or your Customer Data, to the extent permitted by law.
 
-## Suspension and termination
-We may suspend or terminate your access to the Services if you breach these Terms or if necessary to protect the Services, other users or third parties. You may stop using the Services at any time. Provisions that by their nature should survive termination will continue to apply.
+## Force majeure
+Annix shall not be liable for any delay or failure to perform resulting from causes beyond its reasonable control, including acts of God, natural disasters, power or internet failures, labour disputes, governmental actions, cyberattacks, or the failure of third-party providers.
 
-## Privacy
-Your use of the Services is also governed by our Privacy Policy, which explains how we handle personal information.
+## Electronic communications
+You consent to receiving communications from us electronically, and you agree that electronic communications, agreements and notices satisfy any legal requirement that such communications be in writing.
+
+## Suspension and termination
+We may suspend or terminate your access to the Services if you breach these Terms or where necessary to protect the Services, other users or third parties. You may stop using the Services at any time. Provisions that by their nature should survive termination will continue to apply.
+
+## Dispute resolution
+The parties will attempt to resolve any dispute amicably and in good faith before resorting to formal proceedings, and may agree to refer a dispute to mediation. This clause does not prevent either party from seeking urgent interim relief from a competent court.
 
 ## Governing law and jurisdiction
 These Terms are governed by the laws of the Republic of South Africa. You submit to the non-exclusive jurisdiction of the South African courts in relation to any dispute arising out of or in connection with these Terms or the Services.
@@ -663,7 +749,44 @@ We may update these Terms from time to time. The current version is always avail
 If any provision of these Terms is found to be unenforceable, the remaining provisions will continue in full force. Our failure to enforce a provision is not a waiver of it. You may not assign these Terms without our consent; we may assign them as part of a corporate transaction. These Terms, together with any product-specific agreement and our Privacy Policy, constitute the entire agreement between you and Annix regarding the Services.
 
 ## Contact
-Questions about these Terms can be sent to us using the details on our Contact page.`;
+Questions about these Terms can be sent to us using the contact details set out above or on our Contact page.`;
+
+const COOKIES_BODY = `This Cookie Policy explains how Annix ("Annix", "we", "us" or "our") uses cookies and similar technologies on our websites and related online services. It should be read together with our Privacy Policy.
+
+## What cookies are
+Cookies are small text files placed on your device when you visit a website. They help the website function properly, improve security, remember preferences and understand how visitors use the site. Similar technologies may include pixels, tags, local storage and analytics scripts.
+
+## Types of cookies we use
+We may use the following categories of cookies:
+
+- Strictly necessary cookies — required for the website to operate and cannot usually be switched off. They support core functions such as navigation, security and form submission.
+- Functional cookies — remember your preferences and settings, such as language or form inputs, to improve your experience.
+- Analytics cookies — help us understand how visitors use our website, which pages are visited, and how the site can be improved.
+- Marketing cookies — may be used to measure the effectiveness of campaigns or deliver relevant advertising, where applicable and permitted by law.
+
+## Why we use cookies
+We use cookies and similar technologies to operate and secure the website, remember your preferences, improve performance and user experience, analyse website traffic and usage patterns, support troubleshooting and diagnostics, and, where enabled, support marketing activities.
+
+## Legal basis for non-essential cookies
+Where required by law, we will only place non-essential cookies, such as analytics or marketing cookies, after obtaining your consent. Strictly necessary cookies may be used without consent because they are required for the website to function.
+
+## Third-party cookies
+Some cookies may be set by third-party service providers we use for hosting, analytics, performance monitoring, communications or other services. These third parties may collect information about your use of our website in accordance with their own privacy and cookie policies.
+
+## Managing cookies
+You can manage or disable cookies through your browser settings. Most browsers allow you to block, delete or control cookies. If you disable certain cookies, some parts of the website may not function properly. Where available, you may also use a cookie banner or settings tool on our website to manage your consent preferences for non-essential cookies.
+
+## Retention
+Cookies may be either session cookies, which expire when you close your browser, or persistent cookies, which remain on your device for a set period or until deleted. The exact retention period depends on the type of cookie used.
+
+## Cookies we use
+We maintain a current list of the specific cookies and similar technologies used on our website. As we add or change analytics, functionality or marketing tools, this list is updated. At present we use a strictly necessary preference cookie to remember your cookie choices. Where additional analytics or marketing technologies are introduced, they will be described here and, where required, used only after you have given consent through our cookie banner.
+
+## Changes to this policy
+We may update this Cookie Policy from time to time to reflect changes in our use of cookies, applicable law or our Services. The updated version will be posted on this page with a revised "last updated" date.
+
+## Contact us
+If you have any questions about this Cookie Policy or our use of cookies, please contact us using the details on our Contact page or in our Privacy Policy.`;
 
 export function defaultMarketingContent(): MarketingSiteContent {
   return {
@@ -822,6 +945,7 @@ export function defaultMarketingContent(): MarketingSiteContent {
       legalLinks: [
         { label: "Privacy Policy", href: "/privacy" },
         { label: "Terms of Use", href: "/terms" },
+        { label: "Cookie Policy", href: "/cookies" },
       ],
       legal: "All rights reserved.",
       designedByLogoUrl: null,
@@ -881,6 +1005,11 @@ export function defaultMarketingContent(): MarketingSiteContent {
         heading: "Terms of Use",
         lastUpdated: "3 June 2026",
         body: TERMS_BODY,
+      },
+      cookies: {
+        heading: "Cookie Policy",
+        lastUpdated: "3 June 2026",
+        body: COOKIES_BODY,
       },
     },
   };

@@ -90,6 +90,27 @@ export async function fetchPublishedMarketingContent(): Promise<MarketingSiteCon
   }
 }
 
+export interface CookieConsentLogPayload {
+  consentId: string;
+  necessary: boolean;
+  functional: boolean;
+  analytics: boolean;
+  marketing: boolean;
+}
+
+export async function logCookieConsent(payload: CookieConsentLogPayload): Promise<void> {
+  try {
+    await fetch(`${API_BASE_URL}/public/marketing/cookie-consent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      keepalive: true,
+    });
+  } catch {
+    // Consent is already stored client-side; server logging is best-effort.
+  }
+}
+
 export async function submitMarketingContact(payload: MarketingContactPayload): Promise<string> {
   const res = await fetch(`${API_BASE_URL}/public/marketing/contact`, {
     method: "POST",

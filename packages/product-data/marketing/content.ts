@@ -209,6 +209,7 @@ export interface MarketingLegalDoc {
 export interface MarketingLegal {
   privacy: MarketingLegalDoc;
   terms: MarketingLegalDoc;
+  cookies: MarketingLegalDoc;
 }
 
 export interface MarketingSiteContent {

@@ -5,6 +5,7 @@ import {
   Controller,
   Get,
   Header,
+  Headers,
   Inject,
   Logger,
   Post,
@@ -17,6 +18,7 @@ import { AdminCompanyProfileService } from "../admin/admin-company-profile.servi
 import { EmailService } from "../email/email.service";
 import { ApiMessageResponse, messageResponse } from "../shared/dto";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
+import { CookieConsentService } from "./cookie-consent.service";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
 
 function mimeFromKey(key: string): string {
@@ -37,6 +39,14 @@ interface MarketingContactDto {
   message: string;
 }
 
+interface CookieConsentDto {
+  consentId: string;
+  necessary: boolean;
+  functional: boolean;
+  analytics: boolean;
+  marketing: boolean;
+}
+
 @ApiTags("Public Marketing")
 @Controller("public/marketing")
 export class PublicMarketingController {
@@ -46,6 +56,7 @@ export class PublicMarketingController {
     private readonly marketingService: MarketingSiteContentService,
     private readonly companyProfileService: AdminCompanyProfileService,
     private readonly emailService: EmailService,
+    private readonly cookieConsentService: CookieConsentService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -95,6 +106,26 @@ export class PublicMarketingController {
 
     this.logger.log(`Marketing enquiry submitted by ${dto.name} (${dto.email})`);
     return messageResponse("Thanks — your enquiry has been sent. We will be in touch shortly.");
+  }
+
+  @Post("cookie-consent")
+  @ApiOperation({ summary: "Record a visitor's cookie consent choice" })
+  @ApiResponse({ status: 201 })
+  async cookieConsent(
+    @Body() dto: CookieConsentDto,
+    @Headers("user-agent") userAgent: string,
+  ): Promise<ApiMessageResponse> {
+    await this.cookieConsentService.record(
+      {
+        consentId: dto.consentId,
+        necessary: dto.necessary,
+        functional: dto.functional,
+        analytics: dto.analytics,
+        marketing: dto.marketing,
+      },
+      userAgent ? userAgent : "",
+    );
+    return messageResponse("Consent recorded.");
   }
 
   private escapeHtml(text: string): string {

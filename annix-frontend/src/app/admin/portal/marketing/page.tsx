@@ -2007,12 +2007,31 @@ export default function MarketingCmsPage() {
             </div>
           </Section>
 
-          <Section title="Legal (Privacy & Terms)">
+          <Section title="Legal (Privacy, Terms & Cookies)">
             <p className="text-xs text-gray-500">
-              These render at the footer's Privacy Policy and Terms of Use links. Use a blank line
-              between paragraphs; start a line with "## " for a section heading and "- " for a
-              bullet. Replace any [bracketed] placeholders with your verified company details.
+              These render at the footer's Privacy Policy, Terms of Use and Cookie Policy links. Use
+              a blank line between paragraphs; start a line with "## " for a section heading and "-
+              " for a bullet. Replace any [bracketed] placeholders with your verified company
+              details.
             </p>
+            <button
+              type="button"
+              onClick={() =>
+                update((d) => {
+                  const def = defaultMarketingContent();
+                  d.legal = cloneDeep(def.legal);
+                  const hasCookieLink = d.footer.legalLinks.some((entry) =>
+                    entry.label.toLowerCase().includes("cookie"),
+                  );
+                  if (!hasCookieLink) {
+                    d.footer.legalLinks = cloneDeep(def.footer.legalLinks);
+                  }
+                })
+              }
+              className="rounded-lg border border-[#323288] px-3 py-1.5 text-sm font-semibold text-[#323288] hover:bg-[#323288]/5"
+            >
+              Reset legal text to latest template
+            </button>
             <div className="rounded-lg border border-gray-200 p-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Text
@@ -2078,6 +2097,41 @@ export default function MarketingCmsPage() {
                   onChange={(v) =>
                     update((d) => {
                       d.legal.terms.body = v;
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="rounded-lg border border-gray-200 p-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Text
+                  label="Cookie heading"
+                  value={legal.cookies.heading}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.cookies.heading = v;
+                    })
+                  }
+                />
+                <Text
+                  label="Cookie last updated"
+                  value={legal.cookies.lastUpdated}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.cookies.lastUpdated = v;
+                    })
+                  }
+                />
+              </div>
+              <div className="mt-3">
+                <Text
+                  label="Cookie Policy body"
+                  textarea
+                  rows={16}
+                  value={legal.cookies.body}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.cookies.body = v;
                     })
                   }
                 />

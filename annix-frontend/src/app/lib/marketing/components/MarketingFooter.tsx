@@ -13,6 +13,7 @@ import { MARKETING_VERSION } from "@/app/config/marketing/version";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { now } from "@/app/lib/datetime";
+import { openCookieSettings } from "@/app/lib/marketing/cookieConsent";
 import { externalHref } from "../url";
 import { LegalModal } from "./LegalModal";
 
@@ -95,6 +96,9 @@ export function MarketingFooter(props: {
     if (lower.includes("term")) {
       return legal.terms;
     }
+    if (lower.includes("cookie")) {
+      return legal.cookies;
+    }
     return null;
   };
   const designedByLogoUrl = footer.designedByLogoUrl ? footer.designedByLogoUrl : "";
@@ -145,6 +149,17 @@ export function MarketingFooter(props: {
                 <Send className="h-4 w-4" />
               </span>
             </div>
+            <p className="mt-2 text-xs text-white/40">
+              By subscribing you agree to receive marketing emails and accept our{" "}
+              <button
+                type="button"
+                onClick={() => setLegalDoc(legal.privacy)}
+                className="underline-offset-2 hover:text-white/70 hover:underline"
+              >
+                Privacy Policy
+              </button>
+              . You can unsubscribe at any time.
+            </p>
             <div className="mt-4 flex gap-3">
               {footer.socialLinks.map((social) => {
                 const Icon = SOCIAL_ICONS[social.platform];
@@ -203,6 +218,13 @@ export function MarketingFooter(props: {
                 </Link>
               );
             })}
+            <button
+              type="button"
+              onClick={openCookieSettings}
+              className="transition hover:text-white"
+            >
+              Cookie settings
+            </button>
             <span>v{MARKETING_VERSION}</span>
           </div>
         </div>

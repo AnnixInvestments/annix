@@ -22,7 +22,8 @@ type Tab =
   | "resources"
   | "contact"
   | "privacy"
-  | "terms";
+  | "terms"
+  | "cookies";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "home", label: "Home" },
@@ -33,6 +34,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "contact", label: "Contact" },
   { key: "privacy", label: "Privacy" },
   { key: "terms", label: "Terms" },
+  { key: "cookies", label: "Cookies" },
 ];
 
 export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
@@ -93,6 +95,10 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
     }
     if (path.startsWith("/terms")) {
       setTab("terms");
+      return true;
+    }
+    if (path.startsWith("/cookies")) {
+      setTab("cookies");
       return true;
     }
     if (path.startsWith("/about")) {
@@ -215,6 +221,7 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
           {tab === "resources" ? <ResourcesView content={content} /> : null}
           {tab === "privacy" ? <LegalView doc={content.legal.privacy} /> : null}
           {tab === "terms" ? <LegalView doc={content.legal.terms} /> : null}
+          {tab === "cookies" ? <LegalView doc={content.legal.cookies} /> : null}
           {tab === "contact" ? (
             <ContactView
               heroImageUrl={content.hero.imageUrl}

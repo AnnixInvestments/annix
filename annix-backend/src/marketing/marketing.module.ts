@@ -8,12 +8,14 @@ import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { StorageModule } from "../storage/storage.module";
 import { AdminMarketingController } from "./admin-marketing.controller";
+import { CookieConsentService } from "./cookie-consent.service";
 import { MarketingSiteContent } from "./entities/marketing-site-content.entity";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
 import { PublicMarketingController } from "./public-marketing.controller";
 import { MarketingSiteContentRepository } from "./repositories/marketing-site-content.repository";
 import { MongoMarketingSiteContentRepository } from "./repositories/marketing-site-content.repository.mongo";
 import { PostgresMarketingSiteContentRepository } from "./repositories/marketing-site-content.repository.postgres";
+import { MarketingCookieConsentSchema } from "./schemas/marketing-cookie-consent.schema";
 import { MarketingSiteContentSchema } from "./schemas/marketing-site-content.schema";
 import { FacebookAdapter } from "./social/adapters/facebook.adapter";
 import { InstagramAdapter } from "./social/adapters/instagram.adapter";
@@ -27,6 +29,7 @@ import { SocialPublishingService } from "./social/social-publishing.service";
       ? [
           MongooseModule.forFeature([
             { name: "MarketingSiteContent", schema: MarketingSiteContentSchema },
+            { name: "MarketingCookieConsent", schema: MarketingCookieConsentSchema },
           ]),
         ]
       : [TypeOrmModule.forFeature([MarketingSiteContent])]),
@@ -38,6 +41,7 @@ import { SocialPublishingService } from "./social/social-publishing.service";
   controllers: [AdminMarketingController, PublicMarketingController],
   providers: [
     MarketingSiteContentService,
+    CookieConsentService,
     SocialPublishingService,
     LinkedInAdapter,
     FacebookAdapter,
