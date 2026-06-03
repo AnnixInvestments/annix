@@ -23,9 +23,21 @@ import {
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
+import type {
+  SocialPlatform,
+  SocialPlatformStatus,
+  SocialShareResult,
+} from "./social/social.types";
+import { SocialPublishingService } from "./social/social-publishing.service";
 
 interface AuthenticatedRequest {
   user?: { email?: string };
+}
+
+interface SocialShareBody {
+  platforms: SocialPlatform[];
+  caption: string;
+  imageUrl: string;
 }
 
 @ApiTags("Admin Marketing")
@@ -35,6 +47,7 @@ interface AuthenticatedRequest {
 export class AdminMarketingController {
   constructor(
     private readonly marketingService: MarketingSiteContentService,
+    private readonly socialService: SocialPublishingService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -72,6 +85,20 @@ export class AdminMarketingController {
   @ApiResponse({ status: 200 })
   async discardDraft(): Promise<MarketingSiteContentTree> {
     return this.marketingService.discardDraft();
+  }
+
+  @Get("social/status")
+  @ApiOperation({ summary: "Which social platforms are connected for sharing" })
+  @ApiResponse({ status: 200 })
+  socialStatus(): SocialPlatformStatus[] {
+    return this.socialService.status();
+  }
+
+  @Post("social/share")
+  @ApiOperation({ summary: "Share an image and caption to the selected social platforms" })
+  @ApiResponse({ status: 200 })
+  async socialShare(@Body() body: SocialShareBody): Promise<SocialShareResult[]> {
+    return this.socialService.share(body.platforms, body.caption, body.imageUrl);
   }
 
   @Post("upload-image")

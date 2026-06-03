@@ -67,68 +67,99 @@ export function ResourcesView(props: { content: MarketingSiteContent }) {
   const tabs = ["All", ...categories];
   const filtered =
     category === "All" ? resources : resources.filter((r) => r.category === category);
+  const heroImageUrl = props.content.hero.imageUrl ? props.content.hero.imageUrl : "";
+  const bottomImageUrl = props.content.ctaBand.backgroundImageUrl
+    ? props.content.ctaBand.backgroundImageUrl
+    : "";
 
   return (
-    <section className="px-4 py-24 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-3xl text-center">
-        <h1
-          className="text-4xl font-bold text-white sm:text-5xl"
-          style={{ fontFamily: "var(--brand-font-display)" }}
-        >
-          {props.content.resources.heading}
-        </h1>
-        <p className="mt-4 text-lg text-white/60">{props.content.resources.subheading}</p>
-      </div>
+    <div className="relative overflow-hidden">
+      {heroImageUrl ? (
+        <>
+          <div className="absolute inset-x-0 top-0 h-[26rem]">
+            <img src={heroImageUrl} alt="" className="h-full w-full object-cover object-top" />
+          </div>
+          <div
+            className="absolute inset-x-0 top-0 h-[26rem]"
+            style={{
+              backgroundImage: "linear-gradient(180deg, rgba(10,23,51,0.45) 0%, #0a1733 92%)",
+            }}
+          />
+        </>
+      ) : null}
+      {bottomImageUrl ? (
+        <>
+          <div className="absolute inset-x-0 bottom-0 h-[22rem]">
+            <img src={bottomImageUrl} alt="" className="h-full w-full object-cover object-bottom" />
+          </div>
+          <div
+            className="absolute inset-x-0 bottom-0 h-[22rem]"
+            style={{ backgroundImage: "linear-gradient(0deg, transparent 0%, #0a1733 78%)" }}
+          />
+        </>
+      ) : null}
 
-      <div className="mx-auto mt-10 flex max-w-4xl flex-wrap justify-center gap-2">
-        {tabs.map((tab) => {
-          const active = tab === category;
-          return (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => setCategory(tab)}
-              className={
-                active
-                  ? "rounded-full border border-[var(--brand-accent)] bg-[var(--brand-accent)]/15 px-4 py-1.5 text-sm font-semibold text-white"
-                  : "rounded-full border border-white/15 px-4 py-1.5 text-sm font-medium text-white/60 transition hover:border-white/30 hover:text-white"
-              }
-            >
-              {tab}
-            </button>
-          );
-        })}
-      </div>
+      <section className="relative px-4 py-24 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl text-center">
+          <h1
+            className="text-4xl font-bold text-white sm:text-5xl"
+            style={{ fontFamily: "var(--brand-font-display)" }}
+          >
+            {props.content.resources.heading}
+          </h1>
+          <p className="mt-4 text-lg text-white/60">{props.content.resources.subheading}</p>
+        </div>
 
-      <div className="mx-auto mt-12 grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {filtered.map((resource) => {
-          const imageUrl = resource.imageUrl ? resource.imageUrl : "";
-          return (
-            <button
-              key={resource.slug}
-              type="button"
-              onClick={() => setSelected(resource)}
-              className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition hover:border-white/25 hover:bg-white/10"
-            >
-              {imageUrl ? (
-                <img src={imageUrl} alt="" className="aspect-[16/9] w-full object-cover" />
-              ) : (
-                <div className="aspect-[16/9] w-full bg-gradient-to-br from-white/10 to-transparent" />
-              )}
-              <div className="flex flex-1 flex-col p-6">
-                <div className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-accent)]">
-                  {resource.category}
+        <div className="mx-auto mt-10 flex max-w-4xl flex-wrap justify-center gap-2">
+          {tabs.map((tab) => {
+            const active = tab === category;
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setCategory(tab)}
+                className={
+                  active
+                    ? "rounded-full border border-[var(--brand-accent)] bg-[var(--brand-accent)]/15 px-4 py-1.5 text-sm font-semibold text-white"
+                    : "rounded-full border border-white/15 px-4 py-1.5 text-sm font-medium text-white/60 transition hover:border-white/30 hover:text-white"
+                }
+              >
+                {tab}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="mx-auto mt-12 grid max-w-6xl grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {filtered.map((resource) => {
+            const imageUrl = resource.imageUrl ? resource.imageUrl : "";
+            return (
+              <button
+                key={resource.slug}
+                type="button"
+                onClick={() => setSelected(resource)}
+                className="flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/5 text-left transition hover:border-white/25 hover:bg-white/10"
+              >
+                {imageUrl ? (
+                  <img src={imageUrl} alt="" className="aspect-[16/9] w-full object-cover" />
+                ) : (
+                  <div className="aspect-[16/9] w-full bg-gradient-to-br from-white/10 to-transparent" />
+                )}
+                <div className="flex flex-1 flex-col p-6">
+                  <div className="text-xs font-semibold uppercase tracking-wide text-[var(--brand-accent)]">
+                    {resource.category}
+                  </div>
+                  <div className="mt-2 text-lg font-semibold text-white">{resource.title}</div>
+                  <p className="mt-2 text-sm text-white/60">{resource.excerpt}</p>
+                  <span className="mt-4 text-sm font-medium text-[var(--brand-accent)]">
+                    Read more
+                  </span>
                 </div>
-                <div className="mt-2 text-lg font-semibold text-white">{resource.title}</div>
-                <p className="mt-2 text-sm text-white/60">{resource.excerpt}</p>
-                <span className="mt-4 text-sm font-medium text-[var(--brand-accent)]">
-                  Read more
-                </span>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    </section>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+    </div>
   );
 }

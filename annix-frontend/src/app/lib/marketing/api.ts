@@ -53,6 +53,26 @@ export interface MarketingContactPayload {
   message: string;
 }
 
+export type SocialPlatform = "linkedin" | "facebook" | "instagram" | "x";
+
+export interface SocialPlatformStatus {
+  platform: SocialPlatform;
+  label: string;
+  configured: boolean;
+}
+
+export interface SocialShareResult {
+  platform: SocialPlatform;
+  ok: boolean;
+  message: string;
+}
+
+export interface SocialSharePayload {
+  platforms: SocialPlatform[];
+  caption: string;
+  imageUrl: string;
+}
+
 export async function fetchPublishedMarketingContent(): Promise<MarketingSiteContent> {
   // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   const isServer = typeof window === "undefined";
@@ -114,6 +134,14 @@ class MarketingAdminApiClient {
 
   uploadImage(file: File): Promise<{ url: string }> {
     return adminClient.uploadFile<{ url: string }>("/admin/marketing/upload-image", file);
+  }
+
+  socialStatus(): Promise<SocialPlatformStatus[]> {
+    return adminClient.get<SocialPlatformStatus[]>("/admin/marketing/social/status");
+  }
+
+  shareToSocials(payload: SocialSharePayload): Promise<SocialShareResult[]> {
+    return adminClient.post<SocialShareResult[]>("/admin/marketing/social/share", payload);
   }
 }
 

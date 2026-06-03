@@ -163,7 +163,13 @@ export interface MarketingAboutValue {
 export interface MarketingAbout {
   heading: string;
   body: string;
+  leadImageUrl: string | null;
+  storyHeading: string;
+  storyBody: string;
+  storyImageUrl: string | null;
   values: MarketingAboutValue[];
+  mission: string;
+  missionImageUrl: string | null;
 }
 
 export const RESOURCE_CATEGORIES = [

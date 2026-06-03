@@ -697,8 +697,13 @@ export function defaultMarketingContent(): MarketingSiteContent {
       items: [],
     },
     about: {
-      heading: "We build intelligent platforms for industry.",
-      body: "Annix is a platform company. Rather than a scattered collection of apps, every Annix product is built on one shared foundation — the same backend, the same intelligence, the same design language. That is how we ship products that genuinely work together.",
+      heading: "We build the software industry actually needs.",
+      body: "Annix is a South African platform company building intelligent software for the businesses that keep the world running — the miners, manufacturers, engineers, fabricators and the people who staff and supply them. Rather than another scattered set of disconnected apps, every Annix product is built on one shared foundation: the same backend, the same AI, the same design language. That is how we ship products that genuinely work together.",
+      leadImageUrl: null,
+      storyHeading: "Why we built Annix",
+      storyBody:
+        "We started Annix because we lived the problem. Industrial businesses were being sold a different system for every job — one for stock, one for quoting, one for compliance, one for hiring — and none of them spoke to each other. Teams drowned in spreadsheets and paper certificates while the data they needed sat trapped in silos.\n\nSo we built the opposite. One platform, many products, all sharing data and intelligence. From a certificate on the factory floor to a quote, a compliance record or a new hire, it all lives in the same audit-ready system. We engineer in South Africa, for the realities of heavy, regulated and field-driven work, and we deliver to businesses across the globe.",
+      storyImageUrl: null,
       values: [
         {
           title: "One platform",
@@ -712,7 +717,14 @@ export function defaultMarketingContent(): MarketingSiteContent {
           title: "Industrial first",
           body: "Designed for the realities of heavy, regulated and field-driven work.",
         },
+        {
+          title: "Compliance by default",
+          body: "Security, audit trails and POPIA-first data handling are built in, never an afterthought.",
+        },
       ],
+      mission:
+        "Our mission is simple: give every industrial business one intelligent platform to run on — so they can spend less time fighting their tools and more time building, making and growing.",
+      missionImageUrl: null,
     },
     resources: {
       heading: "Resources",

@@ -179,7 +179,13 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
               bottomImageUrl={content.ctaBand.backgroundImageUrl}
             />
           ) : null}
-          {tab === "about" ? <AboutView about={content.about} /> : null}
+          {tab === "about" ? (
+            <AboutView
+              about={content.about}
+              heroImageUrl={content.hero.imageUrl}
+              bottomImageUrl={content.ctaBand.backgroundImageUrl}
+            />
+          ) : null}
           {tab === "resources" ? <ResourcesView content={content} /> : null}
           {tab === "contact" ? (
             <ContactView

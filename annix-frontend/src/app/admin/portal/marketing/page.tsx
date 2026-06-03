@@ -14,6 +14,7 @@ import { formatDateLongZA } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { marketingAdminApi, mergeMarketingDefaults } from "@/app/lib/marketing/api";
 import { MarketingSitePreview } from "@/app/lib/marketing/components/MarketingSitePreview";
+import { SocialShareModal } from "@/app/lib/marketing/components/SocialShareModal";
 import {
   useDiscardMarketingDraft,
   useMarketingDraft,
@@ -381,10 +382,51 @@ function ProductRow(props: {
   );
 }
 
+function ImageSlot(props: {
+  label: string;
+  url: string | null;
+  onUploaded: (url: string) => void;
+  onClear: () => void;
+  onError: (message: string) => void;
+}) {
+  const url = props.url ? props.url : "";
+  return (
+    <div>
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-gray-500">
+        {props.label}
+      </span>
+      <div className="flex items-center gap-3">
+        {url ? (
+          <img
+            src={url}
+            alt=""
+            className="h-16 w-28 rounded-lg border border-gray-200 object-cover"
+          />
+        ) : (
+          <div className="flex h-16 w-28 items-center justify-center rounded-lg border border-dashed border-gray-300 text-[10px] text-gray-400">
+            No image
+          </div>
+        )}
+        <ImageUploadButton label="Upload" onUploaded={props.onUploaded} onError={props.onError} />
+        {url ? (
+          <button
+            type="button"
+            onClick={props.onClear}
+            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 function ResourceRow(props: {
   resource: MarketingResource;
   patch: (mutate: (resource: MarketingResource) => void) => void;
   onRemove: () => void;
+  onShare: () => void;
   onError: (message: string) => void;
 }) {
   const resource = props.resource;
@@ -527,13 +569,22 @@ function ResourceRow(props: {
           />
           Published (visible on the site)
         </label>
-        <button
-          type="button"
-          onClick={props.onRemove}
-          className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          Remove resource
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={props.onShare}
+            className="rounded-lg border border-[#323288] px-3 py-1.5 text-sm font-semibold text-[#323288] hover:bg-[#323288]/5"
+          >
+            Share to socials
+          </button>
+          <button
+            type="button"
+            onClick={props.onRemove}
+            className="rounded-lg border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+          >
+            Remove resource
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -550,6 +601,13 @@ export default function MarketingCmsPage() {
 
   const [content, setContent] = useState<MarketingSiteContent | null>(null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [socialOpen, setSocialOpen] = useState(false);
+  const [socialResource, setSocialResource] = useState<MarketingResource | null>(null);
+
+  function openShare(resource: MarketingResource | null) {
+    setSocialResource(resource);
+    setSocialOpen(true);
+  }
 
   useEffect(() => {
     if (draftQuery.data) {
@@ -1584,7 +1642,7 @@ export default function MarketingCmsPage() {
               }
             />
             <Text
-              label="Body"
+              label="Intro paragraph"
               textarea
               value={about.body}
               onChange={(v) =>
@@ -1593,7 +1651,68 @@ export default function MarketingCmsPage() {
                 })
               }
             />
+            <ImageSlot
+              label="Lead image (wide banner under the intro)"
+              url={about.leadImageUrl}
+              onUploaded={(url) =>
+                update((d) => {
+                  d.about.leadImageUrl = url;
+                })
+              }
+              onClear={() =>
+                update((d) => {
+                  d.about.leadImageUrl = null;
+                })
+              }
+              onError={(m) => showToast(m, "error")}
+            />
+
+            <div className="rounded-lg border border-gray-200 p-3">
+              <Text
+                label="Story heading"
+                value={about.storyHeading}
+                onChange={(v) =>
+                  update((d) => {
+                    d.about.storyHeading = v;
+                  })
+                }
+              />
+              <div className="mt-3">
+                <Text
+                  label="Story (leave a blank line between paragraphs)"
+                  textarea
+                  rows={6}
+                  value={about.storyBody}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.about.storyBody = v;
+                    })
+                  }
+                />
+              </div>
+              <div className="mt-3">
+                <ImageSlot
+                  label="Story image (beside the story text)"
+                  url={about.storyImageUrl}
+                  onUploaded={(url) =>
+                    update((d) => {
+                      d.about.storyImageUrl = url;
+                    })
+                  }
+                  onClear={() =>
+                    update((d) => {
+                      d.about.storyImageUrl = null;
+                    })
+                  }
+                  onError={(m) => showToast(m, "error")}
+                />
+              </div>
+            </div>
+
             <div className="space-y-3">
+              <span className="block text-xs font-semibold uppercase tracking-wide text-gray-500">
+                What we believe
+              </span>
               {about.values.map((value, index) => (
                 <div key={`about-value-${index}`} className="rounded-lg border border-gray-200 p-3">
                   <Text
@@ -1616,8 +1735,62 @@ export default function MarketingCmsPage() {
                       }
                     />
                   </div>
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        update((d) => {
+                          d.about.values = d.about.values.filter((_, i) => i !== index);
+                        })
+                      }
+                      className="rounded-lg border border-red-200 px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ))}
+              <button
+                type="button"
+                onClick={() =>
+                  update((d) => {
+                    d.about.values.push({ title: "", body: "" });
+                  })
+                }
+                className="rounded-lg border border-dashed border-gray-300 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
+              >
+                + Add value
+              </button>
+            </div>
+
+            <div className="rounded-lg border border-gray-200 p-3">
+              <Text
+                label="Mission statement"
+                textarea
+                value={about.mission}
+                onChange={(v) =>
+                  update((d) => {
+                    d.about.mission = v;
+                  })
+                }
+              />
+              <div className="mt-3">
+                <ImageSlot
+                  label="Mission image (beside the mission statement)"
+                  url={about.missionImageUrl}
+                  onUploaded={(url) =>
+                    update((d) => {
+                      d.about.missionImageUrl = url;
+                    })
+                  }
+                  onClear={() =>
+                    update((d) => {
+                      d.about.missionImageUrl = null;
+                    })
+                  }
+                  onError={(m) => showToast(m, "error")}
+                />
+              </div>
             </div>
           </Section>
 
@@ -1658,6 +1831,7 @@ export default function MarketingCmsPage() {
                       d.resources.items = d.resources.items.filter((_, i) => i !== index);
                     })
                   }
+                  onShare={() => openShare(item)}
                   onError={(message) => showToast(message, "error")}
                 />
               ))}
@@ -1835,6 +2009,13 @@ export default function MarketingCmsPage() {
       )}
 
       {ConfirmDialog}
+      <SocialShareModal
+        isOpen={socialOpen}
+        onClose={() => setSocialOpen(false)}
+        content={content}
+        initialResource={socialResource}
+        onError={(message) => showToast(message, "error")}
+      />
     </div>
   );
 }

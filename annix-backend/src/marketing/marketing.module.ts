@@ -15,6 +15,11 @@ import { MarketingSiteContentRepository } from "./repositories/marketing-site-co
 import { MongoMarketingSiteContentRepository } from "./repositories/marketing-site-content.repository.mongo";
 import { PostgresMarketingSiteContentRepository } from "./repositories/marketing-site-content.repository.postgres";
 import { MarketingSiteContentSchema } from "./schemas/marketing-site-content.schema";
+import { FacebookAdapter } from "./social/adapters/facebook.adapter";
+import { InstagramAdapter } from "./social/adapters/instagram.adapter";
+import { LinkedInAdapter } from "./social/adapters/linkedin.adapter";
+import { XAdapter } from "./social/adapters/x.adapter";
+import { SocialPublishingService } from "./social/social-publishing.service";
 
 @Module({
   imports: [
@@ -33,6 +38,11 @@ import { MarketingSiteContentSchema } from "./schemas/marketing-site-content.sch
   controllers: [AdminMarketingController, PublicMarketingController],
   providers: [
     MarketingSiteContentService,
+    SocialPublishingService,
+    LinkedInAdapter,
+    FacebookAdapter,
+    InstagramAdapter,
+    XAdapter,
     repositoryProvider(
       MarketingSiteContentRepository,
       PostgresMarketingSiteContentRepository,
