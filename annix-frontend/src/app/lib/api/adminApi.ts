@@ -2031,6 +2031,7 @@ export interface CompanyProfileResponse {
   generalEmail: string | null;
   supportEmail: string | null;
   privacyEmail: string | null;
+  demoRequestEmail: string | null;
   websiteUrl: string | null;
   informationOfficerName: string | null;
   informationOfficerEmail: string | null;
@@ -2058,6 +2059,7 @@ export interface UpdateCompanyProfileRequest {
   generalEmail?: string;
   supportEmail?: string;
   privacyEmail?: string;
+  demoRequestEmail?: string;
   websiteUrl?: string;
   informationOfficerName?: string;
   informationOfficerEmail?: string;

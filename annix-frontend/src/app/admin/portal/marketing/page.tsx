@@ -699,6 +699,7 @@ export default function MarketingCmsPage() {
   const about = content.about;
   const footer = content.footer;
   const resources = content.resources;
+  const legal = content.legal;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
@@ -2001,6 +2002,84 @@ export default function MarketingCmsPage() {
                   }
                   className="mt-2 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
                   placeholder="Website URL (optional) — e.g. host.com"
+                />
+              </div>
+            </div>
+          </Section>
+
+          <Section title="Legal (Privacy & Terms)">
+            <p className="text-xs text-gray-500">
+              These render at the footer's Privacy Policy and Terms of Use links. Use a blank line
+              between paragraphs; start a line with "## " for a section heading and "- " for a
+              bullet. Replace any [bracketed] placeholders with your verified company details.
+            </p>
+            <div className="rounded-lg border border-gray-200 p-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Text
+                  label="Privacy heading"
+                  value={legal.privacy.heading}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.privacy.heading = v;
+                    })
+                  }
+                />
+                <Text
+                  label="Privacy last updated"
+                  value={legal.privacy.lastUpdated}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.privacy.lastUpdated = v;
+                    })
+                  }
+                />
+              </div>
+              <div className="mt-3">
+                <Text
+                  label="Privacy Policy body"
+                  textarea
+                  rows={16}
+                  value={legal.privacy.body}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.privacy.body = v;
+                    })
+                  }
+                />
+              </div>
+            </div>
+            <div className="rounded-lg border border-gray-200 p-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Text
+                  label="Terms heading"
+                  value={legal.terms.heading}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.terms.heading = v;
+                    })
+                  }
+                />
+                <Text
+                  label="Terms last updated"
+                  value={legal.terms.lastUpdated}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.terms.lastUpdated = v;
+                    })
+                  }
+                />
+              </div>
+              <div className="mt-3">
+                <Text
+                  label="Terms of Use body"
+                  textarea
+                  rows={16}
+                  value={legal.terms.body}
+                  onChange={(v) =>
+                    update((d) => {
+                      d.legal.terms.body = v;
+                    })
+                  }
                 />
               </div>
             </div>

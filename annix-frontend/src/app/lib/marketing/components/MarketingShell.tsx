@@ -31,7 +31,7 @@ export function MarketingShell(props: { content: MarketingSiteContent; children:
           site={content.site}
         />
         <main>{props.children}</main>
-        <MarketingFooter footer={content.footer} site={content.site} />
+        <MarketingFooter footer={content.footer} site={content.site} legal={content.legal} />
       </div>
     </BrandingProvider>
   );

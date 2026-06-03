@@ -526,6 +526,145 @@ const RESOURCES: MarketingResource[] = [
   },
 ];
 
+const PRIVACY_BODY = `Annix ("Annix", "we", "us" or "our") is committed to protecting your privacy and handling your personal information responsibly and in accordance with the Protection of Personal Information Act, 2013 ("POPIA") and other applicable South African law. This Privacy Policy explains what personal information we collect, how we use it, who we share it with, and the rights available to you.
+
+This policy applies to our websites, applications and services (together, the "Services"), and to personal information we process as the responsible party. By using the Services you acknowledge that you have read and understood this policy.
+
+## Who we are
+Annix is a company incorporated in the Republic of South Africa. For the purposes of POPIA, Annix is the "responsible party" for the personal information described in this policy. Our registration and contact details are set out at the end of this policy and on our Contact page.
+
+## Information we collect
+We collect personal information in the following ways:
+
+- Information you provide — such as your name, email address, telephone number, company name, job title, and the contents of enquiries or messages you send us, including through our book-a-demo and contact forms.
+- Information collected automatically — such as your IP address, device and browser type, pages viewed and usage data, collected through cookies and similar technologies.
+- Information from third parties — such as our service providers, business partners and publicly available sources, where lawful.
+
+We do not deliberately collect special personal information (as defined in POPIA) unless it is necessary for a specific, lawful purpose for which we have an appropriate legal basis.
+
+## How we use your information
+We process personal information to:
+
+- provide, operate, maintain and improve the Services;
+- respond to your enquiries, demo requests and support requests;
+- communicate with you about the Services, including service and, where permitted, marketing messages;
+- administer accounts, billing and security;
+- comply with our legal and regulatory obligations; and
+- protect our rights, property and safety and those of our users and the public.
+
+We rely on lawful bases recognised by POPIA, including consent, performance of a contract, compliance with a legal obligation, and the pursuit of our or a third party's legitimate interests.
+
+## Marketing communications
+Where we send electronic marketing, we do so in accordance with applicable law. You may opt out at any time using the unsubscribe mechanism in the message or by contacting us.
+
+## How we share your information
+We do not sell your personal information. We may share it with:
+
+- service providers who process information on our behalf — for example hosting, email delivery, analytics and AI processing providers — under appropriate confidentiality and data-protection obligations;
+- professional advisers, regulators and authorities where required or permitted by law;
+- a successor entity in connection with a merger, acquisition or sale of assets; and
+- other parties with your consent.
+
+## International transfers
+Some service providers may process personal information outside South Africa. Where we transfer personal information across borders, we take steps to ensure it remains protected in accordance with POPIA, including by requiring that recipients are subject to laws, binding rules or agreements that provide an adequate level of protection.
+
+## Information security
+We implement appropriate, reasonable technical and organisational measures to protect personal information against loss, damage, unauthorised access and unlawful processing, including access controls, encryption where appropriate, audit logging and per-company data scoping. No method of transmission or storage is entirely secure, and we cannot guarantee absolute security.
+
+## Retention
+We retain personal information only for as long as necessary to fulfil the purposes for which it was collected, including to meet legal, accounting, regulatory or reporting requirements, after which it is deleted or de-identified.
+
+## Your rights
+Subject to POPIA and applicable law, you have the right to:
+
+- request access to the personal information we hold about you;
+- request correction or deletion of your personal information;
+- object to processing in certain circumstances;
+- withdraw consent where processing is based on consent; and
+- lodge a complaint with the Information Regulator.
+
+To exercise these rights, contact our Information Officer using the details below. We may need to verify your identity before responding.
+
+## Cookies and similar technologies
+We use cookies and similar technologies to operate our websites, remember your preferences and understand how the Services are used. You can control cookies through your browser settings; disabling some cookies may affect functionality.
+
+## Children
+The Services are not directed at children, and we do not knowingly collect personal information from children without the consent of a competent person, except where permitted by law.
+
+## Changes to this policy
+We may update this policy from time to time. The current version is always available on our website and the "last updated" date reflects the most recent changes. We will bring material changes to your attention where required by law.
+
+## How to contact us
+If you have questions about this policy or wish to exercise your rights, please contact our Information Officer:
+
+- Responsible party: Annix
+- Information Officer: [insert Information Officer name]
+- Contact email: [insert privacy contact email]
+- Registered address: [insert registered address]
+- Company registration number: [insert registration number]
+
+You also have the right to lodge a complaint with the Information Regulator (South Africa). The Regulator's current contact details are available on its official website.`;
+
+const TERMS_BODY = `These Terms of Use ("Terms") govern your access to and use of Annix's websites, applications and services (together, the "Services"). By accessing or using the Services, you agree to be bound by these Terms. If you do not agree, you must not use the Services.
+
+## Who we are
+The Services are provided by Annix, a company incorporated in the Republic of South Africa ("Annix", "we", "us" or "our"). Our registration and contact details are available on our Contact page.
+
+## Eligibility
+You may use the Services only if you can form a binding contract with Annix and are not barred from doing so under applicable law. If you use the Services on behalf of an organisation, you confirm that you are authorised to bind that organisation to these Terms.
+
+## Accounts and security
+Some Services require an account. You are responsible for maintaining the confidentiality of your login credentials and for all activity under your account. You must notify us promptly of any unauthorised use. We may suspend or terminate accounts that are inactive, compromised, or used in breach of these Terms.
+
+## Acceptable use
+You agree not to:
+
+- use the Services unlawfully or for any harmful or fraudulent purpose;
+- interfere with or disrupt the integrity, security or performance of the Services;
+- attempt to gain unauthorised access to the Services or related systems or data;
+- reverse engineer, decompile or copy any part of the Services except as permitted by law;
+- upload malicious code or content that infringes the rights of others; or
+- use the Services to send unsolicited communications or to misrepresent your identity.
+
+## Intellectual property
+The Services, including all software, text, graphics, logos and other content (excluding your content), are owned by or licensed to Annix and are protected by intellectual-property laws. We grant you a limited, non-exclusive, non-transferable, revocable right to use the Services for their intended purpose, subject to these Terms. No other rights are granted.
+
+## Your content and data
+You retain ownership of the data and content you submit to the Services ("Customer Data"). You grant us a licence to host, process and use Customer Data only as necessary to provide and improve the Services, and as described in our Privacy Policy. You are responsible for ensuring that you have the rights and any necessary consents to provide Customer Data and that it does not infringe any law or third-party rights.
+
+## Third-party services
+The Services may integrate with or link to third-party products and services. We are not responsible for third-party services, and your use of them is governed by their own terms and policies.
+
+## Service availability and changes
+We aim to keep the Services available and reliable, but we provide them on an "as is" and "as available" basis. We may modify, suspend or discontinue any part of the Services at any time, and may set out additional terms for specific products or paid services in a separate agreement, which will prevail over these Terms to the extent of any conflict.
+
+## Disclaimers
+To the maximum extent permitted by law, the Services are provided without warranties of any kind, whether express or implied, including any implied warranties of merchantability, fitness for a particular purpose, accuracy or non-infringement. We do not warrant that the Services will be uninterrupted, error-free or secure. Nothing in these Terms excludes or limits any rights you may have under the Consumer Protection Act, 2008 or other applicable law that cannot lawfully be excluded.
+
+## Limitation of liability
+To the maximum extent permitted by law, Annix will not be liable for any indirect, incidental, special, consequential or punitive damages, or for any loss of profits, revenue, data or goodwill, arising out of or relating to your use of the Services. To the extent our liability cannot be excluded, it is limited to the amount you paid us for the relevant Service in the three months preceding the event giving rise to the claim, or, where no fee was paid, to a reasonable amount determined in accordance with law.
+
+## Indemnity
+You agree to indemnify and hold Annix harmless against claims, losses and expenses arising from your breach of these Terms, your misuse of the Services, or your Customer Data, to the extent permitted by law.
+
+## Suspension and termination
+We may suspend or terminate your access to the Services if you breach these Terms or if necessary to protect the Services, other users or third parties. You may stop using the Services at any time. Provisions that by their nature should survive termination will continue to apply.
+
+## Privacy
+Your use of the Services is also governed by our Privacy Policy, which explains how we handle personal information.
+
+## Governing law and jurisdiction
+These Terms are governed by the laws of the Republic of South Africa. You submit to the non-exclusive jurisdiction of the South African courts in relation to any dispute arising out of or in connection with these Terms or the Services.
+
+## Changes to these Terms
+We may update these Terms from time to time. The current version is always available on our website and the "last updated" date reflects the most recent changes. Your continued use of the Services after changes take effect constitutes acceptance of the updated Terms.
+
+## General
+If any provision of these Terms is found to be unenforceable, the remaining provisions will continue in full force. Our failure to enforce a provision is not a waiver of it. You may not assign these Terms without our consent; we may assign them as part of a corporate transaction. These Terms, together with any product-specific agreement and our Privacy Policy, constitute the entire agreement between you and Annix regarding the Services.
+
+## Contact
+Questions about these Terms can be sent to us using the details on our Contact page.`;
+
 export function defaultMarketingContent(): MarketingSiteContent {
   return {
     site: {
@@ -681,8 +820,8 @@ export function defaultMarketingContent(): MarketingSiteContent {
         { platform: "Instagram", href: "#" },
       ],
       legalLinks: [
-        { label: "Privacy Policy", href: "#" },
-        { label: "Terms of Use", href: "#" },
+        { label: "Privacy Policy", href: "/privacy" },
+        { label: "Terms of Use", href: "/terms" },
       ],
       legal: "All rights reserved.",
       designedByLogoUrl: null,
@@ -731,6 +870,18 @@ export function defaultMarketingContent(): MarketingSiteContent {
       subheading:
         "Guides, standards explainers and industry briefs to help you get the most out of Annix.",
       items: RESOURCES,
+    },
+    legal: {
+      privacy: {
+        heading: "Privacy Policy",
+        lastUpdated: "3 June 2026",
+        body: PRIVACY_BODY,
+      },
+      terms: {
+        heading: "Terms of Use",
+        lastUpdated: "3 June 2026",
+        body: TERMS_BODY,
+      },
     },
   };
 }

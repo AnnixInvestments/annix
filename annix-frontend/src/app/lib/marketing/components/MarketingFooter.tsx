@@ -1,14 +1,20 @@
+"use client";
+
 import type {
   MarketingFooter as MarketingFooterContent,
+  MarketingLegal,
+  MarketingLegalDoc,
   MarketingSite,
 } from "@annix/product-data/marketing";
 import { Facebook, Instagram, Linkedin, type LucideIcon, Send, Youtube } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { MARKETING_VERSION } from "@/app/config/marketing/version";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { now } from "@/app/lib/datetime";
 import { externalHref } from "../url";
+import { LegalModal } from "./LegalModal";
 
 const SOCIAL_ICONS: Record<string, LucideIcon | undefined> = {
   LinkedIn: Linkedin,
@@ -71,10 +77,26 @@ function FooterCredit(props: { label: string; logoUrl: string; href: string }) {
   );
 }
 
-export function MarketingFooter(props: { footer: MarketingFooterContent; site: MarketingSite }) {
+export function MarketingFooter(props: {
+  footer: MarketingFooterContent;
+  site: MarketingSite;
+  legal: MarketingLegal;
+}) {
   const footer = props.footer;
   const site = props.site;
+  const legal = props.legal;
   const year = now().year;
+  const [legalDoc, setLegalDoc] = useState<MarketingLegalDoc | null>(null);
+  const legalDocForLabel = (label: string): MarketingLegalDoc | null => {
+    const lower = label.toLowerCase();
+    if (lower.includes("privacy")) {
+      return legal.privacy;
+    }
+    if (lower.includes("term")) {
+      return legal.terms;
+    }
+    return null;
+  };
   const designedByLogoUrl = footer.designedByLogoUrl ? footer.designedByLogoUrl : "";
   const hostedByLogoUrl = footer.hostedByLogoUrl ? footer.hostedByLogoUrl : "";
   const hasCredits = designedByLogoUrl !== "" || hostedByLogoUrl !== "";
@@ -161,15 +183,31 @@ export function MarketingFooter(props: { footer: MarketingFooterContent; site: M
             © {year} Annix Investments (Pty) Ltd. {footer.legal}
           </span>
           <div className="flex items-center gap-4">
-            {footer.legalLinks.map((link) => (
-              <Link key={link.label} href={link.href} className="transition hover:text-white">
-                {link.label}
-              </Link>
-            ))}
+            {footer.legalLinks.map((link) => {
+              const doc = legalDocForLabel(link.label);
+              if (doc) {
+                return (
+                  <button
+                    key={link.label}
+                    type="button"
+                    onClick={() => setLegalDoc(doc)}
+                    className="transition hover:text-white"
+                  >
+                    {link.label}
+                  </button>
+                );
+              }
+              return (
+                <Link key={link.label} href={link.href} className="transition hover:text-white">
+                  {link.label}
+                </Link>
+              );
+            })}
             <span>v{MARKETING_VERSION}</span>
           </div>
         </div>
       </div>
+      <LegalModal doc={legalDoc} onClose={() => setLegalDoc(null)} />
     </footer>
   );
 }

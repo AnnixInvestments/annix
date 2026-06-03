@@ -13,6 +13,8 @@ export type {
   MarketingIndustry,
   MarketingLabs,
   MarketingLabsItem,
+  MarketingLegal,
+  MarketingLegalDoc,
   MarketingPartner,
   MarketingPartners,
   MarketingPresenceItem,

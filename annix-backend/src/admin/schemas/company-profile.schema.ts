@@ -56,6 +56,9 @@ export class CompanyProfile {
   privacyEmail: string;
 
   @Prop({ type: String, required: false })
+  demoRequestEmail: string;
+
+  @Prop({ type: String, required: false })
   websiteUrl: string;
 
   @Prop({ type: String, required: false })

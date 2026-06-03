@@ -53,6 +53,9 @@ export class CompanyProfile {
   @Column({ name: "privacy_email", type: "varchar", length: 255, nullable: true })
   privacyEmail: string | null;
 
+  @Column({ name: "demo_request_email", type: "varchar", length: 255, nullable: true })
+  demoRequestEmail: string | null;
+
   @Column({ name: "website_url", type: "varchar", length: 255, nullable: true })
   websiteUrl: string | null;
 

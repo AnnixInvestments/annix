@@ -74,7 +74,7 @@ export class PublicMarketingController {
   @ApiResponse({ status: 201 })
   async submitContact(@Body() dto: MarketingContactDto): Promise<ApiMessageResponse> {
     const profile = await this.companyProfileService.profile();
-    const recipientEmail = profile.generalEmail || "info@example.com";
+    const recipientEmail = profile.demoRequestEmail || profile.generalEmail || "info@example.com";
 
     const html = `
       <h2>New Annix Website Enquiry</h2>

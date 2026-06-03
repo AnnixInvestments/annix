@@ -168,6 +168,10 @@ function formStateFromProfile(
       const rawPrivacyEmail = profile.privacyEmail;
       return rawPrivacyEmail || "";
     })(),
+    demoRequestEmail: (() => {
+      const rawDemoRequestEmail = profile.demoRequestEmail;
+      return rawDemoRequestEmail || "";
+    })(),
     websiteUrl: (() => {
       const rawWebsiteUrl = profile.websiteUrl;
       return rawWebsiteUrl || "";
@@ -397,6 +401,16 @@ export default function CompanyProfilePage() {
           })()}
           onChange={updateField("privacyEmail")}
           type="email"
+        />
+        <Field
+          label="Demo Request Email"
+          value={(() => {
+            const rawDemoRequestEmail = form.demoRequestEmail;
+            return rawDemoRequestEmail || "";
+          })()}
+          onChange={updateField("demoRequestEmail")}
+          type="email"
+          placeholder="Where website book-a-demo enquiries are sent"
         />
       </SectionCard>
 

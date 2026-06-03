@@ -89,6 +89,11 @@ export class UpdateCompanyProfileDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsEmail()
+  demoRequestEmail?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsString()
   websiteUrl?: string;
 

@@ -200,6 +200,17 @@ export interface MarketingResources {
   items: MarketingResource[];
 }
 
+export interface MarketingLegalDoc {
+  heading: string;
+  lastUpdated: string;
+  body: string;
+}
+
+export interface MarketingLegal {
+  privacy: MarketingLegalDoc;
+  terms: MarketingLegalDoc;
+}
+
 export interface MarketingSiteContent {
   site: MarketingSite;
   hero: MarketingHero;
@@ -213,6 +224,7 @@ export interface MarketingSiteContent {
   labs: MarketingLabs;
   about: MarketingAbout;
   resources: MarketingResources;
+  legal: MarketingLegal;
 }
 
 export interface MarketingSiteStatus {

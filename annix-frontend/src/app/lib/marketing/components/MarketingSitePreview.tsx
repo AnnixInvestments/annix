@@ -7,13 +7,22 @@ import { AboutView } from "./views/AboutView";
 import { ContactView } from "./views/ContactView";
 import { HomeView } from "./views/HomeView";
 import { IndustryView } from "./views/IndustryView";
+import { LegalView } from "./views/LegalView";
 import { ProductLandingView } from "./views/ProductLandingView";
 import { ProductView } from "./views/ProductView";
 import { PulseLandingView } from "./views/PulseLandingView";
 import { PRODUCT_LANDING_CONFIGS, type ProductLandingConfig } from "./views/productLandingData";
 import { ResourcesView } from "./views/ResourcesView";
 
-type Tab = "home" | "products" | "industries" | "about" | "resources" | "contact";
+type Tab =
+  | "home"
+  | "products"
+  | "industries"
+  | "about"
+  | "resources"
+  | "contact"
+  | "privacy"
+  | "terms";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "home", label: "Home" },
@@ -22,6 +31,8 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "about", label: "About" },
   { key: "resources", label: "Resources" },
   { key: "contact", label: "Contact" },
+  { key: "privacy", label: "Privacy" },
+  { key: "terms", label: "Terms" },
 ];
 
 export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
@@ -74,6 +85,14 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
     }
     if (path.startsWith("/resources")) {
       setTab("resources");
+      return true;
+    }
+    if (path.startsWith("/privacy")) {
+      setTab("privacy");
+      return true;
+    }
+    if (path.startsWith("/terms")) {
+      setTab("terms");
       return true;
     }
     if (path.startsWith("/about")) {
@@ -194,6 +213,8 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
             />
           ) : null}
           {tab === "resources" ? <ResourcesView content={content} /> : null}
+          {tab === "privacy" ? <LegalView doc={content.legal.privacy} /> : null}
+          {tab === "terms" ? <LegalView doc={content.legal.terms} /> : null}
           {tab === "contact" ? (
             <ContactView
               heroImageUrl={content.hero.imageUrl}
