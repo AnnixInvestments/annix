@@ -10,6 +10,7 @@ import {
   type WorkProfile,
 } from "@annix/product-data/sa-market";
 import { isEqual } from "es-toolkit/compat";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
@@ -22,6 +23,7 @@ import {
 } from "@/app/lib/query/hooks";
 
 export default function SeekerWorkProfilePage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const query = useOrbitSeekerWorkProfile();
   const mutation = useOrbitUpsertSeekerWorkProfile();
@@ -35,6 +37,7 @@ export default function SeekerWorkProfilePage() {
 
   const queryData = query.data;
   const hydratedRef = useRef(false);
+  const autoTriedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current) return;
     const profileData = queryData?.profile;
@@ -96,13 +99,14 @@ export default function SeekerWorkProfilePage() {
       onSuccess: () => {
         savedProfileRef.current = snapshot;
         showToast("Work profile saved", "success");
+        router.push("/annix/orbit/seeker/dashboard");
       },
       onError: () => showToast("Could not save work profile", "error"),
     });
   };
 
-  const handleAutofill = async () => {
-    if (isDirty) {
+  const runAutofill = async (nonDestructive: boolean) => {
+    if (!nonDestructive && isDirty) {
       const proceed = await confirm({
         title: "Replace your work details?",
         message:
@@ -119,18 +123,28 @@ export default function SeekerWorkProfilePage() {
     const estimatedDurationMs = averageMs || 12000;
     showExtraction({
       brand: "annix-orbit",
-      label: "Nix is reading your CV for your work profile…",
+      label: nonDestructive
+        ? "Nix is reading your CV to fill in your skills…"
+        : "Nix is reading your CV for your work profile…",
       estimatedDurationMs,
     });
     autofillMutation.mutate(undefined, {
       onSuccess: (result) => {
         hideExtraction();
         if (result.extracted) {
-          setProfile(result.profile);
+          if (nonDestructive) {
+            setProfile((prev) => mergeEmptyWorkProfile(prev, result.profile));
+          } else {
+            setProfile(result.profile);
+          }
           setFormVersion((v) => v + 1);
-          showToast("Work profile auto-filled from your CV — review and save", "success");
+          const message = nonDestructive
+            ? "Filled in the empty fields from your CV — review and save"
+            : "Work profile auto-filled from your CV — review and save";
+          showToast(message, "success");
           return;
         }
+        if (nonDestructive) return;
         const reason = result.reason;
         if (reason === "no-cv-text") {
           showToast("Upload a CV first so we can read your work history", "info");
@@ -142,10 +156,28 @@ export default function SeekerWorkProfilePage() {
       },
       onError: () => {
         hideExtraction();
-        showToast("Auto-fill failed — fill in the form manually", "error");
+        if (!nonDestructive) {
+          showToast("Auto-fill failed — fill in the form manually", "error");
+        }
       },
     });
   };
+
+  const handleAutofill = () => {
+    void runAutofill(false);
+  };
+
+  useEffect(() => {
+    if (!hydratedRef.current) return;
+    if (autoTriedRef.current) return;
+    const s = savedProfileRef.current.shared;
+    if (s.topSkills.length > 0 || s.certifications.length > 0) return;
+    autoTriedRef.current = true;
+    if (readWorkAutofillTried()) return;
+    writeWorkAutofillTried();
+    void runAutofill(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryData]);
 
   if (query.isLoading) {
     return <div className="p-6 text-gray-500">Loading…</div>;
@@ -323,4 +355,44 @@ function csvToArray(value: string): string[] {
 
 function emptyIfNull<T>(value: T | null | undefined): T | "" {
   return value == null ? "" : value;
+}
+
+function mergeEmptyWorkProfile(current: WorkProfile, incoming: WorkProfile): WorkProfile {
+  const c = current.shared;
+  const i = incoming.shared;
+  const role = c.primaryRole;
+  const years = c.yearsExperience;
+  const avail = c.availability;
+  const travel = c.willingToTravelKm;
+  return {
+    ...current,
+    shared: {
+      ...c,
+      fields: c.fields.length > 0 ? c.fields : i.fields,
+      primaryRole: role === null ? i.primaryRole : role,
+      yearsExperience: years === null ? i.yearsExperience : years,
+      availability: avail === null ? i.availability : avail,
+      willingToTravelKm: travel === null ? i.willingToTravelKm : travel,
+      topSkills: c.topSkills.length > 0 ? c.topSkills : i.topSkills,
+      certifications: c.certifications.length > 0 ? c.certifications : i.certifications,
+    },
+  };
+}
+
+const WORK_AUTOFILL_TRIED_KEY = "orbit-work-autofill-tried";
+
+function readWorkAutofillTried(): boolean {
+  try {
+    return sessionStorage.getItem(WORK_AUTOFILL_TRIED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
+function writeWorkAutofillTried(): void {
+  try {
+    sessionStorage.setItem(WORK_AUTOFILL_TRIED_KEY, "1");
+  } catch {
+    return;
+  }
 }
