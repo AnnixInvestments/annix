@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -25,6 +25,17 @@ export default function SeekerProfilePage() {
   const [warningOpen, setWarningOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [nixAutoRunKey, setNixAutoRunKey] = useState(0);
+
+  useEffect(() => {
+    const statusLoading = statusQuery.isLoading;
+    const documentsLoading = documentsQuery.isLoading;
+    if (statusLoading || documentsLoading) return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const target = document.getElementById(hash.slice(1));
+    if (!target) return;
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [statusQuery.isLoading, documentsQuery.isLoading]);
 
   const status = statusQuery.data;
   const documentsData = documentsQuery.data;
@@ -131,6 +142,7 @@ export default function SeekerProfilePage() {
       <NixWizardPanel hasCv={hasCv} autoRunKey={nixAutoRunKey} />
 
       <SectionCard
+        id="qualifications"
         title="Qualifications"
         description="Optional but strongly recommended. Degrees, diplomas, transcripts — one file per qualification."
         badge={qualifications.length > 0 ? `${qualifications.length} uploaded` : "Optional"}
@@ -150,6 +162,7 @@ export default function SeekerProfilePage() {
       </SectionCard>
 
       <SectionCard
+        id="certificates"
         title="Certificates"
         description="Optional but strongly recommended. Professional certifications, licenses, training certificates."
         badge={certificates.length > 0 ? `${certificates.length} uploaded` : "Optional"}
@@ -229,13 +242,17 @@ function CvRequiredBanner() {
 }
 
 function SectionCard(props: {
+  id?: string;
   title: string;
   description: string;
   badge?: string;
   children: React.ReactNode;
 }) {
   return (
-    <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 space-y-4">
+    <div
+      id={props.id}
+      className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 space-y-4 scroll-mt-24"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>

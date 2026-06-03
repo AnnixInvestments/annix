@@ -5,7 +5,13 @@ import { CandidateRepository } from "../repositories/candidate.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
 
-export const APPLICATION_STATUSES = ["applied", "interviewing", "rejected", "offer"] as const;
+export const APPLICATION_STATUSES = [
+  "applied",
+  "interviewing",
+  "rejected",
+  "offer",
+  "accepted",
+] as const;
 export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
 
 export interface SeekerApplication {

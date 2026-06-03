@@ -343,6 +343,17 @@ export {
 } from "./annix-orbit/useOrbitPlacements";
 export { useOrbitReferences } from "./annix-orbit/useOrbitReferences";
 export {
+  useOrbitCreateSeekerEmployment,
+  useOrbitReactivateJobSearch,
+  useOrbitSeekerEmployment,
+} from "./annix-orbit/useOrbitSeekerEmployment";
+export {
+  useOrbitCreateSeekerInterviewEvent,
+  useOrbitDeleteSeekerInterviewEvent,
+  useOrbitSeekerInterviewEvents,
+  useOrbitUpdateSeekerInterviewEvent,
+} from "./annix-orbit/useOrbitSeekerInterviewEvents";
+export {
   useOrbitDismissSeekerMatch,
   useOrbitGrantSeekerMatchingConsent,
   useOrbitMuteSeekerCategory,

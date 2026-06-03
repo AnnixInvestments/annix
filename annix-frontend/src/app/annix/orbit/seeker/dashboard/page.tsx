@@ -33,6 +33,7 @@ const STATUS_LABEL: Record<SeekerApplicationStatus, string> = {
   interviewing: "Interviewing",
   rejected: "Rejected",
   offer: "Offer",
+  accepted: "Accepted",
 };
 
 const STATUS_CLASS: Record<SeekerApplicationStatus, string> = {
@@ -40,6 +41,7 @@ const STATUS_CLASS: Record<SeekerApplicationStatus, string> = {
   interviewing: "bg-amber-50 text-amber-800 border-amber-200",
   rejected: "bg-red-50 text-red-700 border-red-200",
   offer: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  accepted: "bg-violet-50 text-violet-700 border-violet-200",
 };
 
 export default function SeekerDashboardPage() {
@@ -105,12 +107,12 @@ export default function SeekerDashboardPage() {
     {
       label: "Add qualifications",
       done: qualificationsCount > 0,
-      href: "/annix/orbit/seeker/profile",
+      href: "/annix/orbit/seeker/profile#qualifications",
     },
     {
       label: "Add certificates",
       done: certificatesCount > 0,
-      href: "/annix/orbit/seeker/profile",
+      href: "/annix/orbit/seeker/profile#certificates",
     },
     {
       label: "Complete your work profile",

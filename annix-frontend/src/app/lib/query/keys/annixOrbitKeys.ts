@@ -155,6 +155,14 @@ export const annixOrbitKeys = {
     all: ["annix-orbit", "seeker", "applications"] as const,
     list: () => ["annix-orbit", "seeker", "applications", "list"] as const,
   },
+  seekerInterviewEvents: {
+    all: ["annix-orbit", "seeker", "interview-events"] as const,
+    list: () => ["annix-orbit", "seeker", "interview-events", "list"] as const,
+  },
+  seekerEmployment: {
+    all: ["annix-orbit", "seeker", "employment"] as const,
+    list: () => ["annix-orbit", "seeker", "employment", "list"] as const,
+  },
   seekerEducation: {
     all: ["annix-orbit", "seeker", "education"] as const,
     detail: () => ["annix-orbit", "seeker", "education", "detail"] as const,

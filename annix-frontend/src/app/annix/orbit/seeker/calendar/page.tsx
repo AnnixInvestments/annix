@@ -13,6 +13,7 @@ import {
   useOrbitMyInterviewBookings,
   useOrbitMyInterviewInvites,
 } from "@/app/lib/query/hooks";
+import { InterviewCalendar, type InterviewCalendarPrefill } from "./components/InterviewCalendar";
 
 type LibraryName = "places";
 const libraries: LibraryName[] = ["places"];
@@ -86,6 +87,20 @@ export default function SeekerCalendarPage() {
   const [travelMinutesByPair, setTravelMinutesByPair] = useState<Record<string, number | null>>({});
   const [travelCheckFailed, setTravelCheckFailed] = useState(false);
   const [showPast, setShowPast] = useState(false);
+  const [prefill, setPrefill] = useState<InterviewCalendarPrefill | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const newInterviewFor = params.get("newInterviewFor");
+    if (!newInterviewFor) return;
+    const parsedId = Number.parseInt(newInterviewFor, 10);
+    setPrefill({
+      applyClickId: Number.isFinite(parsedId) ? parsedId : null,
+      companyName: params.get("company"),
+      roleTitle: params.get("role"),
+    });
+    window.history.replaceState(null, "", window.location.pathname);
+  }, []);
 
   const allBookings = useMemo(() => {
     const data = bookingsQuery.data;
@@ -347,6 +362,8 @@ export default function SeekerCalendarPage() {
           </ul>
         </div>
       ) : null}
+
+      <InterviewCalendar bookings={allBookings} prefill={prefill} />
 
       {!MAPS_CONFIGURED && travelChecksApplicable ? (
         <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800">

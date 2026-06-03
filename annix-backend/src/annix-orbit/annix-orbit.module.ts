@@ -84,6 +84,8 @@ import { PublicJobPostingController } from "./controllers/public-job-posting.con
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
+import { SeekerEmploymentController } from "./controllers/seeker-employment.controller";
+import { SeekerInterviewEventsController } from "./controllers/seeker-interview-events.controller";
 import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { WorkProfileController } from "./controllers/work-profile.controller";
@@ -122,6 +124,8 @@ import { OrbitCredentialType } from "./entities/orbit-credential-type.entity";
 import { OrbitTierCapability } from "./entities/orbit-tier-capability.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
+import { SeekerEmploymentRecord } from "./entities/seeker-employment-record.entity";
+import { SeekerInterviewEvent } from "./entities/seeker-interview-event.entity";
 import { SeekerMute } from "./entities/seeker-mute.entity";
 import { SeekerUsageCounter } from "./entities/seeker-usage-counter.entity";
 import { SourceRespectRank } from "./entities/source-respect-rank.entity";
@@ -232,6 +236,12 @@ import { PostgresSalaryBenchmarkRepository } from "./repositories/salary-benchma
 import { SeekerApplyClickRepository } from "./repositories/seeker-apply-click.repository";
 import { MongoSeekerApplyClickRepository } from "./repositories/seeker-apply-click.repository.mongo";
 import { PostgresSeekerApplyClickRepository } from "./repositories/seeker-apply-click.repository.postgres";
+import { SeekerEmploymentRecordRepository } from "./repositories/seeker-employment-record.repository";
+import { MongoSeekerEmploymentRecordRepository } from "./repositories/seeker-employment-record.repository.mongo";
+import { PostgresSeekerEmploymentRecordRepository } from "./repositories/seeker-employment-record.repository.postgres";
+import { SeekerInterviewEventRepository } from "./repositories/seeker-interview-event.repository";
+import { MongoSeekerInterviewEventRepository } from "./repositories/seeker-interview-event.repository.mongo";
+import { PostgresSeekerInterviewEventRepository } from "./repositories/seeker-interview-event.repository.postgres";
 import { SeekerMuteRepository } from "./repositories/seeker-mute.repository";
 import { MongoSeekerMuteRepository } from "./repositories/seeker-mute.repository.mongo";
 import { PostgresSeekerMuteRepository } from "./repositories/seeker-mute.repository.postgres";
@@ -276,6 +286,8 @@ import { OrbitCredentialTypeSchema } from "./schemas/orbit-credential-type.schem
 import { OrbitTierCapabilitySchema } from "./schemas/orbit-tier-capability.schema";
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
+import { SeekerEmploymentRecordSchema } from "./schemas/seeker-employment-record.schema";
+import { SeekerInterviewEventSchema } from "./schemas/seeker-interview-event.schema";
 import { SeekerMuteSchema } from "./schemas/seeker-mute.schema";
 import { SeekerUsageCounterSchema } from "./schemas/seeker-usage-counter.schema";
 import { SourceRespectRankSchema } from "./schemas/source-respect-rank.schema";
@@ -331,6 +343,9 @@ import { ReferenceService } from "./services/reference.service";
 import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SeekerApplicationsService } from "./services/seeker-applications.service";
+import { SeekerCompanyResearchService } from "./services/seeker-company-research.service";
+import { SeekerEmploymentService } from "./services/seeker-employment.service";
+import { SeekerInterviewEventsService } from "./services/seeker-interview-events.service";
 import { SeekerJobFeedService } from "./services/seeker-job-feed.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
@@ -386,6 +401,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "JobScreeningQuestion", schema: JobScreeningQuestionSchema },
               { name: "SalaryBenchmark", schema: SalaryBenchmarkSchema },
               { name: "SeekerApplyClick", schema: SeekerApplyClickSchema },
+              { name: "SeekerEmploymentRecord", schema: SeekerEmploymentRecordSchema },
+              { name: "SeekerInterviewEvent", schema: SeekerInterviewEventSchema },
               { name: "SeekerMute", schema: SeekerMuteSchema },
               { name: "SourceRespectRank", schema: SourceRespectRankSchema },
               { name: "CvCredential", schema: CvCredentialSchema },
@@ -456,6 +473,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             JobScreeningQuestion,
             SalaryBenchmark,
             SeekerApplyClick,
+            SeekerEmploymentRecord,
+            SeekerInterviewEvent,
             SeekerMute,
             SourceRespectRank,
             CvCredential,
@@ -521,6 +540,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdminOrbitSeekerController,
     SeekerJobsController,
     SeekerApplicationsController,
+    SeekerEmploymentController,
+    SeekerInterviewEventsController,
     WorkProfileController,
     CredentialController,
     AdminOrbitCredentialTypesController,
@@ -584,6 +605,9 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitLicensingRegistrar,
     SeekerJobFeedService,
     SeekerApplicationsService,
+    SeekerCompanyResearchService,
+    SeekerEmploymentService,
+    SeekerInterviewEventsService,
     WorkProfileService,
     CredentialService,
     OrbitCredentialTypeService,
@@ -724,6 +748,16 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       SeekerApplyClickRepository,
       PostgresSeekerApplyClickRepository,
       MongoSeekerApplyClickRepository,
+    ),
+    repositoryProvider(
+      SeekerEmploymentRecordRepository,
+      PostgresSeekerEmploymentRecordRepository,
+      MongoSeekerEmploymentRecordRepository,
+    ),
+    repositoryProvider(
+      SeekerInterviewEventRepository,
+      PostgresSeekerInterviewEventRepository,
+      MongoSeekerInterviewEventRepository,
     ),
     repositoryProvider(
       SeekerMuteRepository,

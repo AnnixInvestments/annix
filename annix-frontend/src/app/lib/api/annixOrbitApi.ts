@@ -969,6 +969,66 @@ export interface SeekerInterviewInvite {
   } | null;
 }
 
+export interface SeekerInterviewEvent {
+  id: number;
+  applyClickId: number | null;
+  externalJobId: number | null;
+  companyName: string | null;
+  roleTitle: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  locationLabel: string | null;
+  locationAddress: string | null;
+  notes: string | null;
+  cancelledAt: string | null;
+}
+
+export interface CreateSeekerInterviewEventInput {
+  applyClickId?: number | null;
+  externalJobId?: number | null;
+  companyName?: string | null;
+  roleTitle?: string | null;
+  startsAt: string;
+  endsAt?: string | null;
+  locationLabel?: string | null;
+  locationAddress?: string | null;
+  notes?: string | null;
+}
+
+export type UpdateSeekerInterviewEventInput = Omit<
+  CreateSeekerInterviewEventInput,
+  "applyClickId" | "externalJobId" | "startsAt"
+> & { startsAt?: string };
+
+export type SeekerEmploymentLifecycleStatus = "active" | "left";
+export type SeekerEmploymentResearchStatus = "pending" | "researched" | "skipped" | "failed";
+
+export interface SeekerEmploymentRecord {
+  id: number;
+  applyClickId: number | null;
+  externalJobId: number | null;
+  employerName: string;
+  companyWebsiteUrl: string | null;
+  roleTitle: string;
+  roleOutline: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  status: SeekerEmploymentLifecycleStatus;
+  researchStatus: SeekerEmploymentResearchStatus;
+  researchedAt: string | null;
+  appliedToCvAt: string | null;
+}
+
+export interface CreateSeekerEmploymentInput {
+  applyClickId?: number | null;
+  externalJobId?: number | null;
+  employerName: string;
+  companyWebsiteUrl?: string | null;
+  roleTitle: string;
+  roleOutline?: string | null;
+  startDate: string;
+}
+
 export interface NixCalendarAdvisoryConflict {
   bookingId: number;
   type: "overlap" | "insufficient-travel";
@@ -2376,6 +2436,53 @@ class AnnixOrbitApiClient {
     return this.request(`/annix-orbit/me/applications/${id}`, { method: "DELETE" });
   }
 
+  async listMyInterviewEvents(): Promise<{ events: SeekerInterviewEvent[] }> {
+    return this.request("/annix-orbit/me/interview-events");
+  }
+
+  async createMyInterviewEvent(
+    input: CreateSeekerInterviewEventInput,
+  ): Promise<{ event: SeekerInterviewEvent }> {
+    return this.request("/annix-orbit/me/interview-events", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async updateMyInterviewEvent(
+    id: number,
+    input: UpdateSeekerInterviewEventInput,
+  ): Promise<{ event: SeekerInterviewEvent }> {
+    return this.request(`/annix-orbit/me/interview-events/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async deleteMyInterviewEvent(id: number): Promise<{ success: boolean }> {
+    return this.request(`/annix-orbit/me/interview-events/${id}`, { method: "DELETE" });
+  }
+
+  async listMyEmployment(): Promise<{ records: SeekerEmploymentRecord[] }> {
+    return this.request("/annix-orbit/me/employment");
+  }
+
+  async createMyEmployment(
+    input: CreateSeekerEmploymentInput,
+  ): Promise<{ record: SeekerEmploymentRecord }> {
+    return this.request("/annix-orbit/me/employment", {
+      method: "POST",
+      body: JSON.stringify(input),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  async reactivateJobSearch(): Promise<{ refreshed: number }> {
+    return this.request("/annix-orbit/me/employment/reactivate", { method: "POST" });
+  }
+
   async seekerEducation(): Promise<SeekerEducationResponse> {
     return this.request("/annix-orbit/education/me");
   }
@@ -2525,7 +2632,12 @@ export interface OrbitCredentialTypeOption {
   active: boolean;
 }
 
-export type SeekerApplicationStatus = "applied" | "interviewing" | "rejected" | "offer";
+export type SeekerApplicationStatus =
+  | "applied"
+  | "interviewing"
+  | "rejected"
+  | "offer"
+  | "accepted";
 
 export interface SeekerApplication {
   id: number;
