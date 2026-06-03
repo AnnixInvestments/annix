@@ -145,40 +145,42 @@ function ReportContent(props: { report: EeReportResponse }) {
         {report.byOccupationalLevel.length === 0 ? (
           <p className="text-gray-600 text-sm">No disclosed applicants in this period.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="text-left text-gray-700 border-b border-gray-200">
-              <tr>
-                <th className="py-2">Level</th>
-                <th className="py-2 text-right">Applicants</th>
-                <th className="py-2 text-right">New hires</th>
-                <th className="py-2 text-right">Afr. Black %</th>
-                <th className="py-2 text-right">Female %</th>
-                <th className="py-2 text-right">Disability %</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.byOccupationalLevel.map((level) => {
-                const blackPct =
-                  level.applicants === 0
-                    ? 0
-                    : (level.byPopulation.african_black / level.applicants) * 100;
-                const femalePct =
-                  level.applicants === 0 ? 0 : (level.byGender.female / level.applicants) * 100;
-                const disabilityPct =
-                  level.applicants === 0 ? 0 : (level.byDisability.yes / level.applicants) * 100;
-                return (
-                  <tr key={level.occupationalLevel} className="border-b border-gray-100">
-                    <td className="py-2">{occupationalLevelLabel(level.occupationalLevel)}</td>
-                    <td className="py-2 text-right">{level.applicants}</td>
-                    <td className="py-2 text-right">{level.newHires}</td>
-                    <td className="py-2 text-right">{blackPct.toFixed(1)}%</td>
-                    <td className="py-2 text-right">{femalePct.toFixed(1)}%</td>
-                    <td className="py-2 text-right">{disabilityPct.toFixed(1)}%</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-sm">
+              <thead className="text-left text-gray-700 border-b border-gray-200">
+                <tr>
+                  <th className="py-2">Level</th>
+                  <th className="py-2 text-right">Applicants</th>
+                  <th className="py-2 text-right">New hires</th>
+                  <th className="py-2 text-right">Afr. Black %</th>
+                  <th className="py-2 text-right">Female %</th>
+                  <th className="py-2 text-right">Disability %</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.byOccupationalLevel.map((level) => {
+                  const blackPct =
+                    level.applicants === 0
+                      ? 0
+                      : (level.byPopulation.african_black / level.applicants) * 100;
+                  const femalePct =
+                    level.applicants === 0 ? 0 : (level.byGender.female / level.applicants) * 100;
+                  const disabilityPct =
+                    level.applicants === 0 ? 0 : (level.byDisability.yes / level.applicants) * 100;
+                  return (
+                    <tr key={level.occupationalLevel} className="border-b border-gray-100">
+                      <td className="py-2">{occupationalLevelLabel(level.occupationalLevel)}</td>
+                      <td className="py-2 text-right">{level.applicants}</td>
+                      <td className="py-2 text-right">{level.newHires}</td>
+                      <td className="py-2 text-right">{blackPct.toFixed(1)}%</td>
+                      <td className="py-2 text-right">{femalePct.toFixed(1)}%</td>
+                      <td className="py-2 text-right">{disabilityPct.toFixed(1)}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -190,42 +192,44 @@ function ReportContent(props: { report: EeReportResponse }) {
             from the Department of Employment and Labour gazette.
           </p>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="text-left text-gray-700 border-b border-gray-200">
-              <tr>
-                <th className="py-2">Level</th>
-                <th className="py-2">Metric</th>
-                <th className="py-2 text-right">Target %</th>
-                <th className="py-2 text-right">Actual %</th>
-                <th className="py-2 text-center">Met?</th>
-                <th className="py-2">Gazette</th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.sectorTargetComparisons.map((c, i) => {
-                const gazette = c.gazetteReference;
-                return (
-                  <tr
-                    key={`${c.occupationalLevel}-${c.metric}-${i}`}
-                    className="border-b border-gray-100"
-                  >
-                    <td className="py-2">{occupationalLevelLabel(c.occupationalLevel)}</td>
-                    <td className="py-2">{TARGET_METRIC_LABELS[c.metric]}</td>
-                    <td className="py-2 text-right">{c.targetPercent.toFixed(2)}%</td>
-                    <td className="py-2 text-right">{c.actualPercent.toFixed(2)}%</td>
-                    <td className="py-2 text-center">
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs ${c.met ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
-                      >
-                        {c.met ? "Met" : "Not met"}
-                      </span>
-                    </td>
-                    <td className="py-2 text-gray-500">{gazette ? gazette : "—"}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-sm">
+              <thead className="text-left text-gray-700 border-b border-gray-200">
+                <tr>
+                  <th className="py-2">Level</th>
+                  <th className="py-2">Metric</th>
+                  <th className="py-2 text-right">Target %</th>
+                  <th className="py-2 text-right">Actual %</th>
+                  <th className="py-2 text-center">Met?</th>
+                  <th className="py-2">Gazette</th>
+                </tr>
+              </thead>
+              <tbody>
+                {report.sectorTargetComparisons.map((c, i) => {
+                  const gazette = c.gazetteReference;
+                  return (
+                    <tr
+                      key={`${c.occupationalLevel}-${c.metric}-${i}`}
+                      className="border-b border-gray-100"
+                    >
+                      <td className="py-2">{occupationalLevelLabel(c.occupationalLevel)}</td>
+                      <td className="py-2">{TARGET_METRIC_LABELS[c.metric]}</td>
+                      <td className="py-2 text-right">{c.targetPercent.toFixed(2)}%</td>
+                      <td className="py-2 text-right">{c.actualPercent.toFixed(2)}%</td>
+                      <td className="py-2 text-center">
+                        <span
+                          className={`px-2 py-0.5 rounded text-xs ${c.met ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}`}
+                        >
+                          {c.met ? "Met" : "Not met"}
+                        </span>
+                      </td>
+                      <td className="py-2 text-gray-500">{gazette ? gazette : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 

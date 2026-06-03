@@ -553,19 +553,24 @@ export default function PortalToolbar(props: PortalToolbarProps) {
           </div>
         </div>
 
-        {/* Mobile/tablet navigation - icon + label (tooltips don't fire on touch) */}
+        {/* Mobile/tablet navigation - icon + label in one horizontal-scroll row
+            (tooltips don't fire on touch; scrolling keeps it to a single
+            compact row instead of wrapping and eating vertical space). */}
         <div
           className="xl:hidden py-2 border-t"
           style={{ borderColor: corpId.colors.primary.navyLight }}
         >
-          <div className="flex flex-wrap gap-1 justify-center">
+          <div
+            className="flex flex-nowrap gap-1 overflow-x-auto px-1 [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: "none" }}
+          >
             {visibleNavItems.map((item) => {
               const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
               return (
                 <Tooltip key={item.href} text={getNavTooltip(item.label)} position="top">
                   <Link
                     href={item.href}
-                    className="inline-flex flex-col items-center justify-center gap-1 px-2 py-2 rounded-md transition-colors min-w-[68px]"
+                    className="inline-flex flex-shrink-0 flex-col items-center justify-center gap-1 px-2 py-2 rounded-md transition-colors min-w-[68px]"
                     style={{
                       color: accentColor,
                       backgroundColor: isActive ? navActive : "transparent",

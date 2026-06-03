@@ -270,7 +270,7 @@ export function InterviewCalendar(props: {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[var(--brand-navbar-100,#e0e0f5)] p-4">
-      <div className="flex items-center justify-between gap-2 mb-3">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <button
             type="button"
@@ -280,7 +280,7 @@ export function InterviewCalendar(props: {
           >
             ‹
           </button>
-          <h2 className="text-lg font-bold text-gray-900 min-w-[10rem] text-center">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900 min-w-[7rem] sm:min-w-[10rem] text-center">
             {monthLabel}
           </h2>
           <button
@@ -331,7 +331,7 @@ export function InterviewCalendar(props: {
               type="button"
               key={dayKey}
               onClick={() => openCreateForDay(dayKey)}
-              className={`min-h-[5.5rem] p-1.5 text-left align-top ${cellBg} hover:bg-[var(--brand-navbar-50,#f0f0fc)] transition-colors`}
+              className={`min-h-[3.5rem] sm:min-h-[5.5rem] p-1 sm:p-1.5 text-left align-top ${cellBg} hover:bg-[var(--brand-navbar-50,#f0f0fc)] transition-colors`}
             >
               <div
                 className={`text-xs font-semibold mb-1 ${
