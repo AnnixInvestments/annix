@@ -34,7 +34,8 @@ export class StockTakeReconciliationController {
   @ApiOperation({ summary: "Analyse a month-end stock-take spreadsheet against app records" })
   async analyze(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { periodLabel?: string; periodStart?: string; periodEnd?: string },
+    @Body()
+    body: { periodLabel?: string; periodStart?: string; periodEnd?: string; sheetName?: string },
     @Req() req: any,
   ) {
     return this.reconciliationService.analyzeUpload(
@@ -43,6 +44,7 @@ export class StockTakeReconciliationController {
       body.periodLabel ?? null,
       body.periodStart ?? "",
       body.periodEnd ?? "",
+      body.sheetName ?? null,
     );
   }
 
@@ -51,7 +53,8 @@ export class StockTakeReconciliationController {
   @ApiOperation({ summary: "Create a missing delivery from a stock-take invoice column" })
   async createDelivery(
     @UploadedFile() file: Express.Multer.File,
-    @Body() body: { invoice?: string; receivedDate?: string },
+    @Body()
+    body: { invoice?: string; receivedDate?: string; periodLabel?: string; sheetName?: string },
     @Req() req: any,
   ) {
     return this.reconciliationService.createMissingDelivery(
@@ -60,6 +63,8 @@ export class StockTakeReconciliationController {
       body.invoice ?? "",
       body.receivedDate ?? "",
       req.user.name ?? null,
+      body.periodLabel ?? null,
+      body.sheetName ?? null,
     );
   }
 

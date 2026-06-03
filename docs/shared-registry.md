@@ -48,6 +48,7 @@ Shared workspace package (pnpm workspace). Both `annix-backend` and `annix-front
 |---|---|---|
 | Date/time (Luxon) | `lib/datetime.ts` | ANY date operation. **Never** use `new Date()`, `Date.now()`, `Date.parse()`, or import `luxon` directly. Exports `now`, `nowISO`, `nowMillis`, `fromISO`, `fromJSDate`, `formatDateZA`, `formatDateLongZA`, `monthEndPeriodOptions` (month-end stock-take/period dropdown options — label + last-day-of-month ISO date). |
 | Sage rate limiter | `lib/sage-rate-limiter.ts` | EVERY Sage API call (100/min + 2500/day per company). Never call Sage endpoints via raw `fetch`. |
+| Excel sheet/tab selection (backend) | `lib/xlsx-sheet-select.ts` | Pick the right worksheet from a multi-tab workbook by month ("May 2026 Month-End" → tab "May"), with explicit-sheet override + single-sheet fallback. Exports `selectSheetForMonth`, `monthTokenFromLabel`. Use for any month-tab stock-take/import parsing. |
 | PDF builder | `lib/pdf-builder.ts` | Base PDF generation primitives. |
 | PDF templates | `lib/pdf-templates/` | `render-header`, `render-footer`, `render-table`, `render-metadata-block`, `render-signature-block`. All PDF generators compose these. |
 | Document classification | `lib/document-classification/` | Inbound document type detection (invoice, PO, delivery note, CoC, etc.). |

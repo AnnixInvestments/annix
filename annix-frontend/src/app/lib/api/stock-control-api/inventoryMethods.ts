@@ -75,7 +75,11 @@ declare module "./base" {
       page: number;
       limit: number;
     }>;
-    uploadImportFile(file: File): Promise<ImportUploadResponse>;
+    uploadImportFile(
+      file: File,
+      monthLabel?: string | null,
+      sheetName?: string | null,
+    ): Promise<ImportUploadResponse>;
     confirmImport(
       rows: unknown[],
       isStockTake?: boolean,
@@ -103,11 +107,14 @@ declare module "./base" {
       periodLabel: string,
       periodStart: string,
       periodEnd: string,
+      sheetName?: string | null,
     ): Promise<ReconciliationReport>;
     createReconciliationDelivery(
       file: File,
       invoice: string,
       receivedDate: string,
+      periodLabel?: string | null,
+      sheetName?: string | null,
     ): Promise<CreateMissingDeliveryResult>;
     createReconciliationIssuance(
       body: CreateMissingIssuanceRequest,
@@ -233,8 +240,11 @@ proto.stockItemsGrouped = async function (search, locationId, page, limit) {
   return this.request(`/stock-control/inventory/grouped${query}`);
 };
 
-proto.uploadImportFile = async function (file) {
-  return this.uploadFile("/stock-control/import/upload", file);
+proto.uploadImportFile = async function (file, monthLabel = null, sheetName = null) {
+  const fields: Record<string, string> = {};
+  if (monthLabel) fields.monthLabel = monthLabel;
+  if (sheetName) fields.sheetName = sheetName;
+  return this.uploadFile("/stock-control/import/upload", file, fields);
 };
 
 proto.confirmImport = async function (rows, isStockTake = false, stockTakeDate = null) {
@@ -295,19 +305,29 @@ proto.exportStockTakeVariances = async function (variances) {
   });
 };
 
-proto.analyzeStockTakeReconciliation = async function (file, periodLabel, periodStart, periodEnd) {
-  return this.uploadFile("/stock-control/reconciliation/analyze", file, {
-    periodLabel,
-    periodStart,
-    periodEnd,
-  });
+proto.analyzeStockTakeReconciliation = async function (
+  file,
+  periodLabel,
+  periodStart,
+  periodEnd,
+  sheetName = null,
+) {
+  const fields: Record<string, string> = { periodLabel, periodStart, periodEnd };
+  if (sheetName) fields.sheetName = sheetName;
+  return this.uploadFile("/stock-control/reconciliation/analyze", file, fields);
 };
 
-proto.createReconciliationDelivery = async function (file, invoice, receivedDate) {
-  return this.uploadFile("/stock-control/reconciliation/create-delivery", file, {
-    invoice,
-    receivedDate,
-  });
+proto.createReconciliationDelivery = async function (
+  file,
+  invoice,
+  receivedDate,
+  periodLabel = null,
+  sheetName = null,
+) {
+  const fields: Record<string, string> = { invoice, receivedDate };
+  if (periodLabel) fields.periodLabel = periodLabel;
+  if (sheetName) fields.sheetName = sheetName;
+  return this.uploadFile("/stock-control/reconciliation/create-delivery", file, fields);
 };
 
 proto.createReconciliationIssuance = async function (body) {

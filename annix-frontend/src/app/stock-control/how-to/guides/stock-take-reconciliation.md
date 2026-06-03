@@ -5,7 +5,7 @@ category: Inventory
 roles: [manager, admin]
 order: 8
 tags: [reconciliation, stock take, variance, invoices, issues, deliveries, month-end]
-lastUpdated: 2026-06-02
+lastUpdated: 2026-06-03
 summary: Upload your full month-end stock sheet and let Nix cross-check every invoice and issue against the app, flag missing documents, and explain why counts differ.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/stock-control/portal/inventory/reconcile/page.tsx, annix-backend/src/stock-control/services/stock-take-reconciliation.service.ts, annix-backend/src/stock-control/controllers/stock-take-reconciliation.controller.ts]
@@ -29,6 +29,10 @@ Nix detects the matrix layout automatically:
 - Columns between **Opening** and **Total Intake** are read as supplier invoices/deliveries (grouped by the supplier band above them).
 - Date columns after **Total Intake** are read as daily issues.
 - **Closing**, **Stock Count**, **Diff** and **Total Value** are read for each item.
+
+## Workbooks with one tab per month
+
+If your stock sheet has a tab per month (named "May", "June", etc.), the reconciliation reads only the tab matching the **Month-End Period** you selected. The results show **"Reading tab: …"**; if several tabs exist you can switch tabs from the dropdown there and it re-analyses that tab.
 
 ## Step-by-step
 

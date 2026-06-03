@@ -33,6 +33,8 @@ export default function ImportPage() {
   const [isStockTake, setIsStockTake] = useState(false);
   const [stockTakeDate, setStockTakeDate] = useState<string | null>(null);
   const [stockTakePeriod, setStockTakePeriod] = useState<string | null>(null);
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [selectedSheet, setSelectedSheet] = useState<string | null>(null);
   const monthEndOptions = useMemo(() => monthEndPeriodOptions(false), []);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const uploadMutation = useUploadImportFile();
@@ -53,11 +55,17 @@ export default function ImportPage() {
         setImportRawRows(response.rawRows);
         setImportMapping(mapping || null);
         setParsedRows([]);
+        const responseSheets = response.sheetNames;
+        const responseSelected = response.selectedSheet;
+        setSheetNames(responseSheets ?? []);
+        setSelectedSheet(responseSelected ?? null);
       } else {
         setParsedRows((response.rows as Record<string, unknown>[]) ?? []);
         setImportHeaders([]);
         setImportRawRows([]);
         setImportMapping(null);
+        setSheetNames([]);
+        setSelectedSheet(null);
       }
 
       setStep("preview");
@@ -221,6 +229,39 @@ export default function ImportPage() {
     setIsStockTake(false);
     setStockTakeDate(null);
     setStockTakePeriod(null);
+    setSheetNames([]);
+    setSelectedSheet(null);
+  };
+
+  const reparseSheet = async (opts: { monthLabel?: string | null; sheetName?: string | null }) => {
+    if (!file || importFormat !== "excel") return;
+    try {
+      setIsUploading(true);
+      setError(null);
+      const optsMonthLabel = opts.monthLabel;
+      const optsSheetName = opts.sheetName;
+      const response: ImportUploadResponse = await uploadMutation.mutateAsync({
+        file,
+        monthLabel: optsMonthLabel ?? null,
+        sheetName: optsSheetName ?? null,
+      });
+      const headers = response.headers;
+      const rawRows = response.rawRows;
+      if (headers && rawRows) {
+        const mapping = response.mapping;
+        const responseSheets = response.sheetNames;
+        const responseSelected = response.selectedSheet;
+        setImportHeaders(headers);
+        setImportRawRows(rawRows);
+        setImportMapping(mapping || null);
+        setSheetNames(responseSheets ?? sheetNames);
+        setSelectedSheet(responseSelected ?? null);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to read the selected tab");
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const applyStockTakePeriod = (label: string) => {
@@ -228,6 +269,9 @@ export default function ImportPage() {
     setStockTakePeriod(label);
     if (option) {
       setStockTakeDate(option.isoDate);
+    }
+    if (sheetNames.length > 1) {
+      reparseSheet({ monthLabel: label });
     }
   };
 
@@ -407,6 +451,28 @@ export default function ImportPage() {
                         of that month — adjust the date below if you counted on a different day.
                       </p>
                     </div>
+                    {sheetNames.length > 1 && (
+                      <div>
+                        <label className="block text-sm font-medium text-amber-800 mb-1">
+                          Workbook Tab
+                        </label>
+                        <select
+                          value={selectedSheet ?? ""}
+                          onChange={(e) => reparseSheet({ sheetName: e.target.value })}
+                          className="block w-64 px-3 py-1.5 text-sm border border-amber-300 rounded-md focus:ring-amber-500 focus:border-amber-500 text-amber-900 bg-white"
+                        >
+                          {sheetNames.map((sheet) => (
+                            <option key={sheet} value={sheet}>
+                              {sheet}
+                            </option>
+                          ))}
+                        </select>
+                        <p className="text-xs text-amber-600 mt-1">
+                          This workbook has multiple tabs. Reading the tab matching your month-end —
+                          change it here if the wrong tab was picked.
+                        </p>
+                      </div>
+                    )}
                     <div>
                       <label className="block text-sm font-medium text-amber-800 mb-1">
                         Actual Count Date

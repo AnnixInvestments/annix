@@ -72,6 +72,8 @@ export default function ReconcilePage() {
         file,
         invoice: doc.invoice,
         receivedDate: report.periodEnd,
+        periodLabel: report.periodLabel,
+        sheetName: report.selectedSheet,
       });
       if (result.created) {
         setCreatedInvoices((prev) => {
@@ -120,6 +122,8 @@ export default function ReconcilePage() {
 
     setError(null);
     const receivedDate = report.periodEnd;
+    const periodLabel = report.periodLabel;
+    const sheetName = report.selectedSheet;
     const result = await runBulk({
       brand: "stock-control",
       metricCategory: "stock-take-reconcile",
@@ -132,6 +136,8 @@ export default function ReconcilePage() {
           file,
           invoice: doc.invoice,
           receivedDate,
+          periodLabel,
+          sheetName,
         });
         if (!res.created) {
           throw new Error(res.message);
@@ -157,7 +163,7 @@ export default function ReconcilePage() {
     });
   };
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (overrideSheet?: string | null) => {
     if (!file) return;
     const option = monthEndOptions.find((o) => o.label === period);
     if (!option) return;
@@ -181,6 +187,7 @@ export default function ReconcilePage() {
         periodLabel: period,
         periodStart,
         periodEnd,
+        sheetName: overrideSheet ?? null,
       });
       setReport(result);
     } catch (err) {
@@ -304,7 +311,7 @@ export default function ReconcilePage() {
           <div className="flex justify-end">
             <button
               type="button"
-              onClick={handleAnalyze}
+              onClick={() => handleAnalyze()}
               disabled={!file || isAnalyzing}
               className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
@@ -324,6 +331,7 @@ export default function ReconcilePage() {
           onCreateAllDeliveries={handleCreateAllDeliveries}
           fixedRows={fixedRows}
           onFixIssuance={(item) => setFixingItem(item)}
+          onChooseSheet={(sheet) => handleAnalyze(sheet)}
         />
       )}
       {fixingItem !== null && report !== null ? (
@@ -357,6 +365,7 @@ interface ResultProps {
   onCreateAllDeliveries: () => void;
   fixedRows: Set<number>;
   onFixIssuance: (item: ReconciliationItemAnalysis) => void;
+  onChooseSheet: (sheet: string) => void;
 }
 
 function ReconciliationResult(props: ResultProps) {
@@ -388,6 +397,26 @@ function ReconciliationResult(props: ResultProps) {
             Analyse Another Sheet
           </button>
         </div>
+        {report.selectedSheet !== null && (
+          <div className="mt-2 flex items-center gap-2 text-xs text-gray-600">
+            <span>
+              Reading tab: <span className="font-semibold">{report.selectedSheet}</span>
+            </span>
+            {report.availableSheets.length > 1 && (
+              <select
+                value={report.selectedSheet}
+                onChange={(e) => props.onChooseSheet(e.target.value)}
+                className="rounded border border-gray-300 px-2 py-1 text-xs bg-white"
+              >
+                {report.availableSheets.map((sheet) => (
+                  <option key={sheet} value={sheet}>
+                    {sheet}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+        )}
         <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           <SummaryCard label="Items" value={report.itemCount} tone="gray" />
           <SummaryCard label="Matched" value={matchedCount} tone="green" />

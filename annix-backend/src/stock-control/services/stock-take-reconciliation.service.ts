@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { fromISO } from "../../lib/datetime";
+import { selectSheetForMonth } from "../../lib/xlsx-sheet-select";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
@@ -36,6 +37,8 @@ export interface ParsedReconciliationSheet {
   issueDates: string[];
   items: ParsedReconciliationItem[];
   warnings: string[];
+  selectedSheet: string | null;
+  availableSheets: string[];
 }
 
 export type ReconciliationFlag =
@@ -123,6 +126,8 @@ export interface ReconciliationReport {
   missingDocumentCount: number;
   totalCountVarianceValue: number;
   warnings: string[];
+  selectedSheet: string | null;
+  availableSheets: string[];
 }
 
 interface ColumnRoles {
@@ -213,33 +218,67 @@ export class StockTakeReconciliationService {
     periodLabel: string | null,
     periodStart: string,
     periodEnd: string,
+    sheetName?: string | null,
   ): Promise<ReconciliationReport> {
     return this.extractionMetricService.time(
       "stock-take-reconcile",
       "analyze",
       async () => {
-        const parsed = await this.parseMatrix(buffer);
+        const parsed = await this.parseMatrix(buffer, periodLabel, sheetName);
         return this.analyze(companyId, parsed, periodLabel, periodStart, periodEnd);
       },
       buffer.length,
     );
   }
 
-  async parseMatrix(buffer: Buffer): Promise<ParsedReconciliationSheet> {
+  async parseMatrix(
+    buffer: Buffer,
+    monthLabel?: string | null,
+    explicitSheetName?: string | null,
+  ): Promise<ParsedReconciliationSheet> {
     const xlsx = await import("xlsx");
     const workbook = xlsx.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
+    const selection = selectSheetForMonth(
+      workbook.SheetNames,
+      monthLabel ?? null,
+      explicitSheetName ?? null,
+    );
+    const sheetName = selection.sheetName;
+
+    if (sheetName === null) {
+      return {
+        invoiceRefs: [],
+        issueDates: [],
+        items: [],
+        warnings: ["The workbook has no sheets."],
+        selectedSheet: null,
+        availableSheets: selection.availableSheets,
+      };
+    }
+
     const worksheet = workbook.Sheets[sheetName];
     const grid = xlsx.utils
       .sheet_to_json<string[]>(worksheet, { header: 1, defval: "" })
       .map((row) => row.map((cell) => String(cell)));
 
     if (grid.length === 0) {
-      return { invoiceRefs: [], issueDates: [], items: [], warnings: ["The sheet was empty."] };
+      return {
+        invoiceRefs: [],
+        issueDates: [],
+        items: [],
+        warnings: [`Sheet "${sheetName}" was empty.`],
+        selectedSheet: sheetName,
+        availableSheets: selection.availableSheets,
+      };
     }
 
     const roles = this.detectColumnRoles(grid);
     const warnings: string[] = [];
+    if (selection.availableSheets.length > 1 && !selection.matchedMonth) {
+      warnings.push(
+        `Could not match a tab to ${monthLabel ?? "the selected month"} — read the first tab "${sheetName}". Pick the correct tab if this is wrong.`,
+      );
+    }
     if (roles.openingCol === null) warnings.push("Could not find an OPENING column.");
     if (roles.closingCol === null) warnings.push("Could not find a CLOSING column.");
     if (roles.invoiceCols.length === 0) warnings.push("Could not find any invoice/intake columns.");
@@ -324,7 +363,14 @@ export class StockTakeReconciliationService {
       `Reconciliation parse: ${built.items.length} items, ${invoiceRefs.length} invoice columns, ${issueDates.length} issue dates`,
     );
 
-    return { invoiceRefs, issueDates, items: built.items, warnings };
+    return {
+      invoiceRefs,
+      issueDates,
+      items: built.items,
+      warnings,
+      selectedSheet: sheetName,
+      availableSheets: selection.availableSheets,
+    };
   }
 
   private detectColumnRoles(grid: string[][]): ColumnRoles {
@@ -519,6 +565,8 @@ export class StockTakeReconciliationService {
       missingDocumentCount: missingDocuments.length,
       totalCountVarianceValue: Math.round(totalCountVarianceValue * 100) / 100,
       warnings: parsed.warnings,
+      selectedSheet: parsed.selectedSheet,
+      availableSheets: parsed.availableSheets,
     };
   }
 
@@ -612,9 +660,19 @@ export class StockTakeReconciliationService {
     invoice: string,
     receivedDate: string,
     receivedBy: string | null,
+    monthLabel?: string | null,
+    sheetName?: string | null,
   ): Promise<CreateMissingDeliveryResult> {
     return this.extractionMetricService.time("stock-take-reconcile", "create-delivery", () =>
-      this.createMissingDeliveryInner(companyId, buffer, invoice, receivedDate, receivedBy),
+      this.createMissingDeliveryInner(
+        companyId,
+        buffer,
+        invoice,
+        receivedDate,
+        receivedBy,
+        monthLabel ?? null,
+        sheetName ?? null,
+      ),
     );
   }
 
@@ -624,8 +682,10 @@ export class StockTakeReconciliationService {
     invoice: string,
     receivedDate: string,
     receivedBy: string | null,
+    monthLabel: string | null,
+    sheetName: string | null,
   ): Promise<CreateMissingDeliveryResult> {
-    const parsed = await this.parseMatrix(buffer);
+    const parsed = await this.parseMatrix(buffer, monthLabel, sheetName);
     const targetNorm = this.normalizeRef(invoice);
     const ref = parsed.invoiceRefs.find((r) => this.normalizeRef(r.invoice) === targetNorm);
     if (!ref) {

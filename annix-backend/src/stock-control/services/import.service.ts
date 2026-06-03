@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { fromISO } from "../../lib/datetime";
+import { selectSheetForMonth } from "../../lib/xlsx-sheet-select";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
@@ -129,10 +130,33 @@ export class ImportService {
     private readonly aiChatService: AiChatService,
   ) {}
 
-  async parseExcelRaw(buffer: Buffer): Promise<{ headers: string[]; rawRows: string[][] }> {
+  async parseExcelRaw(
+    buffer: Buffer,
+    monthLabel?: string | null,
+    explicitSheetName?: string | null,
+  ): Promise<{
+    headers: string[];
+    rawRows: string[][];
+    sheetNames: string[];
+    selectedSheet: string | null;
+  }> {
     const xlsx = await import("xlsx");
     const workbook = xlsx.read(buffer, { type: "buffer" });
-    const sheetName = workbook.SheetNames[0];
+    const selection = selectSheetForMonth(
+      workbook.SheetNames,
+      monthLabel ?? null,
+      explicitSheetName ?? null,
+    );
+    const sheetName = selection.sheetName;
+    if (sheetName === null) {
+      return {
+        headers: [],
+        rawRows: [],
+        sheetNames: selection.availableSheets,
+        selectedSheet: null,
+      };
+    }
+
     const worksheet = workbook.Sheets[sheetName];
     const allRows = xlsx.utils.sheet_to_json<string[]>(worksheet, {
       header: 1,
@@ -140,12 +164,17 @@ export class ImportService {
     });
 
     if (allRows.length === 0) {
-      return { headers: [], rawRows: [] };
+      return {
+        headers: [],
+        rawRows: [],
+        sheetNames: selection.availableSheets,
+        selectedSheet: sheetName,
+      };
     }
 
     const headerRowIndex = this.detectHeaderRow(allRows);
     this.logger.log(
-      `Excel parse: ${allRows.length} total rows, header row detected at index ${headerRowIndex}`,
+      `Excel parse (sheet "${sheetName}"): ${allRows.length} total rows, header row at index ${headerRowIndex}`,
     );
 
     const headers = allRows[headerRowIndex].map((h) => String(h).trim());
@@ -158,6 +187,8 @@ export class ImportService {
     return {
       headers,
       rawRows: nonEmptyRows.map((row) => row.map((cell) => String(cell))),
+      sheetNames: selection.availableSheets,
+      selectedSheet: sheetName,
     };
   }
 

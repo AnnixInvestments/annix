@@ -5,7 +5,7 @@ category: Inventory
 roles: [storeman, manager, admin]
 order: 7
 tags: [stock take, import, month-end, count, variance, soh, spreadsheet]
-lastUpdated: 2026-06-02
+lastUpdated: 2026-06-03
 summary: Upload a physical stock-count spreadsheet to balance stock-on-hand for a chosen month-end, with section headers used as categories and a count date that replays later movements.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/stock-control/portal/inventory/import/page.tsx, annix-frontend/src/app/stock-control/portal/inventory/import/ImportReviewStep.tsx, annix-backend/src/stock-control/services/import.service.ts, annix-backend/src/stock-control/controllers/import.controller.ts]
@@ -23,6 +23,10 @@ The system does not guess which month you are balancing — you tell it:
 - **Actual Count Date** — defaults to the last day of the chosen month, but you can change it to the day you physically counted. Any deliveries and issuances recorded **after** this date are replayed on top of your counted figures, so a late or mid-month upload still balances correctly.
 
 > Example: you count on 31 May but only upload on 2 June. Set the period to *May 2026 Month-End* and leave the count date on 31 May. Stock that arrived or was issued on 1–2 June is added/subtracted automatically.
+
+## Workbooks with one tab per month
+
+If your spreadsheet has a separate tab for each month (named "May", "June", etc.), the importer reads only the tab matching the **Month-End Period** you chose. After upload, a **Workbook Tab** dropdown shows which tab is being read — change it if the wrong tab was picked. Single-tab files are read as before.
 
 ## Section headers become categories
 

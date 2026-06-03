@@ -32,7 +32,10 @@ export class ImportController {
   @Post("upload")
   @UseInterceptors(FileInterceptor("file"))
   @ApiOperation({ summary: "Upload and parse an Excel or PDF file for import" })
-  async upload(@UploadedFile() file: Express.Multer.File) {
+  async upload(
+    @UploadedFile() file: Express.Multer.File,
+    @Body() body: { monthLabel?: string; sheetName?: string },
+  ) {
     const ext = (file.originalname || "").toLowerCase().split(".").pop();
     const isExcel =
       file.mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
@@ -44,9 +47,14 @@ export class ImportController {
     const isPdf = file.mimetype === "application/pdf";
 
     if (isExcel) {
-      const { headers, rawRows } = await this.importService.parseExcelRaw(file.buffer);
+      const { headers, rawRows, sheetNames, selectedSheet } =
+        await this.importService.parseExcelRaw(
+          file.buffer,
+          body.monthLabel ?? null,
+          body.sheetName ?? null,
+        );
       const mapping = await this.importService.mapColumnsWithAi(headers);
-      return { format: "excel", headers, rawRows, mapping };
+      return { format: "excel", headers, rawRows, mapping, sheetNames, selectedSheet };
     } else if (isPdf) {
       const rows = await this.importService.parsePdf(file.buffer);
       return { format: "pdf", rows };

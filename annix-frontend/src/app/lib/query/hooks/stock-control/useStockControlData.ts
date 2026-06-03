@@ -900,8 +900,15 @@ export const useConfirmCpoImport = createMutationHook(
   [stockControlKeys.cpos.all, stockControlKeys.jobCards.all],
 );
 
-export const useUploadImportFile = createMutationHook((file: File) =>
-  stockControlApiClient.uploadImportFile(file),
+export const useUploadImportFile = createMutationHook(
+  (vars: File | { file: File; monthLabel?: string | null; sheetName?: string | null }) => {
+    const params = vars instanceof File ? { file: vars } : vars;
+    return stockControlApiClient.uploadImportFile(
+      params.file,
+      "monthLabel" in params ? params.monthLabel : null,
+      "sheetName" in params ? params.sheetName : null,
+    );
+  },
 );
 
 export const useMatchImportRows = createMutationHook((rows: Record<string, unknown>[]) =>
@@ -909,18 +916,42 @@ export const useMatchImportRows = createMutationHook((rows: Record<string, unkno
 );
 
 export const useAnalyzeStockTakeReconciliation = createMutationHook(
-  (vars: { file: File; periodLabel: string; periodStart: string; periodEnd: string }) =>
-    stockControlApiClient.analyzeStockTakeReconciliation(
+  (vars: {
+    file: File;
+    periodLabel: string;
+    periodStart: string;
+    periodEnd: string;
+    sheetName?: string | null;
+  }) => {
+    const sheetName = vars.sheetName;
+    return stockControlApiClient.analyzeStockTakeReconciliation(
       vars.file,
       vars.periodLabel,
       vars.periodStart,
       vars.periodEnd,
-    ),
+      sheetName ?? null,
+    );
+  },
 );
 
 export const useCreateReconciliationDelivery = createMutationHook(
-  (vars: { file: File; invoice: string; receivedDate: string }) =>
-    stockControlApiClient.createReconciliationDelivery(vars.file, vars.invoice, vars.receivedDate),
+  (vars: {
+    file: File;
+    invoice: string;
+    receivedDate: string;
+    periodLabel?: string | null;
+    sheetName?: string | null;
+  }) => {
+    const periodLabel = vars.periodLabel;
+    const sheetName = vars.sheetName;
+    return stockControlApiClient.createReconciliationDelivery(
+      vars.file,
+      vars.invoice,
+      vars.receivedDate,
+      periodLabel ?? null,
+      sheetName ?? null,
+    );
+  },
   [stockControlKeys.inventory.all],
 );
 

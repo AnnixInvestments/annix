@@ -2244,6 +2244,8 @@ export interface ImportUploadResponse {
   mapping?: InventoryColumnMapping;
   rows?: Record<string, unknown>[];
   error?: string;
+  sheetNames?: string[];
+  selectedSheet?: string | null;
 }
 
 export interface FieldMapping {
@@ -3013,4 +3015,6 @@ export interface ReconciliationReport {
   missingDocumentCount: number;
   totalCountVarianceValue: number;
   warnings: string[];
+  selectedSheet: string | null;
+  availableSheets: string[];
 }
