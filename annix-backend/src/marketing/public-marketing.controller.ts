@@ -1,10 +1,33 @@
 import type { MarketingSiteContent as MarketingSiteContentTree } from "@annix/product-data/marketing";
-import { Body, Controller, Get, Header, Logger, Post } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Header,
+  Inject,
+  Logger,
+  Post,
+  Query,
+  Res,
+} from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
+import type { Response } from "express";
 import { AdminCompanyProfileService } from "../admin/admin-company-profile.service";
 import { EmailService } from "../email/email.service";
 import { ApiMessageResponse, messageResponse } from "../shared/dto";
+import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
+
+function mimeFromKey(key: string): string {
+  const lower = key.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".svg")) return "image/svg+xml";
+  if (lower.endsWith(".gif")) return "image/gif";
+  return "application/octet-stream";
+}
 
 interface MarketingContactDto {
   name: string;
@@ -23,7 +46,20 @@ export class PublicMarketingController {
     private readonly marketingService: MarketingSiteContentService,
     private readonly companyProfileService: AdminCompanyProfileService,
     private readonly emailService: EmailService,
+    @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
+
+  @Get("asset")
+  @ApiOperation({ summary: "Stream an uploaded marketing image by its storage key" })
+  async asset(@Query("key") key: string, @Res() res: Response): Promise<void> {
+    if (!key?.startsWith("annix-marketing/")) {
+      throw new BadRequestException("Invalid asset key");
+    }
+    const buffer = await this.storageService.download(key);
+    res.setHeader("Content-Type", mimeFromKey(key));
+    res.setHeader("Cache-Control", "public, max-age=86400, stale-while-revalidate=604800");
+    res.send(buffer);
+  }
 
   @Get("content")
   @Header("Cache-Control", "public, max-age=60")

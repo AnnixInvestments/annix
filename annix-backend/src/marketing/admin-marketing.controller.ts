@@ -85,10 +85,7 @@ export class AdminMarketingController {
     if (!file) {
       throw new Error("No file uploaded");
     }
-    const result = await this.storageService.upload(
-      file,
-      `${StorageArea.ANNIX_MARKETING}/images/${file.originalname}`,
-    );
-    return { url: result.url };
+    const result = await this.storageService.upload(file, `${StorageArea.ANNIX_MARKETING}/images`);
+    return { url: `/api/public/marketing/asset?key=${encodeURIComponent(result.path)}` };
   }
 }
