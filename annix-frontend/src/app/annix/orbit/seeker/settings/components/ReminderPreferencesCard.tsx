@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { PhoneInput } from "@/app/components/PhoneInput";
 import { useToast } from "@/app/components/Toast";
 import {
   useOrbitReminderPreferences,
@@ -76,17 +77,13 @@ export function ReminderPreferencesCard() {
           </label>
 
           <div>
-            <label htmlFor="reminder-phone" className="block text-sm font-medium text-gray-900">
+            <label
+              htmlFor="reminder-phone"
+              className="block text-sm font-medium text-gray-900 mb-1"
+            >
               Mobile number
             </label>
-            <input
-              id="reminder-phone"
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="+27 ..."
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
+            <PhoneInput id="reminder-phone" value={phone} onChange={setPhone} />
             <p className="text-xs text-gray-500 mt-1">Used for SMS and WhatsApp reminders.</p>
           </div>
 

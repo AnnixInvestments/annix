@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { EeRegistrationStep } from "@/app/annix/orbit/components/EeRegistrationStep";
 import { parseRegistrationError } from "@/app/annix/orbit/config/registration-errors";
+import { PhoneInput } from "@/app/components/PhoneInput";
 import { annixOrbitApiClient, type RegisterEeDisclosurePayload } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 
@@ -177,14 +178,7 @@ export default function AnnixOrbitRegisterIndividualPage() {
               <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Mobile number <span className="text-gray-400">(optional)</span>
               </label>
-              <input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
-                placeholder="+27 ..."
-              />
+              <PhoneInput id="phone" value={phone} onChange={setPhone} />
               <p className="text-xs text-gray-500 mt-1">
                 For interview reminders by SMS or WhatsApp.
               </p>
