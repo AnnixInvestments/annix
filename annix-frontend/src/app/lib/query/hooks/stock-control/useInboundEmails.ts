@@ -73,3 +73,13 @@ export function useInboundEmailStats() {
     queryFn: () => stockControlApiClient.inboundEmailStats(),
   });
 }
+
+export function useReprocessSkippedInboundEmails() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => stockControlApiClient.reprocessSkippedInboundEmails(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: stockControlKeys.inboundEmails.all });
+    },
+  });
+}

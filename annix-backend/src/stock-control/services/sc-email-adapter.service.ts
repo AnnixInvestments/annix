@@ -2,7 +2,10 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { InboundEmailAttachment } from "../../inbound-email/entities/inbound-email-attachment.entity";
 import { InboundEmailRegistry } from "../../inbound-email/inbound-email-registry.service";
 import { ClassificationResult } from "../../inbound-email/interfaces/document-classifier.interface";
-import { RoutingResult } from "../../inbound-email/interfaces/document-router.interface";
+import {
+  type RouteOptions,
+  RoutingResult,
+} from "../../inbound-email/interfaces/document-router.interface";
 import { EmailAppAdapter } from "../../inbound-email/interfaces/email-app-adapter.interface";
 import { nowMillis } from "../../lib/datetime";
 import {
@@ -209,6 +212,7 @@ Respond ONLY with a JSON object:
     fromEmail: string,
     subject: string,
     supplierName?: string | null,
+    options?: RouteOptions,
   ): Promise<RoutingResult> {
     if (!companyId) {
       this.logger.warn("No company ID for routing, skipping");
@@ -216,6 +220,15 @@ Respond ONLY with a JSON object:
     }
 
     const docType = attachment.documentType as ScDocumentType;
+
+    const needsManualReview =
+      docType === ScDocumentType.SUPPLIER_INVOICE || docType === ScDocumentType.DELIVERY_NOTE;
+    if (needsManualReview && options?.autoIngest === true) {
+      this.logger.log(
+        `Emailed ${docType} held for manual review (no auto-file): ${attachment.originalFilename}`,
+      );
+      return { linkedEntityType: null, linkedEntityId: null, extractionTriggered: false };
+    }
 
     if (docType === ScDocumentType.SUPPLIER_INVOICE) {
       return this.routeInvoice(attachment, fileBuffer, companyId, fromEmail, subject);

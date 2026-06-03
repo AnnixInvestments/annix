@@ -4,6 +4,7 @@ export {
   useInboundEmailStats,
   useInboundEmails,
   useReclassifyAttachment,
+  useReprocessSkippedInboundEmails,
   useTestInboundEmailConnection,
   useUpdateInboundEmailConfig,
 } from "./useInboundEmails";

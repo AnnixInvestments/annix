@@ -113,6 +113,11 @@ declare module "./base" {
       documentType: string,
     ): Promise<InboundEmailAttachment>;
     inboundEmailStats(): Promise<InboundEmailStats>;
+    reprocessSkippedInboundEmails(): Promise<{
+      reprocessed: number;
+      total: number;
+      details: string[];
+    }>;
   }
 }
 
@@ -324,4 +329,10 @@ proto.reclassifyAttachment = async function (attachmentId, documentType) {
 
 proto.inboundEmailStats = async function () {
   return this.request(`/inbound-email/stock-control/${this.companyIdParam()}/stats`);
+};
+
+proto.reprocessSkippedInboundEmails = async function () {
+  return this.request(`/inbound-email/stock-control/${this.companyIdParam()}/reprocess-skipped`, {
+    method: "POST",
+  });
 };

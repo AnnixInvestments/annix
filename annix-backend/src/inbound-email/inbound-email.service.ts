@@ -285,7 +285,7 @@ export class InboundEmailService {
     attachment.classificationConfidence = 1.0;
     attachment.linkedEntityType = null;
     attachment.linkedEntityId = null;
-    attachment.extractionStatus = AttachmentExtractionStatus.PENDING;
+    attachment.extractionStatus = AttachmentExtractionStatus.SKIPPED;
 
     return this.attachmentRepo.save(attachment);
   }

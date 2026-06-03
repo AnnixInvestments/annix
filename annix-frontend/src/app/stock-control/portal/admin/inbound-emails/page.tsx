@@ -1,12 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useToast } from "@/app/components/Toast";
 import type { InboundEmail, InboundEmailAttachment } from "@/app/lib/api/stockControlApi";
 import { fromISO } from "@/app/lib/datetime";
 import {
   useInboundEmailStats,
   useInboundEmails,
   useReclassifyAttachment,
+  useReprocessSkippedInboundEmails,
 } from "@/app/lib/query/hooks";
 
 const STATUS_BADGES: Record<string, { label: string; className: string }> = {
@@ -50,6 +52,22 @@ export default function InboundEmailsPage() {
     limit: 25,
   });
   const reclassify = useReclassifyAttachment();
+  const reprocessSkipped = useReprocessSkippedInboundEmails();
+  const { showToast } = useToast();
+
+  const handleFileHeld = useCallback(() => {
+    reprocessSkipped.mutate(undefined, {
+      onSuccess: (result) => {
+        showToast(
+          result.reprocessed > 0
+            ? `Filed ${result.reprocessed} of ${result.total} held document(s)`
+            : "No held documents were ready to file",
+          result.reprocessed > 0 ? "success" : "info",
+        );
+      },
+      onError: () => showToast("Failed to file held documents", "error"),
+    });
+  }, [reprocessSkipped, showToast]);
 
   const toggleExpand = useCallback((id: number) => {
     setExpandedEmailId((prev) => (prev === id ? null : id));
@@ -70,11 +88,22 @@ export default function InboundEmailsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Inbound Emails</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Monitor and manage documents received via email
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Inbound Emails</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Monitor and manage documents received via email. Emailed delivery notes and tax invoices
+            are held here for review — set each one's type, then file them.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={handleFileHeld}
+          disabled={reprocessSkipped.isPending}
+          className="shrink-0 inline-flex items-center justify-center rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+        >
+          {reprocessSkipped.isPending ? "Filing…" : "File held documents"}
+        </button>
       </div>
 
       {stats && (

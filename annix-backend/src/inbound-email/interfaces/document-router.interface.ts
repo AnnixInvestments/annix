@@ -6,6 +6,10 @@ export interface RoutingResult {
   extractionTriggered: boolean;
 }
 
+export interface RouteOptions {
+  autoIngest?: boolean;
+}
+
 export interface IDocumentRouter {
   route(
     attachment: InboundEmailAttachment,
@@ -14,6 +18,7 @@ export interface IDocumentRouter {
     fromEmail: string,
     subject: string,
     supplierName?: string | null,
+    options?: RouteOptions,
   ): Promise<RoutingResult>;
 
   supportedMimeTypes(): string[];

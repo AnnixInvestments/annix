@@ -235,6 +235,7 @@ export class InboundEmailMonitorService {
                 fromEmail,
                 subject,
                 classification?.supplierName ?? null,
+                { autoIngest: true },
               );
 
               await this.inboundEmailService.updateAttachment(attachment.id, {
@@ -349,6 +350,8 @@ export class InboundEmailMonitorService {
           email?.companyId ?? null,
           email?.fromEmail ?? "",
           email?.subject ?? "",
+          null,
+          { autoIngest: false },
         );
         await this.inboundEmailService.updateAttachment(attachment.id, {
           linkedEntityType: routingResult.linkedEntityType,
