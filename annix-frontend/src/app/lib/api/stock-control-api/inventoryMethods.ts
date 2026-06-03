@@ -7,6 +7,7 @@ import type {
   ImportMatchRow,
   ImportResult,
   ImportUploadResponse,
+  MissingStockTakeItem,
   ReconciliationReport,
   ReviewedImportResult,
   ReviewedRow,
@@ -100,7 +101,9 @@ declare module "./base" {
       stockTakeDate?: string | null,
       zeroMissing?: boolean,
       stockTakePeriod?: string | null,
+      zeroMissingItemIds?: number[] | null,
     ): Promise<ReviewedImportResult>;
+    stockTakeMissingItems(rows: ReviewedRow[]): Promise<MissingStockTakeItem[]>;
     exportStockTakeVariances(variances: StockTakeVariance[]): Promise<Blob>;
     analyzeStockTakeReconciliation(
       file: File,
@@ -291,10 +294,25 @@ proto.confirmReviewedImport = async function (
   stockTakeDate = null,
   zeroMissing = false,
   stockTakePeriod = null,
+  zeroMissingItemIds = null,
 ) {
   return this.request("/stock-control/import/confirm-reviewed", {
     method: "POST",
-    body: JSON.stringify({ rows, isStockTake, stockTakeDate, zeroMissing, stockTakePeriod }),
+    body: JSON.stringify({
+      rows,
+      isStockTake,
+      stockTakeDate,
+      zeroMissing,
+      stockTakePeriod,
+      zeroMissingItemIds,
+    }),
+  });
+};
+
+proto.stockTakeMissingItems = async function (rows) {
+  return this.request("/stock-control/import/stock-take-missing", {
+    method: "POST",
+    body: JSON.stringify({ rows }),
   });
 };
 

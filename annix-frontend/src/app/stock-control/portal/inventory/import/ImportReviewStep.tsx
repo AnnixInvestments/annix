@@ -2,10 +2,10 @@
 
 import { useCallback, useState } from "react";
 import { createPortal } from "react-dom";
-import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useToast } from "@/app/components/Toast";
 import type {
   ImportMatchRow,
+  MissingStockTakeItem,
   ReviewedImportResult,
   ReviewedRow,
 } from "@/app/lib/api/stockControlApi";
@@ -172,6 +172,9 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
   const [error, setError] = useState<string | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "matched" | "new">("all");
   const [confirmZeroOpen, setConfirmZeroOpen] = useState(false);
+  const [missingItems, setMissingItems] = useState<MissingStockTakeItem[]>([]);
+  const [selectedZeroIds, setSelectedZeroIds] = useState<Set<number>>(new Set());
+  const [loadingMissing, setLoadingMissing] = useState(false);
   const [addLocationRowIndex, setAddLocationRowIndex] = useState<number | null>(null);
   const [newLocationName, setNewLocationName] = useState("");
 
@@ -255,44 +258,44 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
     setRows((prev) => [...prev, newRow]);
   }, [rows]);
 
-  const doSubmit = async () => {
+  const buildReviewedRows = (): ReviewedRow[] =>
+    rows.map((r) => {
+      const description = r.description;
+      const category = r.category;
+      const unitOfMeasure = r.unitOfMeasure;
+      const costPerUnit = r.costPerUnit;
+      const quantity = r.quantity;
+      const minStockLevel = r.minStockLevel;
+      const location = r.location;
+      return {
+        index: r.index,
+        action: r.action,
+        matchedItemId: r.action === "update" ? r.matchedItemId : null,
+        sku: r.sku,
+        name: r.name,
+        description: description || null,
+        category: category || null,
+        unitOfMeasure: unitOfMeasure || "each",
+        costPerUnit: Number(costPerUnit) || 0,
+        quantity: Number(quantity) || 0,
+        minStockLevel: Number(minStockLevel) || 0,
+        location: location || null,
+        corrections: buildCorrections(r),
+      };
+    });
+
+  const doSubmit = async (zeroIds: number[] | null) => {
     setConfirmZeroOpen(false);
     try {
       setIsSubmitting(true);
       setError(null);
-
-      const reviewedRows: ReviewedRow[] = rows.map((r) => {
-        const description = r.description;
-        const category = r.category;
-        const unitOfMeasure = r.unitOfMeasure;
-        const costPerUnit = r.costPerUnit;
-        const quantity = r.quantity;
-        const minStockLevel = r.minStockLevel;
-        const location = r.location;
-        return {
-          index: r.index,
-          action: r.action,
-          matchedItemId: r.action === "update" ? r.matchedItemId : null,
-          sku: r.sku,
-          name: r.name,
-          description: description || null,
-          category: category || null,
-          unitOfMeasure: unitOfMeasure || "each",
-          costPerUnit: Number(costPerUnit) || 0,
-          quantity: Number(quantity) || 0,
-          minStockLevel: Number(minStockLevel) || 0,
-          location: location || null,
-          corrections: buildCorrections(r),
-        };
-      });
-
       const result = await stockControlApiClient.confirmReviewedImport(
-        reviewedRows,
+        buildReviewedRows(),
         isStockTake,
         isStockTake ? stockTakeDate : null,
-        // Full stock take: align everything to the count and zero items not on it.
         isStockTake,
         isStockTake ? stockTakePeriod : null,
+        isStockTake ? zeroIds : null,
       );
       onComplete(result);
     } catch (err) {
@@ -302,13 +305,34 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
     }
   };
 
-  // A stock take rewrites stock, so confirm the zero-missing behaviour first.
-  const handleSubmit = () => {
-    if (isStockTake) {
-      setConfirmZeroOpen(true);
+  // A full stock take zeroes items not on the count — let the user review which
+  // ones to zero before posting, rather than auto-zeroing everything.
+  const handleSubmit = async () => {
+    if (!isStockTake) {
+      doSubmit(null);
       return;
     }
-    doSubmit();
+    setError(null);
+    setLoadingMissing(true);
+    try {
+      const missing = await stockControlApiClient.stockTakeMissingItems(buildReviewedRows());
+      setMissingItems(missing);
+      setSelectedZeroIds(new Set(missing.map((m) => m.id)));
+      setConfirmZeroOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to check missing items");
+    } finally {
+      setLoadingMissing(false);
+    }
+  };
+
+  const toggleZeroId = (id: number) => {
+    setSelectedZeroIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   };
 
   const matchedCount = rows.filter((r) => r.originalMatch !== null).length;
@@ -322,17 +346,115 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
         ? rows.filter((r) => r.originalMatch === null)
         : rows;
 
+  const selectedValue = missingItems
+    .filter((m) => selectedZeroIds.has(m.id))
+    .reduce((sum, m) => sum + m.valueR, 0);
+
   return (
     <div className="space-y-4">
-      <ConfirmModal
-        isOpen={confirmZeroOpen}
-        title="Confirm full stock take"
-        message="This aligns all stock to your count: items on the sheet are set to the counted quantity, and any item in the system that is NOT on this count is set to zero (we no longer have it). A stock-variances spreadsheet is produced afterwards. Continue?"
-        confirmLabel="Align stock & import"
-        loading={isSubmitting}
-        onConfirm={doSubmit}
-        onCancel={() => setConfirmZeroOpen(false)}
-      />
+      {confirmZeroOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
+            <div className="flex max-h-[85vh] w-full max-w-2xl flex-col rounded-lg bg-white shadow-xl">
+              <div className="border-b border-gray-200 px-5 py-3">
+                <h2 className="text-base font-semibold text-gray-900">Confirm full stock take</h2>
+                <p className="mt-1 text-xs text-gray-500">
+                  Items on the sheet are set to their counted quantity. The items below are in the
+                  system but NOT on this count — tick the ones to set to zero, untick any to leave
+                  unchanged.
+                </p>
+              </div>
+              <div className="flex-1 overflow-y-auto px-5 py-3">
+                {missingItems.length === 0 ? (
+                  <p className="text-sm text-gray-600">
+                    Every system item is on this count — nothing will be zeroed.
+                  </p>
+                ) : (
+                  <>
+                    <div className="mb-2 flex items-center justify-between text-xs">
+                      <label className="flex items-center gap-2 text-gray-700">
+                        <input
+                          type="checkbox"
+                          checked={selectedZeroIds.size === missingItems.length}
+                          onChange={(e) =>
+                            setSelectedZeroIds(
+                              e.target.checked ? new Set(missingItems.map((m) => m.id)) : new Set(),
+                            )
+                          }
+                          className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                        />
+                        Select all ({missingItems.length})
+                      </label>
+                      <span className="text-gray-500">
+                        {selectedZeroIds.size} to zero ·{" "}
+                        {selectedValue.toLocaleString("en-ZA", {
+                          style: "currency",
+                          currency: "ZAR",
+                        })}
+                      </span>
+                    </div>
+                    <table className="w-full text-xs">
+                      <thead className="border-b border-gray-200 text-gray-500">
+                        <tr>
+                          <th className="w-8 px-2 py-1.5"></th>
+                          <th className="px-2 py-1.5 text-left">SKU</th>
+                          <th className="px-2 py-1.5 text-left">Name</th>
+                          <th className="px-2 py-1.5 text-right">Qty</th>
+                          <th className="px-2 py-1.5 text-right">Value</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100">
+                        {missingItems.map((m) => (
+                          <tr key={m.id} className="hover:bg-gray-50">
+                            <td className="px-2 py-1.5">
+                              <input
+                                type="checkbox"
+                                checked={selectedZeroIds.has(m.id)}
+                                onChange={() => toggleZeroId(m.id)}
+                                className="h-4 w-4 rounded border-gray-300 text-teal-600"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 font-mono text-gray-600">{m.sku}</td>
+                            <td className="px-2 py-1.5 text-gray-900">{m.name}</td>
+                            <td className="px-2 py-1.5 text-right font-mono">{m.quantity}</td>
+                            <td className="px-2 py-1.5 text-right font-mono">
+                              {m.valueR.toLocaleString("en-ZA", {
+                                style: "currency",
+                                currency: "ZAR",
+                              })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 border-t border-gray-200 px-5 py-3">
+                <button
+                  type="button"
+                  onClick={() => setConfirmZeroOpen(false)}
+                  className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => doSubmit(Array.from(selectedZeroIds))}
+                  disabled={isSubmitting}
+                  className="rounded-md bg-teal-600 px-4 py-2 text-sm font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {isSubmitting
+                    ? "Importing…"
+                    : missingItems.length === 0
+                      ? "Confirm import"
+                      : `Zero ${selectedZeroIds.size} & import`}
+                </button>
+              </div>
+            </div>
+          </div>,
+          document.body,
+        )}
       {addLocationRowIndex !== null &&
         createPortal(
           <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
@@ -398,12 +520,14 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting || rows.length === 0}
+                disabled={isSubmitting || loadingMissing || rows.length === 0}
                 className="px-4 py-1.5 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 {isSubmitting
                   ? "Importing..."
-                  : `Confirm Import (${rows.length - skipCount} items)`}
+                  : loadingMissing
+                    ? "Checking…"
+                    : `Confirm Import (${rows.length - skipCount} items)`}
               </button>
             </div>
           </div>

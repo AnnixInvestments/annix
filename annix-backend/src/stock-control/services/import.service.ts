@@ -101,6 +101,15 @@ export interface ReviewedImportResult {
   variances: StockTakeVariance[];
 }
 
+export interface MissingStockTakeItem {
+  id: number;
+  sku: string;
+  name: string;
+  quantity: number;
+  costPerUnit: number;
+  valueR: number;
+}
+
 const INVENTORY_PDF_EXTRACTION_PROMPT = `You are an expert at reading inventory, stock, and product listing documents.
 
 Look at this PDF and extract all inventory/stock items into a JSON array.
@@ -961,7 +970,9 @@ export class ImportService {
     stockTakeDate: string | null,
     zeroMissing = false,
     stockTakePeriod: string | null = null,
+    zeroMissingItemIds: number[] | null = null,
   ): Promise<ReviewedImportResult> {
+    const zeroSet = zeroMissingItemIds === null ? null : new Set(zeroMissingItemIds);
     const result: ReviewedImportResult = {
       totalRows: rows.length,
       created: 0,
@@ -1118,6 +1129,7 @@ export class ImportService {
       const allItems = await this.stockItemRepo.findAllForCompany(companyId);
       for (const item of allItems) {
         if (countedItemIds.has(item.id)) continue;
+        if (zeroSet !== null && !zeroSet.has(item.id)) continue;
         const systemQtyBefore = Number(item.quantity) || 0;
         if (systemQtyBefore === 0) continue;
         try {
@@ -1156,6 +1168,31 @@ export class ImportService {
     }
 
     return result;
+  }
+
+  async missingStockTakeItems(
+    companyId: number,
+    rows: ReviewedRow[],
+  ): Promise<MissingStockTakeItem[]> {
+    const matchedIds = rows.reduce((acc, r) => {
+      if (r.action === "update" && r.matchedItemId) acc.add(r.matchedItemId);
+      return acc;
+    }, new Set<number>());
+    const allItems = await this.stockItemRepo.findAllForCompany(companyId);
+    return allItems
+      .filter((item) => !matchedIds.has(item.id) && (Number(item.quantity) || 0) !== 0)
+      .map((item) => {
+        const quantity = Number(item.quantity) || 0;
+        const costPerUnit = Number(item.costPerUnit) || 0;
+        return {
+          id: item.id,
+          sku: item.sku,
+          name: item.name,
+          quantity,
+          costPerUnit,
+          valueR: Math.round(quantity * costPerUnit * 100) / 100,
+        };
+      });
   }
 
   private buildVariance(

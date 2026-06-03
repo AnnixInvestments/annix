@@ -94,6 +94,7 @@ export class ImportController {
       stockTakeDate?: string;
       zeroMissing?: boolean;
       stockTakePeriod?: string;
+      zeroMissingItemIds?: number[];
     },
     @Req() req: any,
   ) {
@@ -105,7 +106,14 @@ export class ImportController {
       body.stockTakeDate ?? null,
       body.zeroMissing ?? false,
       body.stockTakePeriod ?? null,
+      body.zeroMissingItemIds ?? null,
     );
+  }
+
+  @Post("stock-take-missing")
+  @ApiOperation({ summary: "List items in the system that are not on the count (would be zeroed)" })
+  async stockTakeMissing(@Body() body: { rows: ReviewedRow[] }, @Req() req: any) {
+    return this.importService.missingStockTakeItems(req.user.companyId, body.rows ?? []);
   }
 
   @Post("stock-take-variances/export")

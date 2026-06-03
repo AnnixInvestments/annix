@@ -2040,6 +2040,15 @@ export interface ReviewedImportResult {
   variances: StockTakeVariance[];
 }
 
+export interface MissingStockTakeItem {
+  id: number;
+  sku: string;
+  name: string;
+  quantity: number;
+  costPerUnit: number;
+  valueR: number;
+}
+
 export interface StockIssuance {
   id: number;
   companyId: number;
