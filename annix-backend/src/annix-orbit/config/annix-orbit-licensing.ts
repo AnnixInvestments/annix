@@ -72,8 +72,8 @@ export const ANNIX_ORBIT_LICENSING: ModuleLicensingDefinition = {
   tiers: [
     {
       key: ANNIX_ORBIT_TIERS.STARTER,
-      name: "Starter",
-      description: "Post roles and match candidates.",
+      name: "Builder",
+      description: "Building a team — post roles and match candidates.",
       rank: 0,
       monthlyPriceCents: 0,
       annualPriceCents: 0,
@@ -85,7 +85,7 @@ export const ANNIX_ORBIT_LICENSING: ModuleLicensingDefinition = {
     {
       key: ANNIX_ORBIT_TIERS.GROWTH,
       name: "Growth",
-      description: "Adds reference checks and interview scheduling for active hiring teams.",
+      description: "Scaling the workforce — adds reference checks and interview scheduling.",
       rank: 1,
       monthlyPriceCents: 250_000,
       annualPriceCents: 2_500_000,
@@ -97,7 +97,8 @@ export const ANNIX_ORBIT_LICENSING: ModuleLicensingDefinition = {
     {
       key: ANNIX_ORBIT_TIERS.ENTERPRISE,
       name: "Enterprise",
-      description: "Everything, including EE compliance and hiring analytics.",
+      description:
+        "Advanced hiring — EE compliance, hiring analytics, employer branding and integrations.",
       rank: 2,
       monthlyPriceCents: 600_000,
       annualPriceCents: 6_000_000,

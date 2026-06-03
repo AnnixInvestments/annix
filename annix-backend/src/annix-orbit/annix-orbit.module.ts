@@ -53,6 +53,8 @@ import { UserRepository } from "../user/user.repository";
 import { MongoUserRepository } from "../user/user.repository.mongo";
 import { PostgresUserRepository } from "../user/user.repository.postgres";
 import { AnnixOrbitLicensingRegistrar } from "./annix-orbit-licensing.registrar";
+import { AnnixOrbitRecruiterLicensingRegistrar } from "./annix-orbit-recruiter-licensing.registrar";
+import { AnnixOrbitStudentLicensingRegistrar } from "./annix-orbit-student-licensing.registrar";
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
@@ -619,6 +621,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     InterviewBookingService,
     AnnixOrbitCapabilities,
     AnnixOrbitLicensingRegistrar,
+    AnnixOrbitRecruiterLicensingRegistrar,
+    AnnixOrbitStudentLicensingRegistrar,
     SeekerJobFeedService,
     SeekerApplicationsService,
     SeekerCalendarService,

@@ -15,17 +15,17 @@ import {
 const TIER_OPTIONS = [
   {
     key: "soft",
-    label: "Soft (free)",
+    label: "Explorer (free)",
     description: "Full job pool; small score boost for the seeker's target categories.",
   },
   {
     key: "medium",
-    label: "Medium",
+    label: "Pathfinder",
     description: "Pool narrowed to target + adjacent categories; higher category boost.",
   },
   {
     key: "hard",
-    label: "Heavy",
+    label: "Trailblazer",
     description: "Pool strictly limited to the seeker's exact target categories.",
   },
 ];
@@ -281,9 +281,9 @@ export default function AdminOrbitSeekerTiersPage() {
 }
 
 const TRIAL_TIER_OPTIONS = [
-  { key: "soft", label: "Soft (free)" },
-  { key: "medium", label: "Medium" },
-  { key: "hard", label: "Heavy" },
+  { key: "soft", label: "Explorer (free)" },
+  { key: "medium", label: "Pathfinder" },
+  { key: "hard", label: "Trailblazer" },
 ];
 
 function InviteSeekerTrialSection() {
