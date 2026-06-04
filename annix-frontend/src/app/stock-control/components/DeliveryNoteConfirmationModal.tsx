@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   AnalyzedDeliveryNoteData,
   AnalyzedDeliveryNoteLineItem,
@@ -212,10 +213,9 @@ export function DeliveryNoteConfirmationModal(props: DeliveryNoteConfirmationMod
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
+                <DateInput
                   value={header.deliveryDate}
-                  onChange={(e) => updateHeader("deliveryDate", e.target.value)}
+                  onChange={(value) => updateHeader("deliveryDate", value)}
                   className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm border p-2"
                 />
               </div>

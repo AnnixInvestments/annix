@@ -11,6 +11,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
 import { fromISO, now } from "@/app/lib/datetime";
 import {
@@ -395,19 +396,17 @@ export default function RubberOrdersPage() {
           </div>
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">From:</label>
-            <input
-              type="date"
+            <DateInput
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(value) => setDateFrom(value)}
               className="block w-40 pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
             />
           </div>
           <div className="flex items-center space-x-2">
             <label className="text-sm font-medium text-gray-700">To:</label>
-            <input
-              type="date"
+            <DateInput
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(value) => setDateTo(value)}
               className="block w-40 pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
             />
           </div>

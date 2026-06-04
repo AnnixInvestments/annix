@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { SeekerInterviewBooking, SeekerInterviewEvent } from "@/app/lib/api/annixOrbitApi";
 import { DateTime, formatTimeZA, fromISO, now } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -403,10 +404,9 @@ export function InterviewCalendar(props: {
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-sm text-gray-700">Date</span>
-                <input
-                  type="date"
+                <DateInput
                   value={form.dateStr}
-                  onChange={(e) => updateForm({ dateStr: e.target.value })}
+                  onChange={(value) => updateForm({ dateStr: value })}
                   className={inputClass}
                 />
               </label>

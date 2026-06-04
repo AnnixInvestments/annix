@@ -26,6 +26,7 @@ import {
   TableIcons,
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { toastError } from "@/app/lib/api/apiError";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 
@@ -1323,10 +1324,9 @@ export default function SupplierTaxInvoicesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Invoice Date</label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={uploadInvoiceDate}
-                    onChange={(e) => setUploadInvoiceDate(e.target.value)}
+                    onChange={(value) => setUploadInvoiceDate(value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
                   />
                 </div>

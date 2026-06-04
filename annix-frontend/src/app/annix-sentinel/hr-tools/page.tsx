@@ -3,6 +3,7 @@
 import { CheckCircle, ExternalLink, Users, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 
 type Tab = "leave" | "hours" | "contracts";
 
@@ -86,10 +87,9 @@ function LeaveTab() {
             <label className="block text-sm font-medium text-slate-300 mb-1.5">
               Employment Start Date
             </label>
-            <input
-              type="date"
+            <DateInput
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(value) => setStartDate(value)}
               className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
             />
           </div>

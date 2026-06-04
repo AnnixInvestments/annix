@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { fromISO } from "@/app/lib/datetime";
 
 import { useOrbitCreateInterviewSlot } from "@/app/lib/query/hooks";
@@ -138,11 +139,10 @@ export function CreateInterviewSlotModal(props: CreateInterviewSlotModalProps) {
               <label htmlFor="slot-date" className="block text-sm font-medium text-gray-700 mb-1">
                 Date
               </label>
-              <input
+              <DateInput
                 id="slot-date"
-                type="date"
                 value={date}
-                onChange={(e) => setDate(e.target.value)}
+                onChange={(value) => setDate(value)}
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#9999d6] focus:border-transparent"
               />

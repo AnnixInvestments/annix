@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { FileImportModal } from "@/app/components/modals/FileImportModal";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { AnalyzedDeliveryNoteResult, DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { useFileUpload } from "@/app/lib/hooks/useFileUpload";
@@ -355,10 +356,9 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Invoice Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={form.invoiceDate}
-                onChange={(e) => setForm({ ...form, invoiceDate: e.target.value })}
+                onChange={(value) => setForm({ ...form, invoiceDate: value })}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
               />
             </div>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { DateInput } from "@/app/components/ui/DateInput";
 import {
   type ConvertToJobCardResultDto,
   type QuotePdfSnapshotDto,
@@ -140,10 +141,9 @@ export function ConvertToJobCardModal(props: {
             </label>
             <label className="block">
               <span className="text-xs font-semibold text-gray-700">Due date</span>
-              <input
-                type="date"
+              <DateInput
                 value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
+                onChange={(value) => setDueDate(value)}
                 className="mt-1 block w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#323288]/30"
                 disabled={convert.isPending}
               />

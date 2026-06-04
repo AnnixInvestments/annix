@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Breadcrumb } from "@/app/au-rubber/components/Breadcrumb";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -506,10 +507,9 @@ export default function PurchaseRequisitionDetailPage() {
                   <label className="block text-sm font-medium text-gray-700">
                     Expected Delivery Date (Optional)
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={orderExpectedDate}
-                    onChange={(e) => setOrderExpectedDate(e.target.value)}
+                    onChange={(value) => setOrderExpectedDate(value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"
                   />
                 </div>

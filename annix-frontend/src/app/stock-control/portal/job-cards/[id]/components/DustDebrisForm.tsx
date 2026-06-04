@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import {
   type QcDustDebrisRecord,
   type QcDustDebrisTestEntry,
@@ -283,10 +284,9 @@ export default function DustDebrisForm(props: DustDebrisFormProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date *</label>
-          <input
-            type="date"
+          <DateInput
             value={readingDate}
-            onChange={(e) => setReadingDate(e.target.value)}
+            onChange={(value) => setReadingDate(value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             required
           />

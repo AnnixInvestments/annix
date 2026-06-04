@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import {
   auRubberApiClient,
   type CreateTestimonialDto,
@@ -187,10 +188,9 @@ export default function TestimonialEditorPage() {
               />
             </Field>
             <Field label="Date published" required>
-              <input
-                type="date"
+              <DateInput
                 value={datePublished}
-                onChange={(e) => setDatePublished(e.target.value)}
+                onChange={(value) => setDatePublished(value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
               />
             </Field>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { AssignUserAccessDto, UpdateUserAccessDto } from "@/app/lib/api/adminApi";
 import { PRODUCTS_AND_SERVICES, PROJECT_TYPES } from "@/app/lib/config/productsServices";
 import {
@@ -625,10 +626,9 @@ export default function EditUserAccessPage() {
           <h3 className="text-base font-semibold text-gray-900 dark:text-white">Expiration Date</h3>
         </div>
         <div className="px-6 py-4">
-          <input
-            type="date"
+          <DateInput
             value={expiresAt ? expiresAt.split("T")[0] : ""}
-            onChange={(e) => setExpiresAt(e.target.value ? `${e.target.value}T23:59:59Z` : "")}
+            onChange={(value) => setExpiresAt(value ? `${value}T23:59:59Z` : "")}
             className="block w-full max-w-md rounded-md border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
           />
           <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">

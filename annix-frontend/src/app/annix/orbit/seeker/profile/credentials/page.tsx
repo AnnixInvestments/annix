@@ -8,6 +8,7 @@ import {
 import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { DocumentDropzone, type PendingDocument } from "@/app/components/uploads/DocumentDropzone";
 import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
@@ -241,19 +242,17 @@ export default function SeekerCredentialsPage() {
           </label>
           <label className="block">
             <span className="text-sm text-gray-700">Issued</span>
-            <input
-              type="date"
+            <DateInput
               value={emptyIfNull(draft.issuedAt)}
-              onChange={(e) => setDraft({ ...draft, issuedAt: stringOrNull(e.target.value) })}
+              onChange={(value) => setDraft({ ...draft, issuedAt: stringOrNull(value) })}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </label>
           <label className="block">
             <span className="text-sm text-gray-700">Expires</span>
-            <input
-              type="date"
+            <DateInput
               value={emptyIfNull(draft.expiresAt)}
-              onChange={(e) => setDraft({ ...draft, expiresAt: stringOrNull(e.target.value) })}
+              onChange={(value) => setDraft({ ...draft, expiresAt: stringOrNull(value) })}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
           </label>

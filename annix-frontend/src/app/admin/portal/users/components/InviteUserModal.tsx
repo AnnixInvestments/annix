@@ -3,6 +3,7 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { InviteUserDto, RbacAppDetail } from "@/app/lib/api/adminApi";
 
 interface InviteUserModalProps {
@@ -219,10 +220,9 @@ export function InviteUserModal(props: InviteUserModalProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Expiration Date (optional)
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={expiresAt ? expiresAt.split("T")[0] : ""}
-                onChange={(e) => setExpiresAt(e.target.value ? `${e.target.value}T23:59:59Z` : "")}
+                onChange={(value) => setExpiresAt(value ? `${value}T23:59:59Z` : "")}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
               />
               <p className="mt-1 text-xs text-gray-500">Leave empty for permanent access</p>

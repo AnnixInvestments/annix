@@ -9,6 +9,7 @@ import {
   validateApi5lGrade,
 } from "@annix/product-data/pipe";
 import { useMemo, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { SOUR_SERVICE_HARDNESS_LIMITS } from "@/app/lib/config/rfq/weldDefectAcceptance";
 
 export interface MtcFormData {
@@ -361,10 +362,9 @@ export function MtcDataEntryForm(props: MtcDataEntryFormProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Certificate Date
                 </label>
-                <input
-                  type="date"
+                <DateInput
                   value={formData.certificateDate}
-                  onChange={(e) => updateField("certificateDate", e.target.value)}
+                  onChange={(value) => updateField("certificateDate", value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 />
               </div>

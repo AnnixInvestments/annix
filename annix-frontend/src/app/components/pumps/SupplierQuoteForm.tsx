@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useRef, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { addDaysFromNowISODate, generateUniqueId, nowMillis } from "@/app/lib/datetime";
 
 interface PumpRfqItem {
@@ -281,10 +282,9 @@ export function SupplierQuoteForm(props: SupplierQuoteFormProps) {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Valid Until</label>
-            <input
-              type="date"
+            <DateInput
               value={validUntil}
-              onChange={(e) => setValidUntil(e.target.value)}
+              onChange={(value) => setValidUntil(value)}
               className="w-full border border-gray-300 rounded-md px-3 py-2 focus:ring-blue-500 focus:border-blue-500"
             />
           </div>

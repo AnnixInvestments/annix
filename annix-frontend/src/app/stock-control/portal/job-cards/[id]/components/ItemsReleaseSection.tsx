@@ -3,6 +3,7 @@
 import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   ItemReleaseResult,
   QcItemsReleaseRecord,
@@ -556,11 +557,9 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                   </div>
                   <div>
                     <label className="block text-xs text-gray-500">Date</label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={dateValue}
-                      onChange={(e) => {
-                        const value = e.target.value;
+                      onChange={(value) => {
                         updateSignOff(party, "date", value || null);
                       }}
                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm"
@@ -624,10 +623,9 @@ function ItemsReleaseForm({ jobCardId, existing, onSaved, onCancel }: ItemsRelea
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Inspection Date
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={signatureDate}
-                    onChange={(e) => setSignatureDate(e.target.value)}
+                    onChange={(value) => setSignatureDate(value)}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
                 </div>

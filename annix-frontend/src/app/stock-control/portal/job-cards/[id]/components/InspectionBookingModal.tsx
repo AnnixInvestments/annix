@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { InspectionBooking } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { DateTime, formatDateZA } from "@/app/lib/datetime";
@@ -239,11 +240,10 @@ export function InspectionBookingModal(props: InspectionBookingModalProps) {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Inspection Date
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value);
+                onChange={(value) => {
+                  setSelectedDate(value);
                   setStartSlot(null);
                   setEndSlot(null);
                 }}

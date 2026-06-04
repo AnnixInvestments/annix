@@ -1,5 +1,6 @@
 "use client";
 
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   RecurrenceEndType,
   RecurrenceFrequency,
@@ -161,10 +162,9 @@ export function RecurrenceEditor(props: RecurrenceEditorProps) {
               )}
 
               {endType.value === "until" && value.endType === "until" && (
-                <input
-                  type="date"
+                <DateInput
                   value={valueUntil || ""}
-                  onChange={(e) => updateField("until", e.target.value)}
+                  onChange={(value) => updateField("until", value)}
                   className="px-2 py-1 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
                 />
               )}

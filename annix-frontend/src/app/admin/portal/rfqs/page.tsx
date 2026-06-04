@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ErrorDisplay, Icons, StatCard, StatusBadge } from "@/app/admin/components";
 import { DataTable, DataTableToolbar } from "@/app/components/ui/DataTable";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { AdminRfqListItem, RfqDraftStatus } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAdminRfqs } from "@/app/lib/query/hooks";
@@ -305,27 +306,23 @@ export default function AdminRfqsPage() {
             </select>
           </div>
           <div>
-            <input
-              type="date"
+            <DateInput
               value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
+              onChange={(value) => {
+                setDateFrom(value);
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
               className="block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              placeholder="Date From"
             />
           </div>
           <div>
-            <input
-              type="date"
+            <DateInput
               value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
+              onChange={(value) => {
+                setDateTo(value);
                 setPagination((prev) => ({ ...prev, pageIndex: 0 }));
               }}
               className="block w-full pl-3 pr-3 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
-              placeholder="Date To"
             />
           </div>
         </div>

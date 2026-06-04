@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   CreatePromoCodePayload,
   PromoCode,
@@ -205,10 +206,9 @@ export function PromoCodeManager(props: { moduleKey: string }) {
           </label>
           <label className="flex flex-col">
             <span className="text-gray-500">Valid until (optional)</span>
-            <input
-              type="date"
+            <DateInput
               value={validUntil}
-              onChange={(e) => setValidUntil(e.target.value)}
+              onChange={(value) => setValidUntil(value)}
               className="rounded border px-2 py-1"
             />
           </label>

@@ -3,6 +3,7 @@
 import { isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { ColdCallSuggestion, RouteStop, ScheduleGap } from "@/app/lib/api/annixRepApi";
 import { fromISO, fromJSDate, nowISO } from "@/app/lib/datetime";
 import { useColdCallSuggestions, usePlanDayRoute, useScheduleGaps } from "@/app/lib/query/hooks";
@@ -351,11 +352,10 @@ export default function RoutePlannerPage() {
           <label htmlFor="date" className="text-sm font-medium text-gray-700 dark:text-gray-300">
             Date:
           </label>
-          <input
-            type="date"
+          <DateInput
             id="date"
             value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
+            onChange={(value) => setSelectedDate(value)}
             className="px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-700 text-gray-900 dark:text-white"
           />
         </div>

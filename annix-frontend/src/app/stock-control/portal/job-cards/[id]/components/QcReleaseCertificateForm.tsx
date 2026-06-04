@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   QcBlastingCheck,
   QcCheckResult,
@@ -359,10 +360,9 @@ export function QcReleaseCertificateForm({
         </div>
         <div>
           <label className="block text-xs font-medium text-gray-700">Certificate Date</label>
-          <input
-            type="date"
+          <DateInput
             value={certificateDate}
-            onChange={(e) => setCertificateDate(e.target.value)}
+            onChange={(value) => setCertificateDate(value)}
             className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
           />
         </div>
@@ -658,10 +658,9 @@ export function QcReleaseCertificateForm({
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-700">Approval Date</label>
-            <input
-              type="date"
+            <DateInput
               value={finalApprovalDate}
-              onChange={(e) => setFinalApprovalDate(e.target.value)}
+              onChange={(value) => setFinalApprovalDate(value)}
               className="mt-1 w-full rounded border border-gray-300 px-3 py-2 text-sm"
             />
           </div>

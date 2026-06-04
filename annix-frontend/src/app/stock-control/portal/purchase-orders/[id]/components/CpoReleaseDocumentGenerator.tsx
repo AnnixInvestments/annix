@@ -4,6 +4,7 @@ import { isArray } from "es-toolkit/compat";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { CpoReleasableItem, QcItemsReleaseRecord } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
@@ -565,10 +566,9 @@ export function CpoReleaseDocumentGenerator(props: CpoReleaseDocumentGeneratorPr
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Inspection Date
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={signatureDate}
-                    onChange={(e) => setSignatureDate(e.target.value)}
+                    onChange={(value) => setSignatureDate(value)}
                     className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
                   />
                 </div>

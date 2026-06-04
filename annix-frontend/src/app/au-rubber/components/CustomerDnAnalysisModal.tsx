@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   AnalyzeCustomerDnsResult,
   CustomerDnGroup,
@@ -496,10 +497,9 @@ function GroupCard(props: GroupCardProps) {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Delivery Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={rawOverrideDeliveryDate || ""}
-                onChange={(e) => onUpdateOverride("deliveryDate", e.target.value)}
+                onChange={(value) => onUpdateOverride("deliveryDate", value)}
                 className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
               />
             </div>

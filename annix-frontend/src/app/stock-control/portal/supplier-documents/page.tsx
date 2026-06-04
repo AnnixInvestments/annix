@@ -2,6 +2,7 @@
 
 import { keys } from "es-toolkit/compat";
 import { useMemo, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   SupplierDocument,
   SupplierDocumentExpiryStatus,
@@ -457,10 +458,9 @@ export default function SupplierDocumentsPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Issued Date
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={uploadIssuedAt}
-                    onChange={(e) => setUploadIssuedAt(e.target.value)}
+                    onChange={(value) => setUploadIssuedAt(value)}
                     className="block w-full rounded-md border-gray-300 text-sm"
                   />
                 </div>
@@ -468,10 +468,9 @@ export default function SupplierDocumentsPage() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Expires Date
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={uploadExpiresAt}
-                    onChange={(e) => setUploadExpiresAt(e.target.value)}
+                    onChange={(value) => setUploadExpiresAt(value)}
                     className="block w-full rounded-md border-gray-300 text-sm"
                   />
                 </div>

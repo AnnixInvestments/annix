@@ -30,15 +30,23 @@ function toInputValue(value: string | null): string {
   return "";
 }
 
+const DEFAULT_CLASS_NAME =
+  "w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-[var(--brand-navbar,#323288)] focus:border-[var(--brand-navbar,#323288)] disabled:bg-gray-100 disabled:text-gray-400";
+
 /**
  * The repo-wide standard for date fields. Renders a native date input — which
- * carries the browser's calendar-picker icon — with consistent branded styling.
+ * carries the browser's calendar-picker icon — with a yyyy-MM-dd value
+ * (empty when cleared) and value coercion for ISO dates / bare years / AI reads.
+ *
  * Use this for ANY date field instead of a bare <input type="date"> or a
- * free-text date box. Value in/out is a yyyy-MM-dd string (empty when cleared).
+ * free-text date box. Styling: pass `className` to keep a surface's existing
+ * look (the migration default — preserves per-app branding); omit it to get
+ * the branded default styling. The calendar-picker cursor is always applied.
  */
 export function DateInput(props: DateInputProps) {
   const inputValue = toInputValue(props.value);
-  const extraClassName = props.className ? props.className : "";
+  const providedClassName = props.className;
+  const baseClassName = providedClassName ? providedClassName : DEFAULT_CLASS_NAME;
 
   const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     props.onChange(event.target.value);
@@ -56,7 +64,7 @@ export function DateInput(props: DateInputProps) {
       required={props.required}
       aria-label={props.ariaLabel}
       onChange={handleChange}
-      className={`w-full bg-white text-gray-900 border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-[var(--brand-navbar,#323288)] focus:border-[var(--brand-navbar,#323288)] disabled:bg-gray-100 disabled:text-gray-400 [&::-webkit-calendar-picker-indicator]:cursor-pointer ${extraClassName}`}
+      className={`${baseClassName} [&::-webkit-calendar-picker-indicator]:cursor-pointer`}
     />
   );
 }

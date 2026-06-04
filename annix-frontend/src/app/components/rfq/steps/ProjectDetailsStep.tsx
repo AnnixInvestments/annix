@@ -12,6 +12,7 @@ import AddMineModal from "@/app/components/rfq/modals/AddMineModal";
 import { AutoFilledInput } from "@/app/components/rfq/shared/AutoFilledField";
 import EnvironmentalIntelligenceSection from "@/app/components/rfq/steps/EnvironmentalIntelligenceSection";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { DocumentBucket } from "@/app/components/uploads";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
 import { useOptionalCustomerAuth } from "@/app/context/CustomerAuthContext";
@@ -1560,10 +1561,9 @@ export default function ProjectDetailsStep() {
               <label className="block text-xs font-semibold text-gray-900 mb-1">
                 Required Date <span className="text-red-600">*</span>
               </label>
-              <input
-                type="date"
+              <DateInput
                 value={rfqData.requiredDate}
-                onChange={(e) => onUpdate("requiredDate", e.target.value)}
+                onChange={(value) => onUpdate("requiredDate", value)}
                 className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
                 required
               />

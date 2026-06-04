@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   IssuanceBatchRecord,
   QcPullTestAreaReading,
@@ -307,10 +308,9 @@ export function PullTestForm(props: PullTestFormProps) {
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Reading Date <span className="text-red-500">*</span>
             </label>
-            <input
-              type="date"
+            <DateInput
               value={readingDate}
-              onChange={(e) => setReadingDate(e.target.value)}
+              onChange={(value) => setReadingDate(value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>
@@ -411,10 +411,9 @@ export function PullTestForm(props: PullTestFormProps) {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Expiry Date</label>
-            <input
-              type="date"
+            <DateInput
               value={forceGauge.expiryDate}
-              onChange={(e) => updateForceGaugeField("expiryDate", e.target.value)}
+              onChange={(value) => updateForceGaugeField("expiryDate", value)}
               className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>

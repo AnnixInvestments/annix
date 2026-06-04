@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { fromISO, now } from "@/app/lib/datetime";
 import {
@@ -333,10 +334,9 @@ function UploadCalibrationCertificateModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Expiry Date *</label>
-            <input
-              type="date"
+            <DateInput
               value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
+              onChange={(value) => setExpiryDate(value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>

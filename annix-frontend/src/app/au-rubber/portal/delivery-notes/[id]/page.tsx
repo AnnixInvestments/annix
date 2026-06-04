@@ -14,6 +14,7 @@ import {
   useImageViewer,
 } from "@/app/components/ImageViewerToolbar";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { toastError } from "@/app/lib/api/apiError";
 import type {
   DeliveryNoteStatus,
@@ -1549,16 +1550,10 @@ export default function DeliveryNoteDetailPage() {
                                     Delivery Date
                                   </dt>
                                   {isEditing ? (
-                                    <input
-                                      type="date"
+                                    <DateInput
                                       value={rawRollDeliveryDate || rawNoteDeliveryDate || ""}
-                                      onChange={(e) =>
-                                        handleRollFieldChange(
-                                          dnIdx,
-                                          rollIdx,
-                                          "deliveryDate",
-                                          e.target.value,
-                                        )
+                                      onChange={(value) =>
+                                        handleRollFieldChange(dnIdx, rollIdx, "deliveryDate", value)
                                       }
                                       className="mt-0.5 w-full rounded border border-gray-300 px-2 py-1 text-sm focus:ring-yellow-500 focus:border-yellow-500"
                                     />

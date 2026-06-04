@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   CoatingAnalysis,
   IssuanceBatchRecord,
@@ -311,10 +312,9 @@ export function ShoreHardnessForm(props: ShoreHardnessFormProps) {
           <label className="mb-1 block text-sm font-medium text-gray-700">
             Reading Date <span className="text-red-500">*</span>
           </label>
-          <input
-            type="date"
+          <DateInput
             value={readingDate}
-            onChange={(e) => setReadingDate(e.target.value)}
+            onChange={(value) => setReadingDate(value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
           />
         </div>

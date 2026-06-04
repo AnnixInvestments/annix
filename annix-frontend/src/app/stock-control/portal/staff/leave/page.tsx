@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type {
   CreateLeaveRequest,
@@ -358,19 +359,17 @@ export default function StaffLeavePage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
+                    onChange={(value) => setStartDate(value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 [color-scheme:light] dark:[color-scheme:dark]"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
+                    onChange={(value) => setEndDate(value)}
                     min={startDate}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500 [color-scheme:light] dark:[color-scheme:dark]"
                   />

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import {
   annixOrbitApiClient,
   type EeReportResponse,
@@ -69,19 +70,17 @@ export default function EeReportPage() {
       <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6 flex flex-wrap items-end gap-4">
         <label className="flex flex-col text-sm">
           <span className="text-gray-700 mb-1">From</span>
-          <input
-            type="date"
+          <DateInput
             value={dateFrom}
-            onChange={(event) => setDateFrom(event.target.value)}
+            onChange={(value) => setDateFrom(value)}
             className="border border-gray-300 rounded px-2 py-1"
           />
         </label>
         <label className="flex flex-col text-sm">
           <span className="text-gray-700 mb-1">To</span>
-          <input
-            type="date"
+          <DateInput
             value={dateTo}
-            onChange={(event) => setDateTo(event.target.value)}
+            onChange={(value) => setDateTo(value)}
             className="border border-gray-300 rounded px-2 py-1"
           />
         </label>

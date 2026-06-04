@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import {
   auRubberApiClient,
   type CreateBlogPostDto,
@@ -204,10 +205,9 @@ export default function BlogPostEditorPage() {
               />
             </Field>
             <Field label="Publish date">
-              <input
-                type="date"
+              <DateInput
                 value={publishedAtDate}
-                onChange={(e) => setPublishedAtDate(e.target.value)}
+                onChange={(value) => setPublishedAtDate(value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
               />
             </Field>

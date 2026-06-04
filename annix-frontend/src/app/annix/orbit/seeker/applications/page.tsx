@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { SeekerApplication, SeekerApplicationStatus } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -352,10 +353,9 @@ function AcceptEmploymentModal(props: {
         <div className="grid grid-cols-2 gap-3">
           <label className="block">
             <span className="text-sm text-gray-700">Start date</span>
-            <input
-              type="date"
+            <DateInput
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(value) => setStartDate(value)}
               className={inputClass}
             />
           </label>

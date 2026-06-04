@@ -2,6 +2,7 @@
 
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 // eslint-disable-next-line no-restricted-imports -- Token-based public inspection response page; requires new unauthenticated hooks for inspection booking and response flows. Tracked as tech debt.
 import { browserBaseUrl } from "@/lib/api-config";
 
@@ -232,10 +233,9 @@ export default function InspectionRespondPage() {
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Proposed date</label>
-              <input
-                type="date"
+              <DateInput
                 value={proposedDate}
-                onChange={(e) => setProposedDate(e.target.value)}
+                onChange={(value) => setProposedDate(value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
               />
             </div>

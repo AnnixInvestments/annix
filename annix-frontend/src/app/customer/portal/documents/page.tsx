@@ -9,6 +9,7 @@ import {
   PreviewModalState,
 } from "@/app/components/DocumentPreviewModal";
 import { FeatureGate } from "@/app/components/FeatureGate";
+import { DateInput } from "@/app/components/ui/DateInput";
 import {
   type CustomerCompanyDto,
   type CustomerDocument,
@@ -664,10 +665,9 @@ function CustomerDocumentsContent() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Expiry Date (optional)
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={expiryDate}
-                    onChange={(e) => setExpiryDate(e.target.value)}
+                    onChange={(value) => setExpiryDate(value)}
                     min={now().toISODate() ?? ""}
                     max="2099-12-31"
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"

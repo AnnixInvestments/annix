@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { QcEnvironmentalRecordResponse } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { now } from "@/app/lib/datetime";
@@ -95,10 +96,9 @@ export function EnvironmentalRecordForm(props: EnvironmentalRecordFormProps) {
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Date <span className="text-red-500">*</span>
           </label>
-          <input
-            type="date"
+          <DateInput
             value={recordDate}
-            onChange={(e) => setRecordDate(e.target.value)}
+            onChange={(value) => setRecordDate(value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             required
           />

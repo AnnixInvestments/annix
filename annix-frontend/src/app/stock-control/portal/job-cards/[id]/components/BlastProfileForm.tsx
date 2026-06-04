@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { CoatingAnalysis, IssuanceBatchRecord } from "@/app/lib/api/stockControlApi";
 import {
   type QcBlastProfileEntry,
@@ -244,10 +245,9 @@ export default function BlastProfileForm(props: BlastProfileFormProps) {
         </div>
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">Reading Date *</label>
-          <input
-            type="date"
+          <DateInput
             value={readingDate}
-            onChange={(e) => setReadingDate(e.target.value)}
+            onChange={(value) => setReadingDate(value)}
             className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             required
           />

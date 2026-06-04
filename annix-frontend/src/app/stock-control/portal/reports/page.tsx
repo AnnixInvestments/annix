@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import type { StaffStockFilters } from "@/app/lib/api/stockControlApi";
 import { formatDateZA, now } from "@/app/lib/datetime";
@@ -399,21 +400,17 @@ export default function ReportsPage() {
         <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">Start Date</label>
-            <input
-              type="date"
+            <DateInput
               value={movementFilters.startDate}
-              onChange={(e) =>
-                setMovementFilters({ ...movementFilters, startDate: e.target.value })
-              }
+              onChange={(value) => setMovementFilters({ ...movementFilters, startDate: value })}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
             />
           </div>
           <div>
             <label className="mb-1 block text-xs font-medium text-gray-700">End Date</label>
-            <input
-              type="date"
+            <DateInput
               value={movementFilters.endDate}
-              onChange={(e) => setMovementFilters({ ...movementFilters, endDate: e.target.value })}
+              onChange={(value) => setMovementFilters({ ...movementFilters, endDate: value })}
               className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
             />
           </div>
@@ -603,19 +600,17 @@ export default function ReportsPage() {
           <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-end sm:gap-4">
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-700">Start Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={rawStartDate || ""}
-                onChange={(e) => setStaffFilters({ ...staffFilters, startDate: e.target.value })}
+                onChange={(value) => setStaffFilters({ ...staffFilters, startDate: value })}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
               />
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-gray-700">End Date</label>
-              <input
-                type="date"
+              <DateInput
                 value={rawEndDate || ""}
-                onChange={(e) => setStaffFilters({ ...staffFilters, endDate: e.target.value })}
+                onChange={(value) => setStaffFilters({ ...staffFilters, endDate: value })}
                 className="w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm sm:w-auto"
               />
             </div>

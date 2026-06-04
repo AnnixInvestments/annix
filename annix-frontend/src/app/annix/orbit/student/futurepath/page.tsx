@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   OrbitEducationCurriculum,
   SeekerEducationApplicationStatus,
@@ -378,10 +379,9 @@ export default function FuturePathPage() {
           </label>
           <label className="text-sm">
             <span className="block text-gray-600 mb-1">Date of birth</span>
-            <input
-              type="date"
+            <DateInput
               value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
+              onChange={(value) => setDateOfBirth(value)}
               className="w-full rounded border border-gray-300 px-3 py-2"
             />
             {isMinor === true ? (

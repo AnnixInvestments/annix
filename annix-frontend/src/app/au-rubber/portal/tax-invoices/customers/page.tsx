@@ -22,6 +22,7 @@ import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { waitForReExtractionComplete } from "@/app/au-rubber/lib/waitForReExtractionComplete";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import {
@@ -966,10 +967,9 @@ export default function CustomerTaxInvoicesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Invoice Date</label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={uploadInvoiceDate}
-                    onChange={(e) => setUploadInvoiceDate(e.target.value)}
+                    onChange={(value) => setUploadInvoiceDate(value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-orange-500 focus:ring-orange-500 sm:text-sm border p-2"
                   />
                 </div>

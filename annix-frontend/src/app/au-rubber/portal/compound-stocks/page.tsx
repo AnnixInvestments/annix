@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { toastError } from "@/app/lib/api/apiError";
 import {
   auRubberApiClient,
@@ -1347,14 +1348,12 @@ export default function CompoundStocksPage() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Date</label>
-                      <input
-                        type="date"
+                      <DateInput
                         value={rawOpeningStockFormDate || ""}
-                        onChange={(e) => {
-                          const rawTargetValue2 = e.target.value;
+                        onChange={(value) => {
                           setOpeningStockForm({
                             ...openingStockForm,
-                            date: rawTargetValue2 || null,
+                            date: value || null,
                           });
                         }}
                         className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 sm:text-sm border p-2"

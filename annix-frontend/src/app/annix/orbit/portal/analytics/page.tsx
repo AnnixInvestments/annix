@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { fromISO, now } from "@/app/lib/datetime";
 import {
@@ -263,17 +264,15 @@ export default function AnalyticsPage() {
             ))}
           </div>
           <div className="flex items-center gap-2 ml-auto">
-            <input
-              type="date"
+            <DateInput
               value={dateFrom}
-              onChange={(e) => handleDateChange(e.target.value, dateTo)}
+              onChange={(value) => handleDateChange(value, dateTo)}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-[#f0f0fc]0"
             />
             <span className="text-sm text-gray-500">to</span>
-            <input
-              type="date"
+            <DateInput
               value={dateTo}
-              onChange={(e) => handleDateChange(dateFrom, e.target.value)}
+              onChange={(value) => handleDateChange(dateFrom, value)}
               className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-[#f0f0fc]0"
             />
           </div>

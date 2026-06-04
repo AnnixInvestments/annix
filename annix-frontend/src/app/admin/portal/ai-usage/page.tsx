@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { AiUsageQueryParams } from "@/app/lib/api/adminApi";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
 import { useAiUsageLogs } from "@/app/lib/query/hooks";
@@ -138,19 +139,15 @@ export default function AiUsagePage() {
           ))}
         </select>
 
-        <input
-          type="date"
+        <DateInput
           value={filterFrom}
-          onChange={(e) => updateFilter("from", e.target.value)}
-          placeholder="From"
+          onChange={(value) => updateFilter("from", value)}
           className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
         />
 
-        <input
-          type="date"
+        <DateInput
           value={filterTo}
-          onChange={(e) => updateFilter("to", e.target.value)}
-          placeholder="To"
+          onChange={(value) => updateFilter("to", value)}
           className="rounded-md border border-gray-300 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-700 dark:text-white"
         />
       </div>

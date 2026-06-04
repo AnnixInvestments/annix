@@ -20,6 +20,7 @@ import {
   TableLoadingState,
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -1004,10 +1005,9 @@ export default function CustomerDeliveryNotesPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Delivery Date</label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={uploadDeliveryDate}
-                    onChange={(e) => setUploadDeliveryDate(e.target.value)}
+                    onChange={(value) => setUploadDeliveryDate(value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm border p-2"
                   />
                 </div>

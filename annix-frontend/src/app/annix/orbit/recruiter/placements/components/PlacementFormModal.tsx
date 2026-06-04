@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { OrbitClient, OrbitPlacement, OrbitPlacementInput } from "@/app/lib/api/annixOrbitApi";
 import { useOrbitCreatePlacement, useOrbitUpdatePlacement } from "@/app/lib/query/hooks";
 
@@ -219,11 +220,10 @@ export function PlacementFormModal(props: PlacementFormModalProps) {
               <label htmlFor="pl-start" className="block text-sm font-medium text-gray-700 mb-1">
                 Start date
               </label>
-              <input
+              <DateInput
                 id="pl-start"
-                type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={(value) => setStartDate(value)}
                 className={inputClasses}
               />
             </div>
@@ -235,11 +235,10 @@ export function PlacementFormModal(props: PlacementFormModalProps) {
               >
                 Guarantee until
               </label>
-              <input
+              <DateInput
                 id="pl-guarantee"
-                type="date"
                 value={guaranteeUntil}
-                onChange={(e) => setGuaranteeUntil(e.target.value)}
+                onChange={(value) => setGuaranteeUntil(value)}
                 className={inputClasses}
               />
             </div>

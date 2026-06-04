@@ -21,6 +21,7 @@ import { RollRejectionsPanel } from "@/app/au-rubber/components/RollRejectionsPa
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { useAuRubberAuth } from "@/app/context/AuRubberAuthContext";
 import { toastError } from "@/app/lib/api/apiError";
 import {
@@ -746,10 +747,9 @@ export default function SupplierCocDetailPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-500">Production Date</label>
-                <input
-                  type="date"
+                <DateInput
                   value={editFields.productionDate}
-                  onChange={(e) => setEditFields({ ...editFields, productionDate: e.target.value })}
+                  onChange={(value) => setEditFields({ ...editFields, productionDate: value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
                 />
               </div>
@@ -781,10 +781,9 @@ export default function SupplierCocDetailPage() {
               )}
               <div>
                 <label className="block text-sm font-medium text-gray-500">Created</label>
-                <input
-                  type="date"
+                <DateInput
                   value={editFields.createdAt}
-                  onChange={(e) => setEditFields({ ...editFields, createdAt: e.target.value })}
+                  onChange={(value) => setEditFields({ ...editFields, createdAt: value })}
                   className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-yellow-500 focus:ring-yellow-500 text-sm"
                 />
               </div>

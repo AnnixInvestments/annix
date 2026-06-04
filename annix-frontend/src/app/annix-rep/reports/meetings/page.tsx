@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { formatDateZA, now } from "@/app/lib/datetime";
 import { useExportReportPdf, useMeetingOutcomesReport } from "@/app/lib/query/hooks";
 import { ReportSkeleton } from "../../components/Skeleton";
@@ -155,17 +156,15 @@ function MeetingOutcomesReportContent() {
       </div>
 
       <div className="flex items-center justify-center gap-4">
-        <input
-          type="date"
+        <DateInput
           value={startDate}
-          onChange={(e) => handleDateChange(e.target.value, endDate)}
+          onChange={(value) => handleDateChange(value, endDate)}
           className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
         />
         <span className="text-gray-500">to</span>
-        <input
-          type="date"
+        <DateInput
           value={endDate}
-          onChange={(e) => handleDateChange(startDate, e.target.value)}
+          onChange={(value) => handleDateChange(startDate, value)}
           className="px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white"
         />
       </div>

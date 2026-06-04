@@ -3,6 +3,7 @@
 import { toPairs as entries, keys } from "es-toolkit/compat";
 import { useCallback, useRef, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type {
   IssuanceBatchRecord,
   StockControlSupplierDto,
@@ -1572,10 +1573,9 @@ function UploadCertificateModal({
             <label className="block text-sm font-medium text-gray-700">
               Expiry Date (optional)
             </label>
-            <input
-              type="date"
+            <DateInput
               value={expiryDate}
-              onChange={(e) => setExpiryDate(e.target.value)}
+              onChange={(value) => setExpiryDate(value)}
               className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
             />
           </div>

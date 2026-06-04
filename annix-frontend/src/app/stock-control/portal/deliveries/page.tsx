@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
 import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stockControlApi";
 // eslint-disable-next-line no-restricted-imports -- SdnStatus is an enum value (not type) used in runtime checks; enum is colocated with API types. Tracked as tech debt per Phase 9 of annix/annix#191.
@@ -658,12 +659,9 @@ export default function DeliveriesPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Received Date</label>
-                    <input
-                      type="date"
+                    <DateInput
                       value={createForm.receivedDate}
-                      onChange={(e) =>
-                        setCreateForm({ ...createForm, receivedDate: e.target.value })
-                      }
+                      onChange={(value) => setCreateForm({ ...createForm, receivedDate: value })}
                       className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 sm:text-sm"
                     />
                   </div>

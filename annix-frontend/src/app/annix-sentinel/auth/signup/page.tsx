@@ -24,6 +24,7 @@ import {
 } from "@/app/annix-sentinel/config/onboardingConstants";
 import { signup } from "@/app/annix-sentinel/lib/api";
 import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
+import { DateInput } from "@/app/components/ui/DateInput";
 
 type EntityType = "individual" | "company" | "trust";
 
@@ -1271,12 +1272,10 @@ export default function SignupPage() {
                         >
                           Date of Birth
                         </label>
-                        <input
+                        <DateInput
                           id="dateOfBirth"
-                          type="date"
                           value={form.dateOfBirth}
-                          onChange={(e) => updateField("dateOfBirth", e.target.value)}
-                          aria-invalid={!!fieldErrors.dateOfBirth}
+                          onChange={(value) => updateField("dateOfBirth", value)}
                           className={fieldClass(!!fieldErrors.dateOfBirth)}
                         />
                         {fieldErrors.dateOfBirth && (

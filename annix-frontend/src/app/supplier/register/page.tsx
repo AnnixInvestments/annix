@@ -20,6 +20,7 @@ import {
   TermsAndConditions,
 } from "@/app/components/registration";
 import { CurrencySelect, DEFAULT_CURRENCY } from "@/app/components/ui/CurrencySelect";
+import { DateInput } from "@/app/components/ui/DateInput";
 import { useDeviceFingerprint } from "@/app/hooks/useDeviceFingerprint";
 import { SupplierCompanyDto, SupplierProfileDto, supplierAuthApi } from "@/app/lib/api/supplierApi";
 import {
@@ -886,13 +887,12 @@ export default function SupplierRegistrationPage() {
                   <label className="block text-sm font-medium text-gray-700">
                     B-BBEE Certificate Expiry Date <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DateInput
                     value={(() => {
                       const rawBeeCertificateExpiry = company.beeCertificateExpiry;
                       return rawBeeCertificateExpiry || "";
                     })()}
-                    onChange={(e) => handleCompanyChange("beeCertificateExpiry", e.target.value)}
+                    onChange={(value) => handleCompanyChange("beeCertificateExpiry", value)}
                     className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   />
                 </div>
