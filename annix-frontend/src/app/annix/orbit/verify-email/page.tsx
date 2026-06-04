@@ -17,6 +17,7 @@ function VerifyEmailContent() {
   const [resendEmail, setResendEmail] = useState("");
   const [isResending, setIsResending] = useState(false);
   const [resendMessage, setResendMessage] = useState<string | null>(null);
+  const [verifiedEmail, setVerifiedEmail] = useState("");
 
   useEffect(() => {
     if (!token) {
@@ -51,9 +52,11 @@ function VerifyEmailContent() {
 
         if (cancelled) return;
         setStatus("success");
+        setVerifiedEmail(response.email);
         const verifiedMessage = response.message;
         setMessage(verifiedMessage ? verifiedMessage : "Email verified. You can now sign in.");
-        setTimeout(() => router.push("/annix/orbit/login"), 2000);
+        const loginUrl = `/annix/orbit/login?email=${encodeURIComponent(response.email)}`;
+        setTimeout(() => router.push(loginUrl), 2000);
       } catch (err) {
         if (cancelled) return;
         setStatus("error");
@@ -121,7 +124,7 @@ function VerifyEmailContent() {
               <p className="text-gray-600 mb-6">{message}</p>
               {!autoSignedIn && (
                 <Link
-                  href="/annix/orbit/login"
+                  href={`/annix/orbit/login?email=${encodeURIComponent(verifiedEmail)}`}
                   className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
                 >
                   Sign in
