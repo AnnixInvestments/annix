@@ -151,6 +151,10 @@ export const annixOrbitKeys = {
     all: ["annix-orbit", "credential-types"] as const,
     list: () => ["annix-orbit", "credential-types", "list"] as const,
   },
+  dismissReasons: {
+    all: ["annix-orbit", "dismiss-reasons"] as const,
+    list: () => ["annix-orbit", "dismiss-reasons", "list"] as const,
+  },
   seekerApplications: {
     all: ["annix-orbit", "seeker", "applications"] as const,
     list: () => ["annix-orbit", "seeker", "applications", "list"] as const,

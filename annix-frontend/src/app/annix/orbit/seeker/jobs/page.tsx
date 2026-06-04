@@ -32,6 +32,7 @@ import {
   useOrbitMyProfileStatus,
   useOrbitSeekerBrowseJobs,
   useOrbitSeekerColdStartJobs,
+  useOrbitSeekerDismissReasons,
   useOrbitSeekerEntitlements,
   useOrbitSeekerMatchingConsent,
   useOrbitSeekerRecommendedJobs,
@@ -102,6 +103,9 @@ export default function SeekerJobsPage() {
   const coldStartEnabled =
     consentEnabled && recommendedReady && !recommendedHasMatches && !filtersActive;
   const coldStartQuery = useOrbitSeekerColdStartJobs(coldStartEnabled);
+  const dismissReasonsQuery = useOrbitSeekerDismissReasons();
+  const dismissReasonsData = dismissReasonsQuery.data;
+  const dismissReasons = dismissReasonsData ? dismissReasonsData : [];
   const dismissMutation = useOrbitDismissSeekerMatch();
   const rematchMutation = useOrbitSeekerRematch();
   const muteCompanyMutation = useOrbitMuteSeekerCompany();
@@ -664,6 +668,7 @@ export default function SeekerJobsPage() {
               match={match}
               onApply={handleApply}
               onDismiss={handleDismiss}
+              dismissReasons={dismissReasons}
               onMuteCompany={handleMuteCompany}
               onMuteCategory={handleMuteCategory}
               isDismissing={

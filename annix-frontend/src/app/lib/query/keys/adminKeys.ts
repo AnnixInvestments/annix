@@ -120,6 +120,10 @@ export const adminKeys = {
     all: ["admin", "orbitCredentialTypes"] as const,
     list: () => [...adminKeys.orbitCredentialTypes.all, "list"] as const,
   },
+  orbitDismissReasons: {
+    all: ["admin", "orbitDismissReasons"] as const,
+    list: () => [...adminKeys.orbitDismissReasons.all, "list"] as const,
+  },
   sso: {
     all: ["admin", "sso"] as const,
     identityReconciliation: () => [...adminKeys.sso.all, "identityReconciliation"] as const,

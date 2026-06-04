@@ -174,6 +174,15 @@ const orbitAdminCards: AppHubCard[] = [
     hoverColor: "hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/orbit/dismiss-reasons",
+    title: "Dismiss reasons",
+    description:
+      "Manage the 'Not for me' reasons seekers pick on a job — add, edit, reorder and set mute actions.",
+    icon: <CredentialsIcon />,
+    color: "bg-rose-100 text-rose-600",
+    hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
+  },
+  {
     href: "/admin/portal/branding/annix-orbit",
     title: "Branding",
     description: "Orbit brand — logo, colours, tagline and watermark.",

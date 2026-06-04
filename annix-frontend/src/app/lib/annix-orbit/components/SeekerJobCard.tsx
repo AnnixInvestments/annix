@@ -5,20 +5,16 @@ import { createPortal } from "react-dom";
 import { providerBadgeLabel } from "@/app/lib/annix-orbit/provider-labels";
 import type { SeekerRecommendedJob } from "@/app/lib/api/annixOrbitApi";
 
-export const DISMISS_REASONS: Array<{ key: string; label: string }> = [
-  { key: "wrong_location", label: "Wrong location" },
-  { key: "too_senior", label: "Too senior for me" },
-  { key: "too_junior", label: "Too junior for me" },
-  { key: "wrong_field", label: "Wrong field / industry" },
-  { key: "pay_too_low", label: "Pay too low" },
-  { key: "not_company", label: "Not interested in this company" },
-  { key: "other", label: "Just not interested" },
-];
+export interface DismissReasonOption {
+  code: string;
+  label: string;
+}
 
 interface SeekerJobCardProps {
   match: SeekerRecommendedJob;
   onApply: (match: SeekerRecommendedJob) => void;
   onDismiss: (matchId: number, reason?: string) => void;
+  dismissReasons?: DismissReasonOption[];
   onMuteCompany?: (company: string) => void;
   onMuteCategory?: (category: string) => void;
   isDismissing?: boolean;
@@ -35,6 +31,8 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
   const muteCompanyHandler = props.onMuteCompany;
   const muteCategoryHandler = props.onMuteCategory;
   const hasMuteOptions = Boolean(muteCompanyHandler) || Boolean(muteCategoryHandler);
+  const propsDismissReasons = props.dismissReasons;
+  const dismissReasonOptions = propsDismissReasons ? propsDismissReasons : [];
   const overall = Math.round(match.overallScore * 100);
   const matchDetails = match.matchDetails;
   const detailsReasoning = matchDetails ? matchDetails.reasoning : null;
@@ -142,7 +140,11 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
 
       <div className="mt-4 flex items-center justify-between">
         <div className="relative flex items-center">
-          <DismissReasonMenu onDismiss={handleDismiss} disabled={props.isDismissing} />
+          <DismissReasonMenu
+            reasons={dismissReasonOptions}
+            onDismiss={handleDismiss}
+            disabled={props.isDismissing}
+          />
           {hasMuteOptions ? (
             <MoreOptionsMenu
               company={muteCompanyHandler ? job.company : null}
@@ -166,7 +168,11 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
   );
 }
 
-function DismissReasonMenu(props: { onDismiss: (reason: string) => void; disabled?: boolean }) {
+function DismissReasonMenu(props: {
+  reasons: DismissReasonOption[];
+  onDismiss: (reason: string) => void;
+  disabled?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -225,13 +231,13 @@ function DismissReasonMenu(props: { onDismiss: (reason: string) => void; disable
               <p className="px-3 pt-1 pb-1.5 text-[11px] font-medium text-gray-400">
                 Why isn't this for you?
               </p>
-              {DISMISS_REASONS.map((reason) => (
+              {props.reasons.map((reason) => (
                 <button
-                  key={reason.key}
+                  key={reason.code}
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    props.onDismiss(reason.key);
+                    props.onDismiss(reason.code);
                     setOpen(false);
                   }}
                   className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"

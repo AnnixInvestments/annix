@@ -1279,6 +1279,33 @@ class AdminApiClient {
   async deleteOrbitCredentialType(id: number): Promise<{ success: boolean }> {
     return this.request(`/admin/annix-orbit/credential-types/${id}`, { method: "DELETE" });
   }
+
+  async orbitDismissReasons(): Promise<OrbitDismissReason[]> {
+    return this.request("/admin/annix-orbit/dismiss-reasons");
+  }
+
+  async createOrbitDismissReason(
+    input: CreateOrbitDismissReasonInput,
+  ): Promise<OrbitDismissReason> {
+    return this.request("/admin/annix-orbit/dismiss-reasons", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async updateOrbitDismissReason(
+    id: number,
+    input: UpdateOrbitDismissReasonInput,
+  ): Promise<OrbitDismissReason> {
+    return this.request(`/admin/annix-orbit/dismiss-reasons/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deleteOrbitDismissReason(id: number): Promise<{ success: boolean }> {
+    return this.request(`/admin/annix-orbit/dismiss-reasons/${id}`, { method: "DELETE" });
+  }
 }
 
 export interface OrbitSeekerMatchTier {
@@ -1433,6 +1460,32 @@ export interface CreateOrbitCredentialTypeInput {
 export interface UpdateOrbitCredentialTypeInput {
   label?: string;
   description?: string | null;
+  sortOrder?: number;
+  active?: boolean;
+}
+
+export type DismissReasonMuteAction = "company" | "category";
+
+export interface OrbitDismissReason {
+  id: number;
+  code: string;
+  label: string;
+  muteAction: DismissReasonMuteAction | null;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface CreateOrbitDismissReasonInput {
+  code: string;
+  label: string;
+  muteAction: DismissReasonMuteAction | null;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface UpdateOrbitDismissReasonInput {
+  label?: string;
+  muteAction?: DismissReasonMuteAction | null;
   sortOrder?: number;
   active?: boolean;
 }

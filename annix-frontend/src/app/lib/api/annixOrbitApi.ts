@@ -2367,6 +2367,10 @@ class AnnixOrbitApiClient {
     });
   }
 
+  async listSeekerDismissReasons(): Promise<SeekerDismissReason[]> {
+    return this.request("/annix-orbit/seeker/jobs/dismiss-reasons");
+  }
+
   async triggerSeekerRematch(): Promise<SeekerRematchResponse> {
     return this.request("/annix-orbit/seeker/jobs/rematch", { method: "POST" });
   }
@@ -3081,6 +3085,15 @@ export interface SeekerMute {
   companyName: string | null;
   category: string | null;
   mutedAt: string;
+}
+
+export interface SeekerDismissReason {
+  id: number;
+  code: string;
+  label: string;
+  muteAction: "company" | "category" | null;
+  sortOrder: number;
+  active: boolean;
 }
 
 export const annixOrbitApiClient = new AnnixOrbitApiClient();

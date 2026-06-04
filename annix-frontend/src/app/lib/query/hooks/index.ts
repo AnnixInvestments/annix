@@ -35,6 +35,12 @@ export {
   useAdminUpdateOrbitCredentialType,
 } from "./admin/useAdminOrbitCredentialTypes";
 export {
+  useAdminCreateOrbitDismissReason,
+  useAdminDeleteOrbitDismissReason,
+  useAdminOrbitDismissReasons,
+  useAdminUpdateOrbitDismissReason,
+} from "./admin/useAdminOrbitDismissReasons";
+export {
   useAdminDeleteOrbitEeTarget,
   useAdminOrbitEeTargets,
   useAdminUpsertOrbitEeTarget,
@@ -369,6 +375,7 @@ export {
   useOrbitRevokeSeekerMute,
   useOrbitSeekerBrowseJobs,
   useOrbitSeekerColdStartJobs,
+  useOrbitSeekerDismissReasons,
   useOrbitSeekerJobStats,
   useOrbitSeekerMatchingConsent,
   useOrbitSeekerMutes,

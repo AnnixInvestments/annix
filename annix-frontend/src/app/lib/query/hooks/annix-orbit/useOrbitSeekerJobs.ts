@@ -3,6 +3,7 @@ import {
   annixOrbitApiClient,
   type PublicJob,
   type SeekerColdStartJobsResponse,
+  type SeekerDismissReason,
   type SeekerJobStats,
   type SeekerMatchingConsentStatus,
   type SeekerMute,
@@ -69,6 +70,15 @@ export function useOrbitSeekerBrowseJobs(
         limit: params?.limit,
       });
     },
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitSeekerDismissReasons(enabled: boolean = true) {
+  return useQuery<SeekerDismissReason[]>({
+    queryKey: annixOrbitKeys.dismissReasons.list(),
+    queryFn: () => annixOrbitApiClient.listSeekerDismissReasons(),
     enabled,
     staleTime: 5 * 60 * 1000,
   });
