@@ -5,7 +5,7 @@ category: Job Search
 roles: [seeker, individual]
 order: 2
 tags: [jobs, matching, seeker, adzuna, remotive, executive placements, job placements, jobmail]
-lastUpdated: 2026-06-04
+lastUpdated: 2026-06-05
 summary: How Annix Orbit pulls and ranks jobs from external sources against the CV you uploaded.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/annix/orbit/seeker/jobs, annix-frontend/src/app/lib/annix-orbit/components/SeekerJobCard.tsx, annix-backend/src/annix-orbit/services/seeker-job-feed.service.ts, annix-backend/src/annix-orbit/controllers/seeker-jobs.controller.ts, annix-backend/src/annix-orbit/services/crawl/sitemap-crawl-ingestion.service.ts, annix-backend/src/annix-orbit/services/remotive.service.ts, annix-backend/src/annix-orbit/services/dpsa-circular.service.ts]
@@ -54,6 +54,22 @@ location compared.
    the source site, click **Job Delisted** on the card to report it. Our team
    reviews each report, and once confirmed the job is removed for everyone so
    it stops appearing in matches and Browse Jobs.
+
+## "Help me Find a Job" — searching in the background
+
+When you tap **Help me Find a Job**, Nix reads your CV and searches the job
+boards. This takes a minute or two and runs on our servers, so you don't have
+to keep watching the screen:
+
+- You can lock your phone or switch to another app — the search keeps running.
+- If you've installed Annix Orbit to your home screen and allowed
+  notifications, you'll get a **push notification** when your matches are
+  ready.
+- Either way, when you come back to Browse Jobs a **banner** tells you your
+  new matches have landed.
+
+The first time you run a search we'll ask permission to send notifications —
+allow it so we can tell you the moment your matches are ready.
 
 ## Filtering matches
 

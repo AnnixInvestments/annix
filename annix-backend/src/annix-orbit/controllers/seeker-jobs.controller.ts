@@ -233,7 +233,7 @@ export class SeekerJobsController {
 
   @Post("rematch")
   async rematch(@Request() req: SeekerAuthRequest) {
-    const result = await this.feedService.rematchForSeeker(req.user.email);
+    const result = await this.feedService.rematchForSeeker(req.user.email, req.user.id);
     if (!result.triggered) {
       if (result.reason === "no-candidate") {
         throw new BadRequestException("Upload a CV before requesting a rematch");

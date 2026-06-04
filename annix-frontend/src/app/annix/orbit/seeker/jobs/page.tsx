@@ -41,10 +41,43 @@ import {
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerRematch,
 } from "@/app/lib/query/hooks";
+import { useOrbitPushNotifications } from "../../hooks/useOrbitPushNotifications";
+
+const NIX_SEARCH_PENDING_KEY = "orbit-nix-search-pending";
+const NIX_SEARCH_PENDING_TTL_MS = 12 * 60 * 1000;
+
+interface NixPendingSearch {
+  startCount: number;
+  startedAt: number;
+}
 
 // Paid feature — Nix-powered job matching. Toggled on for testing; will become
 // a subscription gate.
 const HELP_ME_FIND_A_JOB_ENABLED = true;
+
+function readNixPending(): NixPendingSearch | null {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+  if (typeof window === "undefined") return null;
+  const raw = window.localStorage.getItem(NIX_SEARCH_PENDING_KEY);
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as NixPendingSearch;
+  } catch {
+    return null;
+  }
+}
+
+function writeNixPending(value: NixPendingSearch): void {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(NIX_SEARCH_PENDING_KEY, JSON.stringify(value));
+}
+
+function clearNixPending(): void {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(NIX_SEARCH_PENDING_KEY);
+}
 
 export default function SeekerJobsPage() {
   const { showToast } = useToast();
@@ -123,6 +156,7 @@ export default function SeekerJobsPage() {
   const muteCompanyMutation = useOrbitMuteSeekerCompany();
   const muteCategoryMutation = useOrbitMuteSeekerCategory();
   const reportDelistedMutation = useOrbitReportJobDelisted();
+  const pushNotifications = useOrbitPushNotifications();
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
   const [nixSearching, setNixSearching] = useState<boolean>(false);
   const [nixSearchEstimateMs, setNixSearchEstimateMs] = useState<number>(90_000);
@@ -137,6 +171,47 @@ export default function SeekerJobsPage() {
       })
       .catch(() => {});
   }, []);
+
+  // When the page regains focus/visibility, refetch so a search that finished
+  // while the user was away (locked screen / another tab) is reflected promptly.
+  const recommendedRefetch = recommendedQuery.refetch;
+  useEffect(() => {
+    const handleVisible = () => {
+      if (document.visibilityState === "visible") {
+        recommendedRefetch().catch(() => {});
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisible);
+    window.addEventListener("focus", handleVisible);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisible);
+      window.removeEventListener("focus", handleVisible);
+    };
+  }, [recommendedRefetch]);
+
+  // Return-banner: if a Nix search was pending and matches have since landed,
+  // surface a banner — works whether the user stayed, locked their screen, or
+  // navigated away and came back.
+  const recommendedDataForBanner = recommendedQuery.data;
+  useEffect(() => {
+    // While a search is actively being watched (modal up), runNixSearch handles
+    // the success toast — only the "returned after leaving" case needs a banner.
+    if (nixSearching) return;
+    if (!recommendedDataForBanner) return;
+    const pending = readNixPending();
+    if (!pending) return;
+    const matchCount = recommendedDataForBanner.matches.length;
+    if (matchCount > pending.startCount) {
+      clearNixPending();
+      const added = matchCount - pending.startCount;
+      showToast(
+        `Your Nix matches are ready — ${added} new role${added === 1 ? "" : "s"} matched to your CV.`,
+        "success",
+      );
+    } else if (nowMillis() - pending.startedAt > NIX_SEARCH_PENDING_TTL_MS) {
+      clearNixPending();
+    }
+  }, [recommendedDataForBanner, showToast, nixSearching]);
 
   const browseJobsEnabled = profileReady;
   const [browseLimit, setBrowseLimit] = useState(100);
@@ -445,6 +520,10 @@ export default function SeekerJobsPage() {
     setNixSearching(true);
     const recommendedData = recommendedQuery.data;
     const startCount = recommendedData ? recommendedData.matches.length : 0;
+    // Record the search so that if the user locks their screen or leaves the
+    // page, the return-banner (and the completion push) can still tell them
+    // when matches land.
+    writeNixPending({ startCount, startedAt: nowMillis() });
     let quotaBlock: { used: number; allowance: number } | null = null;
     try {
       // The branded progress popup wraps the whole search so it appears the moment
@@ -484,6 +563,7 @@ export default function SeekerJobsPage() {
         },
       );
       if (outcome === "quota") {
+        clearNixPending();
         const block = quotaBlock as { used: number; allowance: number } | null;
         const allowance = block ? block.allowance : 0;
         await consentQuery.refetch().catch(() => {});
@@ -495,11 +575,18 @@ export default function SeekerJobsPage() {
           hideCancel: true,
         });
       } else if (outcome === "found") {
+        clearNixPending();
         showToast("Nix found jobs that match your CV.", "success");
       } else if (outcome === "cooldown") {
+        clearNixPending();
         showToast("Nix searched recently — your matches are up to date.", "info");
       } else {
-        showToast("Nix is still searching — your matches will appear here shortly.", "info");
+        // Still running server-side — keep the pending marker so the return-banner
+        // and push notification surface the result once matches land.
+        showToast(
+          "Nix is still searching — you can leave this page and we'll let you know when your matches are ready.",
+          "info",
+        );
       }
     } catch {
       showToast("Nix couldn't finish the search — please try again in a moment.", "error");
@@ -511,6 +598,9 @@ export default function SeekerJobsPage() {
   // "Help me Find a Job": no CV → send to the CV page; CV present → fire Nix
   // (grant consent first if needed, which kicks off matching, otherwise rematch).
   const handleHelpFindJob = async () => {
+    // Best-effort: ask to enable notifications (within this click gesture) so a
+    // completion push can reach the user if they lock their screen / leave.
+    void pushNotifications.requestPermissionAndSubscribe();
     if (!consentGranted) {
       consentPromptShown.current = false;
       setConsentDeclined(false);

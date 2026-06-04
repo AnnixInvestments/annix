@@ -19,25 +19,22 @@ export class NotificationController {
 
   @Post("subscribe")
   async subscribe(
-    @Request() req: { user: { userId: number; companyId: number } },
+    @Request() req: { user: { id: number; companyId: number } },
     @Body() body: { endpoint: string; keys: { p256dh: string; auth: string } },
   ) {
-    await this.notificationService.subscribe(req.user.userId, req.user.companyId, body);
+    await this.notificationService.subscribe(req.user.id, req.user.companyId, body);
     return { message: "Subscribed to push notifications" };
   }
 
   @Delete("unsubscribe")
-  async unsubscribe(
-    @Request() req: { user: { userId: number } },
-    @Body() body: { endpoint: string },
-  ) {
-    await this.notificationService.unsubscribe(req.user.userId, body.endpoint);
+  async unsubscribe(@Request() req: { user: { id: number } }, @Body() body: { endpoint: string }) {
+    await this.notificationService.unsubscribe(req.user.id, body.endpoint);
     return { message: "Unsubscribed from push notifications" };
   }
 
   @Get("preferences")
-  async preferences(@Request() req: { user: { userId: number } }) {
-    const user = await this.userRepo.findById(req.user.userId);
+  async preferences(@Request() req: { user: { id: number } }) {
+    const user = await this.userRepo.findById(req.user.id);
     return {
       matchAlertThreshold: user?.matchAlertThreshold ?? 80,
       digestEnabled: user?.digestEnabled ?? true,
@@ -47,7 +44,7 @@ export class NotificationController {
 
   @Patch("preferences")
   async updatePreferences(
-    @Request() req: { user: { userId: number } },
+    @Request() req: { user: { id: number } },
     @Body() body: { matchAlertThreshold?: number; digestEnabled?: boolean; pushEnabled?: boolean },
   ) {
     const updates: Partial<AnnixOrbitUser> = {};
@@ -62,7 +59,7 @@ export class NotificationController {
       updates.pushEnabled = body.pushEnabled;
     }
 
-    await this.userRepo.updatePreferences(req.user.userId, updates);
+    await this.userRepo.updatePreferences(req.user.id, updates);
     return { message: "Notification preferences updated" };
   }
 }
