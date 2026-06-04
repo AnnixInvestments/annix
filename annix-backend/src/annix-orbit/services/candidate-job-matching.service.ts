@@ -33,6 +33,14 @@ const TOP_MATCHES_LIMIT = 20;
 // Trailblazer) — keeps generation/scoring bounded for performance.
 const UNLIMITED_MATCH_CEILING = 150;
 
+// "Not for me" learning: down-weight a job whose embedding is very close to a
+// job the seeker already dismissed. Gentle + tunable — only jobs above the
+// similarity threshold are nudged down, and never by more than the max, so the
+// feed is refined rather than starved.
+const DISMISS_SIM_THRESHOLD = 0.85;
+const MAX_DISMISS_PENALTY = 0.15;
+const DISMISS_PENALTY_SCALE = 1.0;
+
 const CATEGORY_BOOST_CAP_BY_TIER: Record<MatchTier, number> = {
   soft: 0.06,
   medium: 0.1,
@@ -144,6 +152,7 @@ export class CandidateJobMatchingService {
     } else {
       const narrowing = this.resolveCategoryNarrowing(candidate);
       const matchLimit = await this.effectiveMatchLimit(candidate.matchTier);
+      const dismissedVectors = await this.loadDismissedJobVectors(candidateId);
       const similarJobs = await this.findSimilarJobsByEmbedding(
         candidate,
         matchLimit,
@@ -164,6 +173,7 @@ export class CandidateJobMatchingService {
               candidateId,
               job.id,
               categoryBoost,
+              dismissedVectors,
             );
           }
         }),
@@ -285,8 +295,8 @@ export class CandidateJobMatchingService {
     return this.matchRepo.matchingCandidatesForJob(externalJobId, TOP_MATCHES_LIMIT);
   }
 
-  async dismissMatch(matchId: number): Promise<void> {
-    await this.matchRepo.setDismissed(matchId, true);
+  async dismissMatch(matchId: number, reason?: string | null): Promise<void> {
+    await this.matchRepo.setDismissed(matchId, true, reason ?? null);
   }
 
   resolveCategoryNarrowing(candidate: Candidate): CategoryNarrowing {
@@ -421,6 +431,43 @@ export class CandidateJobMatchingService {
     return { score, fieldMatched, roleMatched };
   }
 
+  private async loadDismissedJobVectors(candidateId: number): Promise<number[][]> {
+    const dismissed = await this.matchRepo.findDismissedForCandidate(candidateId);
+    if (dismissed.length === 0) {
+      return [];
+    }
+    const jobs = await Promise.all(
+      dismissed.map((match) => this.externalJobRepo.findById(match.externalJobId)),
+    );
+    return jobs
+      .map((job) => parseEmbedding(job?.embedding ?? null))
+      .filter((vector): vector is number[] => vector !== null);
+  }
+
+  private dismissPenaltyFor(jobEmbedding: string | null, dismissedVectors: number[][]): number {
+    if (dismissedVectors.length === 0) {
+      return 0;
+    }
+    const jobVector = parseEmbedding(jobEmbedding);
+    if (jobVector === null) {
+      return 0;
+    }
+    let maxSimilarity = 0;
+    for (const dismissedVector of dismissedVectors) {
+      const similarity = cosineSimilarity(jobVector, dismissedVector);
+      if (similarity !== null && similarity > maxSimilarity) {
+        maxSimilarity = similarity;
+      }
+    }
+    if (maxSimilarity <= DISMISS_SIM_THRESHOLD) {
+      return 0;
+    }
+    return Math.min(
+      MAX_DISMISS_PENALTY,
+      (maxSimilarity - DISMISS_SIM_THRESHOLD) * DISMISS_PENALTY_SCALE,
+    );
+  }
+
   private async scoreAndSaveMatch(
     candidate: Candidate,
     job: ExternalJob,
@@ -428,6 +475,7 @@ export class CandidateJobMatchingService {
     candidateId: number,
     externalJobId: number,
     categoryBoost = 0,
+    dismissedVectors: number[][] = [],
   ): Promise<CandidateJobMatch> {
     const skillsResult = this.calculateSkillsOverlap(candidate, job);
     const experienceMatch = this.calculateExperienceMatch(candidate, job);
@@ -447,7 +495,11 @@ export class CandidateJobMatchingService {
         ? baseScore
         : Math.min(1, baseScore + workBoost.score * WORK_PROFILE_BOOST_CAP);
     const withBoost = Math.min(1, withWorkBoost + categoryBoost);
-    const overallScore = outsideRadius ? withBoost * OUTSIDE_RADIUS_PENALTY : withBoost;
+    const dismissPenalty = this.dismissPenaltyFor(job.embedding, dismissedVectors);
+    const withDismissPenalty = Math.max(0, withBoost - dismissPenalty);
+    const overallScore = outsideRadius
+      ? withDismissPenalty * OUTSIDE_RADIUS_PENALTY
+      : withDismissPenalty;
 
     const matchDetails: MatchDetails = {
       embeddingSimilarity,
@@ -458,6 +510,7 @@ export class CandidateJobMatchingService {
       locationMatch,
       distanceKm: distanceKm === null ? null : Math.round(distanceKm),
       outsideTradeRadius: outsideRadius,
+      dismissPenalty,
       reasoning: this.buildReasoning(
         embeddingSimilarity,
         skillsResult,

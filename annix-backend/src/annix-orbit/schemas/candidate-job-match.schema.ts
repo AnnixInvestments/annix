@@ -34,6 +34,9 @@ export class CandidateJobMatch {
   @Prop({ type: Boolean, required: true, default: false })
   dismissed: boolean;
 
+  @Prop({ type: String, required: false, default: null })
+  dismissReason: string | null;
+
   @Prop({ type: String, required: false })
   createdAt: string;
 

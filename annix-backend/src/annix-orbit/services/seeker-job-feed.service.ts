@@ -9,6 +9,10 @@ import { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource } from "../entities/job-market-source.entity";
+import {
+  DEFAULT_TIER_FEATURES,
+  type OrbitTierFeatures,
+} from "../entities/orbit-tier-capability.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
@@ -289,6 +293,22 @@ export class SeekerJobFeedService {
   async candidatesForSeeker(email: string | null): Promise<Candidate[]> {
     if (!email) return [];
     return this.candidateRepo.findByEmail(email);
+  }
+
+  async entitlementsForSeeker(
+    email: string | null,
+  ): Promise<{ tier: string; label: string; features: OrbitTierFeatures }> {
+    const candidates = await this.candidatesForSeeker(email);
+    const tier = this.effectiveTier(candidates);
+    const capability = await this.tierCapabilityRepo.findByTier(tier);
+    if (!capability) {
+      return { tier, label: tier, features: { ...DEFAULT_TIER_FEATURES } };
+    }
+    return {
+      tier: capability.tier,
+      label: capability.label,
+      features: { ...DEFAULT_TIER_FEATURES, ...capability.features },
+    };
   }
 
   async listSeekers(params: {
@@ -666,7 +686,11 @@ export class SeekerJobFeedService {
     return { hasCandidate: true, totalMatches, matchesLast7Days };
   }
 
-  async dismissForSeeker(email: string | null, matchId: number): Promise<boolean> {
+  async dismissForSeeker(
+    email: string | null,
+    matchId: number,
+    reason?: string | null,
+  ): Promise<boolean> {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) return false;
     const candidateIds = new Set(candidates.map((c) => c.id));
@@ -675,7 +699,20 @@ export class SeekerJobFeedService {
     if (!found || !candidateIds.has(found.candidateId)) {
       return false;
     }
-    await this.matchingService.dismissMatch(matchId);
+    await this.matchingService.dismissMatch(matchId, reason ?? null);
+
+    // Deterministic filters for the explicit reasons: muting the whole company
+    // or category is a strong signal the seeker asked for directly.
+    if (reason === "not_company" || reason === "wrong_field") {
+      const job = await this.externalJobRepo.findById(found.externalJobId);
+      if (job) {
+        if (reason === "not_company" && job.company) {
+          await this.muteCompanyForSeeker(email, job.company);
+        } else if (reason === "wrong_field" && job.category) {
+          await this.muteCategoryForSeeker(email, job.category);
+        }
+      }
+    }
     return true;
   }
 

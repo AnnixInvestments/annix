@@ -21,6 +21,7 @@ export interface MatchDetails {
   reasoning: string;
   distanceKm?: number | null;
   outsideTradeRadius?: boolean;
+  dismissPenalty?: number;
 }
 
 @Entity("cv_assistant_candidate_job_matches")
@@ -59,6 +60,9 @@ export class CandidateJobMatch {
 
   @Column({ type: "boolean", default: false })
   dismissed: boolean;
+
+  @Column({ name: "dismiss_reason", type: "varchar", length: 64, nullable: true })
+  dismissReason: string | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

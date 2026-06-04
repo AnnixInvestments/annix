@@ -57,8 +57,16 @@ export class PostgresCandidateJobMatchRepository
       .getMany() as Promise<Array<CandidateJobMatch & { candidate: Candidate }>>;
   }
 
-  async setDismissed(matchId: number, dismissed: boolean): Promise<void> {
-    await this.repository.update(matchId, { dismissed });
+  async setDismissed(matchId: number, dismissed: boolean, reason?: string | null): Promise<void> {
+    const patch: { dismissed: boolean; dismissReason?: string | null } = { dismissed };
+    if (reason !== undefined) {
+      patch.dismissReason = reason;
+    }
+    await this.repository.update(matchId, patch);
+  }
+
+  findDismissedForCandidate(candidateId: number): Promise<CandidateJobMatch[]> {
+    return this.repository.find({ where: { candidateId, dismissed: true } });
   }
 
   async deleteForCandidates(candidateIds: number[]): Promise<number> {

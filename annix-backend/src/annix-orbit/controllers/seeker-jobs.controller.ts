@@ -14,7 +14,7 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsIn, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
@@ -43,6 +43,22 @@ class MuteCategoryDto {
   @IsString()
   @MaxLength(255)
   category: string;
+}
+
+const DISMISS_REASONS = [
+  "wrong_location",
+  "too_senior",
+  "too_junior",
+  "wrong_field",
+  "pay_too_low",
+  "not_company",
+  "other",
+] as const;
+
+class DismissMatchDto {
+  @IsIn(DISMISS_REASONS)
+  @IsOptional()
+  reason?: (typeof DISMISS_REASONS)[number];
 }
 
 interface SeekerAuthRequest {
@@ -80,6 +96,11 @@ export class SeekerJobsController {
     };
   }
 
+  @Get("entitlements")
+  async entitlements(@Request() req: SeekerAuthRequest) {
+    return this.feedService.entitlementsForSeeker(req.user.email);
+  }
+
   @Get("cold-start")
   async coldStart(@Request() req: SeekerAuthRequest) {
     const result = await this.feedService.coldStartForSeeker(req.user.email);
@@ -110,8 +131,13 @@ export class SeekerJobsController {
   async dismiss(
     @Request() req: SeekerAuthRequest,
     @Param("matchId", ParseIntPipe) matchId: number,
+    @Body() dto: DismissMatchDto,
   ) {
-    const dismissed = await this.feedService.dismissForSeeker(req.user.email, matchId);
+    const dismissed = await this.feedService.dismissForSeeker(
+      req.user.email,
+      matchId,
+      dto.reason ?? null,
+    );
     if (!dismissed) {
       throw new NotFoundException("Match not found or not owned by user");
     }

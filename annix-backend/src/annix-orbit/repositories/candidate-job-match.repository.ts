@@ -17,7 +17,8 @@ export abstract class CandidateJobMatchRepository extends CrudRepository<Candida
     externalJobId: number,
     limit: number,
   ): Promise<Array<CandidateJobMatch & { candidate: Candidate }>>;
-  abstract setDismissed(matchId: number, dismissed: boolean): Promise<void>;
+  abstract setDismissed(matchId: number, dismissed: boolean, reason?: string | null): Promise<void>;
+  abstract findDismissedForCandidate(candidateId: number): Promise<CandidateJobMatch[]>;
   abstract deleteForCandidates(candidateIds: number[]): Promise<number>;
   abstract countActiveForCandidates(candidateIds: number[]): Promise<number>;
   abstract countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number>;

@@ -68,8 +68,17 @@ export class MongoCandidateJobMatchRepository
     return this.toDomainList(docs) as Array<CandidateJobMatch & { candidate: Candidate }>;
   }
 
-  async setDismissed(matchId: number, dismissed: boolean): Promise<void> {
-    await this.documents.findByIdAndUpdate(matchId, { dismissed }).exec();
+  async setDismissed(matchId: number, dismissed: boolean, reason?: string | null): Promise<void> {
+    const update: Record<string, unknown> = { dismissed };
+    if (reason !== undefined) {
+      update.dismissReason = reason;
+    }
+    await this.documents.findByIdAndUpdate(matchId, update).exec();
+  }
+
+  async findDismissedForCandidate(candidateId: number): Promise<CandidateJobMatch[]> {
+    const docs = await this.documents.find({ candidateId, dismissed: true }).lean().exec();
+    return this.toDomainList(docs);
   }
 
   async deleteForCandidates(candidateIds: number[]): Promise<number> {
