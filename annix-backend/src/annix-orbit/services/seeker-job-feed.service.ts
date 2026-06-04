@@ -761,6 +761,31 @@ export class SeekerJobFeedService {
     return true;
   }
 
+  async reportJobDelisted(
+    email: string | null,
+    externalJobId: number,
+  ): Promise<{ reported: boolean }> {
+    const job = await this.externalJobRepo.findById(externalJobId);
+    if (!job) return { reported: false };
+
+    await this.externalJobRepo.reportDelist(
+      externalJobId,
+      email ?? null,
+      DateTime.now().toJSDate(),
+    );
+
+    const candidates = await this.candidatesForSeeker(email);
+    await Promise.all(
+      candidates.map(async (candidate) => {
+        const match = await this.matchRepo.findByCandidateAndJob(candidate.id, externalJobId);
+        if (match) {
+          await this.matchingService.dismissMatch(match.id, "reported-delisted");
+        }
+      }),
+    );
+    return { reported: true };
+  }
+
   async coldStartForSeeker(
     email: string | null,
   ): Promise<{ jobs: SeekerJobMatch[]; candidateIds: number[]; embeddingPending: boolean }> {

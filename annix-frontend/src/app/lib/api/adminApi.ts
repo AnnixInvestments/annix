@@ -1306,6 +1306,22 @@ class AdminApiClient {
   async deleteOrbitDismissReason(id: number): Promise<{ success: boolean }> {
     return this.request(`/admin/annix-orbit/dismiss-reasons/${id}`, { method: "DELETE" });
   }
+
+  async orbitDelistReports(): Promise<OrbitDelistReport[]> {
+    return this.request("/admin/annix-orbit/delist-reports");
+  }
+
+  async orbitDelistReportCount(): Promise<{ count: number }> {
+    return this.request("/admin/annix-orbit/delist-reports/count");
+  }
+
+  async confirmOrbitDelist(id: number): Promise<{ success: boolean }> {
+    return this.request(`/admin/annix-orbit/delist-reports/${id}/confirm`, { method: "POST" });
+  }
+
+  async rejectOrbitDelist(id: number): Promise<{ success: boolean }> {
+    return this.request(`/admin/annix-orbit/delist-reports/${id}/reject`, { method: "POST" });
+  }
 }
 
 export interface OrbitSeekerMatchTier {
@@ -1474,6 +1490,21 @@ export interface OrbitDismissReason {
   muteAction: DismissReasonMuteAction | null;
   sortOrder: number;
   active: boolean;
+}
+
+export interface OrbitDelistReport {
+  id: number;
+  title: string;
+  company: string | null;
+  locationRaw: string | null;
+  locationArea: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  sourceUrl: string | null;
+  sourceProvider: string | null;
+  delistReportedAt: string | null;
+  delistReportedBy: string | null;
 }
 
 export interface CreateOrbitDismissReasonInput {

@@ -5,7 +5,7 @@ category: Job Search
 roles: [seeker, individual]
 order: 2
 tags: [jobs, matching, seeker, adzuna, remotive, executive placements, job placements, jobmail]
-lastUpdated: 2026-05-24
+lastUpdated: 2026-06-04
 summary: How Annix Orbit pulls and ranks jobs from external sources against the CV you uploaded.
 readingMinutes: 4
 relatedPaths: [annix-frontend/src/app/annix/orbit/seeker/jobs, annix-frontend/src/app/lib/annix-orbit/components/SeekerJobCard.tsx, annix-backend/src/annix-orbit/services/seeker-job-feed.service.ts, annix-backend/src/annix-orbit/controllers/seeker-jobs.controller.ts, annix-backend/src/annix-orbit/services/crawl/sitemap-crawl-ingestion.service.ts, annix-backend/src/annix-orbit/services/remotive.service.ts, annix-backend/src/annix-orbit/services/dpsa-circular.service.ts]
@@ -50,6 +50,10 @@ location compared.
 6. Click **View &amp; apply** on any card to open the job at the source and
    apply there.
 7. Click **Not for me** to dismiss a match — it won't show again.
+8. If you click **View &amp; apply** and find the job has been taken down on
+   the source site, click **Job Delisted** on the card to report it. Our team
+   reviews each report, and once confirmed the job is removed for everyone so
+   it stops appearing in matches and Browse Jobs.
 
 ## Filtering matches
 

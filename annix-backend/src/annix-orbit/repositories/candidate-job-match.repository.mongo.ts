@@ -32,7 +32,10 @@ export class MongoCandidateJobMatchRepository
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
     const externalJobModel = this.model.db.model<Record<string, unknown>>("ExternalJob");
     const liveJobs = await externalJobModel
-      .find({ $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] })
+      .find({
+        delisted: { $ne: true },
+        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+      })
       .select("_id")
       .lean()
       .exec();

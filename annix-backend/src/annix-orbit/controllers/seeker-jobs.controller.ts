@@ -53,6 +53,11 @@ class DismissMatchDto {
   reason?: string;
 }
 
+class ReportDelistedDto {
+  @IsInt()
+  externalJobId: number;
+}
+
 class SelectPlanDto {
   @IsString()
   @MaxLength(32)
@@ -151,6 +156,15 @@ export class SeekerJobsController {
     );
     if (!dismissed) {
       throw new NotFoundException("Match not found or not owned by user");
+    }
+    return { success: true };
+  }
+
+  @Post("delist")
+  async reportDelisted(@Request() req: SeekerAuthRequest, @Body() dto: ReportDelistedDto) {
+    const result = await this.feedService.reportJobDelisted(req.user.email, dto.externalJobId);
+    if (!result.reported) {
+      throw new NotFoundException("Job not found");
     }
     return { success: true };
   }

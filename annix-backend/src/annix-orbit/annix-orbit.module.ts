@@ -58,6 +58,7 @@ import { AnnixOrbitStudentLicensingRegistrar } from "./annix-orbit-student-licen
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
+import { AdminOrbitDelistReportsController } from "./controllers/admin-orbit-delist-reports.controller";
 import { AdminOrbitDismissReasonsController } from "./controllers/admin-orbit-dismiss-reasons.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
@@ -354,6 +355,7 @@ import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
 import { OrbitCredentialTypeService } from "./services/orbit-credential-type.service";
 import { OrbitDismissReasonService } from "./services/orbit-dismiss-reason.service";
+import { OrbitJobDelistService } from "./services/orbit-job-delist.service";
 import { OrbitTierCapabilityService } from "./services/orbit-tier-capability.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
@@ -575,6 +577,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CredentialController,
     AdminOrbitCredentialTypesController,
     AdminOrbitDismissReasonsController,
+    AdminOrbitDelistReportsController,
     AdminOrbitTierCapabilitiesController,
     PublicTierPlansController,
   ],
@@ -649,6 +652,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CredentialService,
     OrbitCredentialTypeService,
     OrbitDismissReasonService,
+    OrbitJobDelistService,
     OrbitTierCapabilityService,
     repositoryProvider(CandidateRepository, PostgresCandidateRepository, MongoCandidateRepository),
     repositoryProvider(

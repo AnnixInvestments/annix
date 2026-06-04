@@ -32,6 +32,7 @@ import {
   useOrbitMuteSeekerCategory,
   useOrbitMuteSeekerCompany,
   useOrbitMyProfileStatus,
+  useOrbitReportJobDelisted,
   useOrbitSeekerBrowseJobs,
   useOrbitSeekerColdStartJobs,
   useOrbitSeekerDismissReasons,
@@ -121,6 +122,7 @@ export default function SeekerJobsPage() {
   const rematchMutation = useOrbitSeekerRematch();
   const muteCompanyMutation = useOrbitMuteSeekerCompany();
   const muteCategoryMutation = useOrbitMuteSeekerCategory();
+  const reportDelistedMutation = useOrbitReportJobDelisted();
   const [consentDeclined, setConsentDeclined] = useState<boolean>(false);
   const [nixSearching, setNixSearching] = useState<boolean>(false);
   const [nixSearchEstimateMs, setNixSearchEstimateMs] = useState<number>(90_000);
@@ -313,6 +315,28 @@ export default function SeekerJobsPage() {
     }
     runDismiss(target.matchId, target.reason);
     setPendingDismiss(null);
+  };
+
+  const handleReportDelisted = async (externalJobId: number) => {
+    const confirmed = await confirm({
+      title: "Report this job as delisted?",
+      message:
+        "Only do this if the job has been removed from the source website. Our team will review it, and once confirmed it will be removed for everyone.",
+      confirmLabel: "Report delisted",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+    reportDelistedMutation.mutate(externalJobId, {
+      onSuccess: () => {
+        showToast(
+          "Thanks — we'll review this listing and remove it if it's been taken down.",
+          "success",
+        );
+      },
+      onError: () => {
+        showToast("Couldn't report this job — please try again.", "error");
+      },
+    });
   };
 
   const handleMuteCompany = async (company: string) => {
@@ -555,6 +579,7 @@ export default function SeekerJobsPage() {
         error={browseJobsQuery.isError}
         onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
+        onReportDelisted={handleReportDelisted}
         confirmDialog={ConfirmDialog}
         variant="no-cv"
         jobCount={jobCount}
@@ -610,6 +635,7 @@ export default function SeekerJobsPage() {
         error={browseJobsQuery.isError}
         onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
+        onReportDelisted={handleReportDelisted}
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
         jobCount={jobCount}
@@ -669,6 +695,7 @@ export default function SeekerJobsPage() {
         error={browseJobsQuery.isError}
         onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
+        onReportDelisted={handleReportDelisted}
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
         jobCount={jobCount}
@@ -728,6 +755,7 @@ export default function SeekerJobsPage() {
               dismissReasons={dismissReasons}
               onMuteCompany={handleMuteCompany}
               onMuteCategory={handleMuteCategory}
+              onReportDelisted={handleReportDelisted}
               isDismissing={
                 dismissMutation.isPending && dismissMutation.variables?.matchId === match.matchId
               }
@@ -884,6 +912,7 @@ interface BrowseAllJobsViewProps {
   error: boolean;
   onRetry: () => void;
   onApply: (job: PublicJob) => void;
+  onReportDelisted: (externalJobId: number) => void;
   confirmDialog: React.ReactNode;
   variant: "no-cv" | "matches-pending";
   jobCount: number;
@@ -985,7 +1014,12 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {jobs.map((job) => (
-            <SeekerBrowseJobCard key={`${job.kind}-${job.id}`} job={job} onApply={props.onApply} />
+            <SeekerBrowseJobCard
+              key={`${job.kind}-${job.id}`}
+              job={job}
+              onApply={props.onApply}
+              onReportDelisted={props.onReportDelisted}
+            />
           ))}
         </div>
       )}

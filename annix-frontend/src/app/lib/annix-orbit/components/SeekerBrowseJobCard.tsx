@@ -6,6 +6,7 @@ import { formatDateZA } from "@/app/lib/datetime";
 interface SeekerBrowseJobCardProps {
   job: PublicJob;
   onApply: (job: PublicJob) => void;
+  onReportDelisted?: (externalJobId: number) => void;
 }
 
 export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
@@ -16,6 +17,13 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
   const sourceUrl = job.sourceUrl;
   const sourceHref = sourceUrl || "#";
   const kindLabel = job.kind === "annix" ? "Posted on Annix" : "External listing";
+  const reportDelisted = props.onReportDelisted;
+  const isExternal = job.kind === "external";
+  const canReportDelisted = Boolean(reportDelisted && isExternal && sourceUrl);
+
+  const handleReportDelisted = () => {
+    if (reportDelisted) reportDelisted(job.id);
+  };
   const rawLocation = job.locationRaw;
   const rawLocationArea = job.locationArea;
   const location = rawLocation || rawLocationArea || null;
@@ -89,6 +97,19 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
           <span className="text-sm text-gray-400">No apply link</span>
         )}
       </div>
+
+      {canReportDelisted ? (
+        <div className="mt-2 border-t border-gray-100 pt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={handleReportDelisted}
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600"
+          >
+            <span aria-hidden="true">⚑</span>
+            Job Delisted
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
