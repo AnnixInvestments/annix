@@ -67,10 +67,25 @@ function classify(host, db) {
 const mainClass = classify(mainHost, mainDb);
 const orbitClass = classify(orbitHost, orbitDb);
 
-// Best-effort: what DB is the RUNNING swarm actually on? It caches .env at boot
-// (nest --watch does not reload .env), so it can differ from .env above.
+// What DB is the RUNNING swarm actually on? It caches .env at boot (nest --watch
+// doesn't reload it), so it can differ from .env. Ask the backend directly via
+// /api/health/db (the truth for BOTH connections); fall back to the boot log for
+// the main db if the endpoint is unreachable.
 let runtimeMainDb = null;
-if (existsSync(logPath)) {
+let runtimeOrbitDb = null;
+try {
+  const res = await fetch("http://localhost:3000/api/health/db", {
+    signal: AbortSignal.timeout(4000),
+  });
+  if (res.ok) {
+    const body = await res.json();
+    runtimeMainDb = body?.main?.database ?? null;
+    runtimeOrbitDb = body?.orbit?.database ?? null;
+  }
+} catch {
+  runtimeMainDb = null;
+}
+if (!runtimeMainDb && existsSync(logPath)) {
   try {
     const buf = readFileSync(logPath, "utf8");
     const tail = buf.slice(-3_000_000).replace(/\x1b\[[0-9;]*m/g, "");
@@ -111,13 +126,18 @@ console.log(
 console.log(
   `ORBIT : ${orbitHost} / ${orbitDb}   ->  ${orbitClass.label}${orbitClass.prod ? "  [!] PRODUCTION" : ""}`,
 );
-if (runtimeMainDb) {
-  const drift = runtimeMainDb !== mainDb;
-  console.log(
-    `SWARM : running main db = ${runtimeMainDb}   ${drift ? "[!] DRIFT — swarm differs from .env (restart swarm to pick up .env)" : "[matches .env]"}`,
-  );
+if (runtimeMainDb || runtimeOrbitDb) {
+  const mainDrift = runtimeMainDb && runtimeMainDb !== mainDb;
+  const orbitDrift = runtimeOrbitDb && runtimeOrbitDb !== orbitDb;
+  const driftFlag =
+    mainDrift || orbitDrift
+      ? "  [!] DRIFT — running swarm differs from .env (restart swarm to pick up .env)"
+      : "  [matches .env]";
+  console.log(`SWARM : main=${runtimeMainDb ?? "?"}  orbit=${runtimeOrbitDb ?? "?"}${driftFlag}`);
 } else {
-  console.log("SWARM : runtime db unknown (no recent signal in backend.log)");
+  console.log(
+    "SWARM : runtime db unknown (backend /api/health/db unreachable, no boot-log signal)",
+  );
 }
 
 if (changes.length > 0) {
