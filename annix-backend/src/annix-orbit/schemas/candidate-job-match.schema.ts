@@ -31,7 +31,7 @@ export class CandidateJobMatch {
   @Prop({ type: Object, required: false })
   matchDetails: Record<string, unknown>;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   dismissed: boolean;
 
   @Prop({ type: String, required: false })

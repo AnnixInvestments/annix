@@ -35,7 +35,6 @@ import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
-const HEALTH_STALE_DAYS = 7;
 const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
 const ADZUNA_CATEGORIES_PER_DAY = 29;
@@ -294,16 +293,11 @@ export class JobIngestionService {
   }
 
   private async maybeEmitZeroJobsAlert(source: JobMarketSource): Promise<void> {
-    // After idempotent ingest, "0 new jobs" is the normal steady state — re-pulls
-    // dedupe to zero. Only alert on a genuine fault: a recorded ingestion error,
-    // or a previously-active source that has produced nothing for a full week.
+    // Only alert on a genuine fault — a recorded ingestion error this run. After
+    // idempotent ingest "0 new jobs" is the normal steady state, so a quiet source
+    // is not alert-worthy; staleness is surfaced on the admin dashboard instead.
     const recordedError = this.lastIngestionErrorBySource.get(source.id) ?? null;
-    const staleCutoff = DateTime.now().minus({ days: HEALTH_STALE_DAYS }).toJSDate();
-    const newRecently = await this.externalJobRepo.countForSourceSince(source.id, staleCutoff);
-    const totalForSource = await this.externalJobRepo.countForSources([source.id]);
-    const stalledWhileActive = totalForSource > 0 && newRecently === 0;
-
-    if (!recordedError && !stalledWhileActive) {
+    if (!recordedError) {
       return;
     }
 
@@ -323,15 +317,11 @@ export class JobIngestionService {
     const lastIngestedLabel = source.lastIngestedAt
       ? DateTime.fromJSDate(source.lastIngestedAt).toISO()
       : "never";
-    const reason = recordedError
-      ? `Ingestion error: ${recordedError}`
-      : `No new jobs ingested in the last ${HEALTH_STALE_DAYS} days (source has ${totalForSource} total).`;
-
     const subject = `[Annix Orbit] Adapter ${source.name} may be failing`;
     const lines = [
       `Source: ${source.name} (id=${source.id}, provider=${source.provider})`,
       `Last ingestion attempt: ${lastIngestedLabel}`,
-      reason,
+      `Ingestion error: ${recordedError}`,
       "Check for revoked API keys, rate limits, or upstream API changes.",
     ];
     const text = lines.join("\n");
