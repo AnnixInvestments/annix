@@ -35,10 +35,11 @@ import { JoobleService } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const HEALTH_STALE_DAYS = 7;
 const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
 const ADZUNA_CATEGORIES_PER_DAY = 29;
-const ADZUNA_MAX_DAYS_OLD = 21;
+const ADZUNA_MAX_DAYS_OLD = 45;
 const UPSERT_BATCH_SIZE = 50;
 const CRAWL_MAX_PAGES_PER_RUN = 150;
 const ADZUNA_ZA_CATEGORIES = [
@@ -76,7 +77,6 @@ const ADZUNA_ZA_CATEGORIES = [
 @Injectable()
 export class JobIngestionService {
   private readonly logger = new Logger(JobIngestionService.name);
-  private readonly lastHealthAlertBySource = new Map<number, number>();
   private readonly lastIngestionErrorBySource = new Map<number, string>();
   private pollInFlight = false;
   private readonly ingestingSourceIds = new Set<number>();
@@ -260,23 +260,29 @@ export class JobIngestionService {
             ingested: acc.ingested + result.ingested,
             skipped: acc.skipped + result.skipped,
             savedIds: [...acc.savedIds, ...result.savedIds],
+            error: acc.error,
           };
         } catch (error) {
-          this.logger.error(
-            `Error fetching ${category ?? "all"} jobs for ${country}: ${error instanceof Error ? error.message : String(error)}`,
-          );
-          return acc;
+          const message = error instanceof Error ? error.message : String(error);
+          this.logger.error(`Error fetching ${category ?? "all"} jobs for ${country}: ${message}`);
+          return { ...acc, error: message };
         }
       },
-      Promise.resolve({ ingested: 0, skipped: 0, savedIds: [] as number[] }),
+      Promise.resolve({
+        ingested: 0,
+        skipped: 0,
+        savedIds: [] as number[],
+        error: null as string | null,
+      }),
     );
 
     source.lastIngestedAt = DateTime.now().toJSDate();
-    await this.sourceRepo.save(source);
-
-    if (totals.ingested > 0) {
+    if (totals.error) {
+      this.lastIngestionErrorBySource.set(source.id, totals.error);
+    } else {
       this.lastIngestionErrorBySource.delete(source.id);
     }
+    await this.sourceRepo.save(source);
 
     this.logger.log(
       `Source ${source.name}: ingested ${totals.ingested}, skipped ${totals.skipped}`,
@@ -288,15 +294,24 @@ export class JobIngestionService {
   }
 
   private async maybeEmitZeroJobsAlert(source: JobMarketSource): Promise<void> {
-    const cutoff = DateTime.now().minus({ hours: 24 }).toJSDate();
-    const recentCount = await this.externalJobRepo.countForSourceSince(source.id, cutoff);
+    // After idempotent ingest, "0 new jobs" is the normal steady state — re-pulls
+    // dedupe to zero. Only alert on a genuine fault: a recorded ingestion error,
+    // or a previously-active source that has produced nothing for a full week.
+    const recordedError = this.lastIngestionErrorBySource.get(source.id) ?? null;
+    const staleCutoff = DateTime.now().minus({ days: HEALTH_STALE_DAYS }).toJSDate();
+    const newRecently = await this.externalJobRepo.countForSourceSince(source.id, staleCutoff);
+    const totalForSource = await this.externalJobRepo.countForSources([source.id]);
+    const stalledWhileActive = totalForSource > 0 && newRecently === 0;
 
-    if (recentCount > 0) {
+    if (!recordedError && !stalledWhileActive) {
       return;
     }
 
-    const lastAlert = this.lastHealthAlertBySource.get(source.id);
-    const cooledDown = !lastAlert || nowMillis() - lastAlert >= HEALTH_ALERT_COOLDOWN_MS;
+    // Persisted cooldown so backend restarts/deploys don't re-trigger the alert.
+    const lastAlertMs = source.lastHealthAlertAt
+      ? DateTime.fromJSDate(source.lastHealthAlertAt).toMillis()
+      : null;
+    const cooledDown = !lastAlertMs || nowMillis() - lastAlertMs >= HEALTH_ALERT_COOLDOWN_MS;
     if (!cooledDown) {
       return;
     }
@@ -305,17 +320,18 @@ export class JobIngestionService {
       this.configService.get<string>("SUPPORT_EMAIL") ||
       this.configService.get<string>("EMAIL_FROM") ||
       "info@annix.co.za";
-    const lastError = this.lastIngestionErrorBySource.get(source.id) ?? "none recorded";
     const lastIngestedLabel = source.lastIngestedAt
       ? DateTime.fromJSDate(source.lastIngestedAt).toISO()
       : "never";
+    const reason = recordedError
+      ? `Ingestion error: ${recordedError}`
+      : `No new jobs ingested in the last ${HEALTH_STALE_DAYS} days (source has ${totalForSource} total).`;
 
-    const subject = `[Annix Orbit] Adapter ${source.name} returned 0 jobs in the last 24h`;
+    const subject = `[Annix Orbit] Adapter ${source.name} may be failing`;
     const lines = [
       `Source: ${source.name} (id=${source.id}, provider=${source.provider})`,
       `Last ingestion attempt: ${lastIngestedLabel}`,
-      `Last recorded error: ${lastError}`,
-      "No new external jobs from this source in the past 24h.",
+      reason,
       "Check for revoked API keys, rate limits, or upstream API changes.",
     ];
     const text = lines.join("\n");
@@ -323,11 +339,12 @@ export class JobIngestionService {
 
     try {
       await this.emailService.sendEmail({ to: recipient, subject, text, html });
-      this.lastHealthAlertBySource.set(source.id, nowMillis());
-      this.logger.warn(`Emitted zero-jobs health alert for source ${source.name} (${source.id})`);
+      source.lastHealthAlertAt = DateTime.now().toJSDate();
+      await this.sourceRepo.save(source);
+      this.logger.warn(`Emitted health alert for source ${source.name} (${source.id})`);
     } catch (err) {
       this.logger.error(
-        `Failed to emit zero-jobs alert for ${source.name}: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to emit health alert for ${source.name}: ${err instanceof Error ? err.message : String(err)}`,
       );
     }
   }

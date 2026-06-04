@@ -67,6 +67,9 @@ export class JobMarketSource {
   @Column({ name: "last_ingested_at", type: "timestamptz", nullable: true })
   lastIngestedAt: Date | null;
 
+  @Column({ name: "last_health_alert_at", type: "timestamptz", nullable: true })
+  lastHealthAlertAt: Date | null;
+
   @Column({ name: "ingestion_interval_hours", type: "int", default: 6 })
   ingestionIntervalHours: number;
 

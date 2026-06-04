@@ -49,6 +49,9 @@ export class JobMarketSource {
   @Prop({ type: Date, required: false })
   lastIngestedAt: Date;
 
+  @Prop({ type: Date, required: false })
+  lastHealthAlertAt: Date;
+
   @Prop({ type: Number, required: true, default: 6 })
   ingestionIntervalHours: number;
 
