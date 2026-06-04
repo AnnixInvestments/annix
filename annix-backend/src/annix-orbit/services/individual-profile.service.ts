@@ -1,10 +1,17 @@
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { UserRepository } from "../../user/user.repository";
-import { isAcceptedDocumentMime } from "../config/individual-documents.config";
+import { isAcceptedDocumentMime, isImageMime } from "../config/individual-documents.config";
 import {
   EeConsentSource,
   type EeDisabilityStatus,
@@ -15,14 +22,16 @@ import {
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
-import { CandidateStatus } from "../entities/candidate.entity";
+import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
+import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
 import { EmbeddingService } from "./embedding.service";
+import { NixSeekerAssistService } from "./nix-seeker-assist.service";
 import { type EeAttributesView, PopiaService } from "./popia.service";
 
 const DELETION_TOKEN_EXPIRY_HOURS = 1;
@@ -34,6 +43,7 @@ export interface IndividualProfileStatus {
   certificatesCount: number;
   cvUploadedAt: Date | null;
   cvOriginalFilename: string | null;
+  photoCredentialCapture: boolean;
 }
 
 export interface IndividualDocumentSummary {
@@ -45,6 +55,8 @@ export interface IndividualDocumentSummary {
   label: string | null;
   uploadedAt: Date;
   downloadUrl: string;
+  isPhotoCapture: boolean;
+  needsClearScan: boolean;
 }
 
 export interface IndividualNotificationPreferences {
@@ -122,6 +134,8 @@ export class IndividualProfileService {
     private readonly popiaService: PopiaService,
     private readonly embeddingService: EmbeddingService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
+    private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
+    private readonly nixSeekerAssistService: NixSeekerAssistService,
   ) {}
 
   // Self-service seekers live as an AnnixOrbitProfile, but matching runs against
@@ -247,9 +261,35 @@ export class IndividualProfileService {
     return profile;
   }
 
+  private effectiveTier(candidate: Candidate): string {
+    if (
+      candidate.trialTier &&
+      candidate.trialEndsAt &&
+      candidate.trialEndsAt.getTime() > now().toMillis()
+    ) {
+      return candidate.trialTier;
+    }
+    return candidate.matchTier;
+  }
+
+  private async photoCredentialCaptureAllowed(email: string | null): Promise<boolean> {
+    if (!email) {
+      return false;
+    }
+    const candidates = await this.candidateRepo.findByEmail(email);
+    const candidate = candidates.length > 0 ? candidates[0] : null;
+    const tier = candidate ? this.effectiveTier(candidate) : null;
+    if (!tier) {
+      return false;
+    }
+    const capability = await this.tierCapabilityRepo.findByTier(tier);
+    return capability?.features?.photoCredentialCapture === true;
+  }
+
   async status(userId: number): Promise<IndividualProfileStatus> {
     const profile = await this.profileForUser(userId);
     const docs = await this.documentRepo.findByProfile(profile.id);
+    const user = await this.userRepo.findById(userId);
 
     const cvDoc = docs.find((d) => d.kind === IndividualDocumentKind.CV) ?? null;
     const qualificationsCount = docs.filter(
@@ -258,6 +298,7 @@ export class IndividualProfileService {
     const certificatesCount = docs.filter(
       (d) => d.kind === IndividualDocumentKind.CERTIFICATE,
     ).length;
+    const photoCredentialCapture = await this.photoCredentialCaptureAllowed(user?.email ?? null);
 
     return {
       profileComplete: cvDoc !== null,
@@ -266,6 +307,7 @@ export class IndividualProfileService {
       certificatesCount,
       cvUploadedAt: profile.cvUploadedAt,
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
+      photoCredentialCapture,
     };
   }
 
@@ -285,6 +327,8 @@ export class IndividualProfileService {
           label: doc.label,
           uploadedAt: doc.uploadedAt,
           downloadUrl,
+          isPhotoCapture: doc.isPhotoCapture === true,
+          needsClearScan: doc.needsClearScan === true,
         };
       }),
     );
@@ -297,17 +341,41 @@ export class IndividualProfileService {
     file: Express.Multer.File,
     kind: IndividualDocumentKind,
     label?: string | null,
+    source?: "upload" | "photo",
   ): Promise<IndividualDocumentSummary> {
     if (!file) {
       throw new BadRequestException("File is required");
     }
     if (!isAcceptedDocumentMime(file.mimetype)) {
       throw new BadRequestException(
-        "Unsupported file type. Please upload PDF, Word, Excel, or PowerPoint.",
+        "Unsupported file type. Please upload a PDF, Word, Excel, PowerPoint, or photo.",
       );
     }
 
+    const isPhotoCapture = source === "photo";
     const profile = await this.profileForUser(userId);
+
+    if (isPhotoCapture) {
+      if (
+        kind !== IndividualDocumentKind.QUALIFICATION &&
+        kind !== IndividualDocumentKind.CERTIFICATE
+      ) {
+        throw new BadRequestException(
+          "Photo capture is only available for qualifications and certificates.",
+        );
+      }
+      if (!isImageMime(file.mimetype)) {
+        throw new BadRequestException("Please capture a JPEG or PNG photo.");
+      }
+      const user = await this.userRepo.findById(userId);
+      const allowed = await this.photoCredentialCaptureAllowed(user?.email ?? null);
+      if (!allowed) {
+        throw new ForbiddenException(
+          "Photo capture is available on the Pathfinder and Trailblazer plans.",
+        );
+      }
+    }
+
     const subPath = `${StorageArea.ANNIX_ORBIT}/individuals/${profile.userId}/${kind}`;
     const stored = await this.storageService.upload(file, subPath);
 
@@ -328,6 +396,21 @@ export class IndividualProfileService {
       }
     }
 
+    let resolvedLabel = label ?? null;
+    if (
+      isPhotoCapture &&
+      (kind === IndividualDocumentKind.QUALIFICATION || kind === IndividualDocumentKind.CERTIFICATE)
+    ) {
+      const analysis = await this.nixSeekerAssistService.analyzeCredentialPhoto(
+        file.buffer,
+        file.mimetype,
+        kind,
+      );
+      if (!resolvedLabel && analysis.label) {
+        resolvedLabel = analysis.label;
+      }
+    }
+
     const saved = await this.documentRepo.create({
       profileId: profile.id,
       kind,
@@ -335,11 +418,23 @@ export class IndividualProfileService {
       originalFilename: stored.originalFilename,
       mimeType: stored.mimeType,
       sizeBytes: stored.size,
-      label: label ?? null,
+      label: resolvedLabel,
+      isPhotoCapture,
+      needsClearScan: isPhotoCapture,
     });
 
     if (kind === IndividualDocumentKind.CV) {
       await this.refreshCvExtraction(profile, stored.path);
+    }
+
+    // A clear (non-photo) qualification/certificate upload resolves any pending
+    // phone photos of the same kind so the reminders stop and it becomes
+    // employer-visible.
+    if (
+      !isPhotoCapture &&
+      (kind === IndividualDocumentKind.QUALIFICATION || kind === IndividualDocumentKind.CERTIFICATE)
+    ) {
+      await this.documentRepo.clearScanFlagForProfileKind(profile.id, kind);
     }
 
     const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
@@ -353,6 +448,8 @@ export class IndividualProfileService {
       label: saved.label,
       uploadedAt: saved.uploadedAt,
       downloadUrl,
+      isPhotoCapture: saved.isPhotoCapture === true,
+      needsClearScan: saved.needsClearScan === true,
     };
   }
 

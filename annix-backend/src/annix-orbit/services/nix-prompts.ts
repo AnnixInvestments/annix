@@ -722,6 +722,41 @@ Rules:
   };
 }
 
+export interface NixCredentialPhotoResult {
+  credentialName: string | null;
+  issuer: string | null;
+  dateAwarded: string | null;
+  nqfLevel: string | null;
+  expiry: string | null;
+  readable: boolean;
+}
+
+export function credentialPhotoPrompt(kind: "qualification" | "certificate"): {
+  system: string;
+  user: string;
+} {
+  const noun = kind === "qualification" ? "academic qualification" : "professional certificate";
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `You are reading a photo of a South African ${noun} a job seeker captured on their phone. Extract the key details so we can label it on their profile. The photo may be slightly blurry or angled — do your best, and set "readable" to false if you genuinely cannot make out the document.
+
+Return JSON with this exact shape:
+{
+  "credentialName": "<the qualification or certificate name, e.g. 'BSc Civil Engineering' or 'First Aid Level 1'>" | null,
+  "issuer": "<the institution / awarding body, e.g. 'University of Pretoria' or 'St John'>" | null,
+  "dateAwarded": "<year or full date as printed, e.g. '2018' or '12 March 2018'>" | null,
+  "nqfLevel": "<NQF level if shown, e.g. 'NQF 7'>" | null,
+  "expiry": "<expiry date if the certificate shows one>" | null,
+  "readable": <true|false>
+}
+
+Rules:
+- Use null for any field you cannot read; never invent details.
+- Do not transcribe the whole document — only these fields.
+- No markdown, no commentary, JSON only.`,
+  };
+}
+
 /**
  * Helper: extract Gemini's JSON content even if the model wrapped it in
  * a code fence or added stray narrative. Throws if no parseable JSON

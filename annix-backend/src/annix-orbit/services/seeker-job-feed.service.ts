@@ -396,7 +396,12 @@ export class SeekerJobFeedService {
     if (!user) return [];
     const profile = await this.profileRepo.findByUserId(user.id);
     if (!profile) return [];
-    const docs = await this.documentRepo.findByProfileOrdered(profile.id);
+    const allDocs = await this.documentRepo.findByProfileOrdered(profile.id);
+    // Phone-photo credentials are hidden from employers/admins until the seeker
+    // uploads a clear scan (needsClearScan flips false then).
+    const docs = allDocs.filter(
+      (doc) => !(doc.isPhotoCapture === true && doc.needsClearScan === true),
+    );
     return Promise.all(
       docs.map(async (doc) => {
         const isCv = doc.kind === IndividualDocumentKind.CV;

@@ -91,7 +91,13 @@ export class IndividualProfileController {
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadIndividualDocumentDto,
   ) {
-    return this.individualProfileService.uploadDocument(req.user.id, file, dto.kind, dto.label);
+    return this.individualProfileService.uploadDocument(
+      req.user.id,
+      file,
+      dto.kind,
+      dto.label,
+      dto.source,
+    );
   }
 
   @Delete("documents/:id")

@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
 
 export class UploadIndividualDocumentDto {
@@ -9,4 +9,8 @@ export class UploadIndividualDocumentDto {
   @IsOptional()
   @MaxLength(100)
   label?: string;
+
+  @IsIn(["upload", "photo"])
+  @IsOptional()
+  source?: "upload" | "photo";
 }
