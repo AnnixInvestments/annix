@@ -11,6 +11,7 @@ import {
   useOrbitMyDocuments,
   useOrbitMyProfileStatus,
 } from "@/app/lib/query/hooks";
+import { CredentialPhotoCapture } from "../components/CredentialPhotoCapture";
 import { IndividualDocumentUploader } from "../components/IndividualDocumentUploader";
 import { MissingDocsWarningModal } from "../components/MissingDocsWarningModal";
 import { NixWizardPanel } from "../components/NixWizardPanel";
@@ -48,6 +49,7 @@ export default function SeekerProfilePage() {
   const qualificationsCount = status ? status.qualificationsCount : 0;
   const certificatesCount = status ? status.certificatesCount : 0;
   const cvUploadedAt = status ? status.cvUploadedAt : null;
+  const photoAllowed = status ? status.photoCredentialCapture : false;
 
   const handleStartSearch = () => {
     if (!status) return;
@@ -159,6 +161,7 @@ export default function SeekerProfilePage() {
             qualifications.length > 0 ? "Add another qualification" : "Upload qualification"
           }
         />
+        <CredentialPhotoCapture kind="qualification" allowed={photoAllowed} />
       </SectionCard>
 
       <SectionCard
@@ -177,6 +180,7 @@ export default function SeekerProfilePage() {
           kind="certificate"
           ctaLabel={certificates.length > 0 ? "Add another certificate" : "Upload certificate"}
         />
+        <CredentialPhotoCapture kind="certificate" allowed={photoAllowed} />
       </SectionCard>
 
       {hasCv && (
@@ -327,6 +331,7 @@ function DocumentList(props: {
       {props.documents.map((doc) => {
         const isDeleting = props.pendingDeleteId === doc.id;
         const sizeKb = Math.round(doc.sizeBytes / 1024);
+        const pendingScan = doc.isPhotoCapture && doc.needsClearScan;
         return (
           <li
             key={doc.id}
@@ -335,10 +340,24 @@ function DocumentList(props: {
             <div className="flex items-center gap-3 min-w-0">
               <FileBadge kind={doc.kind} />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{doc.originalFilename}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {doc.label ? doc.label : doc.originalFilename}
+                  </p>
+                  {pendingScan && (
+                    <span className="text-[11px] font-medium text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full whitespace-nowrap">
+                      Phone photo
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500 mt-0.5">
                   {sizeKb} KB · uploaded {formatDate(doc.uploadedAt)}
                 </p>
+                {pendingScan && (
+                  <p className="text-xs text-amber-700 mt-1">
+                    Not shown to employers yet — upload a clear scan above to share it.
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">

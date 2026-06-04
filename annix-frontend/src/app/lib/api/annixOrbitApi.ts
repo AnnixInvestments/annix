@@ -772,6 +772,8 @@ export interface IndividualDocument {
   label: string | null;
   uploadedAt: string;
   downloadUrl: string;
+  isPhotoCapture: boolean;
+  needsClearScan: boolean;
 }
 
 export interface IndividualProfileStatus {
@@ -781,6 +783,7 @@ export interface IndividualProfileStatus {
   certificatesCount: number;
   cvUploadedAt: string | null;
   cvOriginalFilename: string | null;
+  photoCredentialCapture: boolean;
 }
 
 export type NixSeekerImprovementArea =
@@ -2094,6 +2097,19 @@ class AnnixOrbitApiClient {
       "/annix-orbit/me/documents",
       file,
       params,
+      onProgress,
+    );
+  }
+
+  async uploadMyDocumentPhoto(
+    file: File,
+    kind: IndividualDocumentKind,
+    onProgress?: (fraction: number) => void,
+  ): Promise<IndividualDocument> {
+    return apiClient.uploadFile<IndividualDocument>(
+      "/annix-orbit/me/documents",
+      file,
+      { kind, source: "photo" },
       onProgress,
     );
   }

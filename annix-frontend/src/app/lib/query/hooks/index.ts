@@ -289,6 +289,7 @@ export {
   useOrbitRequestMyAccountDeletion,
   useOrbitUpdateMyNotificationPreferences,
   useOrbitUploadMyDocument,
+  useOrbitUploadMyDocumentPhoto,
   useOrbitWithdrawMyConsent,
   useUpdateNixGeneratedCv,
 } from "./annix-orbit/useOrbitIndividualProfile";

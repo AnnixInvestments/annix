@@ -52,6 +52,25 @@ export function useOrbitUploadMyDocument() {
   });
 }
 
+export function useOrbitUploadMyDocumentPhoto() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      file,
+      kind,
+      onProgress,
+    }: {
+      file: File;
+      kind: IndividualDocumentKind;
+      onProgress?: (fraction: number) => void;
+    }) => annixOrbitApiClient.uploadMyDocumentPhoto(file, kind, onProgress),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.all });
+    },
+  });
+}
+
 export function useOrbitDeleteMyDocument() {
   const queryClient = useQueryClient();
 
