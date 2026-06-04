@@ -13,6 +13,7 @@ import { ExternalJob } from "../entities/external-job.entity";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { CvNotificationService } from "./cv-notification.service";
 import { haversineKm } from "./geocode.service";
 
@@ -28,6 +29,9 @@ const ADJACENT_FIELD_SCORE = 0.5;
 const OUTSIDE_RADIUS_PENALTY = 0.4;
 
 const TOP_MATCHES_LIMIT = 20;
+// Practical ceiling for tiers whose maxJobResults is null ("unlimited", e.g.
+// Trailblazer) — keeps generation/scoring bounded for performance.
+const UNLIMITED_MATCH_CEILING = 150;
 
 const CATEGORY_BOOST_CAP_BY_TIER: Record<MatchTier, number> = {
   soft: 0.06,
@@ -115,9 +119,23 @@ export class CandidateJobMatchingService {
     private readonly matchRepo: CandidateJobMatchRepository,
     private readonly candidateRepo: CandidateRepository,
     private readonly externalJobRepo: ExternalJobRepository,
+    private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     @Inject(forwardRef(() => CvNotificationService))
     private readonly notificationService: CvNotificationService,
   ) {}
+
+  // How many matches a seeker's tier allows. Driven by the tier's
+  // maxJobResults (Explorer 20, Pathfinder 50, Trailblazer null=unlimited →
+  // capped to UNLIMITED_MATCH_CEILING). Falls back to TOP_MATCHES_LIMIT when a
+  // tier has no capability row.
+  private async effectiveMatchLimit(matchTier: string): Promise<number> {
+    const capability = await this.tierCapabilityRepo.findByTier(matchTier);
+    if (!capability) {
+      return TOP_MATCHES_LIMIT;
+    }
+    const maxJobResults = capability.maxJobResults;
+    return maxJobResults == null ? UNLIMITED_MATCH_CEILING : maxJobResults;
+  }
 
   async matchCandidateToJobs(candidateId: number): Promise<CandidateJobMatch[]> {
     const candidate = await this.candidateRepo.findById(candidateId);
@@ -125,9 +143,10 @@ export class CandidateJobMatchingService {
       return [];
     } else {
       const narrowing = this.resolveCategoryNarrowing(candidate);
+      const matchLimit = await this.effectiveMatchLimit(candidate.matchTier);
       const similarJobs = await this.findSimilarJobsByEmbedding(
         candidate,
-        TOP_MATCHES_LIMIT,
+        matchLimit,
         narrowing.pool,
       );
 
@@ -217,18 +236,24 @@ export class CandidateJobMatchingService {
         )
       : allMatches;
 
-    return this.applyStretchMatchDiversity(filtered);
+    const candidate = await this.candidateRepo.findById(candidateId);
+    const limit = candidate
+      ? await this.effectiveMatchLimit(candidate.matchTier)
+      : TOP_MATCHES_LIMIT;
+
+    return this.applyStretchMatchDiversity(filtered, limit);
   }
 
   applyStretchMatchDiversity<T extends Pick<CandidateJobMatch, "overallScore">>(
     sortedMatches: T[],
+    limit: number = TOP_MATCHES_LIMIT,
   ): T[] {
-    if (sortedMatches.length <= TOP_MATCHES_LIMIT) {
+    if (sortedMatches.length <= limit) {
       return sortedMatches;
     }
 
     const reserved = STRETCH_RESERVED_SLOTS;
-    const topPriorityCount = TOP_MATCHES_LIMIT - reserved;
+    const topPriorityCount = limit - reserved;
     const topPriority = sortedMatches.slice(0, topPriorityCount);
     const remaining = sortedMatches.slice(topPriorityCount);
 
@@ -251,7 +276,7 @@ export class CandidateJobMatchingService {
     const fillers = fillerCount > 0 ? fallbackPool.slice(0, fillerCount) : [];
 
     const combined = [...topPriority, ...stretchPool, ...fillers];
-    return combined.slice(0, TOP_MATCHES_LIMIT).sort((a, b) => b.overallScore - a.overallScore);
+    return combined.slice(0, limit).sort((a, b) => b.overallScore - a.overallScore);
   }
 
   async matchingCandidatesForJob(

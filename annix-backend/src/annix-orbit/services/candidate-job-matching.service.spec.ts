@@ -5,6 +5,7 @@ import { ExternalJob } from "../entities/external-job.entity";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import {
   CandidateJobMatchingService,
   STRETCH_RESERVED_SLOTS,
@@ -29,6 +30,7 @@ describe("CandidateJobMatchingService", () => {
         { provide: CandidateJobMatchRepository, useValue: {} },
         { provide: CandidateRepository, useValue: {} },
         { provide: ExternalJobRepository, useValue: {} },
+        { provide: OrbitTierCapabilityRepository, useValue: {} },
         { provide: CvNotificationService, useValue: {} },
       ],
     }).compile();
