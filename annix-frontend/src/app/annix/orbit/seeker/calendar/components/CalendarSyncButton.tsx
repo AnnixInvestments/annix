@@ -31,6 +31,8 @@ export function CalendarSyncButton() {
     ? `https://outlook.office.com/calendar/0/addfromweb?url=${encodeURIComponent(feedUrl)}&name=${encodeURIComponent("Annix Orbit interviews")}`
     : null;
 
+  const isLocalFeed = feedUrl ? /\/\/(localhost|127\.0\.0\.1)/.test(feedUrl) : false;
+
   const handleCopy = async () => {
     if (!feedUrl) return;
     try {
@@ -38,6 +40,32 @@ export function CalendarSyncButton() {
       showToast("Feed URL copied", "success");
     } catch {
       showToast("Couldn't copy — select the URL and copy it manually.", "error");
+    }
+  };
+
+  const handleDownload = async () => {
+    if (!feedUrl) return;
+    try {
+      const response = await fetch(feedUrl);
+      if (!response.ok) {
+        throw new Error(`Feed responded ${response.status}`);
+      }
+      const text = await response.text();
+      const blob = new Blob([text], { type: "text/calendar;charset=utf-8" });
+      const objectUrl = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = "annix-orbit-interviews.ics";
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+      showToast(
+        "Calendar file downloaded — import it via your calendar's 'Add from file'.",
+        "success",
+      );
+    } catch {
+      showToast("Couldn't download the calendar file. Please try again.", "error");
     }
   };
 
@@ -65,8 +93,8 @@ export function CalendarSyncButton() {
         >
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
-              Subscribe once and every interview — including new ones — stays in sync with your
-              calendar automatically.
+              Add your interviews to your calendar — download a file to import now, or subscribe
+              live so new interviews appear automatically.
             </p>
 
             {feedLoading || !feedUrl ? (
@@ -75,33 +103,59 @@ export function CalendarSyncButton() {
               </div>
             ) : (
               <>
-                <div className="flex flex-wrap gap-2">
-                  {webcalUrl ? (
-                    <a href={webcalUrl} className={linkClass}>
-                      Apple Calendar
-                    </a>
-                  ) : null}
-                  {googleUrl ? (
-                    <a
-                      href={googleUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={linkClass}
-                    >
-                      Google
-                    </a>
-                  ) : null}
-                  {outlookUrl ? (
-                    <a
-                      href={outlookUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className={linkClass}
-                    >
-                      Outlook
-                    </a>
-                  ) : null}
+                <div>
+                  <button
+                    type="button"
+                    onClick={handleDownload}
+                    className="w-full px-3 py-2 text-sm font-semibold rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+                  >
+                    Download .ics file
+                  </button>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Works everywhere — import it via your calendar app's “Add from file”.
+                  </p>
                 </div>
+
+                <div>
+                  <span className="text-xs text-gray-500">
+                    Or subscribe live (stays in sync as new interviews are added):
+                  </span>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {webcalUrl ? (
+                      <a href={webcalUrl} className={linkClass}>
+                        Apple Calendar
+                      </a>
+                    ) : null}
+                    {googleUrl ? (
+                      <a
+                        href={googleUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={linkClass}
+                      >
+                        Google
+                      </a>
+                    ) : null}
+                    {outlookUrl ? (
+                      <a
+                        href={outlookUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={linkClass}
+                      >
+                        Outlook
+                      </a>
+                    ) : null}
+                  </div>
+                </div>
+
+                {isLocalFeed ? (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                    You're on a local address, so the live “subscribe” links won't work — calendar
+                    services can't reach <code>localhost</code>. Use <strong>Download .ics</strong>{" "}
+                    here. Live subscribe works on the published site.
+                  </div>
+                ) : null}
 
                 <div>
                   <span className="text-xs text-gray-500">Or add this feed URL manually:</span>
