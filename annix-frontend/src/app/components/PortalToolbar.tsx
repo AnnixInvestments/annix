@@ -88,6 +88,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   } = props;
   const pathname = usePathname();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const config = portalConfig[portalType];
@@ -146,6 +147,10 @@ export default function PortalToolbar(props: PortalToolbarProps) {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setIsMobileNavOpen(false);
+  }, [pathname]);
 
   const userInitials = (() => {
     if (!user) return "??";
@@ -280,6 +285,34 @@ export default function PortalToolbar(props: PortalToolbarProps) {
           </div>
 
           <div className="flex items-center space-x-4">
+            {visibleNavItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsMobileNavOpen((open) => !open)}
+                className="xl:hidden inline-flex items-center justify-center p-2 rounded-md focus:outline-none"
+                style={{ color: navForeground }}
+                aria-label="Toggle navigation menu"
+                aria-expanded={isMobileNavOpen}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {isMobileNavOpen ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  ) : (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  )}
+                </svg>
+              </button>
+            )}
             {statusBadge}
             {additionalActions}
 
@@ -553,40 +586,35 @@ export default function PortalToolbar(props: PortalToolbarProps) {
           </div>
         </div>
 
-        {/* Mobile/tablet navigation - icon + label in one horizontal-scroll row
-            (tooltips don't fire on touch; scrolling keeps it to a single
-            compact row instead of wrapping and eating vertical space). */}
-        <div
-          className="xl:hidden py-2 border-t"
-          style={{ borderColor: corpId.colors.primary.navyLight }}
-        >
+        {/* Mobile/tablet navigation - collapses to a hamburger below xl, where
+            the desktop nav can no longer fit all items. Opens a vertical menu
+            so nothing is obscured or scrolled off-screen. */}
+        {isMobileNavOpen && (
           <div
-            className="flex flex-nowrap gap-1 overflow-x-auto px-1 [&::-webkit-scrollbar]:hidden"
-            style={{ scrollbarWidth: "none" }}
+            className="xl:hidden py-2 border-t"
+            style={{ borderColor: corpId.colors.primary.navyLight }}
           >
-            {visibleNavItems.map((item) => {
-              const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Tooltip key={item.href} text={getNavTooltip(item.label)} position="top">
+            <div className="flex flex-col gap-1 px-1">
+              {visibleNavItems.map((item) => {
+                const href = item.href;
+                const isActive = pathname === href || pathname.startsWith(`${href}/`);
+                return (
                   <Link
-                    href={item.href}
-                    className="inline-flex flex-shrink-0 flex-col items-center justify-center gap-1 px-2 py-2 rounded-md transition-colors min-w-[68px]"
+                    key={href}
+                    href={href}
+                    onClick={() => setIsMobileNavOpen(false)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors"
                     style={{
-                      color: accentColor,
+                      color: navForeground,
                       backgroundColor: isActive ? navActive : "transparent",
                     }}
-                    onMouseEnter={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = navHover;
-                      }
-                    }}
-                    onMouseLeave={(e) => {
-                      if (!isActive) {
-                        e.currentTarget.style.backgroundColor = "transparent";
-                      }
-                    }}
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg
+                      className="w-5 h-5 flex-shrink-0"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
                       <path
                         strokeLinecap="round"
                         strokeLinejoin="round"
@@ -594,13 +622,16 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                         d={item.icon}
                       />
                     </svg>
-                    <span className="text-[11px] leading-tight text-center">{item.label}</span>
+                    <span className="flex flex-col leading-tight">
+                      <span className="text-sm font-medium">{item.label}</span>
+                      {item.sublabel && <span className="text-xs opacity-80">{item.sublabel}</span>}
+                    </span>
                   </Link>
-                </Tooltip>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </nav>
   );
