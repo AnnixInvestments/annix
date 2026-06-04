@@ -294,6 +294,7 @@ export {
   useOrbitMyProfileStatus,
   useOrbitNixWizardImprovements,
   useOrbitRequestMyAccountDeletion,
+  useOrbitSendAppLink,
   useOrbitUpdateMyDocumentCredentialFields,
   useOrbitUpdateMyNotificationPreferences,
   useOrbitUploadMyDocument,

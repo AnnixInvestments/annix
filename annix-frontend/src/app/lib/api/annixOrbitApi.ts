@@ -2128,6 +2128,10 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/me/dismiss-warning/acknowledge", { method: "POST" });
   }
 
+  async sendAppLink(): Promise<{ sent: boolean; email: string }> {
+    return this.request("/annix-orbit/me/send-app-link", { method: "POST" });
+  }
+
   async myDocuments(): Promise<IndividualDocument[]> {
     return this.request("/annix-orbit/me/documents");
   }

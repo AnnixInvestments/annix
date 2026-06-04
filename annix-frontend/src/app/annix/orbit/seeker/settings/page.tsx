@@ -7,6 +7,7 @@ import {
   useOrbitMyDataExport,
   useOrbitMyNotificationPreferences,
   useOrbitRequestMyAccountDeletion,
+  useOrbitSendAppLink,
   useOrbitUpdateMyNotificationPreferences,
   useOrbitWithdrawMyConsent,
   useOrbitWithdrawSeekerMatching,
@@ -22,6 +23,19 @@ export default function SeekerSettingsPage() {
   const withdrawConsent = useOrbitWithdrawMyConsent();
   const withdrawMatching = useOrbitWithdrawSeekerMatching();
   const dataExport = useOrbitMyDataExport();
+  const sendAppLink = useOrbitSendAppLink();
+
+  const handleSendAppLink = async () => {
+    try {
+      const result = await sendAppLink.mutateAsync();
+      showToast(
+        `Sent — open the email on your phone (${result.email}) to install the app.`,
+        "success",
+      );
+    } catch {
+      showToast("Couldn't send the app link — please try again.", "error");
+    }
+  };
 
   const [threshold, setThreshold] = useState(80);
   const [digestEnabled, setDigestEnabled] = useState(true);
@@ -231,6 +245,26 @@ export default function SeekerSettingsPage() {
               </div>
             </div>
           )}
+        </SectionCard>
+
+        <SectionCard
+          title="Get the app on your phone"
+          description="Annix Orbit installs to your home screen like an app — full-screen, no app store needed. We'll email you the link and the steps."
+        >
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Tap below and we'll email you a link to open on your phone, then add it to your home
+              screen (Android: Install / Add to Home screen · iPhone: Share → Add to Home Screen).
+            </p>
+            <button
+              type="button"
+              onClick={handleSendAppLink}
+              disabled={sendAppLink.isPending}
+              className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {sendAppLink.isPending ? "Sending…" : "Email me the app link"}
+            </button>
+          </div>
         </SectionCard>
 
         <ReminderPreferencesCard />

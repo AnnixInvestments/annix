@@ -1844,6 +1844,46 @@ This is an automated notification from the Annix test site.
     });
   }
 
+  async sendAnnixOrbitAppLinkEmail(email: string): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const appUrl = `${frontendUrl}/annix/orbit/seeker/dashboard`;
+
+    const html = emailLayout({
+      title: "Install Annix Orbit on your phone",
+      heading: "Get Annix Orbit on your phone",
+      headingColor: "#323288",
+      bodyHtml: `
+          <p>Open the link below <strong>on your phone</strong> and add it to your home screen — Annix Orbit installs like an app, full-screen, with no app store needed.</p>
+          <p><strong>On Android (Chrome):</strong> open the link, then tap <em>Install</em> when prompted — or the menu (⋮) → <em>Add to Home screen</em>.</p>
+          <p><strong>On iPhone (Safari):</strong> open the link, tap the <em>Share</em> icon, then <em>Add to Home Screen</em>.</p>
+          <p>Once it's added, open it from your home screen and sign in as usual.</p>`,
+      cta: {
+        href: appUrl,
+        label: "Open Annix Orbit",
+        color: "#323288",
+      },
+      footerText:
+        "You're receiving this because you asked Annix Orbit to send you the app link. If that wasn't you, you can ignore this email.",
+    });
+
+    const text = `Get Annix Orbit on your phone
+
+Open this link on your phone and add it to your home screen:
+${appUrl}
+
+Android (Chrome): tap Install when prompted, or menu (⋮) → Add to Home screen.
+iPhone (Safari): tap Share → Add to Home Screen.
+
+Then open it from your home screen and sign in as usual.`;
+
+    return this.sendEmail({
+      to: email,
+      subject: "Install Annix Orbit on your phone",
+      html,
+      text,
+    });
+  }
+
   async sendAnnixOrbitRejectionEmail(
     email: string,
     candidateName: string,

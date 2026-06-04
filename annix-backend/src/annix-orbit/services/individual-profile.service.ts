@@ -327,6 +327,16 @@ export class IndividualProfileService {
     return { acknowledgedAt: acknowledgedAt ? acknowledgedAt.toISOString() : "" };
   }
 
+  async sendAppLink(userId: number): Promise<{ sent: boolean; email: string }> {
+    const user = await this.userRepo.findById(userId);
+    const email = user ? user.email : null;
+    if (!email) {
+      throw new NotFoundException("No email on file for this account");
+    }
+    const sent = await this.emailService.sendAnnixOrbitAppLinkEmail(email);
+    return { sent, email };
+  }
+
   async listDocuments(userId: number): Promise<IndividualDocumentSummary[]> {
     const profile = await this.profileForUser(userId);
     const docs = await this.documentRepo.findByProfileOrdered(profile.id);

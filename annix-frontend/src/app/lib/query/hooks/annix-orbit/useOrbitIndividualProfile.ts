@@ -33,6 +33,12 @@ export function useOrbitAcknowledgeDismissWarning() {
   });
 }
 
+export function useOrbitSendAppLink() {
+  return useMutation({
+    mutationFn: () => annixOrbitApiClient.sendAppLink(),
+  });
+}
+
 export function useOrbitMyDocuments(enabled = true) {
   return useQuery<IndividualDocument[]>({
     queryKey: annixOrbitKeys.individualProfile.documents(),
