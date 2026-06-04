@@ -1183,6 +1183,7 @@ class AdminApiClient {
       maxJobResults?: number | null;
       monthlyNixRuns?: number | null;
       features?: Partial<OrbitTierFeatures>;
+      pricing?: Partial<OrbitTierPricing>;
     },
   ): Promise<OrbitTierCapability> {
     return this.request(`/admin/annix-orbit/tier-capabilities/${encodeURIComponent(tier)}`, {
@@ -1353,6 +1354,13 @@ export interface OrbitTierFeatures {
   nixCvBuilder: boolean;
   jobListingSite: boolean;
   multiChannelReminders?: boolean;
+  photoCredentialCapture?: boolean;
+}
+
+export interface OrbitTierPricing {
+  monthlyPrice: number | null;
+  perNixRun: number | null;
+  perApplication: number | null;
 }
 
 export interface OrbitTierCapability {
@@ -1363,6 +1371,7 @@ export interface OrbitTierCapability {
   maxJobResults: number | null;
   monthlyNixRuns: number | null;
   features: OrbitTierFeatures;
+  pricing: OrbitTierPricing | null;
   displayOrder: number;
 }
 

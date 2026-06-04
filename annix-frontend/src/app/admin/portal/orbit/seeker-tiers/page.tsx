@@ -2,6 +2,11 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  type TierPlanPricing,
+  TierPlans,
+  type TierPlanView,
+} from "@/app/components/orbit/TierPlans";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitTierCapability, OrbitTierFeatures } from "@/app/lib/api/adminApi";
 import {
@@ -38,6 +43,7 @@ const FEATURE_COLUMNS: Array<{ key: keyof OrbitTierFeatures; label: string }> = 
   { key: "nixCvBuilder", label: "Nix CV builder" },
   { key: "jobListingSite", label: "Job listing site" },
   { key: "multiChannelReminders", label: "SMS/WhatsApp reminders" },
+  { key: "photoCredentialCapture", label: "Photo credential capture" },
 ];
 
 interface TierDraft {
@@ -69,15 +75,47 @@ export default function AdminOrbitSeekerTiersPage() {
 
   const [drafts, setDrafts] = useState<Record<string, TierDraft>>({});
   const [savingTier, setSavingTier] = useState<string | null>(null);
+  const [pricingDrafts, setPricingDrafts] = useState<Record<string, TierPlanPricing>>({});
+  const [savingPricingTier, setSavingPricingTier] = useState<string | null>(null);
 
   useEffect(() => {
     if (capabilities.length === 0) return;
     const next: Record<string, TierDraft> = {};
+    const nextPricing: Record<string, TierPlanPricing> = {};
     capabilities.forEach((row: OrbitTierCapability) => {
       next[row.tier] = toDraft(row);
+      const pricing = row.pricing;
+      nextPricing[row.tier] = {
+        monthlyPrice: pricing ? pricing.monthlyPrice : null,
+        perNixRun: pricing ? pricing.perNixRun : null,
+        perApplication: pricing ? pricing.perApplication : null,
+      };
     });
     setDrafts(next);
+    setPricingDrafts(nextPricing);
   }, [capabilities]);
+
+  const handlePriceChange = (tier: string, field: keyof TierPlanPricing, value: number | null) => {
+    setPricingDrafts((prev) => {
+      const current = prev[tier];
+      if (!current) return prev;
+      return { ...prev, [tier]: { ...current, [field]: value } };
+    });
+  };
+
+  const handleSavePricing = async (tier: string) => {
+    const pricing = pricingDrafts[tier];
+    if (!pricing) return;
+    setSavingPricingTier(tier);
+    try {
+      await updateCapability.mutateAsync({ tier, pricing });
+      showToast("Saved pricing.", "success");
+    } catch {
+      showToast("Could not save pricing.", "error");
+    } finally {
+      setSavingPricingTier(null);
+    }
+  };
 
   const handleStrictnessChange = (tier: string, value: string) => {
     setDrafts((prev) => {
@@ -205,9 +243,11 @@ export default function AdminOrbitSeekerTiersPage() {
                   const draft = drafts[row.tier];
                   if (!draft) return null;
                   const isSaving = savingTier === row.tier;
+                  const tierOption = TIER_OPTIONS.find((option) => option.key === row.tier);
+                  const displayLabel = tierOption ? tierOption.label : row.label;
                   return (
                     <tr key={row.tier} className="text-gray-900">
-                      <td className="px-3 py-3 font-medium whitespace-nowrap">{row.label}</td>
+                      <td className="px-3 py-3 font-medium whitespace-nowrap">{displayLabel}</td>
                       <td className="px-3 py-3">
                         <select
                           value={draft.matchStrictness}
@@ -271,6 +311,48 @@ export default function AdminOrbitSeekerTiersPage() {
             </table>
           </div>
         )}
+
+        {!isLoadingCapabilities && capabilities.length > 0 ? (
+          <div className="space-y-3 border-t border-gray-100 pt-6">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900">How seekers see it</h3>
+              <p className="text-xs text-gray-500 mt-0.5">
+                This is the live plans view seekers see. Ticking a capability above updates it here;
+                set the monthly and pay-as-you-go prices below, then Save pricing.
+              </p>
+            </div>
+            <TierPlans
+              editable
+              plans={capabilities.map((row: OrbitTierCapability): TierPlanView => {
+                const draft = drafts[row.tier];
+                const tierOption = TIER_OPTIONS.find((option) => option.key === row.tier);
+                const label = tierOption ? tierOption.label : row.label;
+                const maxText = draft ? draft.maxJobResults.trim() : "";
+                const nixText = draft ? draft.monthlyNixRuns.trim() : "";
+                return {
+                  tier: row.tier,
+                  label,
+                  maxJobResults: draft
+                    ? maxText === ""
+                      ? null
+                      : Number(maxText)
+                    : row.maxJobResults,
+                  monthlyNixRuns: draft
+                    ? nixText === ""
+                      ? null
+                      : Number(nixText)
+                    : row.monthlyNixRuns,
+                  features: draft ? draft.features : row.features,
+                  pricing: row.pricing,
+                };
+              })}
+              pricingDrafts={pricingDrafts}
+              savingTier={savingPricingTier}
+              onPriceChange={handlePriceChange}
+              onSavePricing={handleSavePricing}
+            />
+          </div>
+        ) : null}
       </section>
 
       <SeekerOverrideSection />
