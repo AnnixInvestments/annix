@@ -8,6 +8,7 @@ import {
   useExtractionProgress,
   withExtractionProgress,
 } from "@/app/components/ExtractionProgressModal";
+import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useToast } from "@/app/components/Toast";
 import { SeekerBrowseJobCard } from "@/app/lib/annix-orbit/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/annix-orbit/components/SeekerJobCard";
@@ -25,6 +26,7 @@ import { nowMillis } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useDebouncedValue } from "@/app/lib/hooks/useDebouncedValue";
 import {
+  useOrbitAcknowledgeDismissWarning,
   useOrbitDismissSeekerMatch,
   useOrbitGrantSeekerMatchingConsent,
   useOrbitMuteSeekerCategory,
@@ -142,21 +144,48 @@ export default function SeekerJobsPage() {
   }, [data, coldStartData, showColdStart]);
   const embeddingPending = coldStartData ? coldStartData.embeddingPending : false;
 
-  const providers = useMemo(() => {
+  // Filter options are derived from the visible matches, but server-side
+  // filtering shrinks that set — so once a provider/category is picked the
+  // dropdown would collapse to just that one. Remember the full list captured
+  // while the filter is unset so every option stays selectable at all times.
+  const allProvidersRef = useRef<string[]>([]);
+  const allCategoriesRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (filters.provider !== "all") return;
     const set = new Set<string>();
     matches.forEach((m) => {
       if (m.job.sourceProvider) set.add(m.job.sourceProvider);
     });
-    return [...set].sort();
-  }, [matches]);
+    allProvidersRef.current = [...set].sort();
+  }, [matches, filters.provider]);
 
-  const categories = useMemo(() => {
+  useEffect(() => {
+    if (filters.category !== "") return;
     const set = new Set<string>();
     matches.forEach((m) => {
       if (m.job.category) set.add(m.job.category);
     });
+    allCategoriesRef.current = [...set].sort();
+  }, [matches, filters.category]);
+
+  const providers = useMemo(() => {
+    const set = new Set<string>(allProvidersRef.current);
+    matches.forEach((m) => {
+      if (m.job.sourceProvider) set.add(m.job.sourceProvider);
+    });
+    if (filters.provider !== "all") set.add(filters.provider);
     return [...set].sort();
-  }, [matches]);
+  }, [matches, filters.provider]);
+
+  const categories = useMemo(() => {
+    const set = new Set<string>(allCategoriesRef.current);
+    matches.forEach((m) => {
+      if (m.job.category) set.add(m.job.category);
+    });
+    if (filters.category !== "") set.add(filters.category);
+    return [...set].sort();
+  }, [matches, filters.category]);
 
   const filtered = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
