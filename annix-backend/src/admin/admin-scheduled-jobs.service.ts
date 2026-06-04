@@ -153,6 +153,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "*/30 * * * *",
   },
+  "annix-orbit:credential-scan-reminders": {
+    description:
+      "Remind seekers to upload a clear scan of phone-photo credentials (email; every 3 days, max 3)",
+    module: "Annix Orbit",
+    defaultCron: "0 8 * * *",
+  },
   "insights:daily-snapshot": {
     description:
       "Annix Insights — morning run: pull OHLCV, news, signals, execute trades, snapshot portfolios (06:00 SAST)",

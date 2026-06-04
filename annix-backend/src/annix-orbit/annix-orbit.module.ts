@@ -318,6 +318,7 @@ import { CandidateJobMatchingService } from "./services/candidate-job-matching.s
 import { CareerjetService } from "./services/careerjet.service";
 import { SitemapCrawlIngestionService } from "./services/crawl/sitemap-crawl-ingestion.service";
 import { CredentialService } from "./services/credential.service";
+import { CredentialScanReminderService } from "./services/credential-scan-reminder.service";
 import { CvAuditService } from "./services/cv-audit.service";
 import { CvEmailAdapterService } from "./services/cv-email-adapter.service";
 import { CvExtractionService } from "./services/cv-extraction.service";
@@ -631,6 +632,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SeekerInterviewEventsService,
     SeekerReminderPreferencesService,
     InterviewReminderService,
+    CredentialScanReminderService,
     WorkProfileService,
     CredentialService,
     OrbitCredentialTypeService,
