@@ -108,7 +108,7 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
       <button
         type="button"
         onClick={addQuestion}
-        className="text-sm font-semibold text-[#252560] hover:text-[#1a1a40]"
+        className="text-sm font-semibold text-[#252560] hover:text-[#1a1a40] dark:text-[#c0c0eb] dark:hover:text-white"
       >
         + Add screening question
       </button>

@@ -29,9 +29,9 @@ const STATUS_OPTIONS: { value: SeekerApplicationStatus; label: string }[] = [
 ];
 
 const STATUS_CLASS: Record<SeekerApplicationStatus, string> = {
-  applied: "bg-blue-50 text-blue-700 border-blue-200",
+  applied: "bg-blue-50 text-blue-700 border-blue-200 dark:text-blue-300",
   interviewing: "bg-amber-50 text-amber-800 border-amber-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
+  rejected: "bg-red-50 text-red-700 border-red-200 dark:text-red-300",
   offer: "bg-emerald-50 text-emerald-700 border-emerald-200",
   accepted: "bg-violet-50 text-violet-700 border-violet-200",
 };

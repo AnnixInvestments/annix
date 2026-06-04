@@ -726,7 +726,7 @@ export default function SeekerJobsPage() {
       />
 
       {showColdStart ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
           {embeddingPending
             ? "Matching your CV to live job listings… showing recent SA roles in the meantime."
             : "Showing recent SA roles while we refine your matches."}
@@ -972,12 +972,12 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
       />
 
       {matchesPending ? (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200">
           Nix is still preparing your personalised job matches. In the meantime, here are all open
           jobs — you can browse and apply to any of them now.
         </div>
       ) : (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex flex-wrap items-center justify-between gap-2">
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex flex-wrap items-center justify-between gap-2">
           <span>
             Browsing all open jobs. Upload your CV and Nix will rank these by how well they match
             you.

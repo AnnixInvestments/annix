@@ -124,7 +124,7 @@ export default function AnnixOrbitPublicJobsPage() {
           </p>
           <Link
             href="/annix/orbit/register/individual"
-            className="text-sm font-medium text-[#323288] hover:text-[#252560]"
+            className="text-sm font-medium text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
           >
             Sign up to apply →
           </Link>

@@ -209,7 +209,9 @@ function NixResultBlock(props: {
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500 font-medium">CV score</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-bold text-[var(--brand-navbar,#323288)]">{score}</span>
+            <span className="text-3xl font-bold text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8]">
+              {score}
+            </span>
             <span className="text-sm text-gray-500">/ 100</span>
           </div>
         </div>
@@ -222,7 +224,9 @@ function NixResultBlock(props: {
 
       {a.headline && (
         <p className="text-sm text-gray-800 leading-relaxed">
-          <span className="font-semibold text-[var(--brand-navbar-active,#252560)]">Nix says:</span>{" "}
+          <span className="font-semibold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb]">
+            Nix says:
+          </span>{" "}
           {a.headline}
         </p>
       )}
@@ -270,7 +274,9 @@ function NixResultBlock(props: {
           <ul className="space-y-1.5">
             {a.missingDocumentSuggestions.map((d) => (
               <li key={d} className="text-sm text-gray-700 flex gap-2">
-                <span className="text-[var(--brand-navbar-400,#7373c2)] flex-shrink-0">•</span>
+                <span className="text-[var(--brand-navbar-400,#7373c2)] dark:text-[#9ea0e8] flex-shrink-0">
+                  •
+                </span>
                 <span>{d}</span>
               </li>
             ))}
@@ -291,7 +297,7 @@ function NixResultBlock(props: {
               <button
                 type="button"
                 onClick={() => props.onCopy(a.rewriteSummary as string)}
-                className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] whitespace-nowrap"
+                className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] whitespace-nowrap"
               >
                 {props.copied ? "Copied!" : "Copy summary"}
               </button>
@@ -306,7 +312,7 @@ function NixResultBlock(props: {
 function SectionHeading(props: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] uppercase tracking-wide">
+      <h3 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb] uppercase tracking-wide">
         {props.title}
       </h3>
       {props.children}

@@ -729,7 +729,7 @@ export default function FuturePathPage() {
                         href={s.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
+                        className="text-blue-600 dark:text-blue-400 hover:underline"
                       >
                         Visit
                       </a>

@@ -268,7 +268,7 @@ function SuccessMetricList({
       <button
         type="button"
         onClick={onAdd}
-        className="text-sm font-semibold text-[#252560] hover:text-[#1a1a40]"
+        className="text-sm font-semibold text-[#252560] hover:text-[#1a1a40] dark:text-[#c0c0eb] dark:hover:text-white"
       >
         + Add outcome
       </button>

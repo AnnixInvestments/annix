@@ -106,7 +106,7 @@ export default function JobsPage() {
                             href={`/annix/orbit/jobs/${referenceNumber}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="font-mono text-xs text-[#252560] hover:text-[#1a1a40] underline-offset-2 hover:underline"
+                            className="font-mono text-xs text-[#252560] hover:text-[#1a1a40] dark:text-[#c0c0eb] dark:hover:text-white underline-offset-2 hover:underline"
                           >
                             {referenceNumber}
                           </a>
@@ -193,7 +193,7 @@ export default function JobsPage() {
                           </button>
                           <button
                             onClick={() => router.push(`/annix/orbit/portal/jobs/${job.id}/edit`)}
-                            className="text-[#323288] hover:text-[#252560]"
+                            className="text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
                           >
                             Edit
                           </button>

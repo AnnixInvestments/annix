@@ -660,7 +660,7 @@ export default function CandidatesPage() {
                           <button
                             type="button"
                             onClick={() => handleViewCv(candidate)}
-                            className="text-[#323288] hover:text-[#252560] disabled:text-gray-300"
+                            className="text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] disabled:text-gray-300"
                             disabled={!candidate.cvFilePath}
                           >
                             View CV

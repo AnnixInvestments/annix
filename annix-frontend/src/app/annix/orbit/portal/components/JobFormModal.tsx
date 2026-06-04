@@ -337,7 +337,9 @@ export function JobFormModal({ job, onClose }: { job: JobPosting | null; onClose
                       {!available ? (
                         <span className="text-xs text-gray-400 italic">Coming soon</span>
                       ) : adapter.postingMode === "assisted" ? (
-                        <span className="text-xs text-blue-700 italic">Manual paste</span>
+                        <span className="text-xs text-blue-700 dark:text-blue-300 italic">
+                          Manual paste
+                        </span>
                       ) : null}
                     </label>
                   );

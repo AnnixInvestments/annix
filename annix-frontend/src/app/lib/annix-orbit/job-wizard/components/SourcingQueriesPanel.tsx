@@ -101,13 +101,13 @@ function SourcingQueryRow({ label, value, copied, onCopy }: SourcingQueryRowProp
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-xs uppercase tracking-wider text-[#252560] font-semibold">
+        <span className="text-xs uppercase tracking-wider text-[#252560] dark:text-[#c0c0eb] font-semibold">
           {label}
         </span>
         <button
           type="button"
           onClick={onCopy}
-          className="text-xs text-[#252560] hover:text-[#1a1a40]"
+          className="text-xs text-[#252560] hover:text-[#1a1a40] dark:text-[#c0c0eb] dark:hover:text-white"
         >
           {copied ? "Copied!" : "Copy"}
         </button>
