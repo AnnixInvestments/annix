@@ -442,10 +442,10 @@ function ApplicationCard(props: ApplicationCardProps) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-5 space-y-3">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="min-w-0">
-          <h3 className="text-lg font-semibold text-gray-900">{app.title}</h3>
-          <p className="text-sm text-gray-600 mt-0.5">
+          <h3 className="text-lg font-semibold text-gray-900 break-words">{app.title}</h3>
+          <p className="text-sm text-gray-600 mt-0.5 break-words">
             {companyLabel}
             {location ? ` · ${location}` : ""}
           </p>
@@ -454,13 +454,13 @@ function ApplicationCard(props: ApplicationCardProps) {
             {salaryLabel ? ` · ${salaryLabel}` : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2 sm:shrink-0">
           <select
             aria-label={`Status for ${app.title}`}
             value={app.status}
             disabled={props.statusPending}
             onChange={(e) => props.onStatusChange(app, e.target.value as SeekerApplicationStatus)}
-            className={`text-sm font-medium rounded-lg border px-2.5 py-1.5 disabled:opacity-60 ${statusClass}`}
+            className={`flex-1 sm:flex-none text-sm font-medium rounded-lg border px-2.5 py-1.5 disabled:opacity-60 ${statusClass}`}
           >
             {STATUS_OPTIONS.map((option) => (
               <option key={option.value} value={option.value}>
@@ -483,7 +483,7 @@ function ApplicationCard(props: ApplicationCardProps) {
             onClick={() => props.onDelete(app)}
             title="Remove from my applications"
             aria-label={`Remove ${app.title} from my applications`}
-            className="p-1.5 text-gray-400 hover:text-red-600 transition-colors"
+            className="p-1.5 text-gray-400 hover:text-red-600 transition-colors shrink-0"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
