@@ -73,11 +73,11 @@ export class ExternalJob {
   @Prop({ type: String, required: false })
   embedding: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const ExternalJobSchema = SchemaFactory.createForClass(ExternalJob);
