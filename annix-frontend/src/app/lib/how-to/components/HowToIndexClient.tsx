@@ -149,7 +149,7 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search guides by title, tag, or keyword..."
-            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-md focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
+            className="w-full pl-9 pr-3 py-2 text-sm bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-teal-500 focus:border-teal-500"
           />
           <svg
             className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
