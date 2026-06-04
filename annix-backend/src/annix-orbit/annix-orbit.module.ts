@@ -58,6 +58,7 @@ import { AnnixOrbitStudentLicensingRegistrar } from "./annix-orbit-student-licen
 import { AnnixOrbitCapabilities } from "./capabilities/annix-orbit.capabilities";
 import { AdminEeTargetsController } from "./controllers/admin-ee-targets.controller";
 import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
+import { AdminOrbitDismissReasonsController } from "./controllers/admin-orbit-dismiss-reasons.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
 import { AdminOrbitTierCapabilitiesController } from "./controllers/admin-orbit-tier-capabilities.controller";
@@ -127,6 +128,7 @@ import { JobScreeningQuestion } from "./entities/job-screening-question.entity";
 import { JobSkill } from "./entities/job-skill.entity";
 import { JobSuccessMetric } from "./entities/job-success-metric.entity";
 import { OrbitCredentialType } from "./entities/orbit-credential-type.entity";
+import { OrbitDismissReason } from "./entities/orbit-dismiss-reason.entity";
 import { OrbitTierCapability } from "./entities/orbit-tier-capability.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
@@ -234,6 +236,9 @@ import { PostgresJobSuccessMetricRepository } from "./repositories/job-success-m
 import { OrbitCredentialTypeRepository } from "./repositories/orbit-credential-type.repository";
 import { MongoOrbitCredentialTypeRepository } from "./repositories/orbit-credential-type.repository.mongo";
 import { PostgresOrbitCredentialTypeRepository } from "./repositories/orbit-credential-type.repository.postgres";
+import { OrbitDismissReasonRepository } from "./repositories/orbit-dismiss-reason.repository";
+import { MongoOrbitDismissReasonRepository } from "./repositories/orbit-dismiss-reason.repository.mongo";
+import { PostgresOrbitDismissReasonRepository } from "./repositories/orbit-dismiss-reason.repository.postgres";
 import { OrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository";
 import { MongoOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.mongo";
 import { PostgresOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.postgres";
@@ -293,6 +298,7 @@ import { JobScreeningQuestionSchema } from "./schemas/job-screening-question.sch
 import { JobSkillSchema } from "./schemas/job-skill.schema";
 import { JobSuccessMetricSchema } from "./schemas/job-success-metric.schema";
 import { OrbitCredentialTypeSchema } from "./schemas/orbit-credential-type.schema";
+import { OrbitDismissReasonSchema } from "./schemas/orbit-dismiss-reason.schema";
 import { OrbitTierCapabilitySchema } from "./schemas/orbit-tier-capability.schema";
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
@@ -347,6 +353,7 @@ import { NixCvPdfService } from "./services/nix-cv-pdf.service";
 import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
 import { OrbitCredentialTypeService } from "./services/orbit-credential-type.service";
+import { OrbitDismissReasonService } from "./services/orbit-dismiss-reason.service";
 import { OrbitTierCapabilityService } from "./services/orbit-tier-capability.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
@@ -423,6 +430,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "SourceRespectRank", schema: SourceRespectRankSchema },
               { name: "CvCredential", schema: CvCredentialSchema },
               { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
+              { name: "OrbitDismissReason", schema: OrbitDismissReasonSchema },
               { name: "OrbitTierCapability", schema: OrbitTierCapabilitySchema },
               { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
               { name: "CvEscoSkill", schema: CvEscoSkillSchema },
@@ -496,6 +504,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             SourceRespectRank,
             CvCredential,
             OrbitCredentialType,
+            OrbitDismissReason,
             OrbitTierCapability,
             SeekerUsageCounter,
             CvEscoSkill,
@@ -565,6 +574,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     WorkProfileController,
     CredentialController,
     AdminOrbitCredentialTypesController,
+    AdminOrbitDismissReasonsController,
     AdminOrbitTierCapabilitiesController,
     PublicTierPlansController,
   ],
@@ -638,6 +648,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     WorkProfileService,
     CredentialService,
     OrbitCredentialTypeService,
+    OrbitDismissReasonService,
     OrbitTierCapabilityService,
     repositoryProvider(CandidateRepository, PostgresCandidateRepository, MongoCandidateRepository),
     repositoryProvider(
@@ -810,6 +821,11 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       OrbitCredentialTypeRepository,
       PostgresOrbitCredentialTypeRepository,
       MongoOrbitCredentialTypeRepository,
+    ),
+    repositoryProvider(
+      OrbitDismissReasonRepository,
+      PostgresOrbitDismissReasonRepository,
+      MongoOrbitDismissReasonRepository,
     ),
     repositoryProvider(
       OrbitTierCapabilityRepository,

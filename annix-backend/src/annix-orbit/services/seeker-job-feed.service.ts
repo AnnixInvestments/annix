@@ -21,6 +21,7 @@ import { CandidateJobMatchRepository } from "../repositories/candidate-job-match
 import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
+import { OrbitDismissReasonRepository } from "../repositories/orbit-dismiss-reason.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
 import { SeekerMuteRepository } from "../repositories/seeker-mute.repository";
@@ -148,6 +149,7 @@ export class SeekerJobFeedService {
     private readonly referenceRepo: CandidateReferenceRepository,
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly usageCounterRepo: SeekerUsageCounterRepository,
+    private readonly dismissReasonRepo: OrbitDismissReasonRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -701,15 +703,19 @@ export class SeekerJobFeedService {
     }
     await this.matchingService.dismissMatch(matchId, reason ?? null);
 
-    // Deterministic filters for the explicit reasons: muting the whole company
-    // or category is a strong signal the seeker asked for directly.
-    if (reason === "not_company" || reason === "wrong_field") {
-      const job = await this.externalJobRepo.findById(found.externalJobId);
-      if (job) {
-        if (reason === "not_company" && job.company) {
-          await this.muteCompanyForSeeker(email, job.company);
-        } else if (reason === "wrong_field" && job.category) {
-          await this.muteCategoryForSeeker(email, job.category);
+    // Deterministic filter, driven by the admin-configured reason: a reason
+    // with muteAction "company"/"category" mutes that job's company/category.
+    if (reason) {
+      const reasonRow = await this.dismissReasonRepo.findByCode(reason);
+      const muteAction = reasonRow ? reasonRow.muteAction : null;
+      if (muteAction === "company" || muteAction === "category") {
+        const job = await this.externalJobRepo.findById(found.externalJobId);
+        if (job) {
+          if (muteAction === "company" && job.company) {
+            await this.muteCompanyForSeeker(email, job.company);
+          } else if (muteAction === "category" && job.category) {
+            await this.muteCategoryForSeeker(email, job.category);
+          }
         }
       }
     }

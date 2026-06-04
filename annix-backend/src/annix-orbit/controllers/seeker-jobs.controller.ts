@@ -14,8 +14,9 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { IsIn, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { OrbitDismissReasonService } from "../services/orbit-dismiss-reason.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
 class RecordApplyClickDto {
@@ -45,20 +46,11 @@ class MuteCategoryDto {
   category: string;
 }
 
-const DISMISS_REASONS = [
-  "wrong_location",
-  "too_senior",
-  "too_junior",
-  "wrong_field",
-  "pay_too_low",
-  "not_company",
-  "other",
-] as const;
-
 class DismissMatchDto {
-  @IsIn(DISMISS_REASONS)
+  @IsString()
   @IsOptional()
-  reason?: (typeof DISMISS_REASONS)[number];
+  @MaxLength(50)
+  reason?: string;
 }
 
 interface SeekerAuthRequest {
@@ -68,7 +60,15 @@ interface SeekerAuthRequest {
 @Controller("annix-orbit/seeker/jobs")
 @UseGuards(AnnixOrbitAuthGuard)
 export class SeekerJobsController {
-  constructor(private readonly feedService: SeekerJobFeedService) {}
+  constructor(
+    private readonly feedService: SeekerJobFeedService,
+    private readonly dismissReasonService: OrbitDismissReasonService,
+  ) {}
+
+  @Get("dismiss-reasons")
+  dismissReasons() {
+    return this.dismissReasonService.listActive();
+  }
 
   @Get("recommended")
   async recommended(
