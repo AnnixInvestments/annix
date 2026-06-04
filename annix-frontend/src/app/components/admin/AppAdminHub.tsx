@@ -11,17 +11,25 @@ export interface AppHubCard {
   icon: React.ReactNode;
   color: string;
   hoverColor: string;
+  badge?: number | null;
 }
 
 function AppHubCardLink(props: { card: AppHubCard }) {
   const card = props.card;
   const borderClass = card.hoverColor.split(" ")[0];
   const iconHoverClass = card.hoverColor.split(" ").slice(1).join(" ");
+  const cardBadge = card.badge;
+  const showBadge = typeof cardBadge === "number" && cardBadge > 0;
   return (
     <Link href={card.href} className="group">
       <div
         className={`relative bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border-2 border-transparent ${borderClass} hover:shadow-lg transition-all duration-300 h-full`}
       >
+        {showBadge ? (
+          <span className="absolute top-3 right-3 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-600 text-white text-xs font-bold">
+            {cardBadge}
+          </span>
+        ) : null}
         <div className="flex items-start gap-4">
           <div
             className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${card.color} ${iconHoverClass} transition-colors`}

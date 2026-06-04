@@ -1,6 +1,7 @@
 "use client";
 
 import { AppAdminHub, type AppHubCard } from "@/app/components/admin/AppAdminHub";
+import { useAdminOrbitDelistReportCount } from "@/app/lib/query/hooks";
 
 function JobMarketIcon() {
   return (
@@ -99,6 +100,19 @@ function CredentialsIcon() {
   );
 }
 
+function DelistReportsIcon() {
+  return (
+    <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={1.5}
+        d="M3 3v1.5M3 21v-6m0 0l2.77-.693a9 9 0 016.208.682l.108.054a9 9 0 006.086.71l3.114-.732a48.524 48.524 0 01-.005-10.499l-3.11.732a9 9 0 01-6.085-.711l-.108-.054a9 9 0 00-6.208-.682L3 4.5M3 15V4.5"
+      />
+    </svg>
+  );
+}
+
 function BrandingIcon() {
   return (
     <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -183,6 +197,15 @@ const orbitAdminCards: AppHubCard[] = [
     hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/orbit/delist-reports",
+    title: "Delist reports",
+    description:
+      "Seeker-reported jobs that may have been taken down on the source site — review and confirm to remove for everyone.",
+    icon: <DelistReportsIcon />,
+    color: "bg-orange-100 text-orange-600",
+    hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
+  },
+  {
     href: "/admin/portal/branding/annix-orbit",
     title: "Branding",
     description: "Orbit brand — logo, colours, tagline and watermark.",
@@ -193,12 +216,20 @@ const orbitAdminCards: AppHubCard[] = [
 ];
 
 export default function OrbitAdminHubPage() {
+  const delistCountQuery = useAdminOrbitDelistReportCount();
+  const delistCountData = delistCountQuery.data;
+  const delistCount = delistCountData ? delistCountData.count : 0;
+
+  const cards = orbitAdminCards.map((card) =>
+    card.href === "/admin/portal/orbit/delist-reports" ? { ...card, badge: delistCount } : card,
+  );
+
   return (
     <AppAdminHub
       appKey="annix-orbit"
       title="Annix Orbit — Admin Hub"
-      subtitle="Choose an area to manage — job market, seekers, tiers, EE targets, education catalog, FuturePath admissions, credentials, and branding."
-      cards={orbitAdminCards}
+      subtitle="Choose an area to manage — job market, seekers, tiers, EE targets, education catalog, FuturePath admissions, credentials, delist reports, and branding."
+      cards={cards}
     />
   );
 }

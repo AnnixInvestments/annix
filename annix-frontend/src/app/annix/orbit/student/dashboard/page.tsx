@@ -50,7 +50,7 @@ export default function StudentDashboardPage() {
             Set your target qualifications, plan your marks, estimate the cost, and explore
             alternative pathways.
           </p>
-          <span className="mt-5 text-[#323288] font-medium">Get started →</span>
+          <span className="mt-5 text-[#323288] dark:text-[#9ea0e8] font-medium">Get started →</span>
         </Link>
       </div>
     </div>

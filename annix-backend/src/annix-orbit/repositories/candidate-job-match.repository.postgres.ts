@@ -33,6 +33,7 @@ export class PostgresCandidateJobMatchRepository
       .innerJoinAndSelect("match.externalJob", "job")
       .where("match.candidate_id = :candidateId", { candidateId })
       .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
+      .andWhere("job.delisted IS NOT TRUE")
       .orderBy("match.overallScore", "DESC")
       .take(limit);
 

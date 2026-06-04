@@ -336,7 +336,7 @@ export default function AnalyticsPage() {
               <div className="flex items-center gap-6">
                 <div className="flex-shrink-0 w-32 h-32 rounded-full border-8 border-[#c0c0eb] flex items-center justify-center">
                   <div className="text-center">
-                    <div className="text-2xl font-bold text-[#252560]">
+                    <div className="text-2xl font-bold text-[#252560] dark:text-white">
                       {matchAccuracy.overall.accuracy.toFixed(1)}%
                     </div>
                     <div className="text-xs text-gray-500">Overall</div>

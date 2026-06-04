@@ -59,7 +59,11 @@ export function JobPreviewCard({ draft, titlePreview }: JobPreviewCardProps) {
           {employmentLabel && <span>· {employmentLabel}</span>}
           {workModeLabel && <span>· {workModeLabel}</span>}
         </div>
-        {salaryRange && <p className="text-sm font-semibold text-[#252560] mt-2">{salaryRange}</p>}
+        {salaryRange && (
+          <p className="text-sm font-semibold text-[#252560] dark:text-[#c0c0eb] mt-2">
+            {salaryRange}
+          </p>
+        )}
       </header>
 
       {description ? (

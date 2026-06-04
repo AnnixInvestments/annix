@@ -86,6 +86,21 @@ export class ExternalJob {
   @Column({ type: "varchar", nullable: true })
   embedding: string | null;
 
+  @Column({ type: "boolean", default: false })
+  delisted: boolean;
+
+  @Column({ name: "delist_review", type: "varchar", length: 16, nullable: true })
+  delistReview: string | null;
+
+  @Column({ name: "delist_reported_at", type: "timestamptz", nullable: true })
+  delistReportedAt: Date | null;
+
+  @Column({ name: "delist_reported_by", type: "varchar", length: 320, nullable: true })
+  delistReportedBy: string | null;
+
+  @Column({ name: "delisted_at", type: "timestamptz", nullable: true })
+  delistedAt: Date | null;
+
   @Column({ name: "accepts_za", type: "boolean", nullable: true })
   acceptsZa: boolean | null;
 

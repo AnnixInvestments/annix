@@ -93,7 +93,7 @@ export function RecommendedJobsPanel({
                   href={job.sourceUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-xs text-[#323288] hover:underline"
+                  className="text-xs text-[#323288] dark:text-[#9ea0e8] hover:underline"
                 >
                   View
                 </a>

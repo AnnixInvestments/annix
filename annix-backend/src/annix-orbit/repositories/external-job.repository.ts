@@ -53,6 +53,21 @@ export interface EmbeddingCoverageRow {
   embedded: number;
 }
 
+export interface DelistReportRow {
+  id: number;
+  title: string;
+  company: string | null;
+  locationRaw: string | null;
+  locationArea: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryCurrency: string | null;
+  sourceUrl: string | null;
+  sourceProvider: string | null;
+  delistReportedAt: Date | null;
+  delistReportedBy: string | null;
+}
+
 export interface DuplicateJobSide {
   id: number;
   title: string;
@@ -148,4 +163,9 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   ): Promise<void>;
   abstract stampLastSeenByIds(ids: number[], seenAt: Date): Promise<void>;
   abstract expireStaleJobs(): Promise<number>;
+  abstract reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void>;
+  abstract confirmDelist(id: number, delistedAt: Date): Promise<void>;
+  abstract rejectDelist(id: number): Promise<void>;
+  abstract pendingDelistReports(): Promise<DelistReportRow[]>;
+  abstract countPendingDelistReports(): Promise<number>;
 }

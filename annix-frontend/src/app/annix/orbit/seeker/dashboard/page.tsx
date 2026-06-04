@@ -37,9 +37,9 @@ const STATUS_LABEL: Record<SeekerApplicationStatus, string> = {
 };
 
 const STATUS_CLASS: Record<SeekerApplicationStatus, string> = {
-  applied: "bg-blue-50 text-blue-700 border-blue-200",
+  applied: "bg-blue-50 text-blue-700 border-blue-200 dark:text-blue-300",
   interviewing: "bg-amber-50 text-amber-800 border-amber-200",
-  rejected: "bg-red-50 text-red-700 border-red-200",
+  rejected: "bg-red-50 text-red-700 border-red-200 dark:text-red-300",
   offer: "bg-emerald-50 text-emerald-700 border-emerald-200",
   accepted: "bg-violet-50 text-violet-700 border-violet-200",
 };
@@ -427,7 +427,11 @@ function StatCard(props: {
         : undefined;
   const wrapClass = tone === "blue" ? "bg-blue-50" : tone === "emerald" ? "bg-emerald-50" : "";
   const iconClass =
-    tone === "blue" ? "text-blue-600" : tone === "emerald" ? "text-emerald-600" : "";
+    tone === "blue"
+      ? "text-blue-600 dark:text-blue-300"
+      : tone === "emerald"
+        ? "text-emerald-600"
+        : "";
 
   return (
     <Link
@@ -475,7 +479,7 @@ function ProfileStrengthCard(props: {
             A complete profile gets you more accurate matches and faster interview invites.
           </p>
         </div>
-        <span className="text-sm font-semibold text-[var(--brand-navbar,#323288)]">
+        <span className="text-sm font-semibold text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8]">
           {props.completedSteps} of {props.totalSteps} done
         </span>
       </div>
@@ -546,7 +550,7 @@ function SectionCard(props: {
         <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
         <Link
           href={props.actionHref}
-          className="text-sm font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+          className="text-sm font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
         >
           {props.actionLabel} <span aria-hidden="true">→</span>
         </Link>

@@ -259,7 +259,9 @@ export default function AdminOrbitSeekerTiersPage() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Tier capabilities</h2>
           <p className="text-sm text-gray-500 mt-0.5">
-            The rules every seeker on a tier inherits. Leave “Max jobs” blank for unlimited.
+            The rules every seeker on a tier inherits. “Max Nix matches” caps how many ranked job
+            matches a seeker on this tier sees (the “Nix matches” count on Browse Jobs). Leave it
+            blank for unlimited.
           </p>
         </div>
 
@@ -276,7 +278,7 @@ export default function AdminOrbitSeekerTiersPage() {
                 <tr>
                   <th className="px-2 py-2 font-medium">Tier</th>
                   <th className="px-2 py-2 font-medium">Match strictness</th>
-                  <th className="px-2 py-2 font-medium">Max jobs</th>
+                  <th className="px-2 py-2 font-medium">Max Nix matches</th>
                   <th className="px-2 py-2 font-medium">Nix runs / month</th>
                   <th className="px-2 py-2 font-medium">CV builds / month</th>
                   {FEATURE_COLUMNS.map((col) => (

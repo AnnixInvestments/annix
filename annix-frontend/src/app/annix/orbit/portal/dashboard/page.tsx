@@ -233,7 +233,9 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Total Candidates</p>
-              <p className="text-2xl font-bold text-[#252560]">{totalCandidates || 0}</p>
+              <p className="text-2xl font-bold text-[#252560] dark:text-white">
+                {totalCandidates || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -257,7 +259,9 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Active Jobs</p>
-              <p className="text-2xl font-bold text-[#252560]">{activeJobPostings || 0}</p>
+              <p className="text-2xl font-bold text-[#252560] dark:text-white">
+                {activeJobPostings || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -281,7 +285,9 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Avg. Match Score</p>
-              <p className="text-2xl font-bold text-[#252560]">{averageScore || "-"}%</p>
+              <p className="text-2xl font-bold text-[#252560] dark:text-white">
+                {averageScore || "-"}%
+              </p>
             </div>
           </div>
         </div>
@@ -305,7 +311,9 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-500">Pending References</p>
-              <p className="text-2xl font-bold text-[#252560]">{pendingReferences || 0}</p>
+              <p className="text-2xl font-bold text-[#252560] dark:text-white">
+                {pendingReferences || 0}
+              </p>
             </div>
           </div>
         </div>
@@ -316,7 +324,7 @@ export default function DashboardPage() {
           <h2 className="text-lg font-semibold text-gray-900">Top Candidates</h2>
           <Link
             href="/annix/orbit/portal/candidates"
-            className="text-sm text-[#323288] hover:text-[#252560] font-medium"
+            className="text-sm text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] font-medium"
           >
             View all
           </Link>

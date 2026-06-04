@@ -73,6 +73,21 @@ export class ExternalJob {
   @Prop({ type: String, required: false })
   embedding: string;
 
+  @Prop({ type: Boolean, required: false, default: false })
+  delisted: boolean;
+
+  @Prop({ type: String, required: false, default: null })
+  delistReview: string | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  delistReportedAt: Date | null;
+
+  @Prop({ type: String, required: false, default: null })
+  delistReportedBy: string | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  delistedAt: Date | null;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

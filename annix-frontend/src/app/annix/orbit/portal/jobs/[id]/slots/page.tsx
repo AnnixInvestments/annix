@@ -194,7 +194,7 @@ export default function PerJobSlotsPage() {
                             ) : isPast ? (
                               <span className="text-gray-500">Past</span>
                             ) : (
-                              <span className="text-blue-700">Available</span>
+                              <span className="text-blue-700 dark:text-blue-300">Available</span>
                             )}
                           </p>
                         </div>

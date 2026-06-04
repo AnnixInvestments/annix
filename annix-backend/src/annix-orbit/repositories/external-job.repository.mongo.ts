@@ -6,6 +6,7 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import { ExternalJob } from "../entities/external-job.entity";
 import {
   DedupCandidateRow,
+  DelistReportRow,
   DuplicateJobPair,
   EmbeddingCoverageRow,
   ExternalJobListOptions,
@@ -89,6 +90,7 @@ export class MongoExternalJobRepository
 
     const filter: Record<string, unknown> = {
       sourceId: { $in: sourceIds },
+      delisted: { $ne: true },
       $and: [
         { $or: [{ acceptsZa: null }, { acceptsZa: true }] },
         { $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }] },
@@ -145,7 +147,7 @@ export class MongoExternalJobRepository
   }
 
   async publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]> {
-    const filter: Record<string, unknown> = {};
+    const filter: Record<string, unknown> = { delisted: { $ne: true } };
     if (options.country) filter.country = options.country;
     if (options.category) filter.category = options.category;
     if (options.search) {
@@ -244,7 +246,7 @@ export class MongoExternalJobRepository
   }
 
   async coldStartJobs(locationTokens: string[], limit: number): Promise<ExternalJob[]> {
-    const filter: Record<string, unknown> = { country: "za" };
+    const filter: Record<string, unknown> = { country: "za", delisted: { $ne: true } };
     if (locationTokens.length > 0) {
       filter.$or = locationTokens.map((token) => ({
         locationRaw: { $regex: escapeRegex(token), $options: "i" },
@@ -261,7 +263,7 @@ export class MongoExternalJobRepository
 
   async coldStartFallbackJobs(limit: number): Promise<ExternalJob[]> {
     const docs = await this.documents
-      .find({ country: "za" })
+      .find({ country: "za", delisted: { $ne: true } })
       .sort({ postedAt: -1 })
       .limit(limit)
       .lean()
@@ -584,6 +586,65 @@ export class MongoExternalJobRepository
       )
       .exec();
     return result.modifiedCount ?? 0;
+  }
+
+  async reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void> {
+    await this.documents
+      .findByIdAndUpdate(id, {
+        $set: {
+          delistReview: "pending",
+          delistReportedAt: reportedAt,
+          delistReportedBy: reportedBy,
+        },
+      })
+      .exec();
+  }
+
+  async confirmDelist(id: number, delistedAt: Date): Promise<void> {
+    await this.documents
+      .findByIdAndUpdate(id, {
+        $set: { delisted: true, delistReview: "confirmed", delistedAt },
+      })
+      .exec();
+  }
+
+  async rejectDelist(id: number): Promise<void> {
+    await this.documents
+      .findByIdAndUpdate(id, {
+        $set: { delisted: false, delistReview: "rejected" },
+      })
+      .exec();
+  }
+
+  async pendingDelistReports(): Promise<DelistReportRow[]> {
+    const docs = await this.documents
+      .find({ delistReview: "pending" })
+      .sort({ delistReportedAt: -1 })
+      .populate("source")
+      .lean()
+      .exec();
+    return docs.map((doc) => {
+      const source = doc.source as { provider?: string } | null | undefined;
+      const sourceProvider = source ? (source.provider ?? null) : null;
+      return {
+        id: Number(doc._id),
+        title: String(doc.title ?? ""),
+        company: (doc.company as string | null) ?? null,
+        locationRaw: (doc.locationRaw as string | null) ?? null,
+        locationArea: (doc.locationArea as string | null) ?? null,
+        salaryMin: (doc.salaryMin as number | null) ?? null,
+        salaryMax: (doc.salaryMax as number | null) ?? null,
+        salaryCurrency: (doc.salaryCurrency as string | null) ?? null,
+        sourceUrl: (doc.sourceUrl as string | null) ?? null,
+        sourceProvider,
+        delistReportedAt: (doc.delistReportedAt as Date | null) ?? null,
+        delistReportedBy: (doc.delistReportedBy as string | null) ?? null,
+      };
+    });
+  }
+
+  countPendingDelistReports(): Promise<number> {
+    return this.documents.countDocuments({ delistReview: "pending" }).exec();
   }
 }
 

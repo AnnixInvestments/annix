@@ -6,6 +6,7 @@ import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-reposi
 import { ExternalJob } from "../entities/external-job.entity";
 import {
   DedupCandidateRow,
+  DelistReportRow,
   DuplicateJobPair,
   EmbeddingCoverageRow,
   ExternalJobListOptions,
@@ -75,7 +76,8 @@ export class PostgresExternalJobRepository
       .innerJoin("job.source", "source")
       .where("source.company_id IS NULL")
       .andWhere("(job.accepts_za IS NULL OR job.accepts_za = true)")
-      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())");
+      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
+      .andWhere("job.delisted IS NOT TRUE");
 
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
@@ -118,7 +120,7 @@ export class PostgresExternalJobRepository
   }
 
   publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]> {
-    const qb = this.repository.createQueryBuilder("job");
+    const qb = this.repository.createQueryBuilder("job").where("job.delisted IS NOT TRUE");
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
     }
@@ -220,7 +222,8 @@ export class PostgresExternalJobRepository
   coldStartJobs(locationTokens: string[], limit: number): Promise<ExternalJob[]> {
     const qb = this.repository
       .createQueryBuilder("job")
-      .where("job.country = :country", { country: "za" });
+      .where("job.country = :country", { country: "za" })
+      .andWhere("job.delisted IS NOT TRUE");
 
     if (locationTokens.length > 0) {
       const conditions = locationTokens
@@ -240,6 +243,7 @@ export class PostgresExternalJobRepository
     return this.repository
       .createQueryBuilder("job")
       .where("job.country = :country", { country: "za" })
+      .andWhere("job.delisted IS NOT TRUE")
       .orderBy("job.postedAt", "DESC", "NULLS LAST")
       .take(limit)
       .getMany();
@@ -544,5 +548,55 @@ export class PostgresExternalJobRepository
       .andWhere("last_seen_at < now() - INTERVAL '14 days'")
       .execute();
     return result.affected ?? 0;
+  }
+
+  async reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void> {
+    await this.repository.update(id, {
+      delistReview: "pending",
+      delistReportedAt: reportedAt,
+      delistReportedBy: reportedBy,
+    });
+  }
+
+  async confirmDelist(id: number, delistedAt: Date): Promise<void> {
+    await this.repository.update(id, { delisted: true, delistReview: "confirmed", delistedAt });
+  }
+
+  async rejectDelist(id: number): Promise<void> {
+    await this.repository.update(id, { delisted: false, delistReview: "rejected" });
+  }
+
+  async pendingDelistReports(): Promise<DelistReportRow[]> {
+    const jobs = await this.repository
+      .createQueryBuilder("job")
+      .leftJoinAndSelect("job.source", "source")
+      .where("job.delist_review = :status", { status: "pending" })
+      .orderBy("job.delistReportedAt", "DESC", "NULLS LAST")
+      .getMany();
+    return jobs.map((job) => {
+      const source = job.source as { provider?: string } | null | undefined;
+      const sourceProvider = source ? (source.provider ?? null) : null;
+      return {
+        id: job.id,
+        title: job.title,
+        company: job.company,
+        locationRaw: job.locationRaw,
+        locationArea: job.locationArea,
+        salaryMin: job.salaryMin,
+        salaryMax: job.salaryMax,
+        salaryCurrency: job.salaryCurrency,
+        sourceUrl: job.sourceUrl,
+        sourceProvider,
+        delistReportedAt: job.delistReportedAt,
+        delistReportedBy: job.delistReportedBy,
+      };
+    });
+  }
+
+  countPendingDelistReports(): Promise<number> {
+    return this.repository
+      .createQueryBuilder("job")
+      .where("job.delist_review = :status", { status: "pending" })
+      .getCount();
   }
 }

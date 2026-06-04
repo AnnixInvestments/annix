@@ -232,7 +232,7 @@ export default function CompanyCalendarPage() {
                           ) : isBooked ? (
                             <p className="text-emerald-800 mt-0.5 truncate">Candidate booked</p>
                           ) : (
-                            <p className="text-blue-800 mt-0.5">Open</p>
+                            <p className="text-blue-800 dark:text-blue-300 mt-0.5">Open</p>
                           )}
                           {slot.locationLabel ? (
                             <p className="text-gray-600 mt-0.5 truncate">{slot.locationLabel}</p>

@@ -686,7 +686,7 @@ export default function SettingsPage() {
                 d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <div className="ml-3 text-sm text-blue-700">
+            <div className="ml-3 text-sm text-blue-700 dark:text-blue-300">
               <p className="font-medium">Retention Policy</p>
               <ul className="mt-1 list-disc pl-4 space-y-1">
                 <li>Candidate data auto-deleted after 12 months of inactivity</li>

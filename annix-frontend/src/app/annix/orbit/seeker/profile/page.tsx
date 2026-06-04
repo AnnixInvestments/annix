@@ -300,7 +300,7 @@ function CurrentCvCard(props: {
           href={props.doc.downloadUrl}
           target="_blank"
           rel="noreferrer"
-          className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium whitespace-nowrap"
+          className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] font-medium whitespace-nowrap"
         >
           View
         </a>
@@ -368,7 +368,7 @@ function DocumentList(props: {
                 <button
                   type="button"
                   onClick={() => setEditingDoc(doc)}
-                  className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium whitespace-nowrap"
+                  className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] font-medium whitespace-nowrap"
                 >
                   Edit details
                 </button>
@@ -377,7 +377,7 @@ function DocumentList(props: {
                 href={doc.downloadUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium"
+                className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] font-medium"
               >
                 View
               </a>

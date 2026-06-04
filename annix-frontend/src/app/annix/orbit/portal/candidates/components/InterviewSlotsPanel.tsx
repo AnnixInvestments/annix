@@ -104,7 +104,7 @@ export function InterviewSlotsPanel(props: InterviewSlotsPanelProps) {
           <h4 className="text-sm font-semibold text-gray-900">Interview slots for this job</h4>
           <Link
             href={`/annix/orbit/portal/jobs/${jobPostingId}/slots`}
-            className="text-xs text-[#323288] hover:text-[#252560] underline"
+            className="text-xs text-[#323288] hover:text-[#252560] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] underline"
           >
             View all slots for this job →
           </Link>
@@ -187,7 +187,7 @@ export function InterviewSlotsPanel(props: InterviewSlotsPanelProps) {
                       ) : slotIsTaken ? (
                         <span className="text-gray-600">Booked by another candidate</span>
                       ) : slotIsUpcoming ? (
-                        <span className="text-blue-700">Available</span>
+                        <span className="text-blue-700 dark:text-blue-300">Available</span>
                       ) : (
                         <span className="text-gray-500">Past</span>
                       )}

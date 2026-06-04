@@ -6,6 +6,7 @@ import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
+import { OrbitModulePwaMeta } from "../components/OrbitModulePwaMeta";
 import { ANNIX_ORBIT_VERSION } from "../config/version";
 
 const recruiterNavItems: NavItem[] = [
@@ -164,16 +165,19 @@ function RecruiterPortalContent({ children }: { children: React.ReactNode }) {
 export default function RecruiterPortalLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
-        </div>
-      }
-    >
-      <NixAppProvider appCode="annix-orbit">
-        <RecruiterPortalContent>{children}</RecruiterPortalContent>
-      </NixAppProvider>
-    </Suspense>
+    <>
+      <OrbitModulePwaMeta module="recruiter" />
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288] mx-auto" />
+          </div>
+        }
+      >
+        <NixAppProvider appCode="annix-orbit">
+          <RecruiterPortalContent>{children}</RecruiterPortalContent>
+        </NixAppProvider>
+      </Suspense>
+    </>
   );
 }

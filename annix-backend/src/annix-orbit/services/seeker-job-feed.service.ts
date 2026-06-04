@@ -1,5 +1,12 @@
 import { DEFAULT_MATCH_TIER, isMatchTier, type MatchTier } from "@annix/product-data/sa-market";
-import { BadRequestException, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  forwardRef,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { DateTime, fromJSDate, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -30,6 +37,7 @@ import {
   CandidateJobMatchingService,
   type RecommendedJobFilters,
 } from "./candidate-job-matching.service";
+import { CvNotificationService } from "./cv-notification.service";
 
 const HELP_FIND_JOB_OPERATION = "help-find-job";
 
@@ -151,6 +159,8 @@ export class SeekerJobFeedService {
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly usageCounterRepo: SeekerUsageCounterRepository,
     private readonly dismissReasonRepo: OrbitDismissReasonRepository,
+    @Inject(forwardRef(() => CvNotificationService))
+    private readonly notificationService: CvNotificationService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
@@ -616,7 +626,10 @@ export class SeekerJobFeedService {
     return learned != null && learned > 0 ? Math.round(learned) : NIX_SEARCH_FALLBACK_MS;
   }
 
-  async rematchForSeeker(email: string | null): Promise<
+  async rematchForSeeker(
+    email: string | null,
+    userId: number | null,
+  ): Promise<
     | { triggered: true; rematchedCandidates: number[] }
     | { triggered: false; reason: "no-candidate" }
     | { triggered: false; reason: "rate-limited"; retryAfterSeconds: number }
@@ -666,13 +679,17 @@ export class SeekerJobFeedService {
           .time(NIX_SEARCH_METRIC_CATEGORY, NIX_SEARCH_METRIC_OPERATION, () =>
             this.matchingService.matchCandidateToJobs(candidate.id),
           )
-          .catch((err) =>
+          .catch((err) => {
             this.logger.warn(
               `Manual rematch failed for candidate ${candidate.id}: ${err instanceof Error ? err.message : String(err)}`,
-            ),
-          ),
+            );
+            return [] as CandidateJobMatch[];
+          }),
       ),
-    );
+    ).then((results) => {
+      const totalMatches = results.reduce((sum, matches) => sum + matches.length, 0);
+      return this.notifySearchComplete(userId, totalMatches);
+    });
 
     if (!quota.unlimited) {
       const normalizedEmail = email ? email.trim().toLowerCase() : "";
@@ -684,6 +701,26 @@ export class SeekerJobFeedService {
     }
 
     return { triggered: true, rematchedCandidates: candidates.map((c) => c.id) };
+  }
+
+  private async notifySearchComplete(userId: number | null, totalMatches: number): Promise<void> {
+    if (userId == null) return;
+    const body =
+      totalMatches > 0
+        ? `Nix matched ${totalMatches} role${totalMatches === 1 ? "" : "s"} to your CV. Tap to view your matches.`
+        : "Nix finished searching — tap to view your job matches.";
+    await this.notificationService
+      .sendPushToUser(userId, {
+        title: "Your job matches are ready",
+        body,
+        tag: "orbit-nix-search-complete",
+        data: { url: "/annix/orbit/seeker/jobs" },
+      })
+      .catch((err) =>
+        this.logger.warn(
+          `Failed to send search-complete push to user ${userId}: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      );
   }
 
   async withdrawMatchingForSeeker(
@@ -759,6 +796,31 @@ export class SeekerJobFeedService {
       }
     }
     return true;
+  }
+
+  async reportJobDelisted(
+    email: string | null,
+    externalJobId: number,
+  ): Promise<{ reported: boolean }> {
+    const job = await this.externalJobRepo.findById(externalJobId);
+    if (!job) return { reported: false };
+
+    await this.externalJobRepo.reportDelist(
+      externalJobId,
+      email ?? null,
+      DateTime.now().toJSDate(),
+    );
+
+    const candidates = await this.candidatesForSeeker(email);
+    await Promise.all(
+      candidates.map(async (candidate) => {
+        const match = await this.matchRepo.findByCandidateAndJob(candidate.id, externalJobId);
+        if (match) {
+          await this.matchingService.dismissMatch(match.id, "reported-delisted");
+        }
+      }),
+    );
+    return { reported: true };
   }
 
   async coldStartForSeeker(

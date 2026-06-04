@@ -7,6 +7,7 @@ import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { BrandedLoader } from "@/app/lib/branding/components/BrandedLoader";
 import { useOrbitMyProfileStatus } from "@/app/lib/query/hooks";
+import { OrbitModulePwaMeta } from "../components/OrbitModulePwaMeta";
 import { ANNIX_ORBIT_VERSION } from "../config/version";
 
 const navItems: NavItem[] = [
@@ -191,14 +192,17 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
 export default function SeekerLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <BrandedLoader brand="annix-orbit" label="Loading…" />
-        </div>
-      }
-    >
-      <SeekerContent>{children}</SeekerContent>
-    </Suspense>
+    <>
+      <OrbitModulePwaMeta module="seeker" />
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <BrandedLoader brand="annix-orbit" label="Loading…" />
+          </div>
+        }
+      >
+        <SeekerContent>{children}</SeekerContent>
+      </Suspense>
+    </>
   );
 }

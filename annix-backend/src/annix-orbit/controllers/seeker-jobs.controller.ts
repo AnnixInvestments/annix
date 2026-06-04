@@ -53,6 +53,11 @@ class DismissMatchDto {
   reason?: string;
 }
 
+class ReportDelistedDto {
+  @IsInt()
+  externalJobId: number;
+}
+
 class SelectPlanDto {
   @IsString()
   @MaxLength(32)
@@ -155,6 +160,15 @@ export class SeekerJobsController {
     return { success: true };
   }
 
+  @Post("delist")
+  async reportDelisted(@Request() req: SeekerAuthRequest, @Body() dto: ReportDelistedDto) {
+    const result = await this.feedService.reportJobDelisted(req.user.email, dto.externalJobId);
+    if (!result.reported) {
+      throw new NotFoundException("Job not found");
+    }
+    return { success: true };
+  }
+
   @Post("withdraw-matching")
   async withdrawMatching(@Request() req: SeekerAuthRequest) {
     return this.feedService.withdrawMatchingForSeeker(req.user.email);
@@ -219,7 +233,7 @@ export class SeekerJobsController {
 
   @Post("rematch")
   async rematch(@Request() req: SeekerAuthRequest) {
-    const result = await this.feedService.rematchForSeeker(req.user.email);
+    const result = await this.feedService.rematchForSeeker(req.user.email, req.user.id);
     if (!result.triggered) {
       if (result.reason === "no-candidate") {
         throw new BadRequestException("Upload a CV before requesting a rematch");

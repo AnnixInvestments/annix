@@ -17,6 +17,7 @@ interface SeekerJobCardProps {
   dismissReasons?: DismissReasonOption[];
   onMuteCompany?: (company: string) => void;
   onMuteCategory?: (category: string) => void;
+  onReportDelisted?: (externalJobId: number) => void;
   isDismissing?: boolean;
 }
 
@@ -46,6 +47,7 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
   const salaryLabel = formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
   const sourceUrl = job.sourceUrl;
   const sourceHref = sourceUrl || "#";
+  const reportDelisted = props.onReportDelisted;
 
   const handleApply = () => {
     props.onApply(match);
@@ -53,6 +55,10 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
 
   const handleDismiss = (reason: string) => {
     props.onDismiss(match.matchId, reason);
+  };
+
+  const handleReportDelisted = () => {
+    if (reportDelisted) reportDelisted(match.externalJobId);
   };
 
   return (
@@ -164,26 +170,52 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
           View &amp; apply
         </a>
       </div>
+
+      {reportDelisted ? (
+        <div className="mt-2 border-t border-gray-100 pt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={handleReportDelisted}
+            className="inline-flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-red-600"
+          >
+            <span aria-hidden="true">⚑</span>
+            Job Delisted
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function DismissReasonMenu(props: {
-  reasons: DismissReasonOption[];
-  onDismiss: (reason: string) => void;
-  disabled?: boolean;
-}) {
+interface AnchoredMenuCoords {
+  top: number;
+  left: number;
+}
+
+function useAnchoredMenu() {
   const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const [coords, setCoords] = useState<AnchoredMenuCoords | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setCoords(null);
+      return;
+    }
     const trigger = triggerRef.current;
-    if (!trigger) return;
+    const menu = menuRef.current;
+    if (!trigger || !menu) return;
     const rect = trigger.getBoundingClientRect();
-    setCoords({ top: rect.bottom + 4, left: rect.left });
+    const menuHeight = menu.offsetHeight;
+    const menuWidth = menu.offsetWidth;
+    const margin = 8;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const opensUpward = spaceBelow < menuHeight + margin && rect.top > spaceBelow;
+    const top = opensUpward ? Math.max(margin, rect.top - menuHeight - 4) : rect.bottom + 4;
+    const maxLeft = window.innerWidth - menuWidth - margin;
+    const left = Math.max(margin, Math.min(rect.left, maxLeft));
+    setCoords({ top, left });
   }, [open]);
 
   useEffect(() => {
@@ -207,10 +239,26 @@ function DismissReasonMenu(props: {
     };
   }, [open]);
 
+  return { open, setOpen, coords, triggerRef, menuRef };
+}
+
+function DismissReasonMenu(props: {
+  reasons: DismissReasonOption[];
+  onDismiss: (reason: string) => void;
+  disabled?: boolean;
+}) {
+  const menu = useAnchoredMenu();
+  const open = menu.open;
+  const coords = menu.coords;
+  const setOpen = menu.setOpen;
+  const menuTop = coords ? coords.top : 0;
+  const menuLeft = coords ? coords.left : 0;
+  const menuVisibility = coords ? "visible" : "hidden";
+
   return (
     <>
       <button
-        ref={triggerRef}
+        ref={menu.triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         disabled={props.disabled}
@@ -223,13 +271,13 @@ function DismissReasonMenu(props: {
         </span>
         Not for me
       </button>
-      {open && coords
+      {open
         ? createPortal(
             <div
-              ref={menuRef}
+              ref={menu.menuRef}
               role="menu"
-              className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px] py-1"
-              style={{ top: coords.top, left: coords.left }}
+              className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px] max-h-[60vh] overflow-y-auto py-1"
+              style={{ top: menuTop, left: menuLeft, visibility: menuVisibility }}
             >
               <p className="px-3 pt-1 pb-1.5 text-[11px] font-medium text-gray-400">
                 Why isn't this for you?
@@ -264,39 +312,13 @@ interface MoreOptionsMenuProps {
 }
 
 function MoreOptionsMenu(props: MoreOptionsMenuProps) {
-  const [open, setOpen] = useState(false);
-  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
-  const triggerRef = useRef<HTMLButtonElement | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    const trigger = triggerRef.current;
-    if (!trigger) return;
-    const rect = trigger.getBoundingClientRect();
-    setCoords({ top: rect.bottom + 4, left: rect.left });
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handlePointerDown = (event: MouseEvent) => {
-      const target = event.target as Node;
-      const trigger = triggerRef.current;
-      const menu = menuRef.current;
-      if (trigger?.contains(target)) return;
-      if (menu?.contains(target)) return;
-      setOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", handlePointerDown);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handlePointerDown);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
+  const menu = useAnchoredMenu();
+  const open = menu.open;
+  const coords = menu.coords;
+  const setOpen = menu.setOpen;
+  const menuTop = coords ? coords.top : 0;
+  const menuLeft = coords ? coords.left : 0;
+  const menuVisibility = coords ? "visible" : "hidden";
 
   const company = props.company;
   const category = props.category;
@@ -308,7 +330,7 @@ function MoreOptionsMenu(props: MoreOptionsMenuProps) {
   return (
     <>
       <button
-        ref={triggerRef}
+        ref={menu.triggerRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="ml-2 text-sm text-gray-400 hover:text-gray-600"
@@ -318,13 +340,13 @@ function MoreOptionsMenu(props: MoreOptionsMenuProps) {
       >
         ⋯
       </button>
-      {open && coords
+      {open
         ? createPortal(
             <div
-              ref={menuRef}
+              ref={menu.menuRef}
               role="menu"
-              className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px]"
-              style={{ top: coords.top, left: coords.left }}
+              className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg min-w-[180px] max-h-[60vh] overflow-y-auto"
+              style={{ top: menuTop, left: menuLeft, visibility: menuVisibility }}
             >
               {showCompany && company ? (
                 <button

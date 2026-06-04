@@ -341,7 +341,7 @@ function NixTitleSuggestions({ suggestions, onApply }: NixTitleSuggestionsProps)
                 key={t}
                 type="button"
                 onClick={() => onApply(t)}
-                className="text-sm px-3 py-1.5 bg-white border border-[#252560] text-[#252560] rounded-full hover:bg-[#252560] hover:text-white transition-colors"
+                className="text-sm px-3 py-1.5 bg-white border border-[#252560] text-[#252560] dark:text-[#c0c0eb] rounded-full hover:bg-[#252560] hover:text-white transition-colors"
               >
                 {t}
               </button>

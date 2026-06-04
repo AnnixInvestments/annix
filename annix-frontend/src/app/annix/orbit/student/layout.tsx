@@ -6,6 +6,7 @@ import { FeedbackWidget } from "@/app/components/FeedbackWidget";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { BrandedLoader } from "@/app/lib/branding/components/BrandedLoader";
+import { OrbitModulePwaMeta } from "../components/OrbitModulePwaMeta";
 import { ANNIX_ORBIT_VERSION } from "../config/version";
 
 const navItems: NavItem[] = [
@@ -98,14 +99,17 @@ function StudentContent({ children }: { children: React.ReactNode }) {
 export default function StudentLayout(props: { children: React.ReactNode }) {
   const { children } = props;
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen flex items-center justify-center">
-          <BrandedLoader brand="annix-orbit" label="Loading…" />
-        </div>
-      }
-    >
-      <StudentContent>{children}</StudentContent>
-    </Suspense>
+    <>
+      <OrbitModulePwaMeta module="student" />
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <BrandedLoader brand="annix-orbit" label="Loading…" />
+          </div>
+        }
+      >
+        <StudentContent>{children}</StudentContent>
+      </Suspense>
+    </>
   );
 }

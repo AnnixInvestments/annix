@@ -2380,6 +2380,14 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/seeker/jobs/dismiss-reasons");
   }
 
+  async reportJobDelisted(externalJobId: number): Promise<{ success: boolean }> {
+    return this.request("/annix-orbit/seeker/jobs/delist", {
+      method: "POST",
+      body: JSON.stringify({ externalJobId }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   async triggerSeekerRematch(): Promise<SeekerRematchResponse> {
     return this.request("/annix-orbit/seeker/jobs/rematch", { method: "POST" });
   }

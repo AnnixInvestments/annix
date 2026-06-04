@@ -94,6 +94,16 @@ export function useOrbitDismissSeekerMatch() {
   });
 }
 
+export function useOrbitReportJobDelisted() {
+  const queryClient = useQueryClient();
+  return useMutation<{ success: boolean }, Error, number>({
+    mutationFn: (externalJobId) => annixOrbitApiClient.reportJobDelisted(externalJobId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
+    },
+  });
+}
+
 export function useOrbitSeekerRematch() {
   const queryClient = useQueryClient();
   return useMutation<SeekerRematchResponse, Error, void>({

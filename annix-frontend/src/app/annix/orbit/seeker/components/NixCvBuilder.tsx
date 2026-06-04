@@ -280,13 +280,15 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
         <div className="space-y-4">
           {cv.improvementsApplied.length > 0 && (
             <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4">
-              <h4 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] uppercase tracking-wide mb-2">
+              <h4 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb] uppercase tracking-wide mb-2">
                 What Nix changed
               </h4>
               <ul className="space-y-1.5">
                 {cv.improvementsApplied.map((change) => (
                   <li key={change} className="text-sm text-gray-700 flex gap-2">
-                    <span className="text-[var(--brand-navbar-400,#7373c2)] flex-shrink-0">•</span>
+                    <span className="text-[var(--brand-navbar-400,#7373c2)] dark:text-[#9ea0e8] flex-shrink-0">
+                      •
+                    </span>
                     <span>{change}</span>
                   </li>
                 ))}
@@ -370,9 +372,11 @@ function NixCvDocument(props: {
   return (
     <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] shadow-sm px-2 py-4 sm:p-8 space-y-5">
       <div className="border-b-2 border-[var(--brand-navbar,#323288)] pb-3">
-        <h2 className="text-2xl font-bold text-[var(--brand-navbar-active,#252560)]">{fullName}</h2>
+        <h2 className="text-2xl font-bold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb]">
+          {fullName}
+        </h2>
         {cv.headlineTitle && (
-          <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)] uppercase tracking-wide mt-1">
+          <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8] uppercase tracking-wide mt-1">
             {cv.headlineTitle}
           </p>
         )}
@@ -442,7 +446,7 @@ function NixCvDocument(props: {
 function CvSection(props: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-bold text-[var(--brand-navbar-active,#252560)] uppercase tracking-wide border-b border-[var(--brand-navbar-100,#e0e0f5)] pb-1">
+      <h3 className="text-sm font-bold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb] uppercase tracking-wide border-b border-[var(--brand-navbar-100,#e0e0f5)] pb-1">
         {props.title}
       </h3>
       {props.children}
@@ -513,7 +517,7 @@ function CvSkillList(props: {
           <button
             type="button"
             onClick={commit}
-            className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+            className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
           >
             Add
           </button>
@@ -529,7 +533,7 @@ function CvSkillList(props: {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
         >
           + Add
         </button>
@@ -543,7 +547,9 @@ function CvList(props: { values: string[] }) {
     <ul className="space-y-1">
       {props.values.map((value) => (
         <li key={value} className="text-sm text-gray-800 flex gap-2">
-          <span className="text-[var(--brand-navbar-400,#7373c2)] flex-shrink-0">•</span>
+          <span className="text-[var(--brand-navbar-400,#7373c2)] dark:text-[#9ea0e8] flex-shrink-0">
+            •
+          </span>
           <span>{value}</span>
         </li>
       ))}
@@ -629,7 +635,11 @@ function CvReferenceList(props: {
           >
             <div>
               <p className="text-sm font-bold text-gray-900">{reference.name}</p>
-              {roleLine && <p className="text-sm text-[var(--brand-navbar,#323288)]">{roleLine}</p>}
+              {roleLine && (
+                <p className="text-sm text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8]">
+                  {roleLine}
+                </p>
+              )}
               {contactLine && <p className="text-xs text-gray-500">{contactLine}</p>}
             </div>
             <button
@@ -704,7 +714,7 @@ function CvReferenceList(props: {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
         >
           + Add reference
         </button>
@@ -721,7 +731,9 @@ function CvExperienceItem(props: { experience: NixGeneratedCvExperience }) {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="text-sm font-bold text-gray-900">{exp.role}</p>
-          <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)]">{employerLine}</p>
+          <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8]">
+            {employerLine}
+          </p>
         </div>
         <span className="text-xs text-gray-500 whitespace-nowrap">{exp.period}</span>
       </div>
