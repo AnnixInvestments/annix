@@ -1225,6 +1225,39 @@ const sanitizeWizardPayload = (payload: UpdateJobWizardPayload): UpdateJobWizard
   return out;
 };
 
+export interface SeekerTierFeatures {
+  applyToJobs: boolean;
+  viewSalaries: boolean;
+  nixCvBuilder: boolean;
+  jobListingSite: boolean;
+  multiChannelReminders?: boolean;
+  photoCredentialCapture?: boolean;
+}
+
+export interface SeekerTierPricing {
+  monthlyPrice: number | null;
+  perNixRun: number | null;
+  perCvBuild: number | null;
+}
+
+export interface SeekerTierPlan {
+  tier: string;
+  label: string;
+  matchStrictness: string;
+  maxJobResults: number | null;
+  monthlyNixRuns: number | null;
+  monthlyCvBuilds: number | null;
+  features: SeekerTierFeatures;
+  pricing: SeekerTierPricing | null;
+  displayOrder: number;
+}
+
+export interface SeekerEntitlements {
+  tier: string;
+  label: string;
+  features: SeekerTierFeatures;
+}
+
 class AnnixOrbitApiClient {
   setRememberMe(_remember: boolean) {
     // PortalTokenStore tracks rememberMe via setTokens; this no-op preserves the public API
@@ -2326,8 +2359,12 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/seeker/jobs/cold-start");
   }
 
-  async dismissSeekerMatch(matchId: number): Promise<{ success: boolean }> {
-    return this.request(`/annix-orbit/seeker/jobs/${matchId}/dismiss`, { method: "POST" });
+  async dismissSeekerMatch(matchId: number, reason?: string): Promise<{ success: boolean }> {
+    return this.request(`/annix-orbit/seeker/jobs/${matchId}/dismiss`, {
+      method: "POST",
+      body: JSON.stringify(reason ? { reason } : {}),
+      headers: { "Content-Type": "application/json" },
+    });
   }
 
   async triggerSeekerRematch(): Promise<SeekerRematchResponse> {
@@ -2344,6 +2381,14 @@ class AnnixOrbitApiClient {
 
   async seekerJobStats(): Promise<SeekerJobStats> {
     return this.request("/annix-orbit/seeker/jobs/stats");
+  }
+
+  async tierPlans(): Promise<SeekerTierPlan[]> {
+    return this.request("/annix-orbit/public/tier-plans");
+  }
+
+  async seekerEntitlements(): Promise<SeekerEntitlements> {
+    return this.request("/annix-orbit/seeker/jobs/entitlements");
   }
 
   async seekerMatchingConsent(): Promise<SeekerMatchingConsentStatus> {

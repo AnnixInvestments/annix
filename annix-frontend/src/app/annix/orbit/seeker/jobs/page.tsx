@@ -240,22 +240,18 @@ export default function SeekerJobsPage() {
       });
   };
 
-  const handleDismiss = async (matchId: number) => {
-    const confirmed = await confirm({
-      title: "Hide this match?",
-      message: "This removes it from your matches and it won't come back. You can't undo this.",
-      confirmLabel: "Hide it",
-      variant: "warning",
-    });
-    if (!confirmed) return;
-    dismissMutation.mutate(matchId, {
-      onSuccess: () => {
-        showToast("Match dismissed", "success");
+  const handleDismiss = (matchId: number, reason?: string) => {
+    dismissMutation.mutate(
+      { matchId, reason },
+      {
+        onSuccess: () => {
+          showToast("Thanks — Nix will use that to refine your matches.", "success");
+        },
+        onError: () => {
+          showToast("Failed to dismiss match", "error");
+        },
       },
-      onError: () => {
-        showToast("Failed to dismiss match", "error");
-      },
-    });
+    );
   };
 
   const handleMuteCompany = async (company: string) => {
@@ -671,7 +667,7 @@ export default function SeekerJobsPage() {
               onMuteCompany={handleMuteCompany}
               onMuteCategory={handleMuteCategory}
               isDismissing={
-                dismissMutation.isPending && dismissMutation.variables === match.matchId
+                dismissMutation.isPending && dismissMutation.variables?.matchId === match.matchId
               }
             />
           ))}

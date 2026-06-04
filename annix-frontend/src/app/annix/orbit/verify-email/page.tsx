@@ -40,7 +40,7 @@ function VerifyEmailContent() {
             setMessage("Email verified. Signing you in...");
             const target =
               profile.userType === "individual"
-                ? "/annix/orbit/seeker/dashboard"
+                ? "/annix/orbit/seeker/plans"
                 : "/annix/orbit/portal/dashboard";
             setTimeout(() => router.push(target), 1500);
             return;

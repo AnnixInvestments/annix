@@ -41,25 +41,43 @@ const FEATURE_COLUMNS: Array<{ key: keyof OrbitTierFeatures; label: string }> = 
   { key: "applyToJobs", label: "Apply to jobs" },
   { key: "viewSalaries", label: "View salaries" },
   { key: "nixCvBuilder", label: "Nix CV builder" },
+  { key: "photoCredentialCapture", label: "Photo credential capture" },
   { key: "jobListingSite", label: "Job listing site" },
   { key: "multiChannelReminders", label: "SMS/WhatsApp reminders" },
-  { key: "photoCredentialCapture", label: "Photo credential capture" },
 ];
+
+// Suggested ZAR pricing, benchmarked against SA job-seeker tools
+// (LinkedIn Premium ~R250/mo, PNet paid ~R150/mo, Careers24/Indeed free).
+const SUGGESTED_PRICING: Record<string, TierPlanPricing> = {
+  soft: { monthlyPrice: 0, perNixRun: 29, perCvBuild: 59 },
+  medium: { monthlyPrice: 99, perNixRun: 19, perCvBuild: null },
+  hard: { monthlyPrice: 199, perNixRun: null, perCvBuild: null },
+};
+
+// Included CV builds / month: free is pay-per-use, Pathfinder capped, Trailblazer unlimited.
+const SUGGESTED_CV_BUILDS: Record<string, number | null> = {
+  soft: 0,
+  medium: 4,
+  hard: null,
+};
 
 interface TierDraft {
   matchStrictness: string;
   maxJobResults: string;
   monthlyNixRuns: string;
+  monthlyCvBuilds: string;
   features: OrbitTierFeatures;
 }
 
 function toDraft(row: OrbitTierCapability): TierDraft {
   const maxResults = row.maxJobResults;
   const nixRuns = row.monthlyNixRuns;
+  const cvBuilds = row.monthlyCvBuilds;
   return {
     matchStrictness: row.matchStrictness,
     maxJobResults: maxResults === null ? "" : String(maxResults),
     monthlyNixRuns: nixRuns === null ? "" : String(nixRuns),
+    monthlyCvBuilds: cvBuilds == null ? "" : String(cvBuilds),
     features: { ...row.features },
   };
 }
@@ -84,12 +102,27 @@ export default function AdminOrbitSeekerTiersPage() {
     const nextPricing: Record<string, TierPlanPricing> = {};
     capabilities.forEach((row: OrbitTierCapability) => {
       next[row.tier] = toDraft(row);
-      const pricing = row.pricing;
-      nextPricing[row.tier] = {
-        monthlyPrice: pricing ? pricing.monthlyPrice : null,
-        perNixRun: pricing ? pricing.perNixRun : null,
-        perApplication: pricing ? pricing.perApplication : null,
-      };
+      const rawCvBuilds: number | null | undefined = row.monthlyCvBuilds;
+      if (rawCvBuilds === undefined) {
+        const suggestedCv = SUGGESTED_CV_BUILDS[row.tier];
+        next[row.tier].monthlyCvBuilds = suggestedCv == null ? "" : String(suggestedCv);
+      }
+      const stored = row.pricing;
+      const hasStored =
+        stored != null &&
+        (stored.monthlyPrice !== null || stored.perNixRun !== null || stored.perCvBuild !== null);
+      if (stored && hasStored) {
+        nextPricing[row.tier] = {
+          monthlyPrice: stored.monthlyPrice,
+          perNixRun: stored.perNixRun,
+          perCvBuild: stored.perCvBuild,
+        };
+      } else {
+        const suggested = SUGGESTED_PRICING[row.tier];
+        nextPricing[row.tier] = suggested
+          ? { ...suggested }
+          : { monthlyPrice: null, perNixRun: null, perCvBuild: null };
+      }
     });
     setDrafts(next);
     setPricingDrafts(nextPricing);
@@ -141,6 +174,14 @@ export default function AdminOrbitSeekerTiersPage() {
     });
   };
 
+  const handleCvBuildsChange = (tier: string, value: string) => {
+    setDrafts((prev) => {
+      const current = prev[tier];
+      if (!current) return prev;
+      return { ...prev, [tier]: { ...current, monthlyCvBuilds: value } };
+    });
+  };
+
   const handleFeatureToggle = (tier: string, feature: keyof OrbitTierFeatures) => {
     setDrafts((prev) => {
       const current = prev[tier];
@@ -165,6 +206,12 @@ export default function AdminOrbitSeekerTiersPage() {
       showToast("Nix runs / month must be a positive number or blank for unlimited.", "error");
       return;
     }
+    const cvTrimmed = draft.monthlyCvBuilds.trim();
+    const cvParsed = cvTrimmed === "" ? null : Number(cvTrimmed);
+    if (cvParsed !== null && (!Number.isFinite(cvParsed) || cvParsed < 0)) {
+      showToast("CV builds / month must be a positive number or blank for unlimited.", "error");
+      return;
+    }
     setSavingTier(tier);
     try {
       await updateCapability.mutateAsync({
@@ -172,6 +219,7 @@ export default function AdminOrbitSeekerTiersPage() {
         matchStrictness: draft.matchStrictness,
         maxJobResults: parsed,
         monthlyNixRuns: nixParsed,
+        monthlyCvBuilds: cvParsed,
         features: draft.features,
       });
       showToast(`Saved "${tier}" tier capabilities.`, "success");
@@ -183,7 +231,7 @@ export default function AdminOrbitSeekerTiersPage() {
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-8">
+    <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
           <Link
@@ -226,16 +274,17 @@ export default function AdminOrbitSeekerTiersPage() {
             <table className="w-full text-sm">
               <thead className="text-left text-gray-500">
                 <tr>
-                  <th className="px-3 py-2 font-medium">Tier</th>
-                  <th className="px-3 py-2 font-medium">Match strictness</th>
-                  <th className="px-3 py-2 font-medium">Max jobs</th>
-                  <th className="px-3 py-2 font-medium">Nix runs / month</th>
+                  <th className="px-2 py-2 font-medium">Tier</th>
+                  <th className="px-2 py-2 font-medium">Match strictness</th>
+                  <th className="px-2 py-2 font-medium">Max jobs</th>
+                  <th className="px-2 py-2 font-medium">Nix runs / month</th>
+                  <th className="px-2 py-2 font-medium">CV builds / month</th>
                   {FEATURE_COLUMNS.map((col) => (
                     <th key={col.key} className="px-3 py-2 font-medium text-center">
                       {col.label}
                     </th>
                   ))}
-                  <th className="px-3 py-2" />
+                  <th className="px-2 py-2" />
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -247,8 +296,8 @@ export default function AdminOrbitSeekerTiersPage() {
                   const displayLabel = tierOption ? tierOption.label : row.label;
                   return (
                     <tr key={row.tier} className="text-gray-900">
-                      <td className="px-3 py-3 font-medium whitespace-nowrap">{displayLabel}</td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-3 font-medium whitespace-nowrap">{displayLabel}</td>
+                      <td className="px-2 py-3">
                         <select
                           value={draft.matchStrictness}
                           onChange={(e) => handleStrictnessChange(row.tier, e.target.value)}
@@ -261,30 +310,40 @@ export default function AdminOrbitSeekerTiersPage() {
                           ))}
                         </select>
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-3">
                         <input
                           type="number"
                           min={0}
                           value={draft.maxJobResults}
                           onChange={(e) => handleMaxResultsChange(row.tier, e.target.value)}
                           placeholder="∞"
-                          className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                          className="w-14 rounded-lg border border-gray-300 px-2 py-1 text-sm"
                         />
                       </td>
-                      <td className="px-3 py-3">
+                      <td className="px-2 py-3">
                         <input
                           type="number"
                           min={0}
                           value={draft.monthlyNixRuns}
                           onChange={(e) => handleNixRunsChange(row.tier, e.target.value)}
                           placeholder="∞"
-                          className="w-20 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                          className="w-14 rounded-lg border border-gray-300 px-2 py-1 text-sm"
+                        />
+                      </td>
+                      <td className="px-2 py-3">
+                        <input
+                          type="number"
+                          min={0}
+                          value={draft.monthlyCvBuilds}
+                          onChange={(e) => handleCvBuildsChange(row.tier, e.target.value)}
+                          placeholder="∞"
+                          className="w-14 rounded-lg border border-gray-300 px-2 py-1 text-sm"
                         />
                       </td>
                       {FEATURE_COLUMNS.map((col) => {
                         const checked = draft.features[col.key] === true;
                         return (
-                          <td key={col.key} className="px-3 py-3 text-center">
+                          <td key={col.key} className="px-2 py-3 text-center">
                             <input
                               type="checkbox"
                               checked={checked}
@@ -294,7 +353,7 @@ export default function AdminOrbitSeekerTiersPage() {
                           </td>
                         );
                       })}
-                      <td className="px-3 py-3 text-right">
+                      <td className="px-2 py-3 text-right">
                         <button
                           type="button"
                           onClick={() => handleSaveTier(row.tier)}
@@ -329,6 +388,7 @@ export default function AdminOrbitSeekerTiersPage() {
                 const label = tierOption ? tierOption.label : row.label;
                 const maxText = draft ? draft.maxJobResults.trim() : "";
                 const nixText = draft ? draft.monthlyNixRuns.trim() : "";
+                const cvText = draft ? draft.monthlyCvBuilds.trim() : "";
                 return {
                   tier: row.tier,
                   label,
@@ -342,6 +402,11 @@ export default function AdminOrbitSeekerTiersPage() {
                       ? null
                       : Number(nixText)
                     : row.monthlyNixRuns,
+                  monthlyCvBuilds: draft
+                    ? cvText === ""
+                      ? null
+                      : Number(cvText)
+                    : row.monthlyCvBuilds,
                   features: draft ? draft.features : row.features,
                   pricing: row.pricing,
                 };

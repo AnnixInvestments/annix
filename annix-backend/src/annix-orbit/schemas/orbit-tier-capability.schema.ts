@@ -1,6 +1,6 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import { HydratedDocument } from "mongoose";
-import type { OrbitTierFeatures } from "../entities/orbit-tier-capability.entity";
+import type { OrbitTierFeatures, OrbitTierPricing } from "../entities/orbit-tier-capability.entity";
 
 @Schema({ collection: "cv_assistant_tier_capabilities", timestamps: true })
 export class OrbitTierCapability {
@@ -22,8 +22,14 @@ export class OrbitTierCapability {
   @Prop({ type: Number, default: null })
   monthlyNixRuns: number | null;
 
+  @Prop({ type: Number, default: null })
+  monthlyCvBuilds: number | null;
+
   @Prop({ type: Object, required: true })
   features: OrbitTierFeatures;
+
+  @Prop({ type: Object, default: null })
+  pricing: OrbitTierPricing | null;
 
   @Prop({ type: Number, default: 0 })
   displayOrder: number;

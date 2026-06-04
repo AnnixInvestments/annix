@@ -191,4 +191,12 @@ export const annixOrbitKeys = {
     public: () => ["annix-orbit", "branding", "public"] as const,
     admin: () => ["annix-orbit", "branding", "admin"] as const,
   },
+  tierPlans: {
+    all: ["annix-orbit", "tier-plans"] as const,
+    list: () => ["annix-orbit", "tier-plans", "list"] as const,
+  },
+  seekerEntitlements: {
+    all: ["annix-orbit", "seeker", "entitlements"] as const,
+    detail: () => ["annix-orbit", "seeker", "entitlements", "detail"] as const,
+  },
 } as const;

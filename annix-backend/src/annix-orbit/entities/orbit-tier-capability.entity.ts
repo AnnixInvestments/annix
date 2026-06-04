@@ -15,6 +15,27 @@ export interface OrbitTierFeatures {
   photoCredentialCapture?: boolean;
 }
 
+export interface OrbitTierPricing {
+  monthlyPrice: number | null;
+  perNixRun: number | null;
+  perCvBuild: number | null;
+}
+
+export const DEFAULT_TIER_PRICING: OrbitTierPricing = {
+  monthlyPrice: null,
+  perNixRun: null,
+  perCvBuild: null,
+};
+
+export const DEFAULT_TIER_FEATURES: OrbitTierFeatures = {
+  applyToJobs: true,
+  viewSalaries: false,
+  nixCvBuilder: false,
+  jobListingSite: false,
+  multiChannelReminders: false,
+  photoCredentialCapture: false,
+};
+
 @Entity("cv_assistant_tier_capabilities")
 export class OrbitTierCapability {
   @PrimaryGeneratedColumn()
@@ -35,8 +56,14 @@ export class OrbitTierCapability {
   @Column({ name: "monthly_nix_runs", type: "int", nullable: true })
   monthlyNixRuns: number | null;
 
+  @Column({ name: "monthly_cv_builds", type: "int", nullable: true })
+  monthlyCvBuilds: number | null;
+
   @Column({ name: "features", type: "jsonb" })
   features: OrbitTierFeatures;
+
+  @Column({ name: "pricing", type: "jsonb", nullable: true })
+  pricing: OrbitTierPricing | null;
 
   @Column({ name: "display_order", type: "int", default: 0 })
   displayOrder: number;

@@ -1182,6 +1182,7 @@ class AdminApiClient {
       matchStrictness?: string;
       maxJobResults?: number | null;
       monthlyNixRuns?: number | null;
+      monthlyCvBuilds?: number | null;
       features?: Partial<OrbitTierFeatures>;
       pricing?: Partial<OrbitTierPricing>;
     },
@@ -1360,7 +1361,7 @@ export interface OrbitTierFeatures {
 export interface OrbitTierPricing {
   monthlyPrice: number | null;
   perNixRun: number | null;
-  perApplication: number | null;
+  perCvBuild: number | null;
 }
 
 export interface OrbitTierCapability {
@@ -1370,6 +1371,7 @@ export interface OrbitTierCapability {
   matchStrictness: string;
   maxJobResults: number | null;
   monthlyNixRuns: number | null;
+  monthlyCvBuilds: number | null;
   features: OrbitTierFeatures;
   pricing: OrbitTierPricing | null;
   displayOrder: number;

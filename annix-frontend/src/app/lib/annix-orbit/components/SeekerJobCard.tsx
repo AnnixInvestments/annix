@@ -5,10 +5,20 @@ import { createPortal } from "react-dom";
 import { providerBadgeLabel } from "@/app/lib/annix-orbit/provider-labels";
 import type { SeekerRecommendedJob } from "@/app/lib/api/annixOrbitApi";
 
+export const DISMISS_REASONS: Array<{ key: string; label: string }> = [
+  { key: "wrong_location", label: "Wrong location" },
+  { key: "too_senior", label: "Too senior for me" },
+  { key: "too_junior", label: "Too junior for me" },
+  { key: "wrong_field", label: "Wrong field / industry" },
+  { key: "pay_too_low", label: "Pay too low" },
+  { key: "not_company", label: "Not interested in this company" },
+  { key: "other", label: "Just not interested" },
+];
+
 interface SeekerJobCardProps {
   match: SeekerRecommendedJob;
   onApply: (match: SeekerRecommendedJob) => void;
-  onDismiss: (matchId: number) => void;
+  onDismiss: (matchId: number, reason?: string) => void;
   onMuteCompany?: (company: string) => void;
   onMuteCategory?: (category: string) => void;
   isDismissing?: boolean;
@@ -43,8 +53,8 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
     props.onApply(match);
   };
 
-  const handleDismiss = () => {
-    props.onDismiss(match.matchId);
+  const handleDismiss = (reason: string) => {
+    props.onDismiss(match.matchId, reason);
   };
 
   return (
@@ -131,15 +141,8 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
       ) : null}
 
       <div className="mt-4 flex items-center justify-between">
-        <div className="relative">
-          <button
-            type="button"
-            onClick={handleDismiss}
-            disabled={props.isDismissing}
-            className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
-          >
-            Not for me
-          </button>
+        <div className="relative flex items-center">
+          <DismissReasonMenu onDismiss={handleDismiss} disabled={props.isDismissing} />
           {hasMuteOptions ? (
             <MoreOptionsMenu
               company={muteCompanyHandler ? job.company : null}
@@ -160,6 +163,87 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
         </a>
       </div>
     </div>
+  );
+}
+
+function DismissReasonMenu(props: { onDismiss: (reason: string) => void; disabled?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useLayoutEffect(() => {
+    if (!open) return;
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    setCoords({ top: rect.bottom + 4, left: rect.left });
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handlePointerDown = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const trigger = triggerRef.current;
+      const menu = menuRef.current;
+      if (trigger?.contains(target)) return;
+      if (menu?.contains(target)) return;
+      setOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={props.disabled}
+        className="text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        Not for me
+      </button>
+      {open && coords
+        ? createPortal(
+            <div
+              ref={menuRef}
+              role="menu"
+              className="fixed z-[9999] bg-white border border-gray-200 rounded-lg shadow-lg min-w-[220px] py-1"
+              style={{ top: coords.top, left: coords.left }}
+            >
+              <p className="px-3 pt-1 pb-1.5 text-[11px] font-medium text-gray-400">
+                Why isn't this for you?
+              </p>
+              {DISMISS_REASONS.map((reason) => (
+                <button
+                  key={reason.key}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    props.onDismiss(reason.key);
+                    setOpen(false);
+                  }}
+                  className="block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                >
+                  {reason.label}
+                </button>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
+    </>
   );
 }
 

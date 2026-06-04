@@ -3,6 +3,7 @@ import {
   adminApiClient,
   type OrbitTierCapability,
   type OrbitTierFeatures,
+  type OrbitTierPricing,
 } from "@/app/lib/api/adminApi";
 import { adminKeys } from "@/app/lib/query/keys/adminKeys";
 
@@ -22,13 +23,17 @@ export function useAdminUpdateOrbitTierCapability() {
       matchStrictness?: string;
       maxJobResults?: number | null;
       monthlyNixRuns?: number | null;
+      monthlyCvBuilds?: number | null;
       features?: Partial<OrbitTierFeatures>;
+      pricing?: Partial<OrbitTierPricing>;
     }) =>
       adminApiClient.updateOrbitTierCapability(input.tier, {
         matchStrictness: input.matchStrictness,
         maxJobResults: input.maxJobResults,
         monthlyNixRuns: input.monthlyNixRuns,
+        monthlyCvBuilds: input.monthlyCvBuilds,
         features: input.features,
+        pricing: input.pricing,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.orbitTierCapabilities.all });

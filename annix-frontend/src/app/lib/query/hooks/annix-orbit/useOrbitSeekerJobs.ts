@@ -76,8 +76,8 @@ export function useOrbitSeekerBrowseJobs(
 
 export function useOrbitDismissSeekerMatch() {
   const queryClient = useQueryClient();
-  return useMutation<{ success: boolean }, Error, number>({
-    mutationFn: (matchId) => annixOrbitApiClient.dismissSeekerMatch(matchId),
+  return useMutation<{ success: boolean }, Error, { matchId: number; reason?: string }>({
+    mutationFn: ({ matchId, reason }) => annixOrbitApiClient.dismissSeekerMatch(matchId, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },

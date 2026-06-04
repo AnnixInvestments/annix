@@ -84,6 +84,7 @@ import { PublicInterviewBookingController } from "./controllers/public-interview
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
 import { PublicSeekerCalendarController } from "./controllers/public-seeker-calendar.controller";
+import { PublicTierPlansController } from "./controllers/public-tier-plans.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
@@ -565,6 +566,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CredentialController,
     AdminOrbitCredentialTypesController,
     AdminOrbitTierCapabilitiesController,
+    PublicTierPlansController,
   ],
   providers: [
     AnnixOrbitAuthGuard,

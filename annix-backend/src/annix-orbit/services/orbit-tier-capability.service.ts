@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import {
+  DEFAULT_TIER_PRICING,
   OrbitTierCapability,
   type OrbitTierFeatures,
+  type OrbitTierPricing,
 } from "../entities/orbit-tier-capability.entity";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 
@@ -9,7 +11,9 @@ export interface UpdateTierCapabilityInput {
   matchStrictness?: string;
   maxJobResults?: number | null;
   monthlyNixRuns?: number | null;
+  monthlyCvBuilds?: number | null;
   features?: Partial<OrbitTierFeatures>;
+  pricing?: Partial<OrbitTierPricing>;
 }
 
 @Injectable()
@@ -41,6 +45,16 @@ export class OrbitTierCapabilityService {
     }
     if (input.monthlyNixRuns !== undefined) {
       existing.monthlyNixRuns = input.monthlyNixRuns;
+    }
+    if (input.monthlyCvBuilds !== undefined) {
+      existing.monthlyCvBuilds = input.monthlyCvBuilds;
+    }
+    if (input.pricing !== undefined) {
+      existing.pricing = {
+        ...DEFAULT_TIER_PRICING,
+        ...(existing.pricing ?? {}),
+        ...input.pricing,
+      };
     }
     return this.tierCapabilityRepo.save(existing);
   }
