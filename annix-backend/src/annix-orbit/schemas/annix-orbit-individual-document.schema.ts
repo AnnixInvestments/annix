@@ -46,6 +46,9 @@ export class AnnixOrbitIndividualDocument {
   @Prop({ type: Date, required: false, default: null })
   lastScanReminderAt: Date | null;
 
+  @Prop({ type: Object, required: false, default: null })
+  credentialFields: Record<string, string | null> | null;
+
   @Prop({ type: String, required: false })
   uploadedAt: string;
 }

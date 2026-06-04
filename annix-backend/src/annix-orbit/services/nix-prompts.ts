@@ -731,14 +731,21 @@ export interface NixCredentialPhotoResult {
   readable: boolean;
 }
 
-export function credentialPhotoPrompt(kind: "qualification" | "certificate"): {
+export function credentialPhotoPrompt(
+  kind: "qualification" | "certificate",
+  learnedCorrections?: string[],
+): {
   system: string;
   user: string;
 } {
   const noun = kind === "qualification" ? "academic qualification" : "professional certificate";
+  const learnedBlock =
+    learnedCorrections && learnedCorrections.length > 0
+      ? `\n\nCorrections other users have made before (apply the same fixes when you see the same mistakes):\n${learnedCorrections.map((c) => `- ${c}`).join("\n")}\n`
+      : "";
   return {
     system: SA_SYSTEM_PREAMBLE,
-    user: `You are reading a photo of a South African ${noun} a job seeker captured on their phone. Extract the key details so we can label it on their profile. The photo may be slightly blurry or angled — do your best, and set "readable" to false if you genuinely cannot make out the document.
+    user: `You are reading a photo of a South African ${noun} a job seeker captured on their phone. Extract the key details so we can label it on their profile. The photo may be slightly blurry or angled — do your best, and set "readable" to false if you genuinely cannot make out the document.${learnedBlock}
 
 Return JSON with this exact shape:
 {

@@ -20,7 +20,10 @@ import {
   type EePopulationGroup,
   type EePurpose,
 } from "../entities/annix-orbit-candidate-ee-attributes.entity";
-import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
+import {
+  type CredentialFields,
+  IndividualDocumentKind,
+} from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
@@ -57,6 +60,7 @@ export interface IndividualDocumentSummary {
   downloadUrl: string;
   isPhotoCapture: boolean;
   needsClearScan: boolean;
+  credentialFields: CredentialFields | null;
 }
 
 export interface IndividualNotificationPreferences {
@@ -329,6 +333,7 @@ export class IndividualProfileService {
           downloadUrl,
           isPhotoCapture: doc.isPhotoCapture === true,
           needsClearScan: doc.needsClearScan === true,
+          credentialFields: doc.credentialFields ?? null,
         };
       }),
     );
@@ -397,6 +402,7 @@ export class IndividualProfileService {
     }
 
     let resolvedLabel = label ?? null;
+    let credentialFields: CredentialFields | null = null;
     if (
       isPhotoCapture &&
       (kind === IndividualDocumentKind.QUALIFICATION || kind === IndividualDocumentKind.CERTIFICATE)
@@ -406,6 +412,7 @@ export class IndividualProfileService {
         file.mimetype,
         kind,
       );
+      credentialFields = analysis.fields;
       if (!resolvedLabel && analysis.label) {
         resolvedLabel = analysis.label;
       }
@@ -418,6 +425,7 @@ export class IndividualProfileService {
       originalFilename: stored.originalFilename,
       mimeType: stored.mimeType,
       sizeBytes: stored.size,
+      credentialFields,
       label: resolvedLabel,
       isPhotoCapture,
       needsClearScan: isPhotoCapture,
@@ -450,6 +458,93 @@ export class IndividualProfileService {
       downloadUrl,
       isPhotoCapture: saved.isPhotoCapture === true,
       needsClearScan: saved.needsClearScan === true,
+      credentialFields: saved.credentialFields ?? null,
+    };
+  }
+
+  async updateCredentialFields(
+    userId: number,
+    documentId: number,
+    input: Partial<CredentialFields>,
+  ): Promise<IndividualDocumentSummary> {
+    const profile = await this.profileForUser(userId);
+    const doc = await this.documentRepo.findByIdForProfile(documentId, profile.id);
+    if (!doc) {
+      throw new NotFoundException("Document not found");
+    }
+
+    const current = doc.credentialFields ?? {
+      credentialName: null,
+      issuer: null,
+      dateAwarded: null,
+      nqfLevel: null,
+      expiry: null,
+    };
+    const normalise = (value: string | null | undefined): string | null => {
+      if (value == null) return null;
+      const trimmed = value.trim();
+      return trimmed.length > 0 ? trimmed : null;
+    };
+    const next: CredentialFields = {
+      credentialName:
+        input.credentialName !== undefined
+          ? normalise(input.credentialName)
+          : current.credentialName,
+      issuer: input.issuer !== undefined ? normalise(input.issuer) : current.issuer,
+      dateAwarded:
+        input.dateAwarded !== undefined ? normalise(input.dateAwarded) : current.dateAwarded,
+      nqfLevel: input.nqfLevel !== undefined ? normalise(input.nqfLevel) : current.nqfLevel,
+      expiry: input.expiry !== undefined ? normalise(input.expiry) : current.expiry,
+    };
+
+    const fieldKeys: Array<keyof CredentialFields> = [
+      "credentialName",
+      "issuer",
+      "dateAwarded",
+      "nqfLevel",
+      "expiry",
+    ];
+    const corrections = fieldKeys
+      .filter((key) => next[key] !== current[key] && next[key] != null)
+      .map((key) => ({ field: key, original: current[key], corrected: next[key] as string }));
+
+    doc.credentialFields = next;
+    const namePart = next.credentialName;
+    const suffix = [next.issuer, next.dateAwarded].filter((part): part is string =>
+      Boolean(part && part.length > 0),
+    );
+    doc.label = namePart
+      ? suffix.length > 0
+        ? `${namePart} — ${suffix.join(", ")}`
+        : namePart
+      : doc.label;
+    const saved = await this.documentRepo.save(doc);
+
+    if (corrections.length > 0) {
+      try {
+        await this.nixSeekerAssistService.recordCredentialCorrections(corrections);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to record credential corrections for document ${documentId}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
+
+    const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
+    return {
+      id: saved.id,
+      kind: saved.kind,
+      originalFilename: saved.originalFilename,
+      mimeType: saved.mimeType,
+      sizeBytes: saved.sizeBytes,
+      label: saved.label,
+      uploadedAt: saved.uploadedAt,
+      downloadUrl,
+      isPhotoCapture: saved.isPhotoCapture === true,
+      needsClearScan: saved.needsClearScan === true,
+      credentialFields: saved.credentialFields ?? null,
     };
   }
 

@@ -15,6 +15,14 @@ export enum IndividualDocumentKind {
   CERTIFICATE = "certificate",
 }
 
+export interface CredentialFields {
+  credentialName: string | null;
+  issuer: string | null;
+  dateAwarded: string | null;
+  nqfLevel: string | null;
+  expiry: string | null;
+}
+
 @Entity("cv_assistant_individual_documents")
 @Index(["profileId", "kind"])
 export class AnnixOrbitIndividualDocument {
@@ -57,6 +65,9 @@ export class AnnixOrbitIndividualDocument {
 
   @Column({ name: "last_scan_reminder_at", type: "timestamptz", nullable: true })
   lastScanReminderAt: Date | null;
+
+  @Column({ name: "credential_fields", type: "jsonb", nullable: true })
+  credentialFields: CredentialFields | null;
 
   @CreateDateColumn({ name: "uploaded_at" })
   uploadedAt: Date;

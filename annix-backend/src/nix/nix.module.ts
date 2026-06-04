@@ -370,6 +370,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     WalkthroughEngine,
     MineInferenceService,
     RevisionTrackingService,
+    NixLearningRepository,
   ],
 })
 export class NixModule {}

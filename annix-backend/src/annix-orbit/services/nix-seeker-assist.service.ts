@@ -7,7 +7,12 @@ import {
 import { now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
-import { IndividualDocumentKind } from "../entities/annix-orbit-individual-document.entity";
+import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
+import { NixLearningRepository } from "../../nix/nix-learning.repository";
+import {
+  type CredentialFields,
+  IndividualDocumentKind,
+} from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
@@ -47,6 +52,27 @@ function credentialPhotoLabel(result: NixCredentialPhotoResult): string | null {
 }
 
 const METRIC_CATEGORY = "annix-orbit-nix-seeker";
+const CREDENTIAL_LEARNING_CATEGORY = "orbit-credential-photo";
+
+const EMPTY_CREDENTIAL_FIELDS: CredentialFields = {
+  credentialName: null,
+  issuer: null,
+  dateAwarded: null,
+  nqfLevel: null,
+  expiry: null,
+};
+
+const CREDENTIAL_FIELD_LABELS: Record<keyof CredentialFields, string> = {
+  credentialName: "name",
+  issuer: "issuer",
+  dateAwarded: "date awarded",
+  nqfLevel: "NQF level",
+  expiry: "expiry",
+};
+
+function normaliseCorrectionKey(value: string): string {
+  return value.trim().toLowerCase();
+}
 
 // Deterministic guard so a role's place never appears twice (e.g. employer
 // "Selfridges - London" alongside location "London, UK") — a tell that flags
@@ -82,7 +108,69 @@ export class NixSeekerAssistService {
     private readonly documentRepo: AnnixOrbitIndividualDocumentRepository,
     private readonly aiChatService: AiChatService,
     private readonly metrics: ExtractionMetricService,
+    private readonly learningRepo: NixLearningRepository,
   ) {}
+
+  private async credentialCorrectionExamples(): Promise<string[]> {
+    try {
+      const rules = await this.learningRepo.findActiveCorrectionsByCategoryTopByConfidence(
+        CREDENTIAL_LEARNING_CATEGORY,
+        12,
+      );
+      return rules
+        .filter((rule) => rule.originalValue && rule.learnedValue)
+        .map((rule) => {
+          const context = rule.context as { field?: string } | undefined;
+          const fieldLabel = context?.field ? context.field : "value";
+          return `for ${fieldLabel}, "${rule.originalValue}" should be "${rule.learnedValue}"`;
+        });
+    } catch (err) {
+      this.logger.warn(
+        `Failed to load credential correction examples: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+      return [];
+    }
+  }
+
+  async recordCredentialCorrections(
+    changes: Array<{ field: keyof CredentialFields; original: string | null; corrected: string }>,
+  ): Promise<void> {
+    await Promise.all(
+      changes.map(async (change) => {
+        const fieldLabel = CREDENTIAL_FIELD_LABELS[change.field];
+        const originalKey = change.original ? normaliseCorrectionKey(change.original) : "(blank)";
+        const patternKey = `orbit-credential::${change.field}::${originalKey}`;
+        const existing = await this.learningRepo.findCorrectionByPatternKey(patternKey);
+        if (existing) {
+          if (existing.learnedValue === change.corrected) {
+            existing.confirmationCount += 1;
+            existing.confidence = Math.min(1, existing.confidence + 0.05);
+          } else {
+            existing.learnedValue = change.corrected;
+            existing.originalValue = change.original ?? undefined;
+            existing.confirmationCount = 1;
+            existing.confidence = 0.6;
+          }
+          await this.learningRepo.save(existing);
+        } else {
+          await this.learningRepo.create({
+            learningType: LearningType.CORRECTION,
+            source: LearningSource.USER_CORRECTION,
+            category: CREDENTIAL_LEARNING_CATEGORY,
+            patternKey,
+            originalValue: change.original ?? undefined,
+            learnedValue: change.corrected,
+            context: { field: fieldLabel },
+            confidence: 0.6,
+            confirmationCount: 1,
+            isActive: true,
+          });
+        }
+      }),
+    );
+  }
 
   async cvImprovements(userId: number): Promise<NixSeekerCvAssessmentResponse> {
     const profile = await this.profileRepo.findByUserId(userId);
@@ -252,10 +340,10 @@ export class NixSeekerAssistService {
     buffer: Buffer,
     mimeType: string,
     kind: "qualification" | "certificate",
-  ): Promise<{ label: string | null; readable: boolean }> {
+  ): Promise<{ fields: CredentialFields; label: string | null; readable: boolean }> {
     const mediaType = credentialPhotoMediaType(mimeType);
     if (!mediaType) {
-      return { label: null, readable: false };
+      return { fields: EMPTY_CREDENTIAL_FIELDS, label: null, readable: false };
     }
     const base64 = buffer.toString("base64");
     try {
@@ -263,7 +351,8 @@ export class NixSeekerAssistService {
         METRIC_CATEGORY,
         "credential-photo",
         async () => {
-          const prompt = credentialPhotoPrompt(kind);
+          const learned = await this.credentialCorrectionExamples();
+          const prompt = credentialPhotoPrompt(kind, learned);
           const ai = await this.aiChatService.chatWithImage(
             base64,
             mediaType,
@@ -275,11 +364,18 @@ export class NixSeekerAssistService {
         },
         buffer.length,
       );
-      return { label: credentialPhotoLabel(result), readable: result.readable !== false };
+      const fields: CredentialFields = {
+        credentialName: result.credentialName ?? null,
+        issuer: result.issuer ?? null,
+        dateAwarded: result.dateAwarded ?? null,
+        nqfLevel: result.nqfLevel ?? null,
+        expiry: result.expiry ?? null,
+      };
+      return { fields, label: credentialPhotoLabel(result), readable: result.readable !== false };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       this.logger.warn(`Credential photo analysis failed: ${message}`);
-      return { label: null, readable: false };
+      return { fields: EMPTY_CREDENTIAL_FIELDS, label: null, readable: false };
     }
   }
 

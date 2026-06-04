@@ -24,7 +24,10 @@ import {
   INDIVIDUAL_DOC_MAX_BYTES,
   isAcceptedDocumentMime,
 } from "../config/individual-documents.config";
-import { UploadIndividualDocumentDto } from "../dto/individual-profile.dto";
+import {
+  UpdateCredentialFieldsDto,
+  UploadIndividualDocumentDto,
+} from "../dto/individual-profile.dto";
 import { UpdateSeekerEeAttributesDto } from "../dto/seeker-ee-attributes.dto";
 import type {
   EeDisabilityStatus,
@@ -98,6 +101,15 @@ export class IndividualProfileController {
       dto.label,
       dto.source,
     );
+  }
+
+  @Patch("documents/:id/credential-fields")
+  updateCredentialFields(
+    @Request() req: { user: { id: number } },
+    @Param("id", ParseIntPipe) id: number,
+    @Body() dto: UpdateCredentialFieldsDto,
+  ) {
+    return this.individualProfileService.updateCredentialFields(req.user.id, id, dto);
   }
 
   @Delete("documents/:id")
