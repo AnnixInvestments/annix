@@ -285,7 +285,7 @@ function CurrentCvCard(props: {
   const uploadedAt = propsCvUploadedAt ? propsCvUploadedAt : docUploadedAt;
   const sizeKb = Math.round(props.doc.sizeBytes / 1024);
   return (
-    <div className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg px-2.5 py-4 flex items-center justify-between gap-4">
+    <div className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg px-2.5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
       <div className="flex items-center gap-3 min-w-0">
         <FileBadge kind="cv" />
         <div className="min-w-0">
@@ -295,7 +295,7 @@ function CurrentCvCard(props: {
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-3 flex-shrink-0">
+      <div className="flex items-center gap-3 flex-shrink-0 flex-wrap pl-[52px] sm:pl-0">
         <a
           href={props.doc.downloadUrl}
           target="_blank"
@@ -338,7 +338,7 @@ function DocumentList(props: {
         return (
           <li
             key={doc.id}
-            className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg px-2.5 py-4 flex items-center justify-between gap-4"
+            className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg px-2.5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4"
           >
             <div className="flex items-center gap-3 min-w-0">
               <FileBadge kind={doc.kind} />
@@ -363,7 +363,7 @@ function DocumentList(props: {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-3 flex-shrink-0">
+            <div className="flex items-center gap-3 flex-shrink-0 flex-wrap pl-[52px] sm:pl-0">
               {doc.isPhotoCapture && (
                 <button
                   type="button"
