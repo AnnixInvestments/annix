@@ -1,6 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { generateManifest } from "@/app/lib/branding";
-import { type Branding, brandingFallback, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { type Branding, brandingFallback } from "@/app/lib/branding/branding";
 import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
 
 async function orbitBranding(): Promise<Branding> {
@@ -18,7 +18,6 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
   const branding = await orbitBranding();
   const navbarColor = branding.navbarColor;
   const themeColor = navbarColor || "#323288";
-  const iconUrl = resolveBrandAssetUrl("logoIcon", branding);
 
   const manifest = generateManifest({
     name: "Annix Orbit",
@@ -28,8 +27,9 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
     themeColor,
     backgroundColor: "#f6f7fb",
     iconUrls: {
-      size192: iconUrl,
-      size512: iconUrl,
+      size192: "/branding/annix-orbit-icon-192.png",
+      size512: "/branding/annix-orbit-icon-512.png",
+      maskable512: "/branding/annix-orbit-icon-maskable.png",
     },
     shortcuts: [
       { name: "My applications", url: "/annix/orbit/seeker/applications" },

@@ -8,6 +8,7 @@ export interface ManifestConfig {
   iconUrls: {
     size192: string;
     size512: string;
+    maskable512?: string;
   };
   shortcuts?: Array<{
     name: string;
@@ -39,6 +40,29 @@ export interface WebAppManifest {
 }
 
 export function generateManifest(config: ManifestConfig): WebAppManifest {
+  const maskable512 = config.iconUrls.maskable512;
+  const icons: WebAppManifest["icons"] = [
+    {
+      src: config.iconUrls.size192,
+      sizes: "192x192",
+      type: "image/png",
+      purpose: "any",
+    },
+    {
+      src: config.iconUrls.size512,
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "any",
+    },
+  ];
+  if (maskable512) {
+    icons.push({
+      src: maskable512,
+      sizes: "512x512",
+      type: "image/png",
+      purpose: "maskable",
+    });
+  }
   return {
     name: config.name,
     short_name: config.shortName,
@@ -48,20 +72,7 @@ export function generateManifest(config: ManifestConfig): WebAppManifest {
     orientation: "portrait",
     theme_color: config.themeColor,
     background_color: config.backgroundColor,
-    icons: [
-      {
-        src: config.iconUrls.size192,
-        sizes: "192x192",
-        type: "image/png",
-        purpose: "any maskable",
-      },
-      {
-        src: config.iconUrls.size512,
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "any maskable",
-      },
-    ],
+    icons,
     shortcuts: config.shortcuts,
   };
 }

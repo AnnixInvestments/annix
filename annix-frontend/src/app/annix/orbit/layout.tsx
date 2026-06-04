@@ -21,7 +21,6 @@ async function orbitBrandingForMetadata(): Promise<Branding> {
 export async function generateMetadata(): Promise<Metadata> {
   const branding = await orbitBrandingForMetadata();
   const faviconUrl = resolveBrandAssetUrl("favicon", branding);
-  const iconUrl = resolveBrandAssetUrl("logoIcon", branding);
   return {
     title: {
       template: "%s | Annix Orbit",
@@ -31,7 +30,7 @@ export async function generateMetadata(): Promise<Metadata> {
     manifest: "/api/annix-orbit/manifest.json",
     icons: {
       icon: [{ url: faviconUrl, sizes: "any" }],
-      apple: [{ url: iconUrl, sizes: "192x192" }],
+      apple: [{ url: "/branding/annix-orbit-apple-touch-icon.png", sizes: "180x180" }],
     },
     appleWebApp: {
       capable: true,
