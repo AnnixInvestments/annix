@@ -4,6 +4,41 @@ jest.mock("@octokit/rest", () => ({
 
 import { FeedbackGithubService } from "./feedback-github.service";
 
+interface TestTranslation {
+  classification: "bug" | "ui-issue" | "data-issue" | "feature-request" | "question";
+  confidence: number;
+  likelyLocation: string | null;
+  reproductionSteps: string[];
+  likelyCause: string | null;
+  affectedSurface: string | null;
+  riskFlags: string[];
+  fixScope: string | null;
+  autoFixable: boolean;
+}
+
+const baseTranslation: TestTranslation = {
+  classification: "feature-request",
+  confidence: 0.8,
+  likelyLocation: null,
+  reproductionSteps: [],
+  likelyCause: null,
+  affectedSurface: "Annix Orbit seeker",
+  riskFlags: [],
+  fixScope: null,
+  autoFixable: false,
+};
+
+const serviceWithConfig = (config: Record<string, string | undefined>): FeedbackGithubService =>
+  new FeedbackGithubService(
+    {
+      get: (key: string) => config[key],
+    } as never,
+    { chat: jest.fn() } as never,
+    {} as never,
+    {} as never,
+    {} as never,
+  );
+
 describe("FeedbackGithubService", () => {
   let service: FeedbackGithubService;
 
@@ -128,6 +163,86 @@ describe("FeedbackGithubService", () => {
       );
 
       expect(result).toBe(false);
+    });
+  });
+
+  describe("isAssessOnlyEnvironment", () => {
+    const assessOnlyEnv = (svc: FeedbackGithubService): boolean =>
+      (svc as unknown as { isAssessOnlyEnvironment: () => boolean }).isAssessOnlyEnvironment();
+
+    it("is true only when FEEDBACK_ENV is test", () => {
+      expect(assessOnlyEnv(serviceWithConfig({ FEEDBACK_ENV: "test" }))).toBe(true);
+    });
+
+    it("is false when FEEDBACK_ENV is unset (prod/staging)", () => {
+      expect(assessOnlyEnv(serviceWithConfig({}))).toBe(false);
+    });
+
+    it("is false for any non-test value", () => {
+      expect(assessOnlyEnv(serviceWithConfig({ FEEDBACK_ENV: "staging" }))).toBe(false);
+    });
+  });
+
+  describe("testIssueNumber", () => {
+    const issueNumber = (svc: FeedbackGithubService): number | null =>
+      (svc as unknown as { testIssueNumber: () => number | null }).testIssueNumber();
+
+    it("parses a bare number", () => {
+      expect(issueNumber(serviceWithConfig({ FEEDBACK_TEST_ISSUE: "344" }))).toBe(344);
+    });
+
+    it("tolerates a leading hash and whitespace", () => {
+      expect(issueNumber(serviceWithConfig({ FEEDBACK_TEST_ISSUE: " #344 " }))).toBe(344);
+    });
+
+    it("returns null when unset", () => {
+      expect(issueNumber(serviceWithConfig({}))).toBeNull();
+    });
+
+    it("returns null for a non-numeric value", () => {
+      expect(issueNumber(serviceWithConfig({ FEEDBACK_TEST_ISSUE: "later" }))).toBeNull();
+    });
+  });
+
+  describe("buildCommentBody", () => {
+    const build = (
+      svc: FeedbackGithubService,
+      translation: TestTranslation,
+      labels: string[],
+      assessOnly: boolean,
+    ): string =>
+      (
+        svc as unknown as {
+          buildCommentBody: (
+            commentBody: string,
+            translation: TestTranslation,
+            labels: string[],
+            assessOnly: boolean,
+          ) => string;
+        }
+      ).buildCommentBody("BODY", translation, labels, assessOnly);
+
+    it("emits an assess-only instruction that still mentions @claude and forbids a PR", () => {
+      const result = build(service, baseTranslation, [], true);
+
+      expect(result).toContain("@claude");
+      expect(result).toContain("Assess only");
+      expect(result).toContain("TEST environment");
+      expect(result).not.toContain("create a branch");
+    });
+
+    it("assess-only mode triggers even for a feature-request the normal path would skip", () => {
+      const result = build(service, baseTranslation, [], true);
+
+      expect(result).toContain("@claude");
+    });
+
+    it("keeps the existing auto-fix instruction when not in assess-only mode", () => {
+      const result = build(service, { ...baseTranslation, classification: "bug" }, [], false);
+
+      expect(result).toContain("@claude");
+      expect(result).toContain("create a branch and PR");
+      expect(result).not.toContain("Assess only");
     });
   });
 });
