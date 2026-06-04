@@ -1,7 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { orbitModuleManifest } from "@/app/annix/orbit/config/pwaModules";
 import { generateManifest } from "@/app/lib/branding";
 import { type Branding, brandingFallback } from "@/app/lib/branding/branding";
 import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
+
+const DEFAULT_SHORTCUTS = [
+  { name: "My applications", url: "/annix/orbit/seeker/applications" },
+  { name: "Interviews", url: "/annix/orbit/seeker/calendar" },
+  { name: "Browse jobs", url: "/annix/orbit/seeker/jobs" },
+];
 
 async function orbitBranding(): Promise<Branding> {
   try {
@@ -14,16 +21,25 @@ async function orbitBranding(): Promise<Branding> {
   }
 }
 
-export async function GET(_request: NextRequest): Promise<NextResponse> {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   const branding = await orbitBranding();
   const navbarColor = branding.navbarColor;
   const themeColor = navbarColor || "#323288";
 
+  const moduleParam = request.nextUrl.searchParams.get("module");
+  const moduleManifest = orbitModuleManifest(moduleParam);
+
+  const name = moduleManifest ? moduleManifest.name : "Annix Orbit";
+  const shortName = moduleManifest ? moduleManifest.name : "Orbit";
+  const startUrl = moduleManifest ? moduleManifest.startUrl : "/annix/orbit";
+  const scope = moduleManifest ? moduleManifest.scope : "/annix/orbit";
+  const shortcuts = moduleManifest ? moduleManifest.shortcuts : DEFAULT_SHORTCUTS;
+
   const manifest = generateManifest({
-    name: "Annix Orbit",
-    shortName: "Orbit",
-    startUrl: "/annix/orbit",
-    scope: "/annix/orbit",
+    name,
+    shortName,
+    startUrl,
+    scope,
     themeColor,
     backgroundColor: "#f6f7fb",
     iconUrls: {
@@ -31,11 +47,7 @@ export async function GET(_request: NextRequest): Promise<NextResponse> {
       size512: "/branding/annix-orbit-icon-512.png",
       maskable512: "/branding/annix-orbit-icon-maskable.png",
     },
-    shortcuts: [
-      { name: "My applications", url: "/annix/orbit/seeker/applications" },
-      { name: "Interviews", url: "/annix/orbit/seeker/calendar" },
-      { name: "Browse jobs", url: "/annix/orbit/seeker/jobs" },
-    ],
+    shortcuts,
   });
 
   return NextResponse.json(manifest, {
