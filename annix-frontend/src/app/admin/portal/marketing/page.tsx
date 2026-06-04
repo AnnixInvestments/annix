@@ -142,13 +142,84 @@ async function stripImageBackground(file: File): Promise<File> {
   return new File([blob], `${safeName}.png`, { type: "image/png" });
 }
 
+function featherImageEdges(
+  imageData: ImageData,
+  cornerFraction: number,
+  featherFraction: number,
+): void {
+  const data = imageData.data;
+  const width = imageData.width;
+  const height = imageData.height;
+  const minDim = Math.min(width, height);
+  const radius = minDim * cornerFraction;
+  const feather = Math.max(1, minDim * featherFraction);
+  const centerX = (width - 1) / 2;
+  const centerY = (height - 1) / 2;
+  const halfX = (width - 1) / 2;
+  const halfY = (height - 1) / 2;
+  Array.from({ length: height }, (_, y) => y).forEach((y) => {
+    Array.from({ length: width }, (_, x) => x).forEach((x) => {
+      const qx = Math.abs(x - centerX) - (halfX - radius);
+      const qy = Math.abs(y - centerY) - (halfY - radius);
+      const outside = Math.hypot(Math.max(qx, 0), Math.max(qy, 0));
+      const inside = Math.min(Math.max(qx, qy), 0);
+      const dist = outside + inside - radius;
+      const raw = -dist / feather;
+      const clamped = raw < 0 ? 0 : raw > 1 ? 1 : raw;
+      const factor = clamped * clamped * (3 - 2 * clamped);
+      if (factor < 1) {
+        const alphaOffset = (y * width + x) * 4 + 3;
+        data[alphaOffset] = Math.round(data[alphaOffset] * factor);
+      }
+    });
+  });
+}
+
+const PARTNER_CARD_WIDTH = 360;
+const PARTNER_CARD_HEIGHT = 240;
+const PARTNER_CARD_PADDING = 0.12;
+
+async function featherLogoEdges(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = PARTNER_CARD_WIDTH;
+  canvas.height = PARTNER_CARD_HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) {
+    throw new Error("Canvas not supported");
+  }
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, PARTNER_CARD_WIDTH, PARTNER_CARD_HEIGHT);
+  const innerWidth = PARTNER_CARD_WIDTH * (1 - 2 * PARTNER_CARD_PADDING);
+  const innerHeight = PARTNER_CARD_HEIGHT * (1 - 2 * PARTNER_CARD_PADDING);
+  const scale = Math.min(innerWidth / bitmap.width, innerHeight / bitmap.height);
+  const drawWidth = bitmap.width * scale;
+  const drawHeight = bitmap.height * scale;
+  const drawX = (PARTNER_CARD_WIDTH - drawWidth) / 2;
+  const drawY = (PARTNER_CARD_HEIGHT - drawHeight) / 2;
+  ctx.drawImage(bitmap, drawX, drawY, drawWidth, drawHeight);
+  const imageData = ctx.getImageData(0, 0, PARTNER_CARD_WIDTH, PARTNER_CARD_HEIGHT);
+  featherImageEdges(imageData, 0.16, 0.14);
+  ctx.putImageData(imageData, 0, 0);
+  const blob = await new Promise<Blob | null>((resolve) => {
+    canvas.toBlob((result) => resolve(result), "image/png");
+  });
+  if (!blob) {
+    throw new Error("Could not export image");
+  }
+  const baseName = file.name.replace(/\.[^./\\]+$/, "");
+  const safeName = baseName ? baseName : "logo";
+  return new File([blob], `${safeName}.png`, { type: "image/png" });
+}
+
 function ImageUploadButton(props: {
   label: string;
   onUploaded: (url: string) => void;
   onError: (message: string) => void;
   removeBackground?: boolean;
+  featherEdges?: boolean;
 }) {
-  const [phase, setPhase] = useState<"idle" | "removing" | "uploading">("idle");
+  const [phase, setPhase] = useState<"idle" | "removing" | "feathering" | "uploading">("idle");
   async function handle(event: React.ChangeEvent<HTMLInputElement>) {
     const files = event.target.files;
     const file = files && files.length > 0 ? files[0] : null;
@@ -162,6 +233,14 @@ function ImageUploadButton(props: {
         } catch {
           props.onError("Couldn't remove the background — uploading the original image instead.");
           toUpload = file;
+        }
+      }
+      if (props.featherEdges) {
+        setPhase("feathering");
+        try {
+          toUpload = await featherLogoEdges(toUpload);
+        } catch {
+          props.onError("Couldn't soften the edges — uploading the image as-is.");
         }
       }
       setPhase("uploading");
@@ -178,9 +257,11 @@ function ImageUploadButton(props: {
   const label =
     phase === "removing"
       ? "Removing background…"
-      : phase === "uploading"
-        ? "Uploading…"
-        : props.label;
+      : phase === "feathering"
+        ? "Softening edges…"
+        : phase === "uploading"
+          ? "Uploading…"
+          : props.label;
   return (
     <label className="cursor-pointer rounded-lg border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
       {label}
@@ -1404,8 +1485,9 @@ export default function MarketingCmsPage() {
               }
             />
             <p className="text-xs text-gray-500">
-              Logo backgrounds are removed automatically on upload (processed in your browser) and
-              shown in full colour. Upload any logo — no need to pre-cut it.
+              Logo edges are softened automatically on upload (processed in your browser) so they
+              fade into the page instead of looking like blocks. Upload any logo — no need to
+              pre-cut it.
             </p>
             <div className="space-y-3">
               {partners.partners.map((partner, index) => (
@@ -1450,7 +1532,7 @@ export default function MarketingCmsPage() {
                   </div>
                   <ImageUploadButton
                     label="Upload logo"
-                    removeBackground
+                    featherEdges
                     onUploaded={(url) =>
                       update((d) => {
                         d.partners.partners[index].logoUrl = url;

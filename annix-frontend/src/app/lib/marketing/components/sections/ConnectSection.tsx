@@ -71,19 +71,12 @@ export function ConnectSection(props: {
                 const logo = (
                   <span
                     key={partner.name}
-                    className="flex h-full w-full items-center justify-center rounded-2xl p-3"
-                    style={{
-                      backgroundColor: "rgba(255,255,255,0.06)",
-                      WebkitMaskImage:
-                        "radial-gradient(ellipse 82% 82% at 50% 50%, #000 56%, transparent 100%)",
-                      maskImage:
-                        "radial-gradient(ellipse 82% 82% at 50% 50%, #000 56%, transparent 100%)",
-                    }}
+                    className="flex h-full w-full items-center justify-center p-1"
                   >
                     <img
                       src={partner.logoUrl}
                       alt={partner.name}
-                      className="h-[4.5rem] w-full object-contain"
+                      className="h-20 w-full object-contain"
                     />
                   </span>
                 );
