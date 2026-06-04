@@ -776,10 +776,10 @@ export class JobIngestionService {
       return jobs;
     }
     if (source.provider === JobSourceProvider.CAREERJET) {
-      source.requestsToday += 1;
-      const { jobs } = await this.careerjetService.searchJobs(source.apiKeyEncrypted!, {
-        keywords: category ?? undefined,
-      });
+      const { jobs, requests } = await this.careerjetService.searchAcrossCategories(
+        source.apiKeyEncrypted!,
+      );
+      source.requestsToday += requests;
       return jobs;
     }
     if (source.provider === JobSourceProvider.JOOBLE) {

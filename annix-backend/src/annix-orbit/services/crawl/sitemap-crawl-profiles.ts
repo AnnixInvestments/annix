@@ -48,7 +48,7 @@ const JOBMAIL: SitemapCrawlProfile = {
   // before a dev rebuild interrupts the ~slow crawl. Backfills over multiple runs.
   batchSize: 1,
   crawlDelayMs: 2500,
-  maxPagesPerRun: 25,
+  maxPagesPerRun: 40,
 };
 
 // CareerJunction publishes NO sitemap, so we discover job links off its HTML
@@ -59,19 +59,16 @@ const CAREERJUNCTION: SitemapCrawlProfile = {
   displayName: "CareerJunction",
   origin: "https://www.careerjunction.co.za",
   sitemapUrls: [],
-  discoveryUrls: [
-    "https://www.careerjunction.co.za/jobs?page=1",
-    "https://www.careerjunction.co.za/jobs?page=2",
-    "https://www.careerjunction.co.za/jobs?page=3",
-    "https://www.careerjunction.co.za/jobs?page=4",
-    "https://www.careerjunction.co.za/jobs?page=5",
-  ],
+  discoveryUrls: Array.from(
+    { length: 12 },
+    (_, index) => `https://www.careerjunction.co.za/jobs?page=${index + 1}`,
+  ),
   jobUrlPattern: /-job-\d+\.aspx/i,
   externalIdFromUrl: (url: string): string | null => {
     const match = url.match(/-job-(\d+)\.aspx/i);
     return match ? match[1] : null;
   },
-  maxPagesPerRun: 25,
+  maxPagesPerRun: 50,
 };
 
 const PROFILES: SitemapCrawlProfile[] = [

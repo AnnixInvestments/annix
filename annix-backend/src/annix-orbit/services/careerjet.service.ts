@@ -28,6 +28,33 @@ const CAREERJET_TARGET = 200;
 const CAREERJET_USER_IP = "196.10.52.1";
 const CAREERJET_USER_AGENT = "AnnixOrbitJobBot/1.0 (+https://annix.co.za)";
 const CAREERJET_REFERER = "https://annix.co.za";
+const CAREERJET_SWEEP_PAGES = 2;
+const CAREERJET_SWEEP_KEYWORDS = [
+  "engineering",
+  "information technology",
+  "finance",
+  "accounting",
+  "sales",
+  "administration",
+  "construction",
+  "mining",
+  "manufacturing",
+  "logistics",
+  "healthcare",
+  "management",
+  "human resources",
+  "marketing",
+  "retail",
+  "welder",
+  "boilermaker",
+  "fitter",
+  "electrician",
+  "artisan",
+  "driver",
+  "technician",
+  "supervisor",
+  "operator",
+];
 
 @Injectable()
 export class CareerjetService {
@@ -38,10 +65,56 @@ export class CareerjetService {
     options: { keywords?: string; resultsPerPage?: number } = {},
   ): Promise<{ jobs: IngestedJobResult[]; totalCount: number }> {
     const target = options.resultsPerPage ?? CAREERJET_TARGET;
+    const { jobs } = await this.fetchQuery(
+      affiliateId,
+      options.keywords ?? null,
+      CAREERJET_MAX_PAGES,
+      target,
+    );
+    return { jobs, totalCount: jobs.length };
+  }
+
+  // Sweep a broad set of category/trade keywords and merge the deduped results,
+  // so we draw a far larger pool than a single broad query. Returns the request
+  // count so the caller can charge it against the source's daily rate limit.
+  async searchAcrossCategories(
+    affiliateId: string,
+  ): Promise<{ jobs: IngestedJobResult[]; requests: number }> {
+    const perKeywordTarget = CAREERJET_PAGE_SIZE * CAREERJET_SWEEP_PAGES;
+    const seen = new Set<string>();
+    const collected: IngestedJobResult[] = [];
+    let requests = 0;
+
+    for (const keyword of CAREERJET_SWEEP_KEYWORDS) {
+      const { jobs, requests: used } = await this.fetchQuery(
+        affiliateId,
+        keyword,
+        CAREERJET_SWEEP_PAGES,
+        perKeywordTarget,
+      );
+      requests += used;
+      for (const job of jobs) {
+        if (!seen.has(job.id)) {
+          seen.add(job.id);
+          collected.push(job);
+        }
+      }
+    }
+
+    return { jobs: collected, requests };
+  }
+
+  private async fetchQuery(
+    affiliateId: string,
+    keywords: string | null,
+    maxPages: number,
+    target: number,
+  ): Promise<{ jobs: IngestedJobResult[]; requests: number }> {
     const authHeader = `Basic ${Buffer.from(`${affiliateId}:`).toString("base64")}`;
     const collected: IngestedJobResult[] = [];
+    let requests = 0;
 
-    for (let page = 1; page <= CAREERJET_MAX_PAGES; page += 1) {
+    for (let page = 1; page <= maxPages; page += 1) {
       if (collected.length >= target) break;
 
       const params = new URLSearchParams({
@@ -52,8 +125,9 @@ export class CareerjetService {
         user_ip: CAREERJET_USER_IP,
         user_agent: CAREERJET_USER_AGENT,
       });
-      if (options.keywords) params.set("keywords", options.keywords);
+      if (keywords) params.set("keywords", keywords);
 
+      requests += 1;
       const response = await fetch(`${CAREERJET_BASE_URL}?${params.toString()}`, {
         headers: {
           Authorization: authHeader,
@@ -83,8 +157,7 @@ export class CareerjetService {
       if (rawJobs.length < CAREERJET_PAGE_SIZE) break;
     }
 
-    const jobs = collected.slice(0, target);
-    return { jobs, totalCount: jobs.length };
+    return { jobs: collected.slice(0, target), requests };
   }
 
   private mapResult(result: NonNullable<CareerjetApiResponse["jobs"]>[number]): IngestedJobResult {
