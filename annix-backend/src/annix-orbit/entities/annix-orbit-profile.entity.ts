@@ -119,6 +119,9 @@ export class AnnixOrbitProfile {
   @Column({ name: "interview_reminder_whatsapp", type: "boolean", default: false })
   interviewReminderWhatsapp: boolean;
 
+  @Column({ name: "dismiss_warning_acknowledged_at", type: "timestamptz", nullable: true })
+  dismissWarningAcknowledgedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

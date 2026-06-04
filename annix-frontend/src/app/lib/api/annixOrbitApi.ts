@@ -793,6 +793,7 @@ export interface IndividualProfileStatus {
   cvUploadedAt: string | null;
   cvOriginalFilename: string | null;
   photoCredentialCapture: boolean;
+  dismissWarningAcknowledged: boolean;
 }
 
 export type NixSeekerImprovementArea =
@@ -2121,6 +2122,10 @@ class AnnixOrbitApiClient {
 
   async myProfileStatus(): Promise<IndividualProfileStatus> {
     return this.request("/annix-orbit/me/profile/status");
+  }
+
+  async acknowledgeDismissWarning(): Promise<{ acknowledgedAt: string }> {
+    return this.request("/annix-orbit/me/dismiss-warning/acknowledge", { method: "POST" });
   }
 
   async myDocuments(): Promise<IndividualDocument[]> {

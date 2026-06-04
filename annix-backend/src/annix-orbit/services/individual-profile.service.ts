@@ -47,6 +47,7 @@ export interface IndividualProfileStatus {
   cvUploadedAt: Date | null;
   cvOriginalFilename: string | null;
   photoCredentialCapture: boolean;
+  dismissWarningAcknowledged: boolean;
 }
 
 export interface IndividualDocumentSummary {
@@ -312,7 +313,18 @@ export class IndividualProfileService {
       cvUploadedAt: profile.cvUploadedAt,
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
       photoCredentialCapture,
+      dismissWarningAcknowledged: profile.dismissWarningAcknowledgedAt != null,
     };
+  }
+
+  async acknowledgeDismissWarning(userId: number): Promise<{ acknowledgedAt: string }> {
+    const profile = await this.profileForUser(userId);
+    if (!profile.dismissWarningAcknowledgedAt) {
+      profile.dismissWarningAcknowledgedAt = now().toJSDate();
+      await this.profileRepo.save(profile);
+    }
+    const acknowledgedAt = profile.dismissWarningAcknowledgedAt;
+    return { acknowledgedAt: acknowledgedAt ? acknowledgedAt.toISOString() : "" };
   }
 
   async listDocuments(userId: number): Promise<IndividualDocumentSummary[]> {

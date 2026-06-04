@@ -93,6 +93,9 @@ export class AnnixOrbitProfile {
   @Prop({ type: Boolean, required: false, default: false })
   interviewReminderWhatsapp: boolean;
 
+  @Prop({ type: Date, required: false })
+  dismissWarningAcknowledgedAt: Date;
+
   @Prop({ type: String, required: false })
   createdAt: string;
 

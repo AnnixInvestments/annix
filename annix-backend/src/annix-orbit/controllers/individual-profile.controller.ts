@@ -71,6 +71,11 @@ export class IndividualProfileController {
     return this.individualProfileService.status(req.user.id);
   }
 
+  @Post("dismiss-warning/acknowledge")
+  acknowledgeDismissWarning(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.acknowledgeDismissWarning(req.user.id);
+  }
+
   @Get("documents")
   documents(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.listDocuments(req.user.id);

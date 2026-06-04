@@ -109,6 +109,15 @@ export default function SeekerJobsPage() {
   const dismissReasonsData = dismissReasonsQuery.data;
   const dismissReasons = dismissReasonsData ? dismissReasonsData : [];
   const dismissMutation = useOrbitDismissSeekerMatch();
+  const acknowledgeDismissWarning = useOrbitAcknowledgeDismissWarning();
+  const dismissWarningAcknowledged = profileStatus
+    ? profileStatus.dismissWarningAcknowledged
+    : false;
+  const [pendingDismiss, setPendingDismiss] = useState<{
+    matchId: number;
+    reason?: string;
+  } | null>(null);
+  const [dismissDontShowAgain, setDismissDontShowAgain] = useState<boolean>(false);
   const rematchMutation = useOrbitSeekerRematch();
   const muteCompanyMutation = useOrbitMuteSeekerCompany();
   const muteCategoryMutation = useOrbitMuteSeekerCategory();
@@ -273,7 +282,7 @@ export default function SeekerJobsPage() {
       });
   };
 
-  const handleDismiss = (matchId: number, reason?: string) => {
+  const runDismiss = (matchId: number, reason?: string) => {
     dismissMutation.mutate(
       { matchId, reason },
       {
@@ -285,6 +294,25 @@ export default function SeekerJobsPage() {
         },
       },
     );
+  };
+
+  const handleDismiss = (matchId: number, reason?: string) => {
+    if (dismissWarningAcknowledged) {
+      runDismiss(matchId, reason);
+      return;
+    }
+    setDismissDontShowAgain(false);
+    setPendingDismiss({ matchId, reason });
+  };
+
+  const confirmPendingDismiss = () => {
+    const target = pendingDismiss;
+    if (!target) return;
+    if (dismissDontShowAgain) {
+      acknowledgeDismissWarning.mutate();
+    }
+    runDismiss(target.matchId, target.reason);
+    setPendingDismiss(null);
   };
 
   const handleMuteCompany = async (company: string) => {
@@ -707,6 +735,21 @@ export default function SeekerJobsPage() {
           ))}
         </div>
       )}
+      <ConfirmModal
+        isOpen={pendingDismiss != null}
+        variant="warning"
+        title="This trains your job matches"
+        message={
+          "Marking a job as “not for me” helps Nix learn your preferences — jobs of this nature may no longer appear in your matches.\n\nYou can still browse every open job on the board at any time."
+        }
+        confirmLabel="Yes, not for me"
+        cancelLabel="Keep it"
+        checkboxLabel="Don't show this warning again"
+        checkboxChecked={dismissDontShowAgain}
+        onCheckboxChange={setDismissDontShowAgain}
+        onConfirm={confirmPendingDismiss}
+        onCancel={() => setPendingDismiss(null)}
+      />
       {ConfirmDialog}
     </div>
   );

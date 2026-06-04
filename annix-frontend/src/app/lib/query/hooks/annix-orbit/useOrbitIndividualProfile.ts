@@ -23,6 +23,16 @@ export function useOrbitMyProfileStatus(enabled = true) {
   });
 }
 
+export function useOrbitAcknowledgeDismissWarning() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => annixOrbitApiClient.acknowledgeDismissWarning(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
+  });
+}
+
 export function useOrbitMyDocuments(enabled = true) {
   return useQuery<IndividualDocument[]>({
     queryKey: annixOrbitKeys.individualProfile.documents(),

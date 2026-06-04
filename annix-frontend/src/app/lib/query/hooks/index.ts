@@ -285,6 +285,7 @@ export {
   useAdoptNixCv,
   useGenerateNixCv,
   useNixGeneratedCv,
+  useOrbitAcknowledgeDismissWarning,
   useOrbitConfirmMyAccountDeletion,
   useOrbitDeleteMyDocument,
   useOrbitMyDataExport,

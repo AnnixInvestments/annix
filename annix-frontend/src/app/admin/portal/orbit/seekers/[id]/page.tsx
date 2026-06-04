@@ -199,6 +199,10 @@ export default function OrbitSeekerDetailPage() {
   const consentLabel = detail.popiaConsent
     ? `Granted${detail.popiaConsentedAt ? ` ${formatDateZA(detail.popiaConsentedAt)}` : ""}`
     : "Not granted";
+  const dismissWarningAcknowledgedAt = detail.dismissWarningAcknowledgedAt;
+  const dismissWarningLabel = dismissWarningAcknowledgedAt
+    ? `Accepted ${formatDateZA(dismissWarningAcknowledgedAt)}`
+    : "Not yet shown / accepted";
   const cv = detail.cv;
   const cvLocationRaw = cv.location;
   const cvLocation = cvLocationRaw || "—";
@@ -331,6 +335,7 @@ export default function OrbitSeekerDetailPage() {
             <Detail label="Location" value={cvLocation} />
             <Detail label="Has CV" value={detail.hasCv ? "Yes" : "No"} />
             <Detail label="POPIA consent" value={consentLabel} />
+            <Detail label="Dismiss warning" value={dismissWarningLabel} />
           </div>
           {cv.skills.length > 0 ? <ChipList title="Skills" items={cv.skills} /> : null}
           {cv.certifications.length > 0 ? (

@@ -99,6 +99,7 @@ export interface AdminSeekerDocument {
 export interface AdminSeekerDetail extends AdminSeekerSummary {
   popiaConsent: boolean;
   popiaConsentedAt: string | null;
+  dismissWarningAcknowledgedAt: string | null;
   workProfile: unknown;
   cv: {
     summary: string | null;
@@ -362,6 +363,12 @@ export class SeekerJobFeedService {
       sevenDaysAgo,
     );
 
+    const seekerUser = email ? await this.userRepo.findOneByEmailCaseInsensitive(email) : null;
+    const seekerProfile = seekerUser ? await this.profileRepo.findByUserId(seekerUser.id) : null;
+    const dismissWarningAcknowledgedAt = seekerProfile?.dismissWarningAcknowledgedAt
+      ? seekerProfile.dismissWarningAcknowledgedAt.toISOString()
+      : null;
+
     const extracted = candidate.extractedData;
     const analysis = candidate.matchAnalysis;
 
@@ -379,6 +386,7 @@ export class SeekerJobFeedService {
       popiaConsentedAt: candidate.popiaConsentedAt
         ? candidate.popiaConsentedAt.toISOString()
         : null,
+      dismissWarningAcknowledgedAt,
       workProfile: candidate.workProfile,
       cv: {
         summary: extracted?.summary ?? null,

@@ -15,6 +15,9 @@ export interface ConfirmModalProps {
   cancelFocusRingClass?: string;
   loading?: boolean;
   hideCancel?: boolean;
+  checkboxLabel?: string;
+  checkboxChecked?: boolean;
+  onCheckboxChange?: (checked: boolean) => void;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -53,6 +56,7 @@ export function ConfirmModal(props: ConfirmModalProps) {
   const cancelFocusRingClass = rawCancelFocusRingClass || "focus:ring-blue-500";
   const rawLoading = props.loading;
   const loading = rawLoading || false;
+  const checkboxChecked = props.checkboxChecked === true;
   const cancelRef = useRef<HTMLButtonElement>(null);
 
   const isOpen = props.isOpen;
@@ -153,6 +157,17 @@ export function ConfirmModal(props: ConfirmModalProps) {
               <p className="mt-2 text-sm text-gray-500 whitespace-pre-line">{props.message}</p>
             </div>
           </div>
+          {props.checkboxLabel ? (
+            <label className="mt-4 flex items-center gap-2 pl-14 text-sm text-gray-600">
+              <input
+                type="checkbox"
+                checked={checkboxChecked}
+                onChange={(event) => props.onCheckboxChange?.(event.target.checked)}
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              {props.checkboxLabel}
+            </label>
+          ) : null}
         </div>
         <div className="px-6 py-4 bg-gray-50 flex justify-end space-x-3">
           {!props.hideCancel && (
