@@ -166,6 +166,9 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const eeDisclosureHref = roles.includes("student")
     ? "/annix/orbit/student/ee-attributes"
     : "/annix/orbit/seeker/ee-attributes";
+  const orbitSettingsHref = roles.includes("individual")
+    ? "/annix/orbit/seeker/settings"
+    : "/annix/orbit/portal/settings";
 
   const visibleNavItems = navItems.filter((item) => {
     const roleCheck = !item.roles || item.roles.some((role) => user?.roles?.includes(role));
@@ -382,7 +385,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                     <Link
                       href={
                         portalType === "annixOrbit"
-                          ? "/annix/orbit/portal/settings"
+                          ? orbitSettingsHref
                           : `/${portalType}/portal/profile`
                       }
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

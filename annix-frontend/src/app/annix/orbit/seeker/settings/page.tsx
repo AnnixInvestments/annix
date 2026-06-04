@@ -182,176 +182,180 @@ export default function SeekerSettingsPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-        <SectionCard
-          title="Notifications"
-          description="Choose when we tell you about matching jobs."
-        >
-          {prefsQuery.isLoading ? (
-            <div className="flex items-center justify-center py-6">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--brand-navbar,#323288)]" />
-            </div>
-          ) : (
-            <div className="space-y-5">
-              <div>
-                <label htmlFor="threshold" className="block text-sm font-medium text-gray-900">
-                  Match alert threshold
-                  <span className="ml-2 text-[var(--brand-navbar,#323288)] font-mono">
-                    {threshold}%
+        <div className="space-y-6">
+          <SectionCard
+            title="Notifications"
+            description="Choose when we tell you about matching jobs."
+          >
+            {prefsQuery.isLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[var(--brand-navbar,#323288)]" />
+              </div>
+            ) : (
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="threshold" className="block text-sm font-medium text-gray-900">
+                    Match alert threshold
+                    <span className="ml-2 text-[var(--brand-navbar,#323288)] font-mono">
+                      {threshold}%
+                    </span>
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only notify me about jobs that match my CV at this score or higher.
+                  </p>
+                  <input
+                    id="threshold"
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={threshold}
+                    onChange={(e) => setThreshold(Number(e.target.value))}
+                    className="w-full mt-3 accent-[var(--brand-navbar,#323288)]"
+                  />
+                </div>
+
+                <ToggleRow
+                  id="digestEnabled"
+                  label="Email digest"
+                  description="Send me a daily summary of new matches."
+                  checked={digestEnabled}
+                  onChange={setDigestEnabled}
+                />
+
+                <ToggleRow
+                  id="pushEnabled"
+                  label="Browser push"
+                  description="Send me browser push notifications for high-scoring matches."
+                  checked={pushEnabled}
+                  onChange={setPushEnabled}
+                />
+
+                <div className="flex items-center justify-between pt-2">
+                  <span className="text-sm">
+                    {isDirty ? <span className="text-amber-600">Unsaved changes</span> : null}
                   </span>
-                </label>
-                <p className="text-xs text-gray-500 mt-1">
-                  Only notify me about jobs that match my CV at this score or higher.
-                </p>
-                <input
-                  id="threshold"
-                  type="range"
-                  min={0}
-                  max={100}
-                  step={5}
-                  value={threshold}
-                  onChange={(e) => setThreshold(Number(e.target.value))}
-                  className="w-full mt-3 accent-[var(--brand-navbar,#323288)]"
+                  <button
+                    type="button"
+                    onClick={handleSavePrefs}
+                    disabled={updatePrefs.isPending}
+                    className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {updatePrefs.isPending ? "Saving..." : "Save preferences"}
+                  </button>
+                </div>
+              </div>
+            )}
+          </SectionCard>
+
+          <ReminderPreferencesCard />
+        </div>
+
+        <div className="space-y-6">
+          <SectionCard
+            title="Get the app on your phone"
+            description="Annix Orbit installs to your home screen like an app — full-screen, no app store needed. We'll email you the link and the steps."
+          >
+            <div className="space-y-4">
+              <p className="text-sm text-gray-600">
+                Tap below and we'll email you a link to open on your phone, then add it to your home
+                screen (Android: Install / Add to Home screen · iPhone: Share → Add to Home Screen).
+              </p>
+              <button
+                type="button"
+                onClick={handleSendAppLink}
+                disabled={sendAppLink.isPending}
+                className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendAppLink.isPending ? "Sending…" : "Email me the app link"}
+              </button>
+            </div>
+          </SectionCard>
+
+          <SectionCard
+            title="Your data (POPIA)"
+            description="Under the Protection of Personal Information Act you can request a copy of your data or have it erased at any time."
+          >
+            <div className="space-y-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-gray-900">Download my data</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Get a JSON file with everything we hold about you — account details, profile,
+                    document metadata, and extracted CV data.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  disabled={dataExport.isPending}
+                  className="bg-white text-[var(--brand-navbar-active,#252560)] border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  {dataExport.isPending ? "Preparing..." : "Download data"}
+                </button>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-amber-700">Stop matching me to jobs</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Clears the embedding used to match your CV against external jobs, deletes your
+                    current match list, and turns off job alerts. Your account, CV, and applications
+                    stay. Re-enable any time by re-saving your CV.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleWithdrawMatching}
+                  disabled={withdrawMatching.isPending}
+                  className="bg-white text-amber-700 border border-amber-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                >
+                  {withdrawMatching.isPending ? "Stopping…" : "Stop matching"}
+                </button>
+              </div>
+
+              <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-amber-700">Withdraw POPIA consent</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Permanently delete any job applications tied to your email and revoke our right
+                    to process your data. Your account stays, but we cannot apply you to jobs until
+                    you grant consent again.
+                  </p>
+                </div>
+                <WithdrawConsentButton
+                  isPending={withdrawConsent.isPending}
+                  onClick={handleWithdrawConsent}
                 />
               </div>
 
-              <ToggleRow
-                id="digestEnabled"
-                label="Email digest"
-                description="Send me a daily summary of new matches."
-                checked={digestEnabled}
-                onChange={setDigestEnabled}
-              />
-
-              <ToggleRow
-                id="pushEnabled"
-                label="Browser push"
-                description="Send me browser push notifications for high-scoring matches."
-                checked={pushEnabled}
-                onChange={setPushEnabled}
-              />
-
-              <div className="flex items-center justify-between pt-2">
-                <span className="text-sm">
-                  {isDirty ? <span className="text-amber-600">Unsaved changes</span> : null}
-                </span>
-                <button
-                  type="button"
-                  onClick={handleSavePrefs}
-                  disabled={updatePrefs.isPending}
-                  className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  {updatePrefs.isPending ? "Saving..." : "Save preferences"}
-                </button>
+              <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-medium text-red-700">Delete my account</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Request permanent deletion of your account, CV, qualifications, and all
+                    associated data. We will email you a confirmation link.
+                  </p>
+                </div>
+                <DeleteRequestButton
+                  isPending={requestDeletion.isPending}
+                  alreadyRequested={deletionRequested}
+                  onClick={handleDelete}
+                />
               </div>
+
+              {deletionRequested ? (
+                <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-sm">
+                  <p className="font-medium">Deletion pending</p>
+                  <p className="text-xs mt-1">
+                    We've emailed you a confirmation link. Click it within 1 hour to permanently
+                    delete your account. You will stay signed in until you confirm.
+                  </p>
+                </div>
+              ) : null}
             </div>
-          )}
-        </SectionCard>
-
-        <SectionCard
-          title="Get the app on your phone"
-          description="Annix Orbit installs to your home screen like an app — full-screen, no app store needed. We'll email you the link and the steps."
-        >
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Tap below and we'll email you a link to open on your phone, then add it to your home
-              screen (Android: Install / Add to Home screen · iPhone: Share → Add to Home Screen).
-            </p>
-            <button
-              type="button"
-              onClick={handleSendAppLink}
-              disabled={sendAppLink.isPending}
-              className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {sendAppLink.isPending ? "Sending…" : "Email me the app link"}
-            </button>
-          </div>
-        </SectionCard>
-
-        <ReminderPreferencesCard />
-
-        <SectionCard
-          title="Your data (POPIA)"
-          description="Under the Protection of Personal Information Act you can request a copy of your data or have it erased at any time."
-        >
-          <div className="space-y-4">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-gray-900">Download my data</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Get a JSON file with everything we hold about you — account details, profile,
-                  document metadata, and extracted CV data.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleExport}
-                disabled={dataExport.isPending}
-                className="bg-white text-[var(--brand-navbar-active,#252560)] border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-              >
-                {dataExport.isPending ? "Preparing..." : "Download data"}
-              </button>
-            </div>
-
-            <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-amber-700">Stop matching me to jobs</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Clears the embedding used to match your CV against external jobs, deletes your
-                  current match list, and turns off job alerts. Your account, CV, and applications
-                  stay. Re-enable any time by re-saving your CV.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={handleWithdrawMatching}
-                disabled={withdrawMatching.isPending}
-                className="bg-white text-amber-700 border border-amber-300 px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
-              >
-                {withdrawMatching.isPending ? "Stopping…" : "Stop matching"}
-              </button>
-            </div>
-
-            <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-amber-700">Withdraw POPIA consent</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Permanently delete any job applications tied to your email and revoke our right to
-                  process your data. Your account stays, but we cannot apply you to jobs until you
-                  grant consent again.
-                </p>
-              </div>
-              <WithdrawConsentButton
-                isPending={withdrawConsent.isPending}
-                onClick={handleWithdrawConsent}
-              />
-            </div>
-
-            <div className="border-t border-gray-100 pt-4 flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-sm font-medium text-red-700">Delete my account</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Request permanent deletion of your account, CV, qualifications, and all associated
-                  data. We will email you a confirmation link.
-                </p>
-              </div>
-              <DeleteRequestButton
-                isPending={requestDeletion.isPending}
-                alreadyRequested={deletionRequested}
-                onClick={handleDelete}
-              />
-            </div>
-
-            {deletionRequested ? (
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg text-sm">
-                <p className="font-medium">Deletion pending</p>
-                <p className="text-xs mt-1">
-                  We've emailed you a confirmation link. Click it within 1 hour to permanently
-                  delete your account. You will stay signed in until you confirm.
-                </p>
-              </div>
-            ) : null}
-          </div>
-        </SectionCard>
+          </SectionCard>
+        </div>
       </div>
 
       {ConfirmDialog}
