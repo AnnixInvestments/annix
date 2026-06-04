@@ -163,18 +163,22 @@ export class FeedbackService {
 
       const attachments = await this.uploadAttachments(feedback.id, allFiles);
 
-      const conversationId = await this.createGeneralFeedbackConversation(
-        feedback,
-        submitter,
-        attachments,
-      );
+      const suppressSupportChannels = this.configService.get<string>("FEEDBACK_ENV") === "test";
 
-      if (conversationId) {
-        feedback.conversationId = conversationId;
-        await this.feedbackRepository.save(feedback);
+      if (!suppressSupportChannels) {
+        const conversationId = await this.createGeneralFeedbackConversation(
+          feedback,
+          submitter,
+          attachments,
+        );
+
+        if (conversationId) {
+          feedback.conversationId = conversationId;
+          await this.feedbackRepository.save(feedback);
+        }
+
+        await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
       }
-
-      await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
 
       this.createGithubIssueAsync(feedback.id);
 

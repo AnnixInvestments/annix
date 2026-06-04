@@ -73,6 +73,7 @@ const INVESTIGATION_FIX_SCOPES = new Set([
 ]);
 const FORCE_CLAUDE_LABEL = "force-claude";
 const SKIP_CLAUDE_LABEL = "skip-claude";
+const ASSESS_ONLY_LABEL = "assess-only";
 
 const APP_ISSUE_MAP: Record<string, number> = {
   "au-rubber": 154,
@@ -176,6 +177,16 @@ export class FeedbackGithubService {
       return null;
     }
 
+    const assessOnly = this.isAssessOnlyEnvironment();
+    const testIssueNumber = this.testIssueNumber();
+
+    if (assessOnly && !testIssueNumber) {
+      this.logger.warn(
+        `FEEDBACK_ENV=test but FEEDBACK_TEST_ISSUE is not set — skipping GitHub routing for feedback #${feedback.id} to avoid polluting the production tracker`,
+      );
+      return null;
+    }
+
     try {
       const translation = await this.translateFeedback(feedback);
       const classification = translation.classification;
@@ -199,9 +210,17 @@ export class FeedbackGithubService {
       const commentBody = await this.formatCommentBody(feedback, translation, attachments);
 
       const appContext = feedback.appContext || "admin";
-      const issueNumber = APP_ISSUE_MAP[appContext] || APP_ISSUE_MAP["admin"];
+      const issueNumber =
+        assessOnly && testIssueNumber
+          ? testIssueNumber
+          : APP_ISSUE_MAP[appContext] || APP_ISSUE_MAP["admin"];
       const existingLabels = await this.getIssueLabels(issueNumber);
-      const fullComment = this.buildCommentBody(commentBody, translation, existingLabels);
+      const fullComment = this.buildCommentBody(
+        commentBody,
+        translation,
+        existingLabels,
+        assessOnly,
+      );
 
       await this.octokit.issues.createComment({
         owner: this.owner,
@@ -210,14 +229,18 @@ export class FeedbackGithubService {
         body: fullComment,
       });
 
-      await this.addClassificationLabel(issueNumber, classification, appContext);
+      await this.addClassificationLabel(issueNumber, classification, appContext, assessOnly);
 
       feedback.githubIssueNumber = issueNumber;
       await this.feedbackRepository.save(feedback);
 
       const claudeOverride = this.resolveClaudeOverride(existingLabels);
-      const claudeTriggered = this.shouldTriggerClaude(translation, claudeOverride);
-      const triggerStatus = claudeTriggered ? "Claude triggered" : "Claude skipped";
+      const claudeTriggered = assessOnly || this.shouldTriggerClaude(translation, claudeOverride);
+      const triggerStatus = assessOnly
+        ? "Claude assess-only triggered"
+        : claudeTriggered
+          ? "Claude triggered"
+          : "Claude skipped";
 
       this.logger.log(
         `Added comment to GitHub issue #${issueNumber} for feedback #${feedback.id} (${classification}) — ${triggerStatus}`,
@@ -234,6 +257,7 @@ export class FeedbackGithubService {
     issueNumber: number,
     classification: FeedbackClassification,
     appContext: string,
+    assessOnly: boolean,
   ): Promise<void> {
     if (!this.octokit) {
       return;
@@ -250,8 +274,15 @@ export class FeedbackGithubService {
         .map((l) => (typeof l === "string" ? l : l.name))
         .filter((name): name is string => name !== undefined);
 
+      const assessOnlyLabels = assessOnly ? [ASSESS_ONLY_LABEL] : [];
       const desiredLabels = [
-        ...new Set([...existingLabels, "feedback", classification, appContext]),
+        ...new Set([
+          ...existingLabels,
+          "feedback",
+          classification,
+          appContext,
+          ...assessOnlyLabels,
+        ]),
       ];
 
       await this.octokit.issues.setLabels({
@@ -286,6 +317,19 @@ export class FeedbackGithubService {
     }
   }
 
+  private isAssessOnlyEnvironment(): boolean {
+    return this.configService.get<string>("FEEDBACK_ENV") === "test";
+  }
+
+  private testIssueNumber(): number | null {
+    const raw = this.configService.get<string>("FEEDBACK_TEST_ISSUE");
+    if (!raw) {
+      return null;
+    }
+    const parsed = Number.parseInt(raw.trim().replace(/^#/, ""), 10);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }
+
   private resolveClaudeOverride(labels: string[]): "force" | "skip" | null {
     if (labels.includes(SKIP_CLAUDE_LABEL)) {
       return "skip";
@@ -300,7 +344,12 @@ export class FeedbackGithubService {
     commentBody: string,
     translation: FeedbackTranslation,
     labels: string[],
+    assessOnly: boolean,
   ): string {
+    if (assessOnly) {
+      return `${commentBody}\n\n---\n@claude Assess only — this report came from the TEST environment. Do not edit files, run a build, commit, or open a PR. Post a single comment with a full written assessment: root cause, where it lives in code (file paths), severity, recommended fix, and rough effort. Then stop.`;
+    }
+
     const claudeOverride = this.resolveClaudeOverride(labels);
     const claudeRoutingMode = this.getClaudeRoutingMode(translation, claudeOverride);
 

@@ -4,6 +4,8 @@ When handling issues with the `feedback` label, this context applies.
 
 **Your goal is to fix feedback autonomously when it is safe to do so. If it is not safe or not possible, explain the blocker clearly on the issue.**
 
+> **Exception — `assess-only` issues (test environment).** Issue #344 collects feedback from the `annix-app-test` deployment and carries the `assess-only` label. For that issue the fix/PR guidance below does **not** apply: assess only — investigate read-only and post a written assessment (root cause, where it lives in code, severity, recommended fix, rough effort), then stop. Never edit files, commit, or open a PR. The assess-only workflow step enforces this with a read-only toolset.
+
 ## How Feedback Issues Work
 
 Feedback is submitted by users through the in-app widget. Each app has a single persistent GitHub issue that collects all feedback as comments:
@@ -17,6 +19,7 @@ Feedback is submitted by users through the in-app widget. Each app has a single 
 | supplier | #159 |
 | annix-orbit | #160 |
 | annix-rep | #161 |
+| annix-orbit (test env, assess-only) | #344 |
 
 Each comment contains:
 - Submitter details (name, email, user type, app context)
