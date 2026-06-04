@@ -154,7 +154,13 @@ export class MongoExternalJobRepository
         { company: { $regex: options.search, $options: "i" } },
       ];
     }
-    const docs = await this.documents.find(filter).sort({ postedAt: -1 }).lean().exec();
+    const docs = await this.documents
+      .find(filter)
+      .select({ embedding: 0 })
+      .sort({ postedAt: -1 })
+      .allowDiskUse(true)
+      .lean()
+      .exec();
     return this.toDomainList(docs);
   }
 
