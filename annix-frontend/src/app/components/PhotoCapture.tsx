@@ -42,12 +42,23 @@ export function PhotoCapture(props: PhotoCaptureProps) {
     };
   }, [stream]);
 
+  // Bind the stream to the <video> only after it has actually mounted.
+  // Assigning srcObject inside startCamera runs before showCamera flips the
+  // element into the DOM, so the ref is null there and the feed stays black.
+  useEffect(() => {
+    const video = videoRef.current;
+    if (showCamera && stream && video) {
+      video.srcObject = stream;
+      video.play().catch(() => undefined);
+    }
+  }, [showCamera, stream]);
+
   const startCamera = async () => {
     setCameraError(null);
     try {
       const mediaStream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: "environment",
+          facingMode: { ideal: "environment" },
           width: { ideal: 1920 },
           height: { ideal: 1080 },
         },
@@ -55,10 +66,6 @@ export function PhotoCapture(props: PhotoCaptureProps) {
 
       setStream(mediaStream);
       setShowCamera(true);
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = mediaStream;
-      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to access camera";
       setCameraError(message);

@@ -53,13 +53,36 @@ export function CredentialPhotoCapture(props: CredentialPhotoCaptureProps) {
   if (!allowed) {
     return (
       <div className="rounded-lg border border-dashed border-[var(--brand-navbar-200,#c0c0eb)] bg-[var(--brand-navbar-50,#f0f0fc)] px-3 py-3">
-        <p className="text-sm font-medium text-[var(--brand-navbar-active,#252560)]">
-          📷 Snap a photo of your {noun}
-        </p>
-        <p className="text-xs text-gray-600 mt-1">
-          Capture a {noun} with your camera and Nix reads it instantly. Available on the Pathfinder
-          and Trailblazer plans.
-        </p>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-[var(--brand-navbar-active,#252560)]">
+              Snap a photo of your {noun}
+            </p>
+            <p className="text-xs text-gray-600 mt-1">
+              Capture a {noun} with your camera and Nix reads it instantly.
+            </p>
+          </div>
+          <span className="text-[11px] font-medium text-[var(--brand-navbar-active,#252560)] bg-[var(--brand-navbar-100,#e0e0f5)] px-2 py-0.5 rounded-full whitespace-nowrap">
+            Pathfinder &amp; Trailblazer
+          </span>
+        </div>
+        <button
+          type="button"
+          disabled
+          aria-disabled="true"
+          title="Available on the Pathfinder and Trailblazer plans"
+          className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-300 bg-gray-100 text-gray-400 text-sm font-medium cursor-not-allowed"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+            />
+          </svg>
+          Take Photo (locked)
+        </button>
       </div>
     );
   }
