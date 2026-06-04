@@ -83,3 +83,6 @@ nul
 # dirs in app source aren't ignored). Already-tracked files such as
 # tmp/rfq-baseline.md stay tracked.
 /tmp/
+
+# Cross-session DB-env awareness state (scripts/db-env.mjs)
+.claude-swarm/db-env-state.json
