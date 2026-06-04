@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
+import { DateInput } from "@/app/components/ui/DateInput";
 import type { CredentialFields, IndividualDocument } from "@/app/lib/api/annixOrbitApi";
 import { useOrbitUpdateMyDocumentCredentialFields } from "@/app/lib/query/hooks";
 
@@ -12,12 +13,17 @@ interface CredentialFieldsEditorProps {
   onClose: () => void;
 }
 
-const FIELD_ROWS: Array<{ key: keyof CredentialFields; label: string; placeholder: string }> = [
-  { key: "credentialName", label: "Name", placeholder: "e.g. BSc Civil Engineering" },
-  { key: "issuer", label: "Issued by", placeholder: "e.g. University of Pretoria" },
-  { key: "dateAwarded", label: "Year / date awarded", placeholder: "e.g. 2018" },
-  { key: "nqfLevel", label: "NQF level", placeholder: "e.g. NQF 7" },
-  { key: "expiry", label: "Expiry (if any)", placeholder: "e.g. 2027" },
+const FIELD_ROWS: Array<{
+  key: keyof CredentialFields;
+  label: string;
+  placeholder: string;
+  type: "text" | "date";
+}> = [
+  { key: "credentialName", label: "Name", placeholder: "e.g. BSc Civil Engineering", type: "text" },
+  { key: "issuer", label: "Issued by", placeholder: "e.g. University of Pretoria", type: "text" },
+  { key: "dateAwarded", label: "Date awarded", placeholder: "", type: "date" },
+  { key: "nqfLevel", label: "NQF level", placeholder: "e.g. NQF 7", type: "text" },
+  { key: "expiry", label: "Expiry (if any)", placeholder: "", type: "date" },
 ];
 
 function textValue(value: string | null | undefined): string {
@@ -82,13 +88,23 @@ export function CredentialFieldsEditor(props: CredentialFieldsEditorProps) {
           return (
             <label key={row.key} className="block">
               <span className="text-sm font-medium text-gray-700">{row.label}</span>
-              <input
-                type="text"
-                value={value}
-                placeholder={row.placeholder}
-                onChange={(event) => handleChange(row.key, event.target.value)}
-                className="mt-1 w-full bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-[var(--brand-navbar,#323288)] focus:border-[var(--brand-navbar,#323288)]"
-              />
+              <div className="mt-1">
+                {row.type === "date" ? (
+                  <DateInput
+                    value={value}
+                    ariaLabel={row.label}
+                    onChange={(next) => handleChange(row.key, next)}
+                  />
+                ) : (
+                  <input
+                    type="text"
+                    value={value}
+                    placeholder={row.placeholder}
+                    onChange={(event) => handleChange(row.key, event.target.value)}
+                    className="w-full bg-white text-gray-900 placeholder-gray-400 border border-gray-300 rounded-md px-3 py-2 text-sm shadow-sm focus:ring-2 focus:ring-[var(--brand-navbar,#323288)] focus:border-[var(--brand-navbar,#323288)]"
+                  />
+                )}
+              </div>
             </label>
           );
         })}
