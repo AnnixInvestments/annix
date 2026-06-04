@@ -15,11 +15,70 @@ type MigrateMongoUp = (db: unknown, client: unknown) => Promise<string[]>;
 // Auto-migration is a developer convenience and must never touch a shared
 // environment. Migrations on these databases run only through the deploy
 // release command, even if a local .env happens to point at them.
-const PROTECTED_DATABASES = new Set(["annix_production", "annix_staging"]);
+const CORE_PROTECTED_DATABASES = new Set(["annix_production", "annix_staging"]);
+const ORBIT_PROTECTED_DATABASES = new Set(["orbit_production", "orbit_staging"]);
+
+interface ClusterMigrationTarget {
+  label: string;
+  configFileName: string;
+  targetDatabase: string;
+  protectedDatabases: Set<string>;
+}
+
+async function applyMigrationsForCluster(
+  logger: Logger,
+  migrateMongo: Record<string, Promise<unknown>>,
+  target: ClusterMigrationTarget,
+): Promise<void> {
+  if (target.protectedDatabases.has(target.targetDatabase)) {
+    logger.warn(
+      `Skipping ${target.label} auto-migration — refusing to migrate protected database ` +
+        `"${target.targetDatabase}". Point your local .env at a dev database; ` +
+        "production/staging migrate via deploy only.",
+    );
+    return;
+  }
+
+  let client: { close: () => Promise<void> } | null = null;
+  try {
+    const config = (await migrateMongo.config) as MigrateMongoConfigApi;
+    const database = (await migrateMongo.database) as MigrateMongoDatabaseApi;
+    const up = (await migrateMongo.up) as MigrateMongoUp;
+
+    const configPath = path.resolve(process.cwd(), target.configFileName);
+    const loadedConfig = require(configPath) as { migrationsDir: string } & Record<string, unknown>;
+    config.set({
+      ...loadedConfig,
+      migrationsDir: path.resolve(process.cwd(), loadedConfig.migrationsDir),
+    });
+
+    const connection = await database.connect();
+    client = connection.client;
+    const migrated = await up(connection.db, connection.client);
+    if (migrated.length > 0) {
+      logger.log(
+        `[${target.label}] Applied ${migrated.length} migration(s): ${migrated.join(", ")}`,
+      );
+    } else {
+      logger.log(`[${target.label}] Mongo schema up to date — no migrations to apply`);
+    }
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    logger.warn(`[${target.label}] Auto-migration failed (dev boot continues): ${reason}`);
+  } finally {
+    if (client) {
+      await client.close();
+    }
+  }
+}
 
 /**
  * Applies pending migrate-mongo migrations on local/dev boot so the local
- * database stays in step with production without a manual `pnpm migrate:up`.
+ * databases stay in step with production without a manual `pnpm migrate:up`.
+ * Covers BOTH clusters — the core ERP cluster (migrate-mongo-config.ts) and the
+ * dedicated Annix Orbit cluster (migrate-mongo-orbit-config.ts) — each against
+ * its own connection, so Orbit seed data (dismiss reasons, tier capabilities,
+ * etc.) lands locally just like it does on deploy.
  *
  * Runs in-process (not as a child) so it inherits the DNS override applied in
  * main.ts for mongodb+srv lookups, and the existing transpile-only ts-node hook
@@ -36,17 +95,8 @@ export async function runMongoMigrationsOnBoot(): Promise<void> {
   if (!isMongoDriver()) {
     return;
   }
-  if (!process.env.MONGODB_URI) {
-    logger.warn("Skipping auto-migration — MONGODB_URI is not set");
-    return;
-  }
-
-  const targetDatabase = process.env.MONGO_DATABASE ?? "";
-  if (PROTECTED_DATABASES.has(targetDatabase)) {
-    logger.warn(
-      `Skipping auto-migration — refusing to migrate protected database "${targetDatabase}". ` +
-        "Point your local .env at a dev database; production/staging migrate via deploy only.",
-    );
+  if (!process.env.MONGODB_URI && !process.env.ORBIT_MONGODB_URI) {
+    logger.warn("Skipping auto-migration — neither MONGODB_URI nor ORBIT_MONGODB_URI is set");
     return;
   }
 
@@ -64,33 +114,21 @@ export async function runMongoMigrationsOnBoot(): Promise<void> {
     return;
   }
 
-  let client: { close: () => Promise<void> } | null = null;
-  try {
-    const config = (await migrateMongo.config) as MigrateMongoConfigApi;
-    const database = (await migrateMongo.database) as MigrateMongoDatabaseApi;
-    const up = (await migrateMongo.up) as MigrateMongoUp;
-
-    const configPath = path.resolve(process.cwd(), "migrate-mongo-config.ts");
-    const loadedConfig = require(configPath) as { migrationsDir: string } & Record<string, unknown>;
-    config.set({
-      ...loadedConfig,
-      migrationsDir: path.resolve(process.cwd(), loadedConfig.migrationsDir),
+  if (process.env.MONGODB_URI) {
+    await applyMigrationsForCluster(logger, migrateMongo, {
+      label: "core",
+      configFileName: "migrate-mongo-config.ts",
+      targetDatabase: process.env.MONGO_DATABASE ?? "",
+      protectedDatabases: CORE_PROTECTED_DATABASES,
     });
+  }
 
-    const connection = await database.connect();
-    client = connection.client;
-    const migrated = await up(connection.db, connection.client);
-    if (migrated.length > 0) {
-      logger.log(`Applied ${migrated.length} Mongo migration(s): ${migrated.join(", ")}`);
-    } else {
-      logger.log("Mongo schema up to date — no migrations to apply");
-    }
-  } catch (err) {
-    const reason = err instanceof Error ? err.message : String(err);
-    logger.warn(`Auto-migration failed (dev boot continues): ${reason}`);
-  } finally {
-    if (client) {
-      await client.close();
-    }
+  if (process.env.ORBIT_MONGODB_URI) {
+    await applyMigrationsForCluster(logger, migrateMongo, {
+      label: "orbit",
+      configFileName: "migrate-mongo-orbit-config.ts",
+      targetDatabase: process.env.ORBIT_MONGO_DATABASE ?? "",
+      protectedDatabases: ORBIT_PROTECTED_DATABASES,
+    });
   }
 }
