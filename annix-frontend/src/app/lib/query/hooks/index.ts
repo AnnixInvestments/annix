@@ -361,7 +361,10 @@ export {
   useOrbitReactivateJobSearch,
   useOrbitSeekerEmployment,
 } from "./annix-orbit/useOrbitSeekerEmployment";
-export { useOrbitSeekerEntitlements } from "./annix-orbit/useOrbitSeekerEntitlements";
+export {
+  useOrbitSeekerEntitlements,
+  useOrbitSelectSeekerPlan,
+} from "./annix-orbit/useOrbitSeekerEntitlements";
 export {
   useOrbitCreateSeekerInterviewEvent,
   useOrbitDeleteSeekerInterviewEvent,

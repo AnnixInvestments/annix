@@ -53,6 +53,12 @@ class DismissMatchDto {
   reason?: string;
 }
 
+class SelectPlanDto {
+  @IsString()
+  @MaxLength(32)
+  tier: string;
+}
+
 interface SeekerAuthRequest {
   user: { id: number; email: string; userType: string };
 }
@@ -99,6 +105,11 @@ export class SeekerJobsController {
   @Get("entitlements")
   async entitlements(@Request() req: SeekerAuthRequest) {
     return this.feedService.entitlementsForSeeker(req.user.email);
+  }
+
+  @Post("plan")
+  async selectPlan(@Request() req: SeekerAuthRequest, @Body() dto: SelectPlanDto) {
+    return this.feedService.selectPlanForSeeker(req.user.email, dto.tier);
   }
 
   @Get("cold-start")

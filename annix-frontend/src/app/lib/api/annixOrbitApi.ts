@@ -2400,6 +2400,14 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/seeker/jobs/entitlements");
   }
 
+  async selectSeekerPlan(tier: string): Promise<SeekerEntitlements> {
+    return this.request("/annix-orbit/seeker/jobs/plan", {
+      method: "POST",
+      body: JSON.stringify({ tier }),
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   async seekerMatchingConsent(): Promise<SeekerMatchingConsentStatus> {
     return this.request("/annix-orbit/seeker/jobs/consent");
   }

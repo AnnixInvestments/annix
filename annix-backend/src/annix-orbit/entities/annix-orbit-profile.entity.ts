@@ -122,6 +122,9 @@ export class AnnixOrbitProfile {
   @Column({ name: "dismiss_warning_acknowledged_at", type: "timestamptz", nullable: true })
   dismissWarningAcknowledgedAt: Date | null;
 
+  @Column({ name: "selected_tier", type: "varchar", length: 32, nullable: true })
+  selectedTier: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

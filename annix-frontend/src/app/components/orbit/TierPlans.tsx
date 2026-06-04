@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { HelpHint } from "@/app/components/ui/HelpHint";
 
 export interface TierPlanFeatures {
   applyToJobs: boolean;
@@ -29,14 +30,45 @@ export interface TierPlanView {
 
 type PricingField = keyof TierPlanPricing;
 
-const FEATURE_ROWS: Array<{ key: keyof TierPlanFeatures; label: string }> = [
-  { key: "applyToJobs", label: "Apply to jobs" },
-  { key: "viewSalaries", label: "View salary ranges (if applicable)" },
-  { key: "nixCvBuilder", label: "Nix CV builder" },
-  { key: "photoCredentialCapture", label: "Photo credential capture" },
-  { key: "jobListingSite", label: "Job listing site access" },
-  { key: "multiChannelReminders", label: "SMS / WhatsApp reminders" },
+const FEATURE_ROWS: Array<{ key: keyof TierPlanFeatures; label: string; help: string }> = [
+  {
+    key: "applyToJobs",
+    label: "Apply to jobs",
+    help: "Apply to listed jobs directly from Annix Orbit.",
+  },
+  {
+    key: "viewSalaries",
+    label: "View salary ranges (if applicable)",
+    help: "See a job's advertised salary range, when the employer has published one.",
+  },
+  {
+    key: "nixCvBuilder",
+    label: "Nix CV builder",
+    help: "Let Nix write and polish a professional CV for you from your profile.",
+  },
+  {
+    key: "photoCredentialCapture",
+    label: "Photo credential capture",
+    help: "Photograph a certificate or licence and Nix reads, names and files it for you.",
+  },
+  {
+    key: "jobListingSite",
+    label: "Job listing site access",
+    help: "Browse and search the full open job board — not just your AI-matched recommendations.",
+  },
+  {
+    key: "multiChannelReminders",
+    label: "SMS / WhatsApp reminders",
+    help: "Interview and deadline reminders by SMS and WhatsApp, not only email.",
+  },
 ];
+
+const LIMIT_HELP = {
+  matchedJobs: "The number of jobs Nix keeps matched to your profile at any time.",
+  nixJobFinds:
+    "Each time you ask Nix to actively search and surface fresh jobs for you. Resets every month.",
+  cvBuilds: "How many CVs Nix will generate or rebuild for you each month.",
+};
 
 const EMPTY_PRICING: TierPlanPricing = {
   monthlyPrice: null,
@@ -95,16 +127,22 @@ export function TierPlans(props: {
   highlightTier?: string;
   pricingDrafts?: Record<string, TierPlanPricing>;
   savingTier?: string | null;
+  currentTier?: string | null;
+  selectingTier?: string | null;
   onPriceChange?: (tier: string, field: PricingField, value: number | null) => void;
   onSavePricing?: (tier: string) => void;
+  onSelectPlan?: (tier: string) => void;
 }) {
   const editable = props.editable === true;
   const plans = props.plans;
   const drafts = props.pricingDrafts;
+  const onSelectPlan = props.onSelectPlan;
+  const currentTier = props.currentTier;
+  const currentIndex = currentTier ? plans.findIndex((plan) => plan.tier === currentTier) : -1;
 
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-      {plans.map((plan) => {
+      {plans.map((plan, planIndex) => {
         const storedPricing = plan.pricing ? plan.pricing : EMPTY_PRICING;
         const draft = drafts ? drafts[plan.tier] : undefined;
         const pricing = editable && draft ? draft : storedPricing;
@@ -112,13 +150,30 @@ export function TierPlans(props: {
         const isFree = monthly === null || monthly === 0;
         const highlighted = props.highlightTier === plan.tier;
         const isSaving = props.savingTier === plan.tier;
+        const isCurrentPlan = plan.tier === currentTier;
+        const isSelectingPlan = props.selectingTier === plan.tier;
+        const planCtaLabel = isCurrentPlan
+          ? "Current plan"
+          : currentIndex < 0
+            ? "Choose this plan"
+            : planIndex > currentIndex
+              ? "Upgrade to this plan"
+              : "Downgrade to this plan";
         const cvBuildLine = cvBuildLabel(plan.monthlyCvBuilds);
         const includedRows = FEATURE_ROWS.filter((row) => plan.features[row.key] === true);
         const excludedRows = FEATURE_ROWS.filter((row) => plan.features[row.key] !== true);
         const orderedRows = [...includedRows, ...excludedRows];
         const usageItems = [
-          { label: "Extra Nix Job Find", value: storedPricing.perNixRun },
-          { label: "Nix CV builder", value: storedPricing.perCvBuild },
+          {
+            label: "Extra Nix Job Find",
+            value: storedPricing.perNixRun,
+            help: "When your monthly Nix Job Finds run out, each additional one costs this.",
+          },
+          {
+            label: "Nix CV builder",
+            value: storedPricing.perCvBuild,
+            help: "If your plan doesn't include CV builds, each CV Nix builds costs this.",
+          },
         ].filter((item) => item.value !== null && item.value > 0);
         return (
           <div
@@ -138,9 +193,20 @@ export function TierPlans(props: {
             </div>
 
             <div className="mt-4 space-y-2 text-sm text-gray-600">
-              <div>{limitLabel(plan.maxJobResults, "matched jobs")}</div>
-              <div>{limitLabel(plan.monthlyNixRuns, "Nix Job Finds / month")}</div>
-              {cvBuildLine ? <div>{cvBuildLine}</div> : null}
+              <div className="flex items-center gap-1.5">
+                <span>{limitLabel(plan.maxJobResults, "matched jobs")}</span>
+                <HelpHint label="Matched jobs" text={LIMIT_HELP.matchedJobs} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span>{limitLabel(plan.monthlyNixRuns, "Nix Job Finds / month")}</span>
+                <HelpHint label="Nix Job Finds" text={LIMIT_HELP.nixJobFinds} />
+              </div>
+              {cvBuildLine ? (
+                <div className="flex items-center gap-1.5">
+                  <span>{cvBuildLine}</span>
+                  <HelpHint label="CV builds" text={LIMIT_HELP.cvBuilds} />
+                </div>
+              ) : null}
             </div>
 
             <ul className="mt-4 space-y-2">
@@ -156,6 +222,7 @@ export function TierPlans(props: {
                     <span className={included ? "text-gray-800" : "text-gray-400 line-through"}>
                       {row.label}
                     </span>
+                    <HelpHint label={row.label} text={row.help} />
                   </li>
                 );
               })}
@@ -201,12 +268,30 @@ export function TierPlans(props: {
                 {usageItems.map((item) => {
                   const priced = item.value;
                   return (
-                    <div key={item.label}>
-                      {item.label}: R{priced}
+                    <div key={item.label} className="flex items-center gap-1.5">
+                      <span>
+                        {item.label}: R{priced}
+                      </span>
+                      <HelpHint label={item.label} text={item.help} />
                     </div>
                   );
                 })}
               </div>
+            ) : null}
+
+            {onSelectPlan ? (
+              <button
+                type="button"
+                disabled={isCurrentPlan || isSelectingPlan}
+                onClick={() => onSelectPlan(plan.tier)}
+                className={
+                  isCurrentPlan
+                    ? "mt-auto cursor-default rounded-lg border border-violet-300 bg-violet-50 px-3 py-2 pt-2 text-sm font-semibold text-violet-700"
+                    : "mt-auto rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-50"
+                }
+              >
+                {isSelectingPlan ? "Switching…" : planCtaLabel}
+              </button>
             ) : null}
           </div>
         );

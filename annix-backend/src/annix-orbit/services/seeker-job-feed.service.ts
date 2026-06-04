@@ -298,11 +298,21 @@ export class SeekerJobFeedService {
     return this.candidateRepo.findByEmail(email);
   }
 
+  private async selectedTierForEmail(email: string | null): Promise<string | null> {
+    if (!email) return null;
+    const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+    if (!user) return null;
+    const profile = await this.profileRepo.findByUserId(user.id);
+    const selected = profile?.selectedTier;
+    return selected && isMatchTier(selected) ? selected : null;
+  }
+
   async entitlementsForSeeker(
     email: string | null,
   ): Promise<{ tier: string; label: string; features: OrbitTierFeatures }> {
     const candidates = await this.candidatesForSeeker(email);
-    const tier = this.effectiveTier(candidates);
+    const selectedTier = await this.selectedTierForEmail(email);
+    const tier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     if (!capability) {
       return { tier, label: tier, features: { ...DEFAULT_TIER_FEATURES } };
@@ -312,6 +322,27 @@ export class SeekerJobFeedService {
       label: capability.label,
       features: { ...DEFAULT_TIER_FEATURES, ...capability.features },
     };
+  }
+
+  async selectPlanForSeeker(
+    email: string | null,
+    tier: string,
+  ): Promise<{ tier: string; label: string; features: OrbitTierFeatures }> {
+    if (!isMatchTier(tier)) {
+      throw new BadRequestException(`Invalid plan: ${tier}`);
+    }
+    await this.setMatchTierForSeeker(email, tier);
+    if (email) {
+      const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+      if (user) {
+        const profile = await this.profileRepo.findByUserId(user.id);
+        if (profile) {
+          profile.selectedTier = tier;
+          await this.profileRepo.save(profile);
+        }
+      }
+    }
+    return this.entitlementsForSeeker(email);
   }
 
   async listSeekers(params: {

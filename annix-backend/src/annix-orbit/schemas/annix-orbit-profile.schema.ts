@@ -97,6 +97,9 @@ export class AnnixOrbitProfile {
   dismissWarningAcknowledgedAt: Date;
 
   @Prop({ type: String, required: false })
+  selectedTier: string;
+
+  @Prop({ type: String, required: false })
   createdAt: string;
 
   @Prop({ type: String, required: false })
