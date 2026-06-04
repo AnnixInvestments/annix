@@ -54,4 +54,32 @@ export class MongoAnnixOrbitIndividualDocumentRepository
   async deleteByProfile(profileId: number): Promise<void> {
     await this.documents.deleteMany({ profileId }).exec();
   }
+
+  async findPendingClearScan(
+    dueBefore: Date,
+    maxReminders: number,
+  ): Promise<AnnixOrbitIndividualDocument[]> {
+    const docs = await this.documents
+      .find({
+        isPhotoCapture: true,
+        needsClearScan: true,
+        scanRemindersSent: { $lt: maxReminders },
+        $or: [{ lastScanReminderAt: null }, { lastScanReminderAt: { $lte: dueBefore } }],
+      })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async clearScanFlagForProfileKind(
+    profileId: number,
+    kind: IndividualDocumentKind,
+  ): Promise<void> {
+    await this.documents
+      .updateMany(
+        { profileId, kind, isPhotoCapture: true, needsClearScan: true },
+        { $set: { needsClearScan: false } },
+      )
+      .exec();
+  }
 }

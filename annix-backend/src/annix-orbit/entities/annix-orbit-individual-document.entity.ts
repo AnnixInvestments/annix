@@ -46,6 +46,18 @@ export class AnnixOrbitIndividualDocument {
   @Column({ type: "varchar", length: 100, nullable: true })
   label: string | null;
 
+  @Column({ name: "is_photo_capture", type: "boolean", default: false })
+  isPhotoCapture: boolean;
+
+  @Column({ name: "needs_clear_scan", type: "boolean", default: false })
+  needsClearScan: boolean;
+
+  @Column({ name: "scan_reminders_sent", type: "int", default: 0 })
+  scanRemindersSent: number;
+
+  @Column({ name: "last_scan_reminder_at", type: "timestamptz", nullable: true })
+  lastScanReminderAt: Date | null;
+
   @CreateDateColumn({ name: "uploaded_at" })
   uploadedAt: Date;
 }

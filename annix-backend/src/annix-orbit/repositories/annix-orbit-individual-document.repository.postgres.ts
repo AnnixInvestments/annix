@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { IsNull, LessThanOrEqual, Or, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import {
   AnnixOrbitIndividualDocument,
@@ -51,5 +51,29 @@ export class PostgresAnnixOrbitIndividualDocumentRepository
 
   async deleteByProfile(profileId: number): Promise<void> {
     await this.repository.delete({ profileId });
+  }
+
+  findPendingClearScan(
+    dueBefore: Date,
+    maxReminders: number,
+  ): Promise<AnnixOrbitIndividualDocument[]> {
+    return this.repository.find({
+      where: {
+        isPhotoCapture: true,
+        needsClearScan: true,
+        scanRemindersSent: LessThanOrEqual(maxReminders - 1),
+        lastScanReminderAt: Or(IsNull(), LessThanOrEqual(dueBefore)),
+      },
+    });
+  }
+
+  async clearScanFlagForProfileKind(
+    profileId: number,
+    kind: IndividualDocumentKind,
+  ): Promise<void> {
+    await this.repository.update(
+      { profileId, kind, isPhotoCapture: true, needsClearScan: true },
+      { needsClearScan: false },
+    );
   }
 }

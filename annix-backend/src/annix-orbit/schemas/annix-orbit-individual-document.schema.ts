@@ -34,6 +34,18 @@ export class AnnixOrbitIndividualDocument {
   @Prop({ type: String, required: false })
   label: string;
 
+  @Prop({ type: Boolean, required: false, default: false })
+  isPhotoCapture: boolean;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  needsClearScan: boolean;
+
+  @Prop({ type: Number, required: false, default: 0 })
+  scanRemindersSent: number;
+
+  @Prop({ type: Date, required: false, default: null })
+  lastScanReminderAt: Date | null;
+
   @Prop({ type: String, required: false })
   uploadedAt: string;
 }

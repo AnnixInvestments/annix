@@ -17,4 +17,12 @@ export abstract class AnnixOrbitIndividualDocumentRepository extends CrudReposit
   ): Promise<AnnixOrbitIndividualDocument | null>;
   abstract deleteById(documentId: number): Promise<void>;
   abstract deleteByProfile(profileId: number): Promise<void>;
+  abstract findPendingClearScan(
+    dueBefore: Date,
+    maxReminders: number,
+  ): Promise<AnnixOrbitIndividualDocument[]>;
+  abstract clearScanFlagForProfileKind(
+    profileId: number,
+    kind: IndividualDocumentKind,
+  ): Promise<void>;
 }

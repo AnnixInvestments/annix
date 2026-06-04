@@ -8,6 +8,11 @@ export const INDIVIDUAL_DOC_MIME_TYPES: ReadonlyArray<string> = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   "application/vnd.ms-powerpoint",
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
 ];
 
 export const INDIVIDUAL_DOC_EXTENSIONS: ReadonlyArray<string> = [
@@ -18,8 +23,26 @@ export const INDIVIDUAL_DOC_EXTENSIONS: ReadonlyArray<string> = [
   ".xlsx",
   ".ppt",
   ".pptx",
+  ".jpg",
+  ".jpeg",
+  ".png",
+  ".webp",
+  ".heic",
+  ".heif",
+];
+
+export const INDIVIDUAL_DOC_IMAGE_MIME_TYPES: ReadonlyArray<string> = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
 ];
 
 export function isAcceptedDocumentMime(mimeType: string): boolean {
   return INDIVIDUAL_DOC_MIME_TYPES.includes(mimeType);
+}
+
+export function isImageMime(mimeType: string): boolean {
+  return INDIVIDUAL_DOC_IMAGE_MIME_TYPES.includes(mimeType);
 }

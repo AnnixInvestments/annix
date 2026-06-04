@@ -12,6 +12,7 @@ export interface OrbitTierFeatures {
   nixCvBuilder: boolean;
   jobListingSite: boolean;
   multiChannelReminders?: boolean;
+  photoCredentialCapture?: boolean;
 }
 
 @Entity("cv_assistant_tier_capabilities")
