@@ -180,7 +180,7 @@ export default function SeekerProfilePage() {
       </SectionCard>
 
       {hasCv && (
-        <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-gray-900">Profile ready</h3>
             <p className="text-sm text-gray-600 mt-1">
@@ -251,7 +251,7 @@ function SectionCard(props: {
   return (
     <div
       id={props.id}
-      className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 space-y-4 scroll-mt-24"
+      className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-4 sm:p-6 space-y-4 scroll-mt-24"
     >
       <div className="flex items-start justify-between gap-4">
         <div>

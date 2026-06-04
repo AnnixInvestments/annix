@@ -134,7 +134,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   return (
     <div
       ref={panelRef}
-      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] p-6 space-y-4 scroll-mt-24"
+      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] p-4 sm:p-6 space-y-4 scroll-mt-24"
       style={{
         backgroundImage:
           "linear-gradient(to bottom right, var(--brand-navbar-50,#f7f7ff), #ffffff)",
