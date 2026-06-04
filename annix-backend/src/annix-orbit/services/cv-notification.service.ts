@@ -164,7 +164,7 @@ export class CvNotificationService {
                 title: "High-scoring candidate match",
                 body: `${candidate.name ?? "A candidate"} matched ${job?.title ?? "a job"} at ${scorePct}%`,
                 tag: `match-${candidateId}`,
-                data: { url: `/annix-orbit/portal/candidates/${candidateId}` },
+                data: { url: `/annix/orbit/portal/candidates/${candidateId}` },
               });
             }
           }),

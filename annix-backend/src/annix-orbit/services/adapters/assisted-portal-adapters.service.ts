@@ -121,7 +121,7 @@ function buildInstructions(
   const refNumber = jobPosting.referenceNumber
     ? jobPosting.referenceNumber
     : `JOB-${jobPosting.id}`;
-  const publicUrl = `https://${PUBLIC_JOB_HOST}/annix-orbit/jobs/${refNumber}`;
+  const publicUrl = `https://${PUBLIC_JOB_HOST}/annix/orbit/jobs/${refNumber}`;
   const copyTitle = `${jobPosting.title} — Ref ${refNumber}`;
   const copyBody = bodyTemplate(jobPosting, publicUrl, refNumber);
   const copyContact = contactTemplate(jobPosting, refNumber);

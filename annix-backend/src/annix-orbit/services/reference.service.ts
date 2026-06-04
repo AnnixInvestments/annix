@@ -68,7 +68,7 @@ export class ReferenceService {
       .filter((reference) => reference.status === ReferenceStatus.PENDING)
       .reduce(async (countPromise, reference) => {
         const count = await countPromise;
-        const feedbackLink = `${frontendUrl}/annix-orbit/reference-feedback/${reference.feedbackToken}`;
+        const feedbackLink = `${frontendUrl}/annix/orbit/reference-feedback/${reference.feedbackToken}`;
         const sent = await this.emailTemplateService.renderAndSend({
           companyId,
           kind: CvEmailTemplateKind.REFERENCE_REQUEST,
