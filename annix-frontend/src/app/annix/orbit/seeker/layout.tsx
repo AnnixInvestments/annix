@@ -81,6 +81,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const isOnApplicationsPage = pathname.startsWith("/annix/orbit/seeker/applications");
   const isOnCalendarPage = pathname.startsWith("/annix/orbit/seeker/calendar");
   const isOnEeAttributesPage = pathname.startsWith("/annix/orbit/seeker/ee-attributes");
+  const isOnPlansPage = pathname.startsWith("/annix/orbit/seeker/plans");
   const cvGateExempt =
     isOnProfilePage ||
     isOnSettingsPage ||
@@ -89,7 +90,8 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     isOnDashboardPage ||
     isOnApplicationsPage ||
     isOnCalendarPage ||
-    isOnEeAttributesPage;
+    isOnEeAttributesPage ||
+    isOnPlansPage;
 
   useEffect(() => {
     if (isLoading) return;
