@@ -32,6 +32,7 @@ import {
   useOrbitMyProfileStatus,
   useOrbitSeekerBrowseJobs,
   useOrbitSeekerColdStartJobs,
+  useOrbitSeekerEntitlements,
   useOrbitSeekerMatchingConsent,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerRematch,
@@ -334,23 +335,6 @@ export default function SeekerJobsPage() {
     void promptForConsent();
   }, [consentReady, consentHasCandidate, consentGranted, consentDeclined, promptForConsent]);
 
-  const handleRematch = () => {
-    rematchMutation.mutate(undefined, {
-      onSuccess: (result) => {
-        if (result.triggered) {
-          showToast("Rematch started — refresh in a minute or two", "success");
-        } else if (result.reason === "rate-limited") {
-          showToast(`Rematch on cooldown — try again in ${result.retryAfterSeconds}s`, "info");
-        } else {
-          showToast("Upload a CV first to rematch", "error");
-        }
-      },
-      onError: () => {
-        showToast("Couldn't trigger rematch right now", "error");
-      },
-    });
-  };
-
   // Matching runs fire-and-forget on the server (~1–2 min), so after the trigger
   // we poll for results and keep the branded progress modal up until they land.
   const waitForMatches = async (startCount: number): Promise<boolean> => {
@@ -462,6 +446,15 @@ export default function SeekerJobsPage() {
   const browseLoadingMore = browseJobsQuery.isFetching && browseJobs.length > 0;
   const handleLoadMoreBrowse = () => setBrowseLimit((current) => current + 100);
 
+  const entitlementsQuery = useOrbitSeekerEntitlements();
+  const entitlements = entitlementsQuery.data;
+  const entitlementsSuccess = entitlementsQuery.isSuccess;
+  const entitlementsResolved = entitlementsSuccess || entitlementsQuery.isError;
+  const jobListingSiteEnabled = entitlements ? entitlements.features.jobListingSite === true : true;
+  const browseLocked = entitlementsQuery.isSuccess && !jobListingSiteEnabled;
+  const browseJobsLoading = browseJobsQuery.isLoading;
+  const browseListLoading = browseJobsLoading || !entitlementsResolved;
+
   const profileLoading = profileStatusQuery.isLoading;
   const profileError = profileStatusQuery.isError;
   const consentLoading = consentQuery.isLoading;
@@ -501,7 +494,7 @@ export default function SeekerJobsPage() {
     return (
       <BrowseAllJobsView
         jobs={browseJobs}
-        loading={browseJobsQuery.isLoading}
+        loading={browseListLoading}
         error={browseJobsQuery.isError}
         onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
@@ -516,6 +509,7 @@ export default function SeekerJobsPage() {
         hasMore={hasMoreBrowse}
         loadingMore={browseLoadingMore}
         onLoadMore={handleLoadMoreBrowse}
+        browseLocked={browseLocked}
       />
     );
   }
@@ -555,7 +549,7 @@ export default function SeekerJobsPage() {
     return (
       <BrowseAllJobsView
         jobs={browseJobs}
-        loading={browseJobsQuery.isLoading}
+        loading={browseListLoading}
         error={browseJobsQuery.isError}
         onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
@@ -570,6 +564,7 @@ export default function SeekerJobsPage() {
         hasMore={hasMoreBrowse}
         loadingMore={browseLoadingMore}
         onLoadMore={handleLoadMoreBrowse}
+        browseLocked={browseLocked}
       />
     );
   }
@@ -613,7 +608,7 @@ export default function SeekerJobsPage() {
     return (
       <BrowseAllJobsView
         jobs={browseJobs}
-        loading={browseJobsQuery.isLoading}
+        loading={browseListLoading}
         error={browseJobsQuery.isError}
         onRetry={() => void browseJobsQuery.refetch()}
         onApply={handleBrowseApply}
@@ -628,18 +623,14 @@ export default function SeekerJobsPage() {
         hasMore={hasMoreBrowse}
         loadingMore={browseLoadingMore}
         onLoadMore={handleLoadMoreBrowse}
+        browseLocked={browseLocked}
       />
     );
   }
 
   return (
     <div className="space-y-6">
-      <PageHeader
-        subtitle={matchedSubtitle}
-        showRematch
-        onRematch={handleRematch}
-        rematching={rematchMutation.isPending}
-      />
+      <PageHeader subtitle={matchedSubtitle} />
 
       <JobsTopBar
         jobCount={jobCount}
@@ -760,6 +751,55 @@ function JobsTopBar(props: {
   );
 }
 
+function JobBoardLockedCard(props: { hasCv: boolean }) {
+  const hasCv = props.hasCv;
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+      <div
+        className="mx-auto flex h-14 w-14 items-center justify-center rounded-full"
+        style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+      >
+        <svg
+          className="h-7 w-7 text-white"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={1.8}
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 0h10.5a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H6.75a1.5 1.5 0 0 1-1.5-1.5v-6a1.5 1.5 0 0 1 1.5-1.5Z"
+          />
+        </svg>
+      </div>
+      <h2 className="text-lg font-semibold text-gray-900 mt-4">Browse the full job board</h2>
+      <p className="text-gray-600 mt-2 max-w-md mx-auto">
+        Searching and browsing every open job is a premium feature. Your plan still gives you
+        Nix-matched job finds tailored to your CV — upgrade to unlock the full browsable job board.
+      </p>
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
+        <Link
+          href="/annix/orbit/seeker/plans"
+          className="inline-block px-5 py-2.5 text-sm font-semibold rounded-lg text-white hover:opacity-90"
+          style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+        >
+          View plans
+        </Link>
+        {hasCv ? null : (
+          <Link
+            href="/annix/orbit/seeker/profile"
+            className="inline-block px-5 py-2.5 text-sm font-medium rounded-lg bg-white border border-gray-300 text-gray-700 hover:bg-gray-50"
+          >
+            Upload my CV
+          </Link>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function toError(value: unknown): Error {
   if (value instanceof Error) return value;
   return new Error(isString(value) ? value : "Something went wrong");
@@ -782,15 +822,39 @@ interface BrowseAllJobsViewProps {
   hasMore: boolean;
   loadingMore: boolean;
   onLoadMore: () => void;
+  browseLocked: boolean;
 }
 
 function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
   const jobs = props.jobs;
   const variant = props.variant;
+  const browseLocked = props.browseLocked;
   const matchesPending = variant === "matches-pending";
-  const subtitle = matchesPending
-    ? "Your personalised matches are being prepared — browse all open jobs in the meantime."
-    : "All open jobs — upload your CV to see your match scores.";
+  const subtitle = browseLocked
+    ? "Nix matches the best open jobs to your CV — your personalised job finds."
+    : matchesPending
+      ? "Your personalised matches are being prepared — browse all open jobs in the meantime."
+      : "All open jobs — upload your CV to see your match scores.";
+
+  if (browseLocked) {
+    return (
+      <div className="space-y-6">
+        <PageHeader subtitle={subtitle} />
+
+        <JobsTopBar
+          jobCount={props.jobCount}
+          matchCount={props.matchCount}
+          hasCv={props.hasCv}
+          searching={props.searching}
+          onHelpFindJob={props.onHelpFindJob}
+          quotaRemaining={props.quotaRemaining}
+        />
+
+        <JobBoardLockedCard hasCv={props.hasCv} />
+        {props.confirmDialog}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -874,30 +938,13 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
 
 interface PageHeaderProps {
   subtitle: string;
-  showRematch?: boolean;
-  onRematch?: () => void;
-  rematching?: boolean;
 }
 
 function PageHeader(props: PageHeaderProps) {
-  const showRematch = props.showRematch === true;
-  const rematching = props.rematching === true;
   return (
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
-        <p className="text-white/70 mt-2">{props.subtitle}</p>
-      </div>
-      {showRematch ? (
-        <button
-          type="button"
-          onClick={props.onRematch}
-          disabled={rematching}
-          className="px-3 py-2 text-sm rounded-lg bg-white/10 text-white hover:bg-white/20 disabled:opacity-50"
-        >
-          {rematching ? "Rematching…" : "Rematch now"}
-        </button>
-      ) : null}
+    <div>
+      <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
+      <p className="text-white/70 mt-2">{props.subtitle}</p>
     </div>
   );
 }
