@@ -184,6 +184,34 @@ export default function PortalToolbar(props: PortalToolbarProps) {
       <div className="w-full px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center">
+            {visibleNavItems.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsMobileNavOpen((open) => !open)}
+                className="xl:hidden inline-flex items-center justify-center p-2 mr-2 -ml-2 rounded-md focus:outline-none"
+                style={{ color: navForeground }}
+                aria-label="Toggle navigation menu"
+                aria-expanded={isMobileNavOpen}
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {isMobileNavOpen ? (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M6 18L18 6M6 6l12 12"
+                    />
+                  ) : (
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 6h16M4 12h16M4 18h16"
+                    />
+                  )}
+                </svg>
+              </button>
+            )}
             <div className="flex-shrink-0 flex items-center">
               <Link href={config.homeHref} className="flex items-center space-x-3">
                 {brandCode ? (
@@ -285,34 +313,6 @@ export default function PortalToolbar(props: PortalToolbarProps) {
           </div>
 
           <div className="flex items-center space-x-4">
-            {visibleNavItems.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setIsMobileNavOpen((open) => !open)}
-                className="xl:hidden inline-flex items-center justify-center p-2 rounded-md focus:outline-none"
-                style={{ color: navForeground }}
-                aria-label="Toggle navigation menu"
-                aria-expanded={isMobileNavOpen}
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isMobileNavOpen ? (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  ) : (
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 6h16M4 12h16M4 18h16"
-                    />
-                  )}
-                </svg>
-              </button>
-            )}
             {statusBadge}
             {additionalActions}
 
