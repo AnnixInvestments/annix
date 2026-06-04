@@ -1,7 +1,9 @@
 "use client";
 
+import { values } from "es-toolkit/compat";
 import { PhotoCapture } from "@/app/components/PhotoCapture";
 import { useToast } from "@/app/components/Toast";
+import type { IndividualDocument } from "@/app/lib/api/annixOrbitApi";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { useOrbitUploadMyDocumentPhoto } from "@/app/lib/query/hooks";
 
@@ -18,6 +20,7 @@ export function CredentialPhotoCapture(props: CredentialPhotoCaptureProps) {
   const noun = kind === "qualification" ? "qualification" : "certificate";
 
   const handleCapture = async (file: File) => {
+    let createdDoc: IndividualDocument | null = null;
     const result = await runBulk({
       brand: "annix-orbit",
       metricCategory: "annix-orbit-nix-seeker",
@@ -26,11 +29,22 @@ export function CredentialPhotoCapture(props: CredentialPhotoCaptureProps) {
       itemId: () => "photo",
       itemLabel: () => "Reading your document with Nix…",
       run: async (captured) => {
-        await uploadPhoto.mutateAsync({ file: captured, kind });
+        createdDoc = await uploadPhoto.mutateAsync({ file: captured, kind });
       },
     });
     if (result.failed.length > 0) {
       showToast("We couldn't read that photo — please try again or upload a file.", "error");
+      return;
+    }
+    const captured = createdDoc as IndividualDocument | null;
+    const fields = captured ? captured.credentialFields : null;
+    const fieldValues = fields ? values(fields) : [];
+    const readable = fieldValues.some((value) => value != null && value !== "");
+    if (!readable) {
+      showToast(
+        "Nix couldn't read that photo clearly — tap 'Edit details' to fill it in, or retake.",
+        "info",
+      );
       return;
     }
     showToast("Photo added. Remember to upload a clear scan later for employers.", "success");

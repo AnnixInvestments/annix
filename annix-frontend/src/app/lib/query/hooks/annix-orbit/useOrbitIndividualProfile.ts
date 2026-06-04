@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
+  type CredentialFields,
   type IndividualDataExport,
   type IndividualDocument,
   type IndividualDocumentKind,
@@ -65,6 +66,18 @@ export function useOrbitUploadMyDocumentPhoto() {
       kind: IndividualDocumentKind;
       onProgress?: (fraction: number) => void;
     }) => annixOrbitApiClient.uploadMyDocumentPhoto(file, kind, onProgress),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.all });
+    },
+  });
+}
+
+export function useOrbitUpdateMyDocumentCredentialFields() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ id, fields }: { id: number; fields: Partial<CredentialFields> }) =>
+      annixOrbitApiClient.updateMyDocumentCredentialFields(id, fields),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.all });
     },

@@ -6,8 +6,8 @@ roles: [seeker, individual]
 order: 5
 tags: [photo, camera, certificate, qualification, nix, mobile, pathfinder, trailblazer]
 lastUpdated: 2026-06-04
-summary: Capture a qualification or certificate with your phone camera and let Nix read it instantly — then add a clear scan later for employers.
-readingMinutes: 2
+summary: Capture a qualification or certificate with your phone camera and let Nix read it instantly, correct anything it gets wrong, then add a clear scan later for employers.
+readingMinutes: 3
 relatedPaths: [annix-frontend/src/app/annix/orbit/seeker/profile, annix-frontend/src/app/annix/orbit/seeker/components/CredentialPhotoCapture.tsx, annix-frontend/src/app/components/PhotoCapture.tsx, annix-backend/src/annix-orbit/services/individual-profile.service.ts, annix-backend/src/annix-orbit/services/nix-seeker-assist.service.ts]
 ---
 
@@ -29,6 +29,18 @@ This feature is available on the **Pathfinder** and **Trailblazer** plans.
    from your gallery).
 5. Wait a moment while Nix reads it — you'll see a progress popup. When it's
    done, the credential appears in your list with a **Phone photo** tag.
+
+## Edit the details
+
+Nix does its best, but a phone photo can be blurry — so check what it read. On
+any photo credential, tap **Edit details** to open the fields (name, issuer,
+year, NQF level, expiry). Fix anything that's wrong and tap **Save details**.
+
+If Nix couldn't read the photo at all, you'll see a note inviting you to tap
+**Edit details** and type the details in yourself.
+
+Every correction you make teaches Nix — it gets better at reading these
+documents over time, for you and for other job seekers.
 
 ## Add a clear scan later
 

@@ -763,6 +763,14 @@ export interface IndividualDataExport {
 
 export type IndividualDocumentKind = "cv" | "qualification" | "certificate";
 
+export interface CredentialFields {
+  credentialName: string | null;
+  issuer: string | null;
+  dateAwarded: string | null;
+  nqfLevel: string | null;
+  expiry: string | null;
+}
+
 export interface IndividualDocument {
   id: number;
   kind: IndividualDocumentKind;
@@ -774,6 +782,7 @@ export interface IndividualDocument {
   downloadUrl: string;
   isPhotoCapture: boolean;
   needsClearScan: boolean;
+  credentialFields: CredentialFields | null;
 }
 
 export interface IndividualProfileStatus {
@@ -2112,6 +2121,16 @@ class AnnixOrbitApiClient {
       { kind, source: "photo" },
       onProgress,
     );
+  }
+
+  async updateMyDocumentCredentialFields(
+    id: number,
+    fields: Partial<CredentialFields>,
+  ): Promise<IndividualDocument> {
+    return this.request(`/annix-orbit/me/documents/${id}/credential-fields`, {
+      method: "PATCH",
+      body: JSON.stringify(fields),
+    });
   }
 
   async deleteMyDocument(id: number): Promise<{ message: string }> {

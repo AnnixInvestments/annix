@@ -11,6 +11,7 @@ import {
   useOrbitMyDocuments,
   useOrbitMyProfileStatus,
 } from "@/app/lib/query/hooks";
+import { CredentialFieldsEditor } from "../components/CredentialFieldsEditor";
 import { CredentialPhotoCapture } from "../components/CredentialPhotoCapture";
 import { IndividualDocumentUploader } from "../components/IndividualDocumentUploader";
 import { MissingDocsWarningModal } from "../components/MissingDocsWarningModal";
@@ -322,6 +323,8 @@ function DocumentList(props: {
   onDelete: (doc: IndividualDocument) => void;
   pendingDeleteId: number | null;
 }) {
+  const [editingDoc, setEditingDoc] = useState<IndividualDocument | null>(null);
+
   if (props.documents.length === 0) {
     return <p className="text-sm text-gray-500 italic">{props.emptyMessage}</p>;
   }
@@ -361,6 +364,15 @@ function DocumentList(props: {
               </div>
             </div>
             <div className="flex items-center gap-3 flex-shrink-0">
+              {doc.isPhotoCapture && (
+                <button
+                  type="button"
+                  onClick={() => setEditingDoc(doc)}
+                  className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] font-medium whitespace-nowrap"
+                >
+                  Edit details
+                </button>
+              )}
               <a
                 href={doc.downloadUrl}
                 target="_blank"
@@ -381,6 +393,13 @@ function DocumentList(props: {
           </li>
         );
       })}
+      {editingDoc && (
+        <CredentialFieldsEditor
+          doc={editingDoc}
+          isOpen={editingDoc !== null}
+          onClose={() => setEditingDoc(null)}
+        />
+      )}
     </ul>
   );
 }
