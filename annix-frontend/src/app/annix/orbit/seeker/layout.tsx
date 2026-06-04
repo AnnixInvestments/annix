@@ -180,7 +180,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
         version={ANNIX_ORBIT_VERSION}
       />
 
-      <main className="relative z-10 max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 py-8">{children}</main>
+      <main className="relative z-10 max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-8">{children}</main>
       <FeedbackWidget authContext="annix-orbit" />
     </div>
   );

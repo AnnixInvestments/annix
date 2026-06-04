@@ -134,7 +134,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   return (
     <div
       ref={panelRef}
-      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] p-4 sm:p-6 space-y-4 scroll-mt-24"
+      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] px-2 py-4 sm:p-6 space-y-4 scroll-mt-24"
       style={{
         backgroundImage:
           "linear-gradient(to bottom right, var(--brand-navbar-50,#f7f7ff), #ffffff)",
@@ -205,7 +205,7 @@ function NixResultBlock(props: {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] p-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2.5 py-4 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500 font-medium">CV score</p>
           <div className="flex items-baseline gap-2 mt-1">
@@ -280,7 +280,7 @@ function NixResultBlock(props: {
 
       {a.rewriteSummary && (
         <SectionHeading title="Suggested professional summary">
-          <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] p-4 space-y-3">
+          <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4 space-y-3">
             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
               {a.rewriteSummary}
             </p>
@@ -320,7 +320,7 @@ function ImprovementCard(props: { item: NixSeekerCvImprovement; onCopy: (text: s
   const areaLabel = AREA_LABELS[item.area];
   const example = item.example;
   return (
-    <li className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] p-4 space-y-2">
+    <li className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
           {areaLabel}

@@ -180,7 +180,7 @@ export default function SeekerProfilePage() {
       </SectionCard>
 
       {hasCv && (
-        <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h3 className="text-base font-semibold text-gray-900">Profile ready</h3>
             <p className="text-sm text-gray-600 mt-1">
@@ -251,7 +251,7 @@ function SectionCard(props: {
   return (
     <div
       id={props.id}
-      className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-4 sm:p-6 space-y-4 scroll-mt-24"
+      className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4 sm:p-6 space-y-4 scroll-mt-24"
     >
       <div className="flex items-start justify-between gap-4">
         <div>
@@ -280,7 +280,7 @@ function CurrentCvCard(props: {
   const uploadedAt = propsCvUploadedAt ? propsCvUploadedAt : docUploadedAt;
   const sizeKb = Math.round(props.doc.sizeBytes / 1024);
   return (
-    <div className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg p-4 flex items-center justify-between gap-4">
+    <div className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg px-2.5 py-4 flex items-center justify-between gap-4">
       <div className="flex items-center gap-3 min-w-0">
         <FileBadge kind="cv" />
         <div className="min-w-0">
@@ -330,7 +330,7 @@ function DocumentList(props: {
         return (
           <li
             key={doc.id}
-            className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg p-4 flex items-center justify-between gap-4"
+            className="bg-gray-50 border border-[var(--brand-navbar-100,#e0e0f5)] rounded-lg px-2.5 py-4 flex items-center justify-between gap-4"
           >
             <div className="flex items-center gap-3 min-w-0">
               <FileBadge kind={doc.kind} />

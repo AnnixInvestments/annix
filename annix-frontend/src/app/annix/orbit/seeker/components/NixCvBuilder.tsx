@@ -237,7 +237,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   return (
     <div
-      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] p-4 sm:p-6 space-y-4"
+      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] px-2 py-4 sm:p-6 space-y-4"
       style={{
         backgroundImage:
           "linear-gradient(to bottom right, var(--brand-navbar-50,#f0f0fc), #ffffff)",
@@ -279,7 +279,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       {cv && !isBuilding && (
         <div className="space-y-4">
           {cv.improvementsApplied.length > 0 && (
-            <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] p-4">
+            <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4">
               <h4 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] uppercase tracking-wide mb-2">
                 What Nix changed
               </h4>
@@ -368,7 +368,7 @@ function NixCvDocument(props: {
   const contactLine = contactParts.join("  •  ");
 
   return (
-    <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] shadow-sm p-4 sm:p-8 space-y-5">
+    <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] shadow-sm px-2 py-4 sm:p-8 space-y-5">
       <div className="border-b-2 border-[var(--brand-navbar,#323288)] pb-3">
         <h2 className="text-2xl font-bold text-[var(--brand-navbar-active,#252560)]">{fullName}</h2>
         {cv.headlineTitle && (
