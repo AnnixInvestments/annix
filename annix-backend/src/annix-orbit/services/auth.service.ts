@@ -17,6 +17,7 @@ import {
   AppRoleRepository,
   UserAppAccessRepository,
 } from "../../rbac/rbac.repository";
+import { AuthConfigService } from "../../shared/auth/auth-config.service";
 import { PasswordService } from "../../shared/auth/password.service";
 import { User } from "../../user/entities/user.entity";
 import { UserRepository } from "../../user/user.repository";
@@ -108,6 +109,7 @@ export class AnnixOrbitAuthService {
     private readonly configService: ConfigService,
     private readonly emailService: EmailService,
     private readonly passwordService: PasswordService,
+    private readonly authConfigService: AuthConfigService,
     private readonly eeConsentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
   ) {}
 
@@ -535,7 +537,7 @@ export class AnnixOrbitAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    if (!user.emailVerified) {
+    if (!this.authConfigService.isEmailVerificationDisabled() && !user.emailVerified) {
       throw new UnauthorizedException(
         "Please verify your email address before signing in. Check your inbox for the verification link.",
       );
