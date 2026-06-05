@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { chunk } from "es-toolkit/compat";
 import { EmailService } from "../../email/email.service";
-import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
+import { DateTime, fromISO, now, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { sourceRespectRank } from "../config/job-source-providers";
@@ -565,6 +565,20 @@ export class JobIngestionService {
       );
     }
     return { expired };
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "annix-orbit:prune-stale-jobs" })
+  async pruneStaleJobs(): Promise<{ pruned: number }> {
+    if (!isAnnixOrbitCronEnabled()) return { pruned: 0 };
+    const staleDeleteDays = 30;
+    const cutoff = now().minus({ days: staleDeleteDays }).toJSDate();
+    const staleIds = await this.externalJobRepo.idsLastSeenBefore(cutoff);
+    if (staleIds.length === 0) return { pruned: 0 };
+    const { deleted } = await this.deleteExternalJobs(staleIds);
+    this.logger.log(
+      `Stale-job prune: deleted ${deleted} listing(s) unseen for ${staleDeleteDays}+ days`,
+    );
+    return { pruned: deleted };
   }
 
   async autoResolveDuplicates(): Promise<{ deleted: number; groups: number }> {

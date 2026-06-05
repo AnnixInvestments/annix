@@ -163,6 +163,7 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   ): Promise<void>;
   abstract stampLastSeenByIds(ids: number[], seenAt: Date): Promise<void>;
   abstract expireStaleJobs(): Promise<number>;
+  abstract idsLastSeenBefore(cutoff: Date): Promise<number[]>;
   abstract reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void>;
   abstract confirmDelist(id: number, delistedAt: Date): Promise<void>;
   abstract rejectDelist(id: number): Promise<void>;

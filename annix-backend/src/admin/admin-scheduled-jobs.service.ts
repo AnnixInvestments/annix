@@ -106,6 +106,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 * * * *",
   },
+  "annix-orbit:prune-stale-jobs": {
+    description: "Delete external jobs absent from their source feed for 30+ days",
+    module: "Annix Orbit",
+    defaultCron: "0 2 * * *",
+  },
   "annix-orbit:weekly-digests": {
     description: "Send weekly candidate digest emails",
     module: "Annix Orbit",

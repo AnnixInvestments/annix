@@ -554,6 +554,15 @@ export class MongoExternalJobRepository
     await this.documents.deleteMany({ _id: { $in: ids } }).exec();
   }
 
+  async idsLastSeenBefore(cutoff: Date): Promise<number[]> {
+    const rows = await this.documents
+      .find({ lastSeenAt: { $ne: null, $lt: cutoff } })
+      .select({ _id: 1 })
+      .lean()
+      .exec();
+    return rows.map((row) => row._id as number);
+  }
+
   async stampLastSeenByExternalIds(
     sourceId: number,
     externalIds: string[],

@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, MoreThan, Repository } from "typeorm";
+import { In, IsNull, LessThan, MoreThan, Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -519,6 +519,14 @@ export class PostgresExternalJobRepository
   async deleteByIds(ids: number[]): Promise<void> {
     if (ids.length === 0) return;
     await this.repository.delete(ids);
+  }
+
+  async idsLastSeenBefore(cutoff: Date): Promise<number[]> {
+    const rows = await this.repository.find({
+      where: { lastSeenAt: LessThan(cutoff) },
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
   }
 
   async stampLastSeenByExternalIds(
