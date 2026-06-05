@@ -12,3 +12,8 @@ export const PIPE_WEIGHT_K_BY_PRODUCT_TYPE = {
 // Default SDR fallback when the customer hasn't set a global SDR yet
 // — SDR11 is the most common HDPE pressure pipe in the field.
 export const DEFAULT_HDPE_SDR = 11;
+
+// Solid steel density (kg/m³) for plate take-off: plate mass =
+// area(m²) × thickness(m) × ρ. Used by the fabricated-tank plate /
+// weld take-off, distinct from the pipe cross-section k above.
+export const STEEL_DENSITY_KG_PER_M3 = 7850;
