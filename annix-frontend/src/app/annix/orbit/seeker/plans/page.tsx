@@ -1,10 +1,12 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TierPlans } from "@/app/components/orbit/TierPlans";
 import { useToast } from "@/app/components/Toast";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
+  useOrbitCompleteOnboarding,
+  useOrbitMyProfileStatus,
   useOrbitSeekerEntitlements,
   useOrbitSelectSeekerPlan,
   useOrbitTierPlans,
@@ -26,6 +28,19 @@ export default function SeekerPlansPage() {
 
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+
+  const router = useRouter();
+  const statusQuery = useOrbitMyProfileStatus();
+  const status = statusQuery.data;
+  const inOnboarding = status ? status.onboardingComplete === false : false;
+  const completeOnboarding = useOrbitCompleteOnboarding();
+
+  const handleContinue = async () => {
+    if (inOnboarding) {
+      await completeOnboarding.mutateAsync().catch(() => {});
+    }
+    router.push("/annix/orbit/seeker/dashboard");
+  };
 
   const handleSelectPlan = async (tier: string) => {
     const target = plans.find((plan) => plan.tier === tier);
@@ -72,12 +87,14 @@ export default function SeekerPlansPage() {
       </div>
 
       <div className="mt-8">
-        <Link
-          href="/annix/orbit/seeker/dashboard"
-          className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={completeOnboarding.isPending}
+          className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
         >
-          Continue to your dashboard →
-        </Link>
+          {inOnboarding ? "Finish setup — go to dashboard →" : "Continue to your dashboard →"}
+        </button>
       </div>
       {ConfirmDialog}
     </div>

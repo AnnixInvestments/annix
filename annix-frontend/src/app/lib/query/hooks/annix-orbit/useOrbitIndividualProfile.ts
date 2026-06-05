@@ -33,6 +33,16 @@ export function useOrbitAcknowledgeDismissWarning() {
   });
 }
 
+export function useOrbitCompleteOnboarding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => annixOrbitApiClient.completeOnboarding(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
+  });
+}
+
 export function useOrbitSendAppLink() {
   return useMutation({
     mutationFn: () => annixOrbitApiClient.sendAppLink(),

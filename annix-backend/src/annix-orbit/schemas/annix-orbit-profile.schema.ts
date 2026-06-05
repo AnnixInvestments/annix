@@ -100,6 +100,9 @@ export class AnnixOrbitProfile {
   selectedTier: string;
 
   @Prop({ type: Date, required: false })
+  onboardingCompletedAt: Date;
+
+  @Prop({ type: Date, required: false })
   createdAt: Date;
 
   @Prop({ type: Date, required: false })

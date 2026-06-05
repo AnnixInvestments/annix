@@ -794,6 +794,8 @@ export interface IndividualProfileStatus {
   cvOriginalFilename: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
+  eeDisclosed: boolean;
+  onboardingComplete: boolean;
 }
 
 export type NixSeekerImprovementArea =
@@ -2126,6 +2128,10 @@ class AnnixOrbitApiClient {
 
   async acknowledgeDismissWarning(): Promise<{ acknowledgedAt: string }> {
     return this.request("/annix-orbit/me/dismiss-warning/acknowledge", { method: "POST" });
+  }
+
+  async completeOnboarding(): Promise<{ onboardingCompletedAt: string }> {
+    return this.request("/annix-orbit/me/onboarding/complete", { method: "POST" });
   }
 
   async sendAppLink(): Promise<{ sent: boolean; email: string }> {

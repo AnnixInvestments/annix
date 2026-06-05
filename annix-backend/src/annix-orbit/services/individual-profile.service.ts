@@ -48,6 +48,8 @@ export interface IndividualProfileStatus {
   cvOriginalFilename: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
+  eeDisclosed: boolean;
+  onboardingComplete: boolean;
 }
 
 export interface IndividualDocumentSummary {
@@ -314,7 +316,19 @@ export class IndividualProfileService {
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
       photoCredentialCapture,
       dismissWarningAcknowledged: profile.dismissWarningAcknowledgedAt != null,
+      eeDisclosed: profile.eeDisclosure != null,
+      onboardingComplete: profile.onboardingCompletedAt != null,
     };
+  }
+
+  async completeOnboarding(userId: number): Promise<{ onboardingCompletedAt: string }> {
+    const profile = await this.profileForUser(userId);
+    if (!profile.onboardingCompletedAt) {
+      profile.onboardingCompletedAt = now().toJSDate();
+      await this.profileRepo.save(profile);
+    }
+    const completedAt = profile.onboardingCompletedAt;
+    return { onboardingCompletedAt: completedAt ? completedAt.toISOString() : "" };
   }
 
   async acknowledgeDismissWarning(userId: number): Promise<{ acknowledgedAt: string }> {

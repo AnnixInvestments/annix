@@ -69,6 +69,8 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const profileStatusQuery = useOrbitMyProfileStatus(isAuthenticated && isIndividual);
   const profileStatus = profileStatusQuery.data;
   const hasCv = profileStatus ? profileStatus.hasCv : null;
+  const onboardingComplete = profileStatus ? profileStatus.onboardingComplete : null;
+  const eeDisclosed = profileStatus ? profileStatus.eeDisclosed : false;
   const isOnProfilePage = pathname.startsWith("/annix/orbit/seeker/profile");
   const isOnSettingsPage = pathname.startsWith("/annix/orbit/seeker/settings");
   const isOnJobsPage = pathname.startsWith("/annix/orbit/seeker/jobs");
@@ -89,6 +91,14 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     isOnEeAttributesPage ||
     isOnPlansPage;
 
+  const needsOnboarding = isIndividual && onboardingComplete === false;
+  const onboardingRedirectTarget =
+    needsOnboarding && !isOnEeAttributesPage && !isOnPlansPage
+      ? eeDisclosed
+        ? "/annix/orbit/seeker/plans"
+        : "/annix/orbit/seeker/ee-attributes"
+      : null;
+
   useEffect(() => {
     if (isLoading) return;
     if (!isAuthenticated) {
@@ -103,6 +113,10 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
       router.push("/annix/orbit/portal/dashboard");
       return;
     }
+    if (onboardingRedirectTarget) {
+      router.replace(onboardingRedirectTarget);
+      return;
+    }
     if (isIndividual && hasCv === false && !cvGateExempt) {
       router.push("/annix/orbit/seeker/profile");
     }
@@ -113,6 +127,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
     isIndividual,
     hasCv,
     cvGateExempt,
+    onboardingRedirectTarget,
     router,
     pathname,
     searchParams,
@@ -127,6 +142,10 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated || (user && !isIndividual)) {
+    return null;
+  }
+
+  if (onboardingRedirectTarget) {
     return null;
   }
 

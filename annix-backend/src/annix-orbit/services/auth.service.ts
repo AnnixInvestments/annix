@@ -691,6 +691,8 @@ export class AnnixOrbitAuthService {
         "No Annix Orbit account is set up for this email. Please sign up to get started.",
       );
     }
+    user.lastLoginAt = now().toJSDate();
+    await this.userRepo.save(user);
     const role = await this.resolveRole(user.id, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const tokens = this.generateTokens(user, profile, role);

@@ -304,6 +304,7 @@ export {
   useGenerateNixCv,
   useNixGeneratedCv,
   useOrbitAcknowledgeDismissWarning,
+  useOrbitCompleteOnboarding,
   useOrbitConfirmMyAccountDeletion,
   useOrbitDeleteMyDocument,
   useOrbitMyDataExport,

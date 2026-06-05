@@ -125,6 +125,9 @@ export class AnnixOrbitProfile {
   @Column({ name: "selected_tier", type: "varchar", length: 32, nullable: true })
   selectedTier: string | null;
 
+  @Column({ name: "onboarding_completed_at", type: "timestamptz", nullable: true })
+  onboardingCompletedAt: Date | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

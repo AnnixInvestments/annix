@@ -76,6 +76,11 @@ export class IndividualProfileController {
     return this.individualProfileService.acknowledgeDismissWarning(req.user.id);
   }
 
+  @Post("onboarding/complete")
+  completeOnboarding(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.completeOnboarding(req.user.id);
+  }
+
   @Post("send-app-link")
   sendAppLink(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.sendAppLink(req.user.id);
