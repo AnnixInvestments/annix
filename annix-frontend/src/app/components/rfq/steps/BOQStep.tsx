@@ -1638,6 +1638,72 @@ export default function BOQStep(props: {
         };
       });
 
+      // Weld take-off. The drawing carries the weld SIZE ("5 TYP") but not the
+      // total LENGTH, so estimate length from plate-edge geometry rather than an
+      // empirical factor: Σ(plate perimeter) × 0.5. The 0.5 is the engineering
+      // reality that an internal seam is ONE weld shared between two plate edges,
+      // and free/flanged edges aren't welded — not an arbitrary fudge. Perimeter
+      // comes from L×W when extracted, else a square-equivalent from the plate
+      // area, else a tank-level area+count fallback. Fillet leg per the AISC/AWS
+      // minimum for the plate thickness (≤6→3, 6–13→5, 13–19→6, >19→8 mm), which
+      // matches the drawing's 5mm on 5–10mm plate. Weld weight for consumables =
+      // length × fillet weld-metal/m (0.5·leg²·density). Flagged as an estimate.
+      const WELD_JOINT_FRACTION = 0.5;
+      const minFilletLegMm = (thicknessMm: number): number =>
+        thicknessMm <= 0
+          ? 0
+          : thicknessMm <= 6
+            ? 3
+            : thicknessMm <= 13
+              ? 5
+              : thicknessMm <= 19
+                ? 6
+                : 8;
+      const filletWeldMetalKgPerM = (legMm: number): number =>
+        (0.5 * legMm * legMm * STEEL_DENSITY_KG_PER_M3) / 1_000_000;
+      let weldLengthM = 0;
+      let weldWeightKg = 0;
+      let dominantWeldThicknessMm = 0;
+      plates.forEach((plate) => {
+        const rawWeldThk = plate.thicknessMm;
+        const rawWeldLen = plate.lengthMm;
+        const rawWeldWid = plate.widthMm;
+        const rawWeldArea = plate.areaM2;
+        const rawWeldQty = plate.quantity;
+        const weldThk = isNumber(rawWeldThk) ? rawWeldThk : 0;
+        const weldLen = isNumber(rawWeldLen) ? rawWeldLen : 0;
+        const weldWid = isNumber(rawWeldWid) ? rawWeldWid : 0;
+        const weldArea = isNumber(rawWeldArea) && rawWeldArea > 0 ? rawWeldArea : 0;
+        const weldPartQty = isNumber(rawWeldQty) ? rawWeldQty : 1;
+        const perimeterM =
+          weldLen > 0 && weldWid > 0
+            ? (2 * (weldLen + weldWid)) / 1000
+            : weldArea > 0
+              ? 4 * Math.sqrt(weldArea)
+              : 0;
+        const partWeldLengthM = perimeterM * WELD_JOINT_FRACTION * weldPartQty * tankQty;
+        weldLengthM += partWeldLengthM;
+        if (weldThk > dominantWeldThicknessMm) dominantWeldThicknessMm = weldThk;
+        weldWeightKg += partWeldLengthM * filletWeldMetalKgPerM(minFilletLegMm(weldThk));
+      });
+      if (weldLengthM === 0) {
+        const rawTankCoatArea = rawSpecsTank.coatingAreaM2;
+        const rawTankLiningArea = rawSpecsTank.liningAreaM2;
+        const tankCoatArea = isNumber(rawTankCoatArea) && rawTankCoatArea > 0 ? rawTankCoatArea : 0;
+        const tankLiningArea =
+          isNumber(rawTankLiningArea) && rawTankLiningArea > 0 ? rawTankLiningArea : 0;
+        const tankProxyArea = tankCoatArea > 0 ? tankCoatArea : tankLiningArea;
+        const tankPartCount = plates.length > 0 ? plates.length : 1;
+        if (tankProxyArea > 0) {
+          weldLengthM = 2 * Math.sqrt(tankPartCount * tankProxyArea) * tankQty;
+          const fallbackThk = dominantWeldThicknessMm > 0 ? dominantWeldThicknessMm : 6;
+          weldWeightKg = weldLengthM * filletWeldMetalKgPerM(minFilletLegMm(fallbackThk));
+        }
+      }
+      const weldFilletLegMm = minFilletLegMm(
+        dominantWeldThicknessMm > 0 ? dominantWeldThicknessMm : 6,
+      );
+
       const headerWeight =
         statedSteelMassKg !== undefined ? statedSteelMassKg * tankQty : computedSteelMassKg;
       let verifyNote = "";
@@ -1687,6 +1753,27 @@ export default function BOQStep(props: {
           });
         }
       });
+      if (weldLengthM > 0) {
+        const weldKey = `TANKWELD_${tankName.toLowerCase()}`;
+        const weldDescription = `    ↳ [${tankName}] Welding (estimate): ~${weldLengthM.toFixed(1)} m fillet @ ~${weldFilletLegMm}mm leg · ~${Math.round(weldWeightKg)} kg weld metal · geometry estimate — confirm on site`;
+        const existingWeld = consolidatedTanks.get(weldKey);
+        if (existingWeld) {
+          existingWeld.weight += weldWeightKg;
+          existingWeld.entries.push(itemNumber);
+          existingWeld.entryIds.push(entry.id);
+          existingWeld.description = weldDescription;
+        } else {
+          consolidatedTanks.set(weldKey, {
+            description: weldDescription,
+            qty: 1,
+            unit: "lot",
+            weight: weldWeightKg,
+            entries: [itemNumber],
+            entryIds: [entry.id],
+            material: "steel",
+          });
+        }
+      }
     } else {
       const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
       // STRAIGHT PIPE
