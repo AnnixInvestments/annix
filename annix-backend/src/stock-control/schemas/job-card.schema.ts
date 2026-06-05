@@ -58,10 +58,10 @@ export class JobCard {
   @Prop({ type: String, required: true })
   status: string;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, default: "draft" })
   workflowStatus: string;
 
-  @Prop({ type: Number, required: true })
+  @Prop({ type: Number, default: 1 })
   versionNumber: number;
 
   @Prop({ type: String, required: false })
@@ -73,7 +73,7 @@ export class JobCard {
   @Prop({ type: String, required: false })
   cpoId: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, default: false })
   isCpoCalloff: boolean;
 
   @Prop({ type: String, required: false })
