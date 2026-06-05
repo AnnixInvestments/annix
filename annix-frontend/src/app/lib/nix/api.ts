@@ -43,6 +43,7 @@ export interface NixExtractedPlateBomRow {
   quantity?: number;
   weightKg?: number;
   areaM2?: number;
+  liningThicknessMm?: number;
 }
 
 export type NixExtractedItemType =

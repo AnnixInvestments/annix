@@ -307,6 +307,7 @@ export interface PlateBomItem {
   quantity: number;
   weightKg: number;
   areaM2: number;
+  liningThicknessMm: number;
 }
 
 export interface TankChuteEntry {
