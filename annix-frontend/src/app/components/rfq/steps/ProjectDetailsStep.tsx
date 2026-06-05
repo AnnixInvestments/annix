@@ -2430,184 +2430,198 @@ export default function ProjectDetailsStep() {
             </div>
           )}
 
-          {/* SA Mines Dropdown - Compact */}
-          <div className="mb-2">
-            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
-              <span className="flex items-center gap-1">
-                <svg
-                  className="w-3 h-3 text-amber-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                  />
-                </svg>
-                Quick Select: SA Mine (auto-fills location & slurry)
-              </span>
-            </label>
-            <div className="relative">
-              <select
-                value={selectedMineId || ""}
-                onChange={(e) => handleMineDropdownChange(e.target.value)}
-                disabled={isLoadingMines || mineDataLoading || isLocationLocked || locationSkipped}
-                style={{ colorScheme: "light", color: "#000000", backgroundColor: "#fef3c7" }}
-                className="w-full px-2 py-1.5 border border-amber-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
-                <option value="" style={{ color: "#000000", backgroundColor: "#fef3c7" }}>
-                  -- Select a mine (optional) --
-                </option>
-                <option
-                  value="add-new"
-                  style={{ color: "#b45309", backgroundColor: "#fef3c7" }}
-                  className="font-medium"
-                >
-                  + Add a mine not listed
-                </option>
-                {mines.map((mine) => {
-                  const rawCommodityName = mine.commodityName;
-
-                  return (
-                    <option
-                      key={mine.id}
-                      value={mine.id}
-                      style={{ color: "#000000", backgroundColor: "#fef3c7" }}
+          {!isLocationLocked && (
+            <>
+              {/* SA Mines Dropdown - Compact */}
+              <div className="mb-2">
+                <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                  <span className="flex items-center gap-1">
+                    <svg
+                      className="w-3 h-3 text-amber-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
                     >
-                      {mine.mineName}- {mine.operatingCompany}({rawCommodityName || "Unknown"}) -{" "}
-                      {mine.province}
-                    </option>
-                  );
-                })}
-              </select>
-              <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                {isLoadingMines || mineDataLoading ? (
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
-                ) : (
-                  <svg
-                    className="w-4 h-4 text-gray-500 dark:text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                      />
+                    </svg>
+                    Quick Select: SA Mine (auto-fills location & slurry)
+                  </span>
+                </label>
+                <div className="relative">
+                  <select
+                    value={selectedMineId || ""}
+                    onChange={(e) => handleMineDropdownChange(e.target.value)}
+                    disabled={
+                      isLoadingMines || mineDataLoading || isLocationLocked || locationSkipped
+                    }
+                    style={{ colorScheme: "light", color: "#000000", backgroundColor: "#fef3c7" }}
+                    className="w-full px-2 py-1.5 border border-amber-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M19 9l-7 7-7-7"
-                    />
-                  </svg>
+                    <option value="" style={{ color: "#000000", backgroundColor: "#fef3c7" }}>
+                      -- Select a mine (optional) --
+                    </option>
+                    <option
+                      value="add-new"
+                      style={{ color: "#b45309", backgroundColor: "#fef3c7" }}
+                      className="font-medium"
+                    >
+                      + Add a mine not listed
+                    </option>
+                    {mines.map((mine) => {
+                      const rawCommodityName = mine.commodityName;
+
+                      return (
+                        <option
+                          key={mine.id}
+                          value={mine.id}
+                          style={{ color: "#000000", backgroundColor: "#fef3c7" }}
+                        >
+                          {mine.mineName}- {mine.operatingCompany}({rawCommodityName || "Unknown"})
+                          - {mine.province}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                    {isLoadingMines || mineDataLoading ? (
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
+                    ) : (
+                      <svg
+                        className="w-4 h-4 text-gray-500 dark:text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M19 9l-7 7-7-7"
+                        />
+                      </svg>
+                    )}
+                  </div>
+                </div>
+                {selectedMineId && (
+                  <div className="mt-1 px-2 py-1 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-300 flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
+                    </svg>
+                    Location & slurry auto-filled
+                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 ml-6">
+                      Environmental intelligence will be populated based on commodity type
+                    </p>
+                  </div>
                 )}
               </div>
-            </div>
-            {selectedMineId && (
-              <div className="mt-1 px-2 py-1 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M5 13l4 4L19 7"
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Latitude
+                  </label>
+                  <AutoFilledInput
+                    type="number"
+                    step="0.00001"
+                    value={rfqData.latitude}
+                    onChange={(val) => onUpdate("latitude", val)}
+                    onOverride={() =>
+                      setLocationAutoFilled((prev) => ({ ...prev, latitude: false }))
+                    }
+                    isAutoFilled={locationAutoFilled.latitude}
+                    placeholder="-26.20227 (≥5 decimal places)"
+                    readOnly={isLocationLocked}
+                    disabled={locationSkipped}
                   />
-                </svg>
-                Location & slurry auto-filled
-                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 ml-6">
-                  Environmental intelligence will be populated based on commodity type
-                </p>
+                  {!locationAutoFilled.latitude && (
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                      Precision required for environmental analysis
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Longitude
+                  </label>
+                  <AutoFilledInput
+                    type="number"
+                    step="0.00001"
+                    value={rfqData.longitude}
+                    onChange={(val) => onUpdate("longitude", val)}
+                    onOverride={() =>
+                      setLocationAutoFilled((prev) => ({ ...prev, longitude: false }))
+                    }
+                    isAutoFilled={locationAutoFilled.longitude}
+                    placeholder="28.04363 (≥5 decimal places)"
+                    readOnly={isLocationLocked}
+                    disabled={locationSkipped}
+                  />
+                </div>
               </div>
-            )}
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Latitude
-              </label>
-              <AutoFilledInput
-                type="number"
-                step="0.00001"
-                value={rfqData.latitude}
-                onChange={(val) => onUpdate("latitude", val)}
-                onOverride={() => setLocationAutoFilled((prev) => ({ ...prev, latitude: false }))}
-                isAutoFilled={locationAutoFilled.latitude}
-                placeholder="-26.20227 (≥5 decimal places)"
-                readOnly={isLocationLocked}
-                disabled={locationSkipped}
-              />
-              {!locationAutoFilled.latitude && (
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-                  Precision required for environmental analysis
-                </p>
-              )}
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Longitude
-              </label>
-              <AutoFilledInput
-                type="number"
-                step="0.00001"
-                value={rfqData.longitude}
-                onChange={(val) => onUpdate("longitude", val)}
-                onOverride={() => setLocationAutoFilled((prev) => ({ ...prev, longitude: false }))}
-                isAutoFilled={locationAutoFilled.longitude}
-                placeholder="28.04363 (≥5 decimal places)"
-                readOnly={isLocationLocked}
-                disabled={locationSkipped}
-              />
-            </div>
-          </div>
+              <div className="mb-4" data-nix-target="siteAddress">
+                <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                  Site Address / Location Description
+                </label>
+                <AutoFilledInput
+                  type="text"
+                  value={rfqData.siteAddress}
+                  onChange={(val) => onUpdate("siteAddress", val)}
+                  onOverride={() =>
+                    setLocationAutoFilled((prev) => ({ ...prev, siteAddress: false }))
+                  }
+                  isAutoFilled={locationAutoFilled.siteAddress}
+                  placeholder="e.g., Secunda Refinery, Mpumalanga, South Africa"
+                  readOnly={isLocationLocked}
+                />
+              </div>
 
-          <div className="mb-4" data-nix-target="siteAddress">
-            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-              Site Address / Location Description
-            </label>
-            <AutoFilledInput
-              type="text"
-              value={rfqData.siteAddress}
-              onChange={(val) => onUpdate("siteAddress", val)}
-              onOverride={() => setLocationAutoFilled((prev) => ({ ...prev, siteAddress: false }))}
-              isAutoFilled={locationAutoFilled.siteAddress}
-              placeholder="e.g., Secunda Refinery, Mpumalanga, South Africa"
-              readOnly={isLocationLocked}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Region / Province
-              </label>
-              <AutoFilledInput
-                type="text"
-                value={rfqData.region}
-                onChange={(val) => onUpdate("region", val)}
-                onOverride={() => setLocationAutoFilled((prev) => ({ ...prev, region: false }))}
-                isAutoFilled={locationAutoFilled.region}
-                placeholder="e.g., Gauteng, Western Cape"
-                readOnly={isLocationLocked}
-                disabled={locationSkipped}
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                Country
-              </label>
-              <AutoFilledInput
-                type="text"
-                value={rfqData.country}
-                onChange={(val) => onUpdate("country", val)}
-                onOverride={() => setLocationAutoFilled((prev) => ({ ...prev, country: false }))}
-                isAutoFilled={locationAutoFilled.country}
-                placeholder="e.g., South Africa"
-                readOnly={isLocationLocked}
-                disabled={locationSkipped}
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Region / Province
+                  </label>
+                  <AutoFilledInput
+                    type="text"
+                    value={rfqData.region}
+                    onChange={(val) => onUpdate("region", val)}
+                    onOverride={() => setLocationAutoFilled((prev) => ({ ...prev, region: false }))}
+                    isAutoFilled={locationAutoFilled.region}
+                    placeholder="e.g., Gauteng, Western Cape"
+                    readOnly={isLocationLocked}
+                    disabled={locationSkipped}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                    Country
+                  </label>
+                  <AutoFilledInput
+                    type="text"
+                    value={rfqData.country}
+                    onChange={(val) => onUpdate("country", val)}
+                    onOverride={() =>
+                      setLocationAutoFilled((prev) => ({ ...prev, country: false }))
+                    }
+                    isAutoFilled={locationAutoFilled.country}
+                    placeholder="e.g., South Africa"
+                    readOnly={isLocationLocked}
+                    disabled={locationSkipped}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Location Confirmation Button */}
           <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
