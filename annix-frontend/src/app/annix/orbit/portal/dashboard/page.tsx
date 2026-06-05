@@ -1,17 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { Candidate } from "@/app/lib/api/annixOrbitApi";
 import {
   useOrbitDashboardStats,
   useOrbitMarketInsights,
-  useOrbitMyProfileStatus,
   useOrbitTopCandidates,
 } from "@/app/lib/query/hooks";
 
 const POST_JOB_HREF = "/annix/orbit/portal/jobs/new";
-const UPLOAD_CV_HREF = "/annix/orbit/seeker/profile";
+const SEEKER_DASHBOARD_HREF = "/annix/orbit/seeker/dashboard";
 
 function PostJobButton({
   size = "md",
@@ -39,129 +40,29 @@ function PostJobButton({
   );
 }
 
-function UploadCvButton({
-  size = "md",
-  variant = "orange",
-}: {
-  size?: "md" | "lg";
-  variant?: "orange" | "navy";
-}) {
-  const sizing = size === "lg" ? "px-6 py-3 text-base" : "px-5 py-2.5 text-sm";
-  const iconSize = size === "lg" ? "w-6 h-6 mr-2" : "w-5 h-5 mr-2";
-  const palette =
-    variant === "navy"
-      ? "bg-[#252560] text-white hover:bg-[#1a1a40]"
-      : "bg-[#FF8A00] text-[#1a1a40] hover:bg-[#FF9C33]";
-  return (
-    <Link
-      href={UPLOAD_CV_HREF}
-      className={`inline-flex items-center ${sizing} ${palette} font-semibold rounded-lg shadow-md hover:shadow-lg transition-all`}
-    >
-      <svg className={iconSize} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2.5}
-          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
-        />
-      </svg>
-      Upload a CV
-    </Link>
-  );
-}
-
 export default function DashboardPage() {
+  const router = useRouter();
   const { user, profile } = useAnnixOrbitAuth();
   const { data: stats, isLoading: statsLoading } = useOrbitDashboardStats();
   const { data: topCandidates = [], isLoading: candidatesLoading } = useOrbitTopCandidates();
   const { data: marketInsights } = useOrbitMarketInsights();
-  const profileStatusQuery = useOrbitMyProfileStatus();
 
   const userType = user ? user.userType : null;
   const companyId = profile ? profile.companyId : null;
   const isIndividual = userType === "individual" || companyId === null;
 
-  const isLoading = isIndividual ? false : statsLoading || candidatesLoading;
+  useEffect(() => {
+    if (isIndividual) {
+      router.replace(SEEKER_DASHBOARD_HREF);
+    }
+  }, [isIndividual, router]);
+
+  const isLoading = isIndividual ? true : statsLoading || candidatesLoading;
 
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#323288]"></div>
-      </div>
-    );
-  }
-
-  if (isIndividual) {
-    const userName = user ? user.name : null;
-    const firstNameToken = userName ? userName.split(" ")[0] : null;
-    const firstName = firstNameToken ? firstNameToken : "there";
-    const profileStatus = profileStatusQuery.data;
-    const hasCv = profileStatus ? profileStatus.hasCv : false;
-    const missingOptional =
-      hasCv &&
-      profileStatus &&
-      (profileStatus.qualificationsCount === 0 || profileStatus.certificatesCount === 0);
-
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Welcome, {firstName}</h1>
-          <p className="text-white/70 mt-1">Your Annix Orbit job seeker workspace</p>
-        </div>
-
-        {!hasCv && (
-          <div className="rounded-xl bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
-                Ready to find your next role?
-              </h2>
-              <p className="text-[#1a1a40]/80">
-                Upload your CV and let Annix Orbit match you to suitable jobs.
-              </p>
-            </div>
-            <UploadCvButton size="lg" variant="navy" />
-          </div>
-        )}
-
-        {missingOptional && (
-          <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium text-amber-900">
-                Add qualifications and certificates to improve your matches
-              </p>
-              <p className="text-xs text-amber-700 mt-1">
-                Your CV is uploaded — matches will work, but more documents make them more accurate.
-              </p>
-            </div>
-            <Link
-              href="/annix/orbit/seeker/profile"
-              className="text-sm font-medium text-amber-900 hover:text-amber-950 underline whitespace-nowrap"
-            >
-              Add documents
-            </Link>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <SeekerTile
-            title="My CV"
-            description="Upload, edit, and improve your CV with AI suggestions."
-            href="/annix/orbit/seeker/profile"
-            cta="Open my CV"
-          />
-          <SeekerTile
-            title="Browse Jobs"
-            description="See opportunities matched to your skills and experience."
-            href="/annix/orbit/seeker/jobs"
-            cta="See jobs"
-          />
-          <SeekerTile
-            title="Applications"
-            description="Track jobs you have applied to and their status."
-            href="/annix/orbit/seeker/applications"
-            cta="View applications"
-          />
-        </div>
       </div>
     );
   }
@@ -197,19 +98,13 @@ export default function DashboardPage() {
         <div className="rounded-xl bg-gradient-to-br from-[#FF8A00] to-[#FF9C33] shadow-lg p-6 sm:p-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
             <h2 className="text-xl sm:text-2xl font-bold text-[#1a1a40]">
-              {isIndividual ? "Ready to find your next role?" : "Ready to find your next hire?"}
+              Ready to find your next hire?
             </h2>
             <p className="text-[#1a1a40]/80">
-              {isIndividual
-                ? "Upload your CV and let Annix Orbit match you to suitable jobs."
-                : "Post your first job vacancy and let Annix Orbit screen candidates for you."}
+              Post your first job vacancy and let Annix Orbit screen candidates for you.
             </p>
           </div>
-          {isIndividual ? (
-            <UploadCvButton size="lg" variant="navy" />
-          ) : (
-            <PostJobButton size="lg" variant="navy" />
-          )}
+          <PostJobButton size="lg" variant="navy" />
         </div>
       )}
 
@@ -492,21 +387,6 @@ export default function DashboardPage() {
           )}
         </div>
       )}
-    </div>
-  );
-}
-
-function SeekerTile(props: { title: string; description: string; href: string; cta: string }) {
-  return (
-    <div className="bg-white rounded-xl border border-[#e0e0f5] p-6 flex flex-col">
-      <h2 className="text-lg font-semibold text-gray-900">{props.title}</h2>
-      <p className="text-sm text-gray-600 mt-2 flex-1">{props.description}</p>
-      <Link
-        href={props.href}
-        className="mt-4 inline-flex items-center justify-center bg-[#323288] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#252560] transition-colors"
-      >
-        {props.cta}
-      </Link>
     </div>
   );
 }
