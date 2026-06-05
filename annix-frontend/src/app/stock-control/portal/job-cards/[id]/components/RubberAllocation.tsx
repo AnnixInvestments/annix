@@ -12,6 +12,10 @@ import type {
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { JigsawEditor } from "@/app/stock-control/components/jigsaw/JigsawEditor";
+import type {
+  TankPanelSource,
+  TankPlatePanel,
+} from "@/app/stock-control/components/jigsaw/jigsawLayout";
 import {
   CUT_COLORS,
   colorIndexForBaseId,
@@ -1411,6 +1415,7 @@ function RubberSOHPanel({
     quantity: number | null;
     m2: number | null;
     notes?: string | null;
+    plateBom?: TankPlatePanel[] | null;
   }>;
 }) {
   const [planDecision, setPlanDecision] = useState<"pending" | "accepted" | "rejected">(
@@ -1899,6 +1904,23 @@ function RubberSOHPanel({
                 ),
               ),
             )}
+            tankSources={lineItems.flatMap((li, idx): TankPanelSource[] => {
+              const pb = li.plateBom;
+              if (!pb || pb.length === 0) return [];
+              const rawItemNo = li.itemNo;
+              const rawDesc = li.itemDescription;
+              const rawCode = li.itemCode;
+              const rawId = li.id;
+              const tankName = rawDesc || rawCode || "Tank";
+              return [
+                {
+                  itemId: String(rawId ?? idx),
+                  itemNo: rawItemNo ?? null,
+                  tankName,
+                  plates: pb,
+                },
+              ];
+            })}
             rubberSpec={stockOptions?.rubberSpec}
             existingManualRolls={manualRolls}
             onSave={(rolls, overrides) => handleSaveManual(rolls, overrides)}
