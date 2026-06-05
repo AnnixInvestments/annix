@@ -37,6 +37,7 @@ import {
   useOrbitSeekerColdStartJobs,
   useOrbitSeekerDismissReasons,
   useOrbitSeekerEntitlements,
+  useOrbitSeekerJobSources,
   useOrbitSeekerMatchingConsent,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerRematch,
@@ -117,6 +118,7 @@ export default function SeekerJobsPage() {
     const next: SeekerRecommendedFilters = {};
     const search = filters.search.trim();
     if (search) next.search = search;
+    if (filters.provider !== "all") next.provider = filters.provider;
     if (filters.province) next.province = filters.province;
     if (filters.city) next.city = filters.city;
     if (filters.category) next.category = filters.category;
@@ -230,48 +232,11 @@ export default function SeekerJobsPage() {
   }, [data, coldStartData, showColdStart]);
   const embeddingPending = coldStartData ? coldStartData.embeddingPending : false;
 
-  // Filter options are derived from the visible matches, but server-side
-  // filtering shrinks that set — so once a provider/category is picked the
-  // dropdown would collapse to just that one. Remember the full list captured
-  // while the filter is unset so every option stays selectable at all times.
-  const allProvidersRef = useRef<string[]>([]);
-  const allCategoriesRef = useRef<string[]>([]);
-
-  useEffect(() => {
-    if (filters.provider !== "all") return;
-    const set = new Set<string>();
-    matches.forEach((m) => {
-      if (m.job.sourceProvider) set.add(m.job.sourceProvider);
-    });
-    allProvidersRef.current = [...set].sort();
-  }, [matches, filters.provider]);
-
-  useEffect(() => {
-    if (filters.category !== "") return;
-    const set = new Set<string>();
-    matches.forEach((m) => {
-      if (m.job.category) set.add(m.job.category);
-    });
-    allCategoriesRef.current = [...set].sort();
-  }, [matches, filters.category]);
-
-  const providers = useMemo(() => {
-    const set = new Set<string>(allProvidersRef.current);
-    matches.forEach((m) => {
-      if (m.job.sourceProvider) set.add(m.job.sourceProvider);
-    });
-    if (filters.provider !== "all") set.add(filters.provider);
-    return [...set].sort();
-  }, [matches, filters.provider]);
-
-  const categories = useMemo(() => {
-    const set = new Set<string>(allCategoriesRef.current);
-    matches.forEach((m) => {
-      if (m.job.category) set.add(m.job.category);
-    });
-    if (filters.category !== "") set.add(filters.category);
-    return [...set].sort();
-  }, [matches, filters.category]);
+  // The source filter lists every active job source (not just the ones in the
+  // current matches); categories come from the fixed canonical taxonomy inside
+  // the filter component. Both stay fully selectable regardless of the loaded set.
+  const sourcesQuery = useOrbitSeekerJobSources(consentEnabled);
+  const providers = sourcesQuery.data ?? [];
 
   const filtered = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
@@ -284,7 +249,7 @@ export default function SeekerJobsPage() {
       if (filters.provider !== "all" && m.job.sourceProvider !== filters.provider) {
         return false;
       }
-      if (filters.category && m.job.category !== filters.category) {
+      if (filters.category && m.job.canonicalCategory !== filters.category) {
         return false;
       }
       const rawCompany = m.job.company;
@@ -823,12 +788,7 @@ export default function SeekerJobsPage() {
         </div>
       ) : null}
 
-      <SeekerJobFilters
-        state={filters}
-        onChange={setFilters}
-        providers={providers}
-        categories={categories}
-      />
+      <SeekerJobFilters state={filters} onChange={setFilters} providers={providers} />
 
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">

@@ -1,5 +1,6 @@
 "use client";
 
+import { JOB_CATEGORIES } from "@annix/product-data/sa-market";
 import { useMemo } from "react";
 import { providerLabel } from "../provider-labels";
 import { citiesForProvince, SA_PROVINCES } from "../sa-locations";
@@ -17,7 +18,6 @@ interface SeekerJobFiltersProps {
   state: SeekerFilterState;
   onChange: (next: SeekerFilterState) => void;
   providers: string[];
-  categories: string[];
 }
 
 export function SeekerJobFilters(props: SeekerJobFiltersProps) {
@@ -74,13 +74,12 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
           aria-label="Filter by category"
           value={state.category}
           onChange={(e) => update({ category: e.target.value })}
-          disabled={props.categories.length === 0}
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
         >
           <option value="">All categories</option>
-          {props.categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
+          {JOB_CATEGORIES.map((c) => (
+            <option key={c.key} value={c.key}>
+              {c.label}
             </option>
           ))}
         </select>

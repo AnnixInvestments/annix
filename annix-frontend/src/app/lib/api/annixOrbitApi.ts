@@ -2367,6 +2367,10 @@ class AnnixOrbitApiClient {
     return `${API_BASE_URL}/annix-orbit/compliance/ee-report.pdf?${query.toString()}`;
   }
 
+  async seekerJobSources(): Promise<string[]> {
+    return this.request("/annix-orbit/seeker/jobs/sources");
+  }
+
   async seekerRecommendedJobs(
     filters: SeekerRecommendedFilters = {},
   ): Promise<SeekerRecommendedJobsResponse> {
@@ -2376,6 +2380,7 @@ class AnnixOrbitApiClient {
     if (filters.category) params.set("category", filters.category);
     if (filters.minSalary) params.set("minSalary", filters.minSalary);
     if (filters.search) params.set("search", filters.search);
+    if (filters.provider) params.set("provider", filters.provider);
     const qs = params.toString();
     return this.request(`/annix-orbit/seeker/jobs/recommended${qs ? `?${qs}` : ""}`);
   }
@@ -3093,6 +3098,7 @@ export interface SeekerRecommendedJob {
     description: string | null;
     extractedSkills: string[];
     category: string | null;
+    canonicalCategory: string | null;
     sourceUrl: string | null;
     postedAt: string | null;
     expiresAt: string | null;
@@ -3114,6 +3120,7 @@ export interface SeekerRecommendedFilters {
   category?: string;
   minSalary?: string;
   search?: string;
+  provider?: string;
 }
 
 export interface SeekerColdStartJobsResponse {

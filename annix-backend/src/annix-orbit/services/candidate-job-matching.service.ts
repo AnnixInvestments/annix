@@ -71,6 +71,8 @@ export interface RecommendedJobFilters {
   category?: string | null;
   minSalary?: number | null;
   search?: string | null;
+  provider?: string | null;
+  sourceIds?: number[] | null;
 }
 
 function roleTokens(role: string): string[] {

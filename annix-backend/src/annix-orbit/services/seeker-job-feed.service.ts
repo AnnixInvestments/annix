@@ -78,6 +78,7 @@ export interface SeekerJobMatch {
     description: string | null;
     extractedSkills: string[];
     category: string | null;
+    canonicalCategory: string | null;
     sourceUrl: string | null;
     postedAt: string | null;
     expiresAt: string | null;
@@ -408,6 +409,16 @@ export class SeekerJobFeedService {
     return this.entitlementsForSeeker(email);
   }
 
+  // Every active platform job source, so the seeker's "source" filter lists all
+  // of them — not just the ones that happen to appear in the loaded matches.
+  async activeSourceProviders(): Promise<string[]> {
+    const sources = await this.sourceRepo.findManyWhere({
+      companyId: null,
+    } as Partial<JobMarketSource>);
+    const enabled = sources.filter((source) => source.enabled);
+    return [...new Set(enabled.map((source) => source.provider))].sort();
+  }
+
   async listSeekers(params: {
     search?: string | null;
     page?: number;
@@ -587,6 +598,19 @@ export class SeekerJobFeedService {
     return { candidatesAffected: candidateIds.length };
   }
 
+  // Translate a provider-name filter into the source ids that back it, so the
+  // count and the list filter on the same job field (sourceId).
+  private async resolveRepoFilters(
+    filters: RecommendedJobFilters | null,
+  ): Promise<RecommendedJobFilters | null> {
+    if (!filters?.provider) return filters;
+    const sources = await this.sourceRepo.findManyWhere({
+      companyId: null,
+    } as Partial<JobMarketSource>);
+    const ids = sources.filter((s) => s.provider === filters.provider).map((s) => s.id);
+    return { ...filters, sourceIds: ids.length > 0 ? ids : [-1] };
+  }
+
   async recommendedForSeeker(
     email: string | null,
     options: { includeDismissed?: boolean; filters?: RecommendedJobFilters | null } = {},
@@ -613,6 +637,10 @@ export class SeekerJobFeedService {
       }
     }
 
+    // The "source" filter is a provider name; resolve it to the source ids that
+    // back it so both the count and the list filter on the same job field.
+    const repoFilters = await this.resolveRepoFilters(options.filters ?? null);
+
     // The true count of matching jobs, counted in the DB without loading the rows.
     // The plan caps how many a seeker may see (null = unlimited), so apply that
     // ceiling to both the headline total and the loaded page size.
@@ -620,10 +648,7 @@ export class SeekerJobFeedService {
     const capTier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(capTier);
     const maxResults = capability ? capability.maxJobResults : null;
-    const rawTotal = await this.matchRepo.countRecommendedForCandidates(
-      candidateIds,
-      options.filters ?? null,
-    );
+    const rawTotal = await this.matchRepo.countRecommendedForCandidates(candidateIds, repoFilters);
     const total = maxResults == null ? rawTotal : Math.min(rawTotal, maxResults);
     const displayLimit =
       maxResults == null
@@ -634,7 +659,7 @@ export class SeekerJobFeedService {
       candidates.map((candidate) =>
         this.matchingService.recommendedJobsForCandidate(candidate.id, {
           includeDismissed: options.includeDismissed ?? false,
-          filters: options.filters ?? null,
+          filters: repoFilters,
           tierOverride: selectedTier,
         }),
       ),
@@ -1127,6 +1152,7 @@ function toSeekerMatch(
       description: job.description,
       extractedSkills: job.extractedSkills ?? [],
       category: job.category,
+      canonicalCategory: job.canonicalCategory,
       sourceUrl: job.sourceUrl,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
       expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,
@@ -1175,6 +1201,7 @@ function toColdStartSeekerMatch(
       description: job.description,
       extractedSkills: job.extractedSkills ?? [],
       category: job.category,
+      canonicalCategory: job.canonicalCategory,
       sourceUrl: job.sourceUrl,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
       expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,

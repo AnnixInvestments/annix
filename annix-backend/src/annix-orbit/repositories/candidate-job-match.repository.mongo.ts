@@ -26,7 +26,10 @@ function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Recor
   const and: Array<Record<string, unknown>> = [];
 
   if (filters?.category) {
-    query.category = filters.category;
+    query.canonicalCategory = filters.category;
+  }
+  if (filters?.sourceIds && filters.sourceIds.length > 0) {
+    query.sourceId = { $in: filters.sourceIds };
   }
   if (filters?.province) {
     const rx = new RegExp(escapeRegex(filters.province), "i");

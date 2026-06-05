@@ -81,6 +81,11 @@ export class SeekerJobsController {
     return this.dismissReasonService.listActive();
   }
 
+  @Get("sources")
+  sources() {
+    return this.feedService.activeSourceProviders();
+  }
+
   @Get("recommended")
   async recommended(
     @Request() req: SeekerAuthRequest,
@@ -89,6 +94,7 @@ export class SeekerJobsController {
     @Query("category") category?: string,
     @Query("minSalary") minSalary?: string,
     @Query("search") search?: string,
+    @Query("provider") provider?: string,
   ) {
     const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
     const filters = {
@@ -98,6 +104,7 @@ export class SeekerJobsController {
       minSalary:
         parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
       search: search || null,
+      provider: provider && provider !== "all" ? provider : null,
     };
     const result = await this.feedService.recommendedForSeeker(req.user.email, { filters });
     return {

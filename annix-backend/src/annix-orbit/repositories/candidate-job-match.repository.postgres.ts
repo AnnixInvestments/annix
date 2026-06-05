@@ -45,7 +45,10 @@ export class PostgresCandidateJobMatchRepository
       qb.andWhere("match.dismissed = false");
     }
     if (filters?.category) {
-      qb.andWhere("job.category = :category", { category: filters.category });
+      qb.andWhere("job.canonical_category = :category", { category: filters.category });
+    }
+    if (filters?.sourceIds && filters.sourceIds.length > 0) {
+      qb.andWhere("job.source_id IN (:...sourceIds)", { sourceIds: filters.sourceIds });
     }
     if (filters?.province) {
       qb.andWhere(
@@ -133,7 +136,10 @@ export class PostgresCandidateJobMatchRepository
       .andWhere("job.delisted IS NOT TRUE");
 
     if (filters?.category) {
-      qb.andWhere("job.category = :category", { category: filters.category });
+      qb.andWhere("job.canonical_category = :category", { category: filters.category });
+    }
+    if (filters?.sourceIds && filters.sourceIds.length > 0) {
+      qb.andWhere("job.source_id IN (:...sourceIds)", { sourceIds: filters.sourceIds });
     }
     if (filters?.province) {
       qb.andWhere(

@@ -75,6 +75,15 @@ export function useOrbitSeekerBrowseJobs(
   });
 }
 
+export function useOrbitSeekerJobSources(enabled: boolean = true) {
+  return useQuery<string[]>({
+    queryKey: annixOrbitKeys.seekerJobs.sources(),
+    queryFn: () => annixOrbitApiClient.seekerJobSources(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useOrbitSeekerDismissReasons(enabled: boolean = true) {
   return useQuery<SeekerDismissReason[]>({
     queryKey: annixOrbitKeys.dismissReasons.list(),

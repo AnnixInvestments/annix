@@ -9,6 +9,7 @@ export interface RecommendedMatchCountFilters {
   category?: string | null;
   minSalary?: number | null;
   search?: string | null;
+  sourceIds?: number[] | null;
 }
 
 export abstract class CandidateJobMatchRepository extends CrudRepository<CandidateJobMatch> {
