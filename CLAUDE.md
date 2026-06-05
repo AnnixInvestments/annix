@@ -85,26 +85,10 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 - **Functional utilities**: use es-toolkit/compat (`equals()`, `isEmpty()`, `isArray()`, `isObject()`) rather than direct `===` for object comparisons
 
 ### SWC-Safe Patterns (Frontend Only)
-**This is the #1 production crash pattern in this codebase. Read carefully before writing any nullish-coalescing expression on the frontend.**
-
-- **NEVER use bracket access (`obj[key]`) or member access (`obj.prop`) directly inside JSX or as the left-hand side of `??` / `||`**: SWC (both webpack and Turbopack) miscompiles these into undeclared `_obj_key` / `_obj_prop` temps, crashing the page with `ReferenceError: _<something> is not defined`. The error happens even with `||`, and even without any `?.`.
-    - ❌ `<input value={readings[num] ?? ""} />` → crashes (`_readings_num is not defined`)
-    - ❌ `<input value={readings[num] || ""} />` → **also crashes** — swapping `??` for `||` is NOT enough
-    - ❌ `{items.map(i => <div>{config[i.key] || "default"}</div>)}` → crashes
-    - ❌ `const v = obj?.prop ?? fallback` → crashes (`_obj_prop`)
-    - ❌ `const v = arr[i].field ?? fallback` → crashes
-    - ✅ Hoist to a local const first, then reference the plain identifier:
-      ```tsx
-      {READING_ROWS.map((num) => {
-        const value = readings[num] || "";
-        return <input value={value} />;
-      })}
-      ```
-- **`??` / `||` are only safe on plain identifiers** — local variables or destructured consts. Anything with a `.`, `?.`, or `[...]` on the left must be hoisted first.
-- **No destructuring defaults in function parameters**: SWC miscompiles `({ prop = value }) =>` into broken `_ref` references. Destructure from `props` in the function body.
-    - ✅ `function Foo(props: FooProps) { const size = props.size || "md"; }`
-    - ❌ `function Foo({ size = "md" }: FooProps) {}`
-- **Rule of thumb**: if you're about to type `??` and the thing to the left is not a bare identifier, stop and hoist to a const first. We have re-introduced this crash by swapping `??` → `||` — that does NOT help. Hoisting is the only reliable fix.
+**The #1 production crash pattern in this codebase.** SWC (webpack + Turbopack) miscompiles bracket/member access on the left of `??` / `||` (and inside JSX) into undeclared `_obj_key` temps → `ReferenceError: _<x> is not defined`. Crashes even with `||`, even without `?.`. Swapping `??` → `||` does NOT help.
+- **`??` / `||` are only safe on plain identifiers** (local vars / destructured consts). Anything with a `.`, `?.`, or `[...]` on the left — `obj.prop`, `obj?.prop`, `arr[i]`, `readings[num]`, `query.data` — must be **hoisted to a const first**, then reference the bare identifier. This is the only reliable fix.
+- **No destructuring defaults in function parameters** (`({ prop = value }) =>` breaks into `_ref`). Destructure from `props` in the body: `function Foo(props: FooProps) { const size = props.size || "md"; }`.
+- Worked examples: [`docs/frontend-conventions.md`](docs/frontend-conventions.md#swc-safe-patterns).
 
 ### Modal / Popup / Dialog Rendering (Frontend Only)
 - **All modals MUST use `createPortal` to render at `document.body`**. App layouts use `overflow-y-auto` scroll containers that break `fixed` positioning for inline modals.
@@ -115,36 +99,14 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 **Any user-triggered operation that can take more than ~3 seconds must show progress feedback.** A button stuck in a loading state with no UI is unacceptable.
 
 **Frontend:**
-- **Bulk operations**: use `useAdaptiveExtractionProgress` from `@/app/lib/hooks/useAdaptiveExtractionProgress`. Orchestrates a per-item loop, drives the centred branded `ExtractionProgressModal`, fetches the persisted average duration up-front, and adaptively recalibrates after each item. Works across all apps (any `ExtractionBrand`).
-    ```tsx
-    const { runBulk } = useAdaptiveExtractionProgress();
-    const result = await runBulk({
-      brand: "au-rubber",
-      metricCategory: "rubber-coc-extract",
-      metricOperation: "COMPOUNDER",
-      items: candidateIds,
-      itemId: (id) => id,
-      itemLabel: (id, i, t) => `Re-extracting CoC ${i + 1} of ${t}…`,
-      perItemDelayMs: 500,
-      run: async (id) => { /* throw on failure */ },
-    });
-    ```
-- **One-shot / background long operations**: use `useExtractionProgress` directly.
-- **EVERY progress popup MUST learn its timing — NEVER hardcode `estimatedDurationMs`.** This applies to every progress model ever used or created, repo-wide, across all apps. Seed the estimate from the recorded rolling average via `metricsApi.extractionStats(category, operation)` (fall back to a constant only when there is no history yet), AND make the underlying backend operation record its duration with `ExtractionMetricService.time(category, operation, fn)` so the estimate sharpens every run. `useAdaptiveExtractionProgress` already does both for per-item bulk loops; for one-shot/background work, fetch the stat for the estimate yourself. Fire-and-forget/background popups may also poll for real completion, but the *estimate* still comes from the learned average.
-- **Bulk = orchestrate per-item from the frontend** so progress can update after each item, not as a single long-blocking server-side loop.
-- **Error handling**: the `run` callback should throw on failure; the hook collects throws into `result.failed`. Limit per-failure toasts to 3.
+- **Bulk operations**: use `useAdaptiveExtractionProgress` from `@/app/lib/hooks/useAdaptiveExtractionProgress` — orchestrates a per-item loop, drives the centred branded `ExtractionProgressModal`, and adaptively recalibrates per item. Works across all apps. **One-shot / background**: use `useExtractionProgress` directly.
+- **EVERY progress popup MUST learn its timing — NEVER hardcode `estimatedDurationMs`.** Repo-wide, all apps. Seed the estimate from the rolling average via `metricsApi.extractionStats(category, operation)` (constant fallback only when there's no history), AND have the backend op record its duration with `ExtractionMetricService.time(category, operation, fn)` so the estimate sharpens every run. `useAdaptiveExtractionProgress` does both for bulk loops; for one-shot/background work fetch the stat yourself. Background popups may also poll for real completion, but the *estimate* still comes from the learned average.
+- **Bulk = orchestrate per-item from the frontend** so progress updates after each item, not as one long server-side loop.
+- **Error handling**: the `run` callback throws on failure; the hook collects throws into `result.failed`. Limit per-failure toasts to 3.
 
 **Backend:**
-- **All long-running operations must record duration via `ExtractionMetricService.time()` from `MetricsModule`** — this is what makes the frontend's adaptive progress sharper over time.
-    ```ts
-    return this.extractionMetricService.time(
-      "rubber-coc-extract",  // category — must match frontend hook
-      cocType,                // operation — sub-classification
-      async () => doTheWork(),
-      pdfBuffer?.length,      // optional payloadSizeBytes
-    );
-    ```
-- **Stats endpoint**: `GET /metrics/extraction-stats?category=...&operation=...` returns `{ averageMs, sampleSize }` over a 50-row rolling window with 10% top/bottom trim.
+- **All long-running operations must record duration via `ExtractionMetricService.time()` from `MetricsModule`** — this sharpens the frontend's adaptive progress over time. Stats: `GET /metrics/extraction-stats?category=...&operation=...` → `{ averageMs, sampleSize }` over a 50-row rolling window with 10% top/bottom trim.
+- Worked examples (`runBulk`, `ExtractionMetricService.time`): [`docs/frontend-conventions.md`](docs/frontend-conventions.md#long-running-operations).
 
 **Enforcement — applies to EVERY session, EVERY app, retroactively (MANDATORY):**
 - This rule is not just for new code. Any document **extraction / AI-analyze / re-extract / reanalyze**, or **certificate/PDF generation + sending** action that exists *anywhere* in any app and runs with only a button spinner (no popup) is a bug to be fixed — past, present, or future. Do not assume existing buttons already comply; many predate this directive. (Sending a *generated document* counts; sending a chat message / verification email does not.)
@@ -154,16 +116,7 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 ### Confirmations / Alerts (Frontend Only — MANDATORY)
 **Never use `window.confirm()`, `window.alert()`, or `window.prompt()`.** They trigger the unbranded native dialog and block the main thread.
 
-- **Yes/no confirmations**: use the `useConfirm` hook from `@/app/au-rubber/hooks/useConfirm` (or `@/app/lib/hooks/useConfirm` from non-AU-Rubber pages). Returns `{ confirm, ConfirmDialog }`. `confirm(options)` returns `Promise<boolean>` — drop-in replacement for `window.confirm()`. Render `{ConfirmDialog}` once near the page root.
-    ```tsx
-    const { confirm, ConfirmDialog } = useConfirm();
-    const confirmed = await confirm({
-      title: "Delete this CoC?",
-      message: "This cannot be undone.",
-      confirmLabel: "Delete",
-      variant: "danger",  // "danger" | "warning" | "info" | "default"
-    });
-    ```
+- **Yes/no confirmations**: use the `useConfirm` hook from `@/app/au-rubber/hooks/useConfirm` (or `@/app/lib/hooks/useConfirm` from non-AU-Rubber pages). Returns `{ confirm, ConfirmDialog }`; `confirm(options)` returns `Promise<boolean>` — drop-in for `window.confirm()`. Render `{ConfirmDialog}` once near the page root. `variant`: `"danger" | "warning" | "info" | "default"`. Example: [`docs/frontend-conventions.md`](docs/frontend-conventions.md#confirmations--useconfirm).
 - **Form-style modals**: use `FormModal` from `@/app/components/modals/FormModal`.
 - **Toasts**: use `useToast` from `@/app/components/Toast` — never `alert()`.
 - **Underlying component**: `ConfirmModal` at `@/app/components/modals/ConfirmModal` is centred via `createPortal(document.body)`, `z-[9999]`, blurred backdrop, branded, Escape-handled. Do not write a parallel implementation — extend `ConfirmModal` if you need new variants.
@@ -174,6 +127,11 @@ The Nix module (AI document extraction + draft review) is heavily shared across 
 - Default zone is Africa/Johannesburg.
 - Common: `now()`, `nowISO()`, `nowMillis()`, `fromISO(s)`, `fromJSDate(d)`, `now().toJSDate()` for TypeORM Date fields, `formatDateZA()`, `formatDateLongZA()`.
 - ESLint enforces — native `Date` triggers errors.
+
+### Date Inputs (Frontend — MANDATORY, DRY)
+- **Every date field uses the shared `DateInput`** from `@/app/components/ui/DateInput` — a native date control that carries the browser's **calendar-picker icon** with consistent branded styling. Never ship a bare `<input type="date">` (inconsistent styling) or a free-text box for a date.
+- Value in/out is a `yyyy-MM-dd` string (empty when cleared); it coerces ISO dates, bare years, and unparseable AI-extracted strings via `@/app/lib/datetime`. Props: `value`, `onChange(value)`, optional `min`/`max`/`disabled`/`required`/`ariaLabel`/`id`/`className`.
+- **Migrate-on-touch**: when you edit a surface that has an existing `<input type="date">` or a text box used for a date, switch it to `DateInput`. New date fields use it from day one.
 
 ### Data Fetching (TanStack Query)
 - **All page-level data fetching must use TanStack Query hooks**: never `useEffect` + `useState` + `fetch` in page components.
@@ -300,30 +258,22 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 - **The Atlas clusters are M0 free tier with a hard 500-collection cap, and we are staying on M0 — do not propose upgrading.** Each `@Schema` / `SchemaFactory.createForClass` class is one collection (~443 today, 57 of headroom). Two things keep us under the cap: the deploy `release_command` sweeps empty (index-free) collections before migrations run, and a nightly cron (`maintenance:drop-empty-collections`) does the same in steady state — both via `cleanupEmptyCollections` in `src/lib/persistence/empty-collection-cleanup.ts`. **New collections are tracked by a pre-push hook** (`scripts/check-collection-budget.sh`): it reports any newly-added `SchemaFactory.createForClass` and the headroom against 500, but only **blocks once the defined count is approaching the cap** (`>= 480`) — below that, new collections pass freely. In the approaching-the-cap zone, first ask whether the data should be an embedded sub-document on an existing schema (counters, config, single-row settings usually should); if a new collection is genuinely right, record it with an `Allow-New-Collection: <reason>` trailer on a pushed commit (or `ALLOW_NEW_COLLECTIONS=1 git push` for a one-off).
 
 ### Mongo Migrations (migrate-mongo — the live framework)
-- **Mongo migrations are real and run on every deploy.** Forward-only, via `migrate-mongo`. Files live in `annix-backend/migrations-mongo/` as **TypeScript** (`export const up`/`down`, `db` typed as `mongo.Db` from `mongoose`), run through `ts-node`, tracked in the `_migrations` changelog collection. Config: `annix-backend/migrate-mongo-config.ts` (reads `MONGODB_URI` + `MONGO_DATABASE` from env). The repo is TypeScript-only — never add `.js` migrations.
+- **Mongo migrations are real and run on every deploy.** Forward-only, via `migrate-mongo`, as **TypeScript** (`export const up`/`down`, `db` typed as `mongo.Db` from `mongoose`), run through `ts-node`, tracked in the `_migrations` changelog collection. The repo is TypeScript-only — never add `.js` migrations.
+- **TWO migration dirs — route to the right cluster (Annix Orbit runs on its own MongoDB cluster):**
+    - `annix-backend/migrations-mongo/` → **core ERP cluster** (`MONGODB_URI` / `MONGO_DATABASE`). Config: `annix-backend/migrate-mongo-config.ts`.
+    - `annix-backend/migrations-mongo-orbit/` → **Orbit cluster** (`ORBIT_MONGODB_URI` / `ORBIT_MONGO_DATABASE`).
+    - **A migration that touches Orbit collections** (`cv_assistant_*`, `orbit_*`, `tier_invite(s)`, `seeker_usage_counter(s)`) **MUST live in `migrations-mongo-orbit/`.** In the core dir it runs against the wrong DB on deploy — at best a no-op, at worst it mutates the core production ERP database.
+    - **Guardrail:** `scripts/check-migration-routing.ts` (pure Node, cross-platform) scans the core dir and **fails the pre-push hook + CI deploy** if a core migration references an Orbit collection. Fix = `git mv` the file into `migrations-mongo-orbit/`. Run standalone: `node scripts/check-migration-routing.ts`.
 - **Production is the baseline.** The 768 TypeORM files in `src/migrations/` are legacy Postgres history and are NOT replayed on Mongo. Do not port them. The first Mongo migration is the first change to production's current shape.
-- **Commands** (from `annix-backend/`): `pnpm migrate:status` · `pnpm migrate:create <name>` · `pnpm migrate:up` · `pnpm migrate:down`. Run `pnpm biome check --write` on a new migration file before committing.
-- **Execution:** the `fly.toml` `release_command` runs `migrate-mongo up` once per deploy, before traffic, against that environment's own DB (one `fly.toml` serves prod/staging/test — each reads its own Fly secrets). Keep `up`/`down` idempotent.
+- **Commands** (from `annix-backend/`) — **core:** `pnpm migrate:status` · `pnpm migrate:create <name>` · `pnpm migrate:up` · `pnpm migrate:down`. **Orbit cluster:** `pnpm migrate:orbit:status` · `pnpm migrate:orbit:create <name>` · `pnpm migrate:orbit:up` · `pnpm migrate:orbit:down` (these target `migrate-mongo-orbit-config.ts` → `migrations-mongo-orbit/`). Use `migrate:orbit:create` for Orbit migrations so the file lands in the right dir from the start. Run `pnpm biome check --write` on a new migration file before committing.
+- **Execution:** the `fly.toml` `release_command` runs `migrate-mongo up` once per deploy, before traffic — **for both dirs**, each against its own cluster (core dir → core DB, orbit dir → Orbit DB) for that environment (one `fly.toml` serves prod/staging/test — each reads its own Fly secrets). Keep `up`/`down` idempotent.
 
-### Scheduled Jobs & Neon Compute Budget — LEGACY (Neon retired 2026-05-28; the 6-hour cron default still applies for Mongo Atlas bandwidth/cost)
-- Neon free tier = 100 CU-hrs/month. Every cron wake-up costs ~8 min compute.
-- **Default frequency for new `@Cron` jobs touching Neon = every 6 hours** (`0 */6 * * *`) unless there's clear business justification for higher.
-- **Never default to 10-min or 30-min polling** — prevents Neon from suspending and burns the budget.
-- **Register in `JOB_METADATA`** in `admin-scheduled-jobs.service.ts` with a `defaultCron` matching the decorator. Frequency is adjustable at runtime via the Admin > Scheduled Jobs page.
-- **Cluster daily jobs** at `0 8 * * *` (morning) or `0 2 * * *` (nightly) to share wake-ups.
-
-### Neon Network Transfer Budget — LEGACY (Neon retired 2026-05-28; the pagination / refetch-interval / cache-control guidance still applies on Mongo Atlas)
-- **Never use `eager: true`** in TypeORM entities — use explicit `relations: [...]` in service queries. ESLint enforces.
-- **Paginate unbounded collections**: detail endpoints don't load related collections inline. Use sub-resource endpoints (`/drawings/:id/versions`, etc.). Default page size: 20.
-- **TanStack Query `refetchInterval` >= 120_000ms** unless documented justification. Use `usePollingInterval()` for admin-configurable intervals. ESLint warns on all `refetchInterval`.
-- **Static reference endpoints** must set `Cache-Control: public, max-age=31536000, immutable`.
-
-### Database Schema Changes (legacy — Postgres/TypeORM path only; for Mongo see "Mongo Migrations" above)
-- **Never `synchronize: true`** — all schema changes go through TypeORM migrations.
-- **Never modify the database directly** — no manual DDL outside migration files.
-- **Migration timestamps must respect dependencies**: if B references a table created in A, B's timestamp > A's.
-- **All DDL must be idempotent**: `IF NOT EXISTS` / `IF EXISTS` / `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$`.
-- **Test migrations on a fresh database** — they must work in strict timestamp order from scratch.
+### Resource Budget (Mongo Atlas — was Neon, retired 2026-05-28)
+- **New `@Cron` jobs default to every 6 hours** (`0 */6 * * *`) unless justified; never 10-/30-min polling. Register in `JOB_METADATA` (`admin-scheduled-jobs.service.ts`) with a matching `defaultCron` (runtime-adjustable via Admin > Scheduled Jobs). Cluster daily jobs at `0 8 * * *` or `0 2 * * *` to share wake-ups.
+- **Paginate unbounded collections** (default page size 20); detail endpoints use sub-resource endpoints (`/drawings/:id/versions`), never inline related collections.
+- **TanStack Query `refetchInterval` >= 120_000ms** unless justified — use `usePollingInterval()`. ESLint warns.
+- **Static reference endpoints** set `Cache-Control: public, max-age=31536000, immutable`.
+- **Legacy Postgres/TypeORM path** (dead in prod, still compiles): no `eager: true` (use explicit `relations: [...]`); no `synchronize: true`; schema changes via idempotent TypeORM migrations with dependency-ordered timestamps. For Mongo schema changes see "Mongo Migrations" above.
 
 ## App Versioning
 All apps follow semantic versioning (major.minor.patch):
@@ -349,30 +299,7 @@ All apps follow semantic versioning (major.minor.patch):
 When you change any user-facing Stock Control feature (new button, renamed field, new workflow), check `annix-frontend/src/app/stock-control/how-to/guides/*.md` for guides whose `relatedPaths` include the files you touched. Update the guide and bump `lastUpdated`. The pre-commit hook runs `scripts/howto-pre-commit-prompt.ts` and **blocks the commit** whenever a staged file matches any guide's `relatedPaths` — the prompt offers `edit` / `bump` / `skip` / `draft` (`draft` needs `GEMINI_API_KEY`). `skip` requires a one-line reason which is appended to the commit message as a `Howto-Skip:` trailer. To bypass entirely: `HOWTO_HOOK=skip git commit ...` (preferred) or `git commit --no-verify`.
 
 ### Automatic How To Creation (MANDATORY)
-**Every new user-facing feature MUST include a How To guide in the same commit.** Enhancements to existing features should update the relevant existing guide.
-
-Format:
-```markdown
----
-title: Feature Name
-slug: feature-slug
-category: Quality | Inventory | Workflow | etc.
-roles: [roles that can access this feature]
-order: N
-tags: [searchable, keywords]
-lastUpdated: YYYY-MM-DD
-summary: One-line description.
-readingMinutes: N
-relatedPaths: [paths this guide covers]
----
-
-## What is / How it works
-## Step-by-step instructions
-## Rules or constraints
-## Tips (optional)
-```
-
-Place in `annix-frontend/src/app/stock-control/how-to/guides/` with kebab-case filenames. The `relatedPaths` array connects the guide to the code for freshness checking — get it right.
+**Every new user-facing feature MUST include a How To guide in the same commit.** Enhancements to existing features should update the relevant existing guide. Place guides in `annix-frontend/src/app/stock-control/how-to/guides/` with kebab-case filenames; the `relatedPaths` frontmatter array connects the guide to the code for freshness checking — get it right. Frontmatter + section template: [`docs/frontend-conventions.md`](docs/frontend-conventions.md#stock-control-how-to-guide-format).
 
 ## Communication
 - Be concise and direct.
