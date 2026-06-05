@@ -40,6 +40,16 @@ async function lastIngestedFor(sourceId: number): Promise<string | null> {
   }
 }
 
+async function ingestErrorFor(sourceId: number): Promise<string | null> {
+  try {
+    const sources = await adminApiClient.orbitJobMarketSources();
+    const match = sources.find((source) => source.id === sourceId);
+    return match ? match.lastIngestionError : null;
+  } catch {
+    return null;
+  }
+}
+
 async function waitForBackgroundIngestion(sourceId: number): Promise<boolean> {
   // Capture the baseline from a fresh fetch (the React Query cache can be stale,
   // which would make the poll think the run already finished and flash closed).
@@ -236,6 +246,14 @@ export default function AdminOrbitJobMarketPage() {
         const delta = afterCount - baselineCount;
 
         if (completed) {
+          const ingestError = await ingestErrorFor(sourceId);
+          if (ingestError) {
+            setIngestionStatus((prev) => ({
+              ...prev,
+              [sourceId]: "Error: last run failed — see the details above.",
+            }));
+            return;
+          }
           const message =
             delta > 0
               ? `Done — ${delta} new job${delta === 1 ? "" : "s"} ingested. Re-run to fetch more.`
