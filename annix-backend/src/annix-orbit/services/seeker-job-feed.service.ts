@@ -1,6 +1,5 @@
 import {
   DEFAULT_MATCH_TIER,
-  isJobCategoryKey,
   isMatchTier,
   JOB_CATEGORIES,
   type MatchTier,
@@ -27,11 +26,15 @@ import {
   type OrbitTierFeatures,
 } from "../entities/orbit-tier-capability.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
+import { countMatchingRows, distinctPassing } from "../lib/facet-compute";
 import { citiesForProvince, SA_PROVINCES } from "../lib/sa-locations";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
-import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
+import {
+  CandidateJobMatchRepository,
+  type RecommendedFacetRow,
+} from "../repositories/candidate-job-match.repository";
 import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
@@ -57,6 +60,10 @@ const MAX_LOCKED_TEASERS = 3;
 // matches" count is the true total (counted in the DB, not loaded), so a seeker
 // sees the real number without us shipping thousands of populated job rows.
 const RECOMMENDED_DISPLAY_LIMIT = 100;
+// The facet rows for a candidate are filter-independent, so cache them briefly:
+// rapid filter changes then derive the count + every facet in memory with no
+// repeated database join. Invalidated whenever the candidate's matches change.
+const FACET_ROW_TTL_MS = 45_000;
 
 const NIX_SEARCH_METRIC_CATEGORY = "annix-orbit-nix-seeker";
 const NIX_SEARCH_METRIC_OPERATION = "job-search";
@@ -170,6 +177,23 @@ export interface SeekerEntitlementsResult {
 export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
   private readonly lastRematchByCandidate = new Map<number, number>();
+  private readonly facetRowCache = new Map<string, { rows: RecommendedFacetRow[]; at: number }>();
+
+  private async cachedFacetRows(candidateIds: number[]): Promise<RecommendedFacetRow[]> {
+    const key = [...candidateIds].sort((a, b) => a - b).join(",");
+    const cached = this.facetRowCache.get(key);
+    const now = nowMillis();
+    if (cached && now - cached.at < FACET_ROW_TTL_MS) {
+      return cached.rows;
+    }
+    const rows = await this.matchRepo.facetRowsForCandidates(candidateIds);
+    this.facetRowCache.set(key, { rows, at: now });
+    return rows;
+  }
+
+  private invalidateFacetCache(): void {
+    this.facetRowCache.clear();
+  }
 
   constructor(
     private readonly candidateRepo: CandidateRepository,
@@ -433,86 +457,51 @@ export class SeekerJobFeedService {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) return empty;
 
-    const rows = await this.matchRepo.facetRowsForCandidates(candidates.map((c) => c.id));
+    const rows = await this.cachedFacetRows(candidates.map((c) => c.id));
     if (rows.length === 0) return empty;
 
-    const sources = await this.sourceRepo.findManyWhere({
+    const sourceList = await this.sourceRepo.findManyWhere({
       companyId: null,
     } as Partial<JobMarketSource>);
-    const providerBySourceId = new Map(sources.map((s) => [s.id, s.provider]));
+    const providerBySourceId = new Map(sourceList.map((s) => [s.id, s.provider]));
 
-    const f = options.filters ?? {};
-    const provinceF = f.province ?? null;
-    const cityF = f.city ?? null;
-    const categoryF = f.category ?? null;
-    const providerF = f.provider && f.provider !== "all" ? f.provider : null;
-    const minSalaryF = f.minSalary != null && f.minSalary > 0 ? f.minSalary : null;
-    const searchF = f.search ? f.search.trim().toLowerCase() : null;
+    // Provider name -> source ids so the source dimension filters the same field
+    // the rows carry; every facet then excludes its own dimension.
+    const rf = (await this.resolveRepoFilters(options.filters ?? null)) ?? {};
 
-    const keywordOf = (r: (typeof rows)[number]) =>
-      `${r.title ?? ""} ${r.company ?? ""} ${r.locationArea ?? ""} ${r.locationRaw ?? ""}`.toLowerCase();
-    const bestSalary = (r: (typeof rows)[number]) =>
-      r.salaryMax != null ? r.salaryMax : r.salaryMin;
+    const provinceValues = distinctPassing(
+      rows,
+      rf,
+      new Set(["province", "city"]),
+      (r) => r.canonicalProvince,
+    );
+    const provinces = SA_PROVINCES.filter((p) => provinceValues.has(p));
 
-    const passes = (r: (typeof rows)[number], skip: Set<string>): boolean => {
-      if (!skip.has("province") && provinceF && r.canonicalProvince !== provinceF) return false;
-      if (!skip.has("city") && cityF && r.canonicalCity !== cityF) return false;
-      if (!skip.has("category") && categoryF && r.canonicalCategory !== categoryF) return false;
-      if (
-        !skip.has("source") &&
-        providerF &&
-        providerBySourceId.get(r.sourceId ?? -1) !== providerF
-      )
-        return false;
-      if (!skip.has("salary") && minSalaryF != null) {
-        const best = bestSalary(r);
-        if (best != null && best < minSalaryF) return false;
-      }
-      if (!skip.has("search") && searchF && !keywordOf(r).includes(searchF)) return false;
-      return true;
-    };
-
-    const provinceSkip = new Set(["province", "city"]);
-    const availableProvinces = new Set<string>();
-    rows.forEach((r) => {
-      if (r.canonicalProvince && passes(r, provinceSkip))
-        availableProvinces.add(r.canonicalProvince);
-    });
-    const provinces = SA_PROVINCES.filter((p) => availableProvinces.has(p));
-
-    const citySkip = new Set(["city"]);
-    const cityValues = new Set<string>();
-    if (f.province) {
-      rows.forEach((r) => {
-        if (r.canonicalCity && passes(r, citySkip)) cityValues.add(r.canonicalCity);
-      });
-    }
-    const orderedCities = citiesForProvince(f.province ?? null);
+    const cityValues = rf.province
+      ? distinctPassing(rows, rf, new Set(["city"]), (r) => r.canonicalCity)
+      : new Set<string>();
+    const orderedCities = citiesForProvince(rf.province ?? null);
     const cities = [
       ...orderedCities.filter((c) => cityValues.has(c)),
       ...[...cityValues].filter((c) => !orderedCities.includes(c)).sort(),
     ];
 
-    const categorySkip = new Set(["category"]);
-    const categoryKeys = new Set<string>();
-    rows.forEach((r) => {
-      if (r.canonicalCategory && isJobCategoryKey(r.canonicalCategory) && passes(r, categorySkip)) {
-        categoryKeys.add(r.canonicalCategory);
-      }
-    });
-    const categories = JOB_CATEGORIES.filter((c) => categoryKeys.has(c.key)).map((c) => ({
+    const categoryValues = distinctPassing(
+      rows,
+      rf,
+      new Set(["category"]),
+      (r) => r.canonicalCategory,
+    );
+    const categories = JOB_CATEGORIES.filter((c) => categoryValues.has(c.key)).map((c) => ({
       key: c.key,
       label: c.label,
     }));
 
-    const sourceSkip = new Set(["source"]);
-    const sourceProviders = new Set<string>();
-    rows.forEach((r) => {
-      const provider = r.sourceId != null ? providerBySourceId.get(r.sourceId) : null;
-      if (provider && passes(r, sourceSkip)) sourceProviders.add(provider);
-    });
+    const sourceValues = distinctPassing(rows, rf, new Set(["source"]), (r) =>
+      r.sourceId != null ? (providerBySourceId.get(r.sourceId) ?? null) : null,
+    );
 
-    return { provinces, cities, categories, sources: [...sourceProviders].sort() };
+    return { provinces, cities, categories, sources: [...sourceValues].sort() };
   }
 
   // Every active platform job source, so the seeker's "source" filter lists all
@@ -754,7 +743,8 @@ export class SeekerJobFeedService {
     const capTier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(capTier);
     const maxResults = capability ? capability.maxJobResults : null;
-    const rawTotal = await this.matchRepo.countRecommendedForCandidates(candidateIds, repoFilters);
+    const facetRows = await this.cachedFacetRows(candidateIds);
+    const rawTotal = countMatchingRows(facetRows, repoFilters ?? {});
     const total = maxResults == null ? rawTotal : Math.min(rawTotal, maxResults);
     const displayLimit =
       maxResults == null
@@ -961,6 +951,7 @@ export class SeekerJobFeedService {
     const matchesCleared = await this.matchRepo.deleteForCandidates(candidateIds);
 
     await this.candidateRepo.withdrawMatching(candidateIds);
+    this.invalidateFacetCache();
 
     candidateIds.forEach((id) => this.lastRematchByCandidate.delete(id));
 
@@ -1004,6 +995,7 @@ export class SeekerJobFeedService {
       return false;
     }
     await this.matchingService.dismissMatch(matchId, reason ?? null);
+    this.invalidateFacetCache();
 
     // Deterministic filter, driven by the admin-configured reason: a reason
     // with muteAction "company"/"category" mutes that job's company/category.
