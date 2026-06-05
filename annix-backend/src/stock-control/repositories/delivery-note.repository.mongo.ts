@@ -41,9 +41,17 @@ export class MongoDeliveryNoteRepository
     companyId: number,
     page: number,
     limit: number,
+    search?: string,
   ): Promise<DeliveryNote[]> {
+    const filter: Record<string, unknown> = { companyId };
+    const trimmed = (search ?? "").trim();
+    if (trimmed !== "") {
+      const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const rx = new RegExp(escaped, "i");
+      filter.$or = [{ deliveryNumber: rx }, { supplierName: rx }];
+    }
     const docs = await this.documents
-      .find({ companyId })
+      .find(filter)
       .populate({ path: "items", populate: { path: "stockItem" } })
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)

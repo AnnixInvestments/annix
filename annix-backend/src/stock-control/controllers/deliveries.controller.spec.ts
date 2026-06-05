@@ -69,7 +69,7 @@ describe("DeliveriesController", () => {
 
       const result = await controller.list(mockReq(), "3", "25");
 
-      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 3, 25);
+      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 3, 25, undefined);
       expect(result).toBe(expected);
     });
 
@@ -78,7 +78,7 @@ describe("DeliveriesController", () => {
 
       await controller.list(mockReq());
 
-      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 1, 50);
+      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 1, 50, undefined);
     });
 
     it("should clamp page minimum to 1", async () => {
@@ -86,7 +86,7 @@ describe("DeliveriesController", () => {
 
       await controller.list(mockReq(), "0");
 
-      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 1, 50);
+      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 1, 50, undefined);
     });
 
     it("should clamp limit maximum to 100", async () => {
@@ -94,7 +94,15 @@ describe("DeliveriesController", () => {
 
       await controller.list(mockReq(), "1", "999");
 
-      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 1, 100);
+      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 1, 100, undefined);
+    });
+
+    it("should forward the search term to deliveryService.findAll", async () => {
+      deliveryService.findAll.mockResolvedValue({ data: [] } as any);
+
+      await controller.list(mockReq(), "1", "50", "SDN-123");
+
+      expect(deliveryService.findAll).toHaveBeenCalledWith(1, 1, 50, "SDN-123");
     });
   });
 

@@ -38,12 +38,12 @@ export const stockControlKeys = {
   },
   invoices: {
     all: ["stock-control", "invoices"] as const,
-    list: () => [...stockControlKeys.invoices.all, "list"] as const,
+    list: (search?: string) => [...stockControlKeys.invoices.all, "list", search ?? ""] as const,
     detail: (id: number) => [...stockControlKeys.invoices.all, "detail", id] as const,
   },
   deliveries: {
     all: ["stock-control", "deliveries"] as const,
-    list: () => [...stockControlKeys.deliveries.all, "list"] as const,
+    list: (search?: string) => [...stockControlKeys.deliveries.all, "list", search ?? ""] as const,
     detail: (id: number) => [...stockControlKeys.deliveries.all, "detail", id] as const,
   },
   inboundEmails: {

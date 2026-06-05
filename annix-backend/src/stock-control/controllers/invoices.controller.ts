@@ -49,10 +49,15 @@ export class InvoicesController {
 
   @Get()
   @ApiOperation({ summary: "List all supplier invoices" })
-  async list(@Req() req: any, @Query("page") page?: string, @Query("limit") limit?: string) {
+  async list(
+    @Req() req: any,
+    @Query("page") page?: string,
+    @Query("limit") limit?: string,
+    @Query("search") search?: string,
+  ) {
     const pageNum = Math.max(1, Number(page) || 1);
     const limitNum = Math.min(100, Math.max(1, Number(limit) || 50));
-    return this.invoiceService.findAll(req.user.companyId, pageNum, limitNum);
+    return this.invoiceService.findAll(req.user.companyId, pageNum, limitNum, search);
   }
 
   @Get("unlinked")

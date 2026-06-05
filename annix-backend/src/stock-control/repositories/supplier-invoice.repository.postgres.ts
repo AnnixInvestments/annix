@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import {
+  ILike,
   In,
   IsNull,
   LessThan,
@@ -69,9 +70,18 @@ export class PostgresSupplierInvoiceRepository
     companyId: number,
     page: number,
     limit: number,
+    search?: string,
   ): Promise<SupplierInvoice[]> {
+    const trimmed = (search ?? "").trim();
+    const where =
+      trimmed === ""
+        ? { companyId }
+        : [
+            { companyId, invoiceNumber: ILike(`%${trimmed}%`) },
+            { companyId, supplierName: ILike(`%${trimmed}%`) },
+          ];
     return this.repository.find({
-      where: { companyId },
+      where,
       relations: ["deliveryNote"],
       order: { createdAt: "DESC" },
       take: limit,

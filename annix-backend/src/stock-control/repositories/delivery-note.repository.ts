@@ -26,6 +26,7 @@ export abstract class DeliveryNoteRepository extends CrudRepository<DeliveryNote
     companyId: number,
     page: number,
     limit: number,
+    search?: string,
   ): Promise<DeliveryNote[]>;
   abstract findAllForCompanyByReceivedDate(companyId: number): Promise<DeliveryNote[]>;
   abstract findAutoLinkCandidates(companyId: number): Promise<DeliveryNoteAutoLinkRow[]>;

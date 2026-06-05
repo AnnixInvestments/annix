@@ -12,7 +12,7 @@ import type {
 
 declare module "./base" {
   interface StockControlApiClient {
-    supplierInvoices(): Promise<SupplierInvoice[]>;
+    supplierInvoices(search?: string): Promise<SupplierInvoice[]>;
     supplierInvoiceById(id: number): Promise<SupplierInvoice>;
     createSupplierInvoice(dto: CreateInvoiceDto): Promise<SupplierInvoice>;
     uploadInvoiceScan(id: number, file: File): Promise<SupplierInvoice>;
@@ -69,8 +69,10 @@ declare module "./base" {
 
 const proto = StockControlApiClient.prototype;
 
-proto.supplierInvoices = async function () {
-  return this.request("/stock-control/invoices");
+proto.supplierInvoices = async function (search?: string) {
+  const trimmed = (search ?? "").trim();
+  const suffix = trimmed === "" ? "" : `?search=${encodeURIComponent(trimmed)}&limit=100`;
+  return this.request(`/stock-control/invoices${suffix}`);
 };
 
 proto.supplierInvoiceById = async function (id) {

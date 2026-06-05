@@ -110,14 +110,14 @@ export const useCreateInventoryLocation = createMutationHook(
   [stockControlKeys.inventory.locations()],
 );
 
-export const useInvoices = createArrayQueryHook<SupplierInvoice>(
-  () => stockControlKeys.invoices.list(),
-  () => stockControlApiClient.supplierInvoices(),
+export const useInvoices = createArrayQueryHook<SupplierInvoice, [string?]>(
+  (search?: string) => stockControlKeys.invoices.list(search),
+  (search?: string) => stockControlApiClient.supplierInvoices(search),
 );
 
-export const useDeliveryNotes = createArrayQueryHook<DeliveryNote>(
-  () => stockControlKeys.deliveries.list(),
-  () => stockControlApiClient.deliveryNotes(),
+export const useDeliveryNotes = createArrayQueryHook<DeliveryNote, [string?]>(
+  (search?: string) => stockControlKeys.deliveries.list(search),
+  (search?: string) => stockControlApiClient.deliveryNotes(search),
 );
 
 export const useDeleteInvoice = createMutationHook(

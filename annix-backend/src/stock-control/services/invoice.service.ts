@@ -83,6 +83,7 @@ export class InvoiceService {
     companyId: number,
     page: number = 1,
     limit: number = 50,
+    search?: string,
   ): Promise<SupplierInvoice[]> {
     await this.recoverStaleProcessingInvoices(companyId);
 
@@ -90,6 +91,7 @@ export class InvoiceService {
       companyId,
       page,
       limit,
+      search,
     );
 
     return Promise.all(invoices.map((inv) => this.resolveScanUrl(inv)));

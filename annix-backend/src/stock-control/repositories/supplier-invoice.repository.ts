@@ -30,6 +30,7 @@ export abstract class SupplierInvoiceRepository extends CrudRepository<SupplierI
     companyId: number,
     page: number,
     limit: number,
+    search?: string,
   ): Promise<SupplierInvoice[]>;
   abstract findStaleProcessingForCompany(
     companyId: number,

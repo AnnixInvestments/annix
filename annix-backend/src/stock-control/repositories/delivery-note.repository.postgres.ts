@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { IsNull, MoreThanOrEqual, Repository } from "typeorm";
+import { ILike, IsNull, MoreThanOrEqual, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import {
@@ -37,9 +37,22 @@ export class PostgresDeliveryNoteRepository
     });
   }
 
-  findPaginatedWithItems(companyId: number, page: number, limit: number): Promise<DeliveryNote[]> {
+  findPaginatedWithItems(
+    companyId: number,
+    page: number,
+    limit: number,
+    search?: string,
+  ): Promise<DeliveryNote[]> {
+    const trimmed = (search ?? "").trim();
+    const where =
+      trimmed === ""
+        ? { companyId }
+        : [
+            { companyId, deliveryNumber: ILike(`%${trimmed}%`) },
+            { companyId, supplierName: ILike(`%${trimmed}%`) },
+          ];
     return this.repository.find({
-      where: { companyId },
+      where,
       relations: ["items", "items.stockItem"],
       order: { createdAt: "DESC" },
       take: limit,

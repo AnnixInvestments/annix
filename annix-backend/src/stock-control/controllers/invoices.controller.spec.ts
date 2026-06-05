@@ -91,7 +91,7 @@ describe("InvoicesController", () => {
 
       const result = await controller.list(mockReq(), "2", "25");
 
-      expect(invoiceService.findAll).toHaveBeenCalledWith(1, 2, 25);
+      expect(invoiceService.findAll).toHaveBeenCalledWith(1, 2, 25, undefined);
       expect(result).toBe(expected);
     });
 
@@ -100,7 +100,7 @@ describe("InvoicesController", () => {
 
       await controller.list(mockReq());
 
-      expect(invoiceService.findAll).toHaveBeenCalledWith(1, 1, 50);
+      expect(invoiceService.findAll).toHaveBeenCalledWith(1, 1, 50, undefined);
     });
 
     it("should clamp page to minimum 1 and limit to max 100", async () => {
@@ -108,7 +108,15 @@ describe("InvoicesController", () => {
 
       await controller.list(mockReq(), "-5", "500");
 
-      expect(invoiceService.findAll).toHaveBeenCalledWith(1, 1, 100);
+      expect(invoiceService.findAll).toHaveBeenCalledWith(1, 1, 100, undefined);
+    });
+
+    it("should forward the search term to invoiceService.findAll", async () => {
+      invoiceService.findAll.mockResolvedValue({ data: [] } as any);
+
+      await controller.list(mockReq(), "1", "50", "INV-456");
+
+      expect(invoiceService.findAll).toHaveBeenCalledWith(1, 1, 50, "INV-456");
     });
   });
 

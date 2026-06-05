@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
@@ -70,7 +70,13 @@ interface DeliveryFormItem {
 export default function DeliveriesPage() {
   const { showToast } = useToast();
   const { showError } = useErrorModal();
-  const { data: deliveries = [], isLoading, error } = useDeliveryNotes();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+  const { data: deliveries = [], isLoading, error } = useDeliveryNotes(search || undefined);
   const createMutation = useCreateDeliveryNote();
   const deleteMutation = useDeleteDeliveryNote();
   const linkMutation = useLinkDeliveryNoteToStock();
@@ -288,7 +294,7 @@ export default function DeliveriesPage() {
     };
   };
 
-  if (isLoading && deliveries.length === 0) {
+  if (isLoading && deliveries.length === 0 && search === "") {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -396,6 +402,29 @@ export default function DeliveriesPage() {
         </div>
       </div>
 
+      <div className="relative">
+        <svg
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by delivery number or supplier..."
+          className="w-full sm:max-w-md rounded-md border-gray-300 pl-9 pr-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
+        />
+      </div>
+
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         {deliveries.length === 0 ? (
           <div className="text-center py-12">
@@ -412,8 +441,14 @@ export default function DeliveriesPage() {
                 d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"
               />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No delivery notes</h3>
-            <p className="mt-1 text-sm text-gray-500">Record a new delivery to get started.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {search === "" ? "No delivery notes" : "No matching delivery notes"}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {search === ""
+                ? "Record a new delivery to get started."
+                : "Try a different delivery number or supplier name."}
+            </p>
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">

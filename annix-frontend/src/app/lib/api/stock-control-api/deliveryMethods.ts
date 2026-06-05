@@ -10,7 +10,7 @@ import type {
 
 declare module "./base" {
   interface StockControlApiClient {
-    deliveryNotes(): Promise<DeliveryNote[]>;
+    deliveryNotes(search?: string): Promise<DeliveryNote[]>;
     deliveryNoteById(id: number): Promise<DeliveryNote>;
     createDeliveryNote(data: {
       deliveryNumber: string;
@@ -79,8 +79,10 @@ declare module "./base" {
 
 const proto = StockControlApiClient.prototype;
 
-proto.deliveryNotes = async function () {
-  return this.request("/stock-control/deliveries");
+proto.deliveryNotes = async function (search?: string) {
+  const trimmed = (search ?? "").trim();
+  const suffix = trimmed === "" ? "" : `?search=${encodeURIComponent(trimmed)}&limit=100`;
+  return this.request(`/stock-control/deliveries${suffix}`);
 };
 
 proto.deliveryNoteById = async function (id) {

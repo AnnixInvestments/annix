@@ -150,8 +150,18 @@ export class DeliveryService {
     });
   }
 
-  async findAll(companyId: number, page: number = 1, limit: number = 50): Promise<DeliveryNote[]> {
-    const notes = await this.deliveryNoteRepo.findPaginatedWithItems(companyId, page, limit);
+  async findAll(
+    companyId: number,
+    page: number = 1,
+    limit: number = 50,
+    search?: string,
+  ): Promise<DeliveryNote[]> {
+    const notes = await this.deliveryNoteRepo.findPaginatedWithItems(
+      companyId,
+      page,
+      limit,
+      search,
+    );
 
     return Promise.all(notes.map((note) => this.addPresignedUrl(note)));
   }

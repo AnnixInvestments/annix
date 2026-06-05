@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
 import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
@@ -55,7 +55,13 @@ export default function InvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
   const { effectiveRole } = useViewAs();
-  const { data: invoices = [], isLoading, error } = useInvoices();
+  const [searchInput, setSearchInput] = useState("");
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const handle = setTimeout(() => setSearch(searchInput.trim()), 300);
+    return () => clearTimeout(handle);
+  }, [searchInput]);
+  const { data: invoices = [], isLoading, error } = useInvoices(search || undefined);
   const { data: deliveryNotes = [] } = useDeliveryNotes();
   const deleteInvoiceMutation = useDeleteInvoice();
   const invalidateInvoices = useInvalidateInvoices();
@@ -186,7 +192,7 @@ export default function InvoicesPage() {
     }
   };
 
-  if (isLoading && invoices.length === 0) {
+  if (isLoading && invoices.length === 0 && search === "") {
     return (
       <div className="flex items-center justify-center min-h-96">
         <div className="text-center">
@@ -380,6 +386,29 @@ export default function InvoicesPage() {
         </div>
       </div>
 
+      <div className="relative">
+        <svg
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+        <input
+          type="text"
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          placeholder="Search by invoice number or supplier..."
+          className="w-full sm:max-w-md rounded-md border-gray-300 pl-9 pr-3 py-2 shadow-sm focus:border-teal-500 focus:ring-teal-500 text-sm"
+        />
+      </div>
+
       <div className="bg-white shadow rounded-lg overflow-x-auto">
         {invoices.length === 0 ? (
           <div className="text-center py-12">
@@ -396,8 +425,14 @@ export default function InvoicesPage() {
                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
               />
             </svg>
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No invoices</h3>
-            <p className="mt-1 text-sm text-gray-500">Upload an invoice to get started.</p>
+            <h3 className="mt-2 text-sm font-medium text-gray-900">
+              {search === "" ? "No invoices" : "No matching invoices"}
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              {search === ""
+                ? "Upload an invoice to get started."
+                : "Try a different invoice number or supplier name."}
+            </p>
           </div>
         ) : (
           <table className="min-w-full divide-y divide-gray-200">
