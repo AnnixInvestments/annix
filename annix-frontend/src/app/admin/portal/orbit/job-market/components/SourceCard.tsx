@@ -250,7 +250,7 @@ export function SourceCard({
               onClick={handleSave}
               disabled={saving}
               className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-50"
-              style={{ backgroundColor: "var(--brand-navbar)" }}
+              style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
             >
               {saving ? "Saving…" : "Save"}
             </button>

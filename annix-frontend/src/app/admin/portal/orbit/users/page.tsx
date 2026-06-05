@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
@@ -212,6 +213,12 @@ export default function OrbitUsersPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
+          <Link
+            href="/admin/portal/orbit"
+            className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
+          >
+            ← Orbit admin hub
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Orbit users</h1>
           <p className="mt-1 text-sm text-gray-600">
             Invite, configure and remove Annix Orbit accounts — job seekers, recruiters, employers
