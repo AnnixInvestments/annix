@@ -19,7 +19,9 @@ import {
   hasOverlap,
   isWithinBounds,
   panelsFromParsedItems,
+  panelsFromTankPlateBom,
   serializeToManualRolls,
+  type TankPanelSource,
 } from "./jigsawLayout";
 import {
   effectiveLength,
@@ -50,14 +52,20 @@ function unplacePanel(panel: PlacedPanel): JigsawPanel {
 
 export function JigsawEditor(props: {
   parsedItems: ParsedPipeItem[];
+  tankSources?: TankPanelSource[];
   rubberSpec: RubberSpec | null | undefined;
   existingManualRolls: RubberPlanManualRoll[];
   onSave: (rolls: RubberPlanManualRoll[], overrides: RubberDimensionOverride[]) => void;
   saving: boolean;
 }) {
-  const { parsedItems, rubberSpec, existingManualRolls, onSave, saving } = props;
+  const { parsedItems, tankSources, rubberSpec, existingManualRolls, onSave, saving } = props;
 
-  const allPanels = useMemo(() => panelsFromParsedItems(parsedItems), [parsedItems]);
+  // Pipe lining panels + fabricated-tank plate panels (developed flat shapes
+  // from the Forge plateBom) feed the same nester.
+  const allPanels = useMemo(
+    () => [...panelsFromParsedItems(parsedItems), ...panelsFromTankPlateBom(tankSources ?? [])],
+    [parsedItems, tankSources],
+  );
 
   const defaultRollWidthMm = useMemo(() => {
     const widest = allPanels.reduce((max, p) => Math.max(max, Math.min(p.widthMm, p.lengthMm)), 0);

@@ -5,6 +5,11 @@ export interface PanelDimensionContext {
   lengthMm: number;
   flangeConfig: string | null;
   itemType: string | null;
+  // Internal rubber-lining thickness (mm) for this piece. Tank/chute plates
+  // can have mixed thicknesses across one assembly, so each piece carries its
+  // own value to nest onto the correct-thickness roll. Null for pipe panels
+  // (their thickness is implied by roll selection).
+  liningThicknessMm?: number | null;
 }
 
 export interface JigsawPanel {
