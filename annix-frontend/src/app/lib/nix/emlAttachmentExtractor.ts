@@ -298,11 +298,51 @@ function parseMimePart(part: string): ParsedPart | null {
 }
 
 function pickFileName(part: string): string | null {
-  const dispositionMatch = part.match(/filename\s*=\s*"?([^"\r\n;]+)"?/i);
-  if (dispositionMatch) return dispositionMatch[1].trim();
-  const nameMatch = part.match(/name\s*=\s*"?([^"\r\n;]+)"?/i);
-  if (nameMatch) return nameMatch[1].trim();
+  // Operate on the UNFOLDED header section. RFC 2822 lets a long
+  // Content-Disposition / Content-Type wrap a quoted filename across lines
+  // ("…ITP CYCLONE\n DISTRIBUTOR_Coating_B1_.pdf"); matching the raw part
+  // with a [^"\r\n] class truncates the name at the fold and drops the
+  // extension, so the backend rejects the file as an unknown type.
+  const headerEnd = locateHeaderEnd(part);
+  const headerSection = headerEnd > 0 ? part.substring(0, headerEnd) : part;
+  const headers = unfoldHeaders(headerSection);
+
+  // RFC 2231 parameter continuation: filename*0=, filename*1=, … (the *0
+  // segment may carry a charset'lang' prefix + percent-encoding). Each
+  // segment sits on its own folded line, so match the RAW header section
+  // (where the newlines still delimit segments) rather than the unfolded
+  // text (which would merge them into one greedy match), then concatenate
+  // in index order.
+  const continuation = [
+    ...headerSection.matchAll(
+      /\b(?:file)?name\*(\d+)(\*?)\s*=\s*"?([^";\r\n]*?)"?\s*(?:;|\r?\n|$)/gi,
+    ),
+  ];
+  if (continuation.length > 0) {
+    const ordered = continuation
+      .sort((a, b) => Number(a[1]) - Number(b[1]))
+      .map((m) => (m[2] === "*" ? decodeRfc2231ExtValue(m[3]) : m[3]))
+      .join("")
+      .trim();
+    if (ordered) return decodeRfc2047(ordered);
+  }
+
+  const dispositionMatch = headers.match(/\bfilename\s*=\s*"?([^";\r\n]+?)"?\s*(?:;|$)/i);
+  if (dispositionMatch) return decodeRfc2047(dispositionMatch[1].trim());
+  const nameMatch = headers.match(/\bname\s*=\s*"?([^";\r\n]+?)"?\s*(?:;|$)/i);
+  if (nameMatch) return decodeRfc2047(nameMatch[1].trim());
   return null;
+}
+
+function decodeRfc2231ExtValue(value: string): string {
+  // filename*0*=UTF-8''%E2%80%A6 — strip the optional charset'lang' prefix
+  // (only present on the first segment) and percent-decode the rest.
+  const withoutCharset = value.replace(/^[\w-]*'[\w-]*'/, "");
+  try {
+    return decodeURIComponent(withoutCharset);
+  } catch {
+    return withoutCharset;
+  }
 }
 
 function resolveMimeType(declared: string, fileName: string): string {
