@@ -770,6 +770,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                       const rawQuantity5 = row.quantity;
                       const rawWeightKg = row.weightKg;
                       const rawAreaM2 = row.areaM2;
+                      const rawLiningThicknessMm = row.liningThicknessMm;
 
                       return {
                         mark: rawMark || "",
@@ -780,6 +781,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                         quantity: rawQuantity5 || 1,
                         weightKg: rawWeightKg || 0,
                         areaM2: rawAreaM2 || 0,
+                        liningThicknessMm: rawLiningThicknessMm || 0,
                       };
                     })
                   : undefined,

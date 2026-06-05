@@ -158,6 +158,9 @@ export class GeminiProvider implements AiProvider {
                       quantity: row.quantity ? Number(row.quantity) : 1,
                       weightKg: row.weightKg ? Number(row.weightKg) : null,
                       areaM2: row.areaM2 ? Number(row.areaM2) : null,
+                      liningThicknessMm: row.liningThicknessMm
+                        ? Number(row.liningThicknessMm)
+                        : null,
                     }))
                   : null,
               }

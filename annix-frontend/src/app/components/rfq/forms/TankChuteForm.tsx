@@ -65,6 +65,7 @@ const EMPTY_BOM_ROW: PlateBomItem = {
   quantity: 1,
   weightKg: 0,
   areaM2: 0,
+  liningThicknessMm: 0,
 };
 
 function calculatePlateWeight(item: PlateBomItem): number {
