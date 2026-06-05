@@ -34,6 +34,9 @@ export default function SeekerPlansPage() {
   const status = statusQuery.data;
   const inOnboarding = status ? status.onboardingComplete === false : false;
   const completeOnboarding = useOrbitCompleteOnboarding();
+  const finishPalette = inOnboarding
+    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+    : "bg-violet-600 text-white hover:bg-violet-700";
 
   const handleContinue = async () => {
     await completeOnboarding.mutateAsync().catch(() => {});
@@ -89,7 +92,7 @@ export default function SeekerPlansPage() {
           type="button"
           onClick={handleContinue}
           disabled={completeOnboarding.isPending}
-          className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700 disabled:opacity-60"
+          className={`inline-flex items-center gap-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${finishPalette}`}
         >
           {inOnboarding ? "Finish setup — go to dashboard →" : "Continue to your dashboard →"}
         </button>
