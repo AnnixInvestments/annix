@@ -20,6 +20,8 @@ import {
   VettingUpdate,
 } from "./external-job.repository";
 
+const EXTERNAL_JOB_RETENTION_CAP = 3000;
+
 @Injectable()
 export class MongoExternalJobRepository
   extends MongoCrudRepository<ExternalJob>
@@ -593,7 +595,7 @@ export class MongoExternalJobRepository
   async expireStaleJobs(): Promise<number> {
     const now = new Date();
     const staleCutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
-    const result = await this.documents
+    await this.documents
       .updateMany(
         {
           $or: [{ expiresAt: null }, { expiresAt: { $gt: now } }],
@@ -602,7 +604,28 @@ export class MongoExternalJobRepository
         { $set: { expiresAt: now } },
       )
       .exec();
-    return result.modifiedCount ?? 0;
+
+    const deletedExpired = await this.documents
+      .deleteMany({ expiresAt: { $ne: null, $lte: now } })
+      .exec();
+
+    const trimmed = await this.trimToNewest(EXTERNAL_JOB_RETENTION_CAP);
+
+    return (deletedExpired.deletedCount ?? 0) + trimmed;
+  }
+
+  private async trimToNewest(cap: number): Promise<number> {
+    const total = await this.documents.countDocuments({});
+    if (total <= cap) return 0;
+    const keep = await this.documents
+      .find({}, { projection: { _id: 1 } })
+      .sort({ _id: -1 })
+      .limit(cap)
+      .lean()
+      .exec();
+    const keepIds = keep.map((doc) => doc._id);
+    const result = await this.documents.deleteMany({ _id: { $nin: keepIds } }).exec();
+    return result.deletedCount ?? 0;
   }
 
   async reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void> {

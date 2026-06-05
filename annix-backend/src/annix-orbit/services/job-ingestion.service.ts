@@ -37,11 +37,11 @@ import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const ADZUNA_PAGE_SIZE = 50;
-const ADZUNA_PAGES_PER_CATEGORY = 4;
-const ADZUNA_CATEGORIES_PER_DAY = 29;
-const ADZUNA_MAX_DAYS_OLD = 45;
+const ADZUNA_PAGES_PER_CATEGORY = 1;
+const ADZUNA_CATEGORIES_PER_DAY = 4;
+const ADZUNA_MAX_DAYS_OLD = 7;
 const UPSERT_BATCH_SIZE = 50;
-const CRAWL_MAX_PAGES_PER_RUN = 150;
+const CRAWL_MAX_PAGES_PER_RUN = 30;
 const ADZUNA_ZA_CATEGORIES = [
   "accounting-finance-jobs",
   "it-jobs",
@@ -106,7 +106,7 @@ export class JobIngestionService {
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
+  @Cron(CronExpression.EVERY_6_HOURS, { name: "annix-orbit:poll-job-sources" })
   async pollSources(): Promise<void> {
     if (!isAnnixOrbitCronEnabled()) return;
     if (this.pollInFlight) {
