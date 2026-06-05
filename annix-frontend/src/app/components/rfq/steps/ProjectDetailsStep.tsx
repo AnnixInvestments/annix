@@ -1381,6 +1381,23 @@ export default function ProjectDetailsStep() {
   const locationSkipped = Boolean(rawLocationNotKnown || rawCollectionOnly);
   const skipEnvSuggestions = Boolean(rawSkipEnvSuggestions) || locationSkipped;
 
+  // One-line summary shown beside the "Location Confirmed" banner once the
+  // detail fields collapse, so the customer can see what's confirmed without
+  // re-opening the section.
+  const rawSiteAddressSummary = rfqData.siteAddress;
+  const rawRegionSummary = rfqData.region;
+  const rawCountrySummary = rfqData.country;
+  const rawLatSummary = rfqData.latitude;
+  const rawLngSummary = rfqData.longitude;
+  const regionCountrySummary = [rawRegionSummary, rawCountrySummary].filter(Boolean).join(", ");
+  const coordSummary = rawLatSummary && rawLngSummary ? `${rawLatSummary}, ${rawLngSummary}` : "";
+  const knownLocationSummary = rawSiteAddressSummary || regionCountrySummary || coordSummary;
+  const locationSummary = rawLocationNotKnown
+    ? "Location not known"
+    : rawCollectionOnly
+      ? "Collection only — no delivery site"
+      : knownLocationSummary;
+
   // "Location not known" / "Collection only" toggle. Checking either disables
   // the address fields and switches the location-driven surface-protection
   // suggestion module off for this RFQ — so the customer is warned about the
@@ -2654,6 +2671,11 @@ export default function ProjectDetailsStep() {
                   </svg>
                   Location Confirmed
                 </div>
+                {locationSummary && (
+                  <span className="text-sm text-gray-600 dark:text-gray-400 truncate max-w-md">
+                    {locationSummary}
+                  </span>
+                )}
                 {!isEditingLocation ? (
                   <button
                     type="button"
