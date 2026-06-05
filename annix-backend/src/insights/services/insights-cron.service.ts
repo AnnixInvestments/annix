@@ -1,6 +1,7 @@
 import { Injectable, Logger, type OnApplicationBootstrap } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
 import { now } from "../../lib/datetime";
+import { isInsightsCronEnabled } from "../insights-cron.config";
 import { PaperPortfolioSnapshotRepository } from "../repositories/paper-portfolio-snapshot.repository";
 import { BenchmarkExecutionService } from "./benchmark-execution.service";
 import { MacroSentimentService } from "./macro-sentiment.service";
@@ -42,6 +43,9 @@ export class InsightsCronService implements OnApplicationBootstrap {
   ) {}
 
   async onApplicationBootstrap(): Promise<void> {
+    if (!isInsightsCronEnabled()) {
+      return;
+    }
     const today = now().toISODate();
     if (!today) {
       return;
@@ -94,6 +98,9 @@ export class InsightsCronService implements OnApplicationBootstrap {
     timeZone: "Africa/Johannesburg",
   })
   async runDailySnapshot(): Promise<void> {
+    if (!isInsightsCronEnabled()) {
+      return;
+    }
     await this.runSnapshotPipeline("06:00 SAST cron");
   }
 
@@ -102,6 +109,9 @@ export class InsightsCronService implements OnApplicationBootstrap {
     timeZone: "Africa/Johannesburg",
   })
   async runEveningSnapshot(): Promise<void> {
+    if (!isInsightsCronEnabled()) {
+      return;
+    }
     await this.runSnapshotPipeline("18:00 SAST cron");
   }
 
