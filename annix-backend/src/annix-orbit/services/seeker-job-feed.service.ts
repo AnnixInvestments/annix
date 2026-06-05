@@ -204,7 +204,8 @@ export class SeekerJobFeedService {
     resetsAt: string;
   }> {
     const resetsAt = DateTime.now().endOf("month").toISO() ?? "";
-    const tier = this.effectiveTier(candidates);
+    const selectedTier = await this.selectedTierForEmail(email);
+    const tier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     const allowance = capability ? capability.monthlyNixRuns : null;
     if (allowance == null) {

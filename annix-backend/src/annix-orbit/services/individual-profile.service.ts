@@ -1,3 +1,4 @@
+import { isMatchTier } from "@annix/product-data/sa-market";
 import {
   BadRequestException,
   ForbiddenException,
@@ -175,6 +176,9 @@ export class IndividualProfileService {
       profile.extractedCvData.candidateName ?? (fullName.length > 0 ? fullName : null);
     candidate.rawCvText = profile.rawCvText;
     candidate.extractedData = profile.extractedCvData;
+    if (profile.selectedTier && isMatchTier(profile.selectedTier)) {
+      candidate.matchTier = profile.selectedTier;
+    }
     const saved = await this.candidateRepo.save(candidate);
 
     if (profile.eeDisclosure) {
