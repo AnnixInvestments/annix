@@ -21,6 +21,8 @@ const VALID_SLOTS: BrandingAssetSlot[] = [
   "heroImage",
   "loginCard",
   "pageBackground",
+  "heroTop",
+  "heroBottom",
 ];
 
 @ApiTags("Public Branding")

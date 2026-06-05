@@ -27,7 +27,9 @@ export type BrandingAssetSlot =
   | "flashLine"
   | "heroImage"
   | "loginCard"
-  | "pageBackground";
+  | "pageBackground"
+  | "heroTop"
+  | "heroBottom";
 
 export type BrandingAssetVariant = "light" | "dark";
 
@@ -89,6 +91,8 @@ const SLOT_COLUMN: Record<
   heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
   loginCard: { light: "loginCardPath", dark: "loginCardPathDark" },
   pageBackground: { light: "pageBackgroundPath", dark: "pageBackgroundPathDark" },
+  heroTop: { light: "heroTopPath", dark: "heroTopPathDark" },
+  heroBottom: { light: "heroBottomPath", dark: "heroBottomPathDark" },
 };
 
 const ASSET_SLOTS: BrandingAssetSlot[] = [
@@ -103,6 +107,8 @@ const ASSET_SLOTS: BrandingAssetSlot[] = [
   "heroImage",
   "loginCard",
   "pageBackground",
+  "heroTop",
+  "heroBottom",
 ];
 
 const PATH_COLUMNS: (keyof AppBranding)[] = ASSET_SLOTS.flatMap((slot) => [
@@ -150,14 +156,14 @@ export class AppBrandingService {
       brandCode: code,
       navbarColor: "#323288",
       navbarColorLight: "#F2F4F7",
-      backgroundLight: "#F8FAFC",
-      backgroundDark: "#0F172A",
+      backgroundLight: "#0a1733",
+      backgroundDark: "#0a1733",
       accentOrange: "#FF8A00",
       accentOrangeLight: "#FF9C33",
       accentOrangeDark: "#CC6900",
-      gradientFrom: "#1a1a40",
-      gradientVia: "#0d0d20",
-      gradientTo: "#1a1a40",
+      gradientFrom: "#0b1b3a",
+      gradientVia: "#0a1733",
+      gradientTo: "#070f24",
       tagline: "",
       description: "",
       heroWords: "",
@@ -186,6 +192,10 @@ export class AppBrandingService {
       loginCardPathDark: null,
       pageBackgroundPath: null,
       pageBackgroundPathDark: null,
+      heroTopPath: null,
+      heroTopPathDark: null,
+      heroBottomPath: null,
+      heroBottomPathDark: null,
       watermarkEnabled: true,
       watermarkOpacity: 0.1,
       watermarkMaxSizePx: 880,

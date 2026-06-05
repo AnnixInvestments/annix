@@ -58,7 +58,13 @@ export const GLOBAL_LOCKED_SCALAR_FIELDS = [
   "gradientTo",
 ] as const;
 
-export const GLOBAL_LOCKED_ASSET_SLOTS = ["logoIcon", "wordmark", "pageBackground"] as const;
+export const GLOBAL_LOCKED_ASSET_SLOTS = [
+  "logoIcon",
+  "wordmark",
+  "pageBackground",
+  "heroTop",
+  "heroBottom",
+] as const;
 
 export const GLOBAL_LOCK_EXEMPT_BRANDS: readonly string[] = ["annix-sentinel"];
 
@@ -92,14 +98,14 @@ export interface PlatformBrandingScalars {
 export const PLATFORM_BRANDING_DEFAULTS: PlatformBrandingScalars = {
   navbarColor: "#323288",
   navbarColorLight: "#F2F4F7",
-  backgroundLight: "#F8FAFC",
-  backgroundDark: "#0F172A",
+  backgroundLight: "#0a1733",
+  backgroundDark: "#0a1733",
   accentOrange: "#FF8A00",
   accentOrangeLight: "#FF9C33",
   accentOrangeDark: "#CC6900",
-  gradientFrom: "#1a1a40",
-  gradientVia: "#0d0d20",
-  gradientTo: "#1a1a40",
+  gradientFrom: "#0b1b3a",
+  gradientVia: "#0a1733",
+  gradientTo: "#070f24",
   tagline: "",
   description: "",
   heroWords: "",

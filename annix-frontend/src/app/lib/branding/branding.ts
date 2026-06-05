@@ -9,7 +9,9 @@ export type BrandingAssetSlot =
   | "flashLine"
   | "heroImage"
   | "loginCard"
-  | "pageBackground";
+  | "pageBackground"
+  | "heroTop"
+  | "heroBottom";
 
 export type BrandingAssetVariant = "light" | "dark";
 
@@ -135,6 +137,10 @@ export interface BrandingUpdate {
   loginCardPathDark?: string | null;
   pageBackgroundPath?: string | null;
   pageBackgroundPathDark?: string | null;
+  heroTopPath?: string | null;
+  heroTopPathDark?: string | null;
+  heroBottomPath?: string | null;
+  heroBottomPathDark?: string | null;
   logoIconPathDark?: string | null;
   logoLockupPathDark?: string | null;
   wordmarkPathDark?: string | null;
@@ -195,6 +201,8 @@ function emptyAssetPresence(): Record<BrandingAssetSlot, boolean> {
     heroImage: false,
     loginCard: false,
     pageBackground: false,
+    heroTop: false,
+    heroBottom: false,
   };
 }
 
@@ -203,14 +211,14 @@ export function brandingFallback(brandCode: string): Branding {
     brandCode,
     navbarColor: "#323288",
     navbarColorLight: "#F2F4F7",
-    backgroundLight: "#F8FAFC",
-    backgroundDark: "#0F172A",
+    backgroundLight: "#0a1733",
+    backgroundDark: "#0a1733",
     accentOrange: "#FF8A00",
     accentOrangeLight: "#FF9C33",
     accentOrangeDark: "#CC6900",
-    gradientFrom: "#1a1a40",
-    gradientVia: "#0d0d20",
-    gradientTo: "#1a1a40",
+    gradientFrom: "#0b1b3a",
+    gradientVia: "#0a1733",
+    gradientTo: "#070f24",
     tagline: "",
     description: "",
     heroWords: "",

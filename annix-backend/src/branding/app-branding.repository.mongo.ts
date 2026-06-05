@@ -46,6 +46,10 @@ type AppBrandingDocument = {
   loginCardPathDark?: string | null;
   pageBackgroundPath?: string | null;
   pageBackgroundPathDark?: string | null;
+  heroTopPath?: string | null;
+  heroTopPathDark?: string | null;
+  heroBottomPath?: string | null;
+  heroBottomPathDark?: string | null;
   watermarkEnabled?: boolean;
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
@@ -88,14 +92,14 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       brandCode: document._id,
       navbarColor: document.navbarColor ?? "#323288",
       navbarColorLight: document.navbarColorLight ?? "#F2F4F7",
-      backgroundLight: document.backgroundLight ?? "#F8FAFC",
-      backgroundDark: document.backgroundDark ?? "#0F172A",
+      backgroundLight: document.backgroundLight ?? "#0a1733",
+      backgroundDark: document.backgroundDark ?? "#0a1733",
       accentOrange: document.accentOrange ?? "#FF8A00",
       accentOrangeLight: document.accentOrangeLight ?? "#FF9C33",
       accentOrangeDark: document.accentOrangeDark ?? "#CC6900",
-      gradientFrom: document.gradientFrom ?? "#1a1a40",
-      gradientVia: document.gradientVia ?? "#0d0d20",
-      gradientTo: document.gradientTo ?? "#1a1a40",
+      gradientFrom: document.gradientFrom ?? "#0b1b3a",
+      gradientVia: document.gradientVia ?? "#0a1733",
+      gradientTo: document.gradientTo ?? "#070f24",
       tagline: document.tagline ?? "",
       description: document.description ?? "",
       heroWords: document.heroWords ?? "",
@@ -124,6 +128,10 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       loginCardPathDark: document.loginCardPathDark ?? null,
       pageBackgroundPath: document.pageBackgroundPath ?? null,
       pageBackgroundPathDark: document.pageBackgroundPathDark ?? null,
+      heroTopPath: document.heroTopPath ?? null,
+      heroTopPathDark: document.heroTopPathDark ?? null,
+      heroBottomPath: document.heroBottomPath ?? null,
+      heroBottomPathDark: document.heroBottomPathDark ?? null,
       watermarkEnabled: document.watermarkEnabled ?? true,
       watermarkOpacity: document.watermarkOpacity ?? 0.1,
       watermarkMaxSizePx: document.watermarkMaxSizePx ?? 880,
@@ -190,6 +198,10 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       loginCardPathDark: branding.loginCardPathDark,
       pageBackgroundPath: branding.pageBackgroundPath,
       pageBackgroundPathDark: branding.pageBackgroundPathDark,
+      heroTopPath: branding.heroTopPath,
+      heroTopPathDark: branding.heroTopPathDark,
+      heroBottomPath: branding.heroBottomPath,
+      heroBottomPathDark: branding.heroBottomPathDark,
       watermarkEnabled: branding.watermarkEnabled,
       watermarkOpacity: branding.watermarkOpacity,
       watermarkMaxSizePx: branding.watermarkMaxSizePx,

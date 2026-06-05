@@ -140,11 +140,25 @@ const PAGE_BACKGROUND_FIELD: AssetFieldDef = {
   hint: "Full-screen hero picture behind every page; the Main background colour shows underneath.",
 };
 
+const HERO_TOP_FIELD: AssetFieldDef = {
+  key: "heroTop",
+  label: "Top hero image",
+  hint: "Picture pinned to the top of every page, like the marketing home hero.",
+};
+
+const HERO_BOTTOM_FIELD: AssetFieldDef = {
+  key: "heroBottom",
+  label: "Bottom hero image",
+  hint: "Picture pinned to the bottom of every page, like the marketing home footer band.",
+};
+
 const ALL_FIELDS: AssetFieldDef[] = [
   ...LAYER_FIELDS,
   HERO_IMAGE_FIELD,
   LOGIN_CARD_FIELD,
   PAGE_BACKGROUND_FIELD,
+  HERO_TOP_FIELD,
+  HERO_BOTTOM_FIELD,
 ];
 
 const SLOT_TO_FIELD: Record<
@@ -162,6 +176,8 @@ const SLOT_TO_FIELD: Record<
   heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
   loginCard: { light: "loginCardPath", dark: "loginCardPathDark" },
   pageBackground: { light: "pageBackgroundPath", dark: "pageBackgroundPathDark" },
+  heroTop: { light: "heroTopPath", dark: "heroTopPathDark" },
+  heroBottom: { light: "heroBottomPath", dark: "heroBottomPathDark" },
 };
 
 const ASSET_SLOTS: BrandingAssetSlot[] = [
@@ -176,6 +192,8 @@ const ASSET_SLOTS: BrandingAssetSlot[] = [
   "heroImage",
   "loginCard",
   "pageBackground",
+  "heroTop",
+  "heroBottom",
 ];
 
 const MASTER_LABEL = "Annix Investments";
@@ -631,6 +649,63 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                 lightInheriting={slotInheriting("pageBackground", "light")}
                 darkInheriting={slotInheriting("pageBackground", "dark")}
                 onFile={(variant, file) => handleUpload("pageBackground", variant, file)}
+              />
+            )}
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Top hero image</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              A picture pinned to the top of every page (Light and Dark variants), fading down into
+              the Main background colour — like the marketing home hero. Globally locked — set here
+              on {MASTER_LABEL} and every app inherits it unless it scraps to its own branding.
+            </p>
+            {brandHasAsset("heroTop", adminView.effective, "light") ||
+            brandHasAsset("heroTop", adminView.effective, "dark") ? (
+              <div
+                className="mb-3 h-40 w-full rounded-xl border border-gray-200 bg-gray-900 bg-cover bg-top bg-no-repeat"
+                style={{ backgroundImage: `url('${assetPreview.heroTop[previewTheme]}')` }}
+              />
+            ) : null}
+            {lockedSlots.has("heroTop") ? (
+              <LockedAssetRow field={HERO_TOP_FIELD} previews={assetPreview.heroTop} />
+            ) : (
+              <LayeredAssetRow
+                field={HERO_TOP_FIELD}
+                previews={assetPreview.heroTop}
+                uploadingKey={uploadingKey}
+                lightInheriting={slotInheriting("heroTop", "light")}
+                darkInheriting={slotInheriting("heroTop", "dark")}
+                onFile={(variant, file) => handleUpload("heroTop", variant, file)}
+              />
+            )}
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Bottom hero image</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              A picture pinned to the bottom of every page (Light and Dark variants), fading up into
+              the Main background colour — like the marketing home footer band. Globally locked —
+              set here on {MASTER_LABEL} and every app inherits it unless it scraps to its own
+              branding.
+            </p>
+            {brandHasAsset("heroBottom", adminView.effective, "light") ||
+            brandHasAsset("heroBottom", adminView.effective, "dark") ? (
+              <div
+                className="mb-3 h-40 w-full rounded-xl border border-gray-200 bg-gray-900 bg-cover bg-bottom bg-no-repeat"
+                style={{ backgroundImage: `url('${assetPreview.heroBottom[previewTheme]}')` }}
+              />
+            ) : null}
+            {lockedSlots.has("heroBottom") ? (
+              <LockedAssetRow field={HERO_BOTTOM_FIELD} previews={assetPreview.heroBottom} />
+            ) : (
+              <LayeredAssetRow
+                field={HERO_BOTTOM_FIELD}
+                previews={assetPreview.heroBottom}
+                uploadingKey={uploadingKey}
+                lightInheriting={slotInheriting("heroBottom", "light")}
+                darkInheriting={slotInheriting("heroBottom", "dark")}
+                onFile={(variant, file) => handleUpload("heroBottom", variant, file)}
               />
             )}
           </section>

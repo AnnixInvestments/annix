@@ -235,6 +235,30 @@ export class UpdateBrandingDto {
   @IsString()
   pageBackgroundPathDark?: string | null;
 
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroTopPath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroTopPathDark?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroBottomPath?: string | null;
+
+  @ApiPropertyOptional({ description: "Storage key from an upload, or null to reset to default" })
+  @IsOptional()
+  @ValidateIf((_, value) => value !== null)
+  @IsString()
+  heroBottomPathDark?: string | null;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
