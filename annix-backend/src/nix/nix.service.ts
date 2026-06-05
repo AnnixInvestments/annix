@@ -1004,31 +1004,79 @@ export class NixService {
       .replace(/```json\s*/g, "")
       .replace(/```\s*/g, "")
       .trim();
-    try {
-      return JSON.parse(cleaned);
-    } catch {
-      // truncated response — find the last `}` we can parse to and try
-      const lastBrace = cleaned.lastIndexOf("}");
-      if (lastBrace > 0) {
-        const trimmed = `${cleaned.slice(0, lastBrace + 1)}`;
-        try {
-          return JSON.parse(trimmed);
-        } catch {
-          // still bad — try slicing to the last closed item in `items: [...]`
-          const itemsClose = cleaned.lastIndexOf("]");
-          if (itemsClose > 0) {
-            const itemsOnly = `${cleaned.slice(0, itemsClose + 1)}}`;
-            try {
-              return JSON.parse(itemsOnly);
-            } catch {
-              return null;
-            }
-          }
-          return null;
-        }
+    for (const candidate of this.jsonObjectCandidates(cleaned)) {
+      try {
+        const parsed = JSON.parse(candidate);
+        if (parsed && typeof parsed === "object") return parsed as Record<string, unknown>;
+      } catch {
+        // try the next candidate slice
       }
-      return null;
     }
+    return null;
+  }
+
+  /**
+   * Ordered list of substrings to attempt JSON.parse on, most-likely-correct
+   * first. Gemini sometimes wraps the JSON in a prose preamble ("Here is the
+   * extracted data:\n{...}") or trailing commentary, or truncates mid-array
+   * when it hits the output-token cap — each of which makes a naive
+   * JSON.parse of the whole response throw. We recover by (1) the first
+   * brace-balanced object, (2) first `{` to last `}`, and (3) a salvaged
+   * truncated `"items": [...]` array.
+   */
+  private jsonObjectCandidates(text: string): string[] {
+    const candidates: string[] = [text];
+    const firstBrace = text.indexOf("{");
+    if (firstBrace < 0) return candidates;
+    const fromFirstBrace = text.slice(firstBrace);
+    const balanced = this.firstBalancedJsonObject(fromFirstBrace);
+    if (balanced) candidates.push(balanced);
+    const lastBrace = fromFirstBrace.lastIndexOf("}");
+    if (lastBrace > 0) {
+      candidates.push(fromFirstBrace.slice(0, lastBrace + 1));
+      // Truncated after a complete item but before the array/object closed:
+      // close the items array and the root object so the items parsed so far
+      // are still recovered.
+      candidates.push(`${fromFirstBrace.slice(0, lastBrace + 1)}]}`);
+    }
+    const itemsClose = fromFirstBrace.lastIndexOf("]");
+    if (itemsClose > 0) candidates.push(`${fromFirstBrace.slice(0, itemsClose + 1)}}`);
+    return candidates;
+  }
+
+  /**
+   * Returns the first complete, brace-balanced JSON object in the string,
+   * tracking string literals and escapes so braces inside quoted values
+   * don't throw off the depth count. Returns null when the object never
+   * closes (a truncated response), letting the caller fall back to the
+   * truncation-salvage candidates.
+   */
+  private firstBalancedJsonObject(text: string): string | null {
+    let depth = 0;
+    let inString = false;
+    let escaped = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (escaped) {
+        escaped = false;
+        continue;
+      }
+      if (ch === "\\") {
+        if (inString) escaped = true;
+        continue;
+      }
+      if (ch === '"') {
+        inString = !inString;
+        continue;
+      }
+      if (inString) continue;
+      if (ch === "{") depth++;
+      else if (ch === "}") {
+        depth--;
+        if (depth === 0) return text.slice(0, i + 1);
+      }
+    }
+    return null;
   }
 
   /**
@@ -1056,17 +1104,26 @@ export class NixService {
     const systemPrompt = profileSystemPrompt ?? DEFAULT_EXTRACTION_SYSTEM_PROMPT;
 
     try {
-      const result = await this.aiChatService.chatWithImage(
-        base64,
-        "application/pdf",
-        userPrompt,
-        systemPrompt,
-        { temperature: 0.1, maxOutputTokens: 32_768, responseFormat: "json" },
-      );
-      const parsed = this.parseExtractionJson(result.content);
-      if (!parsed) {
+      const maxAttempts = 3;
+      let result: Awaited<ReturnType<typeof this.aiChatService.chatWithImage>> | null = null;
+      let parsed: Record<string, unknown> | null = null;
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        result = await this.aiChatService.chatWithImage(
+          base64,
+          "application/pdf",
+          userPrompt,
+          systemPrompt,
+          { temperature: 0.1, maxOutputTokens: 32_768, responseFormat: "json" },
+        );
+        parsed = this.parseExtractionJson(result.content);
+        if (parsed) break;
         this.logger.warn(
-          `Vision extraction returned no parseable JSON for ${documentName}; raw length=${result.content.length}`,
+          `Vision extraction returned no parseable JSON for ${documentName} on attempt ${attempt}/${maxAttempts}; raw length=${result.content.length}`,
+        );
+      }
+      if (!parsed || !result) {
+        this.logger.error(
+          `Vision extraction failed to return parseable JSON for ${documentName} after ${maxAttempts} attempts — the drawing could not be read.`,
         );
         return null;
       }
