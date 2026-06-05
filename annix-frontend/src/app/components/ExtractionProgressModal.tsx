@@ -106,7 +106,7 @@ export function ExtractionProgressProvider(props: { children: React.ReactNode })
       value={{ showExtraction, hideExtraction, updateExtraction }}
     >
       {children}
-      {state && <ExtractionProgressModalView state={state} />}
+      {state && <ExtractionProgressModalView state={state} onClose={hideExtraction} />}
     </ExtractionProgressContext.Provider>
   );
 }
