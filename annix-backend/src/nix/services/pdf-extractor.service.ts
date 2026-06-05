@@ -58,6 +58,17 @@ export class PdfExtractorService {
     { pattern: /\btee\b/i, type: "tee" as const },
     { pattern: /\bflange\b(?!.*gasket)/i, type: "flange" as const },
     { pattern: /\bexpansion\s*joint\b/i, type: "expansion_joint" as const },
+    {
+      pattern:
+        /\bflow\s*meter\b|\bdensito?\s*meter\b|\bdensity\s*meter\b|\bdensitometer\b|\b(pressure|temperature)\s*transmitter\b|\bpressure\s*gauge\b|\blevel\s*(switch|transmitter|indicator)\b|\bsampler\b|\banaly[sz]er\b/i,
+      type: "instrument" as const,
+    },
+    { pattern: /\bvalve\b|\brsv\b/i, type: "valve" as const },
+    { pattern: /\bpump\b/i, type: "pump" as const },
+    {
+      pattern: /\bgaskets?\b|\bbolt\s*sets?\b|\bnut\s*and\s*washer\b/i,
+      type: "consumable" as const,
+    },
     { pattern: /\b\d+\s*NB\s+PIPE\b/i, type: "pipe" as const },
     { pattern: /\bpipe\b|\bdia\s*pipe\b/i, type: "pipe" as const },
     { pattern: /\d+\s*mm\s*(steel|stainless)/i, type: "pipe" as const },
