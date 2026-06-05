@@ -11,6 +11,7 @@ import type {
 } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdoptNixCv,
   useGenerateNixCv,
@@ -30,6 +31,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const generatedQuery = useNixGeneratedCv();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { showToast } = useToast();
+  const { confirm, ConfirmDialog } = useConfirm();
   const pdfPreview = usePdfPreview();
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -232,12 +234,24 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       await adoptMutation.mutateAsync();
       hideExtraction();
       setAdoptMessage("Saved — Nix is now using this CV. Your job matches will refresh shortly.");
-      showToast("Your CV is saved and Nix is matching you to jobs.", "success");
+      void confirm({
+        title: "CV saved",
+        message: "Nix is now using this CV — your job matches will refresh shortly.",
+        confirmLabel: "Great",
+        hideCancel: true,
+        variant: "info",
+      });
     } catch {
       hideExtraction();
       const message = "Couldn't save your CV right now. Please try again.";
       setAdoptMessage(message);
-      showToast(message, "error");
+      void confirm({
+        title: "Couldn't save your CV",
+        message: "Something went wrong while saving your CV. Please try again in a moment.",
+        confirmLabel: "OK",
+        hideCancel: true,
+        variant: "warning",
+      });
     } finally {
       setAdopting(false);
     }
@@ -340,6 +354,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
         </div>
       )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+      {ConfirmDialog}
     </div>
   );
 }

@@ -43,7 +43,7 @@ export class Candidate {
   @Prop({ type: Number, required: false })
   beeLevel: number;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: false, default: false })
   popiaConsent: boolean;
 
   @Prop({ type: Date, required: false })
@@ -52,13 +52,13 @@ export class Candidate {
   @Prop({ type: Date, required: false })
   lastActiveAt: Date;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: false, default: false })
   jobAlertsOptIn: boolean;
 
   @Prop({ type: Date, required: false })
   rejectionSentAt: Date;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: false, default: false })
   isTestFixture: boolean;
 
   @Prop({ type: Object, required: false })
