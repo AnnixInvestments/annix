@@ -9,6 +9,7 @@ import { ExtractionMetricService } from "../../metrics/extraction-metric.service
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
+import { UserRepository } from "../../user/user.repository";
 import {
   type CredentialFields,
   IndividualDocumentKind,
@@ -28,6 +29,7 @@ import {
   seekerCvGenerationPrompt,
   seekerCvImprovementPrompt,
 } from "./nix-prompts";
+import { SeekerJobFeedService } from "./seeker-job-feed.service";
 
 type CredentialPhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
 
@@ -109,6 +111,8 @@ export class NixSeekerAssistService {
     private readonly aiChatService: AiChatService,
     private readonly metrics: ExtractionMetricService,
     private readonly learningRepo: NixLearningRepository,
+    private readonly userRepo: UserRepository,
+    private readonly seekerJobFeed: SeekerJobFeedService,
   ) {}
 
   private async credentialCorrectionExamples(): Promise<string[]> {
@@ -249,6 +253,15 @@ export class NixSeekerAssistService {
       );
     }
 
+    const user = await this.userRepo.findById(userId);
+    const email = user ? user.email : null;
+    const cvBuildQuota = await this.seekerJobFeed.cvBuildQuotaForSeeker(email);
+    if (!cvBuildQuota.unlimited && (cvBuildQuota.remaining ?? 0) <= 0) {
+      throw new BadRequestException(
+        `You've used all ${cvBuildQuota.allowance} Nix CV build${cvBuildQuota.allowance === 1 ? "" : "s"} included in your plan this month. They reset at the start of next month, or upgrade your plan for more.`,
+      );
+    }
+
     const documents = await this.documentRepo.findByProfileOrdered(profile.id);
 
     const supportingDocuments = documents
@@ -291,6 +304,10 @@ export class NixSeekerAssistService {
     profile.nixGeneratedCv = result;
     profile.nixGeneratedCvAt = now().toJSDate();
     await this.profileRepo.save(profile);
+
+    if (!cvBuildQuota.unlimited) {
+      await this.seekerJobFeed.recordCvBuild(email);
+    }
 
     return result;
   }

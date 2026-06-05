@@ -1255,10 +1255,19 @@ export interface SeekerTierPlan {
   displayOrder: number;
 }
 
+export interface SeekerCvBuildQuota {
+  unlimited: boolean;
+  allowance: number | null;
+  used: number;
+  remaining: number | null;
+  resetsAt: string;
+}
+
 export interface SeekerEntitlements {
   tier: string;
   label: string;
   features: SeekerTierFeatures;
+  cvBuilds: SeekerCvBuildQuota;
 }
 
 class AnnixOrbitApiClient {

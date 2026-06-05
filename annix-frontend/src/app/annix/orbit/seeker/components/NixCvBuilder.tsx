@@ -174,8 +174,12 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   };
 
   const mutationError = generateMutation.error;
+  const serverMessage =
+    mutationError instanceof Error && mutationError.message.trim().length > 0
+      ? mutationError.message
+      : null;
   const buildErrorMessage = mutationError
-    ? "Nix could not build your CV right now. Please try again."
+    ? (serverMessage ?? "Nix could not build your CV right now. Please try again.")
     : null;
 
   const handleBuild = () => {

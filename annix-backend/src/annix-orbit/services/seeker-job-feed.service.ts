@@ -40,6 +40,7 @@ import {
 import { CvNotificationService } from "./cv-notification.service";
 
 const HELP_FIND_JOB_OPERATION = "help-find-job";
+const CV_BUILD_OPERATION = "nix-cv-build";
 
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
@@ -138,6 +139,21 @@ export interface AdminSeekerDetail extends AdminSeekerSummary {
   activity: Array<{ day: string; count: number }>;
 }
 
+export interface SeekerCvBuildQuota {
+  unlimited: boolean;
+  allowance: number | null;
+  used: number;
+  remaining: number | null;
+  resetsAt: string;
+}
+
+export interface SeekerEntitlementsResult {
+  tier: string;
+  label: string;
+  features: OrbitTierFeatures;
+  cvBuilds: SeekerCvBuildQuota;
+}
+
 @Injectable()
 export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
@@ -203,6 +219,41 @@ export class SeekerJobFeedService {
     );
     const remaining = Math.max(0, allowance - used);
     return { unlimited: false, allowance, used, remaining, resetsAt };
+  }
+
+  async cvBuildQuotaForSeeker(email: string | null): Promise<SeekerCvBuildQuota> {
+    const resetsAt = DateTime.now().endOf("month").toISO() ?? "";
+    const candidates = await this.candidatesForSeeker(email);
+    const selectedTier = await this.selectedTierForEmail(email);
+    const tier = selectedTier ?? this.effectiveTier(candidates);
+    const capability = await this.tierCapabilityRepo.findByTier(tier);
+    const allowance = capability ? capability.monthlyCvBuilds : null;
+    if (allowance == null) {
+      return { unlimited: true, allowance: null, used: 0, remaining: null, resetsAt };
+    }
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const monthKey = DateTime.now().toFormat("yyyy-LL");
+    const used = await this.usageCounterRepo.getCount(
+      normalizedEmail,
+      CV_BUILD_OPERATION,
+      monthKey,
+    );
+    return {
+      unlimited: false,
+      allowance,
+      used,
+      remaining: Math.max(0, allowance - used),
+      resetsAt,
+    };
+  }
+
+  async recordCvBuild(email: string | null): Promise<void> {
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    await this.usageCounterRepo.increment(
+      normalizedEmail,
+      CV_BUILD_OPERATION,
+      DateTime.now().toFormat("yyyy-LL"),
+    );
   }
 
   async muteCompanyForSeeker(
@@ -317,27 +368,24 @@ export class SeekerJobFeedService {
     return selected && isMatchTier(selected) ? selected : null;
   }
 
-  async entitlementsForSeeker(
-    email: string | null,
-  ): Promise<{ tier: string; label: string; features: OrbitTierFeatures }> {
+  async entitlementsForSeeker(email: string | null): Promise<SeekerEntitlementsResult> {
     const candidates = await this.candidatesForSeeker(email);
     const selectedTier = await this.selectedTierForEmail(email);
     const tier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
+    const cvBuilds = await this.cvBuildQuotaForSeeker(email);
     if (!capability) {
-      return { tier, label: tier, features: { ...DEFAULT_TIER_FEATURES } };
+      return { tier, label: tier, features: { ...DEFAULT_TIER_FEATURES }, cvBuilds };
     }
     return {
       tier: capability.tier,
       label: capability.label,
       features: { ...DEFAULT_TIER_FEATURES, ...capability.features },
+      cvBuilds,
     };
   }
 
-  async selectPlanForSeeker(
-    email: string | null,
-    tier: string,
-  ): Promise<{ tier: string; label: string; features: OrbitTierFeatures }> {
+  async selectPlanForSeeker(email: string | null, tier: string): Promise<SeekerEntitlementsResult> {
     if (!isMatchTier(tier)) {
       throw new BadRequestException(`Invalid plan: ${tier}`);
     }
@@ -673,32 +721,37 @@ export class SeekerJobFeedService {
 
     candidates.forEach((c) => this.lastRematchByCandidate.set(c.id, now));
 
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
     void Promise.all(
       candidates.map((candidate) =>
         this.metrics
           .time(NIX_SEARCH_METRIC_CATEGORY, NIX_SEARCH_METRIC_OPERATION, () =>
             this.matchingService.matchCandidateToJobs(candidate.id),
           )
+          .then((matches) => ({ ran: true, matches }))
           .catch((err) => {
             this.logger.warn(
               `Manual rematch failed for candidate ${candidate.id}: ${err instanceof Error ? err.message : String(err)}`,
             );
-            return [] as CandidateJobMatch[];
+            return { ran: false, matches: [] as CandidateJobMatch[] };
           }),
       ),
-    ).then((results) => {
-      const totalMatches = results.reduce((sum, matches) => sum + matches.length, 0);
-      return this.notifySearchComplete(userId, totalMatches);
+    ).then(async (results) => {
+      const ranSuccessfully = results.some((r) => r.ran);
+      if (!ranSuccessfully) {
+        candidates.forEach((c) => this.lastRematchByCandidate.delete(c.id));
+        return;
+      }
+      if (!quota.unlimited) {
+        await this.usageCounterRepo.increment(
+          normalizedEmail,
+          HELP_FIND_JOB_OPERATION,
+          DateTime.now().toFormat("yyyy-LL"),
+        );
+      }
+      const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0);
+      await this.notifySearchComplete(userId, totalMatches);
     });
-
-    if (!quota.unlimited) {
-      const normalizedEmail = email ? email.trim().toLowerCase() : "";
-      await this.usageCounterRepo.increment(
-        normalizedEmail,
-        HELP_FIND_JOB_OPERATION,
-        DateTime.now().toFormat("yyyy-LL"),
-      );
-    }
 
     return { triggered: true, rematchedCandidates: candidates.map((c) => c.id) };
   }
