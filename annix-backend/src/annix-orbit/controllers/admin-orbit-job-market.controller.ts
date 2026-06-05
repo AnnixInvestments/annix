@@ -18,7 +18,6 @@ import {
   CreateJobMarketSourceDto,
   UpdateJobMarketSourceDto,
 } from "../dto/job-market.dto";
-import { JobSourceProvider } from "../entities/job-market-source.entity";
 import { isSitemapCrawlProvider } from "../services/crawl/sitemap-crawl-profiles";
 import { EmbeddingService } from "../services/embedding.service";
 import { JobIngestionService } from "../services/job-ingestion.service";
@@ -76,30 +75,25 @@ export class AdminOrbitJobMarketController {
   async fetchOnly(@Param("id", ParseIntPipe) id: number) {
     const source = await this.sourceService.findByIdPlatformGlobal(id);
 
-    // DPSA (~36 Gemini calls over a 1MB+ circular) and the sitemap-crawl sources
-    // (up to 150 page fetches + per-page Gemini extraction) run far longer than
-    // the HTTP proxy timeout. Fire-and-forget so the request returns immediately;
-    // results land in the background. Crawl sources vet inline in the background
-    // (no savedIds return to the client); DPSA vets later.
-    const runsLong =
-      source.provider === JobSourceProvider.DPSA || isSitemapCrawlProvider(source.provider);
-    if (runsLong) {
-      const options =
-        source.provider === JobSourceProvider.DPSA ? { vetInline: false } : { vetInline: true };
-      void this.ingestionService
-        .triggerIngestion(id, options)
-        .then((result) =>
-          this.logger.log(`${source.provider} background ingestion done: ${result.ingested} new`),
-        )
-        .catch((err) =>
-          this.logger.error(
-            `${source.provider} background ingestion failed: ${err instanceof Error ? err.message : String(err)}`,
-          ),
-        );
-      return { ingested: 0, skipped: 0, savedIds: [] as number[], started: true };
-    }
-
-    return this.ingestionService.triggerIngestion(id, { vetInline: false });
+    // Every ingest runs in the background so the HTTP request returns immediately.
+    // API-paginated sources (Adzuna — hundreds of jobs plus per-job embedding),
+    // DPSA (~36 Gemini calls over a 1MB+ circular) and sitemap-crawl sources (up to
+    // 150 page fetches + per-page Gemini extraction) all exceed the HTTP proxy
+    // timeout, so a synchronous request gets dropped and surfaces a misleading
+    // "server unreachable". The admin UI polls the source's lastIngestedAt to
+    // surface completion. Crawl sources vet inline in the background; others vet later.
+    const vetInline = isSitemapCrawlProvider(source.provider);
+    void this.ingestionService
+      .triggerIngestion(id, { vetInline })
+      .then((result) =>
+        this.logger.log(`${source.provider} background ingestion done: ${result.ingested} new`),
+      )
+      .catch((err) =>
+        this.logger.error(
+          `${source.provider} background ingestion failed: ${err instanceof Error ? err.message : String(err)}`,
+        ),
+      );
+    return { ingested: 0, skipped: 0, savedIds: [] as number[], started: true };
   }
 
   @Post("jobs/:id/vet")
