@@ -337,6 +337,7 @@ export interface TankChuteEntry {
     coatingAreaM2?: number;
     coatingWastagePercent?: number;
     surfacePrepStandard?: string;
+    weldSizeMm?: number;
     plateBom?: PlateBomItem[];
     bomTotalWeightKg?: number;
     bomTotalAreaM2?: number;

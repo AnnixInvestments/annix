@@ -1638,15 +1638,16 @@ export default function BOQStep(props: {
         };
       });
 
-      // Weld take-off. The drawing carries the weld SIZE ("5 TYP") but not the
-      // total LENGTH, so estimate length from plate-edge geometry rather than an
-      // empirical factor: Σ(plate perimeter) × 0.5. The 0.5 is the engineering
-      // reality that an internal seam is ONE weld shared between two plate edges,
-      // and free/flanged edges aren't welded — not an arbitrary fudge. Perimeter
-      // comes from L×W when extracted, else a square-equivalent from the plate
-      // area, else a tank-level area+count fallback. Fillet leg per the AISC/AWS
-      // minimum for the plate thickness (≤6→3, 6–13→5, 13–19→6, >19→8 mm), which
-      // matches the drawing's 5mm on 5–10mm plate. Weld weight for consumables =
+      // Weld take-off. Weld SIZE comes from the drawing's stated fillet leg
+      // ("6 TYP") when extracted (specs.weldSizeMm); only when the drawing
+      // states no weld size do we fall back to the AISC/AWS minimum fillet for
+      // the plate thickness (≤6→3, 6–13→5, 13–19→6, >19→8 mm). The drawing
+      // carries the SIZE but not the total LENGTH, so estimate length from
+      // plate-edge geometry rather than an empirical factor: Σ(plate perimeter)
+      // × 0.5 — the engineering reality that an internal seam is ONE weld shared
+      // between two plate edges, and free/flanged edges aren't welded. Perimeter
+      // from L×W when extracted, else a square-equivalent from the plate area,
+      // else a tank-level area+count fallback. Weld weight for consumables =
       // length × fillet weld-metal/m (0.5·leg²·density). Flagged as an estimate.
       const WELD_JOINT_FRACTION = 0.5;
       const minFilletLegMm = (thicknessMm: number): number =>
@@ -1661,6 +1662,11 @@ export default function BOQStep(props: {
                 : 8;
       const filletWeldMetalKgPerM = (legMm: number): number =>
         (0.5 * legMm * legMm * STEEL_DENSITY_KG_PER_M3) / 1_000_000;
+      const rawStatedWeldLeg = rawSpecsTank.weldSizeMm;
+      const statedWeldLegMm =
+        isNumber(rawStatedWeldLeg) && rawStatedWeldLeg > 0 ? rawStatedWeldLeg : 0;
+      const weldLegForThickness = (thicknessMm: number): number =>
+        statedWeldLegMm > 0 ? statedWeldLegMm : minFilletLegMm(thicknessMm);
       let weldLengthM = 0;
       let weldWeightKg = 0;
       let dominantWeldThicknessMm = 0;
@@ -1684,7 +1690,7 @@ export default function BOQStep(props: {
         const partWeldLengthM = perimeterM * WELD_JOINT_FRACTION * weldPartQty * tankQty;
         weldLengthM += partWeldLengthM;
         if (weldThk > dominantWeldThicknessMm) dominantWeldThicknessMm = weldThk;
-        weldWeightKg += partWeldLengthM * filletWeldMetalKgPerM(minFilletLegMm(weldThk));
+        weldWeightKg += partWeldLengthM * filletWeldMetalKgPerM(weldLegForThickness(weldThk));
       });
       if (weldLengthM === 0) {
         const rawTankCoatArea = rawSpecsTank.coatingAreaM2;
@@ -1697,12 +1703,13 @@ export default function BOQStep(props: {
         if (tankProxyArea > 0) {
           weldLengthM = 2 * Math.sqrt(tankPartCount * tankProxyArea) * tankQty;
           const fallbackThk = dominantWeldThicknessMm > 0 ? dominantWeldThicknessMm : 6;
-          weldWeightKg = weldLengthM * filletWeldMetalKgPerM(minFilletLegMm(fallbackThk));
+          weldWeightKg = weldLengthM * filletWeldMetalKgPerM(weldLegForThickness(fallbackThk));
         }
       }
-      const weldFilletLegMm = minFilletLegMm(
+      const weldFilletLegMm = weldLegForThickness(
         dominantWeldThicknessMm > 0 ? dominantWeldThicknessMm : 6,
       );
+      const weldSizeSource = statedWeldLegMm > 0 ? "drawing" : "AISC min";
 
       const headerWeight =
         statedSteelMassKg !== undefined ? statedSteelMassKg * tankQty : computedSteelMassKg;
@@ -1755,7 +1762,7 @@ export default function BOQStep(props: {
       });
       if (weldLengthM > 0) {
         const weldKey = `TANKWELD_${tankName.toLowerCase()}`;
-        const weldDescription = `    ↳ [${tankName}] Welding (estimate): ~${weldLengthM.toFixed(1)} m fillet @ ~${weldFilletLegMm}mm leg · ~${Math.round(weldWeightKg)} kg weld metal · geometry estimate — confirm on site`;
+        const weldDescription = `    ↳ [${tankName}] Welding (estimate): ~${weldLengthM.toFixed(1)} m fillet @ ${weldFilletLegMm}mm leg (${weldSizeSource}) · ~${Math.round(weldWeightKg)} kg weld metal · geometry estimate — confirm on site`;
         const existingWeld = consolidatedTanks.get(weldKey);
         if (existingWeld) {
           existingWeld.weight += weldWeightKg;
