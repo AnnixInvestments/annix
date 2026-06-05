@@ -751,6 +751,14 @@ export class JobCardImportService {
     filename?: string,
   ): Promise<JobCardImportRow[]> {
     try {
+      // Large batches (e.g. an .eml with several drawings) blow the single-
+      // response token budget on a combined call — the AI response truncates
+      // and the JSON can't be parsed (0 rows). Extract those per-document from
+      // the start so every response stays small. 1-2 drawings use one combined
+      // call (faster, and it can cross-reference sheets).
+      if (pdfBuffers.length > 2) {
+        return await this.extractDrawingsPerDocument(pdfBuffers, rawText);
+      }
       const result = await this.extractionMetricService.time(
         "stock-control-import",
         "drawing-extraction",
@@ -760,30 +768,34 @@ export class JobCardImportService {
       if (rows.length > 0 || pdfBuffers.length <= 1) {
         return rows;
       }
-      // The combined multi-document call returned nothing — on a large batch
-      // (e.g. an .eml with several drawings) the AI response truncates and the
-      // JSON can't be parsed. Retry each drawing on its own so every response
-      // stays small enough to parse, then combine the rows.
-      this.logger.warn(
-        `Combined extraction yielded 0 rows for ${pdfBuffers.length} drawings — retrying per-document`,
-      );
-      return pdfBuffers.reduce(
-        async (accPromise, pdf) => {
-          const acc = await accPromise;
-          const single = await this.extractionMetricService.time(
-            "stock-control-import",
-            "drawing-extraction",
-            () => this.drawingExtractionService.extractFromPdfBuffers([pdf]),
-          );
-          return [...acc, ...this.drawingResultToImportRows(single, rawText, pdf.filename)];
-        },
-        Promise.resolve([] as JobCardImportRow[]),
-      );
+      // The combined call truncated on a 2-drawing batch — retry per-document.
+      this.logger.warn("Combined extraction yielded 0 rows — retrying per-document");
+      return await this.extractDrawingsPerDocument(pdfBuffers, rawText);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";
       this.logger.error(`Drawing extraction failed for import: ${message}`);
       return [];
     }
+  }
+
+  // Extract each drawing on its own and combine the rows — keeps every AI
+  // response small enough to parse without truncating.
+  private async extractDrawingsPerDocument(
+    pdfBuffers: { buffer: Buffer; filename: string }[],
+    rawText: string,
+  ): Promise<JobCardImportRow[]> {
+    return pdfBuffers.reduce(
+      async (accPromise, pdf) => {
+        const acc = await accPromise;
+        const single = await this.extractionMetricService.time(
+          "stock-control-import",
+          "drawing-extraction",
+          () => this.drawingExtractionService.extractFromPdfBuffers([pdf]),
+        );
+        return [...acc, ...this.drawingResultToImportRows(single, rawText, pdf.filename)];
+      },
+      Promise.resolve([] as JobCardImportRow[]),
+    );
   }
 
   private drawingResultToImportRows(
