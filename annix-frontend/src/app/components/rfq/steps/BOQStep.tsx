@@ -9,7 +9,7 @@ import {
   sans1123StubAssemblyDescription,
 } from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
-import { isString, keys, values } from "es-toolkit/compat";
+import { isNumber, isString, keys, values } from "es-toolkit/compat";
 import React, { useCallback, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
@@ -241,6 +241,7 @@ export default function BOQStep(props: {
   // pipeline material). Unidentified holds anything where Nix could
   // not infer a productType.
   const consolidatedValves: Map<string, ConsolidatedItem> = new Map();
+  const consolidatedTanks: Map<string, ConsolidatedItem> = new Map();
   const consolidatedFasteners: Map<string, ConsolidatedItem> = new Map();
   const consolidatedUnidentified: Map<string, ConsolidatedItem> = new Map();
   const consolidatedHdpeOther: Map<string, ConsolidatedItem> = new Map();
@@ -1563,6 +1564,40 @@ export default function BOQStep(props: {
           material: mat,
         });
       }
+    } else if (entry.itemType === "tank_chute") {
+      // Fabricated tanks / chutes / hoppers / vessels / distributors. They
+      // have no nominal bore, so they MUST be caught here — otherwise they
+      // fall into the straight-pipe branch below (which defaults NB to 100)
+      // and the tank is silently absorbed into a "100NB Steel Pipe" line.
+      const rawEntrySpecsTank = entry.specs;
+      const rawSpecsTank = rawEntrySpecsTank || {};
+      const rawEntryDescriptionTank = entry.description;
+      const tankDescription = rawEntryDescriptionTank || "Fabricated assembly";
+      const rawSpecsQuantityValueTank = rawSpecsTank.quantityValue;
+      const tankQty = rawSpecsQuantityValueTank || qty || 1;
+      const rawSpecsUnitTank = rawSpecsTank.unit;
+      const tankUnit = rawSpecsUnitTank || "Each";
+      const rawTankWeight = rawSpecsTank.totalSteelWeightKg;
+      const tankPerUnitWeight = isNumber(rawTankWeight) ? rawTankWeight : 0;
+      const tankRowWeight = tankPerUnitWeight * tankQty;
+      const tankKey = `TANK_${tankDescription.toLowerCase()}_${tankUnit}`;
+      const existingTank = consolidatedTanks.get(tankKey);
+      if (existingTank) {
+        existingTank.qty += tankQty;
+        existingTank.weight += tankRowWeight;
+        existingTank.entries.push(itemNumber);
+        existingTank.entryIds.push(entry.id);
+      } else {
+        consolidatedTanks.set(tankKey, {
+          description: tankDescription,
+          qty: tankQty,
+          unit: tankUnit,
+          weight: tankRowWeight,
+          entries: [itemNumber],
+          entryIds: [entry.id],
+          material: "steel",
+        });
+      }
     } else {
       const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
       // STRAIGHT PIPE
@@ -2301,6 +2336,7 @@ export default function BOQStep(props: {
     addToCombined(consolidatedSteelOther, "Steel Other");
     addToCombined(consolidatedPvcOther, "PVC Other");
     addToCombined(consolidatedValves, "Valves");
+    addToCombined(consolidatedTanks, "Tanks, Chutes & Vessels");
     addToCombined(consolidatedFasteners, "Fasteners");
     addToCombined(consolidatedUnidentified, "Unidentified");
 
@@ -2942,6 +2978,34 @@ export default function BOQStep(props: {
             fasteners (bolts/nuts/gaskets that aren't tied to a
             specific pipeline material). Unidentified is the last
             stop for items where Nix could not infer a productType. */}
+        {consolidatedTanks.size > 0 && (
+          <section className="mb-8 bg-indigo-50/30 dark:bg-indigo-900/10 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
+            <div className="mb-3 pb-2 border-b border-indigo-200 dark:border-indigo-800 flex items-center justify-between gap-2 flex-wrap">
+              <h3 className="text-base font-bold text-indigo-900 dark:text-indigo-200">
+                Tanks, Chutes &amp; Vessels — supplier section
+              </h3>
+              <GroupExportsButtons
+                groupName="Tanks, Chutes and Vessels"
+                subsections={[
+                  {
+                    title: "Tanks, Chutes & Vessels",
+                    items: consolidatedTanks,
+                    showWeldColumns: false,
+                    showAreaColumns: false,
+                  },
+                ]}
+                onExport={exportGroup}
+              />
+            </div>
+            {renderConsolidatedTable(
+              "Tanks, Chutes & Vessels",
+              consolidatedTanks,
+              "bg-indigo-50",
+              "text-indigo-700",
+            )}
+          </section>
+        )}
+
         {consolidatedValves.size > 0 && (
           <section className="mb-8 bg-rose-50/30 dark:bg-rose-900/10 border border-rose-200 dark:border-rose-800 rounded-lg p-4">
             <div className="mb-3 pb-2 border-b border-rose-200 dark:border-rose-800 flex items-center justify-between gap-2 flex-wrap">
