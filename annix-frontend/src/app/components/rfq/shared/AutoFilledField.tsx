@@ -72,17 +72,17 @@ export function AutoFilledInput(props: AutoFilledInputProps) {
   const hasError = Boolean(error);
 
   const baseClasses =
-    "w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 text-sm";
+    "w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm";
 
   const borderClasses = hasError
     ? "border-2 border-red-500 focus:ring-red-500 focus:border-red-500"
     : showAutoFilledStyle
       ? "border-2 border-green-500 focus:ring-green-500 focus:border-green-500"
-      : "border border-gray-300 focus:ring-blue-500 focus:border-blue-500";
+      : "border border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500";
 
   const textClasses = showAutoFilledStyle ? "font-bold" : "";
 
-  const bgClasses = readOnly || disabled ? "bg-gray-100 cursor-not-allowed" : "";
+  const bgClasses = readOnly || disabled ? "bg-gray-100 dark:bg-gray-700 cursor-not-allowed" : "";
 
   return (
     <div className="relative">
@@ -163,17 +163,17 @@ export function AutoFilledSelect(props: AutoFilledSelectProps) {
   const hasError = Boolean(error);
 
   const baseClasses =
-    "w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 text-sm";
+    "w-full px-2 py-1.5 rounded-lg focus:outline-none focus:ring-2 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm";
 
   const borderClasses = hasError
     ? "border-2 border-red-500 focus:ring-red-500 focus:border-red-500"
     : showAutoFilledStyle
       ? "border-2 border-green-500 focus:ring-green-500 focus:border-green-500"
-      : "border border-gray-300 focus:ring-blue-500 focus:border-blue-500";
+      : "border border-gray-300 dark:border-gray-600 focus:ring-blue-500 focus:border-blue-500";
 
   const textClasses = showAutoFilledStyle ? "font-bold" : "";
 
-  const disabledClasses = disabled ? "bg-gray-100 cursor-not-allowed" : "";
+  const disabledClasses = disabled ? "bg-gray-100 dark:bg-gray-700 cursor-not-allowed" : "";
 
   return (
     <div className="relative">
@@ -226,18 +226,21 @@ export function AutoFilledDisplay(props: {
   const { value, isAutoFilled, label } = props;
   const showAutoFilledStyle = isAutoFilled && value !== undefined;
 
-  const baseClasses = "w-full px-4 py-3 rounded-lg bg-gray-50 text-gray-900";
+  const baseClasses =
+    "w-full px-4 py-3 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-900 dark:text-gray-100";
 
   const borderClasses = showAutoFilledStyle
     ? "border-2 border-green-500"
-    : "border border-gray-300";
+    : "border border-gray-300 dark:border-gray-600";
 
   const textClasses = showAutoFilledStyle ? "font-bold" : "";
 
   return (
     <div className="relative">
       <div className={`${baseClasses} ${borderClasses} ${textClasses}`}>
-        {value ?? <span className="text-gray-400">{label || "Auto-detected"}</span>}
+        {value ?? (
+          <span className="text-gray-400 dark:text-gray-500">{label || "Auto-detected"}</span>
+        )}
       </div>
       {showAutoFilledStyle && (
         <p className="mt-1 text-xs text-green-600 font-medium flex items-center gap-1">
