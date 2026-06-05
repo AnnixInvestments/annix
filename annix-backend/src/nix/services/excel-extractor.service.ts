@@ -14,6 +14,7 @@ export type ExtractedItemType =
   | "tank_chute"
   | "valve"
   | "pump"
+  | "instrument"
   | "boot"
   | "wrapping"
   | "consumable"
@@ -291,6 +292,11 @@ export class ExcelExtractorService {
     { pattern: /\bvalve\b/i, type: "valve" as const },
     { pattern: /\bhand\s*pump\b|\bhydraulic\s*pump\b/i, type: "pump" as const },
     { pattern: /\bpump\b/i, type: "pump" as const },
+    {
+      pattern:
+        /\bflow\s*meter\b|\bdensito?\s*meter\b|\bdensity\s*meter\b|\bdensitometer\b|\b(pressure|temperature)\s*transmitter\b|\bpressure\s*gauge\b|\blevel\s*(switch|transmitter|indicator)\b|\bsampler\b|\banaly[sz]er\b/i,
+      type: "instrument" as const,
+    },
     { pattern: /\bpuddle\s*pipe\b/i, type: "puddle_pipe" as const },
     { pattern: /\bpipe\s*boot\b/i, type: "boot" as const },
     {

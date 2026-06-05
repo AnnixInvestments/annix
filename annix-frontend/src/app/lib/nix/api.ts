@@ -58,6 +58,7 @@ export type NixExtractedItemType =
   | "tank_chute"
   | "valve"
   | "pump"
+  | "instrument"
   | "boot"
   | "wrapping"
   | "consumable"

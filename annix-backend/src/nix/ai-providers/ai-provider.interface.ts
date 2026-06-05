@@ -123,12 +123,13 @@ Your task: identify every quotable item in the provided document text and extrac
 For each item, extract these common fields:
 - itemNumber: line number / mark / spool number (e.g. "-01", "HH02") if present
 - description: short human description
-- itemType: one of: pipe, bend, reducer, tee, lateral, flange, end_cap, valve, pump, expansion_joint, tank_chute, consumable, unknown.
+- itemType: one of: pipe, bend, reducer, tee, lateral, flange, end_cap, valve, pump, instrument, expansion_joint, tank_chute, consumable, unknown.
   - Use "valve" for ANY valve, whatever its pattern (diaphragm, gate, knife-gate, ball, butterfly, pinch, globe, plug, check / non-return / NRV, air-release, pressure-reducing, etc.). Put the specific valve pattern in the description — do NOT downgrade a valve to "unknown".
   - Use "consumable" for erection / installation hardware sold by quantity or by the set: bolts, nuts, washers, stud sets, and gaskets. Put the full spec in the description, e.g. "M20 x 108 Gr 8.8 galvanized machine bolt set (bolt, nut & washers), SANS 1700" or "1000kPa FF EPDM 3mm gasket".
   - Use "pump" for pumps.
+  - Use "instrument" for in-line instrumentation: flow meters, densitometers / density meters, pressure transmitters / gauges, temperature transmitters, level switches / transmitters, samplers, analysers. Capture them as "instrument" EVEN WHEN the drawing marks them "by Instrumentation" / "by others" / "by client" / "free issue" — preserve that supply-responsibility note verbatim in the description (e.g. "Flow meter, clamp type (supplied by Instrumentation)") so a quoter can see they are likely out of the fabrication supply scope, but never lose the classification by calling them "unknown".
   - Use "tank_chute" for any fabricated assembly (tank/chute/hopper/underpan/pulley/drum/launder/etc. — the assembly fields below cover all of these).
-  - Use "unknown" ONLY when the item genuinely fits none of the categories above — e.g. instrumentation supplied by others ("flow meter / densitometer / pressure transmitter — by Instrumentation"), or a re-used existing support. Do NOT use "unknown" for valves, bolts or gaskets — they have explicit types above.
+  - Use "unknown" ONLY when the item genuinely fits none of the categories above — e.g. a re-used existing support, or a row whose description is too vague to classify. Do NOT use "unknown" for valves, bolts, gaskets or instruments — they have explicit types above.
 - material: e.g. "Carbon Steel", "Stainless Steel", "Mild Steel", "S355JR", "Bisalloy 400"
 - materialGrade: e.g. "API 5L Grade B", "ASTM A312 TP316", "SABS 719 Gr B"
 - quantity (default 1) and unit (e.g. "ea", "m", "lengths", "off")
@@ -142,6 +143,11 @@ For pipe / spool / fitting items, also extract:
 - schedule (e.g. "Sch 40", "10mm WT")
 - angle (degrees, for bends AND laterals — laterals are typically 45° or 60°)
 - flangeConfig: one of none, one_end, both_ends, puddle, blind
+- liningType: the INTERNAL lining category for THIS item — one of rubber, ceramic, hdpe, pu, glass_flake — or null if unlined. Map the product to its category: Linatex / Linard / "rubber lined" / R/L → rubber; polyurethane / PU / Vulkollan → pu; ceramic / alumina tile → ceramic; HDPE liner → hdpe; glass-flake → glass_flake. EVERY internally-lined pipe / bend / fitting must carry this so the line can be priced for lining — do NOT restrict lining to fabricated assemblies.
+- liningThicknessMm: the lining thickness in mm for this item (e.g. 12 for "Linard 60, 12mm thick", 6 for "6mm R/L"), or null.
+- coatingSystem: the EXTERNAL coating / paint system for this item — a code ("R1", "R2a") or a short description ("Carboguard 890 + Carbothane 137") or verbatim drawing text, or null if uncoated.
+- surfacePrepStandard: the blast / surface-prep grade for this item, e.g. "SA 2.5", "SA 3", "Sa 2½", or null.
+- A lining / coating / prep value that a drawing note or covering specification states applies to ALL straight pipes (or all fittings) is a BLANKET default — apply it to every matching item's per-item field, not just the first row. e.g. "All straight pipes shall be rubber lined with Linard 60, 12 mm thick" → every pipe item gets liningType "rubber", liningThicknessMm 12. "All fittings polyurethane lined" → every fitting (bend/reducer/tee/flange) gets liningType "pu". Note in the description which blanket rule you applied.
 
 Reducer / reducing-tee diameter extraction patterns to recognise (the
 BOQ doc author may use any of these conventions for the reduction

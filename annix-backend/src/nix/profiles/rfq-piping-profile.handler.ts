@@ -124,6 +124,9 @@ export class RfqPipingProfileHandler implements IExtractionProfileHandler, OnMod
     if (item.itemType === "pump") {
       return { key: "valve-accessories", label: "Valve Accessories — Hand Pumps" };
     }
+    if (item.itemType === "instrument") {
+      return { key: "instruments", label: "Instruments — (often supplied by others)" };
+    }
     if (item.itemType === "consumable") {
       if (/gaskets?/.test(desc))
         return { key: "consumables-gaskets", label: "Consumables — Gaskets" };
