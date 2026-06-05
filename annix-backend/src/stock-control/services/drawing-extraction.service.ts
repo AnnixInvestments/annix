@@ -7,7 +7,6 @@ import {
   ImageContent,
   TextContent,
 } from "../../nix/ai-providers/claude-chat.provider";
-import { NixService } from "../../nix/nix.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { ExtractionStatus, JobCardAttachment } from "../entities/job-card-attachment.entity";
 import { JobCardLineItem } from "../entities/job-card-line-item.entity";
@@ -46,10 +45,10 @@ interface TankExtractionData {
   coatingSystem: string | null;
   surfacePrepStandard: string | null;
   sections: TankSection[];
-  // Developed flat plate parts, sourced from the shared Nix plateBom take-off
-  // (single extractor). lengthMm/widthMm are the developed cut sizes and
-  // liningThicknessMm the per-plate rubber thickness — both drive the polymer
-  // rubber cutting-diagram nesting.
+  // Developed flat plate parts, extracted in the same vision call as the
+  // sections (single extractor, one call per drawing). lengthMm/widthMm are the
+  // developed cut sizes and liningThicknessMm the per-plate rubber thickness —
+  // both drive the polymer rubber cutting-diagram nesting.
   plateParts: Array<{
     mark: string;
     description: string;
@@ -117,7 +116,7 @@ For TANK/CHUTE drawings, return:
       { "mark": "B-B", "description": "End Panel", "liningAreaM2": 8.30, "coatingAreaM2": 9.15 }
     ],
     "plateParts": [
-      { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "quantity": 2 }
+      { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "lengthMm": 2400, "widthMm": 1200, "quantity": 2, "liningThicknessMm": 6 }
     ]
   },
   "dimensions": [],
@@ -133,6 +132,7 @@ Rules:
 - Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions
 - The sum of all section liningAreaM2 values should equal the total liningAreaM2
 - "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
+- For tanks: "plateParts" MUST list every plate in the plate BOM table. For each, give thicknessMm (plate gauge), and the DEVELOPED FLAT cut size as lengthMm x widthMm (the rolled-out plate size before forming, read from the cut/plate schedule or computed from the developed dimensions — NOT the folded assembly dimension). Set liningThicknessMm to that plate's rubber/lining thickness (fall back to the tank-level liningThicknessMm when a per-plate value is not given). These developed sizes feed the rubber cutting diagram, so they are required whenever a plate BOM is visible.
 - For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
 - Set confidence based on clarity of extracted data (0.0 to 1.0)
 - Default quantity to 1 if not specified
@@ -186,7 +186,7 @@ For TANK/CHUTE drawings, return:
       { "mark": "B-B", "description": "End Panel", "liningAreaM2": 8.30, "coatingAreaM2": 9.15 }
     ],
     "plateParts": [
-      { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "quantity": 2 }
+      { "mark": "P1", "description": "Side plate", "thicknessMm": 10, "lengthMm": 2400, "widthMm": 1200, "quantity": 2, "liningThicknessMm": 6 }
     ]
   },
   "dimensions": [],
@@ -202,6 +202,7 @@ Rules:
 - Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions
 - The sum of all section liningAreaM2 values should equal the total liningAreaM2
 - "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
+- For tanks: "plateParts" MUST list every plate in the plate BOM table. For each, give thicknessMm (plate gauge), and the DEVELOPED FLAT cut size as lengthMm x widthMm (the rolled-out plate size before forming, read from the cut/plate schedule or computed from the developed dimensions — NOT the folded assembly dimension). Set liningThicknessMm to that plate's rubber/lining thickness (fall back to the tank-level liningThicknessMm when a per-plate value is not given). These developed sizes feed the rubber cutting diagram, so they are required whenever a plate BOM is visible.
 - For pipes: extract diameters in NB or mm, lengths in m or mm (convert to m)
 - Set confidence based on clarity of extracted data (0.0 to 1.0)
 - Default quantity to 1 if not specified
@@ -229,49 +230,7 @@ export class DrawingExtractionService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
-    private readonly nixService: NixService,
   ) {}
-
-  // Source the developed plate take-off from the shared Nix extractor (the one
-  // plateBom) and fold it into the tank result — replacing the SC prompt's old
-  // dimensionless plateParts so there is a single plate extractor. Best-effort:
-  // a Nix failure leaves plateParts empty and the SC rows are unaffected.
-  private async mergeNixPlateBom(
-    tankData: TankExtractionData,
-    pdfBuffers: { buffer: Buffer; filename: string }[],
-  ): Promise<void> {
-    try {
-      const items = await pdfBuffers.reduce(
-        async (accPromise, { buffer, filename }) => {
-          const acc = await accPromise;
-          const extracted = await this.nixService.extractAssembliesFromPdf(buffer, filename);
-          return [...acc, ...extracted];
-        },
-        Promise.resolve([] as Awaited<ReturnType<NixService["extractAssembliesFromPdf"]>>),
-      );
-      const plateParts = items.flatMap((item) => {
-        const raw = item.rawData as Record<string, unknown> | undefined;
-        const rawPlateBom = raw?.plateBom;
-        if (!Array.isArray(rawPlateBom)) return [];
-        return rawPlateBom.map((p: Record<string, unknown>) => ({
-          mark: typeof p.mark === "string" ? p.mark : "",
-          description: typeof p.description === "string" ? p.description : "",
-          thicknessMm: typeof p.thicknessMm === "number" ? p.thicknessMm : 0,
-          lengthMm: typeof p.lengthMm === "number" ? p.lengthMm : 0,
-          widthMm: typeof p.widthMm === "number" ? p.widthMm : 0,
-          quantity: typeof p.quantity === "number" ? p.quantity : 1,
-          liningThicknessMm: typeof p.liningThicknessMm === "number" ? p.liningThicknessMm : 0,
-        }));
-      });
-      if (plateParts.length > 0) {
-        tankData.plateParts = plateParts;
-      }
-    } catch (err) {
-      this.logger.warn(
-        `Nix plate take-off merge failed: ${err instanceof Error ? err.message : "unknown error"}`,
-      );
-    }
-  }
 
   async extractFromPdfBuffers(
     pdfBuffers: { buffer: Buffer; filename: string }[],
@@ -322,9 +281,6 @@ export class DrawingExtractionService {
       DRAWING_EXTRACTION_OPTIONS,
     );
     const aiResult = this.parseAiResponse(response);
-    if (aiResult.drawingType === "tank_chute" && aiResult.tankData) {
-      await this.mergeNixPlateBom(aiResult.tankData, pdfBuffers);
-    }
     return this.buildExtractionResult(aiResult);
   }
 
@@ -756,10 +712,21 @@ export class DrawingExtractionService {
               coatingAreaM2: s.coatingAreaM2 ?? null,
             }))
           : [],
-        // Plate parts are sourced from the shared Nix plateBom take-off (see
-        // mergeNixPlateBom) — start empty here so the SC prompt no longer
-        // produces a parallel, dimensionless plate list.
-        plateParts: [],
+        // Developed flat plate parts — extracted in this single vision call
+        // (lengthMm/widthMm are the developed cut sizes, liningThicknessMm the
+        // per-plate rubber thickness) so the import needs only ONE call per
+        // drawing instead of a second Nix plate take-off.
+        plateParts: Array.isArray(td.plateParts)
+          ? td.plateParts.map((p: any) => ({
+              mark: p.mark || "",
+              description: p.description || "",
+              thicknessMm: p.thicknessMm ?? 0,
+              lengthMm: p.lengthMm ?? 0,
+              widthMm: p.widthMm ?? 0,
+              quantity: p.quantity ?? 1,
+              liningThicknessMm: p.liningThicknessMm ?? 0,
+            }))
+          : [],
       };
 
       return {
