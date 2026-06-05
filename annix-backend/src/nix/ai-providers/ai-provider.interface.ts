@@ -123,7 +123,12 @@ Your task: identify every quotable item in the provided document text and extrac
 For each item, extract these common fields:
 - itemNumber: line number / mark / spool number (e.g. "-01", "HH02") if present
 - description: short human description
-- itemType: one of: pipe, bend, reducer, tee, flange, expansion_joint, tank_chute, unknown. Use "tank_chute" for any fabricated assembly (tank/chute/hopper/underpan/pulley/drum/launder/etc. — the assembly fields below cover all of these). Use "unknown" rather than guessing.
+- itemType: one of: pipe, bend, reducer, tee, lateral, flange, end_cap, valve, pump, expansion_joint, tank_chute, consumable, unknown.
+  - Use "valve" for ANY valve, whatever its pattern (diaphragm, gate, knife-gate, ball, butterfly, pinch, globe, plug, check / non-return / NRV, air-release, pressure-reducing, etc.). Put the specific valve pattern in the description — do NOT downgrade a valve to "unknown".
+  - Use "consumable" for erection / installation hardware sold by quantity or by the set: bolts, nuts, washers, stud sets, and gaskets. Put the full spec in the description, e.g. "M20 x 108 Gr 8.8 galvanized machine bolt set (bolt, nut & washers), SANS 1700" or "1000kPa FF EPDM 3mm gasket".
+  - Use "pump" for pumps.
+  - Use "tank_chute" for any fabricated assembly (tank/chute/hopper/underpan/pulley/drum/launder/etc. — the assembly fields below cover all of these).
+  - Use "unknown" ONLY when the item genuinely fits none of the categories above — e.g. instrumentation supplied by others ("flow meter / densitometer / pressure transmitter — by Instrumentation"), or a re-used existing support. Do NOT use "unknown" for valves, bolts or gaskets — they have explicit types above.
 - material: e.g. "Carbon Steel", "Stainless Steel", "Mild Steel", "S355JR", "Bisalloy 400"
 - materialGrade: e.g. "API 5L Grade B", "ASTM A312 TP316", "SABS 719 Gr B"
 - quantity (default 1) and unit (e.g. "ea", "m", "lengths", "off")
