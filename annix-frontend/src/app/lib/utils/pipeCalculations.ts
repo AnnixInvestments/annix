@@ -565,6 +565,16 @@ const NB_TO_OD_INTERNAL: Record<number, number> = {
 };
 
 /**
+ * Standard steel-pipe outside diameter (mm) for a nominal bore, from the
+ * NB→OD series. Returns null when the NB isn't a standard size, so callers
+ * can decide whether to estimate. Single source for NB→OD across the app.
+ */
+export const nbToOutsideDiameterMm = (nominalBoreMm: number): number | null => {
+  const od = NB_TO_OD_INTERNAL[nominalBoreMm];
+  return od ?? null;
+};
+
+/**
  * Convenience function to calculate minimum wall thickness from nominal bore.
  * This is the consolidated, single-source function for minimum wall thickness
  * calculation by NB, to be used across all forms.

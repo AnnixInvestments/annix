@@ -7,7 +7,9 @@ import {
   type SdrValue,
   selectSdrForPressure,
 } from "@annix/product-data/hdpe";
-import { isString } from "es-toolkit/compat";
+import { FALLBACK_PIPE_SCHEDULES, getSabs62PipeData } from "@annix/product-data/pipe";
+import { isNumber, isString } from "es-toolkit/compat";
+import { nbToOutsideDiameterMm } from "@/app/lib/utils/pipeCalculations";
 import { DEFAULT_HDPE_SDR, PIPE_WEIGHT_K_BY_PRODUCT_TYPE } from "./constants";
 
 // Parse a wall thickness in millimetres out of a free-text description.
@@ -82,6 +84,82 @@ export const resolveHdpeDims = (
   return { od: dims.odMm, wt: dims.wallMm, sdr };
 };
 
+export type SteelPipeDimsSource =
+  | "extracted"
+  | "plate"
+  | "sabs62-heavy"
+  | "sabs62-medium"
+  | "assumed-sch40"
+  | "unresolved";
+
+export interface SteelPipeDims {
+  od: number;
+  wt: number;
+  source: SteelPipeDimsSource;
+  assumed: boolean;
+}
+
+// A steel pipe states its wall on the drawing as one of: an explicit
+// wall ("6mm WALL"), a SANS class ("ERW Heavy Class"), or — for a stub
+// rolled from plate — the plate thickness. Resolve OD + wall for a
+// Nix-extracted steel pipe in that priority order so the BOQ can show a
+// weight AND surface areas (Nix items carry no calculation block, so OD
+// would otherwise be 0 and every area column blank). Falls back to
+// Sch 40 / STD as a FLAGGED assumption only when the drawing genuinely
+// states nothing. Order: extracted wall → rolled-from-plate thickness →
+// stated SANS 62 class → assumed Sch 40.
+const SABS62_CLASS_REGEX =
+  /\b(heavy|medium|light)\s*class\b|\bclass\s*(heavy|medium|light)\b|\berw\s+(heavy|medium|light)\b/i;
+
+export const resolveSteelPipeDims = (nb: number, entry: any): SteelPipeDims => {
+  const odFromTable = nbToOutsideDiameterMm(nb) ?? 0;
+  const rawCalcOd = entry.calculation?.outsideDiameterMm;
+  const calcOd = isNumber(rawCalcOd) && rawCalcOd > 0 ? rawCalcOd : 0;
+  const resolvedOd = calcOd > 0 ? calcOd : odFromTable;
+
+  const rawWt = entry.specs?.wallThicknessMm;
+  const extractedWt = isNumber(rawWt) && rawWt > 0 ? rawWt : 0;
+  if (extractedWt > 0) {
+    return { od: resolvedOd, wt: extractedWt, source: "extracted", assumed: false };
+  }
+
+  const rawPlateThk = entry.specs?.plateThicknessMm;
+  const rawRolledPlateThk = entry.specs?.rolledPlateThicknessMm;
+  const plateThkCandidate = rawPlateThk ?? rawRolledPlateThk;
+  const plateThk = isNumber(plateThkCandidate) && plateThkCandidate > 0 ? plateThkCandidate : 0;
+  if (plateThk > 0) {
+    return { od: resolvedOd, wt: plateThk, source: "plate", assumed: false };
+  }
+
+  const rawPipeClass = entry.specs?.pipeClass;
+  const rawSabsClass = entry.specs?.sabsClass;
+  const specClass = rawPipeClass ?? rawSabsClass ?? "";
+  const rawDescription = entry.description;
+  const descriptionText = rawDescription ?? "";
+  const classText = `${descriptionText} ${specClass}`;
+  if (SABS62_CLASS_REGEX.test(classText)) {
+    const isHeavy = /\bheavy\b/i.test(classText);
+    const grade = isHeavy ? "heavy" : "medium";
+    const sabs = getSabs62PipeData(grade, nb);
+    if (sabs) {
+      return {
+        od: sabs.od,
+        wt: sabs.wallMm,
+        source: isHeavy ? "sabs62-heavy" : "sabs62-medium",
+        assumed: false,
+      };
+    }
+  }
+
+  const schedules = FALLBACK_PIPE_SCHEDULES[nb];
+  const sch40 = schedules?.find((s) => /sch\s*40|std/i.test(s.scheduleDesignation));
+  if (sch40 && odFromTable > 0) {
+    return { od: odFromTable, wt: sch40.wallThicknessMm, source: "assumed-sch40", assumed: true };
+  }
+
+  return { od: resolvedOd, wt: 0, source: "unresolved", assumed: false };
+};
+
 // Compute per-row pipe weight when the entry's calculation block is
 // empty (typical for Nix-extracted items where Step 2's auto-calc
 // never fired). Uses the same hollow-cylinder formula as the steel
@@ -115,9 +193,21 @@ export const fallbackPipeWeight = (
     od = rawNb || od;
     if (!wt) wt = od / Number(sdr);
   } else if (!wt) {
-    // No WT and no schedule lookup — give up rather than report a
-    // misleading 0kg. Returning 0 here keeps the existing UX.
-    return 0;
+    // Steel/PVC with no extracted wall. For steel, resolve the wall +
+    // OD from the drawing's stated spec (explicit wall → plate thickness
+    // → SANS 62 class → assumed Sch 40) so the row shows a weight instead
+    // of a misleading 0 kg. PVC keeps the previous give-up behaviour.
+    if (productKey === "steel") {
+      const steelDims = resolveSteelPipeDims(nb, entry);
+      if (steelDims.wt > 0) {
+        wt = steelDims.wt;
+        if (steelDims.od > 0) od = steelDims.od;
+      } else {
+        return 0;
+      }
+    } else {
+      return 0;
+    }
   }
 
   const perMetre = (od - wt) * wt * k;
