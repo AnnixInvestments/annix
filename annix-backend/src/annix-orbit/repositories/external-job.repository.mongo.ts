@@ -191,6 +191,14 @@ export class MongoExternalJobRepository
     return { total, embedded };
   }
 
+  async canonicalCategoryCoverage(): Promise<{ total: number; classified: number }> {
+    const total = await this.documents.countDocuments({}).exec();
+    const classified = await this.documents
+      .countDocuments({ canonicalCategory: { $exists: true, $nin: [null, ""] } })
+      .exec();
+    return { total, classified };
+  }
+
   countForSourceSince(sourceId: number, since: Date): Promise<number> {
     return this.documents.countDocuments({ sourceId, createdAt: { $gt: since } }).exec();
   }

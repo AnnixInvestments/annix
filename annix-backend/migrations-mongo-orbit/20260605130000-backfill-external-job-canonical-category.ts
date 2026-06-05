@@ -22,7 +22,6 @@ export async function up(db: mongo.Db): Promise<void> {
     const key = matchJobCategoryRuleBased({
       title: typeof job.title === "string" ? job.title : null,
       providerCategory: typeof job.category === "string" ? job.category : null,
-      description: typeof job.description === "string" ? job.description : null,
     });
     if (key) {
       ops.push({

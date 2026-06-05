@@ -119,6 +119,8 @@ export default function AdminOrbitJobMarketPage() {
   const [isVettingPending, setIsVettingPending] = useState(false);
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [backfillSummary, setBackfillSummary] = useState<string | null>(null);
+  const [isCategorizing, setIsCategorizing] = useState(false);
+  const [categorizeSummary, setCategorizeSummary] = useState<string | null>(null);
 
   const handleBackfillEmbeddings = async () => {
     setIsBackfilling(true);
@@ -172,6 +174,60 @@ export default function AdminOrbitJobMarketPage() {
       setBackfillSummary(`Failed: ${error instanceof Error ? error.message : "Unknown error"}`);
     } finally {
       setIsBackfilling(false);
+    }
+  };
+
+  const handleBackfillCategories = async () => {
+    setIsCategorizing(true);
+    setCategorizeSummary(null);
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Starting category backfill…",
+      estimatedDurationMs: 8000,
+      backgroundSafe: true,
+    });
+    try {
+      const triggered = await adminApiClient.backfillOrbitCategories();
+      const stats = await metricsApi
+        .extractionStats("orbit-category-backfill", "all")
+        .catch(() => null);
+      const learnedMs = stats ? stats.averageMs : null;
+      updateExtraction({
+        label: triggered.alreadyRunning
+          ? "Category backfill already running — tracking progress…"
+          : "Classifying jobs into categories…",
+        estimatedDurationMs: learnedMs || 180_000,
+      });
+
+      const poll = async (attempt: number): Promise<void> => {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 4000));
+        const coverage = await adminApiClient.orbitCategoryCoverage().catch(() => null);
+        if (coverage) {
+          updateExtraction({
+            label: `Classifying jobs into categories — ${coverage.classified} / ${coverage.total} done…`,
+          });
+          if (!coverage.running) return;
+        }
+        if (attempt >= 225) return;
+        return poll(attempt + 1);
+      };
+      await poll(0);
+
+      hideExtraction();
+      const finalCoverage = await adminApiClient.orbitCategoryCoverage().catch(() => null);
+      if (finalCoverage) {
+        const lastError = finalCoverage.lastError;
+        const base = `Categorized ${finalCoverage.classified}/${finalCoverage.total} jobs.`;
+        setCategorizeSummary(lastError ? `${base} Last error: ${lastError}` : base);
+      } else {
+        setCategorizeSummary("Category backfill finished.");
+      }
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+    } catch (error) {
+      hideExtraction();
+      setCategorizeSummary(`Failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsCategorizing(false);
     }
   };
 
@@ -407,6 +463,18 @@ export default function AdminOrbitJobMarketPage() {
             {backfillSummary && (
               <span className="mr-auto text-sm text-gray-600">{backfillSummary}</span>
             )}
+            {categorizeSummary && (
+              <span className="mr-auto text-sm text-gray-600">{categorizeSummary}</span>
+            )}
+            <button
+              type="button"
+              onClick={handleBackfillCategories}
+              disabled={isCategorizing}
+              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+              title="Classify any jobs missing a category (rule-based, then AI for the rest) so the seeker category filter is complete"
+            >
+              {isCategorizing ? "Categorizing…" : "Backfill Categories"}
+            </button>
             <button
               type="button"
               onClick={handleBackfillEmbeddings}

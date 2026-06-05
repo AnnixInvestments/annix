@@ -154,6 +154,13 @@ export class PostgresExternalJobRepository
     return { total: Number(row.total), embedded: Number(row.embedded) };
   }
 
+  async canonicalCategoryCoverage(): Promise<{ total: number; classified: number }> {
+    const [row] = await this.repository.query(
+      "SELECT COUNT(*)::int AS total, COUNT(canonical_category)::int AS classified FROM cv_assistant_external_jobs",
+    );
+    return { total: Number(row.total), classified: Number(row.classified) };
+  }
+
   countForSourceSince(sourceId: number, since: Date): Promise<number> {
     return this.repository.count({
       where: { sourceId, createdAt: MoreThan(since) },

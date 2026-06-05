@@ -79,6 +79,8 @@ export class JobIngestionService {
   private readonly lastIngestionErrorBySource = new Map<number, string>();
   private pollInFlight = false;
   private readonly ingestingSourceIds = new Set<number>();
+  private categoryBackfillRunning = false;
+  private lastCategoryBackfillError: string | null = null;
 
   constructor(
     private readonly sourceRepo: JobMarketSourceRepository,
@@ -186,6 +188,51 @@ export class JobIngestionService {
     );
 
     return { updated: matched.length + aiResults.length };
+  }
+
+  // On-demand background pass that keeps categorizing pending jobs (rule-based,
+  // then AI for the misses) until none remain — far faster than waiting for the
+  // 6-hourly poll to chip away at the backlog. The admin UI polls categoryCoverage.
+  startCategoryBackfillInBackground(): { started: boolean; alreadyRunning: boolean } {
+    if (this.categoryBackfillRunning) {
+      return { started: false, alreadyRunning: true };
+    }
+    this.categoryBackfillRunning = true;
+    this.lastCategoryBackfillError = null;
+    void this.extractionMetricService
+      .time("orbit-category-backfill", "all", async () => {
+        let totalUpdated = 0;
+        for (let pass = 0; pass < 500; pass += 1) {
+          const { updated } = await this.backfillCanonicalCategories(200);
+          totalUpdated += updated;
+          if (updated === 0) break;
+        }
+        this.logger.log(`On-demand category backfill complete: ${totalUpdated} jobs categorized`);
+        return totalUpdated;
+      })
+      .catch((err) => {
+        this.lastCategoryBackfillError = err instanceof Error ? err.message : String(err);
+        this.logger.error(`On-demand category backfill failed: ${this.lastCategoryBackfillError}`);
+      })
+      .finally(() => {
+        this.categoryBackfillRunning = false;
+      });
+    return { started: true, alreadyRunning: false };
+  }
+
+  async categoryCoverage(): Promise<{
+    total: number;
+    classified: number;
+    running: boolean;
+    lastError: string | null;
+  }> {
+    const { total, classified } = await this.externalJobRepo.canonicalCategoryCoverage();
+    return {
+      total,
+      classified,
+      running: this.categoryBackfillRunning,
+      lastError: this.lastCategoryBackfillError,
+    };
   }
 
   async ingestFromSource(

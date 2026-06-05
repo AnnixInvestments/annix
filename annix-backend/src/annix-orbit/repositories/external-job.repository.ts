@@ -110,6 +110,7 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]>;
   abstract jobsMissingEmbedding(): Promise<ExternalJob[]>;
   abstract embeddingCoverage(): Promise<EmbeddingCoverageRow>;
+  abstract canonicalCategoryCoverage(): Promise<{ total: number; classified: number }>;
   abstract countForSourceSince(sourceId: number, since: Date): Promise<number>;
   abstract countForSources(sourceIds: number[]): Promise<number>;
   abstract countForSourcesSince(sourceIds: number[], since: Date): Promise<number>;

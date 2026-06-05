@@ -163,4 +163,16 @@ export class AdminOrbitJobMarketController {
   async embeddingCoverage() {
     return this.embeddingService.embeddingCoverage();
   }
+
+  // Categorizing the backlog runs sequential Gemini calls over hundreds of jobs,
+  // far past the HTTP proxy timeout, so background it and poll coverage.
+  @Post("categories/backfill")
+  backfillCategories() {
+    return this.ingestionService.startCategoryBackfillInBackground();
+  }
+
+  @Get("categories/coverage")
+  async categoryCoverage() {
+    return this.ingestionService.categoryCoverage();
+  }
 }
