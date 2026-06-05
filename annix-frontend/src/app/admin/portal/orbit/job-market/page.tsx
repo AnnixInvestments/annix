@@ -212,6 +212,7 @@ export default function AdminOrbitJobMarketPage() {
       brand: "annix-orbit",
       label: `Fetching jobs from ${sourceName}…`,
       estimatedDurationMs: 8000,
+      backgroundSafe: true,
     });
 
     try {

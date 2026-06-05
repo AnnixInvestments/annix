@@ -213,7 +213,9 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
           <p className="mt-2 text-sm text-gray-500">
             {overran
               ? "Taking longer than estimated — still working…"
-              : `${percent}% — please leave this window open`}
+              : state.backgroundSafe
+                ? `${percent}% — you can safely close this; it keeps running on our servers`
+                : `${percent}% — please leave this window open`}
           </p>
 
           {showBatch && batch && (

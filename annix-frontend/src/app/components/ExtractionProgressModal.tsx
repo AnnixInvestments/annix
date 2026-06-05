@@ -33,6 +33,11 @@ export interface ShowExtractionOptions {
   label: string;
   estimatedDurationMs: number;
   itemCount?: number;
+  // When true, the work runs server-side and survives the client closing — the
+  // footer says it's safe to leave instead of "please leave this window open".
+  // Only set this for genuinely backgrounded (server-side) operations, NOT for
+  // frontend-orchestrated bulk loops that stop if the tab closes.
+  backgroundSafe?: boolean;
   // When set, the modal renders a second progress bar below the
   // current-document one showing overall batch progress + ETA. Only
   // surfaced when `batch.total > 1`.
