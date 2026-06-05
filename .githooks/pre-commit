@@ -127,16 +127,16 @@ check_version_bump "AU Rubber" \
     "annix-frontend/src/app/au-rubber/" "annix-backend/src/au-rubber/"
 
 check_version_bump "FieldFlow/Voice" \
-    "annix-frontend/src/app/fieldflow/config/version.ts" \
-    "annix-frontend/src/app/fieldflow/"
+    "annix-frontend/src/app/annix-rep/config/version.ts" \
+    "annix-frontend/src/app/annix-rep/"
 
 check_version_bump "Annix Rep" \
-    "annix-frontend/src/app/fieldflow/config/annix-rep-version.ts" \
-    "annix-frontend/src/app/fieldflow/"
+    "annix-frontend/src/app/annix-rep/config/annix-rep-version.ts" \
+    "annix-frontend/src/app/annix-rep/"
 
 check_version_bump "Annix Orbit" \
-    "annix-frontend/src/app/annix-orbit/config/version.ts" \
-    "annix-frontend/src/app/annix-orbit/" "annix-backend/src/annix-orbit/"
+    "annix-frontend/src/app/annix/orbit/config/version.ts" \
+    "annix-frontend/src/app/annix/orbit/" "annix-backend/src/annix-orbit/"
 
 # ─── Fast pre-commit checks ────────────────────────────────────────────
 # These catch issues that otherwise only surface during the slow pre-push
