@@ -102,6 +102,12 @@ export class ProcessDocumentResponseDto {
 
   @ApiPropertyOptional({
     description:
+      "Document-level extracted metadata (project, standard, lining, coating, working pressure/temperature, valve types, flange standard, NDT, hydrotest, NACE...). Used by the RFQ wizard to pre-fill global specs from a tender-spec PDF or a covering-email body.",
+  })
+  metadata?: Record<string, any>;
+
+  @ApiPropertyOptional({
+    description:
       "Profile-handler-produced metadata (e.g. RFQ piping supplier bundles, duplicates, drawing references). Shape depends on the active extractionProfile.",
   })
   profileMetadata?: Record<string, any>;

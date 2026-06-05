@@ -25,6 +25,7 @@ export enum DocumentType {
   PDF = "pdf",
   EXCEL = "excel",
   WORD = "word",
+  TEXT = "text",
   CAD = "cad",
   SOLIDWORKS = "solidworks",
   IMAGE = "image",

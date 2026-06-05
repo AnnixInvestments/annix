@@ -149,6 +149,41 @@ export class PdfExtractorService {
     };
   }
 
+  /**
+   * Builds the same tender-spec metadata block extractFromPdf returns, but
+   * from raw text instead of a PDF file. Used by the text-document path so a
+   * covering-email body's lining / coating / pressure / valve specs feed the
+   * RFQ wizard's global specs the same way a tender PDF does.
+   */
+  tenderMetadataFromText(text: string): ExtractionResult["metadata"] {
+    const lines = text.split("\n").filter((line) => line.trim().length > 0);
+    const specDefaults = this.consolidateSpecificationData(this.extractSpecificationData(lines));
+    const metadata = this.extractMetadata(lines);
+    return {
+      projectReference: metadata.projectReference,
+      projectLocation: metadata.projectLocation,
+      projectName: metadata.projectName,
+      workingPressureBar: metadata.workingPressureBar,
+      workingTemperatureC: metadata.workingTemperatureC,
+      standard: specDefaults.standard,
+      coating: specDefaults.externalCoating,
+      lining: specDefaults.lining,
+      materialGrade: specDefaults.materialGrade,
+      wallThickness: specDefaults.wallThickness,
+      valveTypes: metadata.valveTypes,
+      valveStandards: metadata.valveStandards,
+      flangeStandard: metadata.flangeStandard,
+      flangeTableDesignation: metadata.flangeTableDesignation,
+      ndtMethods: metadata.ndtMethods,
+      hydrotestMultiplier: metadata.hydrotestMultiplier,
+      hydrotestHoldMinutes: metadata.hydrotestHoldMinutes,
+      naceCompliance: metadata.naceCompliance,
+      sourService: metadata.sourService,
+      gasketType: metadata.gasketType,
+      valveClauseExcerpt: metadata.valveClauseExcerpt,
+    };
+  }
+
   private extractSpecificationData(lines: string[]): SpecificationCellData[] {
     const specCells: SpecificationCellData[] = [];
 
