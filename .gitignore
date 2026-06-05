@@ -86,3 +86,9 @@ nul
 
 # Cross-session DB-env awareness state (scripts/db-env.mjs)
 .claude-swarm/db-env-state.json
+
+# Local PDF/debug renders (scripts/render-pdf.py output)
+pdf-renders/
+tmp-rfq-img/
+/tmp-*.mjs
+/tmp-*.py
