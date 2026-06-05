@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -19,6 +20,7 @@ import { NixWizardPanel } from "../components/NixWizardPanel";
 
 export default function SeekerProfilePage() {
   const router = useRouter();
+  const { user } = useAnnixOrbitAuth();
   const statusQuery = useOrbitMyProfileStatus();
   const documentsQuery = useOrbitMyDocuments();
   const deleteMutation = useOrbitDeleteMyDocument();
@@ -59,7 +61,8 @@ export default function SeekerProfilePage() {
   const handleNixRan = useCallback(() => {
     setNixRanSignature(docsSignatureRef.current);
   }, []);
-  const cvHighlight = !hasCv;
+  const userName = user ? user.name : null;
+  const firstName = userName ? userName.split(" ")[0] : "";
   const qualsHighlight = hasCv && qualificationsCount === 0;
   const certsHighlight = hasCv && certificatesCount === 0;
   const nixHighlight = hasCv && nixRanSignature !== docsSignature;
@@ -132,28 +135,54 @@ export default function SeekerProfilePage() {
         </p>
       </div>
 
-      {!hasCv && <CvRequiredBanner />}
-
-      <SectionCard
-        title="Your CV"
-        description="Required. We extract your skills, experience, and education from this file."
-      >
-        {cvDoc ? (
-          <CurrentCvCard
-            doc={cvDoc}
-            cvUploadedAt={cvUploadedAt}
-            onDelete={handleDelete}
-            isDeleting={pendingDeleteId === cvDoc.id}
+      {hasCv ? (
+        <SectionCard
+          title="Your CV"
+          description="Required. We extract your skills, experience, and education from this file."
+        >
+          {cvDoc ? (
+            <CurrentCvCard
+              doc={cvDoc}
+              cvUploadedAt={cvUploadedAt}
+              onDelete={handleDelete}
+              isDeleting={pendingDeleteId === cvDoc.id}
+            />
+          ) : null}
+          <IndividualDocumentUploader
+            kind="cv"
+            ctaLabel="Replace CV"
+            helperText="PDF works best. Word, Excel, or PowerPoint also accepted (10 MB max). Replacing your CV will overwrite the old version."
+            onUploaded={() => setNixAutoRunKey((k) => k + 1)}
           />
-        ) : null}
-        <IndividualDocumentUploader
-          kind="cv"
-          ctaLabel={cvDoc ? "Replace CV" : "Upload CV"}
-          helperText="PDF works best. Word, Excel, or PowerPoint also accepted (10 MB max). Replacing your CV will overwrite the old version."
-          highlight={cvHighlight}
-          onUploaded={() => setNixAutoRunKey((k) => k + 1)}
-        />
-      </SectionCard>
+        </SectionCard>
+      ) : (
+        <div
+          className="rounded-2xl shadow-lg p-6 sm:p-8"
+          style={{
+            backgroundImage:
+              "linear-gradient(to bottom right, var(--brand-accent,#FF8A00), var(--brand-accent-light,#FF9C33))",
+          }}
+        >
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/25 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--brand-grad-from,#1a1a40)]">
+            Step 1 of getting hired
+          </span>
+          <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-[var(--brand-grad-from,#1a1a40)]">
+            Start refining your CV here{firstName ? `, ${firstName}` : ""}
+          </h2>
+          <p className="mt-2 max-w-2xl text-[var(--brand-grad-from,#1a1a40)]/80">
+            Upload your CV and let Annix Orbit polish it with AI, then match you to suitable jobs.
+            It only takes a couple of minutes and everything else unlocks from here.
+          </p>
+          <div className="mt-5">
+            <IndividualDocumentUploader
+              kind="cv"
+              ctaLabel="Upload CV"
+              helperText="PDF works best. Word, Excel, or PowerPoint also accepted (10 MB max)."
+              onUploaded={() => setNixAutoRunKey((k) => k + 1)}
+            />
+          </div>
+        </div>
+      )}
 
       <NixWizardPanel
         hasCv={hasCv}
@@ -231,37 +260,6 @@ export default function SeekerProfilePage() {
         onConfirm={handleConfirmContinue}
       />
       {ConfirmDialog}
-    </div>
-  );
-}
-
-function CvRequiredBanner() {
-  return (
-    <div className="bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-xl p-4 flex items-start gap-3">
-      <div className="flex items-center justify-center w-8 h-8 bg-[var(--brand-navbar-100,#e0e0f5)] rounded-full flex-shrink-0">
-        <svg
-          className="w-4 h-4 text-[var(--brand-navbar,#323288)]"
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-      </div>
-      <div>
-        <p className="text-sm font-medium text-[var(--brand-grad-from,#1a1a40)]">
-          Upload your CV to get started
-        </p>
-        <p className="text-xs text-[var(--brand-navbar-active,#252560)] mt-1">
-          We need a CV before we can find jobs for you. Qualifications and certificates are optional
-          but make matches more accurate.
-        </p>
-      </div>
     </div>
   );
 }
