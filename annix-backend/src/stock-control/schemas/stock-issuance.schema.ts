@@ -64,8 +64,8 @@ export class StockIssuance {
   @Prop({ type: String, required: false })
   unifiedIssuedByUserId: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const StockIssuanceSchema = SchemaFactory.createForClass(StockIssuance);

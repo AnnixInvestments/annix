@@ -28,8 +28,8 @@ export class InterviewInvite {
   @Prop({ type: Date, required: false })
   usedAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const InterviewInviteSchema = SchemaFactory.createForClass(InterviewInvite);

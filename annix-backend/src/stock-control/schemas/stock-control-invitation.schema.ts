@@ -43,8 +43,8 @@ export class StockControlInvitation {
   @Prop({ type: String, required: false })
   unifiedInvitedById: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const StockControlInvitationSchema = SchemaFactory.createForClass(StockControlInvitation);

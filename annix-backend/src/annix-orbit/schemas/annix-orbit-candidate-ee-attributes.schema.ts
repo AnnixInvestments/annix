@@ -47,8 +47,8 @@ export class AnnixOrbitCandidateEeAttributes {
   @Prop({ type: Object, required: true })
   purposes: Record<string, unknown>;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
   @Prop({ type: Date, required: false })
   deletedAt: Date;

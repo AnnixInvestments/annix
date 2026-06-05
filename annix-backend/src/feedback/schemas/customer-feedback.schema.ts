@@ -91,8 +91,8 @@ export class CustomerFeedback {
   @Prop({ type: Date, required: false })
   verifiedAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const CustomerFeedbackSchema = SchemaFactory.createForClass(CustomerFeedback);

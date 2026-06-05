@@ -31,8 +31,8 @@ export class StockControlCompanyRole {
   @Prop({ type: Number, required: false })
   unifiedCompanyId: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const StockControlCompanyRoleSchema = SchemaFactory.createForClass(StockControlCompanyRole);

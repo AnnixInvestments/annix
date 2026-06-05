@@ -28,8 +28,8 @@ export class NixChatMessage {
   @Prop({ type: Number, required: false })
   parentMessageId: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const NixChatMessageSchema = SchemaFactory.createForClass(NixChatMessage);

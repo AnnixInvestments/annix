@@ -31,8 +31,8 @@ export class SupplierInvitation {
   @Prop({ type: String, required: true })
   status: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
   @Prop({ type: Date, required: true })
   expiresAt: Date;

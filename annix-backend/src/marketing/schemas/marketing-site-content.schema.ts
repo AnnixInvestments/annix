@@ -29,8 +29,8 @@ export class MarketingSiteContent {
   @Prop({ type: String, required: false })
   lastPublishedBy: string | null;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const MarketingSiteContentSchema = SchemaFactory.createForClass(MarketingSiteContent);

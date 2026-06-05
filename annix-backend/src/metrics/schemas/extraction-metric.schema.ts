@@ -28,8 +28,8 @@ export class ExtractionMetric {
   @Prop({ type: Boolean, required: true })
   succeeded: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const ExtractionMetricSchema = SchemaFactory.createForClass(ExtractionMetric);

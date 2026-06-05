@@ -103,11 +103,11 @@ export class NixExtraction {
   @Prop({ type: Number, required: false })
   supersededByExtractionId: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const NixExtractionSchema = SchemaFactory.createForClass(NixExtraction);

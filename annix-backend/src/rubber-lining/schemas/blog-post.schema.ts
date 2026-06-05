@@ -43,11 +43,11 @@ export class BlogPost {
   @Prop({ type: Boolean, required: true })
   isPublished: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const BlogPostSchema = SchemaFactory.createForClass(BlogPost);

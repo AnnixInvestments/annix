@@ -52,11 +52,11 @@ export class AnnixOrbitUser {
   @Prop({ type: Boolean, required: true })
   pushEnabled: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const AnnixOrbitUserSchema = SchemaFactory.createForClass(AnnixOrbitUser);

@@ -40,11 +40,11 @@ export class JobPostingPortalPosting {
   @Prop({ type: Date, required: false })
   nextRetryAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const JobPostingPortalPostingSchema = SchemaFactory.createForClass(JobPostingPortalPosting);

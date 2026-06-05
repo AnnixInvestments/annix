@@ -40,8 +40,8 @@ export class RubberCompoundMovement {
   @Prop({ type: String, required: false })
   createdBy: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const RubberCompoundMovementSchema = SchemaFactory.createForClass(RubberCompoundMovement);

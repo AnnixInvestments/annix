@@ -43,8 +43,8 @@ export class JobCardActionCompletion {
   @Prop({ type: String, required: false })
   unifiedCompletedById: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const JobCardActionCompletionSchema = SchemaFactory.createForClass(JobCardActionCompletion);

@@ -31,8 +31,8 @@ export class FeedbackAttachment {
   @Prop({ type: Boolean, required: true })
   isAutoScreenshot: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const FeedbackAttachmentSchema = SchemaFactory.createForClass(FeedbackAttachment);

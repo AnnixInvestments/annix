@@ -22,8 +22,8 @@ export class FeatureFlag {
   @Prop({ type: String, required: false })
   description: string;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const FeatureFlagSchema = SchemaFactory.createForClass(FeatureFlag);

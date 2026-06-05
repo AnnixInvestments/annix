@@ -142,11 +142,11 @@ export class AppBranding {
   @Prop({ type: [String], required: true, default: [] })
   inheritedFields: string[];
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const AppBrandingSchema = SchemaFactory.createForClass(AppBranding);

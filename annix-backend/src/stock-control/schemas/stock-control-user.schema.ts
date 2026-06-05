@@ -61,11 +61,11 @@ export class StockControlUser {
   @Prop({ type: Number, required: false })
   unifiedUserId: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const StockControlUserSchema = SchemaFactory.createForClass(StockControlUser);

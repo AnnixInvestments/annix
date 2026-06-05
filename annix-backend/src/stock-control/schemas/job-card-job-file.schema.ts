@@ -49,8 +49,8 @@ export class JobCardJobFile {
   @Prop({ type: String, required: false })
   unifiedUploadedById: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const JobCardJobFileSchema = SchemaFactory.createForClass(JobCardJobFile);

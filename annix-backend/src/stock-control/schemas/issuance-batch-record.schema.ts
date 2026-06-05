@@ -43,8 +43,8 @@ export class IssuanceBatchRecord {
   @Prop({ type: String, required: false })
   unifiedCompanyId: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const IssuanceBatchRecordSchema = SchemaFactory.createForClass(IssuanceBatchRecord);

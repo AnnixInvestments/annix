@@ -40,8 +40,8 @@ export class ConsumableReturn {
   @Prop({ type: String, required: false })
   notes: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const ConsumableReturnSchema = SchemaFactory.createForClass(ConsumableReturn);

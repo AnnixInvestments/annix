@@ -40,8 +40,8 @@ export class IssuanceRow {
   @Prop({ type: String, required: false })
   notes: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
   @Prop({ type: Number, required: false })
   consumableId: number;

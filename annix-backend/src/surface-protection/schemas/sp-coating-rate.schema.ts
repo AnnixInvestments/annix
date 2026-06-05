@@ -67,11 +67,11 @@ export class SpCoatingRate {
   @Prop({ type: Boolean, required: true })
   isActive: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const SpCoatingRateSchema = SchemaFactory.createForClass(SpCoatingRate);

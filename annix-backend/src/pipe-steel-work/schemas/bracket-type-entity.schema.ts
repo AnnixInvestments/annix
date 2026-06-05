@@ -79,11 +79,11 @@ export class BracketTypeEntity {
   @Prop({ type: Number, required: false })
   maxLoadKg: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const BracketTypeEntitySchema = SchemaFactory.createForClass(BracketTypeEntity);

@@ -34,8 +34,8 @@ export class ProspectActivity {
   @Prop({ type: Object, required: false })
   metadata: Record<string, unknown>;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const ProspectActivitySchema = SchemaFactory.createForClass(ProspectActivity);

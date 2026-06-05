@@ -28,8 +28,8 @@ export class MessageAttachment {
   @Prop({ type: String, required: true })
   mimeType: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const MessageAttachmentSchema = SchemaFactory.createForClass(MessageAttachment);

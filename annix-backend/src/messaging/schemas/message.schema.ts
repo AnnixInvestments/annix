@@ -37,8 +37,8 @@ export class Message {
   @Prop({ type: Boolean, required: true })
   isDeleted: boolean;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const MessageSchema = SchemaFactory.createForClass(Message);

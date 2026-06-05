@@ -28,8 +28,8 @@ export class CvPushSubscription {
   @Prop({ type: String, required: true })
   keyAuth: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const CvPushSubscriptionSchema = SchemaFactory.createForClass(CvPushSubscription);

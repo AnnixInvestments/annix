@@ -40,11 +40,11 @@ export class RubberMonthlyAccount {
   @Prop({ type: Object, required: false })
   snapshotData: Record<string, unknown>;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const RubberMonthlyAccountSchema = SchemaFactory.createForClass(RubberMonthlyAccount);

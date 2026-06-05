@@ -79,11 +79,11 @@ export class CrmConfig {
   @Prop({ type: String, required: false })
   lastSyncError: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const CrmConfigSchema = SchemaFactory.createForClass(CrmConfig);

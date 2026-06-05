@@ -40,8 +40,8 @@ export class SyncConflict {
   @Prop({ type: String, required: false })
   resolvedById: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const SyncConflictSchema = SchemaFactory.createForClass(SyncConflict);

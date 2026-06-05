@@ -46,8 +46,8 @@ export class JobCardLineItem {
   @Prop({ type: String, required: false })
   unifiedCompanyId: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const JobCardLineItemSchema = SchemaFactory.createForClass(JobCardLineItem);

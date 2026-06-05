@@ -64,11 +64,11 @@ export class SupplierInvoice {
   @Prop({ type: String, required: false })
   unifiedApprovedBy: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 
   @Prop({ type: Number, required: false })
   approvedByUserId: number;

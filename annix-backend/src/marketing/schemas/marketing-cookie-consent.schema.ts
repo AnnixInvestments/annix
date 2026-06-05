@@ -23,8 +23,8 @@ export class MarketingCookieConsent {
   @Prop({ type: String })
   userAgent: string;
 
-  @Prop({ type: String })
-  createdAt: string;
+  @Prop({ type: Date })
+  createdAt: Date;
 }
 
 export const MarketingCookieConsentSchema = SchemaFactory.createForClass(MarketingCookieConsent);

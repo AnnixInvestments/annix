@@ -64,8 +64,8 @@ export class RubberAppProfile {
   @Prop({ type: String, required: false })
   accentColor: string;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const RubberAppProfileSchema = SchemaFactory.createForClass(RubberAppProfile);

@@ -31,8 +31,8 @@ export class IdempotencyKey {
   @Prop({ type: Number, required: true })
   companyId: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
   @Prop({ type: Date, required: true })
   expiresAt: Date;

@@ -55,8 +55,8 @@ export class PipeClampEntity {
   @Prop({ type: String, required: false })
   standard: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const PipeClampEntitySchema = SchemaFactory.createForClass(PipeClampEntity);

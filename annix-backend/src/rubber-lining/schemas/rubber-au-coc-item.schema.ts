@@ -25,8 +25,8 @@ export class RubberAuCocItem {
   @Prop({ type: Object, required: false })
   testDataSummary: Record<string, unknown>;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const RubberAuCocItemSchema = SchemaFactory.createForClass(RubberAuCocItem);
