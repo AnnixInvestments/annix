@@ -1,11 +1,9 @@
 import {
-  citiesForProvince,
   DEFAULT_MATCH_TIER,
   isJobCategoryKey,
   isMatchTier,
   JOB_CATEGORIES,
   type MatchTier,
-  SA_PROVINCES,
 } from "@annix/product-data/sa-market";
 import {
   BadRequestException,
@@ -29,7 +27,7 @@ import {
   type OrbitTierFeatures,
 } from "../entities/orbit-tier-capability.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
-import { provinceMatchTerms } from "../lib/sa-location-match";
+import { citiesForProvince, provinceMatchTerms, SA_PROVINCES } from "../lib/sa-locations";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
