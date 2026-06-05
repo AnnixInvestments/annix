@@ -54,6 +54,7 @@ export interface NixWizardPanelProps {
   autoRunKey?: number;
   highlight?: boolean;
   onRan?: () => void;
+  onStartSearch?: () => void;
 }
 
 export function NixWizardPanel(props: NixWizardPanelProps) {
@@ -188,7 +189,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
         <NixResultBlock assessment={result} copied={copied} onCopy={handleCopy} />
       )}
 
-      {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} />}
+      {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} onStartSearch={props.onStartSearch} />}
     </div>
   );
 }

@@ -189,6 +189,7 @@ export default function SeekerProfilePage() {
         autoRunKey={nixAutoRunKey}
         highlight={nixHighlight}
         onRan={handleNixRan}
+        onStartSearch={handleStartSearch}
       />
 
       <SectionCard
@@ -232,25 +233,6 @@ export default function SeekerProfilePage() {
         />
         <CredentialPhotoCapture kind="certificate" allowed={photoAllowed} />
       </SectionCard>
-
-      {hasCv && (
-        <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-base font-semibold text-gray-900">Profile ready</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              You can start searching now. Add more qualifications or certificates any time to
-              improve your matches.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={handleStartSearch}
-            className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors whitespace-nowrap"
-          >
-            Start job search
-          </button>
-        </div>
-      )}
 
       <MissingDocsWarningModal
         isOpen={warningOpen}

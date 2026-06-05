@@ -23,10 +23,12 @@ const NIX_BUILD_ESTIMATED_MS = 18000;
 
 export interface NixCvBuilderProps {
   hasCv: boolean;
+  onStartSearch?: () => void;
 }
 
 export function NixCvBuilder(props: NixCvBuilderProps) {
   const hasCv = props.hasCv;
+  const onStartSearch = props.onStartSearch;
   const generateMutation = useGenerateNixCv();
   const generatedQuery = useNixGeneratedCv();
   const { showExtraction, hideExtraction } = useExtractionProgress();
@@ -186,6 +188,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   const handleBuild = () => {
     setCopied(false);
+    setAdopted(false);
     generate();
   };
 
@@ -218,6 +221,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   const adoptMutation = useAdoptNixCv();
   const [adopting, setAdopting] = useState(false);
+  const [adopted, setAdopted] = useState(false);
   const [adoptMessage, setAdoptMessage] = useState<string | null>(null);
 
   const handleUseThisCv = async () => {
@@ -233,6 +237,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     try {
       await adoptMutation.mutateAsync();
       hideExtraction();
+      setAdopted(true);
       setAdoptMessage("Saved — Nix is now using this CV. Your job matches will refresh shortly.");
       void confirm({
         title: "CV saved",
@@ -323,8 +328,11 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
               type="button"
               onClick={handleUseThisCv}
               disabled={adopting}
-              className="text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+              className={`${
+                adopted
+                  ? "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+                  : "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+              } px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60`}
               title="Save this as your CV and have Nix match it to jobs"
             >
               {adopting ? "Saving & matching…" : "Use this CV"}
@@ -344,6 +352,19 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
             >
               {copied ? "Copied!" : "Copy text"}
             </button>
+            {onStartSearch && (
+              <button
+                type="button"
+                onClick={onStartSearch}
+                className={`${
+                  adopted
+                    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+                    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+                } px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors`}
+              >
+                Start job search
+              </button>
+            )}
           </div>
 
           {adoptMessage && (
