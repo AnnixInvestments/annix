@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
+  DocVerificationGroup,
   IssuanceFixMode,
   ReconciliationDocumentCheck,
   ReconciliationFlag,
@@ -438,60 +439,15 @@ function ReconciliationResult(props: ResultProps) {
         )}
       </div>
 
-      {report.missingDocuments.length > 0 && (
-        <div className="bg-white shadow rounded-lg p-6">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <h3 className="text-sm font-semibold text-gray-900">
-              Invoices/deliveries on the sheet but NOT in the app ({report.missingDocuments.length})
-            </h3>
-            {pendingMissingCount > 1 ? (
-              <button
-                type="button"
-                onClick={props.onCreateAllDeliveries}
-                className="shrink-0 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
-              >
-                Create all ({pendingMissingCount})
-              </button>
-            ) : null}
-          </div>
-          <p className="text-xs text-gray-500 mb-3">
-            These documents are referenced on your stock sheet but have no matching delivery or
-            supplier invoice captured in the app — likely the source of intake shortfalls. Click
-            "Create delivery" to record one from the sheet's quantities.
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {report.missingDocuments.map((doc) => {
-              const supplier = doc.supplier;
-              const isCreated = props.createdInvoices.has(doc.invoice);
-              const isCreating = props.creatingInvoice === doc.invoice;
-              return (
-                <div
-                  key={`${doc.invoice}-${supplier ?? ""}`}
-                  className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1 text-xs ${
-                    isCreated
-                      ? "border-green-200 bg-green-50 text-green-800"
-                      : "border-red-200 bg-red-50 text-red-800"
-                  }`}
-                >
-                  <span className="font-medium">{doc.invoice}</span>
-                  {supplier ? <span className="opacity-70">· {supplier}</span> : null}
-                  {isCreated ? (
-                    <span className="font-semibold">✓ created</span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => props.onCreateDelivery(doc)}
-                      disabled={isCreating}
-                      className="rounded bg-teal-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-teal-700 disabled:opacity-50"
-                    >
-                      {isCreating ? "Creating…" : "Create delivery"}
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
+      {report.documentGroups.length > 0 && (
+        <DocumentVerificationTable
+          groups={report.documentGroups}
+          createdInvoices={props.createdInvoices}
+          creatingInvoice={props.creatingInvoice}
+          onCreateDelivery={props.onCreateDelivery}
+          onCreateAllDeliveries={props.onCreateAllDeliveries}
+          pendingMissingCount={pendingMissingCount}
+        />
       )}
 
       <div className="bg-white shadow rounded-lg">
@@ -636,6 +592,126 @@ function ItemRow(props: {
         )}
       </td>
     </tr>
+  );
+}
+
+function DocumentVerificationTable(props: {
+  groups: DocVerificationGroup[];
+  createdInvoices: Set<string>;
+  creatingInvoice: string | null;
+  onCreateDelivery: (doc: ReconciliationDocumentCheck) => void;
+  onCreateAllDeliveries: () => void;
+  pendingMissingCount: number;
+}) {
+  const rows = props.groups.flatMap((g) => g.rows);
+  const presentCount = rows.filter((r) => r.status === "present").length;
+  const missingInAppCount = rows.filter((r) => r.status === "missing_in_app").length;
+  const notOnManualCount = rows.filter((r) => r.status === "missing_on_manual").length;
+
+  const headCell =
+    "sticky top-0 z-10 bg-gray-100 px-3 py-2 text-left font-medium text-gray-600 border-b border-gray-200";
+  const firstHead =
+    "sticky top-0 left-0 z-20 bg-gray-100 px-3 py-2 text-left font-medium text-gray-600 border-b border-r border-gray-200";
+  const firstCell =
+    "sticky left-0 z-[5] bg-white px-3 py-1.5 font-medium text-gray-700 border-r border-gray-200 whitespace-nowrap";
+
+  return (
+    <div className="bg-white shadow rounded-lg p-6">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-gray-900">
+          Document verification ({rows.length})
+        </h3>
+        {props.pendingMissingCount > 1 ? (
+          <button
+            type="button"
+            onClick={props.onCreateAllDeliveries}
+            className="shrink-0 rounded-md bg-teal-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-teal-700"
+          >
+            Create all missing ({props.pendingMissingCount})
+          </button>
+        ) : null}
+      </div>
+      <div className="mb-3 flex flex-wrap gap-4 text-xs text-gray-600">
+        <span>
+          <span className="font-semibold text-green-600">✓</span> on system ({presentCount})
+        </span>
+        <span>
+          <span className="font-semibold text-red-600">✗</span> missing from system (
+          {missingInAppCount})
+        </span>
+        <span>
+          <span className="font-semibold text-amber-600">⚠</span> on system, not on manual (
+          {notOnManualCount})
+        </span>
+      </div>
+      <div className="max-h-[28rem] overflow-auto rounded border border-gray-200">
+        <table className="min-w-full border-collapse text-xs">
+          <thead>
+            <tr>
+              <th className={firstHead}>Supplier</th>
+              <th className={headCell}>Document No.</th>
+              <th className={headCell}>Status</th>
+              <th className={`${headCell} text-right`}>Action</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {rows.map((row, i) => {
+              const created = props.createdInvoices.has(row.invoice);
+              const creating = props.creatingInvoice === row.invoice;
+              return (
+                <tr key={`${row.supplier}-${row.invoice}-${i}`} className="hover:bg-gray-50">
+                  <td className={firstCell}>{row.supplier}</td>
+                  <td className="whitespace-nowrap px-3 py-1.5 font-mono text-gray-900">
+                    {row.invoice}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-1.5">
+                    {row.status === "present" ? (
+                      <span className="text-green-700">
+                        <span className="font-semibold">✓</span> On system
+                      </span>
+                    ) : row.status === "missing_in_app" ? (
+                      <span className="text-red-700">
+                        <span className="font-semibold">✗</span> Missing in app
+                      </span>
+                    ) : (
+                      <span className="text-amber-700">
+                        <span className="font-semibold">⚠</span> Not on manual
+                      </span>
+                    )}
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-1.5 text-right">
+                    {row.status === "missing_in_app" ? (
+                      created ? (
+                        <span className="text-[11px] font-semibold text-green-700">✓ created</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            props.onCreateDelivery({
+                              invoice: row.invoice,
+                              supplier: row.supplier,
+                              foundAs: null,
+                              foundId: null,
+                              status: "missing",
+                            })
+                          }
+                          disabled={creating}
+                          className="rounded bg-teal-600 px-2 py-0.5 text-[11px] font-medium text-white hover:bg-teal-700 disabled:opacity-50"
+                        >
+                          {creating ? "Creating…" : "Create delivery"}
+                        </button>
+                      )
+                    ) : (
+                      <span className="text-gray-300">—</span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
 

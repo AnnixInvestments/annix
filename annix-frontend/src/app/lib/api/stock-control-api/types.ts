@@ -3008,6 +3008,20 @@ export interface CreateMissingIssuanceResult {
   message: string;
 }
 
+export type DocVerificationStatus = "present" | "missing_in_app" | "missing_on_manual";
+
+export interface DocVerificationRow {
+  supplier: string;
+  invoice: string;
+  status: DocVerificationStatus;
+  foundAs: "supplier_invoice" | "delivery_note" | null;
+}
+
+export interface DocVerificationGroup {
+  supplier: string;
+  rows: DocVerificationRow[];
+}
+
 export interface ReconciliationReport {
   periodLabel: string | null;
   periodStart: string;
@@ -3026,4 +3040,5 @@ export interface ReconciliationReport {
   warnings: string[];
   selectedSheet: string | null;
   availableSheets: string[];
+  documentGroups: DocVerificationGroup[];
 }

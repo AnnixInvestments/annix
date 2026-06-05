@@ -56,6 +56,20 @@ export interface ReconciliationDocumentCheck {
   status: "present" | "missing";
 }
 
+export type DocVerificationStatus = "present" | "missing_in_app" | "missing_on_manual";
+
+export interface DocVerificationRow {
+  supplier: string;
+  invoice: string;
+  status: DocVerificationStatus;
+  foundAs: "supplier_invoice" | "delivery_note" | null;
+}
+
+export interface DocVerificationGroup {
+  supplier: string;
+  rows: DocVerificationRow[];
+}
+
 export interface ReconciliationItemAnalysis {
   rowIndex: number;
   name: string | null;
@@ -128,6 +142,7 @@ export interface ReconciliationReport {
   warnings: string[];
   selectedSheet: string | null;
   availableSheets: string[];
+  documentGroups: DocVerificationGroup[];
 }
 
 interface ColumnRoles {
@@ -483,6 +498,13 @@ export class StockTakeReconciliationService {
 
     const movementsByItem = await this.appMovementsByItem(companyId, periodStart, periodEnd);
     const documents = await this.checkDocuments(companyId, parsed.invoiceRefs);
+    const documentGroups = await this.buildDocumentGroups(
+      companyId,
+      documents,
+      parsed.invoiceRefs,
+      periodStart,
+      periodEnd,
+    );
 
     const items: ReconciliationItemAnalysis[] = parsed.items.map((item, index) => {
       const match = matchByIndex.get(index) ?? null;
@@ -567,7 +589,63 @@ export class StockTakeReconciliationService {
       warnings: parsed.warnings,
       selectedSheet: parsed.selectedSheet,
       availableSheets: parsed.availableSheets,
+      documentGroups,
     };
+  }
+
+  private withinPeriod(date: Date | null, periodStart: string, periodEnd: string): boolean {
+    if (date === null) return true;
+    const time = date.getTime();
+    if (periodStart !== "" && time < fromISO(periodStart).startOf("day").toJSDate().getTime()) {
+      return false;
+    }
+    if (periodEnd !== "" && time > fromISO(periodEnd).endOf("day").toJSDate().getTime()) {
+      return false;
+    }
+    return true;
+  }
+
+  private async buildDocumentGroups(
+    companyId: number,
+    documents: ReconciliationDocumentCheck[],
+    invoiceRefs: ReconciliationInvoiceRef[],
+    periodStart: string,
+    periodEnd: string,
+  ): Promise<DocVerificationGroup[]> {
+    const rows: DocVerificationRow[] = documents.map((d) => ({
+      supplier: d.supplier ?? "Unknown supplier",
+      invoice: d.invoice,
+      status: d.status === "present" ? "present" : "missing_in_app",
+      foundAs: d.foundAs,
+    }));
+
+    const sheetNorms = new Set(invoiceRefs.map((ref) => this.normalizeRef(ref.invoice)));
+    const deliveries = await this.deliveryNoteRepo.findAllForCompanyByReceivedDate(companyId);
+    deliveries
+      .filter((dn) => this.withinPeriod(dn.receivedDate, periodStart, periodEnd))
+      .filter((dn) => dn.deliveryNumber && !sheetNorms.has(this.normalizeRef(dn.deliveryNumber)))
+      .forEach((dn) => {
+        rows.push({
+          supplier: dn.supplierName ?? "Unknown supplier",
+          invoice: dn.deliveryNumber,
+          status: "missing_on_manual",
+          foundAs: "delivery_note",
+        });
+      });
+
+    const bySupplier = rows.reduce((acc, row) => {
+      const list = acc.get(row.supplier) ?? [];
+      list.push(row);
+      acc.set(row.supplier, list);
+      return acc;
+    }, new Map<string, DocVerificationRow[]>());
+
+    return Array.from(bySupplier.entries())
+      .map(([supplier, groupRows]) => ({
+        supplier,
+        rows: [...groupRows].sort((a, b) => a.invoice.localeCompare(b.invoice)),
+      }))
+      .sort((a, b) => a.supplier.localeCompare(b.supplier));
   }
 
   private async appMovementsByItem(
