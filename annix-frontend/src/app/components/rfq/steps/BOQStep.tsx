@@ -58,6 +58,7 @@ import {
   triggerDownload,
 } from "./boq/helpers";
 import { getFlangeSpec, getSteelSpecName } from "./boq/spec";
+import { type PlatePart, tankPlateTakeoff, verifyTankMass, weldTakeoff } from "./boq/tankTakeoff";
 import type {
   ConsolidatedItem,
   ExportableSubsection,
@@ -1572,7 +1573,6 @@ export default function BOQStep(props: {
       // Each tank is expanded into its plate parts (mark · thickness · qty ·
       // per-part weight) plus a summary line carrying the steel grade and a
       // stated-vs-computed mass cross-check.
-      const STEEL_DENSITY_KG_PER_M3 = 7850;
       const rawEntrySpecsTank = entry.specs;
       const rawSpecsTank = rawEntrySpecsTank || {};
       const rawEntryDescriptionTank = entry.description;
@@ -1584,144 +1584,48 @@ export default function BOQStep(props: {
       const rawTankGrade = rawSpecsTank.materialGrade;
       const tankGrade = rawTankGrade ? String(rawTankGrade) : "";
       const rawTankStatedMass = rawSpecsTank.totalSteelWeightKg;
-      const statedSteelMassKg = isNumber(rawTankStatedMass) ? rawTankStatedMass : undefined;
+      const statedSteelMassKg = isNumber(rawTankStatedMass) ? rawTankStatedMass : null;
       const rawPlateBom = rawSpecsTank.plateBom;
-      const plates = isArray(rawPlateBom)
-        ? (rawPlateBom as Array<{
-            mark?: string;
-            description?: string;
-            thicknessMm?: number;
-            lengthMm?: number;
-            widthMm?: number;
-            quantity?: number;
-            weightKg?: number;
-            areaM2?: number;
-          }>)
-        : [];
+      const plates: PlatePart[] = isArray(rawPlateBom) ? (rawPlateBom as PlatePart[]) : [];
 
-      let computedSteelMassKg = 0;
-      const plateRows = plates.map((p, idx) => {
-        const rawPMark = p.mark;
-        const rawPDesc = p.description;
-        const rawPThk = p.thicknessMm;
-        const rawPQty = p.quantity;
-        const rawPWeight = p.weightKg;
-        const rawPArea = p.areaM2;
-        const rawPLen = p.lengthMm;
-        const rawPWid = p.widthMm;
-        const thickness = isNumber(rawPThk) ? rawPThk : 0;
-        const plateInstanceQty = isNumber(rawPQty) ? rawPQty : 1;
-        const length = isNumber(rawPLen) ? rawPLen : 0;
-        const width = isNumber(rawPWid) ? rawPWid : 0;
-        const areaFromDims = length * width > 0 ? (length * width) / 1_000_000 : 0;
-        const area = isNumber(rawPArea) && rawPArea > 0 ? rawPArea : areaFromDims;
-        // Per-part weight: prefer the stated cutting-list weight, else compute
-        // from thickness × area × steel density (7.85 t/m³).
-        const statedWeight = isNumber(rawPWeight) && rawPWeight > 0 ? rawPWeight : 0;
-        const perPartWeight =
-          statedWeight > 0
-            ? statedWeight
-            : thickness > 0 && area > 0
-              ? area * (thickness / 1000) * STEEL_DENSITY_KG_PER_M3
-              : 0;
-        const rowQty = plateInstanceQty * tankQty;
-        const rowWeight = perPartWeight * rowQty;
-        computedSteelMassKg += rowWeight;
-        const markLabel = rawPMark ? `Mark ${rawPMark}` : `Part ${idx + 1}`;
-        const plateDesc = rawPDesc || "Plate part";
-        const thkLabel = thickness > 0 ? ` · ${thickness}mm PL` : " · thickness TBC";
+      // Plate / weld take-off + stated-vs-computed mass cross-check — the maths
+      // is the canonical, unit-tested boq/tankTakeoff module.
+      const plateTakeoff = tankPlateTakeoff(plates, tankQty);
+      const computedSteelMassKg = plateTakeoff.computedSteelMassKg;
+      const plateRows = plateTakeoff.rows.map((row, idx) => {
+        const rowMark = row.mark;
+        const rowDescription = row.description;
+        const rowThicknessMm = row.thicknessMm;
+        const markLabel = rowMark ? `Mark ${rowMark}` : `Part ${idx + 1}`;
+        const plateDesc = rowDescription || "Plate part";
+        const thkLabel = rowThicknessMm > 0 ? ` · ${rowThicknessMm}mm PL` : " · thickness TBC";
         return {
-          key: `TANKPLATE_${tankName}_${rawPMark || idx}_${thickness}`,
+          key: `TANKPLATE_${tankName}_${rowMark || idx}_${rowThicknessMm}`,
           description: `    ↳ [${tankName}] ${markLabel}: ${plateDesc}${thkLabel}`,
-          qty: rowQty,
-          weight: rowWeight,
+          qty: row.qty,
+          weight: row.weightKg,
         };
       });
 
-      // Weld take-off. Weld SIZE comes from the drawing's stated fillet leg
-      // ("6 TYP") when extracted (specs.weldSizeMm); only when the drawing
-      // states no weld size do we fall back to the AISC/AWS minimum fillet for
-      // the plate thickness (≤6→3, 6–13→5, 13–19→6, >19→8 mm). The drawing
-      // carries the SIZE but not the total LENGTH, so estimate length from
-      // plate-edge geometry rather than an empirical factor: Σ(plate perimeter)
-      // × 0.5 — the engineering reality that an internal seam is ONE weld shared
-      // between two plate edges, and free/flanged edges aren't welded. Perimeter
-      // from L×W when extracted, else a square-equivalent from the plate area,
-      // else a tank-level area+count fallback. Weld weight for consumables =
-      // length × fillet weld-metal/m (0.5·leg²·density). Flagged as an estimate.
-      const WELD_JOINT_FRACTION = 0.5;
-      const minFilletLegMm = (thicknessMm: number): number =>
-        thicknessMm <= 0
-          ? 0
-          : thicknessMm <= 6
-            ? 3
-            : thicknessMm <= 13
-              ? 5
-              : thicknessMm <= 19
-                ? 6
-                : 8;
-      const filletWeldMetalKgPerM = (legMm: number): number =>
-        (0.5 * legMm * legMm * STEEL_DENSITY_KG_PER_M3) / 1_000_000;
-      const rawStatedWeldLeg = rawSpecsTank.weldSizeMm;
-      const statedWeldLegMm =
-        isNumber(rawStatedWeldLeg) && rawStatedWeldLeg > 0 ? rawStatedWeldLeg : 0;
-      const weldLegForThickness = (thicknessMm: number): number =>
-        statedWeldLegMm > 0 ? statedWeldLegMm : minFilletLegMm(thicknessMm);
-      let weldLengthM = 0;
-      let weldWeightKg = 0;
-      let dominantWeldThicknessMm = 0;
-      plates.forEach((plate) => {
-        const rawWeldThk = plate.thicknessMm;
-        const rawWeldLen = plate.lengthMm;
-        const rawWeldWid = plate.widthMm;
-        const rawWeldArea = plate.areaM2;
-        const rawWeldQty = plate.quantity;
-        const weldThk = isNumber(rawWeldThk) ? rawWeldThk : 0;
-        const weldLen = isNumber(rawWeldLen) ? rawWeldLen : 0;
-        const weldWid = isNumber(rawWeldWid) ? rawWeldWid : 0;
-        const weldArea = isNumber(rawWeldArea) && rawWeldArea > 0 ? rawWeldArea : 0;
-        const weldPartQty = isNumber(rawWeldQty) ? rawWeldQty : 1;
-        const perimeterM =
-          weldLen > 0 && weldWid > 0
-            ? (2 * (weldLen + weldWid)) / 1000
-            : weldArea > 0
-              ? 4 * Math.sqrt(weldArea)
-              : 0;
-        const partWeldLengthM = perimeterM * WELD_JOINT_FRACTION * weldPartQty * tankQty;
-        weldLengthM += partWeldLengthM;
-        if (weldThk > dominantWeldThicknessMm) dominantWeldThicknessMm = weldThk;
-        weldWeightKg += partWeldLengthM * filletWeldMetalKgPerM(weldLegForThickness(weldThk));
-      });
-      if (weldLengthM === 0) {
-        const rawTankCoatArea = rawSpecsTank.coatingAreaM2;
-        const rawTankLiningArea = rawSpecsTank.liningAreaM2;
-        const tankCoatArea = isNumber(rawTankCoatArea) && rawTankCoatArea > 0 ? rawTankCoatArea : 0;
-        const tankLiningArea =
-          isNumber(rawTankLiningArea) && rawTankLiningArea > 0 ? rawTankLiningArea : 0;
-        const tankProxyArea = tankCoatArea > 0 ? tankCoatArea : tankLiningArea;
-        const tankPartCount = plates.length > 0 ? plates.length : 1;
-        if (tankProxyArea > 0) {
-          weldLengthM = 2 * Math.sqrt(tankPartCount * tankProxyArea) * tankQty;
-          const fallbackThk = dominantWeldThicknessMm > 0 ? dominantWeldThicknessMm : 6;
-          weldWeightKg = weldLengthM * filletWeldMetalKgPerM(weldLegForThickness(fallbackThk));
-        }
-      }
-      const weldFilletLegMm = weldLegForThickness(
-        dominantWeldThicknessMm > 0 ? dominantWeldThicknessMm : 6,
-      );
-      const weldSizeSource = statedWeldLegMm > 0 ? "drawing" : "AISC min";
+      // Weld take-off (size from the drawing's stated fillet, else AISC min;
+      // length a geometry estimate) — canonical boq/tankTakeoff module.
+      const weld = weldTakeoff(plates, rawSpecsTank, tankQty);
+      const weldLengthM = weld.lengthM;
+      const weldWeightKg = weld.weightKg;
+      const weldFilletLegMm = weld.legMm;
+      const weldSizeSource = weld.legSource;
 
       const headerWeight =
-        statedSteelMassKg !== undefined ? statedSteelMassKg * tankQty : computedSteelMassKg;
-      let verifyNote = "";
-      if (statedSteelMassKg !== undefined && computedSteelMassKg > 0) {
-        const statedTotal = statedSteelMassKg * tankQty;
-        const diffPct = Math.abs(statedTotal - computedSteelMassKg) / statedTotal;
-        verifyNote =
-          diffPct <= 0.1
-            ? ` · ✓ weight verified (parts ≈ ${Math.round(computedSteelMassKg)}kg vs stated ${Math.round(statedTotal)}kg)`
-            : ` · ⚠ CHECK WEIGHT: parts ${Math.round(computedSteelMassKg)}kg vs stated ${Math.round(statedTotal)}kg`;
-      }
+        statedSteelMassKg !== null ? statedSteelMassKg * tankQty : computedSteelMassKg;
+      const massCheck = verifyTankMass(statedSteelMassKg, computedSteelMassKg, tankQty);
+      const massComputedKg = massCheck.computedKg;
+      const massStatedTotalKg = massCheck.statedTotalKg;
+      const verifyNote =
+        massCheck.status === "verified"
+          ? ` · ✓ weight verified (parts ≈ ${Math.round(massComputedKg)}kg vs stated ${Math.round(massStatedTotalKg ?? 0)}kg)`
+          : massCheck.status === "check"
+            ? ` · ⚠ CHECK WEIGHT: parts ${Math.round(massComputedKg)}kg vs stated ${Math.round(massStatedTotalKg ?? 0)}kg`
+            : "";
       const gradeLabel = tankGrade ? ` — ${tankGrade}` : "";
       const headerKey = `TANK_${tankName.toLowerCase()}`;
       const existingHeader = consolidatedTanks.get(headerKey);
