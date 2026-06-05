@@ -34,9 +34,15 @@ const ADJACENT_FIELD_SCORE = 0.5;
 const OUTSIDE_RADIUS_PENALTY = 0.4;
 
 const TOP_MATCHES_LIMIT = 20;
-// Practical ceiling for tiers whose maxJobResults is null ("unlimited", e.g.
-// Trailblazer) — keeps generation/scoring bounded for performance.
+// Ceiling for how many matches the DISPLAY/feed window considers for a tier whose
+// maxJobResults is null ("unlimited", e.g. Trailblazer). The feed only ever shows
+// the top 100, so this stays modest.
 const UNLIMITED_MATCH_CEILING = 150;
+// How many matches the unlimited tier STORES per run. Storage is what the headline
+// "Nix matches" count reflects, so for Trailblazer we rank far more of the embedded
+// pool (the top N by similarity) rather than just the feed window — every run
+// re-scores against the whole pool, so re-running surfaces the full relevant set.
+const UNLIMITED_STORAGE_CEILING = 1000;
 
 // "Not for me" learning: down-weight a job whose embedding is very close to a
 // job the seeker already dismissed. Gentle + tunable — only jobs above the
@@ -146,13 +152,25 @@ export class CandidateJobMatchingService {
     return maxJobResults == null ? UNLIMITED_MATCH_CEILING : maxJobResults;
   }
 
+  // How many matches to generate + persist for a candidate. The unlimited tier
+  // stores far more than the feed window so the true match count reflects the
+  // whole relevant pool, not just the first page.
+  private async storageMatchLimit(matchTier: string): Promise<number> {
+    const capability = await this.tierCapabilityRepo.findByTier(matchTier);
+    if (!capability) {
+      return TOP_MATCHES_LIMIT;
+    }
+    const maxJobResults = capability.maxJobResults;
+    return maxJobResults == null ? UNLIMITED_STORAGE_CEILING : maxJobResults;
+  }
+
   async matchCandidateToJobs(candidateId: number): Promise<CandidateJobMatch[]> {
     const candidate = await this.candidateRepo.findById(candidateId);
     if (!candidate) {
       return [];
     } else {
       const narrowing = this.resolveCategoryNarrowing(candidate);
-      const matchLimit = await this.effectiveMatchLimit(candidate.matchTier);
+      const matchLimit = await this.storageMatchLimit(candidate.matchTier);
       const dismissedVectors = await this.loadDismissedJobVectors(candidateId);
       const similarJobs = await this.findSimilarJobsByEmbedding(
         candidate,
