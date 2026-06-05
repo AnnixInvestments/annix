@@ -7,6 +7,7 @@ import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
 import {
   CandidateJobMatchRepository,
+  type RecommendedFacetRow,
   type RecommendedMatchCountFilters,
 } from "./candidate-job-match.repository";
 
@@ -173,6 +174,30 @@ export class PostgresCandidateJobMatchRepository
       .select("COUNT(DISTINCT match.external_job_id)", "total")
       .getRawOne<{ total: string }>()
       .then((row) => (row ? Number(row.total) : 0));
+  }
+
+  async facetRowsForCandidates(candidateIds: number[]): Promise<RecommendedFacetRow[]> {
+    if (candidateIds.length === 0) return [];
+    const rows = await this.repository
+      .createQueryBuilder("match")
+      .innerJoin("match.externalJob", "job")
+      .where("match.candidate_id IN (:...ids)", { ids: candidateIds })
+      .andWhere("match.dismissed = false")
+      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
+      .andWhere("job.delisted IS NOT TRUE")
+      .select([
+        'job.location_area AS "locationArea"',
+        'job.location_raw AS "locationRaw"',
+        'job.canonical_category AS "canonicalCategory"',
+        'job.source_id AS "sourceId"',
+        'job.salary_min AS "salaryMin"',
+        'job.salary_max AS "salaryMax"',
+        "job.title AS title",
+        "job.company AS company",
+      ])
+      .distinct(true)
+      .getRawMany<RecommendedFacetRow>();
+    return rows;
   }
 
   countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number> {

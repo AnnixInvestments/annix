@@ -4,6 +4,7 @@ import {
   type PublicJob,
   type SeekerColdStartJobsResponse,
   type SeekerDismissReason,
+  type SeekerJobFacets,
   type SeekerJobStats,
   type SeekerMatchingConsentStatus,
   type SeekerMute,
@@ -81,6 +82,15 @@ export function useOrbitSeekerJobSources(enabled: boolean = true) {
     queryFn: () => annixOrbitApiClient.seekerJobSources(),
     enabled,
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitSeekerJobFacets(enabled: boolean, filters: SeekerRecommendedFilters = {}) {
+  return useQuery<SeekerJobFacets>({
+    queryKey: annixOrbitKeys.seekerJobs.facets(filters),
+    queryFn: () => annixOrbitApiClient.seekerJobFacets(filters),
+    enabled,
+    staleTime: 60 * 1000,
   });
 }
 

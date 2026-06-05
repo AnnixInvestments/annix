@@ -8,6 +8,7 @@ import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
 import {
   CandidateJobMatchRepository,
+  type RecommendedFacetRow,
   type RecommendedMatchCountFilters,
 } from "./candidate-job-match.repository";
 
@@ -184,6 +185,56 @@ export class MongoCandidateJobMatchRepository
       .exec();
 
     return result.length > 0 ? result[0].total : 0;
+  }
+
+  async facetRowsForCandidates(candidateIds: number[]): Promise<RecommendedFacetRow[]> {
+    if (candidateIds.length === 0) return [];
+    const rows = await this.documents
+      .aggregate<RecommendedFacetRow & { _id: number }>([
+        { $match: { candidateId: { $in: candidateIds }, dismissed: false } },
+        {
+          $lookup: {
+            from: "cv_assistant_external_jobs",
+            let: { jid: "$externalJobId" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$jid"] } } },
+              {
+                $match: {
+                  delisted: { $ne: true },
+                  $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+                },
+              },
+              {
+                $project: {
+                  locationArea: 1,
+                  locationRaw: 1,
+                  canonicalCategory: 1,
+                  sourceId: 1,
+                  salaryMin: 1,
+                  salaryMax: 1,
+                  title: 1,
+                  company: 1,
+                },
+              },
+            ],
+            as: "job",
+          },
+        },
+        { $unwind: "$job" },
+        { $group: { _id: "$externalJobId", job: { $first: "$job" } } },
+        { $replaceRoot: { newRoot: "$job" } },
+      ])
+      .exec();
+    return rows.map((row) => ({
+      locationArea: row.locationArea ?? null,
+      locationRaw: row.locationRaw ?? null,
+      canonicalCategory: row.canonicalCategory ?? null,
+      sourceId: row.sourceId ?? null,
+      salaryMin: row.salaryMin ?? null,
+      salaryMax: row.salaryMax ?? null,
+      title: row.title ?? null,
+      company: row.company ?? null,
+    }));
   }
 
   countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number> {

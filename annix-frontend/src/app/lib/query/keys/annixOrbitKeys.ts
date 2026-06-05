@@ -140,6 +140,14 @@ export const annixOrbitKeys = {
     consent: () => ["annix-orbit", "seeker", "jobs", "consent"] as const,
     mutes: () => ["annix-orbit", "seeker", "jobs", "mutes"] as const,
     sources: () => ["annix-orbit", "seeker", "jobs", "sources"] as const,
+    facets: (filters?: {
+      province?: string;
+      city?: string;
+      category?: string;
+      minSalary?: string;
+      search?: string;
+      provider?: string;
+    }) => ["annix-orbit", "seeker", "jobs", "facets", filters ?? null] as const,
   },
   seekerWorkProfile: {
     all: ["annix-orbit", "seeker", "work-profile"] as const,

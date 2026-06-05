@@ -1,9 +1,6 @@
 "use client";
 
-import { JOB_CATEGORIES } from "@annix/product-data/sa-market";
-import { useMemo } from "react";
 import { providerLabel } from "../provider-labels";
-import { citiesForProvince, SA_PROVINCES } from "../sa-locations";
 
 export interface SeekerFilterState {
   search: string;
@@ -18,12 +15,14 @@ interface SeekerJobFiltersProps {
   state: SeekerFilterState;
   onChange: (next: SeekerFilterState) => void;
   providers: string[];
+  provinces: string[];
+  cities: string[];
+  categories: Array<{ key: string; label: string }>;
 }
 
 export function SeekerJobFilters(props: SeekerJobFiltersProps) {
   const state = props.state;
-  const province = state.province;
-  const cityOptions = useMemo(() => citiesForProvince(province || null), [province]);
+  const cityOptions = props.cities;
 
   const update = (patch: Partial<SeekerFilterState>) => {
     props.onChange({ ...state, ...patch });
@@ -48,7 +47,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All provinces</option>
-          {SA_PROVINCES.map((p) => (
+          {props.provinces.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
@@ -74,10 +73,11 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
           aria-label="Filter by category"
           value={state.category}
           onChange={(e) => update({ category: e.target.value })}
+          disabled={props.categories.length === 0}
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-50 disabled:text-gray-400"
         >
           <option value="">All categories</option>
-          {JOB_CATEGORIES.map((c) => (
+          {props.categories.map((c) => (
             <option key={c.key} value={c.key}>
               {c.label}
             </option>

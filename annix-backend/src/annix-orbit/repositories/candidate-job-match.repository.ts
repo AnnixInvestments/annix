@@ -12,6 +12,17 @@ export interface RecommendedMatchCountFilters {
   sourceIds?: number[] | null;
 }
 
+export interface RecommendedFacetRow {
+  locationArea: string | null;
+  locationRaw: string | null;
+  canonicalCategory: string | null;
+  sourceId: number | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  title: string | null;
+  company: string | null;
+}
+
 export abstract class CandidateJobMatchRepository extends CrudRepository<CandidateJobMatch> {
   abstract findByCandidateAndJob(
     candidateId: number,
@@ -35,6 +46,7 @@ export abstract class CandidateJobMatchRepository extends CrudRepository<Candida
     candidateIds: number[],
     filters: RecommendedMatchCountFilters | null,
   ): Promise<number>;
+  abstract facetRowsForCandidates(candidateIds: number[]): Promise<RecommendedFacetRow[]>;
   abstract countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number>;
   abstract weeklyDigestMatches(
     jobPostingIds: number[],

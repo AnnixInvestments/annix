@@ -86,6 +86,29 @@ export class SeekerJobsController {
     return this.feedService.activeSourceProviders();
   }
 
+  @Get("facets")
+  async facets(
+    @Request() req: SeekerAuthRequest,
+    @Query("province") province?: string,
+    @Query("city") city?: string,
+    @Query("category") category?: string,
+    @Query("minSalary") minSalary?: string,
+    @Query("search") search?: string,
+    @Query("provider") provider?: string,
+  ) {
+    const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
+    const filters = {
+      province: province || null,
+      city: city || null,
+      category: category || null,
+      minSalary:
+        parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
+      search: search || null,
+      provider: provider && provider !== "all" ? provider : null,
+    };
+    return this.feedService.recommendedFacetsForSeeker(req.user.email, { filters });
+  }
+
   @Get("recommended")
   async recommended(
     @Request() req: SeekerAuthRequest,

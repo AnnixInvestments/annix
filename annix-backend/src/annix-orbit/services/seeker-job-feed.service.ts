@@ -1,4 +1,12 @@
-import { DEFAULT_MATCH_TIER, isMatchTier, type MatchTier } from "@annix/product-data/sa-market";
+import {
+  citiesForProvince,
+  DEFAULT_MATCH_TIER,
+  isJobCategoryKey,
+  isMatchTier,
+  JOB_CATEGORIES,
+  type MatchTier,
+  SA_PROVINCES,
+} from "@annix/product-data/sa-market";
 import {
   BadRequestException,
   forwardRef,
@@ -407,6 +415,98 @@ export class SeekerJobFeedService {
       }
     }
     return this.entitlementsForSeeker(email);
+  }
+
+  // Facet options for the filter dropdowns: only the provinces, cities, categories
+  // and sources that actually have a match in the seeker's set. Each facet is
+  // computed with every OTHER active filter applied but not its own, so a chosen
+  // value never collapses its own dropdown and empty options never appear.
+  async recommendedFacetsForSeeker(
+    email: string | null,
+    options: { filters?: RecommendedJobFilters | null } = {},
+  ): Promise<{
+    provinces: string[];
+    cities: string[];
+    categories: Array<{ key: string; label: string }>;
+    sources: string[];
+  }> {
+    const empty = { provinces: [], cities: [], categories: [], sources: [] };
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) return empty;
+
+    const rows = await this.matchRepo.facetRowsForCandidates(candidates.map((c) => c.id));
+    if (rows.length === 0) return empty;
+
+    const sources = await this.sourceRepo.findManyWhere({
+      companyId: null,
+    } as Partial<JobMarketSource>);
+    const providerBySourceId = new Map(sources.map((s) => [s.id, s.provider]));
+
+    const f = options.filters ?? {};
+    const provinceF = f.province ? f.province.toLowerCase() : null;
+    const cityF = f.city ? f.city.toLowerCase() : null;
+    const categoryF = f.category ?? null;
+    const providerF = f.provider && f.provider !== "all" ? f.provider : null;
+    const minSalaryF = f.minSalary != null && f.minSalary > 0 ? f.minSalary : null;
+    const searchF = f.search ? f.search.trim().toLowerCase() : null;
+
+    const haystackOf = (r: (typeof rows)[number]) =>
+      `${r.locationArea ?? ""} ${r.locationRaw ?? ""}`.toLowerCase();
+    const keywordOf = (r: (typeof rows)[number]) =>
+      `${r.title ?? ""} ${r.company ?? ""} ${r.locationArea ?? ""} ${r.locationRaw ?? ""}`.toLowerCase();
+    const bestSalary = (r: (typeof rows)[number]) =>
+      r.salaryMax != null ? r.salaryMax : r.salaryMin;
+
+    const passes = (r: (typeof rows)[number], skip: Set<string>): boolean => {
+      if (!skip.has("province") && provinceF && !haystackOf(r).includes(provinceF)) return false;
+      if (!skip.has("city") && cityF && !haystackOf(r).includes(cityF)) return false;
+      if (!skip.has("category") && categoryF && r.canonicalCategory !== categoryF) return false;
+      if (
+        !skip.has("source") &&
+        providerF &&
+        providerBySourceId.get(r.sourceId ?? -1) !== providerF
+      )
+        return false;
+      if (!skip.has("salary") && minSalaryF != null) {
+        const best = bestSalary(r);
+        if (best != null && best < minSalaryF) return false;
+      }
+      if (!skip.has("search") && searchF && !keywordOf(r).includes(searchF)) return false;
+      return true;
+    };
+
+    const provinceSkip = new Set(["province", "city"]);
+    const provinces = SA_PROVINCES.filter((p) =>
+      rows.some((r) => passes(r, provinceSkip) && haystackOf(r).includes(p.toLowerCase())),
+    );
+
+    const citySkip = new Set(["city"]);
+    const cities = f.province
+      ? citiesForProvince(f.province).filter((c) =>
+          rows.some((r) => passes(r, citySkip) && haystackOf(r).includes(c.toLowerCase())),
+        )
+      : [];
+
+    const categorySkip = new Set(["category"]);
+    const categoryKeys = new Set<string>();
+    rows.forEach((r) => {
+      if (r.canonicalCategory && isJobCategoryKey(r.canonicalCategory) && passes(r, categorySkip)) {
+        categoryKeys.add(r.canonicalCategory);
+      }
+    });
+    const categories = JOB_CATEGORIES.filter((c) => categoryKeys.has(c.key)).map((c) => ({
+      key: c.key,
+      label: c.label,
+    }));
+
+    const sourceSkip = new Set(["source"]);
+    const sourceProviders = new Set<string>();
+    rows.forEach((r) => {
+      const provider = r.sourceId != null ? providerBySourceId.get(r.sourceId) : null;
+      if (provider && passes(r, sourceSkip)) sourceProviders.add(provider);
+    });
+
+    return { provinces, cities, categories, sources: [...sourceProviders].sort() };
   }
 
   // Every active platform job source, so the seeker's "source" filter lists all

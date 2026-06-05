@@ -37,7 +37,7 @@ import {
   useOrbitSeekerColdStartJobs,
   useOrbitSeekerDismissReasons,
   useOrbitSeekerEntitlements,
-  useOrbitSeekerJobSources,
+  useOrbitSeekerJobFacets,
   useOrbitSeekerMatchingConsent,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerRematch,
@@ -232,11 +232,16 @@ export default function SeekerJobsPage() {
   }, [data, coldStartData, showColdStart]);
   const embeddingPending = coldStartData ? coldStartData.embeddingPending : false;
 
-  // The source filter lists every active job source (not just the ones in the
-  // current matches); categories come from the fixed canonical taxonomy inside
-  // the filter component. Both stay fully selectable regardless of the loaded set.
-  const sourcesQuery = useOrbitSeekerJobSources(consentEnabled);
-  const providers = sourcesQuery.data ?? [];
+  // Facets: every dropdown lists only the provinces/cities/categories/sources that
+  // actually have a match in the seeker's set, recomputed as filters narrow (each
+  // facet excludes its own dimension server-side, so a choice never empties its
+  // own dropdown and no zero-result option is ever offered).
+  const facetsQuery = useOrbitSeekerJobFacets(consentEnabled, debouncedServerFilters);
+  const facets = facetsQuery.data;
+  const providers = facets ? facets.sources : [];
+  const provinceOptions = facets ? facets.provinces : [];
+  const cityOptions = facets ? facets.cities : [];
+  const categoryOptions = facets ? facets.categories : [];
 
   const filtered = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
@@ -788,7 +793,14 @@ export default function SeekerJobsPage() {
         </div>
       ) : null}
 
-      <SeekerJobFilters state={filters} onChange={setFilters} providers={providers} />
+      <SeekerJobFilters
+        state={filters}
+        onChange={setFilters}
+        providers={providers}
+        provinces={provinceOptions}
+        cities={cityOptions}
+        categories={categoryOptions}
+      />
 
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">

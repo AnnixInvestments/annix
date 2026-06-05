@@ -401,6 +401,7 @@ export {
   useOrbitSeekerBrowseJobs,
   useOrbitSeekerColdStartJobs,
   useOrbitSeekerDismissReasons,
+  useOrbitSeekerJobFacets,
   useOrbitSeekerJobSources,
   useOrbitSeekerJobStats,
   useOrbitSeekerMatchingConsent,

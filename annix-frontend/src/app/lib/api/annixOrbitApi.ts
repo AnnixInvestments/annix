@@ -2371,6 +2371,18 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/seeker/jobs/sources");
   }
 
+  async seekerJobFacets(filters: SeekerRecommendedFilters = {}): Promise<SeekerJobFacets> {
+    const params = new URLSearchParams();
+    if (filters.province) params.set("province", filters.province);
+    if (filters.city) params.set("city", filters.city);
+    if (filters.category) params.set("category", filters.category);
+    if (filters.minSalary) params.set("minSalary", filters.minSalary);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.provider) params.set("provider", filters.provider);
+    const qs = params.toString();
+    return this.request(`/annix-orbit/seeker/jobs/facets${qs ? `?${qs}` : ""}`);
+  }
+
   async seekerRecommendedJobs(
     filters: SeekerRecommendedFilters = {},
   ): Promise<SeekerRecommendedJobsResponse> {
@@ -3121,6 +3133,13 @@ export interface SeekerRecommendedFilters {
   minSalary?: string;
   search?: string;
   provider?: string;
+}
+
+export interface SeekerJobFacets {
+  provinces: string[];
+  cities: string[];
+  categories: Array<{ key: string; label: string }>;
+  sources: string[];
 }
 
 export interface SeekerColdStartJobsResponse {
