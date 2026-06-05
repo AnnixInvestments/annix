@@ -1103,6 +1103,20 @@ export class NixService {
    * where pdf-parse returns nothing useful. Returns null if the response
    * can't be parsed as JSON in the expected shape.
    */
+  /**
+   * Shared assembly take-off for other modules (e.g. Stock Control job-card
+   * import) — runs the canonical Nix vision extraction over a PDF and returns
+   * its items, so callers reuse the ONE plateBom / tank take-off rather than
+   * maintaining a parallel extractor. Returns [] when nothing parses.
+   */
+  async extractAssembliesFromPdf(
+    pdfBuffer: Buffer,
+    documentName: string,
+  ): Promise<ExtractedItem[]> {
+    const result = await this.extractFromPdfWithVision(pdfBuffer, documentName);
+    return result?.items ?? [];
+  }
+
   private async extractFromPdfWithVision(
     pdfBuffer: Buffer,
     documentName: string,
