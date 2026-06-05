@@ -38,6 +38,10 @@ export function useOrbitCompleteOnboarding() {
   return useMutation({
     mutationFn: () => annixOrbitApiClient.completeOnboarding(),
     onSuccess: () => {
+      queryClient.setQueryData<IndividualProfileStatus>(
+        annixOrbitKeys.individualProfile.status(),
+        (old) => (old ? { ...old, onboardingComplete: true } : old),
+      );
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
     },
   });

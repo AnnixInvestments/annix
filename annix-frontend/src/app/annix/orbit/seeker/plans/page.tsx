@@ -36,9 +36,7 @@ export default function SeekerPlansPage() {
   const completeOnboarding = useOrbitCompleteOnboarding();
 
   const handleContinue = async () => {
-    if (inOnboarding) {
-      await completeOnboarding.mutateAsync().catch(() => {});
-    }
+    await completeOnboarding.mutateAsync().catch(() => {});
     router.push("/annix/orbit/seeker/dashboard");
   };
 
