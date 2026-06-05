@@ -23,14 +23,30 @@ export class WorkProfileService {
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
-  async forSeeker(email: string | null): Promise<{ profile: WorkProfile; candidateIds: number[] }> {
+  async forSeeker(email: string | null): Promise<{
+    profile: WorkProfile;
+    candidateIds: number[];
+    suggestedSalaryMin: number | null;
+    suggestedSalaryMax: number | null;
+  }> {
     const candidates = await this.candidatesForEmail(email);
     if (candidates.length === 0) {
-      return { profile: emptyWorkProfile(), candidateIds: [] };
+      return {
+        profile: emptyWorkProfile(),
+        candidateIds: [],
+        suggestedSalaryMin: null,
+        suggestedSalaryMax: null,
+      };
     }
     const target = candidates[0];
     const profile = target.workProfile ?? emptyWorkProfile();
-    return { profile, candidateIds: candidates.map((c) => c.id) };
+    const extracted = target.extractedData;
+    return {
+      profile,
+      candidateIds: candidates.map((c) => c.id),
+      suggestedSalaryMin: extracted?.suggestedSalaryMin ?? null,
+      suggestedSalaryMax: extracted?.suggestedSalaryMax ?? null,
+    };
   }
 
   async upsertForSeeker(
@@ -201,6 +217,8 @@ function mergeProfiles(existing: WorkProfile | null, next: WorkProfile): WorkPro
         ...existing.shared.certifications,
         ...next.shared.certifications,
       ]),
+      expectedSalaryMin: next.shared.expectedSalaryMin ?? existing.shared.expectedSalaryMin,
+      expectedSalaryMax: next.shared.expectedSalaryMax ?? existing.shared.expectedSalaryMax,
     },
   };
 }
@@ -211,6 +229,16 @@ function dedupeShallow<T>(values: T[]): T[] {
 
 function normaliseProfile(profile: WorkProfile): WorkProfile {
   const shared = profile.shared;
+  const rawSalaryMin = clampNonNegative(shared.expectedSalaryMin);
+  const rawSalaryMax = clampNonNegative(shared.expectedSalaryMax);
+  const expectedSalaryMin =
+    rawSalaryMin !== null && rawSalaryMax !== null
+      ? Math.min(rawSalaryMin, rawSalaryMax)
+      : rawSalaryMin;
+  const expectedSalaryMax =
+    rawSalaryMin !== null && rawSalaryMax !== null
+      ? Math.max(rawSalaryMin, rawSalaryMax)
+      : rawSalaryMax;
   return {
     shared: {
       fields: dedupe(shared.fields).filter((key): key is JobCategoryKey => isJobCategoryKey(key)),
@@ -222,6 +250,8 @@ function normaliseProfile(profile: WorkProfile): WorkProfile {
       willingToTravelKm: clampNonNegative(shared.willingToTravelKm),
       topSkills: cleanStringList(shared.topSkills),
       certifications: cleanStringList(shared.certifications),
+      expectedSalaryMin,
+      expectedSalaryMax,
     },
   };
 }

@@ -20,7 +20,10 @@ Return a valid JSON object with the following structure:
   "detectedLanguage": string or null (primary language of the CV, e.g. "English", "Afrikaans", "isiZulu"),
   "professionalRegistrations": string[] (SA professional body registrations such as "Pr Eng (ECSA)", "CA(SA) (SAICA)", "Pr CPM (SACPCMP)", "SHEPrac (SAIOSH)"),
   "saQualifications": string[] (SAQA-aligned qualifications like "National Diploma", "BTech", "Red Seal Trade Certificate - Millwright"),
-  "location": string or null (candidate's city/province if mentioned, e.g. "Johannesburg, Gauteng")
+  "location": string or null (candidate's city/province if mentioned, e.g. "Johannesburg, Gauteng"),
+  "seniority": one of "entry" | "junior" | "mid" | "senior" | "lead" | "executive" or null (the candidate's overall career level based on their experience and the roles they have held),
+  "suggestedSalaryMin": number or null (a realistic LOWER bound, in whole ZAR per year, of the gross annual salary this candidate could expect on the South African market for their qualifications, experience, seniority and industry),
+  "suggestedSalaryMax": number or null (a realistic UPPER bound, in whole ZAR per year, for the same — must be >= suggestedSalaryMin)
 }
 
 Guidelines:
@@ -35,6 +38,8 @@ Guidelines:
 - Identify SA professional registrations (ECSA, SACPCMP, SAICA, SACAP, SACNASP, SAIPA, HPCSA, SANC, CIDB, SAIOSH)
 - Identify trade certificates (Red Seal, Section 13, coded welder, etc.)
 - Identify SAQA qualifications (NQF levels, National Diplomas, BTech, etc.)
+- For seniority, weigh both years of experience and the level of the roles held (e.g. graduate/intern = entry; 1-3 yrs = junior; 3-6 yrs = mid; 6-10 yrs or "Senior" titles = senior; team/technical lead or principal = lead; director/executive/C-suite = executive)
+- For the suggested salary band, estimate realistic South African GROSS ANNUAL figures in ZAR for this candidate's qualifications, experience, seniority and industry. As a rough anchor: entry ~R120,000-R220,000, junior ~R200,000-R350,000, mid ~R350,000-R600,000, senior ~R600,000-R950,000, lead ~R900,000-R1,400,000, executive ~R1,300,000+. Adjust up or down for scarce skills (e.g. engineering, IT, medical) and industry. If you genuinely cannot estimate, use null for both.
 - Return ONLY the JSON object, no additional text`;
 
 export function cvExtractionPrompt(cvText: string): string {

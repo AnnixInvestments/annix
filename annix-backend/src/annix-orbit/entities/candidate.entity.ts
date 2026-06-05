@@ -39,7 +39,26 @@ export interface ExtractedCvData {
   professionalRegistrations: string[];
   saQualifications: string[];
   location: string | null;
+  // Nix-suggested market salary band for this candidate's qualifications +
+  // experience + industry (ZAR / year). The seeker can override it on the Work
+  // profile page; the matcher uses the override when present, else this.
+  suggestedSalaryMin?: number | null;
+  suggestedSalaryMax?: number | null;
+  // Nix-detected seniority of the candidate, used for seniority-aware experience
+  // matching against the job's inferred level.
+  seniority?: CandidateSeniority | null;
 }
+
+export const CANDIDATE_SENIORITY_LEVELS = [
+  "entry",
+  "junior",
+  "mid",
+  "senior",
+  "lead",
+  "executive",
+] as const;
+
+export type CandidateSeniority = (typeof CANDIDATE_SENIORITY_LEVELS)[number];
 
 export interface MatchAnalysis {
   overallScore: number;

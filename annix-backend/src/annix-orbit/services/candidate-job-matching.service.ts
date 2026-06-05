@@ -7,7 +7,11 @@ import {
   type MatchTier,
 } from "@annix/product-data/sa-market";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
-import { Candidate } from "../entities/candidate.entity";
+import {
+  CANDIDATE_SENIORITY_LEVELS,
+  Candidate,
+  type CandidateSeniority,
+} from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -17,10 +21,11 @@ import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capabi
 import { CvNotificationService } from "./cv-notification.service";
 import { haversineKm } from "./geocode.service";
 
-const WEIGHT_EMBEDDING = 0.5;
-const WEIGHT_SKILLS = 0.25;
+const WEIGHT_EMBEDDING = 0.45;
+const WEIGHT_SKILLS = 0.22;
 const WEIGHT_EXPERIENCE = 0.15;
-const WEIGHT_LOCATION = 0.1;
+const WEIGHT_LOCATION = 0.08;
+const WEIGHT_SALARY = 0.1;
 
 const WORK_PROFILE_BOOST_CAP = 0.1;
 const FIELD_WEIGHT_WITHIN_BOOST = 0.6;
@@ -117,6 +122,37 @@ function roleAppearsInText(role: string, haystack: string): boolean {
   if (tokens.length === 0) return false;
   const matched = tokens.filter((token) => haystack.includes(token));
   return matched.length >= Math.ceil(tokens.length / 2);
+}
+
+// Candidate years → base experience band (independent of the job).
+function experienceBandScore(years: number | null | undefined): number {
+  if (!years) return 0.3; // 0 / missing → "unknown", not zero-experience
+  if (years >= 5) return 1.0;
+  if (years >= 3) return 0.8;
+  if (years >= 1) return 0.5;
+  return 0.2;
+}
+
+// Infer a job's seniority from its title + description. Highest signal wins.
+export function inferJobSeniority(job: ExternalJob): CandidateSeniority | null {
+  const text = `${job.title ?? ""} ${job.description ?? ""}`.toLowerCase();
+  if (
+    /(chief|c-level|\bceo\b|\bcfo\b|\bcto\b|\bcoo\b|executive|vice president|\bvp\b|director|head of)/.test(
+      text,
+    )
+  ) {
+    return "executive";
+  }
+  if (/(principal|team lead|\blead\b|architect)/.test(text)) return "lead";
+  if (/(senior|\bsnr\b|\bsr\b)/.test(text)) return "senior";
+  if (/(mid[- ]?level|intermediate)/.test(text)) return "mid";
+  if (
+    /(entry[- ]?level|trainee|intern|internship|apprentice|no experience|fresh graduate)/.test(text)
+  ) {
+    return "entry";
+  }
+  if (/(junior|\bjnr\b|graduate|\bgrad\b)/.test(text)) return "junior";
+  return null;
 }
 
 @Injectable()
@@ -480,6 +516,7 @@ export class CandidateJobMatchingService {
     const skillsResult = this.calculateSkillsOverlap(candidate, job);
     const experienceMatch = this.calculateExperienceMatch(candidate, job);
     const locationMatch = this.calculateLocationMatch(candidate, job);
+    const salaryResult = this.calculateSalaryMatch(candidate, job);
     const workBoost = this.calculateWorkProfileBoost(candidate, job);
     const distanceKm = this.calculateDistance(candidate, job);
     const outsideRadius = this.isOutsideTravelRadius(candidate, job);
@@ -488,7 +525,8 @@ export class CandidateJobMatchingService {
       embeddingSimilarity * WEIGHT_EMBEDDING +
       skillsResult.score * WEIGHT_SKILLS +
       experienceMatch * WEIGHT_EXPERIENCE +
-      locationMatch * WEIGHT_LOCATION;
+      locationMatch * WEIGHT_LOCATION +
+      salaryResult.score * WEIGHT_SALARY;
 
     const withWorkBoost =
       workBoost.score === null
@@ -508,6 +546,8 @@ export class CandidateJobMatchingService {
       skillsMissing: skillsResult.missing,
       experienceMatch,
       locationMatch,
+      salaryMatch: salaryResult.score,
+      salaryFitNote: salaryResult.note,
       distanceKm: distanceKm === null ? null : Math.round(distanceKm),
       outsideTradeRadius: outsideRadius,
       dismissPenalty,
@@ -516,6 +556,7 @@ export class CandidateJobMatchingService {
         skillsResult,
         experienceMatch,
         locationMatch,
+        salaryResult.note,
         job,
         workBoost,
         distanceKm,
@@ -528,7 +569,8 @@ export class CandidateJobMatchingService {
     const structuredScore =
       skillsResult.score * (WEIGHT_SKILLS / (1 - WEIGHT_EMBEDDING)) +
       experienceMatch * (WEIGHT_EXPERIENCE / (1 - WEIGHT_EMBEDDING)) +
-      locationMatch * (WEIGHT_LOCATION / (1 - WEIGHT_EMBEDDING));
+      locationMatch * (WEIGHT_LOCATION / (1 - WEIGHT_EMBEDDING)) +
+      salaryResult.score * (WEIGHT_SALARY / (1 - WEIGHT_EMBEDDING));
 
     if (existing) {
       existing.similarityScore = embeddingSimilarity;
@@ -548,19 +590,50 @@ export class CandidateJobMatchingService {
     });
   }
 
-  private calculateExperienceMatch(candidate: Candidate, _job: ExternalJob): number {
-    const years = candidate.extractedData?.experienceYears;
-    if (!years) {
-      return 0.3;
-    } else if (years >= 5) {
-      return 1.0;
-    } else if (years >= 3) {
-      return 0.8;
-    } else if (years >= 1) {
-      return 0.5;
-    } else {
-      return 0.2;
+  private calculateExperienceMatch(candidate: Candidate, job: ExternalJob): number {
+    const base = experienceBandScore(candidate.extractedData?.experienceYears);
+    const candidateSeniority = candidate.extractedData?.seniority ?? null;
+    const jobSeniority = inferJobSeniority(job);
+    // Only adjust when we have a seniority signal on both sides; otherwise the
+    // candidate-years band stands on its own (backward compatible).
+    if (candidateSeniority === null || jobSeniority === null) {
+      return base;
     }
+    const gap = Math.abs(
+      CANDIDATE_SENIORITY_LEVELS.indexOf(candidateSeniority) -
+        CANDIDATE_SENIORITY_LEVELS.indexOf(jobSeniority),
+    );
+    const alignment = gap === 0 ? 1 : gap === 1 ? 0.85 : 0.7;
+    return Number((base * alignment).toFixed(6));
+  }
+
+  // The salary band the matcher should use for this candidate: the user override
+  // (workProfile.expectedSalaryMin) when set, else Nix's CV-derived suggestion.
+  private effectiveSalaryFloor(candidate: Candidate): number | null {
+    const override = candidate.workProfile?.shared.expectedSalaryMin;
+    if (override != null && Number(override) > 0) return Number(override);
+    const suggested = candidate.extractedData?.suggestedSalaryMin;
+    return suggested != null && Number(suggested) > 0 ? Number(suggested) : null;
+  }
+
+  // "Meets-or-beats my floor": a job paying at/above the candidate's minimum
+  // expectation scores 1.0; below it scores down in proportion to the shortfall.
+  // Neutral (0.5, no note) when either side has no salary data.
+  private calculateSalaryMatch(
+    candidate: Candidate,
+    job: ExternalJob,
+  ): { score: number; note: string | null } {
+    const floor = this.effectiveSalaryFloor(candidate);
+    const rawTop = job.salaryMax ?? job.salaryMin;
+    const jobTop = rawTop != null ? Number(rawTop) : null;
+    if (floor === null || jobTop === null || jobTop <= 0) {
+      return { score: 0.5, note: null };
+    }
+    if (jobTop >= floor) {
+      return { score: 1, note: "Pay meets or beats your expectation" };
+    }
+    const ratio = Math.max(0, Math.min(1, jobTop / floor));
+    return { score: 0.2 + 0.6 * ratio, note: "Pay is below your expected range" };
   }
 
   calculateDistance(candidate: Candidate, job: ExternalJob): number | null {
@@ -618,6 +691,7 @@ export class CandidateJobMatchingService {
     skillsResult: { score: number; matched: string[]; missing: string[] },
     experienceMatch: number,
     locationMatch: number,
+    salaryFitNote: string | null,
     job: ExternalJob,
     workBoost: { score: number | null; fieldMatched: boolean; roleMatched: boolean },
     distanceKm: number | null,
@@ -650,6 +724,7 @@ export class CandidateJobMatchingService {
         : []),
       `Experience level: ${experienceLevel}`,
       locationPart,
+      ...(salaryFitNote ? [`Salary: ${salaryFitNote}`] : []),
       ...(workBoost.fieldMatched ? ["Field match for your selected industry"] : []),
       ...(workBoost.roleMatched ? ["Role title matches your profile"] : []),
       ...(outsideRadius ? ["Outside your stated travel radius — score reduced"] : []),

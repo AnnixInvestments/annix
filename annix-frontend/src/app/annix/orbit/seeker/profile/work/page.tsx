@@ -21,6 +21,7 @@ import {
   useOrbitSeekerWorkProfile,
   useOrbitUpsertSeekerWorkProfile,
 } from "@/app/lib/query/hooks";
+import { formatCurrency } from "@/app/lib/utils/currency";
 
 export default function SeekerWorkProfilePage() {
   const router = useRouter();
@@ -91,6 +92,25 @@ export default function SeekerWorkProfilePage() {
 
   const updateCertifications = (value: string) => {
     setProfile({ ...profile, shared: { ...shared, certifications: csvToArray(value) } });
+  };
+
+  const updateSalaryMin = (value: string) => {
+    const n = Number.parseInt(value, 10);
+    const clamped = Number.isFinite(n) && n >= 0 ? n : null;
+    setProfile({ ...profile, shared: { ...shared, expectedSalaryMin: clamped } });
+  };
+
+  const updateSalaryMax = (value: string) => {
+    const n = Number.parseInt(value, 10);
+    const clamped = Number.isFinite(n) && n >= 0 ? n : null;
+    setProfile({ ...profile, shared: { ...shared, expectedSalaryMax: clamped } });
+  };
+
+  const applySalarySuggestion = (min: number | null, max: number | null) => {
+    setProfile({
+      ...profile,
+      shared: { ...shared, expectedSalaryMin: min, expectedSalaryMax: max },
+    });
   };
 
   const handleSave = () => {
@@ -196,6 +216,16 @@ export default function SeekerWorkProfilePage() {
   const yearsValue = emptyIfNull(shared.yearsExperience);
   const travelValue = emptyIfNull(shared.willingToTravelKm);
   const availabilityValue = emptyIfNull(shared.availability);
+  const salaryMinValue = emptyIfNull(shared.expectedSalaryMin);
+  const salaryMaxValue = emptyIfNull(shared.expectedSalaryMax);
+  const suggestedSalaryMin = queryData ? queryData.suggestedSalaryMin : null;
+  const suggestedSalaryMax = queryData ? queryData.suggestedSalaryMax : null;
+  const hasSalarySuggestion = suggestedSalaryMin !== null || suggestedSalaryMax !== null;
+  const salarySuggestionLabel = salaryBandLabel(suggestedSalaryMin, suggestedSalaryMax);
+  const salaryMinPlaceholder =
+    suggestedSalaryMin !== null ? randPlaceholder(suggestedSalaryMin) : "e.g. 300000";
+  const salaryMaxPlaceholder =
+    suggestedSalaryMax !== null ? randPlaceholder(suggestedSalaryMax) : "e.g. 500000";
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -304,6 +334,57 @@ export default function SeekerWorkProfilePage() {
       </section>
 
       <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Expected salary</h2>
+          <p className="text-sm text-gray-600 mt-0.5">
+            The gross annual salary range you're after, in Rand. We use this to match you to roles
+            that pay in your range — leave it blank if you'd rather not say.
+          </p>
+        </div>
+        {hasSalarySuggestion ? (
+          <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <span className="flex-1 min-w-[12rem]">
+              Based on your CV, Nix estimates someone with your experience could expect{" "}
+              <strong>{salarySuggestionLabel}</strong> per year.
+            </span>
+            <button
+              type="button"
+              onClick={() => applySalarySuggestion(suggestedSalaryMin, suggestedSalaryMax)}
+              className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-200 text-amber-900 hover:bg-amber-300"
+            >
+              Use this range
+            </button>
+          </div>
+        ) : null}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <label className="block">
+            <span className="text-sm text-gray-700">Minimum (Rand / year)</span>
+            <input
+              type="number"
+              min={0}
+              step={1000}
+              value={salaryMinValue}
+              onChange={(e) => updateSalaryMin(e.target.value)}
+              placeholder={salaryMinPlaceholder}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </label>
+          <label className="block">
+            <span className="text-sm text-gray-700">Maximum (Rand / year)</span>
+            <input
+              type="number"
+              min={0}
+              step={1000}
+              value={salaryMaxValue}
+              onChange={(e) => updateSalaryMax(e.target.value)}
+              placeholder={salaryMaxPlaceholder}
+              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+          </label>
+        </div>
+      </section>
+
+      <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">Skills &amp; certifications</h2>
         <label className="block">
           <span className="text-sm text-gray-700">Top skills (comma-separated)</span>
@@ -355,6 +436,17 @@ function csvToArray(value: string): string[] {
 
 function emptyIfNull<T>(value: T | null | undefined): T | "" {
   return value == null ? "" : value;
+}
+
+function randPlaceholder(amount: number): string {
+  return `e.g. ${formatCurrency(amount)}`;
+}
+
+function salaryBandLabel(min: number | null, max: number | null): string {
+  if (min !== null && max !== null) return `${formatCurrency(min)} – ${formatCurrency(max)}`;
+  if (min !== null) return `from ${formatCurrency(min)}`;
+  if (max !== null) return `up to ${formatCurrency(max)}`;
+  return "";
 }
 
 function mergeEmptyWorkProfile(current: WorkProfile, incoming: WorkProfile): WorkProfile {

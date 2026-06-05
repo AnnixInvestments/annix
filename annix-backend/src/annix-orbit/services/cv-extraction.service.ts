@@ -8,7 +8,11 @@ import {
 } from "../../lib/document-extraction";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
-import { ExtractedCvData } from "../entities/candidate.entity";
+import {
+  CANDIDATE_SENIORITY_LEVELS,
+  type CandidateSeniority,
+  ExtractedCvData,
+} from "../entities/candidate.entity";
 import { CV_EXTRACTION_SYSTEM_PROMPT, cvExtractionPrompt } from "../prompts/cv-analysis.prompt";
 
 type SupportedCvFormat = "pdf" | "docx" | "xlsx" | "unsupported";
@@ -143,6 +147,26 @@ export class CvExtractionService {
     const asNumber = (val: unknown): number | null =>
       typeof val === "number" && !Number.isNaN(val) ? val : null;
 
+    const asPositiveRand = (val: unknown): number | null =>
+      typeof val === "number" && Number.isFinite(val) && val > 0 ? Math.round(val) : null;
+
+    const asSeniority = (val: unknown): CandidateSeniority | null =>
+      typeof val === "string" && (CANDIDATE_SENIORITY_LEVELS as readonly string[]).includes(val)
+        ? (val as CandidateSeniority)
+        : null;
+
+    const rawSalaryMin = asPositiveRand(raw.suggestedSalaryMin);
+    const rawSalaryMax = asPositiveRand(raw.suggestedSalaryMax);
+    // Keep the band ordered: if Nix returns them inverted, swap rather than drop.
+    const suggestedSalaryMin =
+      rawSalaryMin !== null && rawSalaryMax !== null
+        ? Math.min(rawSalaryMin, rawSalaryMax)
+        : rawSalaryMin;
+    const suggestedSalaryMax =
+      rawSalaryMin !== null && rawSalaryMax !== null
+        ? Math.max(rawSalaryMin, rawSalaryMax)
+        : rawSalaryMax;
+
     return {
       candidateName: asString(raw.candidateName),
       email: asString(raw.email),
@@ -157,6 +181,9 @@ export class CvExtractionService {
       professionalRegistrations: asStringArray(raw.professionalRegistrations),
       saQualifications: asStringArray(raw.saQualifications),
       location: asString(raw.location),
+      seniority: asSeniority(raw.seniority),
+      suggestedSalaryMin,
+      suggestedSalaryMax,
     };
   }
 }

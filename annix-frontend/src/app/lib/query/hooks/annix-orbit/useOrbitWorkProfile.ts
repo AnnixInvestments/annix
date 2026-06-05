@@ -6,6 +6,8 @@ import { annixOrbitKeys } from "../../keys";
 interface WorkProfileResponse {
   profile: WorkProfile;
   candidateIds: number[];
+  suggestedSalaryMin: number | null;
+  suggestedSalaryMax: number | null;
 }
 
 export function useOrbitSeekerWorkProfile(enabled: boolean = true) {

@@ -128,6 +128,9 @@ describe("CvExtractionService", () => {
         professionalRegistrations: [],
         saQualifications: [],
         location: null,
+        seniority: null,
+        suggestedSalaryMin: null,
+        suggestedSalaryMax: null,
       });
     });
 

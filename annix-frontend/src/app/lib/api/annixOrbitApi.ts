@@ -2467,6 +2467,8 @@ class AnnixOrbitApiClient {
   async seekerWorkProfile(): Promise<{
     profile: import("@annix/product-data/sa-market").WorkProfile;
     candidateIds: number[];
+    suggestedSalaryMin: number | null;
+    suggestedSalaryMax: number | null;
   }> {
     return this.request("/annix-orbit/seeker/work-profile");
   }

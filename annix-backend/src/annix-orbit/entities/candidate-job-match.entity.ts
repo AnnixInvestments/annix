@@ -18,6 +18,8 @@ export interface MatchDetails {
   skillsMissing: string[];
   experienceMatch: number;
   locationMatch: number;
+  salaryMatch?: number;
+  salaryFitNote?: string | null;
   reasoning: string;
   distanceKm?: number | null;
   outsideTradeRadius?: boolean;

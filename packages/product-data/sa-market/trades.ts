@@ -24,6 +24,10 @@ export interface SharedWorkFields {
   willingToTravelKm: number | null;
   topSkills: string[];
   certifications: string[];
+  // Salary expectation (ZAR / year). User override of Nix's CV-derived suggestion;
+  // null/absent means "use Nix's suggested band" (ExtractedCvData.suggestedSalary*).
+  expectedSalaryMin?: number | null;
+  expectedSalaryMax?: number | null;
 }
 
 export interface WorkProfile {
@@ -40,6 +44,8 @@ export function emptyWorkProfile(): WorkProfile {
       willingToTravelKm: null,
       topSkills: [],
       certifications: [],
+      expectedSalaryMin: null,
+      expectedSalaryMax: null,
     },
   };
 }
