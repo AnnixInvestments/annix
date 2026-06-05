@@ -53,6 +53,7 @@ function AnnixOrbitLoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsSignup, setNeedsSignup] = useState(false);
 
   useEffect(() => {
     if (prefilledEmail) {
@@ -67,6 +68,7 @@ function AnnixOrbitLoginContent() {
     const submitEmail = emailInput ? emailInput.value : email;
     const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
+    setNeedsSignup(false);
 
     try {
       const profile = await login(submitEmail, submitPassword, rememberMe, accountType);
@@ -78,9 +80,25 @@ function AnnixOrbitLoginContent() {
       }
       router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const message = err instanceof Error ? err.message : "Login failed";
+      if (/no annix orbit account|please sign up/i.test(message)) {
+        setNeedsSignup(true);
+      } else {
+        setError(message);
+      }
     }
   };
+
+  const signupLabel =
+    accountType === "individual"
+      ? "Sign up as a job seeker"
+      : accountType === "company"
+        ? "Sign up as a company"
+        : accountType === "recruiter"
+          ? "Sign up as a recruitment agency"
+          : accountType === "student"
+            ? "Sign up as a student"
+            : "Create an account";
 
   const registerHref =
     accountType === "individual"
@@ -120,11 +138,26 @@ function AnnixOrbitLoginContent() {
             method="post"
             action="#"
           >
-            {error && (
+            {needsSignup ? (
+              <div className="bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg px-4 py-4">
+                <p className="text-sm font-semibold text-gray-900">
+                  You don't have an account with us yet
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  No problem — signing up only takes a minute and we'll get you set up.
+                </p>
+                <Link
+                  href={registerHref}
+                  className="mt-3 inline-flex w-full items-center justify-center bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--brand-accent-light,#FF9C33)] transition-colors"
+                >
+                  {signupLabel}
+                </Link>
+              </div>
+            ) : error ? (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
-            )}
+            ) : null}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
