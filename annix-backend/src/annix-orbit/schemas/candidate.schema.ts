@@ -73,8 +73,8 @@ export class Candidate {
   @Prop({ type: Date, required: false })
   acceptanceSentAt: Date;
 
-  @Prop({ type: Number, required: true })
-  jobPostingId: number;
+  @Prop({ type: Number, required: false })
+  jobPostingId: number | null;
 
   @Prop({ type: String, required: false })
   embedding: string;
