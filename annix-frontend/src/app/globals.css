@@ -286,6 +286,33 @@ input[class*="text-gray-900"]:-webkit-autofill:focus {
   caret-color: #111827 !important;
 }
 
+/* Dark mode counterpart: the rule above forces dark text on text-gray-900
+   inputs (it assumes a white background). In dark mode those same inputs sit
+   on a dark surface, so the forced #111827 becomes dark-on-dark. Flip the
+   forced colour to off-white. Higher specificity (.dark …) + !important so it
+   wins over the light-mode rule. */
+.dark input.text-gray-900,
+.dark input[class*="text-gray-900"],
+.dark select.text-gray-900,
+.dark select[class*="text-gray-900"],
+.dark textarea.text-gray-900,
+.dark textarea[class*="text-gray-900"] {
+  color: #f3f4f6 !important;
+  -webkit-text-fill-color: #f3f4f6 !important;
+  caret-color: #f3f4f6 !important;
+}
+
+.dark input.text-gray-900:-webkit-autofill,
+.dark input.text-gray-900:-webkit-autofill:hover,
+.dark input.text-gray-900:-webkit-autofill:focus,
+.dark input[class*="text-gray-900"]:-webkit-autofill,
+.dark input[class*="text-gray-900"]:-webkit-autofill:hover,
+.dark input[class*="text-gray-900"]:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #1f2937 inset !important;
+  -webkit-text-fill-color: #f3f4f6 !important;
+  caret-color: #f3f4f6 !important;
+}
+
 /* Global input hover effects */
 input:hover:not(:focus):not(:disabled),
 select:hover:not(:focus):not(:disabled),
