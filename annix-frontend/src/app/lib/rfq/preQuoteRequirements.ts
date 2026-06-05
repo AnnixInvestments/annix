@@ -287,6 +287,22 @@ const isValveItem = (item: PipeItem): boolean => {
   return VALVE_KEYWORD_REGEX.test(description);
 };
 
+// Valves (and pumps) on a fabrication / piping drawing are usually bought-out
+// items supplied by the client or a valve/pump vendor, not the piping
+// fabricator — the extractor tags those with a supply-scope caveat in the
+// description (the same way instrument lines keep their "by others" note). A
+// tagged valve is a reference line: it must NOT raise the full mining-valve
+// datasheet clarification, because the user isn't pricing/supplying it. Only
+// valves the documents explicitly place in the fabricator's supply (so the
+// extractor leaves them untagged) ask for the datasheet.
+const OUT_OF_SUPPLY_SCOPE_REGEX =
+  /\bby\s+others\b|\bby\s+client\b|\bby\s+owner\b|\bby\s+instrumentation\b|\bfree[-\s]?issue\b|\bbought[-\s]?out\b|\b(?:confirm|verify)\s+(?:supply\s+)?scope\b|\bsupplied\s+by\s+(?:client|others|owner|instrumentation|vendor)\b|\bnot\s+in\s+(?:our\s+)?scope\b/i;
+
+const isOutOfSupplyScope = (item: PipeItem): boolean => {
+  const rawDescription = item.description;
+  return OUT_OF_SUPPLY_SCOPE_REGEX.test(rawDescription || "");
+};
+
 const valveItemNumber = (item: PipeItem): string => {
   const rawClient = item.clientItemNumber;
   if (rawClient) return rawClient;
@@ -370,6 +386,7 @@ export function detectClarificationRequirements(
 
   const valveSpecGaps: ValveSpecGap[] = items
     .filter(isValveItem)
+    .filter((item) => !isOutOfSupplyScope(item))
     .map((item) => {
       const missingFields = computeValveGap(item, globalSpecs);
       const rawValveDescription = item.description;
