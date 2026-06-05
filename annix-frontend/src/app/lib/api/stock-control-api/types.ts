@@ -2374,6 +2374,9 @@ export interface JobCardImportUploadResponse {
   savedMapping: JobCardImportMapping | null;
   documentNumber: string | null;
   drawingRows?: JobCardImportRow[];
+  // ITP / QCP / data-book attachments detected in an imported .eml — preserved
+  // with the source email, not extracted as drawings.
+  qualityDocuments?: string[];
   sourceFilePath?: string | null;
   sourceFileName?: string | null;
 }

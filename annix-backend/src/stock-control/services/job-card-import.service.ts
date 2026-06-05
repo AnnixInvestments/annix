@@ -539,7 +539,12 @@ export class JobCardImportService {
     buffer: Buffer,
     mimetype: string,
     filename?: string,
-  ): Promise<{ grid: string[][]; documentNumber?: string; drawingRows?: JobCardImportRow[] }> {
+  ): Promise<{
+    grid: string[][];
+    documentNumber?: string;
+    drawingRows?: JobCardImportRow[];
+    qualityDocuments?: string[];
+  }> {
     const isExcel =
       mimetype === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
       mimetype === "application/vnd.ms-excel" ||
@@ -567,14 +572,37 @@ export class JobCardImportService {
     return { grid: [] };
   }
 
+  // ITP / QCP / data-book signals — a quality document, not a drawing.
+  // Mirrors QUALITY_FILENAME_PATTERNS in the frontend emlAttachmentExtractor.
+  private static readonly QUALITY_FILENAME_PATTERNS = [
+    /\bITP\b/i,
+    /\binspection\s*(?:&|and|\+)?\s*test\s*plan\b/i,
+    /\bQCP\b/i,
+    /\bquality\s*(?:control\s*plan|plan|dossier|record|pack)\b/i,
+    /\bdata\s*(?:book|pack)\b/i,
+    /\bMDR\b/,
+    /\btest\s*plan\b/i,
+  ];
+
+  private isQualityDocument(filename: string): boolean {
+    return JobCardImportService.QUALITY_FILENAME_PATTERNS.some((p) => p.test(filename));
+  }
+
   // A customer RFQ often arrives as an .eml with the drawings as PDF
-  // attachments. Pull every PDF attachment out of the email and run the same
-  // drawing extraction the PDF path uses, so the tank/pipe lines land on the
-  // job card instead of an empty grid + "Map Columns".
+  // attachments. Pull the PDF attachments out, route ITP/QCP/data-book quality
+  // documents aside (detected + preserved with the stored source email, not
+  // run through drawing extraction), and run drawing extraction on the actual
+  // drawings — so the tank/pipe lines land on the job card instead of an empty
+  // grid + "Map Columns".
   private async parseEmlFile(
     buffer: Buffer,
     filename?: string,
-  ): Promise<{ grid: string[][]; documentNumber?: string; drawingRows?: JobCardImportRow[] }> {
+  ): Promise<{
+    grid: string[][];
+    documentNumber?: string;
+    drawingRows?: JobCardImportRow[];
+    qualityDocuments?: string[];
+  }> {
     const { simpleParser } = await import("mailparser");
     const parsed = await simpleParser(buffer);
     const pdfAttachments = (parsed.attachments || [])
@@ -584,16 +612,28 @@ export class JobCardImportService {
       })
       .map((a) => ({ buffer: a.content as Buffer, filename: a.filename || "attachment.pdf" }));
 
-    if (pdfAttachments.length === 0) {
-      this.logger.warn(`Email "${filename}" has no PDF attachments to import`);
-      return { grid: [] };
+    const drawings = pdfAttachments.filter((a) => !this.isQualityDocument(a.filename));
+    const qualityDocs = pdfAttachments
+      .filter((a) => this.isQualityDocument(a.filename))
+      .map((a) => a.filename);
+    const qualityDocuments = qualityDocs.length > 0 ? qualityDocs : undefined;
+
+    if (qualityDocs.length > 0) {
+      this.logger.log(
+        `Email "${filename}" — ${qualityDocs.length} quality document(s) detected, not extracted as drawings: ${qualityDocs.join(", ")}`,
+      );
+    }
+
+    if (drawings.length === 0) {
+      this.logger.warn(`Email "${filename}" has no drawing PDF attachments to import`);
+      return { grid: [], qualityDocuments };
     }
 
     this.logger.log(
-      `Email "${filename}" — extracting ${pdfAttachments.length} PDF attachment(s) via drawing extraction`,
+      `Email "${filename}" — extracting ${drawings.length} drawing PDF(s) via drawing extraction`,
     );
-    const { drawingRows, documentNumber } = await this.parseDrawingPdfs(pdfAttachments);
-    return { grid: [], documentNumber, drawingRows };
+    const { drawingRows, documentNumber } = await this.parseDrawingPdfs(drawings);
+    return { grid: [], documentNumber, drawingRows, qualityDocuments };
   }
 
   private async parsePdfFile(

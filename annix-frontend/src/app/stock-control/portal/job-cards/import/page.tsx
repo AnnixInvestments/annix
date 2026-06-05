@@ -713,6 +713,7 @@ export default function JobCardImportPage() {
   const [documentNumber, setDocumentNumber] = useState<string | null>(null);
   const [sourceFilePath, setSourceFilePath] = useState<string | null>(null);
   const [sourceFileName, setSourceFileName] = useState<string | null>(null);
+  const [qualityDocuments, setQualityDocuments] = useState<string[]>([]);
   const [isAutoDetecting, setIsAutoDetecting] = useState(false);
   const [isDrawingImport, setIsDrawingImport] = useState(false);
   const [drawingFiles, setDrawingFiles] = useState<File[]>([]);
@@ -796,6 +797,8 @@ export default function JobCardImportPage() {
       const srcName = response.sourceFileName;
       setSourceFilePath(srcPath || null);
       setSourceFileName(srcName || null);
+      const qualityDocs = response.qualityDocuments;
+      setQualityDocuments(qualityDocs && qualityDocs.length > 0 ? qualityDocs : []);
 
       const drawingRows = response.drawingRows;
       if (drawingRows && drawingRows.length > 0) {
@@ -1912,6 +1915,20 @@ export default function JobCardImportPage() {
 
       {step === "preview" && (
         <div className="space-y-4">
+          {qualityDocuments.length > 0 && (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
+              <span className="font-medium">
+                {qualityDocuments.length} quality document
+                {qualityDocuments.length !== 1 ? "s" : ""} detected
+              </span>{" "}
+              (ITP / QCP / data book) — preserved with the source email, not extracted as drawings:
+              <ul className="mt-1 list-disc list-inside text-amber-700">
+                {qualityDocuments.map((q) => (
+                  <li key={q}>{q}</li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div className="bg-white shadow rounded-lg overflow-x-auto">
             <div className="px-4 py-5 sm:px-6 border-b border-gray-200 flex items-center justify-between">
               <div>

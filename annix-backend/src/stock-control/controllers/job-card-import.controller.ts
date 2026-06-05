@@ -53,6 +53,7 @@ export class JobCardImportController {
       grid,
       documentNumber: pdfDocNumber,
       drawingRows,
+      qualityDocuments,
     } = await this.jobCardImportService.parseFile(file.buffer, file.mimetype, file.originalname);
     const savedMapping = await this.jobCardImportService.mapping(req.user.companyId);
     const docMatch = file.originalname?.match(/^([A-Z]{1,5}\d{4,})/i);
@@ -66,6 +67,7 @@ export class JobCardImportController {
       savedMapping,
       documentNumber,
       drawingRows,
+      qualityDocuments,
       sourceFilePath: stored.path,
       sourceFileName: file.originalname,
     };
