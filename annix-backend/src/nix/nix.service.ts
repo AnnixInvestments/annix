@@ -575,6 +575,14 @@ export class NixService {
               dto.documentRole,
             ));
             break;
+          case DocumentType.TEXT:
+            ({ extractedData, extractedItems, specificationCells } = await this.extractFromText(
+              dto.documentPath,
+              dto.documentName,
+              dto.productTypes,
+              profileSystemPrompt,
+            ));
+            break;
           default:
             throw new Error(`Unsupported document type: ${documentType}`);
         }
@@ -655,6 +663,9 @@ export class NixService {
         (extraction.extractedData?.profileMetadata as Record<string, unknown> | undefined) ??
         undefined;
 
+      const responseMetadata =
+        (extraction.extractedData?.metadata as Record<string, unknown> | undefined) ?? undefined;
+
       let revisionVerdict: SupersessionVerdict = { action: "first" };
       if (extraction.status === ExtractionStatus.COMPLETED) {
         try {
@@ -678,6 +689,7 @@ export class NixService {
           question: c.question,
           context: c.context || {},
         })),
+        ...(responseMetadata ? { metadata: responseMetadata } : {}),
         ...(profileMetadata ? { profileMetadata } : {}),
         revisionVerdict,
       };
@@ -795,6 +807,11 @@ export class NixService {
       csv: DocumentType.EXCEL,
       doc: DocumentType.WORD,
       docx: DocumentType.WORD,
+      txt: DocumentType.TEXT,
+      text: DocumentType.TEXT,
+      md: DocumentType.TEXT,
+      eml: DocumentType.TEXT,
+      msg: DocumentType.TEXT,
       dwg: DocumentType.CAD,
       dxf: DocumentType.CAD,
       sldprt: DocumentType.SOLIDWORKS,
@@ -1494,6 +1511,74 @@ export class NixService {
         specificationCells: wordResult.specificationCells,
       };
     }
+  }
+
+  /**
+   * Plain-text extraction (.txt / .md / a covering-email body saved out of an
+   * .eml). The customer RFQ flow routes an email's covering letter here so its
+   * blanket surface-protection scope ("all straight pipes rubber lined Linard
+   * 60 12mm", "blast SA 3", "fittings polyurethane lined") is extracted into
+   * specification metadata and merged into the wizard's global specs — for
+   * RFQs whose drawings don't print lining/coating per row. Reuses the same
+   * AiExtractionService text path as Word so the shared prompt does the work.
+   */
+  private async extractFromText(
+    documentPath: string,
+    documentName?: string,
+    productTypes?: string[],
+    systemPrompt?: string,
+  ): Promise<{
+    extractedData: Record<string, any>;
+    extractedItems: Array<any>;
+    specificationCells: SpecificationCellData[];
+  }> {
+    this.logger.log(`Text extraction starting for: ${documentPath}`);
+    const rawText = await fs.promises.readFile(documentPath, "utf-8");
+    const availableProviders = await this.aiExtractor.getAvailableProviders();
+    if (availableProviders.length === 0 || rawText.trim().length === 0) {
+      this.logger.log(
+        `Text extraction has nothing to do (providers=${availableProviders.length}, textLength=${rawText.length})`,
+      );
+      return {
+        extractedData: { itemCount: 0, metadata: {}, specifications: {}, specificationCells: [] },
+        extractedItems: [],
+        specificationCells: [],
+      };
+    }
+
+    const aiResult = await this.aiExtractor.extractWithAi(
+      rawText,
+      documentName ?? documentPath.split(/[/\\]/).pop(),
+      undefined,
+      productTypes,
+      systemPrompt,
+    );
+    // Lift the tender-spec fields (lining, coating, working pressure, valve
+    // types, flange standard, NDT, hydrotest, NACE...) out of the raw text
+    // with the same regex extractors the PDF path uses, so a covering-email
+    // body's blanket specs populate the metadata the RFQ wizard merges into
+    // global specs. AI-derived project metadata stays authoritative on top.
+    const tenderMetadata = this.pdfExtractor.tenderMetadataFromText(rawText);
+    const mergedMetadata = { ...tenderMetadata, ...aiResult.metadata };
+    this.logger.log(
+      `Text AI extraction returned ${aiResult.items.length} items, ${
+        Object.keys(aiResult.specifications ?? {}).length
+      } specification clauses (provider=${aiResult.providerUsed})`,
+    );
+    return {
+      extractedData: {
+        itemCount: aiResult.items.length,
+        clarificationsNeeded: aiResult.items.filter((i) => i.needsClarification).length,
+        metadata: mergedMetadata,
+        specifications: aiResult.specifications ?? {},
+        specificationCells: aiResult.specificationCells,
+        aiProvider: aiResult.providerUsed,
+        tokensUsed: aiResult.tokensUsed,
+        aiProcessingTimeMs: aiResult.processingTimeMs,
+      },
+      extractedItems: aiResult.items,
+      specificationCells: aiResult.specificationCells,
+    };
   }
 
   private async filterByRelevance(

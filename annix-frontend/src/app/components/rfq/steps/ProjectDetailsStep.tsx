@@ -630,6 +630,18 @@ export default function ProjectDetailsStep() {
       // Persist the .eml itself immediately — it's the source-of-truth.
       archiveToS3(incoming, "other");
 
+      // The covering letter often carries the blanket surface-protection scope
+      // (lining product + thickness, blast standard, fittings lining) that the
+      // drawings don't print per row. Run the email body through the same
+      // tender-spec extraction so those specs pre-fill the wizard's global
+      // specs alongside the customer details.
+      const emailBody = parsed.metadata.bodyText;
+      if (emailBody && emailBody.trim().length > 60) {
+        const bodyFileName = `${incoming.name.replace(/\.eml$/i, "")} — covering email.txt`;
+        const bodyFile = new File([emailBody], bodyFileName, { type: "text/plain" });
+        void runNixTenderSpecExtraction(bodyFile);
+      }
+
       const routeAttachment = (attachment: EmailAttachment) => {
         const idPrefix = attachment.kind === "tender" ? "tender" : "doc";
         const id = `${idPrefix}-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
