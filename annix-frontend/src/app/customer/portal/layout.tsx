@@ -114,7 +114,10 @@ function ProtectedLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    // Transparent so the root GlobalBrandBackground (per-brand background
+    // colour + page-background image + watermark) shows through instead of a
+    // hardcoded slate surface. Content cards paint their own opaque surfaces.
+    <div className="min-h-screen">
       <CustomerNavigation />
       <RemoteAccessNotificationBanner />
       <main className="py-6">
