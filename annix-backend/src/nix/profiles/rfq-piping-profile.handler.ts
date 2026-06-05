@@ -52,7 +52,7 @@ export class RfqPipingProfileHandler implements IExtractionProfileHandler, OnMod
       return {};
     }
 
-    const supplyOnly = items.filter((it) => it.actionType === "supply");
+    const supplyOnly = items.filter((it) => it.actionType !== "dismantle");
     const bundles = this.groupIntoBundles(supplyOnly);
     const duplicates = this.detectDuplicates(supplyOnly);
     const drawingReferences = this.collectDistinct(supplyOnly, (i) => i.drawingReference);
@@ -143,8 +143,11 @@ export class RfqPipingProfileHandler implements IExtractionProfileHandler, OnMod
     if (item.itemType === "skid")
       return { key: "fabricated-skids", label: "Fabricated Pipe Skids" };
 
-    if (/rubber[-\s]?lined|rudex/.test(desc)) {
+    if (item.liningType === "rubber" || /rubber[-\s]?lined|rudex|linard|linatex/.test(desc)) {
       return { key: "rubber-lined-steel", label: "Rubber-Lined Steel Pipe & Specials" };
+    }
+    if (item.liningType === "pu") {
+      return { key: "pu-lined-steel", label: "Polyurethane-Lined Steel Fittings" };
     }
     if (/mild\s*steel|sabs?\s*719|sans?\s*719/.test(desc)) {
       return { key: "mild-steel", label: "Mild Steel Pipe & Fabricated Specials" };
