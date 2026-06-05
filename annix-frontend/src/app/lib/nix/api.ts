@@ -119,6 +119,7 @@ export interface NixExtractedItem {
   coatingSystem?: string;
   coatingAreaM2?: number;
   surfacePrepStandard?: string;
+  weldSizeMm?: number;
   plateBom?: NixExtractedPlateBomRow[];
 }
 

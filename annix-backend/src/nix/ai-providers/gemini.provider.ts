@@ -147,6 +147,7 @@ export class GeminiProvider implements AiProvider {
                 coatingSystem: item.coatingSystem || null,
                 coatingAreaM2: item.coatingAreaM2 ? Number(item.coatingAreaM2) : null,
                 surfacePrepStandard: item.surfacePrepStandard || null,
+                weldSizeMm: item.weldSizeMm ? Number(item.weldSizeMm) : null,
                 plateBom: Array.isArray(item.plateBom)
                   ? item.plateBom.map((row: any) => ({
                       mark: row.mark || null,

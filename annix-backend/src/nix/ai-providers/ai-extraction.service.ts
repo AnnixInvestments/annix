@@ -222,6 +222,7 @@ export class AiExtractionService implements OnModuleInit {
             coatingSystem: item.coatingSystem,
             coatingAreaM2: item.coatingAreaM2,
             surfacePrepStandard: item.surfacePrepStandard,
+            weldSizeMm: item.weldSizeMm,
             plateBom: item.plateBom,
           }
         : {}),

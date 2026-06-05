@@ -735,6 +735,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             const rawCoatingSystem = item.coatingSystem;
             const rawCoatingAreaM2 = item.coatingAreaM2;
             const rawSurfacePrepStandard = item.surfacePrepStandard;
+            const rawWeldSizeMm = item.weldSizeMm;
             const tankChuteEntry: TankChuteEntry = {
               id: generateUniqueId(),
               itemType: "tank_chute" as const,
@@ -758,6 +759,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
                 coatingSystem: rawCoatingSystem || undefined,
                 coatingAreaM2: rawCoatingAreaM2 || undefined,
                 surfacePrepStandard: rawSurfacePrepStandard || undefined,
+                weldSizeMm: rawWeldSizeMm || undefined,
                 plateBom: item.plateBom
                   ? item.plateBom.map((row) => {
                       const rawMark = row.mark;
