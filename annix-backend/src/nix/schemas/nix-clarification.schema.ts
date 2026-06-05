@@ -43,7 +43,7 @@ export class NixClarification {
   @Prop({ type: Object, required: false })
   responseDocumentRef: Record<string, unknown>;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, default: false })
   usedForLearning: boolean;
 
   @Prop({ type: Date, required: false })
