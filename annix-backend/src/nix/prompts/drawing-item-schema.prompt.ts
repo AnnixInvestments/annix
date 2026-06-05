@@ -25,7 +25,7 @@ export const DRAWING_ITEM_SCHEMA_RULES = `CRITICAL — schema rules (must follow
 2. Use these EXACT field names (camelCase, no aliases, no variants):
    - itemNumber (string, e.g. "-01", "HH01", "P1") — the mark / spool / item number
    - description (string, REQUIRED, what the item is, e.g. "Pipe", "90° Bend", "Reducer", "Tank chute")
-   - itemType (one of: pipe | bend | reducer | tee | manifold | flange | expansion_joint | tank_chute | other)
+   - itemType (one of: pipe | bend | reducer | tee | manifold | flange | expansion_joint | tank_chute | valve | pump | instrument | consumable | other). Use "valve" for ANY valve (diaphragm, gate, knife-gate, ball, butterfly, pinch, globe, plug, check / non-return / NRV, air-release, pressure-reducing, etc.) — put the specific pattern in the description, do NOT downgrade a valve to "other". Use "consumable" for erection / installation hardware sold by quantity or the set — bolts, nuts, washers, stud sets and gaskets (full spec in the description). Use "instrument" for in-line instrumentation — flow meters, densitometers, pressure / temperature transmitters, gauges, level switches / transmitters, samplers — and keep any "by Instrumentation / by others / by client" supply-responsibility note verbatim in the description. Use "pump" for pumps. Use "other" only when the item genuinely fits none of the categories above.
    - quantity (number)
    - diameter (number, mm — nominal bore for pipe-shaped items)
    - wallThickness (number, mm — numeric WT in mm if the drawing gives one)
