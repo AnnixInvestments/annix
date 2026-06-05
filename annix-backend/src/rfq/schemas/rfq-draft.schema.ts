@@ -49,11 +49,11 @@ export class RfqDraft {
   @Prop({ type: Boolean, default: false })
   isConverted: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date })
+  updatedAt: Date;
 
   @Prop({ type: Number, required: false })
   createdById: number;
