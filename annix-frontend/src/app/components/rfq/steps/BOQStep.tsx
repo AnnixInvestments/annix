@@ -9,7 +9,7 @@ import {
   sans1123StubAssemblyDescription,
 } from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
-import { isNumber, isString, keys, values } from "es-toolkit/compat";
+import { isArray, isNumber, isString, keys, values } from "es-toolkit/compat";
 import React, { useCallback, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { useOptionalAdminAuth } from "@/app/context/AdminAuthContext";
@@ -1569,35 +1569,124 @@ export default function BOQStep(props: {
       // have no nominal bore, so they MUST be caught here — otherwise they
       // fall into the straight-pipe branch below (which defaults NB to 100)
       // and the tank is silently absorbed into a "100NB Steel Pipe" line.
+      // Each tank is expanded into its plate parts (mark · thickness · qty ·
+      // per-part weight) plus a summary line carrying the steel grade and a
+      // stated-vs-computed mass cross-check.
+      const STEEL_DENSITY_KG_PER_M3 = 7850;
       const rawEntrySpecsTank = entry.specs;
       const rawSpecsTank = rawEntrySpecsTank || {};
       const rawEntryDescriptionTank = entry.description;
-      const tankDescription = rawEntryDescriptionTank || "Fabricated assembly";
+      const tankName = rawEntryDescriptionTank || "Fabricated assembly";
       const rawSpecsQuantityValueTank = rawSpecsTank.quantityValue;
       const tankQty = rawSpecsQuantityValueTank || qty || 1;
       const rawSpecsUnitTank = rawSpecsTank.unit;
-      const tankUnit = rawSpecsUnitTank || "Each";
-      const rawTankWeight = rawSpecsTank.totalSteelWeightKg;
-      const tankPerUnitWeight = isNumber(rawTankWeight) ? rawTankWeight : 0;
-      const tankRowWeight = tankPerUnitWeight * tankQty;
-      const tankKey = `TANK_${tankDescription.toLowerCase()}_${tankUnit}`;
-      const existingTank = consolidatedTanks.get(tankKey);
-      if (existingTank) {
-        existingTank.qty += tankQty;
-        existingTank.weight += tankRowWeight;
-        existingTank.entries.push(itemNumber);
-        existingTank.entryIds.push(entry.id);
+      const tankUnit = rawSpecsUnitTank ? String(rawSpecsUnitTank) : "Each";
+      const rawTankGrade = rawSpecsTank.materialGrade;
+      const tankGrade = rawTankGrade ? String(rawTankGrade) : "";
+      const rawTankStatedMass = rawSpecsTank.totalSteelWeightKg;
+      const statedSteelMassKg = isNumber(rawTankStatedMass) ? rawTankStatedMass : undefined;
+      const rawPlateBom = rawSpecsTank.plateBom;
+      const plates = isArray(rawPlateBom)
+        ? (rawPlateBom as Array<{
+            mark?: string;
+            description?: string;
+            thicknessMm?: number;
+            lengthMm?: number;
+            widthMm?: number;
+            quantity?: number;
+            weightKg?: number;
+            areaM2?: number;
+          }>)
+        : [];
+
+      let computedSteelMassKg = 0;
+      const plateRows = plates.map((p, idx) => {
+        const rawPMark = p.mark;
+        const rawPDesc = p.description;
+        const rawPThk = p.thicknessMm;
+        const rawPQty = p.quantity;
+        const rawPWeight = p.weightKg;
+        const rawPArea = p.areaM2;
+        const rawPLen = p.lengthMm;
+        const rawPWid = p.widthMm;
+        const thickness = isNumber(rawPThk) ? rawPThk : 0;
+        const plateInstanceQty = isNumber(rawPQty) ? rawPQty : 1;
+        const length = isNumber(rawPLen) ? rawPLen : 0;
+        const width = isNumber(rawPWid) ? rawPWid : 0;
+        const areaFromDims = length * width > 0 ? (length * width) / 1_000_000 : 0;
+        const area = isNumber(rawPArea) && rawPArea > 0 ? rawPArea : areaFromDims;
+        // Per-part weight: prefer the stated cutting-list weight, else compute
+        // from thickness × area × steel density (7.85 t/m³).
+        const statedWeight = isNumber(rawPWeight) && rawPWeight > 0 ? rawPWeight : 0;
+        const perPartWeight =
+          statedWeight > 0
+            ? statedWeight
+            : thickness > 0 && area > 0
+              ? area * (thickness / 1000) * STEEL_DENSITY_KG_PER_M3
+              : 0;
+        const rowQty = plateInstanceQty * tankQty;
+        const rowWeight = perPartWeight * rowQty;
+        computedSteelMassKg += rowWeight;
+        const markLabel = rawPMark ? `Mark ${rawPMark}` : `Part ${idx + 1}`;
+        const plateDesc = rawPDesc || "Plate part";
+        const thkLabel = thickness > 0 ? ` · ${thickness}mm PL` : " · thickness TBC";
+        return {
+          key: `TANKPLATE_${tankName}_${rawPMark || idx}_${thickness}`,
+          description: `    ↳ [${tankName}] ${markLabel}: ${plateDesc}${thkLabel}`,
+          qty: rowQty,
+          weight: rowWeight,
+        };
+      });
+
+      const headerWeight =
+        statedSteelMassKg !== undefined ? statedSteelMassKg * tankQty : computedSteelMassKg;
+      let verifyNote = "";
+      if (statedSteelMassKg !== undefined && computedSteelMassKg > 0) {
+        const statedTotal = statedSteelMassKg * tankQty;
+        const diffPct = Math.abs(statedTotal - computedSteelMassKg) / statedTotal;
+        verifyNote =
+          diffPct <= 0.1
+            ? ` · ✓ weight verified (parts ≈ ${Math.round(computedSteelMassKg)}kg vs stated ${Math.round(statedTotal)}kg)`
+            : ` · ⚠ CHECK WEIGHT: parts ${Math.round(computedSteelMassKg)}kg vs stated ${Math.round(statedTotal)}kg`;
+      }
+      const gradeLabel = tankGrade ? ` — ${tankGrade}` : "";
+      const headerKey = `TANK_${tankName.toLowerCase()}`;
+      const existingHeader = consolidatedTanks.get(headerKey);
+      if (existingHeader) {
+        existingHeader.qty += tankQty;
+        existingHeader.weight += headerWeight;
+        existingHeader.entries.push(itemNumber);
+        existingHeader.entryIds.push(entry.id);
       } else {
-        consolidatedTanks.set(tankKey, {
-          description: tankDescription,
+        consolidatedTanks.set(headerKey, {
+          description: `${tankName}${gradeLabel}${verifyNote}`,
           qty: tankQty,
           unit: tankUnit,
-          weight: tankRowWeight,
+          weight: headerWeight,
           entries: [itemNumber],
           entryIds: [entry.id],
           material: "steel",
         });
       }
+      plateRows.forEach((row) => {
+        const existingPlate = consolidatedTanks.get(row.key);
+        if (existingPlate) {
+          existingPlate.qty += row.qty;
+          existingPlate.weight += row.weight;
+          existingPlate.entries.push(itemNumber);
+          existingPlate.entryIds.push(entry.id);
+        } else {
+          consolidatedTanks.set(row.key, {
+            description: row.description,
+            qty: row.qty,
+            unit: "ea",
+            weight: row.weight,
+            entries: [itemNumber],
+            entryIds: [entry.id],
+            material: "steel",
+          });
+        }
+      });
     } else {
       const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
       // STRAIGHT PIPE
