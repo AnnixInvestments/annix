@@ -6,6 +6,7 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
+import { provinceMatchTerms } from "../lib/sa-location-match";
 import {
   CandidateJobMatchRepository,
   type RecommendedFacetRow,
@@ -33,8 +34,11 @@ function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Recor
     query.sourceId = { $in: filters.sourceIds };
   }
   if (filters?.province) {
-    const rx = new RegExp(escapeRegex(filters.province), "i");
-    and.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
+    const or = provinceMatchTerms(filters.province).flatMap((term) => {
+      const rx = new RegExp(escapeRegex(term), "i");
+      return [{ locationArea: rx }, { locationRaw: rx }];
+    });
+    and.push({ $or: or });
   }
   if (filters?.city) {
     const rx = new RegExp(escapeRegex(filters.city), "i");

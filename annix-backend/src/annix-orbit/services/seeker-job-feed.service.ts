@@ -29,6 +29,7 @@ import {
   type OrbitTierFeatures,
 } from "../entities/orbit-tier-capability.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
+import { provinceMatchTerms } from "../lib/sa-location-match";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -443,7 +444,7 @@ export class SeekerJobFeedService {
     const providerBySourceId = new Map(sources.map((s) => [s.id, s.provider]));
 
     const f = options.filters ?? {};
-    const provinceF = f.province ? f.province.toLowerCase() : null;
+    const provinceTermsF = f.province ? provinceMatchTerms(f.province) : null;
     const cityF = f.city ? f.city.toLowerCase() : null;
     const categoryF = f.category ?? null;
     const providerF = f.provider && f.provider !== "all" ? f.provider : null;
@@ -458,7 +459,12 @@ export class SeekerJobFeedService {
       r.salaryMax != null ? r.salaryMax : r.salaryMin;
 
     const passes = (r: (typeof rows)[number], skip: Set<string>): boolean => {
-      if (!skip.has("province") && provinceF && !haystackOf(r).includes(provinceF)) return false;
+      if (
+        !skip.has("province") &&
+        provinceTermsF &&
+        !provinceTermsF.some((t) => haystackOf(r).includes(t))
+      )
+        return false;
       if (!skip.has("city") && cityF && !haystackOf(r).includes(cityF)) return false;
       if (!skip.has("category") && categoryF && r.canonicalCategory !== categoryF) return false;
       if (
@@ -476,9 +482,12 @@ export class SeekerJobFeedService {
     };
 
     const provinceSkip = new Set(["province", "city"]);
-    const provinces = SA_PROVINCES.filter((p) =>
-      rows.some((r) => passes(r, provinceSkip) && haystackOf(r).includes(p.toLowerCase())),
-    );
+    const provinces = SA_PROVINCES.filter((p) => {
+      const terms = provinceMatchTerms(p);
+      return rows.some(
+        (r) => passes(r, provinceSkip) && terms.some((t) => haystackOf(r).includes(t)),
+      );
+    });
 
     const citySkip = new Set(["city"]);
     const cities = f.province

@@ -5,11 +5,18 @@ import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-reposi
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
+import { provinceMatchTerms } from "../lib/sa-location-match";
 import {
   CandidateJobMatchRepository,
   type RecommendedFacetRow,
   type RecommendedMatchCountFilters,
 } from "./candidate-job-match.repository";
+
+function provinceRegexPattern(province: string): string {
+  return provinceMatchTerms(province)
+    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
+}
 
 @Injectable()
 export class PostgresCandidateJobMatchRepository
@@ -53,8 +60,8 @@ export class PostgresCandidateJobMatchRepository
     }
     if (filters?.province) {
       qb.andWhere(
-        "(LOWER(job.location_area) LIKE :province OR LOWER(job.location_raw) LIKE :province)",
-        { province: `%${filters.province.toLowerCase()}%` },
+        "(LOWER(job.location_area) ~ :provincePattern OR LOWER(job.location_raw) ~ :provincePattern)",
+        { provincePattern: provinceRegexPattern(filters.province) },
       );
     }
     if (filters?.city) {
