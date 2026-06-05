@@ -6,6 +6,7 @@ import {
   fallbackPipeWeight,
   resolveHdpeDims,
   resolveHdpePn,
+  resolveSteelPipeDims,
 } from "./calc";
 
 describe("resolveHdpePn", () => {
@@ -82,10 +83,23 @@ describe("fallbackPipeWeight", () => {
     ).toBe(123.45);
   });
 
-  it("returns 0 for steel entry with no wallThickness", () => {
-    expect(
-      fallbackPipeWeight({ materialType: "steel", specs: { quantityValue: 5 } }, 100, 6, 2, null),
-    ).toBe(0);
+  it("falls back to a Sch 40 assumed weight for steel with no wallThickness", () => {
+    // Previously returned 0 (a misleading blank). Now resolveSteelPipeDims
+    // supplies a Sch 40/STD wall (100NB → 6.02mm, OD 114.3) so the row prices.
+    // perMetre = (114.3-6.02)*6.02*0.02466 ≈ 16.07 kg/m × 12 m ≈ 193 kg.
+    const w = fallbackPipeWeight(
+      { materialType: "steel", specs: { quantityValue: 5 } },
+      100,
+      6,
+      2,
+      null,
+    );
+    expect(w).toBeGreaterThan(180);
+    expect(w).toBeLessThan(205);
+  });
+
+  it("still returns 0 for a non-standard steel NB with nothing to fall back to", () => {
+    expect(fallbackPipeWeight({ materialType: "steel", specs: {} }, 37, 6, 2, null)).toBe(0);
   });
 
   it("computes a sensible non-zero for HDPE with default SDR", () => {
@@ -215,5 +229,81 @@ describe("fallbackFittingWeight", () => {
     const explicit = fallbackFittingWeight({ materialType: "hdpe", specs: {} }, 110, 110, null);
     const fallback = fallbackFittingWeight({ materialType: "hdpe", specs: {} }, 110, 0, null);
     expect(fallback).toBeCloseTo(explicit, 5);
+  });
+});
+
+describe("resolveSteelPipeDims", () => {
+  it("uses the extracted wall thickness over everything (source 'extracted')", () => {
+    const dims = resolveSteelPipeDims(250, {
+      description: "250NB Pipe ERW Heavy Class",
+      specs: { wallThicknessMm: 6 },
+    });
+    expect(dims.wt).toBe(6);
+    expect(dims.source).toBe("extracted");
+    expect(dims.assumed).toBe(false);
+    // OD resolved from the NB→OD table when no calc OD present
+    expect(dims.od).toBeCloseTo(273.0, 3);
+  });
+
+  it("prefers the calculation-block OD when present", () => {
+    const dims = resolveSteelPipeDims(250, {
+      description: "250NB",
+      specs: { wallThicknessMm: 6 },
+      calculation: { outsideDiameterMm: 272.5 },
+    });
+    expect(dims.od).toBe(272.5);
+  });
+
+  it("resolves a rolled-from-plate stub to the plate thickness (source 'plate')", () => {
+    const dims = resolveSteelPipeDims(150, {
+      description: "150NB rolled stub",
+      specs: { plateThicknessMm: 6 },
+    });
+    expect(dims.wt).toBe(6);
+    expect(dims.source).toBe("plate");
+    expect(dims.assumed).toBe(false);
+  });
+
+  it("converts a stated SANS 62 Heavy Class into wall + OD (source 'sabs62-heavy')", () => {
+    const dims = resolveSteelPipeDims(50, {
+      description: "50NB ERW Heavy Class Steel Pipe",
+      specs: {},
+    });
+    expect(dims.wt).toBeCloseTo(3.9, 3);
+    expect(dims.od).toBeCloseTo(60.3, 3);
+    expect(dims.source).toBe("sabs62-heavy");
+    expect(dims.assumed).toBe(false);
+  });
+
+  it("converts a stated Medium Class into the medium SANS 62 wall (source 'sabs62-medium')", () => {
+    const dims = resolveSteelPipeDims(50, {
+      description: "50NB Medium Class Steel Pipe",
+      specs: {},
+    });
+    expect(dims.wt).toBeCloseTo(3.2, 3);
+    expect(dims.source).toBe("sabs62-medium");
+  });
+
+  it("defaults to Sch 40/STD as a FLAGGED assumption when nothing is stated", () => {
+    const dims = resolveSteelPipeDims(250, { description: "250NB Pipe ERW", specs: {} });
+    expect(dims.od).toBeCloseTo(273.0, 3);
+    expect(dims.wt).toBeCloseTo(9.27, 3);
+    expect(dims.source).toBe("assumed-sch40");
+    expect(dims.assumed).toBe(true);
+  });
+
+  it("returns 'unresolved' (wt 0) for a non-standard NB with nothing stated", () => {
+    const dims = resolveSteelPipeDims(37, { description: "37NB mystery", specs: {} });
+    expect(dims.wt).toBe(0);
+    expect(dims.source).toBe("unresolved");
+    expect(dims.assumed).toBe(false);
+  });
+
+  it("ignores a zero/negative extracted wall and falls through to the class", () => {
+    const dims = resolveSteelPipeDims(50, {
+      description: "50NB Heavy Class",
+      specs: { wallThicknessMm: 0 },
+    });
+    expect(dims.source).toBe("sabs62-heavy");
   });
 });

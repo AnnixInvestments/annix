@@ -39,6 +39,7 @@ import {
   fallbackPipeWeight,
   resolveHdpeDims,
   resolveHdpePn,
+  resolveSteelPipeDims,
 } from "./boq/calc";
 import { GroupExportsButtons } from "./boq/components/GroupExportsButtons";
 import { pipeRowDescription } from "./boq/description";
@@ -1750,7 +1751,15 @@ export default function BOQStep(props: {
           : null;
       const hdpePipeDimsOd = hdpePipeDims ? hdpePipeDims.od : 0;
       const hdpePipeDimsWt = hdpePipeDims ? hdpePipeDims.wt : 0;
-      const od = rawOutsideDiameterMm3 || hdpePipeDimsOd;
+      // For Nix-extracted steel pipes the calculation block is empty, so OD
+      // would be 0 and every area column blank. Resolve OD + wall from the
+      // drawing's stated spec (explicit wall → plate → SANS 62 class →
+      // assumed Sch 40) so weld length + Int/Ext m² populate.
+      const steelPipeDims = materialType === "steel" ? resolveSteelPipeDims(nb, entry) : null;
+      const steelPipeDimsOd = steelPipeDims ? steelPipeDims.od : 0;
+      const steelPipeDimsWt = steelPipeDims ? steelPipeDims.wt : 0;
+      const steelWallAssumed = steelPipeDims ? steelPipeDims.assumed : false;
+      const od = rawOutsideDiameterMm3 || hdpePipeDimsOd || steelPipeDimsOd;
       // circumference per weld
       const pipeWeldLength = pipeWeldCount * pipeQty * ((Math.PI * od) / 1000);
 
@@ -1758,7 +1767,8 @@ export default function BOQStep(props: {
 
       // Calculate surface areas
       const totalLength = rawCalculatedTotalLength || pipeLength * pipeQty;
-      const wt = rawWallThicknessMm3 || hdpePipeDimsWt;
+      const wt = rawWallThicknessMm3 || hdpePipeDimsWt || steelPipeDimsWt;
+      const wallAssumptionNote = steelWallAssumed ? " (wall assumed: Sch 40/STD)" : "";
       const odM = od / 1000;
       const idM = (od - 2 * wt) / 1000;
       const extAreaM2 = Math.PI * odM * totalLength;
@@ -1793,20 +1803,21 @@ export default function BOQStep(props: {
         existing.extAreaM2 = (rawExtAreaM25 || 0) + extAreaM2;
       } else {
         consolidatedPipes.set(key, {
-          description: pipeRowDescription(
-            entry,
-            nb,
-            schedule,
-            pipeLength,
-            steelSpec,
-            rawHdpeGrade,
-            sdrNumber,
-            rawPvcType,
-            pressureClassLabel,
-            flangeSpec,
-            globalHdpePressureRating,
-            variantPrefix,
-          ),
+          description:
+            pipeRowDescription(
+              entry,
+              nb,
+              schedule,
+              pipeLength,
+              steelSpec,
+              rawHdpeGrade,
+              sdrNumber,
+              rawPvcType,
+              pressureClassLabel,
+              flangeSpec,
+              globalHdpePressureRating,
+              variantPrefix,
+            ) + wallAssumptionNote,
           qty: pipeQty,
           unit: "Each",
           weight: pipeWeight,
