@@ -12,6 +12,7 @@ import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NbOdLookupModule } from "../nb-od-lookup/nb-od-lookup.module";
 import { NixLearning } from "../nix/entities/nix-learning.entity";
+import { NixModule } from "../nix/nix.module";
 import { NixLearningRepository } from "../nix/nix-learning.repository";
 import { MongoNixLearningRepository } from "../nix/nix-learning.repository.mongo";
 import { PostgresNixLearningRepository } from "../nix/nix-learning.repository.postgres";
@@ -766,6 +767,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       },
     }),
     QcModule,
+    NixModule,
     MetricsModule,
     NbOdLookupModule,
     PipeScheduleModule,
