@@ -46,6 +46,10 @@ const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
 const MAX_COLD_START = 12;
 const MAX_LOCKED_TEASERS = 3;
+// How many ranked matches the Browse Jobs feed loads at once. The headline "Nix
+// matches" count is the true total (counted in the DB, not loaded), so a seeker
+// sees the real number without us shipping thousands of populated job rows.
+const RECOMMENDED_DISPLAY_LIMIT = 100;
 
 const NIX_SEARCH_METRIC_CATEGORY = "annix-orbit-nix-seeker";
 const NIX_SEARCH_METRIC_OPERATION = "job-search";
@@ -586,10 +590,10 @@ export class SeekerJobFeedService {
   async recommendedForSeeker(
     email: string | null,
     options: { includeDismissed?: boolean; filters?: RecommendedJobFilters | null } = {},
-  ): Promise<{ matches: SeekerJobMatch[]; candidateIds: number[] }> {
+  ): Promise<{ matches: SeekerJobMatch[]; candidateIds: number[]; total: number }> {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) {
-      return { matches: [], candidateIds: [] };
+      return { matches: [], candidateIds: [], total: 0 };
     }
 
     // The chosen plan is authoritative for match allowance. Self-heal any
@@ -608,6 +612,23 @@ export class SeekerJobFeedService {
         });
       }
     }
+
+    // The true count of matching jobs, counted in the DB without loading the rows.
+    // The plan caps how many a seeker may see (null = unlimited), so apply that
+    // ceiling to both the headline total and the loaded page size.
+    const candidateIds = candidates.map((c) => c.id);
+    const capTier = selectedTier ?? this.effectiveTier(candidates);
+    const capability = await this.tierCapabilityRepo.findByTier(capTier);
+    const maxResults = capability ? capability.maxJobResults : null;
+    const rawTotal = await this.matchRepo.countRecommendedForCandidates(
+      candidateIds,
+      options.filters ?? null,
+    );
+    const total = maxResults == null ? rawTotal : Math.min(rawTotal, maxResults);
+    const displayLimit =
+      maxResults == null
+        ? RECOMMENDED_DISPLAY_LIMIT
+        : Math.min(RECOMMENDED_DISPLAY_LIMIT, maxResults);
 
     const perCandidateLists = await Promise.all(
       candidates.map((candidate) =>
@@ -630,7 +651,7 @@ export class SeekerJobFeedService {
     );
 
     if (flat.length === 0) {
-      return { matches: [], candidateIds: candidates.map((c) => c.id) };
+      return { matches: [], candidateIds, total };
     }
 
     const sourceIds = [
@@ -671,7 +692,9 @@ export class SeekerJobFeedService {
     // A job available from any visible source is never shown as locked.
     bestByJob.forEach((_match, jobId) => lockedByJob.delete(jobId));
 
-    const sorted = [...bestByJob.values()].sort((a, b) => b.overallScore - a.overallScore);
+    const sorted = [...bestByJob.values()]
+      .sort((a, b) => b.overallScore - a.overallScore)
+      .slice(0, displayLimit);
     const lockedSorted = [...lockedByJob.values()]
       .sort((a, b) => b.overallScore - a.overallScore)
       .slice(0, MAX_LOCKED_TEASERS);
@@ -684,7 +707,7 @@ export class SeekerJobFeedService {
         toSeekerMatch(match, sourceById.get(match.externalJob.sourceId) ?? null, true),
       ),
     ];
-    return { matches, candidateIds: candidates.map((c) => c.id) };
+    return { matches, candidateIds, total };
   }
 
   async nixSearchEstimateMs(): Promise<number> {

@@ -3105,6 +3105,7 @@ export interface SeekerRecommendedJobsResponse {
   matches: SeekerRecommendedJob[];
   candidateIds: number[];
   hasCandidate: boolean;
+  total: number;
 }
 
 export interface SeekerRecommendedFilters {

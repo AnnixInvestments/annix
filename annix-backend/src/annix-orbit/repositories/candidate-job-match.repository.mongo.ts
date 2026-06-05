@@ -6,7 +6,14 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
-import { CandidateJobMatchRepository } from "./candidate-job-match.repository";
+import {
+  CandidateJobMatchRepository,
+  type RecommendedMatchCountFilters,
+} from "./candidate-job-match.repository";
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
 
 @Injectable()
 export class MongoCandidateJobMatchRepository
@@ -51,7 +58,7 @@ export class MongoCandidateJobMatchRepository
       .find(filter)
       .sort({ overallScore: -1 })
       .limit(limit)
-      .populate("externalJob")
+      .populate({ path: "externalJob", select: "-embedding" })
       .lean()
       .exec();
     return this.toDomainList(docs) as Array<CandidateJobMatch & { externalJob: ExternalJob }>;
@@ -95,6 +102,79 @@ export class MongoCandidateJobMatchRepository
     return this.documents
       .countDocuments({ candidateId: { $in: candidateIds }, dismissed: false })
       .exec();
+  }
+
+  async countRecommendedForCandidates(
+    candidateIds: number[],
+    filters: RecommendedMatchCountFilters | null,
+  ): Promise<number> {
+    if (candidateIds.length === 0) return 0;
+
+    const jobMatch: Record<string, unknown> = {
+      delisted: { $ne: true },
+      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+    };
+    const jobAnd: Array<Record<string, unknown>> = [];
+
+    if (filters?.category) {
+      jobMatch.category = filters.category;
+    }
+    if (filters?.province) {
+      const rx = new RegExp(escapeRegex(filters.province), "i");
+      jobAnd.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
+    }
+    if (filters?.city) {
+      const rx = new RegExp(escapeRegex(filters.city), "i");
+      jobAnd.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
+    }
+    if (filters?.search) {
+      const rx = new RegExp(escapeRegex(filters.search.trim()), "i");
+      jobAnd.push({
+        $or: [
+          { title: rx },
+          { company: rx },
+          { locationArea: rx },
+          { locationRaw: rx },
+          { description: rx },
+        ],
+      });
+    }
+    if (filters?.minSalary != null && filters.minSalary > 0) {
+      jobAnd.push({
+        $expr: {
+          $or: [
+            { $eq: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, null] },
+            { $gte: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, filters.minSalary] },
+          ],
+        },
+      });
+    }
+    if (jobAnd.length > 0) {
+      jobMatch.$and = jobAnd;
+    }
+
+    const result = await this.documents
+      .aggregate<{ total: number }>([
+        { $match: { candidateId: { $in: candidateIds }, dismissed: false } },
+        {
+          $lookup: {
+            from: "cv_assistant_external_jobs",
+            let: { jid: "$externalJobId" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$jid"] } } },
+              { $match: jobMatch },
+              { $project: { _id: 1 } },
+            ],
+            as: "job",
+          },
+        },
+        { $match: { "job.0": { $exists: true } } },
+        { $group: { _id: "$externalJobId" } },
+        { $count: "total" },
+      ])
+      .exec();
+
+    return result.length > 0 ? result[0].total : 0;
   }
 
   countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number> {

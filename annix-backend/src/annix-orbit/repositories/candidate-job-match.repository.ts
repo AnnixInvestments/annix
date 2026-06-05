@@ -3,6 +3,14 @@ import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
 
+export interface RecommendedMatchCountFilters {
+  province?: string | null;
+  city?: string | null;
+  category?: string | null;
+  minSalary?: number | null;
+  search?: string | null;
+}
+
 export abstract class CandidateJobMatchRepository extends CrudRepository<CandidateJobMatch> {
   abstract findByCandidateAndJob(
     candidateId: number,
@@ -21,6 +29,10 @@ export abstract class CandidateJobMatchRepository extends CrudRepository<Candida
   abstract findDismissedForCandidate(candidateId: number): Promise<CandidateJobMatch[]>;
   abstract deleteForCandidates(candidateIds: number[]): Promise<number>;
   abstract countActiveForCandidates(candidateIds: number[]): Promise<number>;
+  abstract countRecommendedForCandidates(
+    candidateIds: number[],
+    filters: RecommendedMatchCountFilters | null,
+  ): Promise<number>;
   abstract countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number>;
   abstract weeklyDigestMatches(
     jobPostingIds: number[],

@@ -5,7 +5,10 @@ import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-reposi
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
-import { CandidateJobMatchRepository } from "./candidate-job-match.repository";
+import {
+  CandidateJobMatchRepository,
+  type RecommendedMatchCountFilters,
+} from "./candidate-job-match.repository";
 
 @Injectable()
 export class PostgresCandidateJobMatchRepository
@@ -87,6 +90,56 @@ export class PostgresCandidateJobMatchRepository
       .where("match.candidate_id IN (:...ids)", { ids: candidateIds })
       .andWhere("match.dismissed = false")
       .getCount();
+  }
+
+  countRecommendedForCandidates(
+    candidateIds: number[],
+    filters: RecommendedMatchCountFilters | null,
+  ): Promise<number> {
+    if (candidateIds.length === 0) return Promise.resolve(0);
+    const qb = this.repository
+      .createQueryBuilder("match")
+      .innerJoin("match.externalJob", "job")
+      .where("match.candidate_id IN (:...ids)", { ids: candidateIds })
+      .andWhere("match.dismissed = false")
+      .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
+      .andWhere("job.delisted IS NOT TRUE");
+
+    if (filters?.category) {
+      qb.andWhere("job.category = :category", { category: filters.category });
+    }
+    if (filters?.province) {
+      qb.andWhere(
+        "(LOWER(job.location_area) LIKE :province OR LOWER(job.location_raw) LIKE :province)",
+        {
+          province: `%${filters.province.toLowerCase()}%`,
+        },
+      );
+    }
+    if (filters?.city) {
+      qb.andWhere("(LOWER(job.location_area) LIKE :city OR LOWER(job.location_raw) LIKE :city)", {
+        city: `%${filters.city.toLowerCase()}%`,
+      });
+    }
+    if (filters?.search) {
+      qb.andWhere(
+        "(LOWER(job.title) LIKE :q OR LOWER(job.company) LIKE :q OR LOWER(job.description) LIKE :q)",
+        { q: `%${filters.search.trim().toLowerCase()}%` },
+      );
+    }
+    if (filters?.minSalary != null && filters.minSalary > 0) {
+      qb.andWhere(
+        "(COALESCE(job.salary_max, job.salary_min) IS NULL OR COALESCE(job.salary_max, job.salary_min) >= :minSalary)",
+        {
+          minSalary: filters.minSalary,
+        },
+      );
+    }
+
+    return qb
+      .select("COUNT(DISTINCT match.external_job_id)", "total")
+      .getRawOne<{ total: string }>()
+      .then((row) => (row ? Number(row.total) : 0));
   }
 
   countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number> {

@@ -200,7 +200,7 @@ export default function SeekerJobsPage() {
     if (!recommendedDataForBanner) return;
     const pending = readNixPending();
     if (!pending) return;
-    const matchCount = recommendedDataForBanner.matches.length;
+    const matchCount = recommendedDataForBanner.total;
     if (matchCount > pending.startCount) {
       clearNixPending();
       const added = matchCount - pending.startCount;
@@ -504,7 +504,7 @@ export default function SeekerJobsPage() {
       try {
         const refetched = await recommendedQuery.refetch();
         const refetchedData = refetched.data;
-        count = refetchedData ? refetchedData.matches.length : startCount;
+        count = refetchedData ? refetchedData.total : startCount;
       } catch {
         // transient refetch failure (e.g. backend restarting) — keep polling
       }
@@ -519,7 +519,7 @@ export default function SeekerJobsPage() {
   const runNixSearch = async () => {
     setNixSearching(true);
     const recommendedData = recommendedQuery.data;
-    const startCount = recommendedData ? recommendedData.matches.length : 0;
+    const startCount = recommendedData ? recommendedData.total : 0;
     // Record the search so that if the user locks their screen or leaves the
     // page, the return-banner (and the completion push) can still tell them
     // when matches land.
@@ -673,7 +673,7 @@ export default function SeekerJobsPage() {
         confirmDialog={ConfirmDialog}
         variant="no-cv"
         jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
+        matchCount={data ? data.total : 0}
         hasCv={false}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -729,7 +729,7 @@ export default function SeekerJobsPage() {
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
         jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
+        matchCount={data ? data.total : 0}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -789,7 +789,7 @@ export default function SeekerJobsPage() {
         confirmDialog={ConfirmDialog}
         variant="matches-pending"
         jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
+        matchCount={data ? data.total : 0}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -808,7 +808,7 @@ export default function SeekerJobsPage() {
 
       <JobsTopBar
         jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
+        matchCount={data ? data.total : 0}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}

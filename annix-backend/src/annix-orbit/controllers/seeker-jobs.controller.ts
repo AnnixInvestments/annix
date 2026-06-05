@@ -104,6 +104,7 @@ export class SeekerJobsController {
       matches: result.matches,
       candidateIds: result.candidateIds,
       hasCandidate: result.candidateIds.length > 0,
+      total: result.total,
     };
   }
 
