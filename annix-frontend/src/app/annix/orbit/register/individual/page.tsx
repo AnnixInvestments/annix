@@ -4,6 +4,7 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { BackToHubLink } from "@/app/annix/orbit/components/BackToHubLink";
 import { EeRegistrationStep } from "@/app/annix/orbit/components/EeRegistrationStep";
 import { parseRegistrationError } from "@/app/annix/orbit/config/registration-errors";
 import { PhoneInput } from "@/app/components/PhoneInput";
@@ -122,6 +123,7 @@ export default function AnnixOrbitRegisterIndividualPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
+        <BackToHubLink />
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">

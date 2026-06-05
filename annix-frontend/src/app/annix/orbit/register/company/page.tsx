@@ -4,6 +4,7 @@ import { allIndustryLabels } from "@annix/product-data/portals/annix-rep-industr
 import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useMemo, useState } from "react";
+import { BackToHubLink } from "@/app/annix/orbit/components/BackToHubLink";
 import { useToast } from "@/app/components/Toast";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
@@ -121,6 +122,7 @@ export default function AnnixOrbitRegisterCompanyPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full">
+        <BackToHubLink />
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
