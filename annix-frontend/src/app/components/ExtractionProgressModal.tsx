@@ -33,6 +33,16 @@ export interface ShowExtractionOptions {
   label: string;
   estimatedDurationMs: number;
   itemCount?: number;
+  // Optional per-call branding override, for apps whose brand assets live
+  // outside the global useBranding system (e.g. Stock Control's per-company
+  // profile branding). When set, the modal header uses this logo / colours /
+  // name instead of the brand-default lockup.
+  brandingOverride?: {
+    logoUrl?: string | null;
+    navbarColor?: string | null;
+    accentColor?: string | null;
+    title?: string | null;
+  };
   // When set, the modal renders a second progress bar below the
   // current-document one showing overall batch progress + ETA. Only
   // surfaced when `batch.total > 1`.

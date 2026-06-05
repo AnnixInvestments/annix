@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   DeliveryMatchResult,
@@ -25,6 +26,7 @@ import {
   useUploadDrawingFiles,
   useUploadJobCardImportFile,
 } from "@/app/lib/query/hooks";
+import { useStockControlBranding } from "@/app/stock-control/context/StockControlBrandingContext";
 import { correctLineItemsEndRow, validItemRows } from "../../../lib/lineItemsEndRow";
 import { consumePendingImportFile } from "./pending-file";
 
@@ -688,6 +690,11 @@ export default function JobCardImportPage() {
   // bare spinner). The estimate is LEARNED from the rolling average rather than
   // hardcoded; the backend records each run's duration so it sharpens over time.
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { colors: scColors, logoUrl: scLogoUrl } = useStockControlBranding();
+  const { profile: scProfile } = useStockControlAuth();
+  const scNavbarColor = scColors.background;
+  const scAccentColor = scColors.accent;
+  const scCompanyName = scProfile ? scProfile.companyName : null;
   const [parseEstimateMs, setParseEstimateMs] = useState(45_000);
 
   useEffect(() => {
@@ -710,12 +717,27 @@ export default function JobCardImportPage() {
         brand: "stock-control",
         label: "Extracting drawings from your file…",
         estimatedDurationMs: parseEstimateMs,
+        brandingOverride: {
+          logoUrl: scLogoUrl,
+          navbarColor: scNavbarColor,
+          accentColor: scAccentColor,
+          title: scCompanyName,
+        },
       });
     } else {
       hideExtraction();
     }
     return () => hideExtraction();
-  }, [isParsingFile, parseEstimateMs, showExtraction, hideExtraction]);
+  }, [
+    isParsingFile,
+    parseEstimateMs,
+    showExtraction,
+    hideExtraction,
+    scLogoUrl,
+    scNavbarColor,
+    scAccentColor,
+    scCompanyName,
+  ]);
   const confirmImportMutation = useConfirmJobCardImport();
   const confirmDeliveryMutation = useConfirmDeliveryMatches();
   const invalidateJobCards = useInvalidateJobCards();

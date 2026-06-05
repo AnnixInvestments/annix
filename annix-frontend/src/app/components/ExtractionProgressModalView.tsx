@@ -119,8 +119,15 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
   // AU Rubber carries its own (AU Industries) company branding; everything else
   // is a generic Annix app and uses the standard branded-navbar style.
   const useBrandedNavbar = state.brand !== "au-rubber";
-  const navbarColor = branding ? branding.navbarColor : "#323288";
-  const accentColor = branding ? branding.accentOrange : "#FF8A00";
+  const override = state.brandingOverride;
+  const overrideNavbar = override ? override.navbarColor : null;
+  const overrideAccent = override ? override.accentColor : null;
+  const overrideLogo = override ? override.logoUrl : null;
+  const overrideTitle = override ? override.title : null;
+  const brandedNavbarColor = branding ? branding.navbarColor : "#323288";
+  const brandedAccentColor = branding ? branding.accentOrange : "#FF8A00";
+  const navbarColor = overrideNavbar || brandedNavbarColor;
+  const accentColor = overrideAccent || brandedAccentColor;
   const totalMs = state.estimatedDurationMs;
   const elapsedMs = tickMs;
   const rawProgress = totalMs > 0 ? elapsedMs / totalMs : 0;
@@ -164,7 +171,22 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
             className="flex items-center justify-between px-6 py-3.5 text-white"
             style={{ backgroundColor: navbarColor }}
           >
-            <BrandNavLogo brand={state.brand} isOrbit={state.brand === "annix-orbit"} />
+            {override ? (
+              <span className="flex items-center gap-2">
+                {overrideLogo ? (
+                  <img
+                    src={overrideLogo}
+                    alt=""
+                    className="h-7 w-auto max-h-7 rounded-sm object-contain"
+                  />
+                ) : null}
+                {overrideTitle ? (
+                  <span className="text-base font-semibold tracking-wide">{overrideTitle}</span>
+                ) : null}
+              </span>
+            ) : (
+              <BrandNavLogo brand={state.brand} isOrbit={state.brand === "annix-orbit"} />
+            )}
             <span className="text-xs text-white/80">
               {elapsedSeconds}s elapsed
               {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
