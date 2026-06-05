@@ -242,6 +242,9 @@ export default function SeekerJobsPage() {
   const provinceOptions = facets ? facets.provinces : [];
   const cityOptions = facets ? facets.cities : [];
   const categoryOptions = facets ? facets.categories : [];
+  const topAnchorRef = useRef<HTMLDivElement>(null);
+  const scrollToFilters = () =>
+    topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   // The server already applies every filter (province/city/category/source/salary
   // on canonical fields, plus search) and returns the ranked page. This only adds
@@ -741,13 +744,18 @@ export default function SeekerJobsPage() {
     );
   }
 
+  const totalMatches = data ? data.total : 0;
+  const shownMatches = data ? data.matches.length : 0;
+  const hasMoreThanShown = totalMatches > shownMatches;
+
   return (
     <div className="space-y-6">
+      <div ref={topAnchorRef} />
       <PageHeader subtitle={matchedSubtitle} />
 
       <JobsTopBar
         jobCount={jobCount}
-        matchCount={data ? data.total : 0}
+        matchCount={totalMatches}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -794,6 +802,28 @@ export default function SeekerJobsPage() {
           ))}
         </div>
       )}
+
+      {filtered.length > 0 && hasMoreThanShown ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 text-center dark:border-white/10">
+          <p className="text-sm text-gray-700 dark:text-gray-200">
+            You're viewing the <span className="font-semibold">top {shownMatches}</span> jobs best
+            matched to your CV, out of{" "}
+            <span className="font-semibold">{totalMatches.toLocaleString()}</span> total matches. To
+            see the rest, use the filters at the top — pick a{" "}
+            <span className="font-medium">province, city, category, source or salary</span> and the
+            app will bring up the jobs linked to that filter.
+          </p>
+          <button
+            type="button"
+            onClick={scrollToFilters}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-colors"
+            style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+          >
+            <span aria-hidden="true">↑</span> Take me to the filters
+          </button>
+        </div>
+      ) : null}
+
       <ConfirmModal
         isOpen={pendingDismiss != null}
         variant="warning"
