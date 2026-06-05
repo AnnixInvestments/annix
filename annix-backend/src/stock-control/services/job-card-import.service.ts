@@ -545,6 +545,9 @@ export class JobCardImportService {
       mimetype === "application/vnd.ms-excel" ||
       mimetype === "text/csv";
 
+    const lowerName = (filename || "").toLowerCase();
+    const isEml = mimetype === "message/rfc822" || lowerName.endsWith(".eml");
+
     if (isExcel) {
       const xlsx = await import("xlsx");
       const workbook = xlsx.read(buffer, { type: "buffer" });
@@ -557,9 +560,40 @@ export class JobCardImportService {
       return { grid };
     } else if (mimetype === "application/pdf") {
       return this.parsePdfFile(buffer, filename);
+    } else if (isEml) {
+      return this.parseEmlFile(buffer, filename);
     }
 
     return { grid: [] };
+  }
+
+  // A customer RFQ often arrives as an .eml with the drawings as PDF
+  // attachments. Pull every PDF attachment out of the email and run the same
+  // drawing extraction the PDF path uses, so the tank/pipe lines land on the
+  // job card instead of an empty grid + "Map Columns".
+  private async parseEmlFile(
+    buffer: Buffer,
+    filename?: string,
+  ): Promise<{ grid: string[][]; documentNumber?: string; drawingRows?: JobCardImportRow[] }> {
+    const { simpleParser } = await import("mailparser");
+    const parsed = await simpleParser(buffer);
+    const pdfAttachments = (parsed.attachments || [])
+      .filter((a) => {
+        const attName = (a.filename || "").toLowerCase();
+        return a.contentType === "application/pdf" || attName.endsWith(".pdf");
+      })
+      .map((a) => ({ buffer: a.content as Buffer, filename: a.filename || "attachment.pdf" }));
+
+    if (pdfAttachments.length === 0) {
+      this.logger.warn(`Email "${filename}" has no PDF attachments to import`);
+      return { grid: [] };
+    }
+
+    this.logger.log(
+      `Email "${filename}" — extracting ${pdfAttachments.length} PDF attachment(s) via drawing extraction`,
+    );
+    const { drawingRows, documentNumber } = await this.parseDrawingPdfs(pdfAttachments);
+    return { grid: [], documentNumber, drawingRows };
   }
 
   private async parsePdfFile(
