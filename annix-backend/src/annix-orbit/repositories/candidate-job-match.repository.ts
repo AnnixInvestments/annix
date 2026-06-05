@@ -13,14 +13,16 @@ export interface RecommendedMatchCountFilters {
 }
 
 export interface RecommendedFacetRow {
-  locationArea: string | null;
-  locationRaw: string | null;
+  canonicalProvince: string | null;
+  canonicalCity: string | null;
   canonicalCategory: string | null;
   sourceId: number | null;
   salaryMin: number | null;
   salaryMax: number | null;
   title: string | null;
   company: string | null;
+  locationArea: string | null;
+  locationRaw: string | null;
 }
 
 export abstract class CandidateJobMatchRepository extends CrudRepository<CandidateJobMatch> {

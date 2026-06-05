@@ -5,18 +5,11 @@ import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-reposi
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
-import { provinceMatchTerms } from "../lib/sa-location-match";
 import {
   CandidateJobMatchRepository,
   type RecommendedFacetRow,
   type RecommendedMatchCountFilters,
 } from "./candidate-job-match.repository";
-
-function provinceRegexPattern(province: string): string {
-  return provinceMatchTerms(province)
-    .map((term) => term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
-    .join("|");
-}
 
 @Injectable()
 export class PostgresCandidateJobMatchRepository
@@ -59,15 +52,10 @@ export class PostgresCandidateJobMatchRepository
       qb.andWhere("job.source_id IN (:...sourceIds)", { sourceIds: filters.sourceIds });
     }
     if (filters?.province) {
-      qb.andWhere(
-        "(LOWER(job.location_area) ~ :provincePattern OR LOWER(job.location_raw) ~ :provincePattern)",
-        { provincePattern: provinceRegexPattern(filters.province) },
-      );
+      qb.andWhere("job.canonical_province = :province", { province: filters.province });
     }
     if (filters?.city) {
-      qb.andWhere("(LOWER(job.location_area) LIKE :city OR LOWER(job.location_raw) LIKE :city)", {
-        city: `%${filters.city.toLowerCase()}%`,
-      });
+      qb.andWhere("job.canonical_city = :city", { city: filters.city });
     }
     if (filters?.search) {
       qb.andWhere(
@@ -193,14 +181,16 @@ export class PostgresCandidateJobMatchRepository
       .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
       .andWhere("job.delisted IS NOT TRUE")
       .select([
-        'job.location_area AS "locationArea"',
-        'job.location_raw AS "locationRaw"',
+        'job.canonical_province AS "canonicalProvince"',
+        'job.canonical_city AS "canonicalCity"',
         'job.canonical_category AS "canonicalCategory"',
         'job.source_id AS "sourceId"',
         'job.salary_min AS "salaryMin"',
         'job.salary_max AS "salaryMax"',
         "job.title AS title",
         "job.company AS company",
+        'job.location_area AS "locationArea"',
+        'job.location_raw AS "locationRaw"',
       ])
       .distinct(true)
       .getRawMany<RecommendedFacetRow>();

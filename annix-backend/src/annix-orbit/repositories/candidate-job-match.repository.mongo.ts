@@ -6,7 +6,6 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
-import { provinceMatchTerms } from "../lib/sa-location-match";
 import {
   CandidateJobMatchRepository,
   type RecommendedFacetRow,
@@ -34,15 +33,10 @@ function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Recor
     query.sourceId = { $in: filters.sourceIds };
   }
   if (filters?.province) {
-    const or = provinceMatchTerms(filters.province).flatMap((term) => {
-      const rx = new RegExp(escapeRegex(term), "i");
-      return [{ locationArea: rx }, { locationRaw: rx }];
-    });
-    and.push({ $or: or });
+    query.canonicalProvince = filters.province;
   }
   if (filters?.city) {
-    const rx = new RegExp(escapeRegex(filters.city), "i");
-    and.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
+    query.canonicalCity = filters.city;
   }
   if (filters?.search) {
     const rx = new RegExp(escapeRegex(filters.search.trim()), "i");
@@ -210,14 +204,16 @@ export class MongoCandidateJobMatchRepository
               },
               {
                 $project: {
-                  locationArea: 1,
-                  locationRaw: 1,
+                  canonicalProvince: 1,
+                  canonicalCity: 1,
                   canonicalCategory: 1,
                   sourceId: 1,
                   salaryMin: 1,
                   salaryMax: 1,
                   title: 1,
                   company: 1,
+                  locationArea: 1,
+                  locationRaw: 1,
                 },
               },
             ],
@@ -230,14 +226,16 @@ export class MongoCandidateJobMatchRepository
       ])
       .exec();
     return rows.map((row) => ({
-      locationArea: row.locationArea ?? null,
-      locationRaw: row.locationRaw ?? null,
+      canonicalProvince: row.canonicalProvince ?? null,
+      canonicalCity: row.canonicalCity ?? null,
       canonicalCategory: row.canonicalCategory ?? null,
       sourceId: row.sourceId ?? null,
       salaryMin: row.salaryMin ?? null,
       salaryMax: row.salaryMax ?? null,
       title: row.title ?? null,
       company: row.company ?? null,
+      locationArea: row.locationArea ?? null,
+      locationRaw: row.locationRaw ?? null,
     }));
   }
 

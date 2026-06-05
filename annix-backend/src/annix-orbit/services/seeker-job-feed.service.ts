@@ -27,7 +27,7 @@ import {
   type OrbitTierFeatures,
 } from "../entities/orbit-tier-capability.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
-import { citiesForProvince, provinceMatchTerms, SA_PROVINCES } from "../lib/sa-locations";
+import { citiesForProvince, SA_PROVINCES } from "../lib/sa-locations";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -442,28 +442,21 @@ export class SeekerJobFeedService {
     const providerBySourceId = new Map(sources.map((s) => [s.id, s.provider]));
 
     const f = options.filters ?? {};
-    const provinceTermsF = f.province ? provinceMatchTerms(f.province) : null;
-    const cityF = f.city ? f.city.toLowerCase() : null;
+    const provinceF = f.province ?? null;
+    const cityF = f.city ?? null;
     const categoryF = f.category ?? null;
     const providerF = f.provider && f.provider !== "all" ? f.provider : null;
     const minSalaryF = f.minSalary != null && f.minSalary > 0 ? f.minSalary : null;
     const searchF = f.search ? f.search.trim().toLowerCase() : null;
 
-    const haystackOf = (r: (typeof rows)[number]) =>
-      `${r.locationArea ?? ""} ${r.locationRaw ?? ""}`.toLowerCase();
     const keywordOf = (r: (typeof rows)[number]) =>
       `${r.title ?? ""} ${r.company ?? ""} ${r.locationArea ?? ""} ${r.locationRaw ?? ""}`.toLowerCase();
     const bestSalary = (r: (typeof rows)[number]) =>
       r.salaryMax != null ? r.salaryMax : r.salaryMin;
 
     const passes = (r: (typeof rows)[number], skip: Set<string>): boolean => {
-      if (
-        !skip.has("province") &&
-        provinceTermsF &&
-        !provinceTermsF.some((t) => haystackOf(r).includes(t))
-      )
-        return false;
-      if (!skip.has("city") && cityF && !haystackOf(r).includes(cityF)) return false;
+      if (!skip.has("province") && provinceF && r.canonicalProvince !== provinceF) return false;
+      if (!skip.has("city") && cityF && r.canonicalCity !== cityF) return false;
       if (!skip.has("category") && categoryF && r.canonicalCategory !== categoryF) return false;
       if (
         !skip.has("source") &&
@@ -480,19 +473,25 @@ export class SeekerJobFeedService {
     };
 
     const provinceSkip = new Set(["province", "city"]);
-    const provinces = SA_PROVINCES.filter((p) => {
-      const terms = provinceMatchTerms(p);
-      return rows.some(
-        (r) => passes(r, provinceSkip) && terms.some((t) => haystackOf(r).includes(t)),
-      );
+    const availableProvinces = new Set<string>();
+    rows.forEach((r) => {
+      if (r.canonicalProvince && passes(r, provinceSkip))
+        availableProvinces.add(r.canonicalProvince);
     });
+    const provinces = SA_PROVINCES.filter((p) => availableProvinces.has(p));
 
     const citySkip = new Set(["city"]);
-    const cities = f.province
-      ? citiesForProvince(f.province).filter((c) =>
-          rows.some((r) => passes(r, citySkip) && haystackOf(r).includes(c.toLowerCase())),
-        )
-      : [];
+    const cityValues = new Set<string>();
+    if (f.province) {
+      rows.forEach((r) => {
+        if (r.canonicalCity && passes(r, citySkip)) cityValues.add(r.canonicalCity);
+      });
+    }
+    const orderedCities = citiesForProvince(f.province ?? null);
+    const cities = [
+      ...orderedCities.filter((c) => cityValues.has(c)),
+      ...[...cityValues].filter((c) => !orderedCities.includes(c)).sort(),
+    ];
 
     const categorySkip = new Set(["category"]);
     const categoryKeys = new Set<string>();

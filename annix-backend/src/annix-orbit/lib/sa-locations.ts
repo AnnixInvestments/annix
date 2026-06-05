@@ -617,3 +617,71 @@ export function provinceMatchTerms(province: string): string[] {
 export function locationInProvince(locationHaystackLower: string, province: string): boolean {
   return provinceMatchTerms(province).some((term) => locationHaystackLower.includes(term));
 }
+
+// Whole-word/phrase containment so "Alice" doesn't match inside "Malice" and
+// "George" doesn't match inside "Georgetown".
+function containsTerm(haystackLower: string, termLower: string): boolean {
+  let from = 0;
+  for (;;) {
+    const idx = haystackLower.indexOf(termLower, from);
+    if (idx === -1) return false;
+    const before = idx === 0 ? "" : haystackLower[idx - 1];
+    const afterIdx = idx + termLower.length;
+    const after = afterIdx >= haystackLower.length ? "" : haystackLower[afterIdx];
+    const isBoundary = (ch: string) => ch === "" || !/[a-z]/i.test(ch);
+    if (isBoundary(before) && isBoundary(after)) return true;
+    from = idx + 1;
+  }
+}
+
+// Resolve a free-text job location to a single canonical province. The strongest
+// signal wins so same-named towns disambiguate: an explicit province name, then a
+// district/metro, then the most specific (longest) town name. "Middelburg,
+// Mpumalanga" -> Mpumalanga; "Benoni, Ekurhuleni" -> Gauteng (via the district).
+export function resolveProvince(locationText: string | null): string | null {
+  if (!locationText) return null;
+  const hay = locationText.toLowerCase();
+
+  for (const p of SA_LOCATIONS) {
+    if (containsTerm(hay, p.province.toLowerCase())) return p.province;
+  }
+  for (const p of SA_LOCATIONS) {
+    if (p.districts.some((d) => containsTerm(hay, d.toLowerCase()))) return p.province;
+  }
+  let best: { province: string; len: number } | null = null;
+  for (const p of SA_LOCATIONS) {
+    for (const city of p.cities) {
+      const cl = city.toLowerCase();
+      if (containsTerm(hay, cl) && (best === null || cl.length > best.len)) {
+        best = { province: p.province, len: cl.length };
+      }
+    }
+  }
+  return best ? best.province : null;
+}
+
+// The most specific known town/city in the location, preferring one inside the
+// resolved province so same-named towns map to the right place.
+export function resolveCity(locationText: string | null, province: string | null): string | null {
+  if (!locationText) return null;
+  const hay = locationText.toLowerCase();
+  const pools = province ? [citiesForProvince(province)] : SA_LOCATIONS.map((p) => p.cities);
+  let best: { city: string; len: number } | null = null;
+  for (const pool of pools) {
+    for (const city of pool) {
+      const cl = city.toLowerCase();
+      if (containsTerm(hay, cl) && (best === null || cl.length > best.len)) {
+        best = { city, len: cl.length };
+      }
+    }
+  }
+  return best ? best.city : null;
+}
+
+export function resolveLocation(locationText: string | null): {
+  province: string | null;
+  city: string | null;
+} {
+  const province = resolveProvince(locationText);
+  return { province, city: resolveCity(locationText, province) };
+}

@@ -10,6 +10,7 @@ import { sourceRespectRank } from "../config/job-source-providers";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting } from "../entities/job-posting.entity";
+import { resolveLocation } from "../lib/sa-locations";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import {
   DedupCandidateRow,
@@ -980,6 +981,9 @@ export class JobIngestionService {
     const savedJobsRaw = await Promise.all(
       fresh.map(async (job) => {
         try {
+          const resolvedLocation = resolveLocation(
+            `${job.locationArea ?? ""} ${job.locationDisplayName ?? ""}`,
+          );
           return await this.externalJobRepo.create({
             title: job.title,
             company: job.company,
@@ -995,6 +999,8 @@ export class JobIngestionService {
               title: job.title,
               providerCategory: job.category,
             }),
+            canonicalProvince: resolvedLocation.province,
+            canonicalCity: resolvedLocation.city,
             sourceExternalId: job.id,
             sourceUrl: job.redirectUrl,
             postedAt: job.created ? fromISO(job.created).toJSDate() : null,

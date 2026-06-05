@@ -243,54 +243,23 @@ export default function SeekerJobsPage() {
   const cityOptions = facets ? facets.cities : [];
   const categoryOptions = facets ? facets.categories : [];
 
+  // The server already applies every filter (province/city/category/source/salary
+  // on canonical fields, plus search) and returns the ranked page. This only adds
+  // instant client-side narrowing on the search text while the 350ms debounce to
+  // the server is in flight — it must NOT re-apply the dropdown filters, or it
+  // would wrongly drop jobs (e.g. a "Benoni, Ekurhuleni" job has no "Gauteng"
+  // text but is correctly in Gauteng via its canonical province).
   const filtered = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
-    const provinceLower = filters.province.toLowerCase();
-    const cityLower = filters.city.toLowerCase();
-    const minSalaryNumber = filters.minSalary ? Number.parseFloat(filters.minSalary) : Number.NaN;
-    const minSalary = Number.isFinite(minSalaryNumber) ? minSalaryNumber : null;
-
+    if (term.length === 0) return matches;
     return matches.filter((m) => {
-      if (filters.provider !== "all" && m.job.sourceProvider !== filters.provider) {
-        return false;
-      }
-      if (filters.category && m.job.canonicalCategory !== filters.category) {
-        return false;
-      }
-      const rawCompany = m.job.company;
-      const rawLocationArea = m.job.locationArea;
-      const rawLocationRaw = m.job.locationRaw;
-      const rawDescription = m.job.description;
-      const locationArea = rawLocationArea || "";
-      const locationRaw = rawLocationRaw || "";
-      const description = rawDescription || "";
-      const locationHaystack = `${locationArea} ${locationRaw}`.toLowerCase();
-      const keywordHaystack = `${locationArea} ${locationRaw} ${description}`.toLowerCase();
-
-      if (provinceLower && !locationHaystack.includes(provinceLower)) {
-        return false;
-      }
-      if (cityLower && !locationHaystack.includes(cityLower)) {
-        return false;
-      }
-
-      if (minSalary !== null) {
-        const currency = m.job.salaryCurrency;
-        const isRand = currency == null || currency.toUpperCase() === "ZAR";
-        const max = m.job.salaryMax;
-        const min = m.job.salaryMin;
-        const best = max != null ? max : min != null ? min : null;
-        if (isRand && best != null && best < minSalary) {
-          return false;
-        }
-      }
-
-      if (term.length === 0) return true;
-      const company = rawCompany || "";
-      const titleMatch = m.job.title.toLowerCase().includes(term);
-      const companyMatch = company.toLowerCase().includes(term);
-      const locationMatch = keywordHaystack.includes(term);
-      return titleMatch || companyMatch || locationMatch;
+      const company = m.job.company || "";
+      const locationArea = m.job.locationArea || "";
+      const locationRaw = m.job.locationRaw || "";
+      const description = m.job.description || "";
+      const keywordHaystack =
+        `${m.job.title} ${company} ${locationArea} ${locationRaw} ${description}`.toLowerCase();
+      return keywordHaystack.includes(term);
     });
   }, [matches, filters]);
 

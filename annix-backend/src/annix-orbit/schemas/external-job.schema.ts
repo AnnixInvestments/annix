@@ -52,6 +52,15 @@ export class ExternalJob {
   @Prop({ type: String, required: false })
   category: string;
 
+  @Prop({ type: String, required: false })
+  canonicalCategory: string | null;
+
+  @Prop({ type: String, required: false })
+  canonicalProvince: string | null;
+
+  @Prop({ type: String, required: false })
+  canonicalCity: string | null;
+
   @Prop({ type: String, required: true })
   sourceExternalId: string;
 
