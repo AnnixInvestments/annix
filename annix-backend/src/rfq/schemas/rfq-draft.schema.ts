@@ -46,7 +46,7 @@ export class RfqDraft {
   @Prop({ type: Number, required: false })
   convertedRfqId: number;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, default: false })
   isConverted: boolean;
 
   @Prop({ type: Date, required: false })
