@@ -8,16 +8,37 @@ const PDF_MIME = "application/pdf";
 const DOC_MIME = "application/msword";
 const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
-export type AttachmentKind = "boq" | "tender" | "image" | "other";
+export type AttachmentKind = "boq" | "drawing" | "tender" | "quality" | "image" | "other";
 
 // Classification used by the unified dropzone (and re-used by the .eml
 // parser internally). Returns the category the dropped file should be
-// routed into. "eml" triggers the email parser; "boq" triggers Nix
-// extraction; "drawing"/"tender" route into the corresponding pending
-// list. PDF/Word filename heuristics decide tender vs drawing — the
-// default for ambiguous PDFs is "tender" since tender packs are far
-// more common than standalone drawings on customer drops.
-export type DroppedFileKind = "eml" | "boq" | "tender" | "drawing" | "image" | "other";
+// routed into. "eml" triggers the email parser; "boq"/"drawing" trigger
+// Nix BOM extraction; "tender" routes into the spec list (spec metadata
+// only); "quality" (ITP/QCP/data book) is preserved and flagged but not
+// BOM/spec-extracted — it belongs to the (future) quality module.
+//
+// Precedence for a PDF/Word file: quality signals → explicit drawing signals
+// → explicit tender signals → DEFAULT "drawing". The default is "drawing"
+// (not "tender") because customer RFQ emails to a fabricator are
+// overwhelmingly drawings carrying a BOM, and BOM extraction also lifts spec
+// metadata — so an unlabelled spec still pre-fills global specs, while an
+// unlabelled drawing (e.g. "…PS4001InternalPipingMids.pdf", no drawing-number
+// in the name) still gets its BOM extracted instead of being silently
+// treated as a non-itemised tender pack.
+export type DroppedFileKind = "eml" | "boq" | "drawing" | "tender" | "quality" | "image" | "other";
+
+// Quality documents (Inspection & Test Plans, Quality Control Plans, data
+// books / data packs). Checked FIRST — an ITP for a "Distributor" must not be
+// mistaken for the distributor drawing.
+const QUALITY_FILENAME_PATTERNS = [
+  /\bITP\b/i,
+  /\binspection\s*(?:&|and|\+)?\s*test\s*plan\b/i,
+  /\bQCP\b/i,
+  /\bquality\s*(?:control\s*plan|plan|dossier|record|pack)\b/i,
+  /\bdata\s*(?:book|pack)\b/i,
+  /\bMDR\b/,
+  /\btest\s*plan\b/i,
+];
 
 const DRAWING_FILENAME_PATTERNS = [
   /\bdrawing(s)?\b/i,
@@ -31,7 +52,12 @@ const DRAWING_FILENAME_PATTERNS = [
   /\bdetail(s)?\b/i,
   /\bsketch(es)?\b/i,
   /-rev[-_ ]?[A-Z0-9]{1,3}\b/i,
+  // Parenthesised revision marker — a strong drawing-title-block signal,
+  // e.g. "CD1-6149_UNDERFLOW_TANK_(Rev 0 - Production)".
+  /\(\s*rev[\s._-]*[0-9A-Za-z]/i,
   /\b[A-Z]\d{2,4}-\d{2,5}-\d{2,5}\b/,
+  // Drawing / item number, e.g. "CD1-6149", "CD2-4656", "PS4001-12".
+  /\b[A-Z]{1,4}\d{1,4}[-_]\d{3,6}\b/,
 ];
 
 const TENDER_FILENAME_PATTERNS = [
@@ -73,9 +99,10 @@ export function classifyDroppedFile(file: File): DroppedFileKind {
 
   if (isPdfOrDoc) {
     const baseName = file.name;
+    if (QUALITY_FILENAME_PATTERNS.some((p) => p.test(baseName))) return "quality";
     if (DRAWING_FILENAME_PATTERNS.some((p) => p.test(baseName))) return "drawing";
     if (TENDER_FILENAME_PATTERNS.some((p) => p.test(baseName))) return "tender";
-    return "tender";
+    return "drawing";
   }
 
   return "other";
@@ -369,7 +396,14 @@ function classifyAttachment(mime: string, fileName: string): AttachmentKind {
     mime === DOCX_MIME ||
     /\.(pdf|docx?)$/i.test(lower)
   ) {
-    return "tender";
+    // Same precedence as classifyDroppedFile: quality (ITP/QCP/data book)
+    // first, then explicit drawing signals, otherwise treat as a tender
+    // spec. Previously every PDF/Word attachment was classified "tender",
+    // so drawings arriving inside a .eml never reached BOM extraction.
+    if (QUALITY_FILENAME_PATTERNS.some((p) => p.test(fileName))) return "quality";
+    if (DRAWING_FILENAME_PATTERNS.some((p) => p.test(fileName))) return "drawing";
+    if (TENDER_FILENAME_PATTERNS.some((p) => p.test(fileName))) return "tender";
+    return "drawing";
   }
   if (mime.startsWith("image/")) return "image";
   return "other";
