@@ -168,14 +168,15 @@ missing, so the quoter sees the gap.
 For fabricated assemblies (itemType = "tank_chute" — tanks, chutes, hoppers, underpans, pulleys, drums, launders, custom), also extract:
 - assemblyType: one of tank, chute, hopper, underpan, pulley, drum, launder, custom — pick the closest fit
 - drawingReference: drawing number / revision
+- materialGrade: the structural steel grade for the assembly, read from the NOTES / material call-out, e.g. "S355JR", "EN10025-2 S355JR (+AR)", "300WA", "Grade 250". ALWAYS capture it — it is the per-kg pricing basis.
 - overallLengthMm, overallWidthMm, overallHeightMm (or applicable dimensions: e.g. pulley OD × face width)
-- totalSteelWeightKg if stated
+- totalSteelWeightKg: the STEEL mass when the notes / title block state it (e.g. a note "STEEL MASS = 360 kg" or "TOTAL MASS = 454 kg" — use the STEEL figure). Capture the stated value verbatim; a later step cross-checks it against the summed plate weights, so do not round or recompute it.
 - liningType: one of rubber, ceramic, hdpe, pu, glass_flake (if internal lining specified)
-- liningThicknessMm, liningAreaM2
+- liningThicknessMm, liningAreaM2 (capture the stated rubber-lined / lining m² verbatim)
 - coatingSystem: external coating description (e.g. "R1: Carboguard 890 Aluminium + Carbothane 137 HS")
-- coatingAreaM2
-- surfacePrepStandard (e.g. "Sa 2.5")
-- plateBom: array of plate parts if a BOM is present, each: { mark, description, thicknessMm, lengthMm, widthMm, quantity, weightKg, areaM2 }
+- coatingAreaM2: the stated paint / coating m² verbatim
+- surfacePrepStandard (e.g. "Sa 2.5", "SA 2½")
+- plateBom: the cutting / parts list — ONE row per marked plate part, each { mark, description, thicknessMm, lengthMm, widthMm, quantity, weightKg, areaM2 }. thicknessMm is CRITICAL and must not be left null when any plate thickness is shown ANYWHERE on the drawing: read it from the parts-list THK / thickness column when present, otherwise cross-reference the plate-thickness call-outs on the detail / section views ("5 PL", "6 PL", "10 PL", "10 THK", "PLT 6", "6mm PL") to the matching mark / part. Capture each part's plate size (lengthMm × widthMm, or the developed/flat size for rolled or conical parts) and the per-part weightKg / areaM2 when the list states them — these drive the per-part BOQ weights and a geometry cross-check against the stated steel mass and areas.
 
 Recognise drawings by their content, not their filename: title blocks, plate BOMs listing steel parts with thickness/dimensions, lining specifications (m² area, thickness), overall dimensions, drawing numbers in any convention (e.g. "GPW-xxx", "HH01", "EP-3106-003"). A document showing fabricated items is a drawing whether the filename says so or not.
 
