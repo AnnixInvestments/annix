@@ -7,6 +7,7 @@ import type {
   ImportMatchRow,
   ImportResult,
   ImportUploadResponse,
+  IssuanceDetailRow,
   MissingStockTakeItem,
   ReconciliationReport,
   ReviewedImportResult,
@@ -119,6 +120,10 @@ declare module "./base" {
       periodLabel?: string | null,
       sheetName?: string | null,
     ): Promise<CreateMissingDeliveryResult>;
+    reconciliationIssuanceDetail(
+      stockItemId: number,
+      isoDate: string,
+    ): Promise<IssuanceDetailRow[]>;
     createReconciliationIssuance(
       body: CreateMissingIssuanceRequest,
     ): Promise<CreateMissingIssuanceResult>;
@@ -346,6 +351,13 @@ proto.createReconciliationDelivery = async function (
   if (periodLabel) fields.periodLabel = periodLabel;
   if (sheetName) fields.sheetName = sheetName;
   return this.uploadFile("/stock-control/reconciliation/create-delivery", file, fields);
+};
+
+proto.reconciliationIssuanceDetail = async function (stockItemId, isoDate) {
+  return this.request("/stock-control/reconciliation/issuance-detail", {
+    method: "POST",
+    body: JSON.stringify({ stockItemId, isoDate }),
+  });
 };
 
 proto.createReconciliationIssuance = async function (body) {

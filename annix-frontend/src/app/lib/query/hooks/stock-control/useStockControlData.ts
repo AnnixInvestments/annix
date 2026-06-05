@@ -961,6 +961,11 @@ export const useCreateReconciliationDelivery = createMutationHook(
   [stockControlKeys.inventory.all],
 );
 
+export const useReconciliationIssuanceDetail = createMutationHook(
+  (vars: { stockItemId: number; isoDate: string }) =>
+    stockControlApiClient.reconciliationIssuanceDetail(vars.stockItemId, vars.isoDate),
+);
+
 export const useCreateReconciliationIssuance = createMutationHook(
   (body: Parameters<typeof stockControlApiClient.createReconciliationIssuance>[0]) =>
     stockControlApiClient.createReconciliationIssuance(body),

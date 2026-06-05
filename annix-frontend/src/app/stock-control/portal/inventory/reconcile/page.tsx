@@ -1,19 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   DocVerificationGroup,
   IssuanceFixMode,
+  IssueDateColumn,
   ReconciliationDocumentCheck,
   ReconciliationFlag,
   ReconciliationItemAnalysis,
   ReconciliationReport,
 } from "@/app/lib/api/stockControlApi";
-import { DateTime, monthEndPeriodOptions } from "@/app/lib/datetime";
+import { DateTime, formatDateTimeZA, monthEndPeriodOptions } from "@/app/lib/datetime";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
@@ -22,6 +23,7 @@ import {
   useCreateReconciliationIssuance,
   useIssueStockStaffMembers,
   useJobCards,
+  useReconciliationIssuanceDetail,
 } from "@/app/lib/query/hooks";
 
 const FLAG_LABELS: Record<ReconciliationFlag, { label: string; className: string }> = {
@@ -46,6 +48,12 @@ export default function ReconcilePage() {
   const [creatingInvoice, setCreatingInvoice] = useState<string | null>(null);
   const [fixingItem, setFixingItem] = useState<ReconciliationItemAnalysis | null>(null);
   const [fixedRows, setFixedRows] = useState<Set<number>>(new Set());
+  const [drillCell, setDrillCell] = useState<{
+    item: ReconciliationItemAnalysis;
+    column: IssueDateColumn;
+    manual: number;
+    app: number;
+  } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const analyzeMutation = useAnalyzeStockTakeReconciliation();
   const createDeliveryMutation = useCreateReconciliationDelivery();
@@ -333,8 +341,20 @@ export default function ReconcilePage() {
           fixedRows={fixedRows}
           onFixIssuance={(item) => setFixingItem(item)}
           onChooseSheet={(sheet) => handleAnalyze(sheet)}
+          onIssueCellClick={(item, column, manual, app) =>
+            setDrillCell({ item, column, manual, app })
+          }
         />
       )}
+      {drillCell !== null ? (
+        <IssuanceDetailModal
+          item={drillCell.item}
+          column={drillCell.column}
+          manual={drillCell.manual}
+          app={drillCell.app}
+          onClose={() => setDrillCell(null)}
+        />
+      ) : null}
       {fixingItem !== null && report !== null ? (
         <IssuanceFixModal
           item={fixingItem}
@@ -367,6 +387,12 @@ interface ResultProps {
   fixedRows: Set<number>;
   onFixIssuance: (item: ReconciliationItemAnalysis) => void;
   onChooseSheet: (sheet: string) => void;
+  onIssueCellClick: (
+    item: ReconciliationItemAnalysis,
+    column: IssueDateColumn,
+    manual: number,
+    app: number,
+  ) => void;
 }
 
 function ReconciliationResult(props: ResultProps) {
@@ -447,6 +473,14 @@ function ReconciliationResult(props: ResultProps) {
           onCreateDelivery={props.onCreateDelivery}
           onCreateAllDeliveries={props.onCreateAllDeliveries}
           pendingMissingCount={pendingMissingCount}
+        />
+      )}
+
+      {report.issueDateColumns.length > 0 && (
+        <IssuedStockMatrix
+          items={report.items}
+          columns={report.issueDateColumns}
+          onCellClick={props.onIssueCellClick}
         />
       )}
 
@@ -712,6 +746,211 @@ function DocumentVerificationTable(props: {
         </table>
       </div>
     </div>
+  );
+}
+
+function IssuedStockMatrix(props: {
+  items: ReconciliationItemAnalysis[];
+  columns: IssueDateColumn[];
+  onCellClick: (
+    item: ReconciliationItemAnalysis,
+    column: IssueDateColumn,
+    manual: number,
+    app: number,
+  ) => void;
+}) {
+  const activeItems = props.items.filter(
+    (item) => item.issuesByDate.some((q) => q !== 0) || item.appIssuesByDate.some((q) => q !== 0),
+  );
+
+  const headCell =
+    "sticky top-0 z-10 bg-gray-100 px-2 py-1.5 text-center font-medium text-gray-600 border-b border-gray-200 whitespace-nowrap";
+  const firstHead =
+    "sticky top-0 left-0 z-20 bg-gray-100 px-3 py-1.5 text-left font-medium text-gray-600 border-b border-r border-gray-200";
+  const firstCell =
+    "sticky left-0 z-[5] bg-white px-3 py-1 font-medium text-gray-700 border-r border-gray-200 whitespace-nowrap";
+
+  return (
+    <div className="bg-white shadow rounded-lg p-6">
+      <h3 className="mb-1 text-sm font-semibold text-gray-900">
+        Issued-stock verification ({activeItems.length})
+      </h3>
+      <p className="mb-3 text-xs text-gray-500">
+        Each cell shows <span className="font-mono">manual / app</span> issued that day. Red means
+        they differ. Click any day to see the app's recorded issuances for that item.
+      </p>
+      {activeItems.length === 0 ? (
+        <p className="text-sm text-gray-600">
+          No issues recorded on the sheet or in the app for this month.
+        </p>
+      ) : (
+        <div className="max-h-[32rem] overflow-auto rounded border border-gray-200">
+          <table className="border-collapse text-xs">
+            <thead>
+              <tr>
+                <th className={firstHead}>Item</th>
+                <th className={headCell}>Total</th>
+                {props.columns.map((col, i) => (
+                  <th key={`${col.label}-${i}`} className={headCell}>
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {activeItems.map((item) => {
+                const itemName = item.name;
+                const matchedName = item.matchedName;
+                const name = itemName ?? matchedName ?? "—";
+                const manualTotal = item.sheetIssues;
+                const appTotal = item.appIssueTotal;
+                const totalMismatch = Math.abs(manualTotal - appTotal) > 0.001;
+                return (
+                  <tr key={item.rowIndex} className="hover:bg-gray-50">
+                    <td className={firstCell}>
+                      <div className="max-w-[14rem] truncate" title={name}>
+                        {name}
+                      </div>
+                      {item.matchedStockItemId === null && (
+                        <div className="text-[10px] text-gray-400">unmatched</div>
+                      )}
+                    </td>
+                    <td
+                      className={`px-2 py-1 text-center font-mono ${totalMismatch ? "bg-red-50 font-semibold text-red-700" : "text-gray-500"}`}
+                    >
+                      {manualTotal}/{appTotal}
+                    </td>
+                    {props.columns.map((col, c) => {
+                      const mRaw = item.issuesByDate[c];
+                      const aRaw = item.appIssuesByDate[c];
+                      const m = mRaw == null ? 0 : mRaw;
+                      const a = aRaw == null ? 0 : aRaw;
+                      const empty = m === 0 && a === 0;
+                      const mismatch = Math.abs(m - a) > 0.001;
+                      return (
+                        <td key={`${item.rowIndex}-${c}`} className="px-1 py-1 text-center">
+                          {empty ? (
+                            <span className="text-gray-200">·</span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => props.onCellClick(item, col, m, a)}
+                              className={`min-w-[2.5rem] rounded px-1 font-mono ${mismatch ? "bg-red-100 font-semibold text-red-700 hover:bg-red-200" : "text-gray-700 hover:bg-gray-100"}`}
+                              title="Click for issuance detail"
+                            >
+                              {m}/{a}
+                            </button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IssuanceDetailModal(props: {
+  item: ReconciliationItemAnalysis;
+  column: IssueDateColumn;
+  manual: number;
+  app: number;
+  onClose: () => void;
+}) {
+  const detailMutation = useReconciliationIssuanceDetail();
+  const stockItemId = props.item.matchedStockItemId;
+  const isoDate = props.column.isoDate;
+  const mutate = detailMutation.mutate;
+
+  useEffect(() => {
+    if (stockItemId !== null && isoDate !== "") {
+      mutate({ stockItemId, isoDate });
+    }
+  }, [stockItemId, isoDate, mutate]);
+
+  const data = detailMutation.data;
+  const rows = data ?? [];
+  const sheetName = props.item.name;
+  const matchedName = props.item.matchedName;
+  const itemName = sheetName ?? matchedName ?? "this item";
+  const mismatch = Math.abs(props.manual - props.app) > 0.001;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4">
+      <div className="flex max-h-[80vh] w-full max-w-lg flex-col rounded-lg bg-white shadow-xl">
+        <div className="border-b border-gray-200 px-5 py-3">
+          <h2 className="text-base font-semibold text-gray-900">
+            Issuances — {props.column.label}
+          </h2>
+          <p className="mt-0.5 text-xs text-gray-500">{itemName}</p>
+        </div>
+        <div className="border-b border-gray-200 px-5 py-2 text-xs">
+          <span className={mismatch ? "font-semibold text-red-700" : "text-gray-700"}>
+            Manual: {props.manual} · App: {props.app}
+            {mismatch ? " — differ" : " — match"}
+          </span>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          {stockItemId === null ? (
+            <p className="text-sm text-gray-600">
+              This item isn't matched to a stock item, so the app has no issuance records for it.
+            </p>
+          ) : isoDate === "" ? (
+            <p className="text-sm text-gray-600">
+              This column's date couldn't be read, so issuances can't be looked up.
+            </p>
+          ) : detailMutation.isPending ? (
+            <p className="text-sm text-gray-500">Loading…</p>
+          ) : rows.length === 0 ? (
+            <p className="text-sm text-gray-600">
+              The app has no issuances recorded for this item on this day.
+            </p>
+          ) : (
+            <table className="w-full text-xs">
+              <thead className="border-b border-gray-200 text-gray-500">
+                <tr>
+                  <th className="px-2 py-1 text-left">Time</th>
+                  <th className="px-2 py-1 text-right">Qty</th>
+                  <th className="px-2 py-1 text-left">By</th>
+                  <th className="px-2 py-1 text-left">Notes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {rows.map((r, i) => {
+                  const by = r.by;
+                  const notes = r.notes;
+                  return (
+                    <tr key={`${r.date}-${i}`}>
+                      <td className="px-2 py-1 font-mono text-gray-600">
+                        {r.date === "" ? "—" : formatDateTimeZA(r.date)}
+                      </td>
+                      <td className="px-2 py-1 text-right font-mono">{r.quantity}</td>
+                      <td className="px-2 py-1 text-gray-700">{by ?? "—"}</td>
+                      <td className="px-2 py-1 text-gray-500">{notes ?? "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+        <div className="flex justify-end border-t border-gray-200 px-5 py-3">
+          <button
+            type="button"
+            onClick={props.onClose}
+            className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
 

@@ -166,6 +166,7 @@ export {
   useMovementHistoryReport,
   useOpenControlPlanPdf,
   useQcpLog,
+  useReconciliationIssuanceDetail,
   useReExtractAllFailed,
   useReExtractInvoice,
   useReExtractLineItems,

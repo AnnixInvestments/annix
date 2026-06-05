@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { fromISO } from "../../lib/datetime";
+import { DateTime, fromISO } from "../../lib/datetime";
 import { selectSheetForMonth } from "../../lib/xlsx-sheet-select";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
@@ -30,11 +30,25 @@ export interface ParsedReconciliationItem {
   unitPrice: number | null;
   totalValue: number | null;
   intakeByInvoice: Array<{ invoice: string; supplier: string | null; quantity: number }>;
+  issuesByDate: number[];
+}
+
+export interface IssueDateColumn {
+  label: string;
+  isoDate: string;
+}
+
+export interface IssuanceDetailRow {
+  date: string;
+  quantity: number;
+  by: string | null;
+  notes: string | null;
 }
 
 export interface ParsedReconciliationSheet {
   invoiceRefs: ReconciliationInvoiceRef[];
   issueDates: string[];
+  issueDateColumns: IssueDateColumn[];
   items: ParsedReconciliationItem[];
   warnings: string[];
   selectedSheet: string | null;
@@ -89,6 +103,8 @@ export interface ReconciliationItemAnalysis {
   appCurrentSoh: number | null;
   appDeliveryTotal: number;
   appIssueTotal: number;
+  issuesByDate: number[];
+  appIssuesByDate: number[];
   flags: ReconciliationFlag[];
 }
 
@@ -143,6 +159,7 @@ export interface ReconciliationReport {
   selectedSheet: string | null;
   availableSheets: string[];
   documentGroups: DocVerificationGroup[];
+  issueDateColumns: IssueDateColumn[];
 }
 
 interface ColumnRoles {
@@ -264,6 +281,7 @@ export class StockTakeReconciliationService {
       return {
         invoiceRefs: [],
         issueDates: [],
+        issueDateColumns: [],
         items: [],
         warnings: ["The workbook has no sheets."],
         selectedSheet: null,
@@ -280,6 +298,7 @@ export class StockTakeReconciliationService {
       return {
         invoiceRefs: [],
         issueDates: [],
+        issueDateColumns: [],
         items: [],
         warnings: [`Sheet "${sheetName}" was empty.`],
         selectedSheet: sheetName,
@@ -310,6 +329,11 @@ export class StockTakeReconciliationService {
     const issueDates = roles.issueCols
       .map((col) => (headerRow[col] ?? "").trim())
       .filter((label) => label !== "");
+
+    const issueDateColumns: IssueDateColumn[] = roles.issueCols.map((col) => {
+      const label = (headerRow[col] ?? "").trim();
+      return { label, isoDate: this.parseIssueDate(label) };
+    });
 
     const dataRows = grid.slice(roles.headerRowIndex + 1);
     const seed: { category: string | null; items: ParsedReconciliationItem[] } = {
@@ -346,7 +370,8 @@ export class StockTakeReconciliationService {
         })
         .filter((entry) => entry.invoice !== "" && entry.quantity !== 0);
       const totalIntake = intakeByInvoice.reduce((sum, entry) => sum + entry.quantity, 0);
-      const totalIssues = roles.issueCols.reduce((sum, col) => sum + (cellNumber(col) ?? 0), 0);
+      const issuesByDate = roles.issueCols.map((col) => cellNumber(col) ?? 0);
+      const totalIssues = issuesByDate.reduce((sum, qty) => sum + qty, 0);
 
       const hasNumericValue =
         opening !== 0 || statedClosing !== 0 || totalIntake !== 0 || totalIssues !== 0;
@@ -370,6 +395,7 @@ export class StockTakeReconciliationService {
         unitPrice: cellNumber(roles.unitPriceCol),
         totalValue: cellNumber(roles.valueCol),
         intakeByInvoice,
+        issuesByDate,
       };
       return { category: acc.category, items: [...acc.items, item] };
     }, seed);
@@ -381,11 +407,21 @@ export class StockTakeReconciliationService {
     return {
       invoiceRefs,
       issueDates,
+      issueDateColumns,
       items: built.items,
       warnings,
       selectedSheet: sheetName,
       availableSheets: selection.availableSheets,
     };
+  }
+
+  private parseIssueDate(label: string): string {
+    const cleaned = label.trim();
+    if (cleaned === "") return "";
+    const dmy = DateTime.fromFormat(cleaned, "dd/MM/yyyy");
+    if (dmy.isValid) return dmy.toISODate() ?? "";
+    const iso = fromISO(cleaned);
+    return iso.isValid ? (iso.toISODate() ?? "") : "";
   }
 
   private detectColumnRoles(grid: string[][]): ColumnRoles {
@@ -516,12 +552,21 @@ export class StockTakeReconciliationService {
           : appMovements
               .filter((m) => m.referenceType === ReferenceType.DELIVERY)
               .reduce((sum, m) => sum + Math.abs(Number(m.quantity) || 0), 0);
-      const appIssueTotal =
+      const appIssuances =
         appMovements === null
+          ? []
+          : appMovements.filter((m) => m.referenceType === ReferenceType.ISSUANCE);
+      const appIssueTotal = appIssuances.reduce(
+        (sum, m) => sum + Math.abs(Number(m.quantity) || 0),
+        0,
+      );
+      const appIssuesByDate = parsed.issueDateColumns.map((col) =>
+        col.isoDate === ""
           ? 0
-          : appMovements
-              .filter((m) => m.referenceType === ReferenceType.ISSUANCE)
-              .reduce((sum, m) => sum + Math.abs(Number(m.quantity) || 0), 0);
+          : appIssuances
+              .filter((m) => m.isoDate === col.isoDate)
+              .reduce((sum, m) => sum + Math.abs(Number(m.quantity) || 0), 0),
+      );
 
       const sheetExpectedClosing = item.opening + item.totalIntake - item.totalIssues;
       const flags: ReconciliationFlag[] = [];
@@ -555,6 +600,8 @@ export class StockTakeReconciliationService {
         appCurrentSoh: matched === null ? null : Number(matched.quantity) || 0,
         appDeliveryTotal,
         appIssueTotal,
+        issuesByDate: item.issuesByDate,
+        appIssuesByDate,
         flags,
       };
     });
@@ -590,7 +637,32 @@ export class StockTakeReconciliationService {
       selectedSheet: parsed.selectedSheet,
       availableSheets: parsed.availableSheets,
       documentGroups,
+      issueDateColumns: parsed.issueDateColumns,
     };
+  }
+
+  async issuanceDetailForItemDay(
+    companyId: number,
+    stockItemId: number,
+    isoDate: string,
+  ): Promise<IssuanceDetailRow[]> {
+    const movements = await this.movementRepo.findByItemForCompany(companyId, stockItemId);
+    return movements
+      .filter((m) => m.referenceType === ReferenceType.ISSUANCE)
+      .filter((m) => {
+        const createdAt = m.createdAt;
+        if (!createdAt) return false;
+        return (DateTime.fromJSDate(createdAt).toISODate() ?? "") === isoDate;
+      })
+      .map((m) => {
+        const createdAt = m.createdAt;
+        return {
+          date: createdAt ? (DateTime.fromJSDate(createdAt).toISO() ?? "") : "",
+          quantity: Math.abs(Number(m.quantity) || 0),
+          by: m.createdBy ?? null,
+          notes: m.notes ?? null,
+        };
+      });
   }
 
   private withinPeriod(date: Date | null, periodStart: string, periodEnd: string): boolean {
@@ -652,7 +724,9 @@ export class StockTakeReconciliationService {
     companyId: number,
     periodStart: string,
     periodEnd: string,
-  ): Promise<Map<number, Array<{ referenceType: ReferenceType | null; quantity: number }>>> {
+  ): Promise<
+    Map<number, Array<{ referenceType: ReferenceType | null; quantity: number; isoDate: string }>>
+  > {
     const movements = await this.movementRepo.movementHistoryForCompany(companyId, {
       startDate: periodStart,
       endDate: periodEnd,
@@ -661,13 +735,19 @@ export class StockTakeReconciliationService {
       const itemId = movement.stockItem?.id ?? null;
       if (itemId === null) return acc;
       const existing = acc.get(itemId) ?? [];
+      const createdAt = movement.createdAt;
+      const isoDate = createdAt ? (DateTime.fromJSDate(createdAt).toISODate() ?? "") : "";
       existing.push({
         referenceType: movement.referenceType,
         quantity: Number(movement.quantity) || 0,
+        isoDate,
       });
       acc.set(itemId, existing);
       return acc;
-    }, new Map<number, Array<{ referenceType: ReferenceType | null; quantity: number }>>());
+    }, new Map<
+      number,
+      Array<{ referenceType: ReferenceType | null; quantity: number; isoDate: string }>
+    >());
   }
 
   private async checkDocuments(

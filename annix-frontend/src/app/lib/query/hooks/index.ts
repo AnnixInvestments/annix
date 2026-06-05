@@ -1323,6 +1323,7 @@ export {
   useQcpLog,
   useRecentActivity,
   useReclassifyAttachment,
+  useReconciliationIssuanceDetail,
   useReExtractAllFailed,
   useReExtractInvoice,
   useReExtractJobCardNotes,

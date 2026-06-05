@@ -77,4 +77,14 @@ export class StockTakeReconciliationController {
       req.user.name ?? null,
     );
   }
+
+  @Post("issuance-detail")
+  @ApiOperation({ summary: "List the app's recorded issuances for one item on one day" })
+  async issuanceDetail(@Body() body: { stockItemId: number; isoDate: string }, @Req() req: any) {
+    return this.reconciliationService.issuanceDetailForItemDay(
+      req.user.companyId,
+      body.stockItemId,
+      body.isoDate,
+    );
+  }
 }

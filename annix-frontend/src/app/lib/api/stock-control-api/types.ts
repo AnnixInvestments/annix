@@ -2954,6 +2954,18 @@ export interface ReconciliationDocumentCheck {
   status: "present" | "missing";
 }
 
+export interface IssueDateColumn {
+  label: string;
+  isoDate: string;
+}
+
+export interface IssuanceDetailRow {
+  date: string;
+  quantity: number;
+  by: string | null;
+  notes: string | null;
+}
+
 export interface ReconciliationItemAnalysis {
   rowIndex: number;
   name: string | null;
@@ -2973,6 +2985,8 @@ export interface ReconciliationItemAnalysis {
   appCurrentSoh: number | null;
   appDeliveryTotal: number;
   appIssueTotal: number;
+  issuesByDate: number[];
+  appIssuesByDate: number[];
   flags: ReconciliationFlag[];
 }
 
@@ -3041,4 +3055,5 @@ export interface ReconciliationReport {
   selectedSheet: string | null;
   availableSheets: string[];
   documentGroups: DocVerificationGroup[];
+  issueDateColumns: IssueDateColumn[];
 }
