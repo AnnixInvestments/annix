@@ -1,6 +1,7 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { NixService } from "../../nix/nix.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { ExtractionStatus } from "../entities/job-card-attachment.entity";
 import { JobCardRepository } from "../repositories/job-card.repository";
@@ -50,6 +51,10 @@ describe("DrawingExtractionService", () => {
     chatWithImage: jest.fn(),
   };
 
+  const mockNixService = {
+    extractAssembliesFromPdf: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -59,6 +64,7 @@ describe("DrawingExtractionService", () => {
         { provide: JobCardLineItemRepository, useValue: mockLineItemRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: NixService, useValue: mockNixService },
       ],
     }).compile();
 
