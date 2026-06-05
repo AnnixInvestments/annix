@@ -315,6 +315,16 @@ export interface StockItem {
   updatedAt: string;
 }
 
+export interface JobCardLineItemPlatePart {
+  mark: string;
+  description: string;
+  thicknessMm: number;
+  lengthMm: number;
+  widthMm: number;
+  quantity: number;
+  liningThicknessMm: number;
+}
+
 export interface JobCardLineItem {
   id: number;
   jobCardId: number;
@@ -325,6 +335,9 @@ export interface JobCardLineItem {
   jtNo: string | null;
   m2: number | null;
   liningM2: number | null;
+  // Developed flat plate take-off for a fabricated-tank line (from the Nix
+  // plateBom) — drives the rubber cutting-diagram nesting. Null for non-tank rows.
+  plateBom?: JobCardLineItemPlatePart[] | null;
   notes: string | null;
   sortOrder: number;
   companyId: number;

@@ -1131,6 +1131,7 @@ export class JobCardImportService {
         quantity: li.quantity ? parseFloat(li.quantity) : null,
         jtNo: li.jtNo || null,
         m2: li.m2 ?? null,
+        plateBom: li.plateBom || null,
         notes: li.notes || null,
         sortOrder: idx,
         companyId,
