@@ -5,6 +5,7 @@ import { useTheme } from "@/app/components/ThemeProvider";
 import { useBranding } from "@/app/lib/query/hooks";
 import {
   type Branding,
+  brandHasAsset,
   brandingCssVars,
   brandingFallback,
   googleFontsHref,
@@ -76,15 +77,14 @@ export function BrandingProvider(props: {
     backgroundColor: surfaceBackground,
   } as React.CSSProperties;
 
-  const heroTopLight = branding.assets.heroTop;
+  const heroTopLight = brandHasAsset("heroTop", branding, "light");
   const heroTopDark = branding.assetsDark.heroTop;
-  const hasHeroTop = mode === "light" ? heroTopLight || heroTopDark : heroTopDark || heroTopLight;
+  const hasHeroTop = heroTopLight || heroTopDark;
   const heroTopUrl = hasHeroTop ? resolveBrandAssetUrl("heroTop", branding, mode) : null;
 
-  const heroBottomLight = branding.assets.heroBottom;
+  const heroBottomLight = brandHasAsset("heroBottom", branding, "light");
   const heroBottomDark = branding.assetsDark.heroBottom;
-  const hasHeroBottom =
-    mode === "light" ? heroBottomLight || heroBottomDark : heroBottomDark || heroBottomLight;
+  const hasHeroBottom = heroBottomLight || heroBottomDark;
   const heroBottomUrl = hasHeroBottom ? resolveBrandAssetUrl("heroBottom", branding, mode) : null;
   const heroTopTransparentStop = 100 - branding.heroTopFadePct;
   const heroBottomTransparentStop = 100 - branding.heroBottomFadePct;

@@ -181,6 +181,10 @@ export interface BrandingUploadResult {
  * not visually change anything until a custom asset is published.
  */
 export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSlot, string>>> = {
+  "annix-investments": {
+    heroTop: "/branding/annix-investments-hero-top.webp",
+    heroBottom: "/branding/annix-investments-hero-bottom.webp",
+  },
   "annix-orbit": {
     logoIcon: "/branding/annix-orbit-icon.png",
     logoLockup: "/branding/annix-orbit-logo.png",

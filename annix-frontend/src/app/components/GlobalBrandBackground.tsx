@@ -34,20 +34,18 @@ export function GlobalBrandBackground() {
   const imageUrl =
     branding && hasImage ? resolveBrandAssetUrl("pageBackground", branding, variant) : null;
 
-  const heroTopLight = branding ? branding.assets.heroTop : false;
+  const heroTopLight = branding ? brandHasAsset("heroTop", branding, "light") : false;
   const heroTopDark = branding ? branding.assetsDark.heroTop : false;
-  const hasHeroTop = isLight ? heroTopLight || heroTopDark : heroTopDark || heroTopLight;
+  const hasHeroTop = heroTopLight || heroTopDark;
   const heroTopUrl =
     branding && hasHeroTop ? resolveBrandAssetUrl("heroTop", branding, variant) : null;
   const heroTopHeight = branding ? branding.heroTopHeightPct : 60;
   const heroTopFade = branding ? branding.heroTopFadePct : 45;
   const heroTopTransparentStop = 100 - heroTopFade;
 
-  const heroBottomLight = branding ? branding.assets.heroBottom : false;
+  const heroBottomLight = branding ? brandHasAsset("heroBottom", branding, "light") : false;
   const heroBottomDark = branding ? branding.assetsDark.heroBottom : false;
-  const hasHeroBottom = isLight
-    ? heroBottomLight || heroBottomDark
-    : heroBottomDark || heroBottomLight;
+  const hasHeroBottom = heroBottomLight || heroBottomDark;
   const heroBottomUrl =
     branding && hasHeroBottom ? resolveBrandAssetUrl("heroBottom", branding, variant) : null;
   const heroBottomHeight = branding ? branding.heroBottomHeightPct : 40;
