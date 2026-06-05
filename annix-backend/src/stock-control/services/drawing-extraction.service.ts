@@ -207,6 +207,17 @@ Rules:
 - Default quantity to 1 if not specified
 - Return valid JSON only, no additional text`;
 
+// Force Gemini's JSON mode + a generous token budget for drawing extraction.
+// Without this the model returns free-form text that comes back truncated /
+// malformed on large multi-document (e.g. multi-drawing .eml) responses, and
+// the naive JSON.parse fails — yielding 0 rows. JSON mode guarantees valid,
+// complete JSON.
+const DRAWING_EXTRACTION_OPTIONS = {
+  temperature: 0.1,
+  maxOutputTokens: 32_768,
+  responseFormat: "json" as const,
+};
+
 @Injectable()
 export class DrawingExtractionService {
   private readonly logger = new Logger(DrawingExtractionService.name);
@@ -304,7 +315,12 @@ export class DrawingExtractionService {
     const prompt = isMultiDoc ? MULTI_DOC_EXTRACTION_PROMPT : DRAWING_EXTRACTION_PROMPT;
 
     const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
-    const { content: response } = await this.aiChatService.chat(messages, prompt);
+    const { content: response } = await this.aiChatService.chat(
+      messages,
+      prompt,
+      undefined,
+      DRAWING_EXTRACTION_OPTIONS,
+    );
     const aiResult = this.parseAiResponse(response);
     if (aiResult.drawingType === "tank_chute" && aiResult.tankData) {
       await this.mergeNixPlateBom(aiResult.tankData, pdfBuffers);
@@ -522,7 +538,12 @@ export class DrawingExtractionService {
       const prompt = isMultiDoc ? MULTI_DOC_EXTRACTION_PROMPT : DRAWING_EXTRACTION_PROMPT;
 
       const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
-      const { content: response } = await this.aiChatService.chat(messages, prompt);
+      const { content: response } = await this.aiChatService.chat(
+        messages,
+        prompt,
+        undefined,
+        DRAWING_EXTRACTION_OPTIONS,
+      );
       const aiResult = this.parseAiResponse(response);
       const result = this.buildExtractionResult(aiResult);
 
@@ -581,6 +602,8 @@ export class DrawingExtractionService {
       const { content: response } = await this.aiChatService.chat(
         messages,
         DRAWING_EXTRACTION_PROMPT,
+        undefined,
+        DRAWING_EXTRACTION_OPTIONS,
       );
       const aiResult = this.parseAiResponse(response);
       return this.buildExtractionResult(aiResult);
@@ -646,6 +669,8 @@ export class DrawingExtractionService {
     const { content: response } = await this.aiChatService.chat(
       messages,
       DRAWING_EXTRACTION_PROMPT,
+      undefined,
+      DRAWING_EXTRACTION_OPTIONS,
     );
 
     return this.parseAiResponse(response);
@@ -697,7 +722,15 @@ export class DrawingExtractionService {
       return { drawingType: "pipe", dimensions: [], tankData: null, confidence: 0 };
     }
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    let parsed: Record<string, any>;
+    try {
+      parsed = JSON.parse(jsonMatch[0]);
+    } catch (err) {
+      this.logger.warn(
+        `AI drawing JSON parse failed (${err instanceof Error ? err.message : "unknown"}) — returning empty result`,
+      );
+      return { drawingType: "pipe", dimensions: [], tankData: null, confidence: 0 };
+    }
     const drawingType = parsed.drawingType === "tank_chute" ? "tank_chute" : "pipe";
 
     if (drawingType === "tank_chute" && parsed.tankData) {
