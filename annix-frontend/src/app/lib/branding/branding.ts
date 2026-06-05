@@ -181,10 +181,6 @@ export interface BrandingUploadResult {
  * not visually change anything until a custom asset is published.
  */
 export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSlot, string>>> = {
-  "annix-investments": {
-    heroTop: "/branding/annix-investments-hero-top.webp",
-    heroBottom: "/branding/annix-investments-hero-bottom.webp",
-  },
   "annix-orbit": {
     logoIcon: "/branding/annix-orbit-icon.png",
     logoLockup: "/branding/annix-orbit-logo.png",
@@ -199,6 +195,14 @@ export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSl
     favicon: "/branding/annix-sentinel-favicon.svg",
     watermark: "/branding/annix-sentinel-icon.svg",
   },
+};
+
+/** Platform-wide bundled defaults shown on every brand, mirroring the
+ *  globally-locked hero slots — so heroes appear on all apps/environments
+ *  without a per-env S3 upload. */
+const GLOBAL_ASSET_DEFAULTS: Partial<Record<BrandingAssetSlot, string>> = {
+  heroTop: "/branding/annix-investments-hero-top.webp",
+  heroBottom: "/branding/annix-investments-hero-bottom.webp",
 };
 
 const GENERIC_ASSET_DEFAULT = "/branding/annix-orbit-icon.png";
@@ -270,8 +274,10 @@ export function brandHasAsset(
   const hasCustom = branding.assets[slot];
   if (hasCustom) return true;
   const perBrand = BRAND_ASSET_DEFAULTS[branding.brandCode];
-  const fallback = perBrand ? perBrand[slot] : undefined;
-  return fallback != null;
+  const brandFallback = perBrand ? perBrand[slot] : undefined;
+  if (brandFallback != null) return true;
+  const globalFallback = GLOBAL_ASSET_DEFAULTS[slot];
+  return globalFallback != null;
 }
 
 export function resolveBrandAssetUrl(
@@ -291,8 +297,9 @@ export function resolveBrandAssetUrl(
     return `${ASSET_STREAM_BASE}/${branding.brandCode}/asset/${slot}?v=${branding.assetVersion}`;
   }
   const perBrand = BRAND_ASSET_DEFAULTS[branding.brandCode];
-  const fallback = perBrand ? perBrand[slot] : undefined;
-  return fallback || GENERIC_ASSET_DEFAULT;
+  const brandFallback = perBrand ? perBrand[slot] : undefined;
+  const globalFallback = GLOBAL_ASSET_DEFAULTS[slot];
+  return brandFallback || globalFallback || GENERIC_ASSET_DEFAULT;
 }
 
 export function brandingCssVars(
