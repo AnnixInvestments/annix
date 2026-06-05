@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -51,6 +51,18 @@ export default function SeekerProfilePage() {
   const certificatesCount = status ? status.certificatesCount : 0;
   const cvUploadedAt = status ? status.cvUploadedAt : null;
   const photoAllowed = status ? status.photoCredentialCapture : false;
+
+  const docsSignature = `${qualificationsCount}:${certificatesCount}`;
+  const docsSignatureRef = useRef(docsSignature);
+  docsSignatureRef.current = docsSignature;
+  const [nixRanSignature, setNixRanSignature] = useState<string | null>(null);
+  const handleNixRan = useCallback(() => {
+    setNixRanSignature(docsSignatureRef.current);
+  }, []);
+  const cvHighlight = !hasCv;
+  const qualsHighlight = hasCv && qualificationsCount === 0;
+  const certsHighlight = hasCv && certificatesCount === 0;
+  const nixHighlight = hasCv && nixRanSignature !== docsSignature;
 
   const handleStartSearch = () => {
     if (!status) return;
@@ -138,11 +150,17 @@ export default function SeekerProfilePage() {
           kind="cv"
           ctaLabel={cvDoc ? "Replace CV" : "Upload CV"}
           helperText="PDF works best. Word, Excel, or PowerPoint also accepted (10 MB max). Replacing your CV will overwrite the old version."
+          highlight={cvHighlight}
           onUploaded={() => setNixAutoRunKey((k) => k + 1)}
         />
       </SectionCard>
 
-      <NixWizardPanel hasCv={hasCv} autoRunKey={nixAutoRunKey} />
+      <NixWizardPanel
+        hasCv={hasCv}
+        autoRunKey={nixAutoRunKey}
+        highlight={nixHighlight}
+        onRan={handleNixRan}
+      />
 
       <SectionCard
         id="qualifications"
@@ -161,6 +179,7 @@ export default function SeekerProfilePage() {
           ctaLabel={
             qualifications.length > 0 ? "Add another qualification" : "Upload qualification"
           }
+          highlight={qualsHighlight}
         />
         <CredentialPhotoCapture kind="qualification" allowed={photoAllowed} />
       </SectionCard>
@@ -180,6 +199,7 @@ export default function SeekerProfilePage() {
         <IndividualDocumentUploader
           kind="certificate"
           ctaLabel={certificates.length > 0 ? "Add another certificate" : "Upload certificate"}
+          highlight={certsHighlight}
         />
         <CredentialPhotoCapture kind="certificate" allowed={photoAllowed} />
       </SectionCard>

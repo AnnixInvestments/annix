@@ -27,6 +27,7 @@ export interface IndividualDocumentUploaderProps {
   kind: IndividualDocumentKind;
   ctaLabel?: string;
   helperText?: string;
+  highlight?: boolean;
   onUploaded?: () => void;
 }
 
@@ -39,6 +40,13 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
     ? propsHelperText
     : "PDF, Word, Excel, or PowerPoint, up to 10 MB.";
   const onUploaded = props.onUploaded;
+  const highlight = props.highlight === true;
+  const buttonPalette = highlight
+    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
+  const idleDropzone = highlight
+    ? "border-[var(--brand-accent,#FF8A00)] bg-[rgba(255,138,0,0.06)] hover:border-[var(--brand-accent-light,#FF9C33)]"
+    : "border-gray-300 bg-white hover:border-[var(--brand-navbar-400,#7373c2)]";
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -120,7 +128,7 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
         className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
           isDragging
             ? "border-[var(--brand-navbar,#323288)] bg-[var(--brand-navbar-50,#f0f0fc)]"
-            : "border-gray-300 bg-white hover:border-[var(--brand-navbar-400,#7373c2)]"
+            : idleDropzone
         }`}
       >
         <input
@@ -134,7 +142,7 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
         />
         <label
           htmlFor={`uploader-${kind}`}
-          className={`inline-flex items-center justify-center bg-[var(--brand-navbar,#323288)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors cursor-pointer ${
+          className={`inline-flex items-center justify-center ${buttonPalette} px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
             isUploading ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >

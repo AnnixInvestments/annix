@@ -52,11 +52,18 @@ const RANKING_LABEL: Record<NixSeekerRankingPotential, string> = {
 export interface NixWizardPanelProps {
   hasCv: boolean;
   autoRunKey?: number;
+  highlight?: boolean;
+  onRan?: () => void;
 }
 
 export function NixWizardPanel(props: NixWizardPanelProps) {
   const hasCv = props.hasCv;
   const autoRunKey = props.autoRunKey;
+  const onRan = props.onRan;
+  const runHighlighted = hasCv && props.highlight === true;
+  const runPalette = runHighlighted
+    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
   const mutation = useOrbitNixWizardImprovements();
   const { showToast } = useToast();
   const [copied, setCopied] = useState(false);
@@ -69,6 +76,11 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   const cvBuilderResolved = !cvBuilderFlag.isLoading;
   const cvBuilderEnabled = cvBuilderResolved && cvBuilderFlag.enabled;
   const [reviewEstimateMs, setReviewEstimateMs] = useState(NIX_REVIEW_ESTIMATED_MS);
+
+  const runSucceeded = mutation.isSuccess;
+  useEffect(() => {
+    if (runSucceeded && onRan) onRan();
+  }, [runSucceeded, onRan]);
 
   useEffect(() => {
     if (!hasCv) return;
@@ -156,7 +168,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
           type="button"
           onClick={handleRun}
           disabled={!hasCv || isLoading}
-          className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+          className={`${runPalette} px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap`}
           title={hasCv ? undefined : "Upload your CV first to use the Nix Wizard"}
         >
           {isLoading ? "Nix is reading…" : result ? "Re-run Nix Wizard" : "Run Nix Wizard"}
