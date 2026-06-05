@@ -267,12 +267,27 @@ export class CandidateJobMatchingService {
 
   async recommendedJobsForCandidate(
     candidateId: number,
-    options: { includeDismissed?: boolean; filters?: RecommendedJobFilters | null } = {},
+    options: {
+      includeDismissed?: boolean;
+      filters?: RecommendedJobFilters | null;
+      tierOverride?: string | null;
+    } = {},
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
+    const candidate = await this.candidateRepo.findById(candidateId);
+    // The seeker's chosen plan (selectedTier) is the source of truth for how many
+    // matches they may see. The candidate's stored matchTier can lag behind a plan
+    // change, so an explicit override wins; only then fall back to the stored tier.
+    const tier = options.tierOverride ?? candidate?.matchTier ?? DEFAULT_MATCH_TIER;
+    const limit = await this.effectiveMatchLimit(tier);
+
+    // Fetch at least the tier's full allowance (a higher tier than the default
+    // window must not be silently truncated), with the window as a floor so lower
+    // tiers still get a diversity pool larger than their display limit.
+    const fetchWindow = Math.max(RECOMMENDED_FETCH_WINDOW, limit);
     const allMatches = await this.matchRepo.recommendedJobsForCandidate(
       candidateId,
       options.includeDismissed ?? false,
-      RECOMMENDED_FETCH_WINDOW,
+      fetchWindow,
     );
 
     const filters = options.filters;
@@ -281,11 +296,6 @@ export class CandidateJobMatchingService {
           match.externalJob ? jobMatchesRecommendedFilters(match.externalJob, filters) : false,
         )
       : allMatches;
-
-    const candidate = await this.candidateRepo.findById(candidateId);
-    const limit = candidate
-      ? await this.effectiveMatchLimit(candidate.matchTier)
-      : TOP_MATCHES_LIMIT;
 
     return this.applyStretchMatchDiversity(filtered, limit);
   }

@@ -592,11 +592,29 @@ export class SeekerJobFeedService {
       return { matches: [], candidateIds: [] };
     }
 
+    // The chosen plan is authoritative for match allowance. Self-heal any
+    // candidate whose stored matchTier has drifted from it so the matching,
+    // storage and stats paths all agree — this keeps every package change wired
+    // through, even for accounts that selected a plan before this sync existed.
+    const selectedTier = await this.selectedTierForEmail(email);
+    if (selectedTier) {
+      const stale = candidates.filter((candidate) => candidate.matchTier !== selectedTier);
+      if (stale.length > 0) {
+        await Promise.all(
+          stale.map((candidate) => this.candidateRepo.updateMatchTier(candidate.id, selectedTier)),
+        );
+        stale.forEach((candidate) => {
+          candidate.matchTier = selectedTier;
+        });
+      }
+    }
+
     const perCandidateLists = await Promise.all(
       candidates.map((candidate) =>
         this.matchingService.recommendedJobsForCandidate(candidate.id, {
           includeDismissed: options.includeDismissed ?? false,
           filters: options.filters ?? null,
+          tierOverride: selectedTier,
         }),
       ),
     );
