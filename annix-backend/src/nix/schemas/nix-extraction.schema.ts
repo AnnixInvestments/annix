@@ -97,7 +97,7 @@ export class NixExtraction {
   @Prop({ type: String, required: false })
   documentRevision: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, default: true })
   isLatestRevision: boolean;
 
   @Prop({ type: Number, required: false })
