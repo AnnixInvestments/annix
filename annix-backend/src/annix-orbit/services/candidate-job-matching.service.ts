@@ -7,6 +7,7 @@ import {
   type MatchTier,
 } from "@annix/product-data/sa-market";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import { chunk } from "es-toolkit/compat";
 import {
   CANDIDATE_SENIORITY_LEVELS,
   Candidate,
@@ -38,11 +39,14 @@ const TOP_MATCHES_LIMIT = 20;
 // maxJobResults is null ("unlimited", e.g. Trailblazer). The feed only ever shows
 // the top 100, so this stays modest.
 const UNLIMITED_MATCH_CEILING = 150;
-// How many matches the unlimited tier STORES per run. Storage is what the headline
-// "Nix matches" count reflects, so for Trailblazer we rank far more of the embedded
-// pool (the top N by similarity) rather than just the feed window — every run
-// re-scores against the whole pool, so re-running surfaces the full relevant set.
-const UNLIMITED_STORAGE_CEILING = 1000;
+// How many matches the unlimited tier STORES per run. Set high enough to cover the
+// whole live job pool so a single candidate-side run ranks + persists every job
+// against the CV — identical to what the per-job ingestion matching produces over
+// time, but independent of whether jobs were ingested before or after the CV.
+const UNLIMITED_STORAGE_CEILING = 25000;
+// Score + persist matches in bounded batches so a full-pool run doesn't open
+// thousands of concurrent writes against the database at once.
+const MATCH_PERSIST_CHUNK = 200;
 
 // "Not for me" learning: down-weight a job whose embedding is very close to a
 // job the seeker already dismissed. Gentle + tunable — only jobs above the
@@ -178,12 +182,14 @@ export class CandidateJobMatchingService {
         narrowing.pool,
       );
 
-      const results = await Promise.all(
-        similarJobs.map(async (row) => {
-          const job = await this.externalJobRepo.findById(row.jobId);
-          if (!job) {
-            return null;
-          } else {
+      const matches: CandidateJobMatch[] = [];
+      for (const batch of chunk(similarJobs, MATCH_PERSIST_CHUNK)) {
+        const batchResults = await Promise.all(
+          batch.map(async (row) => {
+            const job = await this.externalJobRepo.findById(row.jobId);
+            if (!job) {
+              return null;
+            }
             const categoryBoost = this.categoryBoostFor(job, narrowing);
             return this.scoreAndSaveMatch(
               candidate,
@@ -194,11 +200,12 @@ export class CandidateJobMatchingService {
               categoryBoost,
               dismissedVectors,
             );
-          }
-        }),
-      );
-
-      const matches = results.filter((m): m is CandidateJobMatch => m !== null);
+          }),
+        );
+        for (const result of batchResults) {
+          if (result !== null) matches.push(result);
+        }
+      }
 
       this.logger.log(`Matched candidate ${candidateId} to ${matches.length} jobs`);
 
