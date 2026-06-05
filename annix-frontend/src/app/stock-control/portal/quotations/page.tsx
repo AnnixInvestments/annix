@@ -123,18 +123,11 @@ export default function QuotationsPage() {
           {isNixEnabled && (
             <Link
               href="/stock-control/portal/quotations/new-from-documents"
-              className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-purple-700"
+              className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-md text-sm font-medium shadow-sm hover:bg-[#28286e]"
             >
-              New from documents (Nix)
+              New Quotation
             </Link>
           )}
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center px-4 py-2 bg-[#323288] text-white rounded-md text-sm font-medium shadow-sm disabled:opacity-50"
-          >
-            New Quotation
-          </button>
         </div>
       </div>
 
@@ -178,7 +171,7 @@ export default function QuotationsPage() {
                 href="/stock-control/portal/quotations/new-from-documents"
                 className="text-blue-600 hover:text-blue-800 underline"
               >
-                New from documents (Nix)
+                New Quotation
               </Link>
               .
             </p>
