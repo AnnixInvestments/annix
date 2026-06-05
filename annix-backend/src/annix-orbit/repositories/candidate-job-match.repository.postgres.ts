@@ -30,6 +30,7 @@ export class PostgresCandidateJobMatchRepository
     candidateId: number,
     includeDismissed: boolean,
     limit: number,
+    filters: RecommendedMatchCountFilters | null = null,
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
     const qb = this.repository
       .createQueryBuilder("match")
@@ -42,6 +43,32 @@ export class PostgresCandidateJobMatchRepository
 
     if (!includeDismissed) {
       qb.andWhere("match.dismissed = false");
+    }
+    if (filters?.category) {
+      qb.andWhere("job.category = :category", { category: filters.category });
+    }
+    if (filters?.province) {
+      qb.andWhere(
+        "(LOWER(job.location_area) LIKE :province OR LOWER(job.location_raw) LIKE :province)",
+        { province: `%${filters.province.toLowerCase()}%` },
+      );
+    }
+    if (filters?.city) {
+      qb.andWhere("(LOWER(job.location_area) LIKE :city OR LOWER(job.location_raw) LIKE :city)", {
+        city: `%${filters.city.toLowerCase()}%`,
+      });
+    }
+    if (filters?.search) {
+      qb.andWhere(
+        "(LOWER(job.title) LIKE :q OR LOWER(job.company) LIKE :q OR LOWER(job.description) LIKE :q)",
+        { q: `%${filters.search.trim().toLowerCase()}%` },
+      );
+    }
+    if (filters?.minSalary != null && filters.minSalary > 0) {
+      qb.andWhere(
+        "(COALESCE(job.salary_max, job.salary_min) IS NULL OR COALESCE(job.salary_max, job.salary_min) >= :minSalary)",
+        { minSalary: filters.minSalary },
+      );
     }
 
     return qb.getMany() as Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>>;

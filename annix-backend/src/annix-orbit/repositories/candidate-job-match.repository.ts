@@ -20,6 +20,7 @@ export abstract class CandidateJobMatchRepository extends CrudRepository<Candida
     candidateId: number,
     includeDismissed: boolean,
     limit: number,
+    filters?: RecommendedMatchCountFilters | null,
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>>;
   abstract matchingCandidatesForJob(
     externalJobId: number,

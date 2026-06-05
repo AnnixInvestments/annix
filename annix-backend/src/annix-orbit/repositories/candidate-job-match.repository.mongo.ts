@@ -15,6 +15,55 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// The single source of truth for which external jobs are recommendable to a
+// seeker: live (not delisted/expired) plus any active filters. Used for both the
+// displayed list and the headline count so the two can never disagree.
+function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Record<string, unknown> {
+  const query: Record<string, unknown> = {
+    delisted: { $ne: true },
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+  };
+  const and: Array<Record<string, unknown>> = [];
+
+  if (filters?.category) {
+    query.category = filters.category;
+  }
+  if (filters?.province) {
+    const rx = new RegExp(escapeRegex(filters.province), "i");
+    and.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
+  }
+  if (filters?.city) {
+    const rx = new RegExp(escapeRegex(filters.city), "i");
+    and.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
+  }
+  if (filters?.search) {
+    const rx = new RegExp(escapeRegex(filters.search.trim()), "i");
+    and.push({
+      $or: [
+        { title: rx },
+        { company: rx },
+        { locationArea: rx },
+        { locationRaw: rx },
+        { description: rx },
+      ],
+    });
+  }
+  if (filters?.minSalary != null && filters.minSalary > 0) {
+    and.push({
+      $expr: {
+        $or: [
+          { $eq: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, null] },
+          { $gte: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, filters.minSalary] },
+        ],
+      },
+    });
+  }
+  if (and.length > 0) {
+    query.$and = and;
+  }
+  return query;
+}
+
 @Injectable()
 export class MongoCandidateJobMatchRepository
   extends MongoCrudRepository<CandidateJobMatch>
@@ -36,13 +85,11 @@ export class MongoCandidateJobMatchRepository
     candidateId: number,
     includeDismissed: boolean,
     limit: number,
+    filters: RecommendedMatchCountFilters | null = null,
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
     const externalJobModel = this.model.db.model<Record<string, unknown>>("ExternalJob");
     const liveJobs = await externalJobModel
-      .find({
-        delisted: { $ne: true },
-        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
-      })
+      .find(buildLiveJobFilter(filters))
       .select("_id")
       .lean()
       .exec();
@@ -110,48 +157,7 @@ export class MongoCandidateJobMatchRepository
   ): Promise<number> {
     if (candidateIds.length === 0) return 0;
 
-    const jobMatch: Record<string, unknown> = {
-      delisted: { $ne: true },
-      $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
-    };
-    const jobAnd: Array<Record<string, unknown>> = [];
-
-    if (filters?.category) {
-      jobMatch.category = filters.category;
-    }
-    if (filters?.province) {
-      const rx = new RegExp(escapeRegex(filters.province), "i");
-      jobAnd.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
-    }
-    if (filters?.city) {
-      const rx = new RegExp(escapeRegex(filters.city), "i");
-      jobAnd.push({ $or: [{ locationArea: rx }, { locationRaw: rx }] });
-    }
-    if (filters?.search) {
-      const rx = new RegExp(escapeRegex(filters.search.trim()), "i");
-      jobAnd.push({
-        $or: [
-          { title: rx },
-          { company: rx },
-          { locationArea: rx },
-          { locationRaw: rx },
-          { description: rx },
-        ],
-      });
-    }
-    if (filters?.minSalary != null && filters.minSalary > 0) {
-      jobAnd.push({
-        $expr: {
-          $or: [
-            { $eq: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, null] },
-            { $gte: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, filters.minSalary] },
-          ],
-        },
-      });
-    }
-    if (jobAnd.length > 0) {
-      jobMatch.$and = jobAnd;
-    }
+    const jobMatch = buildLiveJobFilter(filters);
 
     const result = await this.documents
       .aggregate<{ total: number }>([
