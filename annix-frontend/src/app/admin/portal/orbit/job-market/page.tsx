@@ -232,21 +232,30 @@ export default function AdminOrbitJobMarketPage() {
         const completed = await waitForBackgroundIngestion(sourceId);
         hideExtraction();
         queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
-        if (!completed) {
-          setIngestionStatus((prev) => ({
-            ...prev,
-            [sourceId]:
-              "No new jobs reported — this source may be disabled (e.g. DPSA needs DPSA_INGESTION_ENABLED) or found nothing new.",
-          }));
-          return;
-        }
         const afterCount = await jobCountForSource(sourceId);
         const delta = afterCount - baselineCount;
-        const message =
+
+        if (completed) {
+          const message =
+            delta > 0
+              ? `Done — ${delta} new job${delta === 1 ? "" : "s"} ingested. Re-run to fetch more.`
+              : "Done — no new jobs found (all current postings already ingested).";
+          setIngestionStatus((prev) => ({ ...prev, [sourceId]: message }));
+          return;
+        }
+
+        // The poll window elapsed before the source marked itself complete. The
+        // run keeps going server-side (it survives this page), so report what has
+        // already landed rather than claiming nothing happened. A climbing job
+        // count means it is actively ingesting; a flat count for a gate-able
+        // source (DPSA) hints it may be disabled.
+        const stillRunningMessage =
           delta > 0
-            ? `Done — ${delta} new job${delta === 1 ? "" : "s"} ingested. Re-run to fetch more.`
-            : "Done — no new jobs found (all current postings already ingested).";
-        setIngestionStatus((prev) => ({ ...prev, [sourceId]: message }));
+            ? `${delta} new job${delta === 1 ? "" : "s"} ingested so far — still fetching in the background. Refresh in a few minutes for the final count.`
+            : provider === "dpsa"
+              ? "No new jobs yet — DPSA ingestion may be disabled (needs DPSA_INGESTION_ENABLED) or found nothing new."
+              : "Still fetching in the background — large sources can take several minutes. Refresh shortly to see the new jobs.";
+        setIngestionStatus((prev) => ({ ...prev, [sourceId]: stillRunningMessage }));
         return;
       }
 
