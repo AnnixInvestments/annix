@@ -1,4 +1,5 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardStatus } from "../entities/job-card.entity";
@@ -97,6 +98,10 @@ describe("JobCardImportService", () => {
           useValue: { download: jest.fn(), upload: jest.fn(), presignedUrl: jest.fn() },
         },
         { provide: QcMeasurementService, useValue: {} },
+        {
+          provide: ExtractionMetricService,
+          useValue: { time: jest.fn((_c, _o, fn) => fn()) },
+        },
       ],
     }).compile();
 

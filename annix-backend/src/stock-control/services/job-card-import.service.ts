@@ -1,4 +1,5 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
@@ -520,6 +521,7 @@ export class JobCardImportService {
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
     @Inject(forwardRef(() => QcMeasurementService))
     private readonly qcMeasurementService: QcMeasurementService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
   private async correctionHintsForCompany(companyId: number): Promise<string> {
@@ -749,7 +751,11 @@ export class JobCardImportService {
     filename?: string,
   ): Promise<JobCardImportRow[]> {
     try {
-      const result = await this.drawingExtractionService.extractFromPdfBuffers(pdfBuffers);
+      const result = await this.extractionMetricService.time(
+        "stock-control-import",
+        "drawing-extraction",
+        () => this.drawingExtractionService.extractFromPdfBuffers(pdfBuffers),
+      );
       return this.drawingResultToImportRows(result, rawText, filename);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Unknown error";

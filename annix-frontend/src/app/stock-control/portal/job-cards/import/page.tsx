@@ -4,6 +4,8 @@ import { keys, values } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   DeliveryMatchResult,
   ImportMappingConfig,
@@ -680,6 +682,40 @@ export default function JobCardImportPage() {
   const uploadDrawingsMutation = useUploadDrawingFiles();
   const calculateM2Mutation = useCalculateM2();
   const saveMappingMutation = useSaveJobCardImportMapping();
+
+  // Branded extraction-progress popup for the file/drawing parse. Drawing /
+  // .eml vision extraction runs well over 3s, so it must show progress (not a
+  // bare spinner). The estimate is LEARNED from the rolling average rather than
+  // hardcoded; the backend records each run's duration so it sharpens over time.
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const [parseEstimateMs, setParseEstimateMs] = useState(45_000);
+
+  useEffect(() => {
+    metricsApi
+      .extractionStats("stock-control-import", "drawing-extraction")
+      .then((stats) => {
+        const avg = stats.averageMs;
+        if (avg && avg > 0) setParseEstimateMs(avg);
+      })
+      .catch(() => {});
+  }, []);
+
+  const fileParsing = uploadFileMutation.isPending;
+  const drawingsParsing = uploadDrawingsMutation.isPending;
+  const isParsingFile = fileParsing || drawingsParsing;
+
+  useEffect(() => {
+    if (isParsingFile) {
+      showExtraction({
+        brand: "stock-control",
+        label: "Extracting drawings from your file…",
+        estimatedDurationMs: parseEstimateMs,
+      });
+    } else {
+      hideExtraction();
+    }
+    return () => hideExtraction();
+  }, [isParsingFile, parseEstimateMs, showExtraction, hideExtraction]);
   const confirmImportMutation = useConfirmJobCardImport();
   const confirmDeliveryMutation = useConfirmDeliveryMatches();
   const invalidateJobCards = useInvalidateJobCards();
