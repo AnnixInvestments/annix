@@ -599,11 +599,18 @@ export default function ProjectDetailsStep() {
           // Fire-and-forget: the queue serialises the work and
           // failures don't block the wizard.
           void runNixTenderSpecExtraction(incoming);
-        } else if (kind === "boq") {
+        } else if (kind === "quality") {
+          // ITP / QCP / data-book: preserve + flag for the (future) quality
+          // module. Not BOM- or spec-extracted — it carries no priceable line
+          // items and its text would pollute the pricing specs.
+          storeAddTenderDocument({ file: incoming, id: tenderId });
+          archiveToS3(incoming, "other");
+        } else if (kind === "boq" || kind === "drawing") {
           storeAddDocument({ file: incoming, id: docId });
-          // BOQ extraction also mirrors the file to S3 — no need to
-          // archive separately.
-          await runNixBoqExtraction(incoming);
+          // BOM extraction (role=drawing) mirrors the file to S3 itself.
+          // Merge the extracted line items into the wizard's Step 3 list.
+          const result = await runNixBoqExtraction(incoming);
+          if (result && result.items.length > 0) applyNixItemsToRfq(result.items);
         } else {
           storeAddDocument({ file: incoming, id: docId });
           archiveToS3(incoming, "drawing");
@@ -643,7 +650,8 @@ export default function ProjectDetailsStep() {
       }
 
       const routeAttachment = (attachment: EmailAttachment) => {
-        const idPrefix = attachment.kind === "tender" ? "tender" : "doc";
+        const idPrefix =
+          attachment.kind === "tender" || attachment.kind === "quality" ? "tender" : "doc";
         const id = `${idPrefix}-${generateUniqueId()}-${Math.random().toString(36).substr(2, 9)}`;
         if (attachment.kind === "tender") {
           storeAddTenderDocument({ file: attachment.file, id });
@@ -653,18 +661,29 @@ export default function ProjectDetailsStep() {
           if (!isExcelFile(attachment.file)) {
             void runNixTenderSpecExtraction(attachment.file);
           }
+        } else if (attachment.kind === "quality") {
+          // ITP / QCP / data-book: preserve + flag for the future quality
+          // module. Not BOM/spec-extracted — see direct-drop branch above.
+          storeAddTenderDocument({ file: attachment.file, id });
+          archiveToS3(attachment.file, "other");
         } else {
           storeAddDocument({ file: attachment.file, id });
-          // Excel attachments are archived through runNixBoqExtraction.
-          // Everything else gets archived here.
-          if (!isExcelFile(attachment.file)) {
+          // Excel + drawing attachments are BOM-extracted in runAllExtractions
+          // (which mirrors them to S3). Images / other files get archived here.
+          if (!isExcelFile(attachment.file) && attachment.kind !== "drawing") {
             archiveToS3(attachment.file, "other");
           }
         }
       };
       parsed.attachments.forEach(routeAttachment);
 
-      const xlsxAttachments = parsed.attachments.filter((att) => isExcelFile(att.file));
+      // BOM-extract every spreadsheet BOQ AND every drawing PDF in the email
+      // — previously only Excel attachments were extracted, so drawings
+      // (which carry the BOM on these fabrication RFQs) produced no line
+      // items. Tender specs and quality docs are excluded (handled above).
+      const bomAttachments = parsed.attachments.filter(
+        (att) => att.kind === "boq" || att.kind === "drawing",
+      );
       type ExtractionResultBundle = {
         profiles: NixRfqPipingProfileMetadata[];
         items: NixExtractedItem[];
@@ -674,7 +693,7 @@ export default function ProjectDetailsStep() {
         const profiles: NixRfqPipingProfileMetadata[] = [];
         const items: NixExtractedItem[] = [];
         const metadatas: NixExtractionMetadata[] = [];
-        for (const attachment of xlsxAttachments) {
+        for (const attachment of bomAttachments) {
           const result = await runNixBoqExtraction(attachment.file);
           if (!result) continue;
           if (result.profile) profiles.push(result.profile);
@@ -711,18 +730,29 @@ export default function ProjectDetailsStep() {
         lines.push("");
         lines.push("• Original email kept as source-of-truth");
         const boqCount = parsed.attachments.filter((a) => a.kind === "boq").length;
+        const drawingCount = parsed.attachments.filter((a) => a.kind === "drawing").length;
         const tenderCount = parsed.attachments.filter((a) => a.kind === "tender").length;
-        const otherCount = parsed.attachments.length - boqCount - tenderCount;
+        const qualityCount = parsed.attachments.filter((a) => a.kind === "quality").length;
+        const otherCount =
+          parsed.attachments.length - boqCount - drawingCount - tenderCount - qualityCount;
         if (boqCount > 0)
-          lines.push(`• ${boqCount} spreadsheet${boqCount === 1 ? "" : "s"} → BOQ bucket`);
+          lines.push(
+            `• ${boqCount} spreadsheet BOQ${boqCount === 1 ? "" : "s"} → line-item extraction`,
+          );
+        if (drawingCount > 0)
+          lines.push(`• ${drawingCount} drawing${drawingCount === 1 ? "" : "s"} → BOM extraction`);
         if (tenderCount > 0)
           lines.push(
-            `• ${tenderCount} document${tenderCount === 1 ? "" : "s"} → Tender Specs bucket`,
+            `• ${tenderCount} tender/spec document${tenderCount === 1 ? "" : "s"} → Specifications`,
+          );
+        if (qualityCount > 0)
+          lines.push(
+            `• ${qualityCount} quality document${qualityCount === 1 ? "" : "s"} (ITP/QCP) → preserved for quality review`,
           );
         if (otherCount > 0)
-          lines.push(`• ${otherCount} other attachment${otherCount === 1 ? "" : "s"} → BOQ bucket`);
+          lines.push(`• ${otherCount} other attachment${otherCount === 1 ? "" : "s"} → attached`);
 
-        if (xlsxAttachments.length > 0 && totalItems > 0) {
+        if (bomAttachments.length > 0 && totalItems > 0) {
           lines.push("");
           lines.push(
             `Nix extracted ${totalItems} line item${totalItems === 1 ? "" : "s"} across ${totalBundles} supplier bundle${totalBundles === 1 ? "" : "s"}.`,
