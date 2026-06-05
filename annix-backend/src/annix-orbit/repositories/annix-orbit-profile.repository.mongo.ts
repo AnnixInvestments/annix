@@ -102,4 +102,36 @@ export class MongoAnnixOrbitProfileRepository
   async setPushEnabledForUser(userId: number, enabled: boolean): Promise<void> {
     await this.documents.updateMany({ userId }, { pushEnabled: enabled }).exec();
   }
+
+  async findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]> {
+    if (userIds.length === 0) {
+      return [];
+    }
+    const docs = await this.documents
+      .find({ userId: { $in: userIds } })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async adminPage(params: {
+    userType: AnnixOrbitUserType | null;
+    skip: number;
+    take: number;
+  }): Promise<AnnixOrbitProfile[]> {
+    const filter = params.userType ? { userType: params.userType } : {};
+    const docs = await this.documents
+      .find(filter)
+      .sort({ createdAt: -1 })
+      .skip(params.skip)
+      .limit(params.take)
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async adminCount(userType: AnnixOrbitUserType | null): Promise<number> {
+    const filter = userType ? { userType } : {};
+    return this.documents.countDocuments(filter).exec();
+  }
 }

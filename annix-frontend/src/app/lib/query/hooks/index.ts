@@ -75,6 +75,15 @@ export {
   useAdminOrbitTierCapabilities,
   useAdminUpdateOrbitTierCapability,
 } from "./admin/useAdminOrbitTierCapabilities";
+export {
+  useAdminDeactivateOrbitUser,
+  useAdminDeleteOrbitUser,
+  useAdminInviteOrbitUser,
+  useAdminOrbitUsers,
+  useAdminReactivateOrbitUser,
+  useAdminResendOrbitUserInvite,
+  useAdminUpdateOrbitUser,
+} from "./admin/useAdminOrbitUsers";
 export { useAdminRfqDetail, useAdminRfqs } from "./admin/useAdminRfqs";
 export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";
@@ -139,8 +148,11 @@ export {
   useRbacApps,
   useRbacAssignAccess,
   useRbacCreateRole,
+  useRbacDeactivateUser,
   useRbacDeleteRole,
+  useRbacDeleteUser,
   useRbacInviteUser,
+  useRbacReactivateUser,
   useRbacRevokeAccess,
   useRbacRoleProducts,
   useRbacSearchUsers,

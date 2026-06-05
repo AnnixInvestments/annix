@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { MoreThan, Repository } from "typeorm";
+import { In, MoreThan, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitProfileRepository } from "./annix-orbit-profile.repository";
@@ -65,5 +65,29 @@ export class PostgresAnnixOrbitProfileRepository
 
   async setPushEnabledForUser(userId: number, enabled: boolean): Promise<void> {
     await this.repository.update({ userId }, { pushEnabled: enabled });
+  }
+
+  findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]> {
+    if (userIds.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository.find({ where: { userId: In(userIds) } });
+  }
+
+  adminPage(params: {
+    userType: AnnixOrbitUserType | null;
+    skip: number;
+    take: number;
+  }): Promise<AnnixOrbitProfile[]> {
+    return this.repository.find({
+      where: params.userType ? { userType: params.userType } : {},
+      order: { createdAt: "DESC" },
+      skip: params.skip,
+      take: params.take,
+    });
+  }
+
+  adminCount(userType: AnnixOrbitUserType | null): Promise<number> {
+    return this.repository.count({ where: userType ? { userType } : {} });
   }
 }

@@ -7,11 +7,15 @@ import { useToast } from "@/app/components/Toast";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import type { RbacAppAccessSummary, RbacUserWithAccessSummary } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useRbacAllUsers,
   useRbacAppDetails,
   useRbacApps,
+  useRbacDeactivateUser,
+  useRbacDeleteUser,
   useRbacInviteUser,
+  useRbacReactivateUser,
   useRbacRevokeAccess,
   useRbacSendAccessLink,
 } from "@/app/lib/query/hooks";
@@ -58,6 +62,10 @@ export default function AdminUsersPage() {
   const revokeMutation = useRbacRevokeAccess();
   const inviteMutation = useRbacInviteUser();
   const sendLinkMutation = useRbacSendAccessLink();
+  const deactivateMutation = useRbacDeactivateUser();
+  const reactivateMutation = useRbacReactivateUser();
+  const deleteMutation = useRbacDeleteUser();
+  const { confirm, ConfirmDialog } = useConfirm();
 
   const isAdmin = admin?.roles?.includes("admin");
 
@@ -95,6 +103,12 @@ export default function AdminUsersPage() {
     const rawLength = selectedUser?.appAccess.length;
     return rawLength || 0;
   })();
+  const selectedUserId2 = selectedUser ? selectedUser.id : null;
+  const selectedStatus = selectedUser ? selectedUser.status : null;
+  const selectedIsStockControl = selectedUserId2 !== null && selectedUserId2 < 0;
+  const selectedIsSelf = selectedUserId2 !== null && selectedUserId2 === admin?.id;
+  const selectedIsDeactivated = selectedStatus === "deactivated";
+  const canManageAccount = selectedUser !== null && !selectedIsStockControl && !selectedIsSelf;
   const isLoading = appsLoading || usersLoading;
 
   if (!isAdmin) {
@@ -151,13 +165,16 @@ export default function AdminUsersPage() {
     router.push(`/admin/portal/users/${selectedUser.id}/access/${appCode}`);
   };
 
-  const handleRevokeAccess = (access: RbacAppAccessSummary) => {
+  const handleRevokeAccess = async (access: RbacAppAccessSummary) => {
     if (!selectedUser) return;
     const userName = userDisplayName(selectedUser);
-    // eslint-disable-next-line no-restricted-globals -- legacy sync confirm pending modal migration (issue #175)
-    if (!confirm(`Are you sure you want to revoke ${userName}'s access to ${access.appName}?`)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Revoke access",
+      message: `Revoke ${userName}'s access to ${access.appName}?`,
+      confirmLabel: "Revoke",
+      variant: "danger",
+    });
+    if (!confirmed) return;
 
     revokeMutation.mutate(
       { accessId: access.accessId, appCode: access.appCode },
@@ -168,6 +185,69 @@ export default function AdminUsersPage() {
         onError: (err) => {
           showToast(`Error: ${err.message}`, "error");
         },
+      },
+    );
+  };
+
+  const handleDeactivateUser = async () => {
+    if (!selectedUser) return;
+    const userName = userDisplayName(selectedUser);
+    const confirmed = await confirm({
+      title: "Deactivate user",
+      message: `Deactivate ${userName}? They will be blocked from signing in until reactivated. Their access grants are kept.`,
+      confirmLabel: "Deactivate",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+
+    deactivateMutation.mutate(
+      { userId: selectedUser.id },
+      {
+        onSuccess: (result) => showToast(result.message, "success"),
+        onError: (err) => showToast(`Error: ${err.message}`, "error"),
+      },
+    );
+  };
+
+  const handleReactivateUser = () => {
+    if (!selectedUser) return;
+    reactivateMutation.mutate(
+      { userId: selectedUser.id },
+      {
+        onSuccess: (result) => showToast(result.message, "success"),
+        onError: (err) => showToast(`Error: ${err.message}`, "error"),
+      },
+    );
+  };
+
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+    const userName = userDisplayName(selectedUser);
+    const firstConfirm = await confirm({
+      title: "Permanently delete user?",
+      message: `Deactivating is reversible and usually safer. Permanently deleting ${userName} cannot be undone.`,
+      confirmLabel: "Continue to delete",
+      variant: "danger",
+    });
+    if (!firstConfirm) return;
+
+    const secondConfirm = await confirm({
+      title: "This cannot be undone",
+      message: `Permanently delete ${userName} (${selectedUser.email}) and remove all their app access? This is irreversible.`,
+      confirmLabel: "Delete permanently",
+      variant: "danger",
+    });
+    if (!secondConfirm) return;
+
+    deleteMutation.mutate(
+      { userId: selectedUser.id },
+      {
+        onSuccess: (result) => {
+          showToast(result.message, "success");
+          setSelectedUserId(null);
+          hasInitializedRef.current = false;
+        },
+        onError: (err) => showToast(`Error: ${err.message}`, "error"),
       },
     );
   };
@@ -326,6 +406,34 @@ export default function AdminUsersPage() {
                       </svg>
                       {sendLinkMutation.isPending ? "Sending..." : "Send Link"}
                     </button>
+                    {canManageAccount && (
+                      <>
+                        {selectedIsDeactivated ? (
+                          <button
+                            onClick={handleReactivateUser}
+                            disabled={reactivateMutation.isPending}
+                            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-green-600 dark:text-green-400 border border-green-300 dark:border-green-600 rounded-md hover:bg-green-50 dark:hover:bg-green-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {reactivateMutation.isPending ? "Reactivating..." : "Reactivate"}
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleDeactivateUser}
+                            disabled={deactivateMutation.isPending}
+                            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-amber-600 dark:text-amber-400 border border-amber-300 dark:border-amber-600 rounded-md hover:bg-amber-50 dark:hover:bg-amber-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deactivateMutation.isPending ? "Deactivating..." : "Deactivate"}
+                          </button>
+                        )}
+                        <button
+                          onClick={handleDeleteUser}
+                          disabled={deleteMutation.isPending}
+                          className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-red-600 dark:text-red-400 border border-red-300 dark:border-red-600 rounded-md hover:bg-red-50 dark:hover:bg-red-900/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {deleteMutation.isPending ? "Deleting..." : "Delete"}
+                        </button>
+                      </>
+                    )}
                     <div className="text-right text-sm text-gray-500 dark:text-gray-400">
                       <div>
                         {selectedUser.lastLoginAt
@@ -389,6 +497,7 @@ export default function AdminUsersPage() {
         onInvite={handleInviteUser}
         isInviting={inviteMutation.isPending}
       />
+      {ConfirmDialog}
     </div>
   );
 }

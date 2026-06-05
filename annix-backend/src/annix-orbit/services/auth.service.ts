@@ -50,6 +50,15 @@ const ORBIT_SCOPE_BY_USER_TYPE: Record<AnnixOrbitUserType, string> = {
   [AnnixOrbitUserType.STUDENT]: "orbit:student",
 };
 
+const ORBIT_USER_TYPE_LABELS: Record<AnnixOrbitUserType, string> = {
+  [AnnixOrbitUserType.COMPANY]: "employer",
+  [AnnixOrbitUserType.RECRUITER]: "recruiter",
+  [AnnixOrbitUserType.INDIVIDUAL]: "job seeker",
+  [AnnixOrbitUserType.STUDENT]: "student",
+};
+
+const ADMIN_INVITE_EXPIRY_DAYS = 7;
+
 function parseOrbitUserType(value?: string | null): AnnixOrbitUserType | null {
   if (value === AnnixOrbitUserType.COMPANY) return AnnixOrbitUserType.COMPANY;
   if (value === AnnixOrbitUserType.RECRUITER) return AnnixOrbitUserType.RECRUITER;
@@ -418,6 +427,93 @@ export class AnnixOrbitAuthService {
     };
   }
 
+  async adminInviteUser(input: {
+    email: string;
+    firstName: string;
+    lastName?: string | null;
+    userType: AnnixOrbitUserType;
+    companyName?: string | null;
+    tier?: string | null;
+  }): Promise<{ userId: number; email: string }> {
+    const { email, userType } = input;
+    await this.assertOrbitAccountAvailable(email, userType);
+
+    const inviteToken = uuidv4();
+    const inviteExpires = now().plus({ days: ADMIN_INVITE_EXPIRY_DAYS }).toJSDate();
+    const placeholderHash = await this.passwordService.hashSimple(uuidv4());
+
+    const needsCompany =
+      userType === AnnixOrbitUserType.COMPANY || userType === AnnixOrbitUserType.RECRUITER;
+    const trimmedCompanyName = input.companyName ? input.companyName.trim() : "";
+    const companyId = await (async () => {
+      if (!needsCompany || trimmedCompanyName.length === 0) {
+        return null;
+      }
+      const savedCompany = await this.companyRepo.create({
+        name: trimmedCompanyName,
+        companyType: "CUSTOMER" as never,
+        industry: userType === AnnixOrbitUserType.RECRUITER ? "Staffing & Recruitment" : null,
+        companySize: null,
+        province: null,
+        city: null,
+      });
+      await this.mirrorIntoAnnixOrbitCompanies(savedCompany.id, trimmedCompanyName);
+      return savedCompany.id;
+    })();
+
+    const firstName = input.firstName.trim();
+    const lastName = input.lastName ? input.lastName.trim() : "";
+
+    const savedUser = await this.userRepo.create({
+      email,
+      username: email,
+      passwordHash: placeholderHash,
+      appScope: this.orbitScope(userType),
+      firstName: firstName.length > 0 ? firstName : undefined,
+      lastName: lastName.length > 0 ? lastName : undefined,
+      status: "invited",
+      emailVerified: true,
+      resetPasswordToken: inviteToken,
+      resetPasswordExpires: inviteExpires,
+    } as Partial<User>);
+
+    const tier = input.tier ? input.tier.trim() : "";
+    await this.profileRepo.create({
+      userId: savedUser.id,
+      companyId,
+      userType,
+      selectedTier: tier.length > 0 ? tier : null,
+    } as Partial<AnnixOrbitProfile>);
+
+    if (needsCompany) {
+      await this.bridgeToRbac(savedUser.id, "admin");
+    } else if (userType === AnnixOrbitUserType.STUDENT) {
+      await this.assignOrbitRbacRole(savedUser.id, "student");
+    }
+
+    await this.emailService.sendAnnixOrbitAdminInviteEmail(
+      email,
+      inviteToken,
+      ORBIT_USER_TYPE_LABELS[userType],
+    );
+
+    return { userId: savedUser.id, email: savedUser.email };
+  }
+
+  async adminResendInvite(userId: number): Promise<void> {
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    const profile = await this.profileRepo.findByUserId(userId);
+    const inviteToken = uuidv4();
+    user.resetPasswordToken = inviteToken;
+    user.resetPasswordExpires = now().plus({ days: ADMIN_INVITE_EXPIRY_DAYS }).toJSDate();
+    await this.userRepo.save(user);
+    const label = profile ? ORBIT_USER_TYPE_LABELS[profile.userType] : "Annix Orbit";
+    await this.emailService.sendAnnixOrbitAdminInviteEmail(user.email, inviteToken, label);
+  }
+
   private async assignOrbitRbacRole(userId: number, roleCode: string): Promise<void> {
     try {
       const app = await this.appRepo.findByCode("annix-orbit");
@@ -521,6 +617,9 @@ export class AnnixOrbitAuthService {
     user.passwordHash = newHash;
     user.resetPasswordToken = null;
     user.resetPasswordExpires = null;
+    if (user.status === "invited") {
+      user.status = "active";
+    }
     await this.userRepo.save(user);
 
     return { message: "Password reset successfully. You can now sign in with your new password." };
@@ -535,6 +634,12 @@ export class AnnixOrbitAuthService {
     const valid = await this.passwordService.verify(password, user.passwordHash || "");
     if (!valid) {
       throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (user.status === "deactivated") {
+      throw new UnauthorizedException(
+        "This account has been deactivated. Please contact your administrator.",
+      );
     }
 
     if (!this.authConfigService.isEmailVerificationDisabled() && !user.emailVerified) {

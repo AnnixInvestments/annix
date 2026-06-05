@@ -63,6 +63,7 @@ import { AdminOrbitDismissReasonsController } from "./controllers/admin-orbit-di
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
 import { AdminOrbitTierCapabilitiesController } from "./controllers/admin-orbit-tier-capabilities.controller";
+import { AdminOrbitUsersController } from "./controllers/admin-orbit-users.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
 import { AnnixOrbitClientController } from "./controllers/annix-orbit-client.controller";
 import { AnnixOrbitPlacementController } from "./controllers/annix-orbit-placement.controller";
@@ -314,6 +315,7 @@ import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapt
 import { GumtreePortalAdapter } from "./services/adapters/gumtree-portal-adapter.service";
 import { IndeedPortalAdapter } from "./services/adapters/indeed-portal-adapter.service";
 import { LinkedInPortalAdapter } from "./services/adapters/linkedin-portal-adapter.service";
+import { AdminOrbitUserService } from "./services/admin-orbit-user.service";
 import { AdzunaService } from "./services/adzuna.service";
 import { AnalyticsService } from "./services/analytics.service";
 import { AnnixOrbitClientService } from "./services/annix-orbit-client.service";
@@ -566,6 +568,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdminEeTargetsController,
     AdminOrbitJobMarketController,
     AdminOrbitSeekerController,
+    AdminOrbitUsersController,
     SeekerJobsController,
     SeekerApplicationsController,
     SeekerCalendarController,
@@ -585,6 +588,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitAuthGuard,
     AnnixOrbitRoleGuard,
     AnnixOrbitAuthService,
+    AdminOrbitUserService,
     CvAuditService,
     JobPostingService,
     CandidateService,

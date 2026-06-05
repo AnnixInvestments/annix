@@ -1802,6 +1802,50 @@ This is an automated notification from the Annix test site.
     });
   }
 
+  async sendAnnixOrbitAdminInviteEmail(
+    email: string,
+    inviteToken: string,
+    userTypeLabel: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const inviteLink = `${frontendUrl}/annix/orbit/reset-password?token=${inviteToken}`;
+
+    const html = emailLayout({
+      title: "You've been invited to Annix Orbit",
+      heading: "Welcome to Annix Orbit",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
+          <p>An administrator has created a ${userTypeLabel} account for you on Annix Orbit.</p>
+          <p>Click the button below to set your password and sign in.</p>`,
+      cta: {
+        href: inviteLink,
+        label: "Set your password",
+        color: "#8B5CF6",
+        expiryNote: "This link will expire in 7 days.",
+      },
+      footerText: "If you were not expecting this invitation, please ignore this email.",
+    });
+
+    const text = `
+      Welcome to Annix Orbit
+
+      An administrator has created a ${userTypeLabel} account for you on Annix Orbit.
+
+      Set your password and sign in here: ${inviteLink}
+
+      This link will expire in 7 days.
+
+      If you were not expecting this invitation, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "You've been invited to Annix Orbit",
+      html,
+      text,
+    });
+  }
+
   async sendAnnixOrbitDeletionConfirmEmail(email: string, deletionToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const confirmLink = `${frontendUrl}/annix/orbit/confirm-delete?token=${deletionToken}`;

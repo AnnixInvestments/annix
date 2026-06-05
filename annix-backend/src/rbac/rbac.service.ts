@@ -1,4 +1,11 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from "@nestjs/common";
 import { EmailService } from "../email/email.service";
 import { StockControlRole } from "../stock-control/entities/stock-control-user.entity";
 import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
@@ -378,6 +385,57 @@ export class RbacService {
       throw new NotFoundException(`Access record ${accessId} not found`);
     }
     await this.accessRepo.remove(access);
+  }
+
+  private assertManagedUser(userId: number): void {
+    if (userId < 0) {
+      throw new BadRequestException("Stock Control users are managed in Stock Control, not here.");
+    }
+  }
+
+  private async loadManagedUser(userId: number) {
+    this.assertManagedUser(userId);
+    const user = await this.userRepo.findById(userId);
+    if (!user) {
+      throw new NotFoundException(`User with ID ${userId} not found`);
+    }
+    return user;
+  }
+
+  async deactivateUser(userId: number, actingUserId: number): Promise<void> {
+    if (userId === actingUserId) {
+      throw new ForbiddenException("You cannot deactivate your own account.");
+    }
+    const user = await this.loadManagedUser(userId);
+    user.status = "deactivated";
+    await this.userRepo.save(user);
+    this.logger.log(`User ${userId} deactivated by ${actingUserId}`);
+  }
+
+  async reactivateUser(userId: number): Promise<void> {
+    const user = await this.loadManagedUser(userId);
+    user.status = "active";
+    await this.userRepo.save(user);
+    this.logger.log(`User ${userId} reactivated`);
+  }
+
+  async deleteUser(userId: number, actingUserId: number): Promise<void> {
+    if (userId === actingUserId) {
+      throw new ForbiddenException("You cannot delete your own account.");
+    }
+    await this.loadManagedUser(userId);
+    const accesses = await this.accessRepo.findWithApp(userId);
+    await Promise.all(
+      accesses.map(async (access) => {
+        await this.userPermissionRepo.deleteByUserAccessId(access.id);
+        await this.userProductRepo.deleteByUserAccessId(access.id);
+        await this.accessRepo.remove(access);
+      }),
+    );
+    await this.userRepo.deleteById(userId);
+    this.logger.log(
+      `User ${userId} deleted by ${actingUserId} (${accesses.length} grants removed)`,
+    );
   }
 
   async inviteUser(dto: InviteUserDto, grantedById: number): Promise<InviteUserResponseDto> {

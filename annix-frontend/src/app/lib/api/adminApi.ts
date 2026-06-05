@@ -824,6 +824,18 @@ class AdminApiClient {
     path: (userId) => `/admin/rbac/users/${userId}/send-access-link`,
   });
 
+  rbacDeactivateUser = createEndpoint<[userId: number], { message: string }>(apiClient, "POST", {
+    path: (userId) => `/admin/rbac/users/${userId}/deactivate`,
+  });
+
+  rbacReactivateUser = createEndpoint<[userId: number], { message: string }>(apiClient, "POST", {
+    path: (userId) => `/admin/rbac/users/${userId}/reactivate`,
+  });
+
+  rbacDeleteUser = createEndpoint<[userId: number], { message: string }>(apiClient, "DELETE", {
+    path: (userId) => `/admin/rbac/users/${userId}`,
+  });
+
   rbacCreateRole = createEndpoint<[appCode: string, dto: CreateRoleDto], RbacRoleResponse>(
     apiClient,
     "POST",
@@ -1204,6 +1216,69 @@ class AdminApiClient {
     });
   }
 
+  async orbitUsers(params: {
+    type?: string | null;
+    search?: string | null;
+    page?: number;
+    limit?: number;
+  }): Promise<OrbitUserListResult> {
+    const query = new URLSearchParams();
+    const type = params.type ? params.type.trim() : "";
+    const search = params.search ? params.search.trim() : "";
+    if (type) {
+      query.set("type", type);
+    }
+    if (search) {
+      query.set("search", search);
+    }
+    if (params.page) {
+      query.set("page", String(params.page));
+    }
+    if (params.limit) {
+      query.set("limit", String(params.limit));
+    }
+    const suffix = query.toString();
+    return this.request(`/admin/annix-orbit/users${suffix ? `?${suffix}` : ""}`);
+  }
+
+  async inviteOrbitUser(input: OrbitUserInviteInput): Promise<{ userId: number; email: string }> {
+    return this.request("/admin/annix-orbit/users/invite", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async resendOrbitUserInvite(userId: number): Promise<{ message: string }> {
+    return this.request(`/admin/annix-orbit/users/${userId}/resend-invite`, {
+      method: "POST",
+    });
+  }
+
+  async updateOrbitUser(userId: number, input: OrbitUserUpdateInput): Promise<{ message: string }> {
+    return this.request(`/admin/annix-orbit/users/${userId}`, {
+      method: "PATCH",
+      body: JSON.stringify(input),
+    });
+  }
+
+  async deactivateOrbitUser(userId: number): Promise<{ message: string }> {
+    return this.request(`/admin/annix-orbit/users/${userId}/deactivate`, {
+      method: "POST",
+    });
+  }
+
+  async reactivateOrbitUser(userId: number): Promise<{ message: string }> {
+    return this.request(`/admin/annix-orbit/users/${userId}/reactivate`, {
+      method: "POST",
+    });
+  }
+
+  async deleteOrbitUser(userId: number): Promise<{ message: string }> {
+    return this.request(`/admin/annix-orbit/users/${userId}`, {
+      method: "DELETE",
+    });
+  }
+
   async appBranding(brand: string): Promise<BrandingAdminView> {
     return this.request(`/admin/branding/${brand}`);
   }
@@ -1329,6 +1404,46 @@ export interface OrbitSeekerMatchTier {
   matchTier: string;
   targetCategories: string[];
   candidateIds: number[];
+}
+
+export type OrbitUserType = "company" | "recruiter" | "individual" | "student";
+
+export interface OrbitUserRow {
+  userId: number;
+  email: string;
+  firstName: string | null;
+  lastName: string | null;
+  status: string;
+  emailVerified: boolean;
+  userType: OrbitUserType;
+  tier: string | null;
+  companyId: number | null;
+  companyName: string | null;
+  lastLoginAt: string | null;
+  createdAt: string | null;
+}
+
+export interface OrbitUserListResult {
+  rows: OrbitUserRow[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface OrbitUserInviteInput {
+  email: string;
+  firstName: string;
+  lastName?: string | null;
+  userType: OrbitUserType;
+  companyName?: string | null;
+  tier?: string | null;
+}
+
+export interface OrbitUserUpdateInput {
+  firstName?: string | null;
+  lastName?: string | null;
+  status?: string | null;
+  tier?: string | null;
 }
 
 export interface OrbitSeekerSummary {

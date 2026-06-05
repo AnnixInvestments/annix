@@ -108,6 +108,11 @@ export const adminKeys = {
       [...adminKeys.orbitSeekers.all, "list", params ?? {}] as const,
     detail: (id: number) => [...adminKeys.orbitSeekers.all, "detail", id] as const,
   },
+  orbitUsers: {
+    all: ["admin", "orbitUsers"] as const,
+    list: (params?: { type?: string; search?: string; page?: number; limit?: number }) =>
+      [...adminKeys.orbitUsers.all, "list", params ?? {}] as const,
+  },
   orbitTierCapabilities: {
     all: ["admin", "orbitTierCapabilities"] as const,
     list: () => [...adminKeys.orbitTierCapabilities.all, "list"] as const,

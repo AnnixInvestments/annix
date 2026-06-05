@@ -114,6 +114,39 @@ export function useRbacSendAccessLink() {
   });
 }
 
+export function useRbacDeactivateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, { userId: number }>({
+    mutationFn: ({ userId }) => adminApiClient.rbacDeactivateUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
+    },
+  });
+}
+
+export function useRbacReactivateUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, { userId: number }>({
+    mutationFn: ({ userId }) => adminApiClient.rbacReactivateUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
+    },
+  });
+}
+
+export function useRbacDeleteUser() {
+  const queryClient = useQueryClient();
+
+  return useMutation<{ message: string }, Error, { userId: number }>({
+    mutationFn: ({ userId }) => adminApiClient.rbacDeleteUser(userId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
+    },
+  });
+}
+
 export function useRbacRoleProducts(roleId: number) {
   return useQuery<RbacRoleProductsResponse>({
     queryKey: rbacKeys.roles.products(roleId),

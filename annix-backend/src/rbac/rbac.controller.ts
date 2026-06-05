@@ -189,6 +189,46 @@ export class RbacController {
     return messageResponse(result.message);
   }
 
+  @Post("users/:userId/deactivate")
+  @ApiOperation({ summary: "Deactivate a user (reversible — blocks login)" })
+  @ApiParam({ name: "userId", description: "User ID", example: 42 })
+  @ApiResponse({ status: 201, description: "User deactivated" })
+  @ApiResponse({ status: 403, description: "Cannot deactivate own account" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async deactivateUser(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Request() req,
+  ): Promise<ApiMessageResponse> {
+    const actingUserId = req.user.sub || req.user.userId;
+    await this.rbacService.deactivateUser(userId, actingUserId);
+    return messageResponse("User deactivated");
+  }
+
+  @Post("users/:userId/reactivate")
+  @ApiOperation({ summary: "Reactivate a deactivated user" })
+  @ApiParam({ name: "userId", description: "User ID", example: 42 })
+  @ApiResponse({ status: 201, description: "User reactivated" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async reactivateUser(@Param("userId", ParseIntPipe) userId: number): Promise<ApiMessageResponse> {
+    await this.rbacService.reactivateUser(userId);
+    return messageResponse("User reactivated");
+  }
+
+  @Delete("users/:userId")
+  @ApiOperation({ summary: "Permanently delete a user and all their app access" })
+  @ApiParam({ name: "userId", description: "User ID", example: 42 })
+  @ApiResponse({ status: 200, description: "User deleted" })
+  @ApiResponse({ status: 403, description: "Cannot delete own account" })
+  @ApiResponse({ status: 404, description: "User not found" })
+  async deleteUser(
+    @Param("userId", ParseIntPipe) userId: number,
+    @Request() req,
+  ): Promise<ApiMessageResponse> {
+    const actingUserId = req.user.sub || req.user.userId;
+    await this.rbacService.deleteUser(userId, actingUserId);
+    return messageResponse("User deleted");
+  }
+
   @Post("apps/:code/roles")
   @ApiOperation({ summary: "Create a new role for an app" })
   @ApiParam({ name: "code", description: "App code", example: "rfq-platform" })
