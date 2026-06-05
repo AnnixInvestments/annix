@@ -278,8 +278,10 @@ export class JobIngestionService {
     source.lastIngestedAt = DateTime.now().toJSDate();
     if (totals.error) {
       this.lastIngestionErrorBySource.set(source.id, totals.error);
+      source.lastIngestionError = totals.error;
     } else {
       this.lastIngestionErrorBySource.delete(source.id);
+      source.lastIngestionError = null;
     }
     await this.sourceRepo.save(source);
 
@@ -402,6 +404,8 @@ export class JobIngestionService {
     const result = await this.dpsaCircularService.ingestLatestCircular(source);
 
     source.lastIngestedAt = DateTime.now().toJSDate();
+    source.lastIngestionError = null;
+    this.lastIngestionErrorBySource.delete(source.id);
     await this.sourceRepo.save(source);
 
     return { ingested: result.ingested, skipped: 0, savedIds: [] };

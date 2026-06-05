@@ -53,6 +53,7 @@ export function SourceCard({
   const lastIngested = source.lastIngestedAt
     ? fromISO(source.lastIngestedAt).toFormat("dd/MM/yyyy, HH:mm")
     : "Never";
+  const lastError = source.lastIngestionError;
 
   const fields = credentialFields ?? [];
   const canEdit = onSave != null;
@@ -123,6 +124,11 @@ export function SourceCard({
             <p>Visible to: {tierSummary}</p>
             <p>Last ingested: {lastIngested}</p>
           </div>
+          {lastError && (
+            <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <span className="font-semibold">Last run failed:</span> {lastError}
+            </div>
+          )}
           {ingestionStatus && (
             <p
               className={`mt-2 text-sm ${

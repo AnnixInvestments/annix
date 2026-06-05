@@ -472,6 +472,7 @@ export interface JobMarketSource {
   rateLimitPerDay: number;
   requestsToday: number;
   lastIngestedAt: string | null;
+  lastIngestionError: string | null;
   ingestionIntervalHours: number;
   visibleTiers: string[] | null;
   requiresVetting: boolean;
