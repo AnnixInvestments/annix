@@ -44,7 +44,7 @@ import {
 } from "@/app/lib/nix/api";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import { generateSystemReferenceNumber } from "@/app/lib/utils/systemUtils";
-import { BUNDLE_KEY_TO_PRODUCT, GOOGLE_MAPS_API_KEY } from "./project-details/constants";
+import { GOOGLE_MAPS_API_KEY } from "./project-details/constants";
 import { detectProjectTypeFromEmail, isExcelFile } from "./project-details/helpers";
 import { RestrictionTooltip } from "./project-details/RestrictionTooltip";
 import type { RestrictionPopupPosition } from "./project-details/types";
@@ -56,6 +56,50 @@ import {
 import { UnifiedRfqDocumentBucket } from "./UnifiedRfqDocumentBucket";
 
 export type { PendingDocument } from "@/app/lib/store/rfqWizardStore";
+
+const PIPING_ITEM_TYPES = new Set<string>([
+  "pipe",
+  "bend",
+  "reducer",
+  "tee",
+  "lateral",
+  "flange",
+  "end_cap",
+  "elbow",
+  "expansion_joint",
+  "puddle_pipe",
+  "manifold",
+]);
+
+// Infers PRODUCTS_AND_SERVICES checkbox values from a single extracted BOQ
+// item, using the item's own type + lining/coating rather than the coarse
+// supplier-bundle key. Bundle keys collapse a rubber-lined TANK into
+// "rubber-lined-steel" → the "fabricated_steel" product (labelled "Steel
+// Pipes"), which is wrong; reading itemType directly lets a tank select
+// "Tanks & Chutes", a lined item select "Surface Protection", an instrument
+// select "Valves, Meters & Instruments", etc.
+function productsForExtractedItem(item: NixExtractedItem): string[] {
+  const products: string[] = [];
+  const type = item.itemType;
+  const productType = item.productType;
+  if (PIPING_ITEM_TYPES.has(type)) {
+    if (productType === "hdpe") products.push("hdpe");
+    else if (productType === "pvc" || productType === "upvc") products.push("pvc");
+    else products.push("fabricated_steel");
+  }
+  if (type === "upvc") products.push("pvc");
+  if (type === "tank_chute" || type === "skid") products.push("tanks_chutes");
+  if (type === "valve" || type === "instrument") products.push("valves_meters_instruments");
+  if (type === "pump") products.push("pumps");
+  if (type === "consumable") products.push("fasteners_gaskets");
+  const liningType = item.liningType;
+  const coatingSystem = item.coatingSystem;
+  const surfacePrepStandard = item.surfacePrepStandard;
+  if (liningType || coatingSystem || surfacePrepStandard) {
+    products.push("surface_protection");
+  }
+  return products;
+}
 
 export default function ProjectDetailsStep() {
   const nixStopUsing = useRfqWizardStore((s) => s.nixStopUsing);
@@ -527,14 +571,11 @@ export default function ProjectDetailsStep() {
     ],
   );
 
-  const applyProductSelectionsFromProfiles = useCallback(
-    (profiles: NixRfqPipingProfileMetadata[]): string[] => {
+  const applyProductSelectionsFromItems = useCallback(
+    (items: NixExtractedItem[]): string[] => {
       const detected = new Set<string>();
-      for (const profile of profiles) {
-        for (const bundle of profile.supplierBundles) {
-          const productValue = BUNDLE_KEY_TO_PRODUCT[bundle.key];
-          if (productValue) detected.add(productValue);
-        }
+      for (const item of items) {
+        for (const productValue of productsForExtractedItem(item)) detected.add(productValue);
       }
       if (detected.size === 0) return [];
 
@@ -610,7 +651,10 @@ export default function ProjectDetailsStep() {
           // BOM extraction (role=drawing) mirrors the file to S3 itself.
           // Merge the extracted line items into the wizard's Step 3 list.
           const result = await runNixBoqExtraction(incoming);
-          if (result && result.items.length > 0) applyNixItemsToRfq(result.items);
+          if (result && result.items.length > 0) {
+            applyNixItemsToRfq(result.items);
+            applyProductSelectionsFromItems(result.items);
+          }
         } else {
           storeAddDocument({ file: incoming, id: docId });
           archiveToS3(incoming, "drawing");
@@ -705,7 +749,7 @@ export default function ProjectDetailsStep() {
 
       let extractionBundle = await runAllExtractions();
       let profiles = extractionBundle.profiles;
-      const newlySelectedProducts = applyProductSelectionsFromProfiles(profiles);
+      const newlySelectedProducts = applyProductSelectionsFromItems(extractionBundle.items);
 
       const buildPopupMessage = (
         attemptProfiles: NixRfqPipingProfileMetadata[],
@@ -862,7 +906,7 @@ export default function ProjectDetailsStep() {
       showToast("Re-running Nix extraction so it can take another pass…", "info");
       extractionBundle = await runAllExtractions();
       profiles = extractionBundle.profiles;
-      applyProductSelectionsFromProfiles(profiles);
+      applyProductSelectionsFromItems(extractionBundle.items);
 
       const acceptedSecond = await confirm({
         title: "Email processed (re-extracted)",
@@ -900,7 +944,7 @@ export default function ProjectDetailsStep() {
       confirm,
       showToast,
       applyEmailMetadataToCustomerFields,
-      applyProductSelectionsFromProfiles,
+      applyProductSelectionsFromItems,
       applyNixItemsToRfq,
       runNixBoqExtraction,
       setWizardCurrentStep,

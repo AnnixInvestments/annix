@@ -142,6 +142,8 @@ export class RfqPipingProfileHandler implements IExtractionProfileHandler, OnMod
     if (item.itemType === "boot") return { key: "hdpe-boots", label: "HDPE Pipe Boots" };
     if (item.itemType === "skid")
       return { key: "fabricated-skids", label: "Fabricated Pipe Skids" };
+    if (item.itemType === "tank_chute")
+      return { key: "tanks-chutes", label: "Tanks, Chutes & Fabricated Vessels" };
 
     if (item.liningType === "rubber" || /rubber[-\s]?lined|rudex|linard|linatex/.test(desc)) {
       return { key: "rubber-lined-steel", label: "Rubber-Lined Steel Pipe & Specials" };
