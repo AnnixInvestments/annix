@@ -631,6 +631,22 @@ export interface RfqFormData {
   country?: string;
   mineId?: number;
   mineName?: string;
+  /**
+   * Location-not-available flags. When either is set the customer either
+   * doesn't know the delivery site or is collecting from the fabricator /
+   * surface-protection company, so the lat/long/address fields are disabled
+   * and the location-data confirmation no longer requires them.
+   */
+  locationNotKnown?: boolean;
+  collectionOnly?: boolean;
+  /**
+   * Per-RFQ switch that turns off the location-driven surface-protection
+   * (environmental) suggestion module — set when location is unavailable, or
+   * when the required coating/lining is already specified in the customer's
+   * tender documents. The customer confirms the trade-off and it is logged
+   * to notes.
+   */
+  skipEnvironmentalSuggestions?: boolean;
   skipDocuments?: boolean;
   useNix?: boolean;
   nixPopupShown?: boolean;

@@ -82,6 +82,9 @@ export interface DraftFormData {
   country?: string;
   mineId?: number;
   mineName?: string;
+  locationNotKnown?: boolean;
+  collectionOnly?: boolean;
+  skipEnvironmentalSuggestions?: boolean;
   skipDocuments?: boolean;
   useNix?: boolean;
   nixPopupShown?: boolean;
@@ -888,6 +891,9 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
           country: rfqData.country,
           mineId: rfqData.mineId,
           mineName: rfqData.mineName,
+          locationNotKnown: rfqData.locationNotKnown,
+          collectionOnly: rfqData.collectionOnly,
+          skipEnvironmentalSuggestions: rfqData.skipEnvironmentalSuggestions,
           skipDocuments: rfqData.skipDocuments,
           useNix: rfqData.useNix,
           nixPopupShown: rfqData.nixPopupShown,
@@ -1671,6 +1677,11 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             country: formData.country as string | undefined,
             mineId: formData.mineId as number | undefined,
             mineName: formData.mineName as string | undefined,
+            locationNotKnown: formData.locationNotKnown as boolean | undefined,
+            collectionOnly: formData.collectionOnly as boolean | undefined,
+            skipEnvironmentalSuggestions: formData.skipEnvironmentalSuggestions as
+              | boolean
+              | undefined,
             skipDocuments: formData.skipDocuments as boolean | undefined,
             useNix: Boolean(rawUseNix || false),
             nixPopupShown: Boolean(rawNixPopupShown || false),

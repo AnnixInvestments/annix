@@ -1375,7 +1375,50 @@ export default function ProjectDetailsStep() {
   );
 
   // Validation helper functions
+  const rawLocationNotKnown = rfqData.locationNotKnown;
+  const rawCollectionOnly = rfqData.collectionOnly;
+  const rawSkipEnvSuggestions = rfqData.skipEnvironmentalSuggestions;
+  const locationSkipped = Boolean(rawLocationNotKnown || rawCollectionOnly);
+  const skipEnvSuggestions = Boolean(rawSkipEnvSuggestions) || locationSkipped;
+
+  // "Location not known" / "Collection only" toggle. Checking either disables
+  // the address fields and switches the location-driven surface-protection
+  // suggestion module off for this RFQ — so the customer is warned about the
+  // trade-off, the choice is logged to notes, and the two reasons are mutually
+  // exclusive.
+  const handleLocationUnavailableToggle = async (
+    field: "locationNotKnown" | "collectionOnly",
+    checked: boolean,
+  ) => {
+    if (!checked) {
+      onUpdate(field, false);
+      const otherStillSet =
+        field === "locationNotKnown" ? rfqData.collectionOnly : rfqData.locationNotKnown;
+      if (!otherStillSet) onUpdate("skipEnvironmentalSuggestions", false);
+      return;
+    }
+    const proceed = await confirm({
+      title: "No project location — surface-protection suggestions will switch off",
+      message:
+        "Without a project location, Nix can't suggest a coating / lining (surface-protection) system from the site's environment — coastal exposure, ISO 12944 atmospheric category, time-of-wetness and so on.\n\nThe location-based surface-protection suggestion module will be switched OFF for this RFQ only. If the required surface protection is already specified in your tender documents, that's fine — capture it on the Specifications step.\n\nContinue?",
+      variant: "warning",
+      confirmLabel: "Yes, continue without location",
+      cancelLabel: "Cancel",
+    });
+    if (!proceed) return;
+    const otherField = field === "locationNotKnown" ? "collectionOnly" : "locationNotKnown";
+    onUpdate(field, true);
+    onUpdate(otherField, false);
+    onUpdate("skipEnvironmentalSuggestions", true);
+    addNote(
+      field === "locationNotKnown"
+        ? "Project location not known — location-based surface-protection suggestions disabled for this RFQ (customer confirmed)."
+        : "Collection only / no delivery site — location-based surface-protection suggestions disabled for this RFQ (customer confirmed).",
+    );
+  };
+
   const hasRequiredLocationData = () => {
+    if (locationSkipped) return true;
     return !!(
       rfqData.latitude &&
       rfqData.longitude &&
@@ -1386,6 +1429,7 @@ export default function ProjectDetailsStep() {
   };
 
   const hasRequiredEnvironmentalData = () => {
+    if (skipEnvSuggestions) return true;
     const rawSoilTexture = globalSpecs?.soilTexture;
     const rawSoilMoistureClass = globalSpecs?.soilMoistureClass;
     const rawSoilDrainage = globalSpecs?.soilDrainage;
@@ -2306,7 +2350,7 @@ export default function ProjectDetailsStep() {
             <button
               type="button"
               onClick={() => setShowMapPicker(true)}
-              disabled={isLocationLocked}
+              disabled={isLocationLocked || locationSkipped}
               className={`flex items-center gap-2 px-4 py-2 text-white transition-colors text-sm font-medium shadow-sm rounded-lg ${
                 isLocationLocked
                   ? "bg-gray-400 cursor-not-allowed"
@@ -2324,6 +2368,56 @@ export default function ProjectDetailsStep() {
               Pick on Map
             </button>
           </div>
+
+          {/* Location-not-available toggles */}
+          <div className="mb-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(rfqData.locationNotKnown)}
+                onChange={(e) =>
+                  handleLocationUnavailableToggle("locationNotKnown", e.target.checked)
+                }
+                disabled={isLocationLocked}
+                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+              />
+              Location not known
+            </label>
+            <label className="flex items-center gap-2 text-xs font-medium text-gray-700 dark:text-gray-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={Boolean(rfqData.collectionOnly)}
+                onChange={(e) =>
+                  handleLocationUnavailableToggle("collectionOnly", e.target.checked)
+                }
+                disabled={isLocationLocked}
+                className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 disabled:cursor-not-allowed"
+              />
+              Collection only (no delivery site)
+            </label>
+          </div>
+          {locationSkipped && (
+            <div className="mb-3 px-3 py-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg text-xs text-amber-800 dark:text-amber-300 flex items-start gap-2">
+              <svg
+                className="w-4 h-4 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
+              </svg>
+              <span>
+                No project location — address fields are disabled and location-based
+                surface-protection suggestions are switched off for this RFQ. Capture any required
+                coating / lining on the Specifications step.
+              </span>
+            </div>
+          )}
 
           {/* SA Mines Dropdown - Compact */}
           <div className="mb-2">
@@ -2349,7 +2443,7 @@ export default function ProjectDetailsStep() {
               <select
                 value={selectedMineId || ""}
                 onChange={(e) => handleMineDropdownChange(e.target.value)}
-                disabled={isLoadingMines || mineDataLoading || isLocationLocked}
+                disabled={isLoadingMines || mineDataLoading || isLocationLocked || locationSkipped}
                 style={{ colorScheme: "light", color: "#000000", backgroundColor: "#fef3c7" }}
                 className="w-full px-2 py-1.5 border border-amber-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 text-sm appearance-none disabled:bg-gray-100 disabled:cursor-not-allowed"
               >
@@ -2430,6 +2524,7 @@ export default function ProjectDetailsStep() {
                 isAutoFilled={locationAutoFilled.latitude}
                 placeholder="-26.20227 (≥5 decimal places)"
                 readOnly={isLocationLocked}
+                disabled={locationSkipped}
               />
               {!locationAutoFilled.latitude && (
                 <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
@@ -2450,6 +2545,7 @@ export default function ProjectDetailsStep() {
                 isAutoFilled={locationAutoFilled.longitude}
                 placeholder="28.04363 (≥5 decimal places)"
                 readOnly={isLocationLocked}
+                disabled={locationSkipped}
               />
             </div>
           </div>
@@ -2482,6 +2578,7 @@ export default function ProjectDetailsStep() {
                 isAutoFilled={locationAutoFilled.region}
                 placeholder="e.g., Gauteng, Western Cape"
                 readOnly={isLocationLocked}
+                disabled={locationSkipped}
               />
             </div>
             <div>
@@ -2496,6 +2593,7 @@ export default function ProjectDetailsStep() {
                 isAutoFilled={locationAutoFilled.country}
                 placeholder="e.g., South Africa"
                 readOnly={isLocationLocked}
+                disabled={locationSkipped}
               />
             </div>
           </div>
@@ -2575,28 +2673,55 @@ export default function ProjectDetailsStep() {
             />
           )}
 
-          {!useNix && rfqData.requiredProducts?.includes("surface_protection") && (
-            <EnvironmentalIntelligenceSection
-              globalSpecs={globalSpecs}
-              rfqData={rfqData}
-              isUnregisteredCustomer={isUnregisteredCustomer}
-              isLoadingEnvironmental={isLoadingEnvironmental}
-              environmentalErrors={environmentalErrors}
-              environmentalConfirmed={environmentalConfirmed}
-              isEditingEnvironmental={isEditingEnvironmental}
-              isEnvironmentalLocked={isEnvironmentalLocked}
-              wasAutoFilled={wasAutoFilled}
-              markAsOverridden={markAsOverridden}
-              updateEnvironmentalField={updateEnvironmentalField}
-              onUpdateGlobalSpecs={onUpdateGlobalSpecs}
-              onUpdate={onUpdate}
-              handleConfirmEnvironmental={handleConfirmEnvironmental}
-              handleEditEnvironmental={handleEditEnvironmental}
-              hasRequiredEnvironmentalData={hasRequiredEnvironmentalData}
-              showRestrictionTooltip={showRestrictionTooltip}
-              hideRestrictionTooltip={hideRestrictionTooltip}
-            />
-          )}
+          {!useNix &&
+            rfqData.requiredProducts?.includes("surface_protection") &&
+            skipEnvSuggestions && (
+              <div className="mt-3 bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 text-xs text-gray-600 dark:text-gray-400 flex items-start gap-2">
+                <svg
+                  className="w-4 h-4 flex-shrink-0 mt-0.5 text-gray-500 dark:text-gray-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636"
+                  />
+                </svg>
+                <span>
+                  Surface-protection suggestions are switched off for this RFQ (no project
+                  location). Specify any required coating / lining manually on the Specifications
+                  step.
+                </span>
+              </div>
+            )}
+
+          {!useNix &&
+            rfqData.requiredProducts?.includes("surface_protection") &&
+            !skipEnvSuggestions && (
+              <EnvironmentalIntelligenceSection
+                globalSpecs={globalSpecs}
+                rfqData={rfqData}
+                isUnregisteredCustomer={isUnregisteredCustomer}
+                isLoadingEnvironmental={isLoadingEnvironmental}
+                environmentalErrors={environmentalErrors}
+                environmentalConfirmed={environmentalConfirmed}
+                isEditingEnvironmental={isEditingEnvironmental}
+                isEnvironmentalLocked={isEnvironmentalLocked}
+                wasAutoFilled={wasAutoFilled}
+                markAsOverridden={markAsOverridden}
+                updateEnvironmentalField={updateEnvironmentalField}
+                onUpdateGlobalSpecs={onUpdateGlobalSpecs}
+                onUpdate={onUpdate}
+                handleConfirmEnvironmental={handleConfirmEnvironmental}
+                handleEditEnvironmental={handleEditEnvironmental}
+                hasRequiredEnvironmentalData={hasRequiredEnvironmentalData}
+                showRestrictionTooltip={showRestrictionTooltip}
+                hideRestrictionTooltip={hideRestrictionTooltip}
+              />
+            )}
         </div>
       </div>
       {/* No Documents Confirmation Popup */}
