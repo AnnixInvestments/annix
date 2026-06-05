@@ -1627,6 +1627,16 @@ export default function BOQStep(props: {
           : massCheck.status === "check"
             ? ` · ⚠ CHECK WEIGHT: parts ${Math.round(massComputedKg)}kg vs stated ${Math.round(massStatedTotalKg ?? 0)}kg`
             : "";
+      // Surface the stated lining / coating m² on the tank header so the
+      // supplier can price internal rubber lining (Int m²) and external paint
+      // (Ext m²) — the drawing's notes block states both (e.g. rubber 6.45 m²,
+      // paint 8.15 m²). Scaled by tank qty, matching the weight column.
+      const rawTankLiningArea = rawSpecsTank.liningAreaM2;
+      const rawTankCoatingArea = rawSpecsTank.coatingAreaM2;
+      const tankLiningAreaM2 =
+        isNumber(rawTankLiningArea) && rawTankLiningArea > 0 ? rawTankLiningArea * tankQty : 0;
+      const tankCoatingAreaM2 =
+        isNumber(rawTankCoatingArea) && rawTankCoatingArea > 0 ? rawTankCoatingArea * tankQty : 0;
       const gradeLabel = tankGrade ? ` — ${tankGrade}` : "";
       const headerKey = `TANK_${tankName.toLowerCase()}`;
       const existingHeader = consolidatedTanks.get(headerKey);
@@ -1635,6 +1645,14 @@ export default function BOQStep(props: {
         existingHeader.weight += headerWeight;
         existingHeader.entries.push(itemNumber);
         existingHeader.entryIds.push(entry.id);
+        if (tankLiningAreaM2 > 0) {
+          const rawExistingInt = existingHeader.intAreaM2;
+          existingHeader.intAreaM2 = (rawExistingInt || 0) + tankLiningAreaM2;
+        }
+        if (tankCoatingAreaM2 > 0) {
+          const rawExistingExt = existingHeader.extAreaM2;
+          existingHeader.extAreaM2 = (rawExistingExt || 0) + tankCoatingAreaM2;
+        }
       } else {
         consolidatedTanks.set(headerKey, {
           description: `${tankName}${gradeLabel}${verifyNote}`,
@@ -1644,6 +1662,8 @@ export default function BOQStep(props: {
           entries: [itemNumber],
           entryIds: [entry.id],
           material: "steel",
+          intAreaM2: tankLiningAreaM2 > 0 ? tankLiningAreaM2 : undefined,
+          extAreaM2: tankCoatingAreaM2 > 0 ? tankCoatingAreaM2 : undefined,
         });
       }
       plateRows.forEach((row) => {
@@ -3089,7 +3109,7 @@ export default function BOQStep(props: {
                     title: "Tanks, Chutes & Vessels",
                     items: consolidatedTanks,
                     showWeldColumns: false,
-                    showAreaColumns: false,
+                    showAreaColumns: true,
                   },
                 ]}
                 onExport={exportGroup}
@@ -3100,6 +3120,8 @@ export default function BOQStep(props: {
               consolidatedTanks,
               "bg-indigo-50",
               "text-indigo-700",
+              false,
+              true,
             )}
           </section>
         )}
