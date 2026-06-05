@@ -29,6 +29,15 @@ export interface LineItemImportRow {
   jtNo?: string;
   m2?: number;
   notes?: string;
+  plateBom?: Array<{
+    mark: string;
+    description: string;
+    thicknessMm: number;
+    lengthMm: number;
+    widthMm: number;
+    quantity: number;
+    liningThicknessMm: number;
+  }>;
 }
 
 export interface JobCardImportRow {
@@ -802,6 +811,14 @@ export class JobCardImportService {
     ]
       .filter(Boolean)
       .join(", ");
+
+    // Carry the developed plate take-off (from the shared Nix plateBom) on the
+    // tank's primary lining row so the rubber cutting diagram can nest the
+    // panels. One row per tank holds it to avoid duplicate panels.
+    const plateParts = Array.isArray(tankData.plateParts) ? tankData.plateParts : [];
+    if (plateParts.length > 0 && lineItems.length > 0) {
+      lineItems[0].plateBom = plateParts;
+    }
 
     return [
       {

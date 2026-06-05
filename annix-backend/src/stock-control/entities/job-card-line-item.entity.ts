@@ -49,6 +49,20 @@ export class JobCardLineItem {
   @Column({ name: "lining_m2", type: "numeric", precision: 12, scale: 4, nullable: true })
   liningM2: number | null;
 
+  // Developed flat plate take-off for a fabricated tank/chute line, from the
+  // shared Nix plateBom. Drives the rubber cutting-diagram nesting; null for
+  // non-tank rows. (Legacy Postgres path — jsonb; Mongo stores it embedded.)
+  @Column({ name: "plate_bom", type: "jsonb", nullable: true })
+  plateBom: Array<{
+    mark: string;
+    description: string;
+    thicknessMm: number;
+    lengthMm: number;
+    widthMm: number;
+    quantity: number;
+    liningThicknessMm: number;
+  }> | null;
+
   @Column({ type: "text", nullable: true })
   notes: string | null;
 
