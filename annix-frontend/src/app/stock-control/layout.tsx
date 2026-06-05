@@ -39,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const manifestUrl =
     companyId && branding
-      ? `/api/stock-control/${companyId}/manifest.json`
+      ? `/stock-control/pwa/${companyId}/manifest.json`
       : "/stock-control-manifest.json";
 
   const title = tradingName
@@ -50,7 +50,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
   const iconUrl =
     hasCustomIcon && companyId
-      ? `/api/stock-control/${companyId}/icon/192`
+      ? `/stock-control/pwa/${companyId}/icon/192`
       : "/images/annix-icon.png";
 
   const icons = {

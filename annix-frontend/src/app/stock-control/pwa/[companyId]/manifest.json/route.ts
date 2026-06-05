@@ -52,10 +52,10 @@ export async function GET(
       backgroundColor: "#f9fafb",
       iconUrls: {
         size192: hasCustomIcon
-          ? `/api/stock-control/${companyId}/icon/192`
+          ? `/stock-control/pwa/${companyId}/icon/192`
           : "/images/annix-icon.png",
         size512: hasCustomIcon
-          ? `/api/stock-control/${companyId}/icon/512`
+          ? `/stock-control/pwa/${companyId}/icon/512`
           : "/images/annix-icon.png",
       },
       shortcuts: [

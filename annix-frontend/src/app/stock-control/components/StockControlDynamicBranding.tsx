@@ -26,10 +26,10 @@ export function StockControlDynamicBranding() {
   const cacheBuster = profile.companyUpdatedAt
     ? `?v=${fromISO(profile.companyUpdatedAt).toMillis()}`
     : "";
-  const manifestUrl = `/api/stock-control/${profile.companyId}/manifest.json${cacheBuster}`;
+  const manifestUrl = `/stock-control/pwa/${profile.companyId}/manifest.json${cacheBuster}`;
   const hasCustomLogo = profile.brandingType === "custom" && !!profile.logoUrl;
   const iconUrl = hasCustomLogo
-    ? `/api/stock-control/${profile.companyId}/icon/192${cacheBuster}`
+    ? `/stock-control/pwa/${profile.companyId}/icon/192${cacheBuster}`
     : null;
 
   return (

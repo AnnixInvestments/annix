@@ -491,7 +491,7 @@ self.addEventListener("push", (event) => {
 
   const data = event.data.json();
   const iconUrl = companyId
-    ? `/api/stock-control/${companyId}/icon/192`
+    ? `/stock-control/pwa/${companyId}/icon/192`
     : "/images/stock-control-icon-192.png";
 
   event.waitUntil(

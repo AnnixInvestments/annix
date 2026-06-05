@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { ORBIT_MODULE_MANIFESTS, type OrbitModuleKey } from "../config/pwaModules";
 
-const BASE_MANIFEST_HREF = "/api/annix-orbit/manifest.json";
+const BASE_MANIFEST_HREF = "/annix/orbit/manifest.json";
 const BASE_APP_TITLE = "Orbit";
 
 function applyManifestHref(href: string) {

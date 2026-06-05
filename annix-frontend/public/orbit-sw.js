@@ -2,7 +2,7 @@ const CACHE_VERSION = "v1";
 const STATIC_CACHE_NAME = `orbit-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE_NAME = `orbit-dynamic-${CACHE_VERSION}`;
 
-const STATIC_ASSETS = ["/annix/orbit", "/api/annix-orbit/manifest.json"];
+const STATIC_ASSETS = ["/annix/orbit", "/annix/orbit/manifest.json"];
 
 if (self.location.hostname === "localhost" || self.location.hostname === "127.0.0.1") {
   self.addEventListener("install", () => self.skipWaiting());

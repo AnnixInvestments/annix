@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
       default: "Annix Orbit",
     },
     description: `Annix Orbit — ${branding.tagline}. ${branding.description}`,
-    manifest: "/api/annix-orbit/manifest.json",
+    manifest: "/annix/orbit/manifest.json",
     icons: {
       icon: [{ url: faviconUrl, sizes: "any" }],
       apple: [{ url: "/branding/annix-orbit-apple-touch-icon.png", sizes: "180x180" }],
