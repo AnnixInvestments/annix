@@ -90,6 +90,10 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const queryCv = generatedQuery.data ? generatedQuery.data.cv : null;
   const sourceCv: NixGeneratedCv | null = mutationCv ? mutationCv : queryCv;
   const cv: NixGeneratedCv | null = editedCv ? editedCv : sourceCv;
+  const buildHighlight = hasCv && !cv;
+  const buildPalette = buildHighlight
+    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
 
   useEffect(() => {
     setEditedCv(sourceCv);
@@ -257,7 +261,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
           type="button"
           onClick={handleBuild}
           disabled={!hasCv || isBuilding}
-          className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+          className={`${buildPalette} px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap`}
           title={hasCv ? undefined : "Upload your CV first to use the Nix CV builder"}
         >
           {isBuilding ? "Nix is building…" : cv ? "Rebuild my CV" : "Get Nix to build my CV"}
