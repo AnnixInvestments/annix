@@ -54,6 +54,9 @@ export function SourceCard({
     ? fromISO(source.lastIngestedAt).toFormat("dd/MM/yyyy, HH:mm")
     : "Never";
   const lastError = source.lastIngestionError;
+  const countryCodes = source.countryCodes;
+  const countryLabel =
+    countryCodes && countryCodes.length > 0 ? countryCodes.join(", ").toUpperCase() : "—";
 
   const fields = credentialFields ?? [];
   const canEdit = onSave != null;
@@ -116,7 +119,7 @@ export function SourceCard({
             {jobCount != null && (
               <p className="font-semibold text-gray-900">Jobs ingested: {jobCount}</p>
             )}
-            <p>Countries: {source.countryCodes.join(", ").toUpperCase()}</p>
+            <p>Countries: {countryLabel}</p>
             <p>
               API requests: {source.requestsToday} / {source.rateLimitPerDay} today
             </p>
