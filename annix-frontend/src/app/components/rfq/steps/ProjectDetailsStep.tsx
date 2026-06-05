@@ -1520,7 +1520,9 @@ export default function ProjectDetailsStep() {
 
   return (
     <div>
-      <h2 className="text-lg font-bold text-gray-900 mb-2">Project/RFQ Details</h2>
+      <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-2">
+        Project/RFQ Details
+      </h2>
       {/* Nix AI Assistant Active Banner */}
       {useNix && (
         <div className="mb-3 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-300 rounded-lg p-3">
@@ -1542,8 +1544,10 @@ export default function ProjectDetailsStep() {
                 </svg>
               </div>
               <div>
-                <p className="font-semibold text-gray-900">Nix AI Assistant is Active</p>
-                <p className="text-xs text-gray-600">
+                <p className="font-semibold text-gray-900 dark:text-gray-100">
+                  Nix AI Assistant is Active
+                </p>
+                <p className="text-xs text-gray-600 dark:text-gray-400">
                   Nix will analyze your documents to auto-populate the RFQ form
                 </p>
               </div>
@@ -1562,10 +1566,10 @@ export default function ProjectDetailsStep() {
       )}
       <div className="space-y-2">
         {/* Customer Information - Required fields */}
-        <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
-          <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2 mb-2">
+        <div className="bg-blue-50 dark:bg-blue-950/40 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+          <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-2">
             <svg
-              className="w-4 h-4 text-blue-600"
+              className="w-4 h-4 text-blue-600 dark:text-blue-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -1579,7 +1583,7 @@ export default function ProjectDetailsStep() {
             </svg>
             Customer Information
             {isCustomerAuthenticated && (
-              <span className="ml-2 text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+              <span className="ml-2 text-xs bg-green-100 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-full font-medium">
                 Logged in
               </span>
             )}
@@ -1587,8 +1591,8 @@ export default function ProjectDetailsStep() {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
             <div data-field="customerName" data-nix-target="customerName">
-              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                Customer Name <span className="text-red-600">*</span>
+              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                Customer Name <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               <AutoFilledInput
                 type="text"
@@ -1601,13 +1605,13 @@ export default function ProjectDetailsStep() {
                 placeholder="Customer name"
               />
               {errors.customerName && (
-                <p className="mt-1 text-xs text-red-600">{errors.customerName}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.customerName}</p>
               )}
             </div>
 
             <div data-field="customerEmail" data-nix-target="customerEmail">
-              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                Customer Email <span className="text-red-600">*</span>
+              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                Customer Email <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               <AutoFilledInput
                 type="text"
@@ -1620,13 +1624,15 @@ export default function ProjectDetailsStep() {
                 placeholder="email@example.com"
               />
               {errors.customerEmail && (
-                <p className="mt-1 text-xs text-red-600">{errors.customerEmail}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {errors.customerEmail}
+                </p>
               )}
             </div>
 
             <div data-field="customerPhone" data-nix-target="customerPhone">
-              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                Customer Phone <span className="text-red-600">*</span>
+              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                Customer Phone <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               <AutoFilledInput
                 type="text"
@@ -1639,22 +1645,24 @@ export default function ProjectDetailsStep() {
                 placeholder="+27 11 000 0123"
               />
               {errors.customerPhone && (
-                <p className="mt-1 text-xs text-red-600">{errors.customerPhone}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                  {errors.customerPhone}
+                </p>
               )}
             </div>
 
             <div data-field="requiredDate" data-nix-target="requiredDate">
-              <label className="block text-xs font-semibold text-gray-900 mb-1">
-                Required Date <span className="text-red-600">*</span>
+              <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+                Required Date <span className="text-red-600 dark:text-red-400">*</span>
               </label>
               <DateInput
                 value={rfqData.requiredDate}
                 onChange={(value) => onUpdate("requiredDate", value)}
-                className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+                className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm"
                 required
               />
               {errors.requiredDate && (
-                <p className="mt-1 text-xs text-red-600">{errors.requiredDate}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.requiredDate}</p>
               )}
             </div>
           </div>
@@ -1664,9 +1672,9 @@ export default function ProjectDetailsStep() {
             const additionalContactsValue = rawAdditionalContacts || "";
             return (
               <div className="mt-2" data-field="additionalContacts">
-                <label className="block text-xs font-semibold text-gray-900 mb-1">
+                <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
                   Additional Contacts (CC)
-                  <span className="ml-1 font-normal text-gray-500">
+                  <span className="ml-1 font-normal text-gray-500 dark:text-gray-400">
                     — comma-separated emails of anyone who should be copied on follow-ups
                   </span>
                 </label>
@@ -1674,7 +1682,7 @@ export default function ProjectDetailsStep() {
                   type="text"
                   value={additionalContactsValue}
                   onChange={(e) => onUpdate("additionalContacts", e.target.value)}
-                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+                  className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm"
                   placeholder="e.g., attie@example.com, ops@example.com"
                 />
               </div>
@@ -1684,8 +1692,8 @@ export default function ProjectDetailsStep() {
 
         {/* Drop email/BOQ first — Nix auto-fills the rest of the form. Only when the Nix tender flow is NOT enabled via project type. */}
         {!useNix && (
-          <div className="mt-3 mb-4 bg-amber-50 border border-amber-200 rounded-lg p-3">
-            <p className="text-xs text-amber-800 mb-3 px-1 leading-relaxed">
+          <div className="mt-3 mb-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3">
+            <p className="text-xs text-amber-800 dark:text-amber-300 mb-3 px-1 leading-relaxed">
               <span className="font-semibold">Save time:</span> drag your customer's email (.eml) or
               BOQ spreadsheet here first. Nix extracts every attachment and auto-fills Customer
               Name, Email, Phone, and RFQ Description from the email sender — you'll only need to
@@ -1696,7 +1704,7 @@ export default function ProjectDetailsStep() {
                 <div
                   onMouseEnter={showRestrictionTooltip}
                   onMouseLeave={hideRestrictionTooltip}
-                  className="bg-gray-100 rounded-lg p-3 border border-gray-300 opacity-60 cursor-not-allowed"
+                  className="bg-gray-100 dark:bg-gray-800 rounded-lg p-3 border border-gray-300 dark:border-gray-600 opacity-60 cursor-not-allowed"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <div className="p-1.5 bg-gray-400 rounded">
@@ -1715,17 +1723,21 @@ export default function ProjectDetailsStep() {
                       </svg>
                     </div>
                     <div>
-                      <h3 className="text-sm font-bold text-gray-500">RFQ Documents</h3>
-                      <p className="text-xs text-gray-400">Email, BOQ, drawings and tender specs</p>
+                      <h3 className="text-sm font-bold text-gray-500 dark:text-gray-400">
+                        RFQ Documents
+                      </h3>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">
+                        Email, BOQ, drawings and tender specs
+                      </p>
                     </div>
                     <div className="ml-auto">
-                      <span className="text-xs bg-gray-200 text-gray-500 px-2 py-1 rounded-full font-medium">
+                      <span className="text-xs bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-2 py-1 rounded-full font-medium">
                         Registered Users Only
                       </span>
                     </div>
                   </div>
-                  <div className="bg-gray-200 rounded-lg p-4 border-2 border-dashed border-gray-300">
-                    <div className="text-center text-gray-400">
+                  <div className="bg-gray-200 dark:bg-gray-700 rounded-lg p-4 border-2 border-dashed border-gray-300 dark:border-gray-600">
+                    <div className="text-center text-gray-400 dark:text-gray-500">
                       <svg
                         className="w-8 h-8 mx-auto mb-2"
                         fill="none"
@@ -1787,10 +1799,10 @@ export default function ProjectDetailsStep() {
                     onConfirmEmpty={() => setShowNoDocumentsPopup(true)}
                   />
                   {boqExtractionSummary && (
-                    <div className="mt-2 bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs">
+                    <div className="mt-2 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-lg p-3 text-xs">
                       <div className="flex items-start gap-2">
                         <svg
-                          className="w-4 h-4 text-blue-600 flex-shrink-0 mt-0.5"
+                          className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5"
                           fill="none"
                           stroke="currentColor"
                           viewBox="0 0 24 24"
@@ -1803,12 +1815,12 @@ export default function ProjectDetailsStep() {
                           />
                         </svg>
                         <div className="flex-1">
-                          <p className="font-semibold text-blue-900">
+                          <p className="font-semibold text-blue-900 dark:text-blue-200">
                             Nix extracted {boqExtractionSummary.itemCount} line item
                             {boqExtractionSummary.itemCount === 1 ? "" : "s"} from{" "}
                             {boqExtractionSummary.fileName}
                           </p>
-                          <p className="text-blue-800 mt-0.5">
+                          <p className="text-blue-800 dark:text-blue-300 mt-0.5">
                             Split into {boqExtractionSummary.bundleCount} supplier bundle
                             {boqExtractionSummary.bundleCount === 1 ? "" : "s"}
                             {boqExtractionSummary.duplicateCount > 0
@@ -1832,39 +1844,43 @@ export default function ProjectDetailsStep() {
         {/* Your RFQ Reference, Project Name, and Description */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
           <div data-field="customerRfqReference">
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
-              Your RFQ Reference <span className="text-red-600">*</span>
+            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Your RFQ Reference <span className="text-red-600 dark:text-red-400">*</span>
             </label>
             <input
               type="text"
               value={rawCustomerRfqReference || ""}
               onChange={(e) => onUpdate("customerRfqReference", e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm"
               placeholder="e.g., RFQ-2025-001"
             />
             {errors.customerRfqReference && (
-              <p className="mt-1 text-xs text-red-600">{errors.customerRfqReference}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {errors.customerRfqReference}
+              </p>
             )}
           </div>
           <div data-field="projectName" data-nix-target="projectName">
-            <label className="block text-xs font-semibold text-gray-900 mb-1">Project Name</label>
+            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Project Name
+            </label>
             <input
               type="text"
               value={rfqData.projectName}
               onChange={(e) => onUpdate("projectName", e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm"
               placeholder="Optional project name"
             />
           </div>
           <div data-field="description" data-nix-target="description">
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
+            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
               RFQ Description
             </label>
             <input
               type="text"
               value={rfqData.description}
               onChange={(e) => onUpdate("description", e.target.value)}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm"
               placeholder="Brief description of requirements"
             />
           </div>
@@ -1877,11 +1893,13 @@ export default function ProjectDetailsStep() {
           className={projectTypeConfirmed ? "opacity-75" : ""}
         >
           <label
-            className={`block text-xs font-semibold mb-1 ${hasProjectTypeError ? "text-red-700" : "text-gray-900"}`}
+            className={`block text-xs font-semibold mb-1 ${hasProjectTypeError ? "text-red-700 dark:text-red-400" : "text-gray-900 dark:text-gray-100"}`}
           >
-            Project Type <span className="text-red-600">*</span>
+            Project Type <span className="text-red-600 dark:text-red-400">*</span>
             {projectTypeConfirmed && (
-              <span className="ml-2 text-green-600 text-xs font-normal">(Locked)</span>
+              <span className="ml-2 text-green-600 dark:text-green-400 text-xs font-normal">
+                (Locked)
+              </span>
             )}
           </label>
           <div
@@ -1906,12 +1924,12 @@ export default function ProjectDetailsStep() {
                   onMouseLeave={isDisabledForUnregistered ? hideRestrictionTooltip : undefined}
                   className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-colors text-sm h-10 ${
                     isDisabledForUnregistered
-                      ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
+                      ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
                       : rfqData.projectType === type.value
-                        ? "border-blue-600 bg-blue-50 cursor-pointer"
+                        ? "border-blue-600 bg-blue-50 dark:bg-blue-950/40 cursor-pointer"
                         : hasProjectTypeError
                           ? "border-red-400 hover:border-red-500 cursor-pointer"
-                          : "border-gray-200 hover:border-blue-300 cursor-pointer"
+                          : "border-gray-200 dark:border-gray-700 hover:border-blue-300 cursor-pointer"
                   }`}
                 >
                   <input
@@ -1940,24 +1958,24 @@ export default function ProjectDetailsStep() {
                   <div
                     className={`w-3 h-3 border-2 rounded-full flex items-center justify-center ${
                       isDisabledForUnregistered
-                        ? "border-gray-300 bg-gray-200"
+                        ? "border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-700"
                         : rfqData.projectType === type.value
                           ? "border-blue-600 bg-blue-600"
-                          : "border-gray-300"
+                          : "border-gray-300 dark:border-gray-600"
                     }`}
                   >
                     {rfqData.projectType === type.value && !isDisabledForUnregistered && (
-                      <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
+                      <div className="w-1.5 h-1.5 bg-white dark:bg-gray-800 rounded-full"></div>
                     )}
                   </div>
                   <span
-                    className={`font-medium ${isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
+                    className={`font-medium ${isDisabledForUnregistered ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"}`}
                   >
                     {type.label}
                   </span>
                   {isDisabledForUnregistered && (
                     <svg
-                      className="w-3 h-3 text-gray-400"
+                      className="w-3 h-3 text-gray-400 dark:text-gray-500"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1974,7 +1992,9 @@ export default function ProjectDetailsStep() {
               );
             })}
           </div>
-          {errors.projectType && <p className="mt-1 text-xs text-red-600">{errors.projectType}</p>}
+          {errors.projectType && (
+            <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.projectType}</p>
+          )}
         </div>
 
         {/* Required Products/Services Selection - Hidden when using Nix */}
@@ -1984,10 +2004,12 @@ export default function ProjectDetailsStep() {
             data-nix-target="requiredProducts"
             className={projectTypeConfirmed ? "opacity-75" : ""}
           >
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
-              Required Products & Services <span className="text-red-600">*</span>
+            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Required Products & Services <span className="text-red-600 dark:text-red-400">*</span>
               {projectTypeConfirmed && (
-                <span className="ml-2 text-green-600 text-xs font-normal">(Locked)</span>
+                <span className="ml-2 text-green-600 dark:text-green-400 text-xs font-normal">
+                  (Locked)
+                </span>
               )}
             </label>
             <div
@@ -2025,12 +2047,12 @@ export default function ProjectDetailsStep() {
                     }
                     className={`flex items-center justify-center gap-2 px-2 py-2 border-2 rounded-lg transition-all text-xs h-10 ${
                       isComingSoon
-                        ? "border-gray-200 bg-gray-50 cursor-not-allowed opacity-60"
+                        ? "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 cursor-not-allowed opacity-60"
                         : isDisabledForUnregistered
-                          ? "border-gray-200 bg-gray-100 cursor-not-allowed opacity-50"
+                          ? "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 cursor-not-allowed opacity-50"
                           : isSelected
-                            ? "border-blue-600 bg-blue-50 cursor-pointer"
-                            : "border-gray-200 hover:border-blue-300 cursor-pointer"
+                            ? "border-blue-600 bg-blue-50 dark:bg-blue-950/40 cursor-pointer"
+                            : "border-gray-200 dark:border-gray-700 hover:border-blue-300 cursor-pointer"
                     }`}
                   >
                     <input
@@ -2055,10 +2077,10 @@ export default function ProjectDetailsStep() {
                     <div
                       className={`w-4 h-4 border-2 rounded flex items-center justify-center flex-shrink-0 ${
                         isComingSoon || isDisabledForUnregistered
-                          ? "border-gray-300 bg-gray-200"
+                          ? "border-gray-300 dark:border-gray-600 bg-gray-200 dark:bg-gray-700"
                           : isSelected
                             ? "border-blue-600 bg-blue-600"
-                            : "border-gray-300"
+                            : "border-gray-300 dark:border-gray-600"
                       }`}
                     >
                       {isSelected && !isDisabledForUnregistered && !isComingSoon && (
@@ -2079,18 +2101,18 @@ export default function ProjectDetailsStep() {
                       {product.icon}
                     </span>
                     <span
-                      className={`font-medium ${isComingSoon || isDisabledForUnregistered ? "text-gray-400" : "text-gray-900"}`}
+                      className={`font-medium ${isComingSoon || isDisabledForUnregistered ? "text-gray-400 dark:text-gray-500" : "text-gray-900 dark:text-gray-100"}`}
                     >
                       {product.label}
                     </span>
                     {isComingSoon && (
-                      <span className="text-[10px] text-gray-400 ml-auto flex-shrink-0 italic">
+                      <span className="text-[10px] text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0 italic">
                         Soon
                       </span>
                     )}
                     {isDisabledForUnregistered && !isComingSoon && (
                       <svg
-                        className="w-3 h-3 text-gray-400 ml-auto flex-shrink-0"
+                        className="w-3 h-3 text-gray-400 dark:text-gray-500 ml-auto flex-shrink-0"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -2108,7 +2130,9 @@ export default function ProjectDetailsStep() {
               })}
             </div>
             {errors.requiredProducts && (
-              <p className="mt-1 text-xs text-red-600">{errors.requiredProducts}</p>
+              <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                {errors.requiredProducts}
+              </p>
             )}
           </div>
         )}
@@ -2153,7 +2177,7 @@ export default function ProjectDetailsStep() {
               </button>
             ) : (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-green-600 font-medium flex items-center gap-1">
+                <span className="text-sm text-green-600 dark:text-green-400 font-medium flex items-center gap-1">
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
@@ -2166,7 +2190,7 @@ export default function ProjectDetailsStep() {
                 <button
                   type="button"
                   onClick={() => setProjectTypeConfirmed(false)}
-                  className="px-3 py-1 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="px-3 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors"
                 >
                   Edit
                 </button>
@@ -2178,7 +2202,9 @@ export default function ProjectDetailsStep() {
         {/* Additional Notes - Compact */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
           <div>
-            <label className="block text-xs font-semibold text-gray-900 mb-1">Quick Notes</label>
+            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Quick Notes
+            </label>
             <select
               onChange={(e) => {
                 if (e.target.value) {
@@ -2186,7 +2212,7 @@ export default function ProjectDetailsStep() {
                   e.target.value = "";
                 }
               }}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm"
             >
               <option value="">Add common note...</option>
               {commonNotes.map((note, index) => (
@@ -2200,7 +2226,7 @@ export default function ProjectDetailsStep() {
                 {additionalNotes.map((note, index) => (
                   <span
                     key={index}
-                    className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-xs"
+                    className="inline-flex items-center gap-1 bg-blue-100 text-blue-800 dark:text-blue-300 px-2 py-0.5 rounded text-xs"
                   >
                     {note.substring(0, 20)}...
                     <button
@@ -2216,12 +2242,14 @@ export default function ProjectDetailsStep() {
             )}
           </div>
           <div data-nix-target="notes">
-            <label className="block text-xs font-semibold text-gray-900 mb-1">Custom Notes</label>
+            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
+              Custom Notes
+            </label>
             <textarea
               value={rfqData.notes}
               onChange={(e) => onUpdate("notes", e.target.value)}
               rows={2}
-              className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 text-sm"
+              className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800 text-sm"
               placeholder="Additional requirements..."
             />
           </div>
@@ -2251,11 +2279,11 @@ export default function ProjectDetailsStep() {
         )}
 
         {/* Project Location - Compact */}
-        <div className="bg-white rounded-lg p-3 border border-gray-200">
+        <div className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
               <svg
-                className="w-4 h-4 text-blue-600"
+                className="w-4 h-4 text-blue-600 dark:text-blue-400"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -2299,7 +2327,7 @@ export default function ProjectDetailsStep() {
 
           {/* SA Mines Dropdown - Compact */}
           <div className="mb-2">
-            <label className="block text-xs font-semibold text-gray-900 mb-1">
+            <label className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1">
               <span className="flex items-center gap-1">
                 <svg
                   className="w-3 h-3 text-amber-600"
@@ -2355,7 +2383,7 @@ export default function ProjectDetailsStep() {
                   <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-amber-600"></div>
                 ) : (
                   <svg
-                    className="w-4 h-4 text-gray-500"
+                    className="w-4 h-4 text-gray-500 dark:text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -2371,7 +2399,7 @@ export default function ProjectDetailsStep() {
               </div>
             </div>
             {selectedMineId && (
-              <div className="mt-1 px-2 py-1 bg-amber-50 border border-amber-200 rounded text-xs text-amber-800 flex items-center gap-1">
+              <div className="mt-1 px-2 py-1 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-xs text-amber-800 dark:text-amber-300 flex items-center gap-1">
                 <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
@@ -2381,7 +2409,7 @@ export default function ProjectDetailsStep() {
                   />
                 </svg>
                 Location & slurry auto-filled
-                <p className="text-xs text-amber-700 mt-1 ml-6">
+                <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 ml-6">
                   Environmental intelligence will be populated based on commodity type
                 </p>
               </div>
@@ -2390,7 +2418,9 @@ export default function ProjectDetailsStep() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Latitude</label>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Latitude
+              </label>
               <AutoFilledInput
                 type="number"
                 step="0.00001"
@@ -2402,13 +2432,15 @@ export default function ProjectDetailsStep() {
                 readOnly={isLocationLocked}
               />
               {!locationAutoFilled.latitude && (
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
                   Precision required for environmental analysis
                 </p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Longitude</label>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Longitude
+              </label>
               <AutoFilledInput
                 type="number"
                 step="0.00001"
@@ -2423,7 +2455,7 @@ export default function ProjectDetailsStep() {
           </div>
 
           <div className="mb-4" data-nix-target="siteAddress">
-            <label className="block text-sm font-semibold text-gray-900 mb-2">
+            <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
               Site Address / Location Description
             </label>
             <AutoFilledInput
@@ -2439,7 +2471,7 @@ export default function ProjectDetailsStep() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">
+              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 Region / Province
               </label>
               <AutoFilledInput
@@ -2453,7 +2485,9 @@ export default function ProjectDetailsStep() {
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-900 mb-2">Country</label>
+              <label className="block text-sm font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                Country
+              </label>
               <AutoFilledInput
                 type="text"
                 value={rfqData.country}
@@ -2467,7 +2501,7 @@ export default function ProjectDetailsStep() {
           </div>
 
           {/* Location Confirmation Button */}
-          <div className="mt-6 pt-4 border-t border-gray-200">
+          <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
             {!locationConfirmed ? (
               <button
                 type="button"
@@ -2487,7 +2521,7 @@ export default function ProjectDetailsStep() {
               </button>
             ) : (
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 text-green-700 font-semibold bg-green-50 px-4 py-2 rounded-lg">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 font-semibold bg-green-50 dark:bg-green-950/30 px-4 py-2 rounded-lg">
                   <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path
                       fillRule="evenodd"
@@ -2501,7 +2535,7 @@ export default function ProjectDetailsStep() {
                   <button
                     type="button"
                     onClick={handleEditLocation}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium underline"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-800 text-sm font-medium underline"
                   >
                     Edit
                   </button>
@@ -2568,7 +2602,7 @@ export default function ProjectDetailsStep() {
       {/* No Documents Confirmation Popup */}
       {showNoDocumentsPopup && (
         <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
+          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 bg-amber-100 rounded-full">
                 <svg
@@ -2585,13 +2619,15 @@ export default function ProjectDetailsStep() {
                   />
                 </svg>
               </div>
-              <h3 className="text-lg font-bold text-gray-900">No Documents Uploaded</h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                No Documents Uploaded
+              </h3>
             </div>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               You haven't uploaded any supporting documents. Documents such as specifications,
               drawings, or requirements help suppliers provide accurate quotes.
             </p>
-            <p className="text-gray-700 font-medium mb-4">
+            <p className="text-gray-700 dark:text-gray-300 font-medium mb-4">
               Would you like to proceed without uploading documents?
             </p>
             <div className="flex gap-3">
@@ -2603,7 +2639,7 @@ export default function ProjectDetailsStep() {
                   setDocumentsConfirmed(true);
                   onUpdate("skipDocuments", true);
                 }}
-                className="flex-1 px-4 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
+                className="flex-1 px-4 py-3 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 font-semibold transition-colors"
               >
                 Proceed Without Documents
               </button>
@@ -2636,7 +2672,7 @@ export default function ProjectDetailsStep() {
             aria-labelledby="location-required-title"
           >
             <div className="fixed inset-0 bg-black/30 backdrop-blur-md" />
-            <div className="relative bg-white rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
+            <div className="relative bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-lg w-full overflow-hidden">
               <div className="p-6">
                 <div className="flex items-start gap-3">
                   <div className="flex-shrink-0 w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
@@ -2664,11 +2700,11 @@ export default function ProjectDetailsStep() {
                   <div className="flex-1">
                     <h3
                       id="location-required-title"
-                      className="text-base font-semibold text-gray-900"
+                      className="text-base font-semibold text-gray-900 dark:text-gray-100"
                     >
                       Project location needed
                     </h3>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                       We couldn't detect a project location from your email or BOQ. Pick a SA mine
                       from the list (auto-fills latitude / longitude / region / address) — or close
                       this and use the manual fields and Pick on Map button further down.
@@ -2679,7 +2715,7 @@ export default function ProjectDetailsStep() {
                 <div className="mt-5">
                   <label
                     htmlFor="location-required-mine-select"
-                    className="block text-xs font-semibold text-gray-900 mb-1"
+                    className="block text-xs font-semibold text-gray-900 dark:text-gray-100 mb-1"
                   >
                     Quick select: SA Mine
                   </label>
@@ -2691,7 +2727,7 @@ export default function ProjectDetailsStep() {
                       const mineId = rawValue ? Number.parseInt(rawValue, 10) : null;
                       setPendingMineSelection(mineId);
                     }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">-- Select a mine --</option>
                     {mines.map((mine) => (
@@ -2708,20 +2744,20 @@ export default function ProjectDetailsStep() {
                       setPendingMineSelection(null);
                       setShowAddMineModal(true);
                     }}
-                    className="mt-2 text-xs text-blue-600 hover:text-blue-800 underline"
+                    className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 underline"
                   >
                     Mine not in the list? Add it
                   </button>
                 </div>
               </div>
-              <div className="px-6 py-4 bg-gray-50 flex justify-end gap-3">
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => {
                     setShowLocationRequiredModal(false);
                     setPendingMineSelection(null);
                   }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-300"
                 >
                   Fill in manually
                 </button>
