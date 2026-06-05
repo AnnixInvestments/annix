@@ -37,6 +37,10 @@ export const INHERITABLE_SCALAR_FIELDS = [
   "watermarkOpacity",
   "watermarkMaxSizePx",
   "loadingAnimation",
+  "heroTopHeightPct",
+  "heroBottomHeightPct",
+  "heroTopFadePct",
+  "heroBottomFadePct",
 ] as const;
 
 export type InheritableScalarField = (typeof INHERITABLE_SCALAR_FIELDS)[number];
@@ -56,6 +60,10 @@ export const GLOBAL_LOCKED_SCALAR_FIELDS = [
   "gradientFrom",
   "gradientVia",
   "gradientTo",
+  "heroTopHeightPct",
+  "heroBottomHeightPct",
+  "heroTopFadePct",
+  "heroBottomFadePct",
 ] as const;
 
 export const GLOBAL_LOCKED_ASSET_SLOTS = [
@@ -93,6 +101,10 @@ export interface PlatformBrandingScalars {
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
+  heroTopHeightPct: number;
+  heroBottomHeightPct: number;
+  heroTopFadePct: number;
+  heroBottomFadePct: number;
 }
 
 export const PLATFORM_BRANDING_DEFAULTS: PlatformBrandingScalars = {
@@ -116,4 +128,8 @@ export const PLATFORM_BRANDING_DEFAULTS: PlatformBrandingScalars = {
   watermarkOpacity: 0.1,
   watermarkMaxSizePx: 880,
   loadingAnimation: "pulse",
+  heroTopHeightPct: 60,
+  heroBottomHeightPct: 40,
+  heroTopFadePct: 45,
+  heroBottomFadePct: 45,
 };

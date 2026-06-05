@@ -1394,7 +1394,13 @@ export default function ProjectDetailsStep() {
       onUpdate(field, false);
       const otherStillSet =
         field === "locationNotKnown" ? rfqData.collectionOnly : rfqData.locationNotKnown;
-      if (!otherStillSet) onUpdate("skipEnvironmentalSuggestions", false);
+      if (!otherStillSet) {
+        onUpdate("skipEnvironmentalSuggestions", false);
+        // Location is required again — re-open the section so the customer
+        // must re-enter and re-confirm real coordinates/address.
+        setLocationConfirmed(false);
+        setIsEditingLocation(false);
+      }
       return;
     }
     const proceed = await confirm({
@@ -1415,6 +1421,11 @@ export default function ProjectDetailsStep() {
         ? "Project location not known — location-based surface-protection suggestions disabled for this RFQ (customer confirmed)."
         : "Collection only / no delivery site — location-based surface-protection suggestions disabled for this RFQ (customer confirmed).",
     );
+    // The "continue without location" confirmation also confirms the Location
+    // section — there's nothing left to fill, so the customer shouldn't have
+    // to press "Confirm Location Data" separately.
+    setLocationConfirmed(true);
+    setIsEditingLocation(false);
   };
 
   const hasRequiredLocationData = () => {

@@ -37,6 +37,10 @@ export interface Branding {
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
+  heroTopHeightPct: number;
+  heroBottomHeightPct: number;
+  heroTopFadePct: number;
+  heroBottomFadePct: number;
   assets: Record<BrandingAssetSlot, boolean>;
   assetsDark: Record<BrandingAssetSlot, boolean>;
   assetVersion: number;
@@ -75,6 +79,10 @@ export const INHERITABLE_SCALAR_FIELDS = [
   "watermarkOpacity",
   "watermarkMaxSizePx",
   "loadingAnimation",
+  "heroTopHeightPct",
+  "heroBottomHeightPct",
+  "heroTopFadePct",
+  "heroBottomFadePct",
 ] as const;
 
 export type InheritableScalarField = (typeof INHERITABLE_SCALAR_FIELDS)[number];
@@ -154,6 +162,10 @@ export interface BrandingUpdate {
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
   loadingAnimation?: string;
+  heroTopHeightPct?: number;
+  heroBottomHeightPct?: number;
+  heroTopFadePct?: number;
+  heroBottomFadePct?: number;
   inheritedFields?: string[];
 }
 
@@ -229,6 +241,10 @@ export function brandingFallback(brandCode: string): Branding {
     watermarkOpacity: 0.1,
     watermarkMaxSizePx: 880,
     loadingAnimation: "pulse",
+    heroTopHeightPct: 60,
+    heroBottomHeightPct: 40,
+    heroTopFadePct: 45,
+    heroBottomFadePct: 45,
     assets: emptyAssetPresence(),
     assetsDark: emptyAssetPresence(),
     assetVersion: 0,
@@ -308,7 +324,7 @@ export function brandingCssVars(
     "--brand-font-body": fontStack(branding.fontBody, "sans-serif"),
     "--brand-watermark-image": watermarkImage,
     "--brand-watermark-opacity": String(effectiveOpacity),
-    "--brand-watermark-size": `min(85vmin, ${branding.watermarkMaxSizePx}px)`,
+    "--brand-watermark-size": `min(70vmin, ${branding.watermarkMaxSizePx}px)`,
     "--brand-page-background-image": pageBackgroundImage,
   };
 }

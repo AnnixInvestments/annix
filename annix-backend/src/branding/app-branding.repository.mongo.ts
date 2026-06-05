@@ -54,6 +54,10 @@ type AppBrandingDocument = {
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
   loadingAnimation?: string;
+  heroTopHeightPct?: number;
+  heroBottomHeightPct?: number;
+  heroTopFadePct?: number;
+  heroBottomFadePct?: number;
   inheritedFields?: string[];
   createdAt?: Date | string | null;
   updatedAt?: Date | string | null;
@@ -136,6 +140,10 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       watermarkOpacity: document.watermarkOpacity ?? 0.1,
       watermarkMaxSizePx: document.watermarkMaxSizePx ?? 880,
       loadingAnimation: document.loadingAnimation ?? "pulse",
+      heroTopHeightPct: document.heroTopHeightPct ?? 60,
+      heroBottomHeightPct: document.heroBottomHeightPct ?? 40,
+      heroTopFadePct: document.heroTopFadePct ?? 45,
+      heroBottomFadePct: document.heroBottomFadePct ?? 45,
       inheritedFields: document.inheritedFields ?? [],
       createdAt: this.toDate(document.createdAt),
       updatedAt: this.toDate(document.updatedAt),
@@ -206,6 +214,10 @@ export class MongoAppBrandingRepository implements AppBrandingRepository {
       watermarkOpacity: branding.watermarkOpacity,
       watermarkMaxSizePx: branding.watermarkMaxSizePx,
       loadingAnimation: branding.loadingAnimation,
+      heroTopHeightPct: branding.heroTopHeightPct,
+      heroBottomHeightPct: branding.heroBottomHeightPct,
+      heroTopFadePct: branding.heroTopFadePct,
+      heroBottomFadePct: branding.heroBottomFadePct,
       inheritedFields: branding.inheritedFields ?? [],
     };
     const saved = await this.model

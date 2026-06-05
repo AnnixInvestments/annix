@@ -39,6 +39,9 @@ export function GlobalBrandBackground() {
   const hasHeroTop = isLight ? heroTopLight || heroTopDark : heroTopDark || heroTopLight;
   const heroTopUrl =
     branding && hasHeroTop ? resolveBrandAssetUrl("heroTop", branding, variant) : null;
+  const heroTopHeight = branding ? branding.heroTopHeightPct : 60;
+  const heroTopFade = branding ? branding.heroTopFadePct : 45;
+  const heroTopTransparentStop = 100 - heroTopFade;
 
   const heroBottomLight = branding ? branding.assets.heroBottom : false;
   const heroBottomDark = branding ? branding.assetsDark.heroBottom : false;
@@ -47,6 +50,9 @@ export function GlobalBrandBackground() {
     : heroBottomDark || heroBottomLight;
   const heroBottomUrl =
     branding && hasHeroBottom ? resolveBrandAssetUrl("heroBottom", branding, variant) : null;
+  const heroBottomHeight = branding ? branding.heroBottomHeightPct : 40;
+  const heroBottomFade = branding ? branding.heroBottomFadePct : 45;
+  const heroBottomTransparentStop = 100 - heroBottomFade;
 
   const hasWatermark = branding ? brandHasAsset("watermark", branding, variant) : false;
   const watermarkEnabled = branding ? branding.watermarkEnabled : false;
@@ -76,9 +82,10 @@ export function GlobalBrandBackground() {
       ) : null}
       {heroTopUrl ? (
         <div
-          className="absolute inset-x-0 top-0 h-[55vh]"
+          className="absolute inset-x-0 top-0 overflow-hidden"
           style={{
-            backgroundImage: `linear-gradient(to bottom, transparent 55%, ${backgroundColor}), url('${heroTopUrl}')`,
+            height: `${heroTopHeight}vh`,
+            backgroundImage: `linear-gradient(to bottom, transparent ${heroTopTransparentStop}%, ${backgroundColor}), url('${heroTopUrl}')`,
             backgroundRepeat: "no-repeat, no-repeat",
             backgroundPosition: "center top, center top",
             backgroundSize: "cover, cover",
@@ -87,26 +94,28 @@ export function GlobalBrandBackground() {
       ) : null}
       {heroBottomUrl ? (
         <div
-          className="absolute inset-x-0 bottom-0 h-[55vh]"
+          className="absolute inset-x-0 bottom-0 overflow-hidden"
           style={{
-            backgroundImage: `linear-gradient(to top, transparent 55%, ${backgroundColor}), url('${heroBottomUrl}')`,
+            height: `${heroBottomHeight}vh`,
+            backgroundImage: `linear-gradient(to top, transparent ${heroBottomTransparentStop}%, ${backgroundColor}), url('${heroBottomUrl}')`,
             backgroundRepeat: "no-repeat, no-repeat",
             backgroundPosition: "center bottom, center bottom",
-            backgroundSize: "cover, cover",
+            backgroundSize: "cover, 100% 100%",
           }}
         />
       ) : null}
       {watermarkUrl ? (
-        <div
-          className="absolute inset-0"
-          style={{
-            backgroundImage: `url('${watermarkUrl}')`,
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
-            backgroundSize: `min(85vmin, ${watermarkMaxSizePx}px)`,
-            opacity: watermarkOpacity,
-          }}
-        />
+        <div className="absolute inset-x-0 top-16 bottom-0 flex items-center justify-center">
+          <div
+            className="overflow-hidden rounded-[18%] bg-contain bg-center bg-no-repeat"
+            style={{
+              width: `min(70vmin, ${watermarkMaxSizePx}px)`,
+              height: `min(70vmin, ${watermarkMaxSizePx}px)`,
+              backgroundImage: `url('${watermarkUrl}')`,
+              opacity: watermarkOpacity,
+            }}
+          />
+        </div>
       ) : null}
     </div>
   );

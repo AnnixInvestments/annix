@@ -55,6 +55,10 @@ export interface BrandingView {
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
+  heroTopHeightPct: number;
+  heroBottomHeightPct: number;
+  heroTopFadePct: number;
+  heroBottomFadePct: number;
   assets: Record<BrandingAssetSlot, boolean>;
   assetsDark: Record<BrandingAssetSlot, boolean>;
   assetVersion: number;
@@ -200,6 +204,10 @@ export class AppBrandingService {
       watermarkOpacity: 0.1,
       watermarkMaxSizePx: 880,
       loadingAnimation: "pulse",
+      heroTopHeightPct: 60,
+      heroBottomHeightPct: 40,
+      heroTopFadePct: 45,
+      heroBottomFadePct: 45,
       inheritedFields: [],
       createdAt: timestamp,
       updatedAt: timestamp,
@@ -276,6 +284,11 @@ export class AppBrandingService {
           existing[key] = value as never;
         }
       });
+      if (dto.heroTopHeightPct !== undefined) existing.heroTopHeightPct = dto.heroTopHeightPct;
+      if (dto.heroBottomHeightPct !== undefined)
+        existing.heroBottomHeightPct = dto.heroBottomHeightPct;
+      if (dto.heroTopFadePct !== undefined) existing.heroTopFadePct = dto.heroTopFadePct;
+      if (dto.heroBottomFadePct !== undefined) existing.heroBottomFadePct = dto.heroBottomFadePct;
     }
 
     if (dto.tagline !== undefined) existing.tagline = dto.tagline;
@@ -430,6 +443,10 @@ function pickScalars(row: AppBranding): PlatformBrandingScalars {
     watermarkOpacity: row.watermarkOpacity,
     watermarkMaxSizePx: row.watermarkMaxSizePx,
     loadingAnimation: row.loadingAnimation,
+    heroTopHeightPct: row.heroTopHeightPct,
+    heroBottomHeightPct: row.heroBottomHeightPct,
+    heroTopFadePct: row.heroTopFadePct,
+    heroBottomFadePct: row.heroBottomFadePct,
   };
 }
 

@@ -282,6 +282,38 @@ export class UpdateBrandingDto {
   @IsIn(["pulse", "spin", "bounce", "glow", "float"])
   loadingAnimation?: string;
 
+  @ApiPropertyOptional({ minimum: 5, maximum: 100, description: "Top hero height as % of screen" })
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(100)
+  heroTopHeightPct?: number;
+
+  @ApiPropertyOptional({
+    minimum: 5,
+    maximum: 100,
+    description: "Bottom hero height as % of screen",
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(5)
+  @Max(100)
+  heroBottomHeightPct?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100, description: "Top hero edge-fade amount" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  heroTopFadePct?: number;
+
+  @ApiPropertyOptional({ minimum: 0, maximum: 100, description: "Bottom hero edge-fade amount" })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  heroBottomFadePct?: number;
+
   @ApiPropertyOptional({
     description: "Scalar fields this brand inherits from the master (Annix Investments) brand",
     isArray: true,

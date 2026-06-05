@@ -149,6 +149,18 @@ export class AppBranding {
   @Column({ name: "loading_animation", type: "varchar", length: 32, default: "pulse" })
   loadingAnimation: string;
 
+  @Column({ name: "hero_top_height_pct", type: "int", default: 60 })
+  heroTopHeightPct: number;
+
+  @Column({ name: "hero_bottom_height_pct", type: "int", default: 40 })
+  heroBottomHeightPct: number;
+
+  @Column({ name: "hero_top_fade_pct", type: "int", default: 45 })
+  heroTopFadePct: number;
+
+  @Column({ name: "hero_bottom_fade_pct", type: "int", default: 45 })
+  heroBottomFadePct: number;
+
   @Column({ name: "inherited_fields", type: "text", array: true, default: () => "'{}'" })
   inheritedFields: string[];
 

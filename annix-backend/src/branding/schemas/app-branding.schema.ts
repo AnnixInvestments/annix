@@ -151,6 +151,18 @@ export class AppBranding {
   @Prop({ type: String, required: true, default: "pulse" })
   loadingAnimation: string;
 
+  @Prop({ type: Number, required: true, default: 60 })
+  heroTopHeightPct: number;
+
+  @Prop({ type: Number, required: true, default: 40 })
+  heroBottomHeightPct: number;
+
+  @Prop({ type: Number, required: true, default: 45 })
+  heroTopFadePct: number;
+
+  @Prop({ type: Number, required: true, default: 45 })
+  heroBottomFadePct: number;
+
   @Prop({ type: [String], required: true, default: [] })
   inheritedFields: string[];
 
