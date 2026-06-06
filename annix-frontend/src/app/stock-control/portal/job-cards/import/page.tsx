@@ -845,6 +845,15 @@ export default function JobCardImportPage() {
     updateExtraction,
     hideExtraction,
   ]);
+
+  // When the user navigates away from the import page mid-job, hide the on-page
+  // popup so it doesn't linger as a frozen duplicate of the global banner, which
+  // becomes the sole progress indicator off-page.
+  useEffect(() => {
+    return () => {
+      hideExtraction();
+    };
+  }, [hideExtraction]);
   const confirmImportMutation = useConfirmJobCardImport();
   const confirmDeliveryMutation = useConfirmDeliveryMatches();
   const invalidateJobCards = useInvalidateJobCards();
