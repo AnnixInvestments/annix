@@ -171,7 +171,8 @@ export class PostgresCandidateRepository
     return result.affected ?? 0;
   }
 
-  async setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void> {
+  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+    const embeddingLiteral = values.join(",");
     await this.repository
       .createQueryBuilder()
       .update(Candidate)

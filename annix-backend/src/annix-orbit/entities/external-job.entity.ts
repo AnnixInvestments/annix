@@ -91,7 +91,7 @@ export class ExternalJob {
   sourceId: number;
 
   @Column({ type: "varchar", nullable: true })
-  embedding: string | null;
+  embedding: Buffer | null;
 
   @Column({ type: "boolean", default: false })
   delisted: boolean;

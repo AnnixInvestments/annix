@@ -36,7 +36,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract markRejectionSent(id: number, rejectionSentAt: Date): Promise<void>;
   abstract markAcceptanceSent(id: number, acceptanceSentAt: Date): Promise<void>;
   abstract deleteTestFixturesForJob(jobPostingId: number): Promise<number>;
-  abstract setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void>;
+  abstract setEmbeddingVector(id: number, values: number[]): Promise<void>;
   abstract clearEmbedding(id: number): Promise<void>;
   abstract updateWorkProfile(id: number, workProfile: unknown): Promise<void>;
   abstract updateTargetCategories(id: number, targetCategories: string[]): Promise<void>;

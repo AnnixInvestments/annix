@@ -15,6 +15,7 @@ import {
 } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
+import { decodeEmbedding } from "../lib/embedding-codec";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
@@ -491,7 +492,7 @@ export class CandidateJobMatchingService {
       .filter((vector): vector is number[] => vector !== null);
   }
 
-  private dismissPenaltyFor(jobEmbedding: string | null, dismissedVectors: number[][]): number {
+  private dismissPenaltyFor(jobEmbedding: Buffer | null, dismissedVectors: number[][]): number {
     if (dismissedVectors.length === 0) {
       return 0;
     }
@@ -745,19 +746,8 @@ export class CandidateJobMatchingService {
   }
 }
 
-function parseEmbedding(raw: string | null): number[] | null {
-  if (!raw) {
-    return null;
-  }
-  const trimmed = raw.trim().replace(/^\[/, "").replace(/\]$/, "");
-  if (trimmed.length === 0) {
-    return null;
-  }
-  const values = trimmed.split(",").map((part) => Number.parseFloat(part.trim()));
-  if (values.length === 0 || values.some((value) => Number.isNaN(value))) {
-    return null;
-  }
-  return values;
+function parseEmbedding(raw: unknown): number[] | null {
+  return decodeEmbedding(raw);
 }
 
 function cosineSimilarity(a: number[], b: number[]): number | null {
@@ -775,7 +765,7 @@ function cosineSimilarity(a: number[], b: number[]): number | null {
 
 function rankBySimilarity(
   queryVector: number[],
-  rows: Array<{ id: number; embedding: string | null }>,
+  rows: Array<{ id: number; embedding: Buffer | null }>,
   limit: number,
 ): Array<{ id: number; similarity: number }> {
   return rows

@@ -153,7 +153,7 @@ export class Candidate {
   references: CandidateReference[];
 
   @Column({ type: "varchar", nullable: true })
-  embedding: string | null;
+  embedding: Buffer | null;
 
   @Column({ name: "target_categories", type: "jsonb", nullable: true })
   targetCategories: string[] | null;

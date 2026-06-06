@@ -4,6 +4,7 @@ import type { Model } from "mongoose";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { encodeEmbedding } from "../lib/embedding-codec";
 import {
   CandidateAllForCompanyFilters,
   CandidateEmbeddingCoverageRow,
@@ -191,8 +192,8 @@ export class MongoCandidateRepository
     return result.deletedCount ?? 0;
   }
 
-  async setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { embedding: `[${embeddingLiteral}]` }).exec();
+  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+    await this.documents.findByIdAndUpdate(id, { embedding: encodeEmbedding(values) }).exec();
   }
 
   async clearEmbedding(id: number): Promise<void> {

@@ -174,7 +174,7 @@ export class EmbeddingService {
       return false;
     }
 
-    await this.candidateRepo.setEmbeddingVector(candidateId, embedding.join(","));
+    await this.candidateRepo.setEmbeddingVector(candidateId, embedding);
 
     return true;
   }
@@ -215,7 +215,7 @@ export class EmbeddingService {
       return false;
     }
 
-    await this.externalJobRepo.setEmbeddingVector(jobId, embedding.join(","));
+    await this.externalJobRepo.setEmbeddingVector(jobId, embedding);
 
     return true;
   }

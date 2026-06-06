@@ -76,8 +76,8 @@ export class Candidate {
   @Prop({ type: Number, required: false })
   jobPostingId: number | null;
 
-  @Prop({ type: String, required: false })
-  embedding: string;
+  @Prop({ type: Buffer, required: false })
+  embedding: Buffer;
 
   @Prop({ type: String, required: false })
   matchTier: string;

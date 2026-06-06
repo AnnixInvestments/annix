@@ -4,6 +4,7 @@ import type { Model } from "mongoose";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
+import { encodeEmbedding } from "../lib/embedding-codec";
 import {
   DedupCandidateRow,
   DelistReportRow,
@@ -223,8 +224,8 @@ export class MongoExternalJobRepository
       .exec();
   }
 
-  async setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { embedding: `[${embeddingLiteral}]` }).exec();
+  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+    await this.documents.findByIdAndUpdate(id, { embedding: encodeEmbedding(values) }).exec();
   }
 
   async updateLocation(id: number, lat: number, lon: number): Promise<void> {

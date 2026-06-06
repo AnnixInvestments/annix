@@ -117,7 +117,7 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract countForSourceSince(sourceId: number, since: Date): Promise<number>;
   abstract countForSources(sourceIds: number[]): Promise<number>;
   abstract countForSourcesSince(sourceIds: number[], since: Date): Promise<number>;
-  abstract setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void>;
+  abstract setEmbeddingVector(id: number, values: number[]): Promise<void>;
   abstract updateLocation(id: number, lat: number, lon: number): Promise<void>;
   abstract findDuplicateCanonicalJob(
     title: string,
