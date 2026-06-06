@@ -664,10 +664,12 @@ export class JobCardImportService {
 
     const textGrid = this.buildGridFromPdfText(text);
 
-    if (this.isLikelyDrawingPdf(textGrid, text)) {
+    let triedDrawing = false;
+    if (this.isLikelyDrawingPdf(text)) {
       this.logger.log(
         `PDF "${filename}" appears to be an engineering drawing, using vision extraction`,
       );
+      triedDrawing = true;
       const drawingRows = await this.extractDrawingAsImportRows(
         [{ buffer, filename: filename || "drawing.pdf" }],
         text,
@@ -682,6 +684,24 @@ export class JobCardImportService {
     if (aiGrid.length > 1) {
       this.logger.log(`AI vision extracted ${aiGrid.length} rows from PDF "${filename}"`);
       return { grid: aiGrid, documentNumber: extractedDocNumber };
+    }
+
+    // Safety net: neither the drawing heuristic nor the tabular grid produced
+    // rows. A drawing PDF can still slip past the heuristic, so fall back to
+    // vision extraction here — this makes the general dropzone "just work" for
+    // drawing PDFs, not only the dedicated drawings uploader.
+    if (!triedDrawing) {
+      this.logger.log(
+        `PDF "${filename}" produced no tabular rows — falling back to drawing vision extraction`,
+      );
+      const drawingRows = await this.extractDrawingAsImportRows(
+        [{ buffer, filename: filename || "drawing.pdf" }],
+        text,
+        filename,
+      );
+      if (drawingRows.length > 0) {
+        return { grid: [], documentNumber: extractedDocNumber, drawingRows };
+      }
     }
 
     return { grid: textGrid, documentNumber: extractedDocNumber };
@@ -704,19 +724,18 @@ export class JobCardImportService {
     return { drawingRows, documentNumber };
   }
 
-  private isLikelyDrawingPdf(grid: string[][], text: string): boolean {
-    const nonEmptyCells = grid.reduce(
-      (sum, row) => sum + row.filter((cell) => cell.trim().length > 0).length,
-      0,
-    );
+  private isLikelyDrawingPdf(text: string): boolean {
     const hasDrawingKeywords =
-      /drawing\s*no|drawn\s*by|checked\s*by|isometric|elevation|section|plan\s*view|tekla|general\s*arrangement|rubber\s*lin/i.test(
+      /drawing\s*no|drawn\s*by|checked\s*by|isometric|elevation|plan\s*view|tekla|general\s*arrangement|rubber\s*lin|section\s+[A-Z]\s*-\s*[A-Z]|GPW-|[A-Z]{1,4}\d{4,}/i.test(
         text,
       );
-    const hasJobCardKeywords =
-      /job\s*card|work\s*order|item\s*code|item\s*description|qty|quantity/i.test(text);
+    // Only an explicit job-card LIST disqualifies a drawing. qty / item /
+    // description columns appear on drawing BOM tables too, so they must NOT be
+    // treated as job-card markers (that previously mis-routed BOM-bearing
+    // drawings like the Distributor into the spreadsheet path).
+    const hasJobCardListKeywords = /job\s*card|work\s*order/i.test(text);
 
-    return hasDrawingKeywords && !hasJobCardKeywords && nonEmptyCells < 50;
+    return hasDrawingKeywords && !hasJobCardListKeywords;
   }
 
   private async extractGridFromPdfWithAi(buffer: Buffer): Promise<string[][]> {
@@ -901,19 +920,49 @@ export class JobCardImportService {
     ].filter(Boolean);
 
     if (sections.length > 0) {
-      sections.forEach((section: any) => {
-        const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
-        const liningArea = positiveArea(section.liningAreaM2);
-        const coatingArea = positiveArea(section.coatingAreaM2);
+      // Collapse identical repeated sections (same component name AND areas) into
+      // one line with a quantity, so a drawing with N identical gussets / legs /
+      // brackets yields one row × N rather than N near-duplicate rows. Genuinely
+      // distinct sections (different name or area) keep their own line.
+      const sectionGroups = sections.reduce((groups: Map<string, any[]>, section: any) => {
+        const key = [
+          String(section.description || section.mark || "")
+            .trim()
+            .toLowerCase(),
+          section.liningAreaM2 ?? "",
+          section.coatingAreaM2 ?? "",
+        ].join("|");
+        const existing = groups.get(key);
+        if (existing) {
+          existing.push(section);
+        } else {
+          groups.set(key, [section]);
+        }
+        return groups;
+      }, new Map<string, any[]>());
+
+      Array.from(sectionGroups.values()).forEach((group: any[]) => {
+        const rep = group[0];
+        const count = group.length;
+        const quantity = String(count);
+        // When consolidated the marks differ, so label by component; a single
+        // section keeps its mark for traceability.
+        const sectionLabel =
+          count > 1
+            ? rep.description || `Section ${rep.mark}`
+            : `Section ${rep.mark}${rep.description ? ` - ${rep.description}` : ""}`;
+        const codeRef = count > 1 ? rep.description || rep.mark : rep.mark;
+        const liningArea = positiveArea(rep.liningAreaM2);
+        const coatingArea = positiveArea(rep.coatingAreaM2);
 
         if (liningArea != null || isLined) {
           const desc = [`${assemblyLabel} ${sectionLabel} - R/L`, liningSpec || null]
             .filter(Boolean)
             .join(" - ");
           lineItems.push({
-            itemCode: `R/L ${section.mark}`,
+            itemCode: `R/L ${codeRef}`,
             itemDescription: desc,
-            quantity: "1",
+            quantity,
             m2: liningArea,
           });
         }
@@ -923,9 +972,9 @@ export class JobCardImportService {
             .filter(Boolean)
             .join(" - ");
           lineItems.push({
-            itemCode: `COAT ${section.mark}`,
+            itemCode: `COAT ${codeRef}`,
             itemDescription: desc,
-            quantity: "1",
+            quantity,
             m2: coatingArea,
           });
         }
