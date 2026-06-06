@@ -15,6 +15,9 @@ export class ScheduledJobsGlobalSettings {
 
   @Prop({ type: Boolean, required: true })
   suspendOnWeekendsAndHolidays: boolean;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  pauseAllJobs: boolean;
 }
 
 export const ScheduledJobsGlobalSettingsSchema = SchemaFactory.createForClass(

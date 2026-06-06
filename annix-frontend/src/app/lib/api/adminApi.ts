@@ -2194,6 +2194,7 @@ export interface ScheduledJobDto {
 
 export interface GlobalSettingsDto {
   suspendOnWeekendsAndHolidays: boolean;
+  pauseAllJobs: boolean;
 }
 
 export interface PollingJobDto {

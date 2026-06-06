@@ -7,6 +7,7 @@ import { ScheduledJobsGlobalSettingsRepository } from "./scheduled-jobs-global-s
 type ScheduledJobsGlobalSettingsDocument = {
   _id: string;
   suspendOnWeekendsAndHolidays?: boolean;
+  pauseAllJobs?: boolean;
 };
 
 @Injectable()
@@ -22,6 +23,7 @@ export class MongoScheduledJobsGlobalSettingsRepository
     return {
       settingsKey: document._id,
       suspendOnWeekendsAndHolidays: document.suspendOnWeekendsAndHolidays ?? true,
+      pauseAllJobs: document.pauseAllJobs ?? false,
     };
   }
 
@@ -38,7 +40,10 @@ export class MongoScheduledJobsGlobalSettingsRepository
       .findByIdAndUpdate(
         settings.settingsKey,
         {
-          $set: { suspendOnWeekendsAndHolidays: settings.suspendOnWeekendsAndHolidays },
+          $set: {
+            suspendOnWeekendsAndHolidays: settings.suspendOnWeekendsAndHolidays,
+            pauseAllJobs: settings.pauseAllJobs,
+          },
           $setOnInsert: { _id: settings.settingsKey },
         },
         { new: true, upsert: true },

@@ -111,8 +111,10 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const masterBrandingData = masterBrandingQuery.data;
   const masterBranding = masterBrandingData ?? null;
   const lightNavbar = !isBrandPortal && resolvedTheme === "light";
-  const investToolbarLight = masterBranding ? masterBranding.navbarColorLight : "#F2F4F7";
-  const investToolbarDark = masterBranding ? masterBranding.navbarColor : colors.background;
+  const masterNavbarLight = masterBranding ? masterBranding.navbarColorLight : null;
+  const masterNavbarDark = masterBranding ? masterBranding.navbarColor : null;
+  const investToolbarLight = masterNavbarLight || "#F2F4F7";
+  const investToolbarDark = masterNavbarDark || colors.background;
   const navBg = brandPrefix
     ? `var(--${brandPrefix}-navbar, ${colors.background})`
     : lightNavbar

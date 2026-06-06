@@ -295,27 +295,57 @@ function GlobalSettingsBar() {
   const { data: settings } = useScheduledJobsGlobalSettings();
   const updateMutation = useUpdateScheduledJobsGlobalSettings();
 
-  const checked = settings ? settings.suspendOnWeekendsAndHolidays : false;
+  const suspendChecked = settings ? settings.suspendOnWeekendsAndHolidays : false;
+  const pauseAllChecked = settings ? settings.pauseAllJobs : false;
 
-  const handleToggle = () => {
-    updateMutation.mutate({ suspendOnWeekendsAndHolidays: !checked });
+  const handleToggleSuspend = () => {
+    updateMutation.mutate({
+      suspendOnWeekendsAndHolidays: !suspendChecked,
+      pauseAllJobs: pauseAllChecked,
+    });
+  };
+
+  const handleTogglePauseAll = () => {
+    updateMutation.mutate({
+      suspendOnWeekendsAndHolidays: suspendChecked,
+      pauseAllJobs: !pauseAllChecked,
+    });
   };
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-800 dark:bg-orange-900/20">
-      <label className="flex cursor-pointer items-center gap-2 text-sm text-orange-700 dark:text-orange-300">
-        <input
-          type="checkbox"
-          checked={checked}
-          onChange={handleToggle}
-          disabled={updateMutation.isPending}
-          className="h-4 w-4 rounded border-orange-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
-        />
-        <span className="font-medium">
-          Suspend all jobs on weekends (Sat/Sun) and SA public holidays
-        </span>
-      </label>
-      {updateMutation.isPending ? <span className="text-xs text-orange-400">Saving...</span> : null}
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 dark:border-orange-800 dark:bg-orange-900/20">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-orange-700 dark:text-orange-300">
+          <input
+            type="checkbox"
+            checked={suspendChecked}
+            onChange={handleToggleSuspend}
+            disabled={updateMutation.isPending}
+            className="h-4 w-4 rounded border-orange-300 text-orange-600 focus:ring-orange-500 disabled:opacity-50"
+          />
+          <span className="font-medium">
+            Suspend all jobs on weekends (Sat/Sun) and SA public holidays
+          </span>
+        </label>
+        {updateMutation.isPending ? (
+          <span className="text-xs text-orange-400">Saving...</span>
+        ) : null}
+      </div>
+
+      <div className="flex items-center gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-800 dark:bg-red-900/20">
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-red-700 dark:text-red-300">
+          <input
+            type="checkbox"
+            checked={pauseAllChecked}
+            onChange={handleTogglePauseAll}
+            disabled={updateMutation.isPending}
+            className="h-4 w-4 rounded border-red-300 text-red-600 focus:ring-red-500 disabled:opacity-50"
+          />
+          <span className="font-medium">
+            Pause ALL scheduled jobs on this environment (no cron runs until unticked)
+          </span>
+        </label>
+      </div>
     </div>
   );
 }
