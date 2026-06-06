@@ -4,6 +4,7 @@
 // so it is cheap to unit-test.
 
 export interface FacetRow {
+  country: string | null;
   canonicalProvince: string | null;
   canonicalCity: string | null;
   canonicalCategory: string | null;
@@ -17,6 +18,11 @@ export interface FacetRow {
 }
 
 export interface FacetFilter {
+  // Hard country gate (the seeker's target countries) — always applied, never a
+  // facet dimension you can switch off.
+  targetCountries?: string[] | null;
+  // Optional single-country narrowing from the Region dropdown.
+  region?: string | null;
   province?: string | null;
   city?: string | null;
   category?: string | null;
@@ -25,7 +31,7 @@ export interface FacetFilter {
   search?: string | null;
 }
 
-export type FacetDim = "province" | "city" | "category" | "source" | "salary" | "search";
+export type FacetDim = "region" | "province" | "city" | "category" | "source" | "salary" | "search";
 
 const NO_SKIP: ReadonlySet<FacetDim> = new Set();
 
@@ -44,6 +50,16 @@ export function rowPasses(
   filter: FacetFilter,
   skip: ReadonlySet<FacetDim> = NO_SKIP,
 ): boolean {
+  if (
+    filter.targetCountries &&
+    filter.targetCountries.length > 0 &&
+    !filter.targetCountries.includes(row.country ?? "")
+  ) {
+    return false;
+  }
+  if (!skip.has("region") && filter.region && row.country !== filter.region) {
+    return false;
+  }
   if (!skip.has("province") && filter.province && row.canonicalProvince !== filter.province) {
     return false;
   }

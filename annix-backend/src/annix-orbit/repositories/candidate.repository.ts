@@ -41,6 +41,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract updateWorkProfile(id: number, workProfile: unknown): Promise<void>;
   abstract updateTargetCategories(id: number, targetCategories: string[]): Promise<void>;
   abstract updateMatchTier(id: number, matchTier: string): Promise<void>;
+  abstract updateTargetCountries(id: number, targetCountries: string[]): Promise<void>;
   abstract setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void>;
   abstract touchLastActiveByEmail(
     email: string,

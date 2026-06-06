@@ -35,6 +35,14 @@ const ADJACENT_FIELD_SCORE = 0.5;
 const OUTSIDE_RADIUS_PENALTY = 0.4;
 
 const TOP_MATCHES_LIMIT = 20;
+// Seekers default to South African jobs; they opt into other countries (e.g. "gb")
+// via their profile. The match pool is scoped to these so UK jobs only reach
+// seekers who asked for them.
+const DEFAULT_TARGET_COUNTRIES = ["za"];
+
+export function targetCountriesOf(countries: string[] | null | undefined): string[] {
+  return countries && countries.length > 0 ? countries : DEFAULT_TARGET_COUNTRIES;
+}
 // Ceiling for how many matches the DISPLAY/feed window considers for a tier whose
 // maxJobResults is null ("unlimited", e.g. Trailblazer). The feed only ever shows
 // the top 100, so this stays modest.
@@ -83,6 +91,10 @@ export interface RecommendedJobFilters {
   search?: string | null;
   provider?: string | null;
   sourceIds?: number[] | null;
+  // The seeker's target countries (hard gate, never user-removable) and an
+  // optional single-country narrowing from the Region dropdown.
+  countries?: string[] | null;
+  region?: string | null;
 }
 
 function roleTokens(role: string): string[] {
@@ -180,6 +192,7 @@ export class CandidateJobMatchingService {
         candidate,
         matchLimit,
         narrowing.pool,
+        targetCountriesOf(candidate.targetCountries),
       );
 
       const matches: CandidateJobMatch[] = [];
@@ -369,13 +382,14 @@ export class CandidateJobMatchingService {
     candidate: Candidate,
     limit: number,
     categoryPool: string[] | null = null,
+    countries: string[] | null = null,
   ): Promise<Array<{ jobId: number; similarity: number }>> {
     const candidateVector = parseEmbedding(candidate.embedding);
     if (candidateVector === null) {
       return [];
     }
 
-    const jobs = await this.externalJobRepo.jobsWithEmbedding(categoryPool);
+    const jobs = await this.externalJobRepo.jobsWithEmbedding(categoryPool, countries);
 
     return rankBySimilarity(
       candidateVector,

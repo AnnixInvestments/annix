@@ -26,6 +26,9 @@ function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Recor
   };
   const and: Array<Record<string, unknown>> = [];
 
+  if (filters?.countries && filters.countries.length > 0) {
+    query.country = { $in: filters.countries };
+  }
   if (filters?.category) {
     query.canonicalCategory = filters.category;
   }
@@ -204,6 +207,7 @@ export class MongoCandidateJobMatchRepository
               },
               {
                 $project: {
+                  country: 1,
                   canonicalProvince: 1,
                   canonicalCity: 1,
                   canonicalCategory: 1,
@@ -226,6 +230,7 @@ export class MongoCandidateJobMatchRepository
       ])
       .exec();
     return rows.map((row) => ({
+      country: row.country ?? null,
       canonicalProvince: row.canonicalProvince ?? null,
       canonicalCity: row.canonicalCity ?? null,
       canonicalCategory: row.canonicalCategory ?? null,

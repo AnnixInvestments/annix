@@ -120,10 +120,16 @@ export class MongoExternalJobRepository
     return { jobs: this.toDomainList(docs), total };
   }
 
-  async jobsWithEmbedding(categoryPool: string[] | null): Promise<ExternalJob[]> {
+  async jobsWithEmbedding(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+  ): Promise<ExternalJob[]> {
     const filter: Record<string, unknown> = { embedding: { $ne: null } };
     if (categoryPool !== null && categoryPool.length > 0) {
       filter.canonicalCategory = { $in: categoryPool };
+    }
+    if (countries !== null && countries.length > 0) {
+      filter.country = { $in: countries };
     }
     const docs = await this.documents.find(filter).lean().exec();
     return this.toDomainList(docs);

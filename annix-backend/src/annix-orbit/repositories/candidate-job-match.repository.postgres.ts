@@ -45,6 +45,9 @@ export class PostgresCandidateJobMatchRepository
     if (!includeDismissed) {
       qb.andWhere("match.dismissed = false");
     }
+    if (filters?.countries && filters.countries.length > 0) {
+      qb.andWhere("job.country IN (:...countries)", { countries: filters.countries });
+    }
     if (filters?.category) {
       qb.andWhere("job.canonical_category = :category", { category: filters.category });
     }
@@ -131,6 +134,9 @@ export class PostgresCandidateJobMatchRepository
       .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
       .andWhere("job.delisted IS NOT TRUE");
 
+    if (filters?.countries && filters.countries.length > 0) {
+      qb.andWhere("job.country IN (:...countries)", { countries: filters.countries });
+    }
     if (filters?.category) {
       qb.andWhere("job.canonical_category = :category", { category: filters.category });
     }
@@ -181,6 +187,7 @@ export class PostgresCandidateJobMatchRepository
       .andWhere("(job.expires_at IS NULL OR job.expires_at > NOW())")
       .andWhere("job.delisted IS NOT TRUE")
       .select([
+        "job.country AS country",
         'job.canonical_province AS "canonicalProvince"',
         'job.canonical_city AS "canonicalCity"',
         'job.canonical_category AS "canonicalCategory"',

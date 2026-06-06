@@ -104,7 +104,10 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
     options: ExternalJobListOptions,
   ): Promise<{ jobs: ExternalJob[]; total: number }>;
   abstract publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]>;
-  abstract jobsWithEmbedding(categoryPool: string[] | null): Promise<ExternalJob[]>;
+  abstract jobsWithEmbedding(
+    categoryPool: string[] | null,
+    countries?: string[] | null,
+  ): Promise<ExternalJob[]>;
   abstract findPendingVetting(limit: number): Promise<ExternalJob[]>;
   abstract updateVetting(id: number, update: VettingUpdate): Promise<void>;
   abstract findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]>;

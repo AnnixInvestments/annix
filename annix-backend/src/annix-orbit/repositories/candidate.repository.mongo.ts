@@ -211,6 +211,10 @@ export class MongoCandidateRepository
     await this.documents.findByIdAndUpdate(id, { matchTier }).exec();
   }
 
+  async updateTargetCountries(id: number, targetCountries: string[]): Promise<void> {
+    await this.documents.findByIdAndUpdate(id, { targetCountries }).exec();
+  }
+
   async setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void> {
     await this.documents.findByIdAndUpdate(id, { trialTier, trialEndsAt }).exec();
   }

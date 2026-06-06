@@ -2,6 +2,7 @@ import { countMatchingRows, distinctPassing, type FacetRow, rowPasses } from "./
 
 function row(overrides: Partial<FacetRow> = {}): FacetRow {
   return {
+    country: "za",
     canonicalProvince: "Gauteng",
     canonicalCity: "Benoni",
     canonicalCategory: "it-software",
@@ -69,6 +70,27 @@ describe("rowPasses", () => {
     const r = row({ canonicalProvince: "Western Cape" });
     expect(rowPasses(r, { province: "Gauteng" }, new Set(["province"]))).toBe(true);
     expect(rowPasses(r, { province: "Gauteng" })).toBe(false);
+  });
+
+  it("enforces the target-country gate (UK jobs hidden from ZA-only seekers)", () => {
+    const ukJob = row({ country: "gb" });
+    const zaJob = row({ country: "za" });
+    expect(rowPasses(ukJob, { targetCountries: ["za"] })).toBe(false);
+    expect(rowPasses(zaJob, { targetCountries: ["za"] })).toBe(true);
+    expect(rowPasses(ukJob, { targetCountries: ["za", "gb"] })).toBe(true);
+  });
+
+  it("narrows by region but the gate is never skippable", () => {
+    const ukJob = row({ country: "gb" });
+    // region is a skippable facet dimension...
+    expect(rowPasses(ukJob, { targetCountries: ["za", "gb"], region: "za" })).toBe(false);
+    expect(
+      rowPasses(ukJob, { targetCountries: ["za", "gb"], region: "za" }, new Set(["region"])),
+    ).toBe(true);
+    // ...but the target-country gate still excludes a job outside the seeker's countries.
+    expect(rowPasses(ukJob, { targetCountries: ["za"], region: "gb" }, new Set(["region"]))).toBe(
+      false,
+    );
   });
 });
 

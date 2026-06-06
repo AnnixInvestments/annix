@@ -85,6 +85,9 @@ export class Candidate {
   @Prop({ type: [String], required: false })
   targetCategories: string[];
 
+  @Prop({ type: [String], required: false })
+  targetCountries: string[];
+
   @Prop({ type: String, required: false })
   trialTier: string;
 

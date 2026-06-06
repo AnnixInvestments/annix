@@ -10,9 +10,13 @@ export interface RecommendedMatchCountFilters {
   minSalary?: number | null;
   search?: string | null;
   sourceIds?: number[] | null;
+  // Effective country set the job must belong to (target-country gate, narrowed to
+  // a single value when the Region dropdown is used).
+  countries?: string[] | null;
 }
 
 export interface RecommendedFacetRow {
+  country: string | null;
   canonicalProvince: string | null;
   canonicalCity: string | null;
   canonicalCategory: string | null;

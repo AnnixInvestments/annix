@@ -217,6 +217,13 @@ export class SeekerJobFeedService {
     private readonly storageService: IStorageService,
   ) {}
 
+  // Union of the seeker's candidates' target countries; defaults to South Africa.
+  private targetCountriesForCandidates(candidates: Candidate[]): string[] {
+    const set = new Set<string>();
+    candidates.forEach((c) => (c.targetCountries ?? []).forEach((code) => set.add(code)));
+    return set.size > 0 ? [...set] : ["za"];
+  }
+
   private effectiveTier(candidates: Candidate[]): string {
     const nowMs = nowMillis();
     const withTrial = candidates.find(
@@ -448,12 +455,13 @@ export class SeekerJobFeedService {
     email: string | null,
     options: { filters?: RecommendedJobFilters | null } = {},
   ): Promise<{
+    regions: string[];
     provinces: string[];
     cities: string[];
     categories: Array<{ key: string; label: string }>;
     sources: string[];
   }> {
-    const empty = { provinces: [], cities: [], categories: [], sources: [] };
+    const empty = { regions: [], provinces: [], cities: [], categories: [], sources: [] };
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) return empty;
 
@@ -466,19 +474,25 @@ export class SeekerJobFeedService {
     const providerBySourceId = new Map(sourceList.map((s) => [s.id, s.provider]));
 
     // Provider name -> source ids so the source dimension filters the same field
-    // the rows carry; every facet then excludes its own dimension.
+    // the rows carry; every facet then excludes its own dimension. The target-
+    // country gate is always applied so a seeker never facets outside their scope.
+    const targetCountries = this.targetCountriesForCandidates(candidates);
     const rf = (await this.resolveRepoFilters(options.filters ?? null)) ?? {};
+    const ff = { ...rf, targetCountries };
+
+    const regionValues = distinctPassing(rows, ff, new Set(["region"]), (r) => r.country);
+    const regions = targetCountries.filter((c) => regionValues.has(c));
 
     const provinceValues = distinctPassing(
       rows,
-      rf,
+      ff,
       new Set(["province", "city"]),
       (r) => r.canonicalProvince,
     );
     const provinces = SA_PROVINCES.filter((p) => provinceValues.has(p));
 
     const cityValues = rf.province
-      ? distinctPassing(rows, rf, new Set(["city"]), (r) => r.canonicalCity)
+      ? distinctPassing(rows, ff, new Set(["city"]), (r) => r.canonicalCity)
       : new Set<string>();
     const orderedCities = citiesForProvince(rf.province ?? null);
     const cities = [
@@ -488,7 +502,7 @@ export class SeekerJobFeedService {
 
     const categoryValues = distinctPassing(
       rows,
-      rf,
+      ff,
       new Set(["category"]),
       (r) => r.canonicalCategory,
     );
@@ -497,11 +511,11 @@ export class SeekerJobFeedService {
       label: c.label,
     }));
 
-    const sourceValues = distinctPassing(rows, rf, new Set(["source"]), (r) =>
+    const sourceValues = distinctPassing(rows, ff, new Set(["source"]), (r) =>
       r.sourceId != null ? (providerBySourceId.get(r.sourceId) ?? null) : null,
     );
 
-    return { provinces, cities, categories, sources: [...sourceValues].sort() };
+    return { regions, provinces, cities, categories, sources: [...sourceValues].sort() };
   }
 
   // Every active platform job source, so the seeker's "source" filter lists all
@@ -512,6 +526,27 @@ export class SeekerJobFeedService {
     } as Partial<JobMarketSource>);
     const enabled = sources.filter((source) => source.enabled);
     return [...new Set(enabled.map((source) => source.provider))].sort();
+  }
+
+  async targetCountriesForSeeker(email: string | null): Promise<{ targetCountries: string[] }> {
+    const candidates = await this.candidatesForSeeker(email);
+    return { targetCountries: this.targetCountriesForCandidates(candidates) };
+  }
+
+  async setTargetCountriesForSeeker(
+    email: string | null,
+    countries: string[],
+  ): Promise<{ targetCountries: string[] }> {
+    const normalized = [
+      ...new Set(countries.map((c) => c.trim().toLowerCase()).filter((c) => c.length > 0)),
+    ];
+    const effective = normalized.length > 0 ? normalized : ["za"];
+    const candidates = await this.candidatesForSeeker(email);
+    await Promise.all(
+      candidates.map((c) => this.candidateRepo.updateTargetCountries(c.id, effective)),
+    );
+    this.invalidateFacetCache();
+    return { targetCountries: effective };
   }
 
   async listSeekers(params: {
@@ -736,15 +771,29 @@ export class SeekerJobFeedService {
     // back it so both the count and the list filter on the same job field.
     const repoFilters = await this.resolveRepoFilters(options.filters ?? null);
 
-    // The true count of matching jobs, counted in the DB without loading the rows.
-    // The plan caps how many a seeker may see (null = unlimited), so apply that
-    // ceiling to both the headline total and the loaded page size.
+    // Country gate: the seeker's target countries, narrowed to one when the Region
+    // dropdown is used. UK jobs only reach seekers who opted into "gb".
+    const targetCountries = this.targetCountriesForCandidates(candidates);
+    const region = options.filters?.region ?? null;
+    const effectiveCountries = region ? [region] : targetCountries;
+    const displayFilters: RecommendedJobFilters = {
+      ...(repoFilters ?? {}),
+      countries: effectiveCountries,
+    };
+
+    // The true count of matching jobs, counted in memory from cached rows. The plan
+    // caps how many a seeker may see (null = unlimited), applied to both the headline
+    // total and the loaded page size.
     const candidateIds = candidates.map((c) => c.id);
     const capTier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(capTier);
     const maxResults = capability ? capability.maxJobResults : null;
     const facetRows = await this.cachedFacetRows(candidateIds);
-    const rawTotal = countMatchingRows(facetRows, repoFilters ?? {});
+    const rawTotal = countMatchingRows(facetRows, {
+      ...(repoFilters ?? {}),
+      targetCountries,
+      region,
+    });
     const total = maxResults == null ? rawTotal : Math.min(rawTotal, maxResults);
     const displayLimit =
       maxResults == null
@@ -755,7 +804,7 @@ export class SeekerJobFeedService {
       candidates.map((candidate) =>
         this.matchingService.recommendedJobsForCandidate(candidate.id, {
           includeDismissed: options.includeDismissed ?? false,
-          filters: repoFilters,
+          filters: displayFilters,
           tierOverride: selectedTier,
         }),
       ),

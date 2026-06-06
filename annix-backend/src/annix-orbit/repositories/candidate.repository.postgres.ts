@@ -201,6 +201,10 @@ export class PostgresCandidateRepository
     await this.repository.update(id, { matchTier });
   }
 
+  async updateTargetCountries(id: number, targetCountries: string[]): Promise<void> {
+    await this.repository.update(id, { targetCountries });
+  }
+
   async setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void> {
     await this.repository.update(id, { trialTier, trialEndsAt });
   }

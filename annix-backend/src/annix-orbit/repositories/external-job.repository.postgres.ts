@@ -99,10 +99,16 @@ export class PostgresExternalJobRepository
     return { jobs, total };
   }
 
-  jobsWithEmbedding(categoryPool: string[] | null): Promise<ExternalJob[]> {
+  jobsWithEmbedding(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+  ): Promise<ExternalJob[]> {
     const qb = this.repository.createQueryBuilder("job").where("job.embedding IS NOT NULL");
     if (categoryPool !== null && categoryPool.length > 0) {
       qb.andWhere("job.canonical_category IN (:...categoryPool)", { categoryPool });
+    }
+    if (countries !== null && countries.length > 0) {
+      qb.andWhere("job.country IN (:...countries)", { countries });
     }
     return qb.getMany();
   }

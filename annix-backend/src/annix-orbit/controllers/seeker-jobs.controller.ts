@@ -10,11 +10,12 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Put,
   Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { OrbitDismissReasonService } from "../services/orbit-dismiss-reason.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
@@ -64,6 +65,14 @@ class SelectPlanDto {
   tier: string;
 }
 
+class SetTargetCountriesDto {
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(8, { each: true })
+  countries: string[];
+}
+
 interface SeekerAuthRequest {
   user: { id: number; email: string; userType: string };
 }
@@ -86,9 +95,20 @@ export class SeekerJobsController {
     return this.feedService.activeSourceProviders();
   }
 
+  @Get("target-countries")
+  targetCountries(@Request() req: SeekerAuthRequest) {
+    return this.feedService.targetCountriesForSeeker(req.user.email);
+  }
+
+  @Put("target-countries")
+  setTargetCountries(@Request() req: SeekerAuthRequest, @Body() dto: SetTargetCountriesDto) {
+    return this.feedService.setTargetCountriesForSeeker(req.user.email, dto.countries);
+  }
+
   @Get("facets")
   async facets(
     @Request() req: SeekerAuthRequest,
+    @Query("region") region?: string,
     @Query("province") province?: string,
     @Query("city") city?: string,
     @Query("category") category?: string,
@@ -98,6 +118,7 @@ export class SeekerJobsController {
   ) {
     const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
     const filters = {
+      region: region || null,
       province: province || null,
       city: city || null,
       category: category || null,
@@ -112,6 +133,7 @@ export class SeekerJobsController {
   @Get("recommended")
   async recommended(
     @Request() req: SeekerAuthRequest,
+    @Query("region") region?: string,
     @Query("province") province?: string,
     @Query("city") city?: string,
     @Query("category") category?: string,
@@ -121,6 +143,7 @@ export class SeekerJobsController {
   ) {
     const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
     const filters = {
+      region: region || null,
       province: province || null,
       city: city || null,
       category: category || null,
