@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     default: "Annix Forge",
   },
   description: "Annix Forge customer portal — quote, build, inspect, deliver",
+  icons: { icon: [{ url: "/branding/annix-forge-favicon.svg", type: "image/svg+xml" }] },
 };
 
 export default function CustomerLayout(props: { children: React.ReactNode }) {

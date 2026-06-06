@@ -7,6 +7,7 @@ export const metadata: Metadata = {
     default: "Annix Forge",
   },
   description: "Annix Forge supplier portal — BOQ pricing",
+  icons: { icon: [{ url: "/branding/annix-forge-favicon.svg", type: "image/svg+xml" }] },
 };
 
 export default function SupplierLayout(props: { children: React.ReactNode }) {
