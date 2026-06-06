@@ -37,11 +37,11 @@ import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const ADZUNA_PAGE_SIZE = 50;
-const ADZUNA_PAGES_PER_CATEGORY = 1;
-const ADZUNA_CATEGORIES_PER_DAY = 4;
-const ADZUNA_MAX_DAYS_OLD = 7;
+const ADZUNA_PAGES_PER_CATEGORY = 2;
+const ADZUNA_CATEGORIES_PER_DAY = 8;
+const ADZUNA_MAX_DAYS_OLD = 21;
 const UPSERT_BATCH_SIZE = 50;
-const CRAWL_MAX_PAGES_PER_RUN = 30;
+const CRAWL_MAX_PAGES_PER_RUN = 60;
 const ADZUNA_ZA_CATEGORIES = [
   "accounting-finance-jobs",
   "it-jobs",

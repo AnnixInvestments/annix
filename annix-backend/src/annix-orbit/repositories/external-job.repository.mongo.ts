@@ -20,7 +20,7 @@ import {
   VettingUpdate,
 } from "./external-job.repository";
 
-const EXTERNAL_JOB_RETENTION_CAP = 3000;
+const EXTERNAL_JOB_RETENTION_CAP = 15000;
 
 @Injectable()
 export class MongoExternalJobRepository
