@@ -4,6 +4,7 @@ import {
   Get,
   Inject,
   Logger,
+  Param,
   Post,
   Req,
   UploadedFile,
@@ -24,6 +25,7 @@ import {
 } from "../guards/stock-control-role.guard";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
 import { JobCardImportRow, JobCardImportService } from "../services/job-card-import.service";
+import { JobCardImportJobService } from "../services/job-card-import-job.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { M2CalculationService } from "../services/m2-calculation.service";
 import { WorkflowNotificationService } from "../services/workflow-notification.service";
@@ -42,6 +44,7 @@ export class JobCardImportController {
     private readonly coatingAnalysisService: CoatingAnalysisService,
     private readonly notificationService: WorkflowNotificationService,
     private readonly workflowService: JobCardWorkflowService,
+    private readonly jobCardImportJobService: JobCardImportJobService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -111,6 +114,39 @@ export class JobCardImportController {
       sourceFilePath: sourceFilePaths[0]?.path || null,
       sourceFileName: sourceFilePaths[0]?.name || null,
     };
+  }
+
+  @Post("jobs")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiOperation({
+    summary: "Start a background drawing-import job (extraction runs server-side)",
+  })
+  async createImportJob(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
+    const job = await this.jobCardImportJobService.createJob(
+      req.user.companyId,
+      req.user.id ?? null,
+      file,
+    );
+    return { jobId: job.id, status: job.status };
+  }
+
+  @Get("jobs/active")
+  @ApiOperation({ summary: "List the current user's active / unacknowledged import jobs" })
+  async activeImportJobs(@Req() req: any) {
+    return this.jobCardImportJobService.activeJobs(req.user.companyId, req.user.id ?? null);
+  }
+
+  @Get("jobs/:id")
+  @ApiOperation({ summary: "Get the status + result of a background import job" })
+  async importJob(@Param("id") id: string, @Req() req: any) {
+    return this.jobCardImportJobService.job(req.user.companyId, Number(id));
+  }
+
+  @Post("jobs/:id/ack")
+  @ApiOperation({ summary: "Acknowledge (dismiss) a completed import job" })
+  async acknowledgeImportJob(@Param("id") id: string, @Req() req: any) {
+    await this.jobCardImportJobService.acknowledge(req.user.companyId, Number(id));
+    return { acknowledged: true };
   }
 
   @Get("mapping")

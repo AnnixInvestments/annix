@@ -96,6 +96,7 @@ import { JobCardBackgroundCompletion } from "./entities/job-card-background-comp
 import { JobCardDataBook } from "./entities/job-card-data-book.entity";
 import { JobCardDocument } from "./entities/job-card-document.entity";
 import { JobCardExtractionCorrection } from "./entities/job-card-extraction-correction.entity";
+import { JobCardImportJob } from "./entities/job-card-import-job.entity";
 import { JobCardImportMapping } from "./entities/job-card-import-mapping.entity";
 import { JobCardJobFile } from "./entities/job-card-job-file.entity";
 import { JobCardLineItem } from "./entities/job-card-line-item.entity";
@@ -281,6 +282,9 @@ import { PostgresJobCardDocumentRepository } from "./repositories/job-card-docum
 import { JobCardExtractionCorrectionRepository } from "./repositories/job-card-extraction-correction.repository";
 import { MongoJobCardExtractionCorrectionRepository } from "./repositories/job-card-extraction-correction.repository.mongo";
 import { PostgresJobCardExtractionCorrectionRepository } from "./repositories/job-card-extraction-correction.repository.postgres";
+import { JobCardImportJobRepository } from "./repositories/job-card-import-job.repository";
+import { MongoJobCardImportJobRepository } from "./repositories/job-card-import-job.repository.mongo";
+import { PostgresJobCardImportJobRepository } from "./repositories/job-card-import-job.repository.postgres";
 import { JobCardImportMappingRepository } from "./repositories/job-card-import-mapping.repository";
 import { MongoJobCardImportMappingRepository } from "./repositories/job-card-import-mapping.repository.mongo";
 import { PostgresJobCardImportMappingRepository } from "./repositories/job-card-import-mapping.repository.postgres";
@@ -432,6 +436,7 @@ import { JobCardCoatingAnalysisSchema } from "./schemas/job-card-coating-analysi
 import { JobCardDataBookSchema } from "./schemas/job-card-data-book.schema";
 import { JobCardDocumentSchema } from "./schemas/job-card-document.schema";
 import { JobCardExtractionCorrectionSchema } from "./schemas/job-card-extraction-correction.schema";
+import { JobCardImportJobSchema } from "./schemas/job-card-import-job.schema";
 import { JobCardImportMappingSchema } from "./schemas/job-card-import-mapping.schema";
 import { JobCardJobFileSchema } from "./schemas/job-card-job-file.schema";
 import { JobCardLineItemSchema } from "./schemas/job-card-line-item.schema";
@@ -505,6 +510,7 @@ import { InvoiceExtractionService } from "./services/invoice-extraction.service"
 import { ItemIdentificationService } from "./services/item-identification.service";
 import { JobCardService } from "./services/job-card.service";
 import { JobCardImportService } from "./services/job-card-import.service";
+import { JobCardImportJobService } from "./services/job-card-import-job.service";
 import { JobCardPdfService } from "./services/job-card-pdf.service";
 import { JobCardVersionService } from "./services/job-card-version.service";
 import { JobCardWorkflowService } from "./services/job-card-workflow.service";
@@ -588,6 +594,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
               name: "JobCardExtractionCorrection",
               schema: JobCardExtractionCorrectionSchema,
             },
+            { name: "JobCardImportJob", schema: JobCardImportJobSchema },
             { name: "JobCardImportMapping", schema: JobCardImportMappingSchema },
             { name: "JobCardJobFile", schema: JobCardJobFileSchema },
             { name: "JobCardLineItem", schema: JobCardLineItemSchema },
@@ -674,6 +681,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
             StockItem,
             JobCard,
             StockAllocation,
+            JobCardImportJob,
             JobCardImportMapping,
             JobCardLineItem,
             DeliveryNote,
@@ -826,6 +834,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ImportService,
     StockTakeReconciliationService,
     JobCardImportService,
+    JobCardImportJobService,
     M2CalculationService,
     CoatingAnalysisService,
     CompanyEmailService,
@@ -1011,6 +1020,11 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
       JobCardExtractionCorrectionRepository,
       PostgresJobCardExtractionCorrectionRepository,
       MongoJobCardExtractionCorrectionRepository,
+    ),
+    repositoryProvider(
+      JobCardImportJobRepository,
+      PostgresJobCardImportJobRepository,
+      MongoJobCardImportJobRepository,
     ),
     repositoryProvider(
       JobCardImportMappingRepository,

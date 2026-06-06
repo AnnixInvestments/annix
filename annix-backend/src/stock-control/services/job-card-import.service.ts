@@ -596,14 +596,12 @@ export class JobCardImportService {
   // run through drawing extraction), and run drawing extraction on the actual
   // drawings — so the tank/pipe lines land on the job card instead of an empty
   // grid + "Map Columns".
-  private async parseEmlFile(
+  async splitEmlAttachments(
     buffer: Buffer,
     filename?: string,
   ): Promise<{
-    grid: string[][];
-    documentNumber?: string;
-    drawingRows?: JobCardImportRow[];
-    qualityDocuments?: string[];
+    drawings: { buffer: Buffer; filename: string }[];
+    qualityDocuments: string[];
   }> {
     const { simpleParser } = await import("mailparser");
     const parsed = await simpleParser(buffer);
@@ -615,16 +613,32 @@ export class JobCardImportService {
       .map((a) => ({ buffer: a.content as Buffer, filename: a.filename || "attachment.pdf" }));
 
     const drawings = pdfAttachments.filter((a) => !this.isQualityDocument(a.filename));
-    const qualityDocs = pdfAttachments
+    const qualityDocuments = pdfAttachments
       .filter((a) => this.isQualityDocument(a.filename))
       .map((a) => a.filename);
-    const qualityDocuments = qualityDocs.length > 0 ? qualityDocs : undefined;
 
-    if (qualityDocs.length > 0) {
+    if (qualityDocuments.length > 0) {
       this.logger.log(
-        `Email "${filename}" — ${qualityDocs.length} quality document(s) detected, not extracted as drawings: ${qualityDocs.join(", ")}`,
+        `Email "${filename}" — ${qualityDocuments.length} quality document(s) detected, not extracted as drawings: ${qualityDocuments.join(", ")}`,
       );
     }
+    return { drawings, qualityDocuments };
+  }
+
+  private async parseEmlFile(
+    buffer: Buffer,
+    filename?: string,
+  ): Promise<{
+    grid: string[][];
+    documentNumber?: string;
+    drawingRows?: JobCardImportRow[];
+    qualityDocuments?: string[];
+  }> {
+    const { drawings, qualityDocuments: qualityDocs } = await this.splitEmlAttachments(
+      buffer,
+      filename,
+    );
+    const qualityDocuments = qualityDocs.length > 0 ? qualityDocs : undefined;
 
     if (drawings.length === 0) {
       this.logger.warn(`Email "${filename}" has no drawing PDF attachments to import`);
