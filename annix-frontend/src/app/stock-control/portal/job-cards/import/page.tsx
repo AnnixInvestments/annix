@@ -2372,6 +2372,7 @@ export default function JobCardImportPage() {
                                       const liQuantity = li.quantity;
                                       const liJtNo = li.jtNo;
                                       const liNotes = li.notes;
+                                      const liExtractedM2 = li.m2;
                                       const m2rRaw = liItemDescription
                                         ? m2Results[liItemDescription]
                                         : null;
@@ -2407,8 +2408,12 @@ export default function JobCardImportPage() {
                                                   const m2rTotal = m2r ? m2r.totalM2 : null;
                                                   const autoVal =
                                                     m2rExternal || m2rTotal || undefined;
+                                                  // Prefer a manual override, then a calculate-m2
+                                                  // result, then the area extracted from the drawing.
+                                                  const extractedVal =
+                                                    autoVal != null ? autoVal : liExtractedM2;
                                                   const displayVal =
-                                                    manualVal != null ? manualVal : autoVal;
+                                                    manualVal != null ? manualVal : extractedVal;
                                                   return displayVal != null ? (
                                                     <span
                                                       className={`font-medium cursor-pointer ${manualVal != null ? "text-blue-700" : "text-teal-700"}`}

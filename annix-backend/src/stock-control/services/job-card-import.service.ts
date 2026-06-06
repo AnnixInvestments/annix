@@ -875,56 +875,83 @@ export class JobCardImportService {
     const lineItems: LineItemImportRow[] = [];
     const sections = Array.isArray(tankData.sections) ? tankData.sections : [];
 
+    // A lined / coated assembly must always yield at least one R/L (and, when
+    // coated, one COAT) line — even when the AI did not return per-section or
+    // total areas — so a complex item is never imported as an empty job card.
+    const isLined = Boolean(tankData.liningType);
+    const isCoated = Boolean(tankData.coatingSystem || tankData.surfacePrepStandard);
+    const roundArea = (value: number): number => Math.round(value * 100) / 100;
+    const positiveArea = (value: unknown): number | undefined =>
+      typeof value === "number" && value > 0 ? roundArea(value) : undefined;
+    // Rough developed-surface estimate from the overall bounding box (lateral
+    // walls + one base) used only as an m² fallback when no area was extracted.
+    const assemblyAreaEstimateM2 = (): number | undefined => {
+      const length = tankData.overallLengthMm;
+      const width = tankData.overallWidthMm;
+      const height = tankData.overallHeightMm;
+      if (!length || !width || !height) return undefined;
+      const lateralMm2 = 2 * (length + width) * height;
+      const baseMm2 = length * width;
+      return roundArea((lateralMm2 + baseMm2) / 1_000_000);
+    };
+
+    const coatingDescSuffix = [
+      tankData.coatingSystem || null,
+      tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
+    ].filter(Boolean);
+
     if (sections.length > 0) {
       sections.forEach((section: any) => {
         const sectionLabel = `Section ${section.mark}${section.description ? ` - ${section.description}` : ""}`;
+        const liningArea = positiveArea(section.liningAreaM2);
+        const coatingArea = positiveArea(section.coatingAreaM2);
 
-        if (section.liningAreaM2 && section.liningAreaM2 > 0) {
+        if (liningArea != null || isLined) {
           const desc = [`${assemblyLabel} ${sectionLabel} - R/L`, liningSpec || null]
             .filter(Boolean)
             .join(" - ");
-
           lineItems.push({
             itemCode: `R/L ${section.mark}`,
             itemDescription: desc,
             quantity: "1",
-            m2: Math.round(section.liningAreaM2 * 100) / 100,
+            m2: liningArea,
           });
         }
 
-        if (section.coatingAreaM2 && section.coatingAreaM2 > 0) {
-          const desc = [
-            `${assemblyLabel} ${sectionLabel} - External Coating`,
-            tankData.coatingSystem || null,
-            tankData.surfacePrepStandard ? `Prep: ${tankData.surfacePrepStandard}` : null,
-          ]
+        if (coatingArea != null || isCoated) {
+          const desc = [`${assemblyLabel} ${sectionLabel} - External Coating`, ...coatingDescSuffix]
             .filter(Boolean)
             .join(" - ");
-
           lineItems.push({
             itemCode: `COAT ${section.mark}`,
             itemDescription: desc,
             quantity: "1",
-            m2: Math.round(section.coatingAreaM2 * 100) / 100,
+            m2: coatingArea,
           });
         }
       });
     } else {
-      if (tankData.liningAreaM2 && tankData.liningAreaM2 > 0) {
+      const liningArea = positiveArea(tankData.liningAreaM2);
+      const coatingArea = positiveArea(tankData.coatingAreaM2);
+
+      if (liningArea != null || isLined) {
         lineItems.push({
           itemCode: drawingRef || "R/L",
-          itemDescription: `${assemblyLabel} Internal Lining - ${liningSpec}`,
+          itemDescription: `${assemblyLabel} Internal Lining${liningSpec ? ` - ${liningSpec}` : ""}`,
           quantity: "1",
-          m2: Math.round(tankData.liningAreaM2 * 100) / 100,
+          m2: liningArea ?? assemblyAreaEstimateM2(),
         });
       }
 
-      if (tankData.coatingAreaM2 && tankData.coatingAreaM2 > 0) {
+      if (coatingArea != null || isCoated) {
+        const desc = [`${assemblyLabel} External Coating`, ...coatingDescSuffix]
+          .filter(Boolean)
+          .join(" - ");
         lineItems.push({
           itemCode: drawingRef || "COAT",
-          itemDescription: `${assemblyLabel} External Coating`,
+          itemDescription: desc,
           quantity: "1",
-          m2: Math.round(tankData.coatingAreaM2 * 100) / 100,
+          m2: coatingArea ?? assemblyAreaEstimateM2(),
         });
       }
     }
