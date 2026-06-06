@@ -3,8 +3,8 @@ import CustomerLayoutClient from "./CustomerLayoutClient";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | Annix Customer",
-    default: "Annix Customer",
+    template: "%s | Annix Forge",
+    default: "Annix Forge",
   },
   description: "Annix Forge customer portal — quote, build, inspect, deliver",
 };
