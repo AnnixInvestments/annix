@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { type PointerEvent as ReactPointerEvent, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { nowMillis } from "@/app/lib/datetime";
 import { useBranding } from "@/app/lib/query/hooks";
@@ -87,6 +87,14 @@ export default function ExtractionProgressModalView(props: {
 }) {
   const { state, onClose } = props;
   const [tickMs, setTickMs] = useState(0);
+  const [minimized, setMinimized] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const dragState = useRef<{
+    startX: number;
+    startY: number;
+    baseX: number;
+    baseY: number;
+  } | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // One standard branded popup for every generic Annix app/profile: navbar
   // colour + logo lockup + accent bar, pulled live from the branding page.
@@ -113,6 +121,15 @@ export default function ExtractionProgressModalView(props: {
       }
     };
   }, [state]);
+
+  // Reset minimize + drag position only when a brand-new extraction starts
+  // (startedAt changes). A poll-driven updateExtraction keeps the same startedAt,
+  // so the user's minimized state + dragged position persist through updates.
+  const startedAtKey = state ? state.startedAt : null;
+  useEffect(() => {
+    setMinimized(false);
+    setDragOffset({ x: 0, y: 0 });
+  }, [startedAtKey]);
 
   if (!state) return null;
   const docRef = globalThis.document;
@@ -161,6 +178,87 @@ export default function ExtractionProgressModalView(props: {
       ? `${Math.floor(batchRemainingSec / 60)}m ${batchRemainingSec % 60}s`
       : `${batchRemainingSec}s`;
 
+  const handleDragStart = (event: ReactPointerEvent<HTMLDivElement>) => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    dragState.current = {
+      startX: event.clientX,
+      startY: event.clientY,
+      baseX: dragOffset.x,
+      baseY: dragOffset.y,
+    };
+  };
+  const handleDragMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const active = dragState.current;
+    if (!active) return;
+    setDragOffset({
+      x: active.baseX + (event.clientX - active.startX),
+      y: active.baseY + (event.clientY - active.startY),
+    });
+  };
+  const handleDragEnd = () => {
+    dragState.current = null;
+  };
+  const stopDragStart = (event: ReactPointerEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+  };
+
+  // Minimized: a small draggable pill in the corner with no backdrop, so the
+  // user can keep working while a long (background-safe) extraction runs. The
+  // header is the drag handle; click ▢ to restore the full popup.
+  if (minimized) {
+    return createPortal(
+      <div
+        className="fixed bottom-4 right-4 z-[9999] w-72 select-none print:hidden"
+        style={{ transform: `translate(${dragOffset.x}px, ${dragOffset.y}px)` }}
+      >
+        <div className="rounded-lg bg-white shadow-xl ring-1 ring-black/10 overflow-hidden">
+          <div
+            className="flex items-center justify-between gap-2 px-3 py-2 text-white cursor-move touch-none"
+            style={{ backgroundColor: navbarColor }}
+            onPointerDown={handleDragStart}
+            onPointerMove={handleDragMove}
+            onPointerUp={handleDragEnd}
+          >
+            <span className="text-xs font-semibold truncate">
+              {percent}% · {state.label}
+            </span>
+            <span className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onPointerDown={stopDragStart}
+                onClick={() => setMinimized(false)}
+                aria-label="Expand"
+                title="Expand"
+                className="text-sm leading-none text-white/80 transition-colors hover:text-white"
+              >
+                ▢
+              </button>
+              {canClose ? (
+                <button
+                  type="button"
+                  onPointerDown={stopDragStart}
+                  onClick={onClose}
+                  aria-label="Close"
+                  title="Close — keeps running"
+                  className="text-lg leading-none text-white/80 transition-colors hover:text-white"
+                >
+                  ×
+                </button>
+              ) : null}
+            </span>
+          </div>
+          <div className="h-1.5 bg-gray-100">
+            <div
+              className="h-full transition-all"
+              style={{ width: `${percent}%`, backgroundColor: accentColor }}
+            />
+          </div>
+        </div>
+      </div>,
+      docRef.body,
+    );
+  }
+
   return createPortal(
     <div
       className="fixed inset-0 z-[9999] flex items-center justify-center p-4"
@@ -196,6 +294,15 @@ export default function ExtractionProgressModalView(props: {
                 {elapsedSeconds}s elapsed
                 {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
               </span>
+              <button
+                type="button"
+                onClick={() => setMinimized(true)}
+                aria-label="Minimize"
+                title="Minimize"
+                className="text-xl leading-none text-white/70 transition-colors hover:text-white"
+              >
+                –
+              </button>
               {canClose ? (
                 <button
                   type="button"
@@ -222,9 +329,20 @@ export default function ExtractionProgressModalView(props: {
               ) : null}
               <span className="text-xs font-semibold uppercase tracking-wide">{styles.label}</span>
             </span>
-            <span className="text-[10px]">
-              {elapsedSeconds}s elapsed
-              {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
+            <span className="flex items-center gap-2 text-[10px]">
+              <span>
+                {elapsedSeconds}s elapsed
+                {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
+              </span>
+              <button
+                type="button"
+                onClick={() => setMinimized(true)}
+                aria-label="Minimize"
+                title="Minimize"
+                className="text-sm leading-none opacity-70 transition-opacity hover:opacity-100"
+              >
+                –
+              </button>
             </span>
           </div>
         )}
