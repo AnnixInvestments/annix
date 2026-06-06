@@ -9,7 +9,8 @@ export const COUNTRY_LABELS: Record<string, string> = {
 };
 
 export function countryLabel(code: string): string {
-  return COUNTRY_LABELS[code] ?? code.toUpperCase();
+  const label = COUNTRY_LABELS[code];
+  return label ?? code.toUpperCase();
 }
 
 export interface SeekerFilterState {
@@ -32,6 +33,16 @@ interface SeekerJobFiltersProps {
   categories: Array<{ key: string; label: string }>;
 }
 
+const RESET_STATE: SeekerFilterState = {
+  search: "",
+  provider: "all",
+  region: "",
+  province: "",
+  city: "",
+  category: "",
+  minSalary: "",
+};
+
 export function SeekerJobFilters(props: SeekerJobFiltersProps) {
   const state = props.state;
   const cityOptions = props.cities;
@@ -41,8 +52,28 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
     props.onChange({ ...state, ...patch });
   };
 
+  const filtersActive =
+    state.search !== "" ||
+    state.provider !== "all" ||
+    state.region !== "" ||
+    state.province !== "" ||
+    state.city !== "" ||
+    state.category !== "" ||
+    state.minSalary !== "";
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+      {filtersActive && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => props.onChange(RESET_STATE)}
+            className="text-sm font-medium text-orange-600 hover:text-orange-700"
+          >
+            Reset all filters
+          </button>
+        </div>
+      )}
       <input
         type="search"
         aria-label="Search jobs by title, company, or location"

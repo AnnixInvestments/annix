@@ -616,9 +616,23 @@ export class MongoExternalJobRepository
       .deleteMany({ expiresAt: { $ne: null, $lte: now } })
       .exec();
 
-    const trimmed = await this.trimToNewest(EXTERNAL_JOB_RETENTION_CAP);
+    const cap = await this.configuredRetentionCap();
+    const trimmed = await this.trimToNewest(cap);
 
     return (deletedExpired.deletedCount ?? 0) + trimmed;
+  }
+
+  // The retention cap is admin-configurable per environment (stored in this
+  // env's Orbit DB by the job-market admin page); falls back to the default.
+  private async configuredRetentionCap(): Promise<number> {
+    const nativeDb = this.model.db.db;
+    if (!nativeDb) return EXTERNAL_JOB_RETENTION_CAP;
+    const doc = await nativeDb
+      .collection<{ _id: string; externalJobRetentionCap?: number }>("cv_assistant_orbit_settings")
+      .findOne({ _id: "default" });
+    return typeof doc?.externalJobRetentionCap === "number"
+      ? doc.externalJobRetentionCap
+      : EXTERNAL_JOB_RETENTION_CAP;
   }
 
   private async trimToNewest(cap: number): Promise<number> {

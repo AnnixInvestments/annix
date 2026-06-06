@@ -1096,6 +1096,21 @@ class AdminApiClient {
     return this.request("/admin/annix-orbit/job-market/stats");
   }
 
+  async orbitClusterUsage(): Promise<OrbitClusterUsage> {
+    return this.request("/admin/annix-orbit/job-market/cluster-usage");
+  }
+
+  async orbitRetentionCap(): Promise<{ cap: number }> {
+    return this.request("/admin/annix-orbit/job-market/retention-cap");
+  }
+
+  async setOrbitRetentionCap(cap: number): Promise<{ cap: number }> {
+    return this.request("/admin/annix-orbit/job-market/retention-cap", {
+      method: "PUT",
+      body: JSON.stringify({ cap }),
+    });
+  }
+
   async orbitJobMarketDuplicates(limit?: number): Promise<DuplicateJobPair[]> {
     const query = limit ? `?limit=${limit}` : "";
     return this.request(`/admin/annix-orbit/job-market/duplicates${query}`);
@@ -1459,6 +1474,14 @@ export interface OrbitUserUpdateInput {
   lastName?: string | null;
   status?: string | null;
   tier?: string | null;
+}
+
+export interface OrbitClusterUsage {
+  capMb: number;
+  totalMb: number;
+  freeMb: number;
+  percentUsed: number;
+  databases: Array<{ name: string; logicalMb: number }>;
 }
 
 export interface OrbitSeekerSummary {

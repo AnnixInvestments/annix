@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminApiClient,
+  type OrbitClusterUsage,
   type OrbitSeekerDetail,
   type OrbitSeekerMatchTier,
   type OrbitSeekerSummary,
@@ -66,6 +67,32 @@ export function useAdminOrbitExternalJobs(params?: {
         limit: params?.limit,
       }),
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useAdminOrbitClusterUsage() {
+  return useQuery<OrbitClusterUsage>({
+    queryKey: adminKeys.orbitJobMarket.clusterUsage(),
+    queryFn: () => adminApiClient.orbitClusterUsage(),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useAdminOrbitRetentionCap() {
+  return useQuery<{ cap: number }>({
+    queryKey: adminKeys.orbitJobMarket.retentionCap(),
+    queryFn: () => adminApiClient.orbitRetentionCap(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAdminSetOrbitRetentionCap() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (cap: number) => adminApiClient.setOrbitRetentionCap(cap),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.retentionCap() });
+    },
   });
 }
 

@@ -10,6 +10,7 @@ import type {
 import { fromISO, now } from "@/app/lib/datetime";
 import { useAdminDashboard, useAdminFeedback, useScheduledJobs } from "@/app/lib/query/hooks";
 import { useAdminAttention } from "@/app/lib/query/hooks/admin/useAdminAttention";
+import { ClusterUsagePanel } from "./components/ClusterUsagePanel";
 
 function formatRelativeDate(dateString: string) {
   const date = fromISO(dateString);
@@ -428,6 +429,8 @@ export default function AdminDashboardPage() {
           Refresh
         </button>
       </div>
+
+      <ClusterUsagePanel />
 
       {rfqAttention && rfqAttention.total > 0 && <NeedsAttentionPanel app={rfqAttention} />}
 

@@ -25,6 +25,7 @@ import { AddSourceForm } from "./components/AddSourceForm";
 import { FindDuplicatesModal } from "./components/FindDuplicatesModal";
 import { IngestionScheduleControl } from "./components/IngestionScheduleControl";
 import { JobCard } from "./components/JobCard";
+import { RetentionCapControl } from "./components/RetentionCapControl";
 import { SourceCard } from "./components/SourceCard";
 
 // Background crawl/DPSA ingestion returns immediately; we keep the branded
@@ -404,8 +405,8 @@ export default function AdminOrbitJobMarketPage() {
           >
             ← Orbit admin hub
           </Link>
-          <h1 className="text-2xl font-bold text-gray-900">Annix Orbit — Job Market</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-orange-500">Annix Orbit — Job Market</h1>
+          <p className="text-orange-400 mt-1">
             Manage platform-global job-board feeds that populate Browse Jobs for every seeker.
           </p>
         </div>
@@ -430,15 +431,15 @@ export default function AdminOrbitJobMarketPage() {
         </div>
       )}
 
-      <div className="border-b border-gray-200">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
             type="button"
             onClick={() => setActiveTab("sources")}
             className={`py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
               activeTab === "sources"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-orange-500 text-orange-500"
+                : "border-transparent text-orange-300 hover:text-orange-400 hover:border-orange-300"
             }`}
           >
             Data Sources ({sources.length})
@@ -448,29 +449,20 @@ export default function AdminOrbitJobMarketPage() {
             onClick={() => setActiveTab("jobs")}
             className={`py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
               activeTab === "jobs"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-orange-500 text-orange-500"
+                : "border-transparent text-orange-300 hover:text-orange-400 hover:border-orange-300"
             }`}
           >
             Ingested Jobs ({jobsTotal})
           </button>
         </nav>
-      </div>
-
-      {activeTab === "sources" && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {backfillSummary && (
-              <span className="mr-auto text-sm text-gray-600">{backfillSummary}</span>
-            )}
-            {categorizeSummary && (
-              <span className="mr-auto text-sm text-gray-600">{categorizeSummary}</span>
-            )}
+        {activeTab === "sources" && (
+          <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
             <button
               type="button"
               onClick={handleBackfillCategories}
               disabled={isCategorizing}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
               title="Classify any jobs missing a category (rule-based, then AI for the rest) so the seeker category filter is complete"
             >
               {isCategorizing ? "Categorizing…" : "Backfill Categories"}
@@ -479,7 +471,7 @@ export default function AdminOrbitJobMarketPage() {
               type="button"
               onClick={handleBackfillEmbeddings}
               disabled={isBackfilling}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
               title="Embed any CVs and jobs that are missing an embedding so Nix can match them"
             >
               {isBackfilling ? "Backfilling…" : "Backfill Embeddings"}
@@ -487,7 +479,7 @@ export default function AdminOrbitJobMarketPage() {
             <button
               type="button"
               onClick={() => setShowDuplicates(true)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
             >
               Find Duplicates
             </button>
@@ -499,6 +491,17 @@ export default function AdminOrbitJobMarketPage() {
               Add Source
             </button>
           </div>
+        )}
+      </div>
+
+      {activeTab === "sources" && (
+        <div className="space-y-4">
+          {(backfillSummary || categorizeSummary) && (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+              {backfillSummary && <span>{backfillSummary}</span>}
+              {categorizeSummary && <span>{categorizeSummary}</span>}
+            </div>
+          )}
 
           {showAddSource && (
             <AddSourceForm
@@ -509,6 +512,8 @@ export default function AdminOrbitJobMarketPage() {
               onCancel={() => setShowAddSource(false)}
             />
           )}
+
+          <RetentionCapControl />
 
           <IngestionScheduleControl />
 
