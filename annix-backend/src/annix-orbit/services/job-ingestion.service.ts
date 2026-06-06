@@ -106,7 +106,7 @@ export class JobIngestionService {
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
+  @Cron(CronExpression.EVERY_6_HOURS, { name: "annix-orbit:poll-job-sources" })
   async pollSources(): Promise<void> {
     if (!isAnnixOrbitCronEnabled()) return;
     if (this.pollInFlight) {
