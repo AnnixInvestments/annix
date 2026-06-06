@@ -33,6 +33,11 @@ export interface ShowExtractionOptions {
   label: string;
   estimatedDurationMs: number;
   itemCount?: number;
+  // When true, the work runs server-side and survives the client closing — the
+  // footer says it's safe to leave instead of "please leave this window open".
+  // Only set this for genuinely backgrounded (server-side) operations, NOT for
+  // frontend-orchestrated bulk loops that stop if the tab closes.
+  backgroundSafe?: boolean;
   // Optional per-call branding override, for apps whose brand assets live
   // outside the global useBranding system (e.g. Stock Control's per-company
   // profile branding). When set, the modal header uses this logo / colours /
@@ -111,7 +116,7 @@ export function ExtractionProgressProvider(props: { children: React.ReactNode })
       value={{ showExtraction, hideExtraction, updateExtraction }}
     >
       {children}
-      {state && <ExtractionProgressModalView state={state} />}
+      {state && <ExtractionProgressModalView state={state} onClose={hideExtraction} />}
     </ExtractionProgressContext.Provider>
   );
 }

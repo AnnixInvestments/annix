@@ -81,8 +81,11 @@ const BRAND_STYLES: Record<ExtractionBrand, BrandStyle> = {
   },
 };
 
-export default function ExtractionProgressModalView(props: { state: ExtractionState | null }) {
-  const { state } = props;
+export default function ExtractionProgressModalView(props: {
+  state: ExtractionState | null;
+  onClose?: () => void;
+}) {
+  const { state, onClose } = props;
   const [tickMs, setTickMs] = useState(0);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // One standard branded popup for every generic Annix app/profile: navbar
@@ -138,6 +141,7 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
   const elapsedSeconds = Math.floor(elapsedMs / 1000);
   const overran = elapsedMs > totalMs;
   const itemCount = state.itemCount;
+  const canClose = !!state.backgroundSafe && !!onClose;
 
   // Batch-level progress — only rendered when more than one document
   // is queued. Combines the current doc's intra-doc progress with
@@ -187,10 +191,22 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
             ) : (
               <BrandNavLogo brand={state.brand} isOrbit={state.brand === "annix-orbit"} />
             )}
-            <span className="text-xs text-white/80">
-              {elapsedSeconds}s elapsed
-              {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-white/80">
+                {elapsedSeconds}s elapsed
+                {!overran && remainingSeconds > 0 ? ` · ~${remainingSeconds}s left` : ""}
+              </span>
+              {canClose ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  aria-label="Close"
+                  className="text-xl leading-none text-white/70 transition-colors hover:text-white"
+                >
+                  ×
+                </button>
+              ) : null}
+            </div>
           </div>
         ) : (
           <div
@@ -235,8 +251,20 @@ export default function ExtractionProgressModalView(props: { state: ExtractionSt
           <p className="mt-2 text-sm text-gray-500">
             {overran
               ? "Taking longer than estimated — still working…"
-              : `${percent}% — please leave this window open`}
+              : state.backgroundSafe
+                ? `${percent}% — you can safely close this; it keeps running on our servers`
+                : `${percent}% — please leave this window open`}
           </p>
+
+          {canClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-4 w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+            >
+              Close window — it keeps running in the background
+            </button>
+          ) : null}
 
           {showBatch && batch && (
             <div className="mt-4 pt-3 border-t border-gray-100">
