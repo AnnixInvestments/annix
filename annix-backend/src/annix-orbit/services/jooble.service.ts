@@ -20,10 +20,22 @@ interface JoobleApiResponse {
 }
 
 const JOOBLE_BASE_URL = "https://jooble.org/api";
-const JOOBLE_LOCATION = "South Africa";
+const JOOBLE_DEFAULT_LOCATION = "South Africa";
 const JOOBLE_PAGE_SIZE = 50;
 const JOOBLE_MAX_PAGES = 5;
 const JOOBLE_TARGET = 200;
+
+// Jooble's `location` is free-text; map a source country code to the country name
+// it expects so a Jooble-gb source searches UK jobs.
+const JOOBLE_LOCATION_BY_COUNTRY: Record<string, string> = {
+  za: "South Africa",
+  gb: "United Kingdom",
+};
+
+export function joobleLocationForCountry(country: string | null | undefined): string {
+  if (!country) return JOOBLE_DEFAULT_LOCATION;
+  return JOOBLE_LOCATION_BY_COUNTRY[country.toLowerCase()] ?? JOOBLE_DEFAULT_LOCATION;
+}
 
 @Injectable()
 export class JoobleService {
@@ -31,9 +43,10 @@ export class JoobleService {
 
   async searchJobs(
     apiKey: string,
-    options: { keywords?: string; resultsPerPage?: number } = {},
+    options: { keywords?: string; resultsPerPage?: number; location?: string } = {},
   ): Promise<{ jobs: IngestedJobResult[]; totalCount: number }> {
     const target = options.resultsPerPage ?? JOOBLE_TARGET;
+    const location = options.location ?? JOOBLE_DEFAULT_LOCATION;
     const seenIds = new Set<string>();
     const collected: IngestedJobResult[] = [];
 
@@ -45,7 +58,7 @@ export class JoobleService {
         headers: { "Content-Type": "application/json", Accept: "application/json" },
         body: JSON.stringify({
           keywords: options.keywords ?? "",
-          location: JOOBLE_LOCATION,
+          location,
           page: String(page),
         }),
       });

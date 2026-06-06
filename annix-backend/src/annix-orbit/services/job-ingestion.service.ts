@@ -32,7 +32,7 @@ import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
 import { JobCategorizationService } from "./job-categorization.service";
 import { JobVettingService } from "./job-vetting.service";
-import { JoobleService } from "./jooble.service";
+import { JoobleService, joobleLocationForCountry } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -842,6 +842,7 @@ export class JobIngestionService {
       source.requestsToday += 1;
       const { jobs } = await this.joobleService.searchJobs(source.apiKeyEncrypted!, {
         keywords: category ?? undefined,
+        location: joobleLocationForCountry(country),
       });
       return jobs;
     }
