@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import type { JobCardImportJob } from "@/app/lib/api/stockControlApi";
 import { useAcknowledgeImportJob, useActiveImportJobs } from "@/app/lib/query/hooks";
@@ -102,21 +103,36 @@ function ImportJobCard(props: {
 
 export function ImportJobsBanner() {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { colors } = useStockControlBranding();
   const accent = colors.accent;
   const navbar = colors.background;
   const { data: jobs } = useActiveImportJobs(true);
   const ackMutation = useAcknowledgeImportJob();
+  // Locally-dismissed jobs vanish immediately on ×: the active-jobs poll stops
+  // once nothing is processing, so a completed job would otherwise linger until
+  // a refetch that never comes.
+  const [dismissedIds, setDismissedIds] = useState<number[]>([]);
 
   const docRef = globalThis.document;
   if (!docRef) return null;
-  const activeJobs = jobs ? jobs : [];
+  // Suppress the banner card for a job the user is already viewing on the import
+  // page (its own popup / minimized pill owns the display there) — otherwise the
+  // same job shows twice (sticky banner + movable pill).
+  const onImportPage = pathname === "/stock-control/portal/job-cards/import";
+  const pageJobId = onImportPage ? searchParams.get("jobId") : null;
+  const allJobs = jobs ? jobs : [];
+  const activeJobs = allJobs.filter(
+    (job) => String(job.id) !== pageJobId && !dismissedIds.includes(job.id),
+  );
   if (activeJobs.length === 0) return null;
 
   const reviewJob = (job: JobCardImportJob) => {
     router.push(`/stock-control/portal/job-cards/import?jobId=${job.id}`);
   };
   const dismissJob = (job: JobCardImportJob) => {
+    setDismissedIds((prev) => (prev.includes(job.id) ? prev : [...prev, job.id]));
     ackMutation.mutate(job.id);
   };
 
