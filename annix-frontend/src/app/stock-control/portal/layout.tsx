@@ -7,6 +7,7 @@ import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
 import { ChatPanel } from "../components/ChatPanel";
 import { HubBreadcrumb } from "../components/HubBreadcrumb";
+import { ImportJobsBanner } from "../components/ImportJobsBanner";
 import { StockControlHeader } from "../components/StockControlHeader";
 import { ALL_NAV_ITEMS, isNavItemAllowedForRole } from "../config/navItems";
 import { ErrorModalProvider } from "../context/ErrorModalContext";
@@ -209,6 +210,9 @@ function PortalContent({ children }: { children: React.ReactNode }) {
                       portalContext: "general",
                     }}
                   />
+                </div>
+                <div className="print:hidden">
+                  <ImportJobsBanner />
                 </div>
               </div>
             </GlossaryProvider>

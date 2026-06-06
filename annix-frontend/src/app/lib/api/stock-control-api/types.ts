@@ -2394,6 +2394,30 @@ export interface JobCardImportUploadResponse {
   sourceFileName?: string | null;
 }
 
+export interface JobCardImportJob {
+  id: number;
+  companyId: number;
+  status: "processing" | "completed" | "failed";
+  fileName: string;
+  totalDocuments: number;
+  completedDocuments: number;
+  currentDocumentName: string | null;
+  drawingRows: JobCardImportRow[];
+  qualityDocuments: string[];
+  documentNumber: string | null;
+  sourceFilePath: string | null;
+  sourceFileName: string | null;
+  error: string | null;
+  acknowledged: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateImportJobResponse {
+  jobId: number;
+  status: string;
+}
+
 export interface CustomerPurchaseOrderItem {
   id: number;
   cpoId: number;

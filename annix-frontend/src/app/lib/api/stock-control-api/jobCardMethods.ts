@@ -3,9 +3,11 @@ import { StockControlApiClient } from "./base";
 import type {
   AllocationPlanResponse,
   CoatingAnalysis,
+  CreateImportJobResponse,
   ImportMappingConfig,
   JobCard,
   JobCardAttachment,
+  JobCardImportJob,
   JobCardImportMapping,
   JobCardImportResult,
   JobCardImportRow,
@@ -133,6 +135,10 @@ declare module "./base" {
     deliveryJobCards(parentJobCardId: number): Promise<JobCard[]>;
     uploadJobCardImportFile(file: File): Promise<JobCardImportUploadResponse>;
     uploadDrawingFiles(files: File[]): Promise<JobCardImportUploadResponse>;
+    createImportJob(file: File): Promise<CreateImportJobResponse>;
+    importJob(id: number): Promise<JobCardImportJob | null>;
+    activeImportJobs(): Promise<JobCardImportJob[]>;
+    acknowledgeImportJob(id: number): Promise<{ acknowledged: boolean }>;
     jobCardImportMapping(): Promise<JobCardImportMapping | null>;
     saveJobCardImportMapping(mappingConfig: ImportMappingConfig): Promise<JobCardImportMapping>;
     calculateM2(descriptions: string[]): Promise<M2Result[]>;
@@ -472,6 +478,24 @@ proto.uploadDrawingFiles = async function (files) {
   await throwIfNotOk(response);
 
   return response.json();
+};
+
+proto.createImportJob = async function (file) {
+  return this.uploadFile("/stock-control/job-card-import/jobs", file);
+};
+
+proto.importJob = async function (id) {
+  return this.request(`/stock-control/job-card-import/jobs/${id}`);
+};
+
+proto.activeImportJobs = async function () {
+  return this.request("/stock-control/job-card-import/jobs/active");
+};
+
+proto.acknowledgeImportJob = async function (id) {
+  return this.request(`/stock-control/job-card-import/jobs/${id}/ack`, {
+    method: "POST",
+  });
 };
 
 proto.jobCardImportMapping = async function () {
