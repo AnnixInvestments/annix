@@ -710,6 +710,11 @@ export default function JobCardImportPage() {
   const importJobQuery = useImportJob(backgroundJobId);
   const importJob = importJobQuery.data;
   const importPopupShownRef = useRef(false);
+  // useMutation returns a new object every render; keep a stable ref so the
+  // progress effect below can ack on completion WITHOUT taking the mutation as a
+  // dependency (which would re-fire the effect every render → setState loop).
+  const ackImportJobRef = useRef(ackImportJobMutation);
+  ackImportJobRef.current = ackImportJobMutation;
 
   useEffect(() => {
     metricsApi
@@ -828,7 +833,7 @@ export default function JobCardImportPage() {
     }
 
     setBackgroundJobId(null);
-    ackImportJobMutation.mutate(finishedJobId);
+    ackImportJobRef.current.mutate(finishedJobId);
   }, [
     importJob,
     parseEstimateMs,
@@ -839,7 +844,6 @@ export default function JobCardImportPage() {
     showExtraction,
     updateExtraction,
     hideExtraction,
-    ackImportJobMutation,
   ]);
   const confirmImportMutation = useConfirmJobCardImport();
   const confirmDeliveryMutation = useConfirmDeliveryMatches();
