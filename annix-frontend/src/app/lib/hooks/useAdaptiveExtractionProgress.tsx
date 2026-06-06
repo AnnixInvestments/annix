@@ -17,6 +17,14 @@ export interface AdaptiveBulkRunOptions<TItem> {
   itemLabel?: (item: TItem, index: number, total: number) => string;
   fallbackPerItemMs?: number;
   perItemDelayMs?: number;
+  // Per-call branding override for apps whose brand assets live outside the
+  // global useBranding system (e.g. Stock Control's per-company profile).
+  brandingOverride?: {
+    logoUrl?: string | null;
+    navbarColor?: string | null;
+    accentColor?: string | null;
+    title?: string | null;
+  };
   run: (item: TItem) => Promise<void>;
 }
 
@@ -29,7 +37,7 @@ export interface AdaptiveBulkRunResult<TItem> {
 const DEFAULT_FALLBACK_PER_ITEM_MS = 60_000;
 
 export function useAdaptiveExtractionProgress() {
-  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const runBulk = useCallback(
     async <TItem,>(opts: AdaptiveBulkRunOptions<TItem>): Promise<AdaptiveBulkRunResult<TItem>> => {
@@ -52,13 +60,42 @@ export function useAdaptiveExtractionProgress() {
           ? opts.itemLabel(item, index, total)
           : `Processing ${index + 1} of ${total}…`;
 
+      const branding = opts.brandingOverride;
       const runStartedAt = nowMillis();
-      showExtraction({
-        brand: opts.brand,
-        label: total > 0 ? labelFor(opts.items[0], 0) : "Working…",
-        estimatedDurationMs: initialPerItemMs * total,
-        itemCount: total,
-      });
+      // perDocEstimate paces the TOP (current-document) bar; it starts from the
+      // learned per-item average and sharpens after each item. The batch bar
+      // tracks overall progress against runStartedAt + perDocEstimate * total.
+      let perDocEstimate = initialPerItemMs;
+
+      // Re-show (rather than patch) at the start of each item so the top bar's
+      // startedAt resets per document — the provider stamps startedAt on show,
+      // and updateExtraction cannot reset it.
+      const showForItem = (item: TItem, index: number) => {
+        showExtraction({
+          brand: opts.brand,
+          label: labelFor(item, index),
+          estimatedDurationMs: perDocEstimate,
+          itemCount: total,
+          brandingOverride: branding,
+          batch: {
+            currentIndex: index + 1,
+            total,
+            startedAt: runStartedAt,
+            avgPerDocMs: perDocEstimate,
+          },
+        });
+      };
+
+      if (total > 0) {
+        showForItem(opts.items[0], 0);
+      } else {
+        showExtraction({
+          brand: opts.brand,
+          label: "Working…",
+          estimatedDurationMs: 0,
+          brandingOverride: branding,
+        });
+      }
 
       const succeeded: TItem[] = [];
       const failed: { item: TItem; error: unknown }[] = [];
@@ -66,7 +103,7 @@ export function useAdaptiveExtractionProgress() {
       const finalCount = await opts.items.reduce(
         (chain, item, index) =>
           chain.then(async (currentDone) => {
-            updateExtraction({ label: labelFor(item, index) });
+            showForItem(item, index);
             try {
               await opts.run(item);
               succeeded.push(item);
@@ -76,9 +113,7 @@ export function useAdaptiveExtractionProgress() {
             const itemsDone = currentDone + 1;
             if (itemsDone < total) {
               const elapsedSoFar = nowMillis() - runStartedAt;
-              const avgPerItemMs = elapsedSoFar / itemsDone;
-              const projectedTotalMs = avgPerItemMs * total;
-              updateExtraction({ estimatedDurationMs: projectedTotalMs });
+              perDocEstimate = elapsedSoFar / itemsDone;
               if (interItemDelay > 0) {
                 await new Promise((resolve) => globalThis.setTimeout(resolve, interItemDelay));
               }
@@ -96,7 +131,7 @@ export function useAdaptiveExtractionProgress() {
         totalElapsedMs: nowMillis() - runStartedAt,
       };
     },
-    [showExtraction, hideExtraction, updateExtraction],
+    [showExtraction, hideExtraction],
   );
 
   return { runBulk };

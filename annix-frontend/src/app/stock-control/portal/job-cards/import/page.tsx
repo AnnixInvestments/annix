@@ -16,6 +16,8 @@ import type {
   M2Result,
 } from "@/app/lib/api/stockControlApi";
 import { nowMillis } from "@/app/lib/datetime";
+import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
+import { isEmlFile, parseEmail } from "@/app/lib/nix/emlAttachmentExtractor";
 import {
   useAutoDetectJobCardMapping,
   useCalculateM2,
@@ -690,12 +692,17 @@ export default function JobCardImportPage() {
   // bare spinner). The estimate is LEARNED from the rolling average rather than
   // hardcoded; the backend records each run's duration so it sharpens over time.
   const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { runBulk } = useAdaptiveExtractionProgress();
   const { colors: scColors, logoUrl: scLogoUrl } = useStockControlBranding();
   const { profile: scProfile } = useStockControlAuth();
   const scNavbarColor = scColors.background;
   const scAccentColor = scColors.accent;
   const scCompanyName = scProfile ? scProfile.companyName : null;
   const [parseEstimateMs, setParseEstimateMs] = useState(45_000);
+  // While an .eml is extracted document-by-document, the adaptive hook owns the
+  // progress modal (per-document + overall bars), so the single-bar effect below
+  // must stand down to avoid two controllers fighting over the one modal.
+  const [emlBatchRunning, setEmlBatchRunning] = useState(false);
 
   useEffect(() => {
     metricsApi
@@ -712,6 +719,7 @@ export default function JobCardImportPage() {
   const isParsingFile = fileParsing || drawingsParsing;
 
   useEffect(() => {
+    if (emlBatchRunning) return;
     if (isParsingFile) {
       showExtraction({
         brand: "stock-control",
@@ -727,9 +735,12 @@ export default function JobCardImportPage() {
     } else {
       hideExtraction();
     }
-    return () => hideExtraction();
+    return () => {
+      if (!emlBatchRunning) hideExtraction();
+    };
   }, [
     isParsingFile,
+    emlBatchRunning,
     parseEstimateMs,
     showExtraction,
     hideExtraction,
@@ -842,9 +853,98 @@ export default function JobCardImportPage() {
     }
   };
 
+  const handleEmlImport = async (emlFile: File) => {
+    setError(null);
+    setEmlBatchRunning(true);
+    try {
+      setIsUploading(true);
+      const parsed = await parseEmail(emlFile);
+      const pdfAttachments = parsed.attachments.filter(
+        (a) => a.file.name.toLowerCase().endsWith(".pdf") || a.contentType === "application/pdf",
+      );
+      const drawingAttachments = pdfAttachments.filter((a) => a.kind !== "quality");
+      const qualityAttachments = pdfAttachments.filter((a) => a.kind === "quality");
+      setQualityDocuments(qualityAttachments.map((a) => a.file.name));
+
+      if (drawingAttachments.length === 0) {
+        setError(
+          "No drawing PDFs were found in this email. Attach the drawing PDFs and try again.",
+        );
+        return;
+      }
+
+      const collectedRows: JobCardImportRow[] = [];
+      let collectedDocNumber: string | null = null;
+      let collectedSourcePath: string | null = null;
+      let collectedSourceName: string | null = null;
+
+      await runBulk({
+        brand: "stock-control",
+        metricCategory: "stock-control-import",
+        metricOperation: "drawing-extraction",
+        items: drawingAttachments,
+        itemId: (a) => a.file.name,
+        itemLabel: (a, index, total) =>
+          `Extracting drawing ${index + 1} of ${total}: ${a.file.name}`,
+        fallbackPerItemMs: 90_000,
+        brandingOverride: {
+          logoUrl: scLogoUrl,
+          navbarColor: scNavbarColor,
+          accentColor: scAccentColor,
+          title: scCompanyName,
+        },
+        run: async (a) => {
+          const response = await uploadDrawingsMutation.mutateAsync([a.file]);
+          const rows = response.drawingRows;
+          const docNum = response.documentNumber;
+          const srcPath = response.sourceFilePath;
+          const srcName = response.sourceFileName;
+          if (rows && rows.length > 0) collectedRows.push(...rows);
+          if (!collectedDocNumber && docNum) collectedDocNumber = docNum;
+          if (!collectedSourcePath && srcPath) {
+            collectedSourcePath = srcPath;
+            collectedSourceName = srcName ?? null;
+          }
+        },
+      });
+
+      if (collectedRows.length === 0) {
+        setError(
+          "Could not extract job card data from the drawings in this email. Try uploading the drawing PDFs directly.",
+        );
+        return;
+      }
+
+      setDocumentNumber(collectedDocNumber);
+      setSourceFilePath(collectedSourcePath);
+      setSourceFileName(collectedSourceName);
+      setIsDrawingImport(true);
+      setMappedRows(collectedRows);
+      setExpandedJobs(
+        new Set(
+          collectedRows.map((r) => {
+            const jn = r.jobNumber;
+            return jn ? jn : "";
+          }),
+        ),
+      );
+      setStep("preview");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to process email");
+    } finally {
+      setEmlBatchRunning(false);
+      setIsUploading(false);
+    }
+  };
+
   const handleFileSelect = async (selectedFile: File) => {
     setFile(selectedFile);
     setError(null);
+
+    if (isEmlFile(selectedFile)) {
+      await handleEmlImport(selectedFile);
+      return;
+    }
 
     try {
       setIsUploading(true);
