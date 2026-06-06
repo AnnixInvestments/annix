@@ -46,6 +46,9 @@ export function decodeEmbedding(raw: unknown): number[] | null {
   if (buf[0] === 0x5b || buf.length % 4 !== 0) {
     return parseLegacyString(buf.toString("utf8"));
   }
-  const floats = new Float32Array(buf.buffer, buf.byteOffset, buf.length / 4);
-  return Array.from(floats);
+  // BSON/driver buffers can be unaligned slices of a larger pool, so a direct
+  // Float32Array view on buf.byteOffset may throw; copy into an aligned buffer.
+  const aligned = new ArrayBuffer(buf.length);
+  new Uint8Array(aligned).set(buf);
+  return Array.from(new Float32Array(aligned));
 }
