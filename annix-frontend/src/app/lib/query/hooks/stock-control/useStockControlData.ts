@@ -21,6 +21,7 @@ import type {
   JobCard,
   JobCardActionCompletion,
   JobCardApproval,
+  JobCardImportJob,
   JobCardImportRow,
   QcControlPlanRecord,
   Requisition,
@@ -871,6 +872,50 @@ export const useUploadJobCardImportFile = createMutationHook((file: File) =>
 export const useUploadDrawingFiles = createMutationHook((files: File[]) =>
   stockControlApiClient.uploadDrawingFiles(files),
 );
+
+export const useCreateImportJob = createMutationHook((file: File) =>
+  stockControlApiClient.createImportJob(file),
+);
+
+export const useAcknowledgeImportJob = createMutationHook((id: number) =>
+  stockControlApiClient.acknowledgeImportJob(id),
+);
+
+export function useActiveImportJobs(enabled: boolean) {
+  return useQuery<JobCardImportJob[]>({
+    queryKey: ["stock-control", "import-jobs", "active"],
+    queryFn: async () => {
+      const data = await stockControlApiClient.activeImportJobs();
+      return isArray(data) ? data : [];
+    },
+    enabled,
+    // Short poll is intentional: this drives live background-import progress and
+    // the completion banner. It self-stops (returns false) once nothing is
+    // processing, so it is not a steady-state budget-burning poll.
+    // eslint-disable-next-line no-restricted-syntax -- self-stopping progress poll, not steady-state (ref #203)
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const processing = isArray(data) && data.some((job) => job.status === "processing");
+      return processing ? 3000 : false;
+    },
+    refetchOnWindowFocus: true,
+  });
+}
+
+export function useImportJob(id: number | null) {
+  return useQuery<JobCardImportJob | null>({
+    queryKey: ["stock-control", "import-jobs", "detail", id],
+    queryFn: () => (id ? stockControlApiClient.importJob(id) : Promise.resolve(null)),
+    enabled: id !== null,
+    // Short poll only while this specific job is still extracting; stops on done.
+    // eslint-disable-next-line no-restricted-syntax -- self-stopping progress poll, not steady-state (ref #203)
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const processing = data ? data.status === "processing" : false;
+      return processing ? 2000 : false;
+    },
+  });
+}
 
 export const useSaveJobCardImportMapping = createMutationHook(
   (mappingConfig: ImportMappingConfig) =>

@@ -2,7 +2,7 @@
 
 import { keys, values } from "es-toolkit/compat";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
@@ -15,14 +15,16 @@ import type {
   JobCardImportRow,
   M2Result,
 } from "@/app/lib/api/stockControlApi";
-import { nowMillis } from "@/app/lib/datetime";
-import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
-import { isEmlFile, parseEmail } from "@/app/lib/nix/emlAttachmentExtractor";
+import { fromISO, nowMillis } from "@/app/lib/datetime";
+import { isEmlFile } from "@/app/lib/nix/emlAttachmentExtractor";
 import {
+  useAcknowledgeImportJob,
   useAutoDetectJobCardMapping,
   useCalculateM2,
   useConfirmDeliveryMatches,
   useConfirmJobCardImport,
+  useCreateImportJob,
+  useImportJob,
   useInvalidateJobCards,
   useSaveJobCardImportMapping,
   useUploadDrawingFiles,
@@ -681,6 +683,7 @@ function fieldForCell(
 
 export default function JobCardImportPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const autoDetectMutation = useAutoDetectJobCardMapping();
   const uploadFileMutation = useUploadJobCardImportFile();
   const uploadDrawingsMutation = useUploadDrawingFiles();
@@ -691,18 +694,22 @@ export default function JobCardImportPage() {
   // .eml vision extraction runs well over 3s, so it must show progress (not a
   // bare spinner). The estimate is LEARNED from the rolling average rather than
   // hardcoded; the backend records each run's duration so it sharpens over time.
-  const { showExtraction, hideExtraction } = useExtractionProgress();
-  const { runBulk } = useAdaptiveExtractionProgress();
+  const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { colors: scColors, logoUrl: scLogoUrl } = useStockControlBranding();
   const { profile: scProfile } = useStockControlAuth();
   const scNavbarColor = scColors.background;
   const scAccentColor = scColors.accent;
   const scCompanyName = scProfile ? scProfile.companyName : null;
-  const [parseEstimateMs, setParseEstimateMs] = useState(45_000);
-  // While an .eml is extracted document-by-document, the adaptive hook owns the
-  // progress modal (per-document + overall bars), so the single-bar effect below
-  // must stand down to avoid two controllers fighting over the one modal.
-  const [emlBatchRunning, setEmlBatchRunning] = useState(false);
+  const [parseEstimateMs, setParseEstimateMs] = useState(90_000);
+  // .eml drawing imports run server-side as a background job (survives tab close /
+  // refresh / navigation). This page drives the progress popup + preview by polling
+  // that job, so the single-bar parse effect below stands down while one is active.
+  const [backgroundJobId, setBackgroundJobId] = useState<number | null>(null);
+  const createImportJobMutation = useCreateImportJob();
+  const ackImportJobMutation = useAcknowledgeImportJob();
+  const importJobQuery = useImportJob(backgroundJobId);
+  const importJob = importJobQuery.data;
+  const importPopupShownRef = useRef(false);
 
   useEffect(() => {
     metricsApi
@@ -719,7 +726,7 @@ export default function JobCardImportPage() {
   const isParsingFile = fileParsing || drawingsParsing;
 
   useEffect(() => {
-    if (emlBatchRunning) return;
+    if (backgroundJobId !== null) return;
     if (isParsingFile) {
       showExtraction({
         brand: "stock-control",
@@ -736,11 +743,11 @@ export default function JobCardImportPage() {
       hideExtraction();
     }
     return () => {
-      if (!emlBatchRunning) hideExtraction();
+      if (backgroundJobId === null) hideExtraction();
     };
   }, [
     isParsingFile,
-    emlBatchRunning,
+    backgroundJobId,
     parseEstimateMs,
     showExtraction,
     hideExtraction,
@@ -748,6 +755,91 @@ export default function JobCardImportPage() {
     scNavbarColor,
     scAccentColor,
     scCompanyName,
+  ]);
+
+  // Drive the two-bar progress popup + preview pickup from the polled background
+  // import job. The popup is backgroundSafe (closeable) — the global ImportJobsBanner
+  // takes over when it's closed or the user navigates away.
+  useEffect(() => {
+    if (!importJob) return;
+
+    if (importJob.status === "processing") {
+      const total = importJob.totalDocuments > 0 ? importJob.totalDocuments : 1;
+      const completed = importJob.completedDocuments;
+      const currentName = importJob.currentDocumentName;
+      const startedAtMs = fromISO(importJob.createdAt).toMillis();
+      const popupOptions = {
+        brand: "stock-control" as const,
+        label: currentName ? `Extracting ${currentName}…` : "Extracting drawings…",
+        estimatedDurationMs: parseEstimateMs * total,
+        itemCount: total,
+        backgroundSafe: true,
+        brandingOverride: {
+          logoUrl: scLogoUrl,
+          navbarColor: scNavbarColor,
+          accentColor: scAccentColor,
+          title: scCompanyName,
+        },
+        batch: {
+          currentIndex: Math.min(completed + 1, total),
+          total,
+          startedAt: startedAtMs,
+          avgPerDocMs: parseEstimateMs,
+        },
+      };
+      if (importPopupShownRef.current) {
+        updateExtraction(popupOptions);
+      } else {
+        showExtraction(popupOptions);
+        importPopupShownRef.current = true;
+      }
+      return;
+    }
+
+    importPopupShownRef.current = false;
+    hideExtraction();
+    const finishedJobId = importJob.id;
+
+    if (importJob.status === "completed") {
+      const rows = importJob.drawingRows;
+      const quality = importJob.qualityDocuments;
+      setQualityDocuments(quality && quality.length > 0 ? quality : []);
+      setDocumentNumber(importJob.documentNumber);
+      setSourceFilePath(importJob.sourceFilePath);
+      setSourceFileName(importJob.sourceFileName);
+      if (rows && rows.length > 0) {
+        setIsDrawingImport(true);
+        setMappedRows(rows);
+        setExpandedJobs(
+          new Set(
+            rows.map((r) => {
+              const jn = r.jobNumber;
+              return jn ? jn : "";
+            }),
+          ),
+        );
+        setStep("preview");
+      } else {
+        setError("Could not extract job card data from the drawings in this email.");
+      }
+    } else {
+      const message = importJob.error;
+      setError(message || "The drawing import failed. Please try again.");
+    }
+
+    setBackgroundJobId(null);
+    ackImportJobMutation.mutate(finishedJobId);
+  }, [
+    importJob,
+    parseEstimateMs,
+    scLogoUrl,
+    scNavbarColor,
+    scAccentColor,
+    scCompanyName,
+    showExtraction,
+    updateExtraction,
+    hideExtraction,
+    ackImportJobMutation,
   ]);
   const confirmImportMutation = useConfirmJobCardImport();
   const confirmDeliveryMutation = useConfirmDeliveryMatches();
@@ -793,6 +885,7 @@ export default function JobCardImportPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const drawingInputRef = useRef<HTMLInputElement>(null);
   const hasCheckedPending = useRef(false);
+  const hasCheckedJobId = useRef(false);
 
   const handleAutoDetect = async () => {
     if (grid.length === 0) return;
@@ -855,84 +948,16 @@ export default function JobCardImportPage() {
 
   const handleEmlImport = async (emlFile: File) => {
     setError(null);
-    setEmlBatchRunning(true);
     try {
       setIsUploading(true);
-      const parsed = await parseEmail(emlFile);
-      const pdfAttachments = parsed.attachments.filter(
-        (a) => a.file.name.toLowerCase().endsWith(".pdf") || a.contentType === "application/pdf",
-      );
-      const drawingAttachments = pdfAttachments.filter((a) => a.kind !== "quality");
-      const qualityAttachments = pdfAttachments.filter((a) => a.kind === "quality");
-      setQualityDocuments(qualityAttachments.map((a) => a.file.name));
-
-      if (drawingAttachments.length === 0) {
-        setError(
-          "No drawing PDFs were found in this email. Attach the drawing PDFs and try again.",
-        );
-        return;
-      }
-
-      const collectedRows: JobCardImportRow[] = [];
-      let collectedDocNumber: string | null = null;
-      let collectedSourcePath: string | null = null;
-      let collectedSourceName: string | null = null;
-
-      await runBulk({
-        brand: "stock-control",
-        metricCategory: "stock-control-import",
-        metricOperation: "drawing-extraction",
-        items: drawingAttachments,
-        itemId: (a) => a.file.name,
-        itemLabel: (a, index, total) =>
-          `Extracting drawing ${index + 1} of ${total}: ${a.file.name}`,
-        fallbackPerItemMs: 90_000,
-        brandingOverride: {
-          logoUrl: scLogoUrl,
-          navbarColor: scNavbarColor,
-          accentColor: scAccentColor,
-          title: scCompanyName,
-        },
-        run: async (a) => {
-          const response = await uploadDrawingsMutation.mutateAsync([a.file]);
-          const rows = response.drawingRows;
-          const docNum = response.documentNumber;
-          const srcPath = response.sourceFilePath;
-          const srcName = response.sourceFileName;
-          if (rows && rows.length > 0) collectedRows.push(...rows);
-          if (!collectedDocNumber && docNum) collectedDocNumber = docNum;
-          if (!collectedSourcePath && srcPath) {
-            collectedSourcePath = srcPath;
-            collectedSourceName = srcName ?? null;
-          }
-        },
-      });
-
-      if (collectedRows.length === 0) {
-        setError(
-          "Could not extract job card data from the drawings in this email. Try uploading the drawing PDFs directly.",
-        );
-        return;
-      }
-
-      setDocumentNumber(collectedDocNumber);
-      setSourceFilePath(collectedSourcePath);
-      setSourceFileName(collectedSourceName);
-      setIsDrawingImport(true);
-      setMappedRows(collectedRows);
-      setExpandedJobs(
-        new Set(
-          collectedRows.map((r) => {
-            const jn = r.jobNumber;
-            return jn ? jn : "";
-          }),
-        ),
-      );
-      setStep("preview");
+      const response = await createImportJobMutation.mutateAsync(emlFile);
+      const newJobId = response.jobId;
+      importPopupShownRef.current = false;
+      setBackgroundJobId(newJobId);
+      router.replace(`/stock-control/portal/job-cards/import?jobId=${newJobId}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to process email");
+      setError(err instanceof Error ? err.message : "Failed to start the drawing import");
     } finally {
-      setEmlBatchRunning(false);
       setIsUploading(false);
     }
   };
@@ -1054,6 +1079,18 @@ export default function JobCardImportPage() {
       handleFileSelect(pending);
     }
   }, []);
+
+  // Deep-link from the global import banner ("Review") — resume polling a
+  // background job by id so its completed result populates the preview here.
+  useEffect(() => {
+    if (hasCheckedJobId.current) return;
+    hasCheckedJobId.current = true;
+    const jobIdParam = searchParams.get("jobId");
+    if (jobIdParam) {
+      const parsed = Number(jobIdParam);
+      if (!Number.isNaN(parsed)) setBackgroundJobId(parsed);
+    }
+  }, [searchParams]);
 
   const calculateM2ForRows = useCallback(async (rows: JobCardImportRow[]) => {
     const descriptions = rows.flatMap((r) =>
