@@ -13,6 +13,7 @@ import { useToast } from "@/app/components/Toast";
 import { SeekerBrowseJobCard } from "@/app/lib/annix-orbit/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/annix-orbit/components/SeekerJobCard";
 import {
+  countryLabel,
   type SeekerFilterState,
   SeekerJobFilters,
 } from "@/app/lib/annix-orbit/components/SeekerJobFilters";
@@ -41,6 +42,8 @@ import {
   useOrbitSeekerMatchingConsent,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerRematch,
+  useOrbitSeekerTargetCountries,
+  useOrbitSetSeekerTargetCountries,
 } from "@/app/lib/query/hooks";
 import { useOrbitPushNotifications } from "../../hooks/useOrbitPushNotifications";
 
@@ -102,6 +105,7 @@ export default function SeekerJobsPage() {
   const [filters, setFilters] = useState<SeekerFilterState>({
     search: "",
     provider: "all",
+    region: "",
     province: "",
     city: "",
     category: "",
@@ -110,6 +114,7 @@ export default function SeekerJobsPage() {
   const filtersActive =
     filters.search !== "" ||
     filters.provider !== "all" ||
+    filters.region !== "" ||
     filters.province !== "" ||
     filters.city !== "" ||
     filters.category !== "" ||
@@ -119,6 +124,7 @@ export default function SeekerJobsPage() {
     const search = filters.search.trim();
     if (search) next.search = search;
     if (filters.provider !== "all") next.provider = filters.provider;
+    if (filters.region) next.region = filters.region;
     if (filters.province) next.province = filters.province;
     if (filters.city) next.city = filters.city;
     if (filters.category) next.category = filters.category;
@@ -242,6 +248,7 @@ export default function SeekerJobsPage() {
   const provinceOptions = facets ? facets.provinces : [];
   const cityOptions = facets ? facets.cities : [];
   const categoryOptions = facets ? facets.categories : [];
+  const regionOptions = facets ? facets.regions : [];
   const topAnchorRef = useRef<HTMLDivElement>(null);
   const scrollToFilters = () =>
     topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -770,10 +777,13 @@ export default function SeekerJobsPage() {
         </div>
       ) : null}
 
+      <WorkCountriesPreference />
+
       <SeekerJobFilters
         state={filters}
         onChange={setFilters}
         providers={providers}
+        regions={regionOptions}
         provinces={provinceOptions}
         cities={cityOptions}
         categories={categoryOptions}
@@ -840,6 +850,66 @@ export default function SeekerJobsPage() {
         onCancel={() => setPendingDismiss(null)}
       />
       {ConfirmDialog}
+    </div>
+  );
+}
+
+const WORK_COUNTRY_OPTIONS = ["za", "gb"];
+
+function WorkCountriesPreference() {
+  const { data } = useOrbitSeekerTargetCountries();
+  const setMutation = useOrbitSetSeekerTargetCountries();
+  const { showToast } = useToast();
+  const selected = data ? data.targetCountries : ["za"];
+
+  const toggle = (code: string) => {
+    const set = new Set(selected);
+    if (set.has(code)) {
+      set.delete(code);
+    } else {
+      set.add(code);
+    }
+    const next = [...set];
+    const effective = next.length > 0 ? next : ["za"];
+    setMutation.mutate(effective, {
+      onSuccess: () =>
+        showToast(
+          'Updated. Click "Help me Find a Job" to refresh your matches for the new countries.',
+          "success",
+        ),
+      onError: () => showToast("Couldn't update your work countries.", "error"),
+    });
+  };
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 dark:border-white/10">
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+        Where do you want to work?
+      </p>
+      <p className="text-xs text-gray-500 mb-2 dark:text-gray-400">
+        Pick the countries you want jobs from. Adding one re-scopes your matches on the next "Help
+        me Find a Job".
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {WORK_COUNTRY_OPTIONS.map((code) => {
+          const on = selected.includes(code);
+          return (
+            <button
+              key={code}
+              type="button"
+              onClick={() => toggle(code)}
+              disabled={setMutation.isPending}
+              className={`px-3 py-1.5 text-sm rounded-full border transition-colors disabled:opacity-50 ${
+                on
+                  ? "bg-indigo-100 text-indigo-800 border-indigo-300"
+                  : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {countryLabel(code)}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

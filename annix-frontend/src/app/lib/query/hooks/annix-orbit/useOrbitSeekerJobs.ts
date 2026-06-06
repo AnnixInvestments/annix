@@ -94,6 +94,26 @@ export function useOrbitSeekerJobFacets(enabled: boolean, filters: SeekerRecomme
   });
 }
 
+export function useOrbitSeekerTargetCountries(enabled: boolean = true) {
+  return useQuery<{ targetCountries: string[] }>({
+    queryKey: annixOrbitKeys.seekerJobs.targetCountries(),
+    queryFn: () => annixOrbitApiClient.seekerTargetCountries(),
+    enabled,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useOrbitSetSeekerTargetCountries() {
+  const queryClient = useQueryClient();
+  return useMutation<{ targetCountries: string[] }, Error, string[]>({
+    mutationFn: (countries) => annixOrbitApiClient.setSeekerTargetCountries(countries),
+    onSuccess: (data) => {
+      queryClient.setQueryData(annixOrbitKeys.seekerJobs.targetCountries(), data);
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
+    },
+  });
+}
+
 export function useOrbitSeekerDismissReasons(enabled: boolean = true) {
   return useQuery<SeekerDismissReason[]>({
     queryKey: annixOrbitKeys.dismissReasons.list(),

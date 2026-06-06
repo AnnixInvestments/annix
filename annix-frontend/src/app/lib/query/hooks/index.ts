@@ -408,6 +408,8 @@ export {
   useOrbitSeekerMutes,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerRematch,
+  useOrbitSeekerTargetCountries,
+  useOrbitSetSeekerTargetCountries,
   useOrbitWithdrawSeekerMatching,
 } from "./annix-orbit/useOrbitSeekerJobs";
 export {
