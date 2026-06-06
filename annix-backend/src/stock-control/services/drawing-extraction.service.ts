@@ -99,7 +99,7 @@ For TANK/CHUTE drawings, return:
 {
   "drawingType": "tank_chute",
   "tankData": {
-    "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "custom",
+    "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "cyclone" | "distributor" | "custom",
     "drawingReference": "GPW-017",
     "jobName": "Screen 2 Underpan",
     "overallLengthMm": 7238,
@@ -128,8 +128,10 @@ Rules:
 - Tank drawings typically show: plate BOM tables, rubber lining specs (m² area, thickness), overall assembly dimensions, drawing numbers like "GPW-xxx"
 - For tanks: liningAreaM2 is the TOTAL internal rubber/ceramic lining surface area
 - For tanks: coatingAreaM2 is the TOTAL external paint/coating surface area
-- For tanks: "sections" MUST list each cross-section view (A-A, B-B, C-C, etc.) or identifiable panel/face as its own entry with per-section liningAreaM2 and coatingAreaM2
-- Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions
+- For tanks: "sections" MUST enumerate EVERY distinct lined or coated component, sub-assembly, or section view shown on THIS drawing — each as its own entry with per-section liningAreaM2 and coatingAreaM2. NEVER return a single catch-all section for a multi-part assembly.
+- A "section" is any separately identifiable part: a labelled cross-section view (A-A, B-B, C-C…), a named component, or a distinct panel/face. Use the components the drawing actually shows, e.g. for a cyclone: cyclone body/barrel, inlet head, vortex finder/overflow, spigot/apex cone, support/underpan; for a distributor: inlet, body, outlet branches. For a multi-unit cluster, list each repeated unit (or the unit with its quantity).
+- "mark" and "description" for each section MUST be taken from THIS drawing's own labels, BOM, or callouts. NEVER copy a section name from a different assembly type (e.g. do NOT label a cyclone section "Tank Section" or "Underflow Tank") and never invent generic names the drawing does not support.
+- Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions; leave a section's area null only when no dimensions are derivable.
 - The sum of all section liningAreaM2 values should equal the total liningAreaM2
 - "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
 - For tanks: "plateParts" MUST list every plate in the plate BOM table. For each, give thicknessMm (plate gauge), and the DEVELOPED FLAT cut size as lengthMm x widthMm (the rolled-out plate size before forming, read from the cut/plate schedule or computed from the developed dimensions — NOT the folded assembly dimension). Set liningThicknessMm to that plate's rubber/lining thickness (fall back to the tank-level liningThicknessMm when a per-plate value is not given). These developed sizes feed the rubber cutting diagram, so they are required whenever a plate BOM is visible.
@@ -169,7 +171,7 @@ For TANK/CHUTE drawings, return:
 {
   "drawingType": "tank_chute",
   "tankData": {
-    "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "custom",
+    "assemblyType": "tank" | "chute" | "hopper" | "underpan" | "cyclone" | "distributor" | "custom",
     "drawingReference": "GPW-017",
     "jobName": "Screen 2 Underpan",
     "overallLengthMm": 7238,
@@ -198,8 +200,10 @@ Rules:
 - Tank drawings typically show: plate BOM tables, rubber lining specs (m² area, thickness), overall assembly dimensions, drawing numbers like "GPW-xxx"
 - For tanks: liningAreaM2 is the TOTAL internal rubber/ceramic lining surface area
 - For tanks: coatingAreaM2 is the TOTAL external paint/coating surface area
-- For tanks: "sections" MUST list each cross-section view (A-A, B-B, C-C, etc.) or identifiable panel/face as its own entry with per-section liningAreaM2 and coatingAreaM2
-- Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions
+- For tanks: "sections" MUST enumerate EVERY distinct lined or coated component, sub-assembly, or section view shown on THIS drawing — each as its own entry with per-section liningAreaM2 and coatingAreaM2. NEVER return a single catch-all section for a multi-part assembly.
+- A "section" is any separately identifiable part: a labelled cross-section view (A-A, B-B, C-C…), a named component, or a distinct panel/face. Use the components the drawing actually shows, e.g. for a cyclone: cyclone body/barrel, inlet head, vortex finder/overflow, spigot/apex cone, support/underpan; for a distributor: inlet, body, outlet branches. For a multi-unit cluster, list each repeated unit (or the unit with its quantity).
+- "mark" and "description" for each section MUST be taken from THIS drawing's own labels, BOM, or callouts. NEVER copy a section name from a different assembly type (e.g. do NOT label a cyclone section "Tank Section" or "Underflow Tank") and never invent generic names the drawing does not support.
+- Calculate per-section m2 from visible dimensions in each section view. If exact per-section areas are unclear, estimate proportional splits from total area and section dimensions; leave a section's area null only when no dimensions are derivable.
 - The sum of all section liningAreaM2 values should equal the total liningAreaM2
 - "jobName" should be extracted from the drawing title block (e.g. "Screen 2 Underpan")
 - For tanks: "plateParts" MUST list every plate in the plate BOM table. For each, give thicknessMm (plate gauge), and the DEVELOPED FLAT cut size as lengthMm x widthMm (the rolled-out plate size before forming, read from the cut/plate schedule or computed from the developed dimensions — NOT the folded assembly dimension). Set liningThicknessMm to that plate's rubber/lining thickness (fall back to the tank-level liningThicknessMm when a per-plate value is not given). These developed sizes feed the rubber cutting diagram, so they are required whenever a plate BOM is visible.
