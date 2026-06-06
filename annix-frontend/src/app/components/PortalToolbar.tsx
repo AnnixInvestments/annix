@@ -136,9 +136,9 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const accentColorLight = brandPrefix
     ? `var(--${brandPrefix}-accent-light, ${corpId.colors.accent.orangeLight})`
     : corpId.colors.accent.orangeLight;
-  // Foreground for nav links / names / version. Navy on the light navbar so
-  // it stays legible; the brand accent (orange) on the dark navbar as before.
-  const navForeground = lightNavbar ? "#1a1a40" : accentColor;
+  // Foreground for nav links / names / version: the brand accent (orange) in both
+  // light and dark modes, so the navbar text is consistently on-brand.
+  const navForeground = accentColor;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

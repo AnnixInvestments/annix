@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { ErrorDisplay, Icons, StatCard, StatusBadge } from "@/app/admin/components";
+import { AdminHubOverview } from "@/app/admin/portal/components/AdminHubOverview";
 import { DataTable, DataTableToolbar } from "@/app/components/ui/DataTable";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type { AdminRfqListItem, RfqDraftStatus } from "@/app/lib/api/adminApi";
@@ -347,6 +348,8 @@ export default function AdminRfqsPage() {
           search || statusFilter ? "No RFQs match your search" : "No RFQs have been submitted yet"
         }
       />
+
+      <AdminHubOverview />
     </div>
   );
 }
