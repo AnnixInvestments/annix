@@ -954,6 +954,11 @@ export class JobCardImportService {
         const codeRef = count > 1 ? rep.description || rep.mark : rep.mark;
         const liningArea = positiveArea(rep.liningAreaM2);
         const coatingArea = positiveArea(rep.coatingAreaM2);
+        // A component that is both lined and coated has ~equal internal and
+        // external areas; if the AI returned only one side, reuse it for the
+        // other so neither m² is left blank (still editable in the preview).
+        const liningM2 = liningArea ?? coatingArea;
+        const coatingM2 = coatingArea ?? liningArea;
 
         if (liningArea != null || isLined) {
           const desc = [`${assemblyLabel} ${sectionLabel} - R/L`, liningSpec || null]
@@ -963,7 +968,7 @@ export class JobCardImportService {
             itemCode: `R/L ${codeRef}`,
             itemDescription: desc,
             quantity,
-            m2: liningArea,
+            m2: liningM2,
           });
         }
 
@@ -975,7 +980,7 @@ export class JobCardImportService {
             itemCode: `COAT ${codeRef}`,
             itemDescription: desc,
             quantity,
-            m2: coatingArea,
+            m2: coatingM2,
           });
         }
       });
