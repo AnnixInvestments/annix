@@ -197,8 +197,8 @@ export default function SeekerCredentialsPage() {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Credentials &amp; tickets</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-white">Credentials &amp; tickets</h1>
+          <p className="text-sm text-white/70 mt-1">
             Track your medical, mine inductions, blasting tickets and other deployment credentials.
             You'll get an email 30, 14, and 1 day before any expire so you can renew in time.
           </p>

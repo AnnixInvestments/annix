@@ -66,8 +66,8 @@ export default function SeekerPlansPage() {
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold text-gray-900">Plans</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-white">Plans</h1>
+        <p className="mt-2 text-sm text-white/70">
           Choose how far you want to go. Start free on Explorer, or switch to a higher plan any time
           for sharper matching, more Nix Job Finds and the full toolkit. It's free while Annix Orbit
           is in testing — billing comes later.
@@ -76,9 +76,9 @@ export default function SeekerPlansPage() {
 
       <div className="mt-8">
         {isLoading ? (
-          <p className="text-sm text-gray-500">Loading plans…</p>
+          <p className="text-sm text-white/60">Loading plans…</p>
         ) : plans.length === 0 ? (
-          <p className="text-sm text-gray-500">Plans are being set up. Please check back soon.</p>
+          <p className="text-sm text-white/60">Plans are being set up. Please check back soon.</p>
         ) : (
           <TierPlans
             plans={plans}
