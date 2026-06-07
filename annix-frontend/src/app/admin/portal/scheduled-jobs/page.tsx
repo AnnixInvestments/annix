@@ -1,7 +1,8 @@
 "use client";
 
+import { useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import type { NightSuspensionHours, ScheduledJobDto } from "@/app/lib/api/adminApi";
+import type { JobApp, NightSuspensionHours, ScheduledJobDto } from "@/app/lib/api/adminApi";
 import { fromISO } from "@/app/lib/datetime";
 import {
   usePauseJob,
@@ -140,6 +141,22 @@ const MODULE_COLORS: Record<string, string> = {
   "Secure Docs": "bg-gray-100 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300",
   Admin: "bg-slate-100 text-slate-700 dark:bg-slate-700/50 dark:text-slate-300",
 };
+
+const APP_LABELS: Record<JobApp, string> = {
+  orbit: "Annix Orbit",
+  core: "Annix Core",
+  pulse: "Annix Pulse",
+  insights: "Annix Insights",
+  sentinel: "Annix Sentinel",
+  forge: "Annix Forge",
+  global: "Global / Platform",
+};
+
+const APP_ORDER: JobApp[] = ["global", "forge", "orbit", "core", "pulse", "insights", "sentinel"];
+
+function isJobApp(value: string | null): value is JobApp {
+  return value !== null && Object.hasOwn(APP_LABELS, value);
+}
 
 function currentCronToPresetValue(cronTime: string): string {
   const fiveField = normalizeCronToFiveField(cronTime);
@@ -428,6 +445,11 @@ function jobSortValue(job: ScheduledJobDto, key: SortKey): string {
 
 export default function ScheduledJobsPage() {
   const { data: jobs, isLoading } = useScheduledJobs();
+  const searchParams = useSearchParams();
+  const appParam = searchParams.get("app");
+  const [appFilter, setAppFilter] = useState<JobApp | "all">(() =>
+    isJobApp(appParam) ? appParam : "all",
+  );
   const [sortKey, setSortKey] = useState<SortKey | null>("module");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
@@ -459,6 +481,18 @@ export default function ScheduledJobsPage() {
     });
   }, [jobs, sortKey, sortDir]);
 
+  const availableApps = useMemo(() => {
+    const present = new Set((jobs || []).map((j) => j.app));
+    return APP_ORDER.filter((a) => present.has(a));
+  }, [jobs]);
+
+  const visibleJobs = useMemo(
+    () => (appFilter === "all" ? sortedJobs : sortedJobs.filter((j) => j.app === appFilter)),
+    [sortedJobs, appFilter],
+  );
+
+  const scopeLabel = appFilter === "all" ? null : APP_LABELS[appFilter];
+
   const columns: Array<{ key: SortKey | null; label: string }> = [
     { key: "module", label: "Module" },
     { key: "description", label: "Description" },
@@ -477,12 +511,34 @@ export default function ScheduledJobsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Scheduled Jobs</h1>
-        <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-          Monitor and manage background cron jobs. Pausing a job prevents it from running until
-          resumed. All changes persist across deployments.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+            Scheduled Jobs{scopeLabel ? ` — ${scopeLabel}` : ""}
+          </h1>
+          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            Monitor and manage background cron jobs. Pausing a job prevents it from running until
+            resumed. All changes persist across deployments.
+          </p>
+        </div>
+        <label className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
+          <span className="font-medium">App</span>
+          <select
+            value={appFilter}
+            onChange={(e) => setAppFilter(e.target.value as JobApp | "all")}
+            className="rounded-md border border-gray-300 bg-white px-2 py-1 text-sm text-gray-700 hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 dark:border-slate-600 dark:bg-slate-700 dark:text-gray-200"
+          >
+            <option value="all">All apps</option>
+            {availableApps.map((a) => {
+              const label = APP_LABELS[a];
+              return (
+                <option key={a} value={a}>
+                  {label}
+                </option>
+              );
+            })}
+          </select>
+        </label>
       </div>
 
       <GlobalSettingsBar />
@@ -521,7 +577,7 @@ export default function ScheduledJobsPage() {
                     Loading...
                   </td>
                 </tr>
-              ) : sortedJobs.length === 0 ? (
+              ) : visibleJobs.length === 0 ? (
                 <tr>
                   <td
                     colSpan={8}
@@ -531,7 +587,7 @@ export default function ScheduledJobsPage() {
                   </td>
                 </tr>
               ) : (
-                sortedJobs.map((job) => <JobRow key={job.name} job={job} />)
+                visibleJobs.map((job) => <JobRow key={job.name} job={job} />)
               )}
             </tbody>
           </table>

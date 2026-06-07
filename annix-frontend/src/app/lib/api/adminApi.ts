@@ -2203,10 +2203,13 @@ export interface IdentityReconciliationReport {
 
 export type NightSuspensionHours = 6 | 8 | 12 | null;
 
+export type JobApp = "orbit" | "core" | "pulse" | "insights" | "sentinel" | "forge" | "global";
+
 export interface ScheduledJobDto {
   name: string;
   description: string;
   module: string;
+  app: JobApp;
   active: boolean;
   cronTime: string;
   defaultCron: string;

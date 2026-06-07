@@ -9,10 +9,28 @@ import { ScheduledJobsGlobalSettingsRepository } from "./repositories/scheduled-
 
 export type NightSuspensionHours = 6 | 8 | 12 | null;
 
+export type JobApp = "orbit" | "core" | "pulse" | "insights" | "sentinel" | "forge" | "global";
+
+export function appForJob(jobName: string): JobApp {
+  if (jobName.startsWith("annix-orbit:") || jobName.startsWith("orbit-education:")) return "orbit";
+  if (jobName.startsWith("fieldflow:")) return "pulse";
+  if (jobName.startsWith("insights:")) return "insights";
+  if (jobName.startsWith("annix-sentinel:")) return "sentinel";
+  if (
+    jobName.startsWith("au-rubber:") ||
+    jobName.startsWith("stock-control:") ||
+    jobName.startsWith("stock-management:")
+  ) {
+    return "core";
+  }
+  return "global";
+}
+
 export interface ScheduledJobDto {
   name: string;
   description: string;
   module: string;
+  app: JobApp;
   active: boolean;
   cronTime: string;
   defaultCron: string;
@@ -623,6 +641,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       name,
       description: meta.description,
       module: meta.module,
+      app: appForJob(name),
       active: job.isActive,
       cronTime: this.normalizeCronToFiveField(String(job.cronTime.source)),
       defaultCron: meta.defaultCron,

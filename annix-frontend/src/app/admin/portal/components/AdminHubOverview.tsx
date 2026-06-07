@@ -94,11 +94,13 @@ function ScheduledJobsSummary(props: { jobs: ScheduledJobDto[] }) {
 
   return (
     <Link
-      href="/admin/portal/scheduled-jobs"
+      href="/admin/portal/scheduled-jobs?app=global"
       className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 hover:border-[#323288] hover:shadow-md transition-all"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Scheduled Jobs</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+          Scheduled Jobs (Global)
+        </h3>
         <span className="text-xs text-gray-500 dark:text-gray-400">{total} total</span>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -242,6 +244,7 @@ export function AdminHubOverview() {
   const feedback = rawFeedback || [];
   const rawJobs = jobsQuery.data;
   const jobs = (rawJobs || []) as ScheduledJobDto[];
+  const globalJobs = jobs.filter((j) => j.app === "global");
 
   const openFeedbackCount = feedback.filter((f) => f.status !== "resolved").length;
   const attentionApps = attentionQuery.data?.apps;
@@ -280,7 +283,7 @@ export function AdminHubOverview() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {feedback.length > 0 && <FeedbackSummary feedback={feedback} />}
-        {jobs.length > 0 && <ScheduledJobsSummary jobs={jobs} />}
+        {globalJobs.length > 0 && <ScheduledJobsSummary jobs={globalJobs} />}
       </div>
 
       <AdminToolsGrid badgeCounts={{ "/admin/portal/feedback": openFeedbackCount }} />

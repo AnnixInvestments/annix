@@ -93,9 +93,9 @@ const ADMIN_TOOLS: AdminTool[] = [
     color: "amber",
   },
   {
-    href: "/admin/portal/scheduled-jobs",
+    href: "/admin/portal/scheduled-jobs?app=global",
     label: "Scheduled Jobs",
-    description: "Background task monitoring",
+    description: "Global background tasks (per-app jobs live in each app hub)",
     icon: "M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z",
     color: "slate",
   },

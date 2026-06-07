@@ -220,11 +220,13 @@ function ScheduledJobsSummary({ jobs }: { jobs: ScheduledJobDto[] }) {
 
   return (
     <Link
-      href="/admin/portal/scheduled-jobs"
+      href="/admin/portal/scheduled-jobs?app=global"
       className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-5 hover:border-[#323288] hover:shadow-md transition-all"
     >
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Scheduled Jobs</h3>
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
+          Scheduled Jobs (Global)
+        </h3>
         <span className="text-xs text-gray-500 dark:text-gray-400">{total} total</span>
       </div>
       <div className="grid grid-cols-2 gap-3">
@@ -368,6 +370,7 @@ export default function AdminDashboardPage() {
     const rawData = jobsQuery.data;
     return rawData || [];
   })() as ScheduledJobDto[];
+  const globalJobs = jobs.filter((j) => j.app === "global");
 
   const openFeedbackCount = feedback.filter((f) => f.status !== "resolved").length;
   const rfqAttention = attentionQuery.data?.apps.find((a) => a.appCode === "rfq");
@@ -456,7 +459,7 @@ export default function AdminDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {feedback.length > 0 && <FeedbackSummary feedback={feedback} />}
-        {jobs.length > 0 && <ScheduledJobsSummary jobs={jobs} />}
+        {globalJobs.length > 0 && <ScheduledJobsSummary jobs={globalJobs} />}
       </div>
 
       <div>
@@ -514,10 +517,10 @@ export default function AdminDashboardPage() {
             color="amber"
           />
           <AdminQuickLink
-            href="/admin/portal/scheduled-jobs"
+            href="/admin/portal/scheduled-jobs?app=global"
             icon="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
             label="Scheduled Jobs"
-            description="Background task monitoring"
+            description="Global background tasks — per-app jobs live in each app hub"
             color="slate"
           />
           <AdminQuickLink
