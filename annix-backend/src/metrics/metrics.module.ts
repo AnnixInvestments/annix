@@ -11,7 +11,6 @@ import { MongoExtractionMetricRepository } from "./extraction-metric.repository.
 import { PostgresExtractionMetricRepository } from "./extraction-metric.repository.postgres";
 import { ExtractionMetricService } from "./extraction-metric.service";
 import { MetricsController } from "./metrics.controller";
-import { NeonApiService } from "./neon-api.service";
 import { ExtractionMetricSchema } from "./schemas/extraction-metric.schema";
 
 @Module({
@@ -26,13 +25,12 @@ import { ExtractionMetricSchema } from "./schemas/extraction-metric.schema";
   controllers: [MetricsController],
   providers: [
     ExtractionMetricService,
-    NeonApiService,
     repositoryProvider(
       ExtractionMetricRepository,
       PostgresExtractionMetricRepository,
       MongoExtractionMetricRepository,
     ),
   ],
-  exports: [ExtractionMetricService, NeonApiService],
+  exports: [ExtractionMetricService],
 })
 export class MetricsModule {}

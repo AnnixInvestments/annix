@@ -133,7 +133,6 @@ export {
   useSetTierFeatures,
   useSetTierPricing,
 } from "./admin/useLicensingAdmin";
-export { useNeonConsumption } from "./admin/useNeonConsumption";
 export {
   usePausePollingJob,
   usePollingConfig,

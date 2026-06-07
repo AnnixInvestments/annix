@@ -7,6 +7,7 @@ export interface ExtractionMetricRecord {
   durationMs: number;
   payloadSizeBytes?: number | null;
   succeeded?: boolean;
+  failureReason?: string | null;
 }
 
 export interface ExtractionStats {
@@ -29,6 +30,7 @@ export interface AggregatedUsageRow {
   totalDurationMs: number;
   totalPayloadBytes: number;
   latestRunAt: string | null;
+  lastFailureReason: string | null;
 }
 
 const ROLLING_WINDOW = 50;
@@ -48,6 +50,7 @@ export class ExtractionMetricService {
         durationMs: Math.max(0, Math.round(input.durationMs)),
         payloadSizeBytes: input.payloadSizeBytes ?? null,
         succeeded: input.succeeded ?? true,
+        failureReason: input.failureReason ?? null,
       });
     } catch (error) {
       this.logger.warn(
@@ -103,10 +106,15 @@ export class ExtractionMetricService {
     const start = Date.now();
     let succeeded = false;
     let result: T | undefined;
+    let failureReason: string | null = null;
     try {
       result = await fn();
       succeeded = true;
       return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failureReason = message.slice(0, 500);
+      throw error;
     } finally {
       const durationMs = Date.now() - start;
       let payloadSizeBytes: number | undefined;
@@ -119,7 +127,7 @@ export class ExtractionMetricService {
           // bytes-derivation must never break the wrapped call
         }
       }
-      this.record({ category, operation, durationMs, payloadSizeBytes, succeeded });
+      this.record({ category, operation, durationMs, payloadSizeBytes, succeeded, failureReason });
     }
   }
 }

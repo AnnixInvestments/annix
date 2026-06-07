@@ -28,6 +28,9 @@ export class ExtractionMetric {
   @Prop({ type: Boolean, required: true })
   succeeded: boolean;
 
+  @Prop({ type: String, default: null })
+  failureReason: string | null;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 }
