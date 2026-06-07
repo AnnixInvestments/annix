@@ -77,6 +77,14 @@ export class AnnixOrbitProfile {
   @Column({ name: "cv_file_path", type: "varchar", length: 500, nullable: true })
   cvFilePath: string | null;
 
+  // Optional seeker profile photo (a "this is me" picture). Stored in S3 like the
+  // CV; shown to employers only when photoVisibleToEmployers is true.
+  @Column({ name: "photo_file_path", type: "varchar", length: 500, nullable: true })
+  photoFilePath: string | null;
+
+  @Column({ name: "photo_visible_to_employers", type: "boolean", default: true })
+  photoVisibleToEmployers: boolean;
+
   @Column({ name: "raw_cv_text", type: "text", nullable: true })
   rawCvText: string | null;
 

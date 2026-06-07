@@ -26,6 +26,7 @@ export const annixOrbitKeys = {
     list: (params?: CvCandidateQueryParams) =>
       ["annix-orbit", "candidates", "list", params ?? {}] as const,
     detail: (id: number) => ["annix-orbit", "candidates", "detail", id] as const,
+    photoUrl: (id: number) => ["annix-orbit", "candidates", "photo-url", id] as const,
     recommendedJobs: (candidateId: number) =>
       ["annix-orbit", "candidates", "recommended-jobs", candidateId] as const,
     popiaStats: () => ["annix-orbit", "candidates", "popia-stats"] as const,

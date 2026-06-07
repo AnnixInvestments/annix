@@ -822,6 +822,8 @@ export interface IndividualProfileStatus {
   dismissWarningAcknowledged: boolean;
   eeDisclosed: boolean;
   onboardingComplete: boolean;
+  photoUrl: string | null;
+  photoVisibleToEmployers: boolean;
 }
 
 export type NixSeekerImprovementArea =
@@ -1865,6 +1867,10 @@ class AnnixOrbitApiClient {
     return this.request(`/annix-orbit/candidates/${id}/cv-url`);
   }
 
+  async candidatePhotoUrl(id: number): Promise<{ photoUrl: string | null }> {
+    return this.request(`/annix-orbit/candidates/${id}/photo-url`);
+  }
+
   async rejectCandidate(id: number): Promise<void> {
     return this.request(`/annix-orbit/candidates/${id}/reject`, { method: "POST" });
   }
@@ -2204,6 +2210,29 @@ class AnnixOrbitApiClient {
       { kind, source: "photo" },
       onProgress,
     );
+  }
+
+  async uploadProfilePhoto(
+    file: File,
+    onProgress?: (fraction: number) => void,
+  ): Promise<{ photoUrl: string }> {
+    return apiClient.uploadFile<{ photoUrl: string }>(
+      "/annix-orbit/me/profile/photo",
+      file,
+      {},
+      onProgress,
+    );
+  }
+
+  async deleteProfilePhoto(): Promise<{ message: string }> {
+    return this.request("/annix-orbit/me/profile/photo", { method: "DELETE" });
+  }
+
+  async setProfilePhotoVisibility(visible: boolean): Promise<{ photoVisibleToEmployers: boolean }> {
+    return this.request("/annix-orbit/me/profile/photo/visibility", {
+      method: "PATCH",
+      body: JSON.stringify({ visible }),
+    });
   }
 
   async updateMyDocumentCredentialFields(

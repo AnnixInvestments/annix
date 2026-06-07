@@ -31,6 +31,15 @@ export function useOrbitRecommendedJobs(candidateId: number | null) {
   });
 }
 
+export function useOrbitCandidatePhotoUrl(candidateId: number | null) {
+  return useQuery<{ photoUrl: string | null }>({
+    queryKey: annixOrbitKeys.candidates.photoUrl(candidateId ?? 0),
+    queryFn: () => annixOrbitApiClient.candidatePhotoUrl(candidateId!),
+    enabled: candidateId !== null,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
 export function useOrbitCandidateAction() {
   const queryClient = useQueryClient();
 

@@ -628,6 +628,25 @@ export class CandidateJobMatchingService {
     return suggested != null && Number(suggested) > 0 ? Number(suggested) : null;
   }
 
+  // The seeker's EXPLICIT monthly salary minimum — only when they typed it into
+  // their work profile, NOT Nix's CV-derived guess. Drives the hard "only show me
+  // roles that pay at least this" filter.
+  private explicitMonthlySalaryFloor(candidate: Candidate): number | null {
+    const override = candidate.workProfile?.shared.expectedSalaryMin;
+    return override != null && Number(override) > 0 ? Number(override) : null;
+  }
+
+  // True when the seeker set a monthly salary floor AND the job has pay data that
+  // falls below it (compared on the job's normalised monthly figure). Jobs with no
+  // pay data are never excluded — we can't judge them.
+  isBelowSalaryFloor(candidate: Candidate, job: ExternalJob): boolean {
+    const floor = this.explicitMonthlySalaryFloor(candidate);
+    if (floor === null) return false;
+    const rawTop = job.salaryMonthlyMax ?? job.salaryMonthlyMin;
+    if (rawTop == null) return false;
+    return Number(rawTop) < floor;
+  }
+
   // "Meets-or-beats my floor": a job paying at/above the candidate's minimum
   // expectation scores 1.0; below it scores down in proportion to the shortfall.
   // Neutral (0.5, no note) when either side has no salary data.

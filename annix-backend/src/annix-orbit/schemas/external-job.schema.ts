@@ -43,6 +43,16 @@ export class ExternalJob {
   @Prop({ type: String, required: false })
   salaryCurrency: string;
 
+  // Detected source period + salary normalised to monthly (see resolveMonthlySalary).
+  @Prop({ type: String, default: null })
+  salaryPeriod: string | null;
+
+  @Prop({ type: Number, default: null })
+  salaryMonthlyMin: number | null;
+
+  @Prop({ type: Number, default: null })
+  salaryMonthlyMax: number | null;
+
   @Prop({ type: String, required: false })
   description: string;
 

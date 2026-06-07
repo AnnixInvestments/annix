@@ -28,6 +28,26 @@ export class SeekerApplyClick {
   @Column({ name: "dismissed", type: "boolean", default: false })
   dismissed: boolean;
 
+  // Snapshot of the job at apply time so the application stays meaningful even
+  // after the external job is pruned / re-ingested / delisted off the board.
+  @Column({ name: "job_title", type: "varchar", length: 500, nullable: true })
+  jobTitle: string | null;
+
+  @Column({ name: "job_company", type: "varchar", length: 500, nullable: true })
+  jobCompany: string | null;
+
+  @Column({ name: "job_location", type: "varchar", length: 500, nullable: true })
+  jobLocation: string | null;
+
+  @Column({ name: "job_salary_min", type: "int", nullable: true })
+  jobSalaryMin: number | null;
+
+  @Column({ name: "job_salary_max", type: "int", nullable: true })
+  jobSalaryMax: number | null;
+
+  @Column({ name: "job_salary_currency", type: "varchar", length: 8, nullable: true })
+  jobSalaryCurrency: string | null;
+
   @CreateDateColumn({ name: "clicked_at" })
   clickedAt: Date;
 }

@@ -50,6 +50,18 @@ export class ExternalJob {
   @Column({ name: "salary_currency", type: "varchar", length: 10, nullable: true })
   salaryCurrency: string | null;
 
+  // Detected period the source quotes the salary in ("year" | "month"), and the
+  // salary normalised to monthly so seekers (whose expectation is monthly) can be
+  // matched/filtered against a single comparable figure.
+  @Column({ name: "salary_period", type: "varchar", length: 10, nullable: true })
+  salaryPeriod: string | null;
+
+  @Column({ name: "salary_monthly_min", type: "decimal", precision: 12, scale: 2, nullable: true })
+  salaryMonthlyMin: number | null;
+
+  @Column({ name: "salary_monthly_max", type: "decimal", precision: 12, scale: 2, nullable: true })
+  salaryMonthlyMax: number | null;
+
   @Column({ type: "text", nullable: true })
   description: string | null;
 

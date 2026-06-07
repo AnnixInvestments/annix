@@ -261,6 +261,7 @@ export {
 export { useOrbitCalendarFeed } from "./annix-orbit/useOrbitCalendarFeed";
 export {
   useOrbitCandidateAction,
+  useOrbitCandidatePhotoUrl,
   useOrbitCandidateStatusUpdate,
   useOrbitCandidates,
   useOrbitDismissMatch,
@@ -334,12 +335,15 @@ export {
   useOrbitMyNotificationPreferences,
   useOrbitMyProfileStatus,
   useOrbitNixWizardImprovements,
+  useOrbitRemoveProfilePhoto,
   useOrbitRequestMyAccountDeletion,
   useOrbitSendAppLink,
+  useOrbitSetProfilePhotoVisibility,
   useOrbitUpdateMyDocumentCredentialFields,
   useOrbitUpdateMyNotificationPreferences,
   useOrbitUploadMyDocument,
   useOrbitUploadMyDocumentPhoto,
+  useOrbitUploadProfilePhoto,
   useOrbitWithdrawMyConsent,
   useUpdateNixGeneratedCv,
 } from "./annix-orbit/useOrbitIndividualProfile";

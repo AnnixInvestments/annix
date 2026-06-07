@@ -118,6 +118,37 @@ export class IndividualProfileController {
     );
   }
 
+  @Post("profile/photo")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      fileFilter: (_req, file, cb) => {
+        if (file.mimetype.startsWith("image/")) {
+          cb(null, true);
+        } else {
+          cb(new BadRequestException("Profile photo must be an image"), false);
+        }
+      },
+      limits: { fileSize: 8 * 1024 * 1024 },
+    }),
+  )
+  uploadProfilePhoto(
+    @Request() req: { user: { id: number } },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.individualProfileService.uploadProfilePhoto(req.user.id, file);
+  }
+
+  @Delete("profile/photo")
+  async deleteProfilePhoto(@Request() req: { user: { id: number } }) {
+    await this.individualProfileService.removeProfilePhoto(req.user.id);
+    return { message: "Profile photo removed" };
+  }
+
+  @Patch("profile/photo/visibility")
+  setPhotoVisibility(@Request() req: { user: { id: number } }, @Body() dto: { visible: boolean }) {
+    return this.individualProfileService.setPhotoVisibility(req.user.id, dto.visible === true);
+  }
+
   @Patch("documents/:id/credential-fields")
   updateCredentialFields(
     @Request() req: { user: { id: number } },
@@ -233,7 +264,8 @@ export class IndividualProfileController {
     if (!cv) {
       throw new BadRequestException("Generate your CV with Nix first.");
     }
-    const buffer = await this.nixCvPdfService.renderPdf(cv);
+    const photoDataUri = await this.individualProfileService.profilePhotoDataUri(req.user.id);
+    const buffer = await this.nixCvPdfService.renderPdf(cv, photoDataUri);
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename="Nix-CV.pdf"`);
     res.setHeader("Content-Length", buffer.length.toString());
@@ -247,8 +279,9 @@ export class IndividualProfileController {
     if (!cv) {
       throw new BadRequestException("Generate your CV with Nix first.");
     }
+    const photoDataUri = await this.individualProfileService.profilePhotoDataUri(req.user.id);
     return this.extractionMetricService.time("orbit-cv-adopt", "nix-cv", async () => {
-      const pdf = await this.nixCvPdfService.renderPdf(cv);
+      const pdf = await this.nixCvPdfService.renderPdf(cv, photoDataUri);
       return this.individualProfileService.adoptGeneratedCv(req.user.id, pdf);
     });
   }

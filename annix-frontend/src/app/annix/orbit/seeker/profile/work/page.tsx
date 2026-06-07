@@ -223,14 +223,20 @@ export default function SeekerWorkProfilePage() {
   const availabilityValue = emptyIfNull(shared.availability);
   const salaryMinValue = emptyIfNull(shared.expectedSalaryMin);
   const salaryMaxValue = emptyIfNull(shared.expectedSalaryMax);
-  const suggestedSalaryMin = queryData ? queryData.suggestedSalaryMin : null;
-  const suggestedSalaryMax = queryData ? queryData.suggestedSalaryMax : null;
+  const suggestedSalaryAnnualMin = queryData ? queryData.suggestedSalaryMin : null;
+  const suggestedSalaryAnnualMax = queryData ? queryData.suggestedSalaryMax : null;
+  // Nix's CV-derived suggestion is an annual figure; the profile is now captured
+  // per month, so show + apply it divided into a per-month value.
+  const suggestedSalaryMin =
+    suggestedSalaryAnnualMin !== null ? Math.round(suggestedSalaryAnnualMin / 12) : null;
+  const suggestedSalaryMax =
+    suggestedSalaryAnnualMax !== null ? Math.round(suggestedSalaryAnnualMax / 12) : null;
   const hasSalarySuggestion = suggestedSalaryMin !== null || suggestedSalaryMax !== null;
   const salarySuggestionLabel = salaryBandLabel(suggestedSalaryMin, suggestedSalaryMax);
   const salaryMinPlaceholder =
-    suggestedSalaryMin !== null ? randPlaceholder(suggestedSalaryMin) : "e.g. 300000";
+    suggestedSalaryMin !== null ? randPlaceholder(suggestedSalaryMin) : "e.g. 25000";
   const salaryMaxPlaceholder =
-    suggestedSalaryMax !== null ? randPlaceholder(suggestedSalaryMax) : "e.g. 500000";
+    suggestedSalaryMax !== null ? randPlaceholder(suggestedSalaryMax) : "e.g. 45000";
 
   return (
     <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -342,7 +348,7 @@ export default function SeekerWorkProfilePage() {
         <div>
           <h2 className="text-lg font-semibold text-gray-900">Expected salary</h2>
           <p className="text-sm text-gray-600 mt-0.5">
-            The gross annual salary range you're after, in Rand. We use this to match you to roles
+            The gross monthly salary range you're after, in Rand. We use this to match you to roles
             that pay in your range — leave it blank if you'd rather not say.
           </p>
         </div>
@@ -350,7 +356,7 @@ export default function SeekerWorkProfilePage() {
           <div className="flex flex-wrap items-center gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
             <span className="flex-1 min-w-[12rem]">
               Based on your CV, Nix estimates someone with your experience could expect{" "}
-              <strong>{salarySuggestionLabel}</strong> per year.
+              <strong>{salarySuggestionLabel}</strong> per month.
             </span>
             <button
               type="button"
@@ -363,7 +369,7 @@ export default function SeekerWorkProfilePage() {
         ) : null}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label className="block">
-            <span className="text-sm text-gray-700">Minimum (Rand / year)</span>
+            <span className="text-sm text-gray-700">Minimum (Rand / month)</span>
             <input
               type="number"
               min={0}
@@ -375,7 +381,7 @@ export default function SeekerWorkProfilePage() {
             />
           </label>
           <label className="block">
-            <span className="text-sm text-gray-700">Maximum (Rand / year)</span>
+            <span className="text-sm text-gray-700">Maximum (Rand / month)</span>
             <input
               type="number"
               min={0}

@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import type { Candidate } from "@/app/lib/api/annixOrbitApi";
+import { useOrbitCandidatePhotoUrl } from "@/app/lib/query/hooks";
 import { InterviewSlotsPanel } from "./InterviewSlotsPanel";
 
 interface CandidateDetailPanelProps {
@@ -14,6 +15,7 @@ interface CandidateDetailPanelProps {
 
 export function CandidateDetailPanel(props: CandidateDetailPanelProps) {
   const { candidateId, candidates, onClose, onViewCv } = props;
+  const photoQuery = useOrbitCandidatePhotoUrl(candidateId);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -31,6 +33,8 @@ export function CandidateDetailPanel(props: CandidateDetailPanelProps) {
   if (!candidate) return null;
 
   const candidateName = candidate.name;
+  const photoData = photoQuery.data;
+  const photoUrl = photoData ? photoData.photoUrl : null;
   const candidateEmail = candidate.email;
   const candidateScore = candidate.matchScore;
   const candidateStatus = candidate.status;
@@ -71,11 +75,18 @@ export function CandidateDetailPanel(props: CandidateDetailPanelProps) {
       />
       <div className="relative bg-white w-full max-w-2xl h-full overflow-y-auto shadow-2xl">
         <div className="sticky top-0 bg-white border-b border-[#e0e0f5] px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#e0e0f5] text-[#252560] text-sm font-bold mr-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            {photoUrl && (
+              <img
+                src={photoUrl}
+                alt=""
+                className="w-11 h-11 rounded-full object-cover ring-2 ring-[#e0e0f5] flex-shrink-0"
+              />
+            )}
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-[#e0e0f5] text-[#252560] text-sm font-bold flex-shrink-0">
               #{candidate.rank}
             </span>
-            <span id="candidate-detail-title" className="text-xl font-bold text-gray-900">
+            <span id="candidate-detail-title" className="text-xl font-bold text-gray-900 truncate">
               {candidateName || "Unknown candidate"}
             </span>
           </div>

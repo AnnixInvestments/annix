@@ -34,6 +34,26 @@ export class SeekerApplyClick {
   @Prop({ type: Boolean, default: false })
   dismissed: boolean;
 
+  // Snapshot of the job at apply time — preserves the application after the
+  // external job leaves the board.
+  @Prop({ type: String, default: null })
+  jobTitle: string | null;
+
+  @Prop({ type: String, default: null })
+  jobCompany: string | null;
+
+  @Prop({ type: String, default: null })
+  jobLocation: string | null;
+
+  @Prop({ type: Number, default: null })
+  jobSalaryMin: number | null;
+
+  @Prop({ type: Number, default: null })
+  jobSalaryMax: number | null;
+
+  @Prop({ type: String, default: null })
+  jobSalaryCurrency: string | null;
+
   @Prop({ type: String, required: false })
   clickedAt: string;
 }

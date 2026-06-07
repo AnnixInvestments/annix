@@ -102,6 +102,37 @@ export function useOrbitUploadMyDocumentPhoto() {
   });
 }
 
+export function useOrbitUploadProfilePhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ file, onProgress }: { file: File; onProgress?: (fraction: number) => void }) =>
+      annixOrbitApiClient.uploadProfilePhoto(file, onProgress),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
+  });
+}
+
+export function useOrbitRemoveProfilePhoto() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => annixOrbitApiClient.deleteProfilePhoto(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
+  });
+}
+
+export function useOrbitSetProfilePhotoVisibility() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (visible: boolean) => annixOrbitApiClient.setProfilePhotoVisibility(visible),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
+  });
+}
+
 export function useOrbitUpdateMyDocumentCredentialFields() {
   const queryClient = useQueryClient();
 

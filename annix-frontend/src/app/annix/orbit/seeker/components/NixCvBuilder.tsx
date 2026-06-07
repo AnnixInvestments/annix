@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { PhotoCapture } from "@/app/components/PhotoCapture";
 import type {
   NixGeneratedCv,
   NixGeneratedCvExperience,
@@ -16,6 +17,8 @@ import {
   useAdoptNixCv,
   useGenerateNixCv,
   useNixGeneratedCv,
+  useOrbitMyProfileStatus,
+  useOrbitUploadProfilePhoto,
   useUpdateNixGeneratedCv,
 } from "@/app/lib/query/hooks";
 
@@ -31,6 +34,8 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const onStartSearch = props.onStartSearch;
   const generateMutation = useGenerateNixCv();
   const generatedQuery = useNixGeneratedCv();
+  const profileStatusQuery = useOrbitMyProfileStatus();
+  const uploadPhotoMutation = useOrbitUploadProfilePhoto();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -99,6 +104,17 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const buildPalette = buildHighlight
     ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
     : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
+  const profileStatus = profileStatusQuery.data;
+  const photoUrl = profileStatus ? profileStatus.photoUrl : null;
+
+  const handlePhotoUpload = async (file: File) => {
+    try {
+      await uploadPhotoMutation.mutateAsync({ file });
+      alert({ message: "Photo added — Nix will include it on your CV.", variant: "success" });
+    } catch {
+      alert({ message: "Couldn't upload that photo — please try again.", variant: "error" });
+    }
+  };
 
   useEffect(() => {
     setEditedCv(sourceCv);
@@ -320,8 +336,32 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
             </div>
           )}
 
+          {!photoUrl && (
+            <div className="bg-[var(--brand-navbar-50,#f0f0fc)] rounded-lg border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <span
+                  className="flex-shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full text-white text-sm font-bold"
+                  style={{ backgroundColor: "var(--brand-navbar,#323288)" }}
+                >
+                  N
+                </span>
+                <div className="space-y-1">
+                  <p className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)]">
+                    Add a photo to your CV
+                  </p>
+                  <p className="text-xs text-gray-600 max-w-md">
+                    Your CV has no picture. A clear, friendly headshot helps employers connect a
+                    face to your application. Add one and I'll place it on your CV and profile.
+                  </p>
+                </div>
+              </div>
+              <PhotoCapture enableCamera onCapture={handlePhotoUpload} />
+            </div>
+          )}
+
           <NixCvDocument
             cv={cv}
+            photoUrl={photoUrl}
             onRemoveCoreCompetency={handleRemoveCoreCompetency}
             onRemoveKeySkill={handleRemoveKeySkill}
             onAddCoreCompetency={handleAddCoreCompetency}
@@ -390,6 +430,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
 function NixCvDocument(props: {
   cv: NixGeneratedCv;
+  photoUrl: string | null;
   onRemoveCoreCompetency: (value: string) => void;
   onRemoveKeySkill: (value: string) => void;
   onAddCoreCompetency: (value: string) => void;
@@ -398,6 +439,7 @@ function NixCvDocument(props: {
   onAddReference: (reference: NixGeneratedCvReference) => void;
 }) {
   const cv = props.cv;
+  const photoUrl = props.photoUrl;
   const onRemoveCoreCompetency = props.onRemoveCoreCompetency;
   const onRemoveKeySkill = props.onRemoveKeySkill;
   const onAddCoreCompetency = props.onAddCoreCompetency;
@@ -412,16 +454,27 @@ function NixCvDocument(props: {
   const contactLine = contactParts.join("  •  ");
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-2 py-4 sm:p-8 space-y-5">
-      <div className="border-b-2 border-[var(--brand-navbar,#323288)] pb-3">
-        <h2 className="text-2xl font-bold text-gray-800">{fullName}</h2>
-        {cv.headlineTitle && (
-          <p className="text-sm font-semibold text-gray-700 uppercase tracking-wide mt-1">
-            {cv.headlineTitle}
-          </p>
+    <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] shadow-sm px-2 py-4 sm:p-8 space-y-5">
+      <div className="border-b-2 border-[var(--brand-navbar,#323288)] pb-3 flex items-center gap-4">
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt=""
+            className="w-20 h-20 rounded-full object-cover ring-2 ring-[var(--brand-navbar-200,#c0c0eb)] flex-shrink-0"
+          />
         )}
-        {cv.location && <p className="text-sm text-gray-500 mt-1">{cv.location}</p>}
-        {contactLine && <p className="text-xs text-gray-500 mt-1">{contactLine}</p>}
+        <div className="min-w-0">
+          <h2 className="text-2xl font-bold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb]">
+            {fullName}
+          </h2>
+          {cv.headlineTitle && (
+            <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8] uppercase tracking-wide mt-1">
+              {cv.headlineTitle}
+            </p>
+          )}
+          {cv.location && <p className="text-sm text-gray-500 mt-1">{cv.location}</p>}
+          {contactLine && <p className="text-xs text-gray-500 mt-1">{contactLine}</p>}
+        </div>
       </div>
 
       {cv.professionalSummary && (
