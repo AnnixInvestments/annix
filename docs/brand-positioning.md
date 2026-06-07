@@ -98,3 +98,40 @@ Two ways to set or change the live master positioning:
 2. **Seed script (fresh / non-prod databases):** `scripts/seed-mongo-branding.mjs` upserts the `app_branding` collection. It uses `$setOnInsert`, so it only populates brands that don't yet exist — it will **not** overwrite an existing master record. To change a record that already exists, edit it in the Brand Center (option 1) or run a one-off `$set` update against the `app_branding` document keyed by `_id: "annix-investments"`.
 
 When you change any of the master copy here, also update it in the Brand Center so the live site and this doc stay in sync.
+
+## Annix Forge — submodule naming convention (issue #320 Phase 3)
+
+The platform formerly surfaced as "RFQ" is **Annix Forge**. As the suite grows
+(see #319: Projects → Quality → Traceability), the modules read as **Forge
+&lt;Module&gt;**: Forge RFQ · Forge BOQ · Forge Projects · Forge Procurement ·
+Forge Quality · Forge Trace · Forge Analytics · Forge AI.
+
+**The rule — name the _product_ in the "Forge X" form; keep the _work_
+domain-plain.** RFQ and BOQ are recognised industry terms; renaming a list of a
+customer's requests from "My RFQs" to "Forge RFQ" loses meaning and churns a
+flow Phase 1 deliberately left alone (LIST B). So:
+
+- **Use the `Forge <Module>` form** where you are naming the module *as a
+  product or capability*: the admin app hub, marketing / about / onboarding
+  copy, docs, and the **landing / intro surface of a module that has no
+  established domain term** (Forge Projects, Forge Procurement, Forge Quality,
+  Forge Trace, Forge Analytics). Apply it on each such module's first
+  user-facing surface *as that module lands*.
+- **Keep domain-plain** for navigation labels, action buttons, list/table
+  headers, empty states and page `<h1>`s of the existing modules — "My RFQs",
+  "New RFQ", "Create RFQ", "BOQ Requests", "Submitted BOQs". These already sit
+  under the Forge brand via the toolbar wordmark and the `… | Annix Forge`
+  page-title template (Phase 1/2), so the brand framing is present without
+  renaming the work itself.
+- **Forge AI** is the umbrella name for the AI capability; the in-product
+  assistant a user talks to stays **Nix** ("Ask Nix", "Open Nix"). Use "Forge
+  AI" only in product/marketing framing, never as the assistant's in-chat name.
+
+Per-module decision (current modules):
+
+| Module | "Forge X" surfaces | Stays domain-plain |
+|---|---|---|
+| Forge RFQ | admin hub, marketing/docs, page-title template | "My RFQs", "New RFQ", "Create RFQ", RFQ list/empty-state headers |
+| Forge BOQ | admin hub, marketing/docs, page-title template | "BOQ Requests", "Submitted BOQs", BOQ list/empty-state headers |
+| Forge Projects / Procurement / Quality / Trace / Analytics | the module's landing + nav label, applied as it ships (no domain term to preserve) | — |
+| Forge AI | product / marketing framing of the AI capability | the assistant stays "Nix" everywhere a user interacts with it |

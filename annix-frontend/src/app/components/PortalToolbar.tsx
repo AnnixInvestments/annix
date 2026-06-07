@@ -98,10 +98,16 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   // Portals wired to the DB-backed BrandingProvider read --brand-* CSS vars;
   // fallbacks are each portal's static corpId palette so nothing shifts before
   // branding loads (or for portals with no DB branding).
-  const isBrandPortal = portalType === "annixOrbit" || portalType === "annixRep";
-  const brandPrefix = isBrandPortal ? "brand" : null;
   const brandCode =
-    portalType === "annixOrbit" ? "annix-orbit" : portalType === "annixRep" ? "annix-rep" : null;
+    portalType === "annixOrbit"
+      ? "annix-orbit"
+      : portalType === "annixRep"
+        ? "annix-rep"
+        : portalType === "customer" || portalType === "supplier"
+          ? "annix-forge"
+          : null;
+  const isBrandPortal = brandCode !== null;
+  const brandPrefix = isBrandPortal ? "brand" : null;
   const { resolvedTheme } = useTheme();
   // Annix Investments (non-brand) portals follow the theme using the master
   // brand's per-mode toolbar colours; the foreground goes navy on the light
@@ -177,9 +183,11 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   });
 
   const isOrbit = portalType === "annixOrbit";
-  // In Orbit the wordmark already reads "Annix Orbit", so don't repeat the
-  // title text — show only the version chip alongside it.
-  const titleText = isOrbit ? "" : config.title;
+  // In Orbit and the Forge customer/supplier portals the brand wordmark already
+  // reads the app name, so don't repeat the title text — show only the version
+  // chip alongside it.
+  const brandWordmarkShowsName = isOrbit || portalType === "customer" || portalType === "supplier";
+  const titleText = brandWordmarkShowsName ? "" : config.title;
   const showTitleOrVersion = Boolean(titleText) || Boolean(version);
 
   return (
