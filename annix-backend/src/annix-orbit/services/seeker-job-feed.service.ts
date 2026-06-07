@@ -452,7 +452,7 @@ export class SeekerJobFeedService {
 
   private async selectedTierForEmail(email: string | null): Promise<string | null> {
     if (!email) return null;
-    const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+    const user = await this.userRepo.findOneByEmailAnyScope(email);
     if (!user) return null;
     const profile = await this.profileRepo.findByUserId(user.id);
     const selected = profile?.selectedTier;
@@ -482,7 +482,7 @@ export class SeekerJobFeedService {
     }
     await this.setMatchTierForSeeker(email, tier);
     if (email) {
-      const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+      const user = await this.userRepo.findOneByEmailAnyScope(email);
       if (user) {
         await this.profileRepo.setSelectedTier(user.id, tier);
       }
@@ -641,7 +641,7 @@ export class SeekerJobFeedService {
       sevenDaysAgo,
     );
 
-    const seekerUser = email ? await this.userRepo.findOneByEmailCaseInsensitive(email) : null;
+    const seekerUser = email ? await this.userRepo.findOneByEmailAnyScope(email) : null;
     const seekerProfile = seekerUser ? await this.profileRepo.findByUserId(seekerUser.id) : null;
     const dismissWarningAcknowledgedAt = seekerProfile?.dismissWarningAcknowledgedAt
       ? seekerProfile.dismissWarningAcknowledgedAt.toISOString()
@@ -700,7 +700,7 @@ export class SeekerJobFeedService {
 
   private async documentsForSeekerEmail(email: string | null): Promise<AdminSeekerDocument[]> {
     if (!email) return [];
-    const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+    const user = await this.userRepo.findOneByEmailAnyScope(email);
     if (!user) return [];
     const profile = await this.profileRepo.findByUserId(user.id);
     if (!profile) return [];
