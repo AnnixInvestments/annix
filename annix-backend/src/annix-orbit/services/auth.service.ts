@@ -687,6 +687,9 @@ export class AnnixOrbitAuthService {
     let profile = await this.profileRepo.findByUserId(user.id);
     profile = await this.ensureCompanyProfile(user, profile);
     if (!profile) {
+      profile = await this.provisionInvitedSeekerProfile(user);
+    }
+    if (!profile) {
       throw new UnauthorizedException(
         "No Annix Orbit account is set up for this email. Please sign up to get started.",
       );
@@ -816,6 +819,25 @@ export class AnnixOrbitAuthService {
     }
 
     return AnnixOrbitRole.VIEWER;
+  }
+
+  private async provisionInvitedSeekerProfile(user: User): Promise<AnnixOrbitProfile | null> {
+    const app = await this.appRepo.findByCode("annix-orbit");
+    if (!app) return null;
+    const access = await this.userAppAccessRepo.findOneByUserAndApp(user.id, app.id);
+    if (!access) return null;
+    const profile = await this.profileRepo.create({
+      userId: user.id,
+      companyId: null,
+      userType: AnnixOrbitUserType.INDIVIDUAL,
+      eeDisclosure: null,
+      phone: null,
+    } as Partial<AnnixOrbitProfile>);
+    if (!user.appScope) {
+      user.appScope = this.orbitScope(AnnixOrbitUserType.INDIVIDUAL);
+    }
+    this.logger.log(`Provisioned seeker profile for invited Orbit user ${user.id}`);
+    return profile;
   }
 
   private async bridgeToRbac(userId: number, cvRole: string): Promise<void> {
