@@ -80,6 +80,19 @@ export {
   useAdminVetPendingOrbitJobs,
 } from "./admin/useAdminOrbitJobMarket";
 export {
+  useAdminCreateSeekerTestingIssue,
+  useAdminCreateSeekerTestingPhase,
+  useAdminOrbitSeekerTestingErrorsLatency,
+  useAdminOrbitSeekerTestingIssues,
+  useAdminOrbitSeekerTestingOverview,
+  useAdminOrbitSeekerTestingPhases,
+  useAdminOrbitSeekerTestingReadiness,
+  useAdminOrbitSeekerTestingUsers,
+  useAdminRecalculateSeekerReadiness,
+  useAdminUpdateSeekerTestingIssue,
+  useAdminUpdateSeekerTestingPhase,
+} from "./admin/useAdminOrbitSeekerTesting";
+export {
   useAdminInviteSeekerTrial,
   useAdminOrbitTierCapabilities,
   useAdminUpdateOrbitTierCapability,

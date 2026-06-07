@@ -28,6 +28,7 @@ import {
 import { SeekerMute } from "../entities/seeker-mute.entity";
 import { countMatchingRows, distinctPassing } from "../lib/facet-compute";
 import { citiesForProvince, SA_PROVINCES } from "../lib/sa-locations";
+import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -49,6 +50,7 @@ import {
 } from "./candidate-job-matching.service";
 import { CvNotificationService } from "./cv-notification.service";
 import { JobMarketCountriesService } from "./job-market-countries.service";
+import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 const HELP_FIND_JOB_OPERATION = "help-find-job";
 const CV_BUILD_OPERATION = "nix-cv-build";
@@ -213,6 +215,7 @@ export class SeekerJobFeedService {
     private readonly usageCounterRepo: SeekerUsageCounterRepository,
     private readonly dismissReasonRepo: OrbitDismissReasonRepository,
     private readonly countriesService: JobMarketCountriesService,
+    private readonly seekerTelemetry: SeekerTelemetryService,
     @Inject(forwardRef(() => CvNotificationService))
     private readonly notificationService: CvNotificationService,
     @Inject(STORAGE_SERVICE)
@@ -794,6 +797,14 @@ export class SeekerJobFeedService {
     // caps how many a seeker may see (null = unlimited), applied to both the headline
     // total and the loaded page size.
     const candidateIds = candidates.map((c) => c.id);
+    try {
+      const cid = candidateIds[0] ?? null;
+      await this.seekerTelemetry.record(cid, SEEKER_EVENTS.jobsViewed);
+    } catch (error) {
+      this.logger.warn(
+        `Seeker telemetry (jobsViewed) failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     const capTier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(capTier);
     const maxResults = capability ? capability.maxJobResults : null;
@@ -1209,6 +1220,15 @@ export class SeekerJobFeedService {
       matchId: input.matchId,
       sourceUrl: input.sourceUrl,
     });
+    try {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.jobApplied, {
+        metadata: { externalJobId: input.externalJobId, matchId: input.matchId },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Seeker telemetry (jobApplied) failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     return { recorded: true, clickId: saved.id };
   }
 

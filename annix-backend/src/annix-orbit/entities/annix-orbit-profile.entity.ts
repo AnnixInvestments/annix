@@ -92,6 +92,21 @@ export class AnnixOrbitProfile {
   @Column({ name: "cv_uploaded_at", type: "timestamptz", nullable: true })
   cvUploadedAt: Date | null;
 
+  @Column({ name: "career_score", type: "int", nullable: true })
+  careerScore: number | null;
+
+  @Column({ name: "career_score_generated_at", type: "timestamptz", nullable: true })
+  careerScoreGeneratedAt: Date | null;
+
+  @Column({ name: "first_jobs_viewed_at", type: "timestamptz", nullable: true })
+  firstJobsViewedAt: Date | null;
+
+  @Column({ name: "interview_prep_used_at", type: "timestamptz", nullable: true })
+  interviewPrepUsedAt: Date | null;
+
+  @Column({ name: "profile_updated_after_suggestion_at", type: "timestamptz", nullable: true })
+  profileUpdatedAfterSuggestionAt: Date | null;
+
   @Column({ name: "ee_disclosure", type: "jsonb", nullable: true })
   eeDisclosure: AnnixOrbitProfileEeDisclosure | null;
 

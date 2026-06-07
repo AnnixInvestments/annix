@@ -151,6 +151,12 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 */6 * * *",
   },
+  "annix-orbit:readiness-snapshot": {
+    description:
+      "Daily Seeker launch-readiness snapshot (KPIs, error rate, TTFV, criteria, status)",
+    module: "Annix Orbit",
+    defaultCron: "0 5 * * *",
+  },
   "annix-orbit:refresh-salary-benchmarks": {
     description:
       "Refresh cv_assistant_salary_benchmarks cache from Adzuna SA for top title × province combinations",

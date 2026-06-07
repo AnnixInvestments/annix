@@ -50,6 +50,21 @@ export class AnnixOrbitProfile {
   @Prop({ type: Date, required: false })
   cvUploadedAt: Date;
 
+  @Prop({ type: Number, required: false, default: null })
+  careerScore: number | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  careerScoreGeneratedAt: Date | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  firstJobsViewedAt: Date | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  interviewPrepUsedAt: Date | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  profileUpdatedAfterSuggestionAt: Date | null;
+
   @Prop({
     type: {
       populationGroup: String,

@@ -120,6 +120,15 @@ export const adminKeys = {
     list: (params?: { type?: string; search?: string; page?: number; limit?: number }) =>
       [...adminKeys.orbitUsers.all, "list", params ?? {}] as const,
   },
+  orbitSeekerTesting: {
+    all: ["admin", "orbitSeekerTesting"] as const,
+    phases: () => [...adminKeys.orbitSeekerTesting.all, "phases"] as const,
+    overview: () => [...adminKeys.orbitSeekerTesting.all, "overview"] as const,
+    errorsLatency: () => [...adminKeys.orbitSeekerTesting.all, "errorsLatency"] as const,
+    users: () => [...adminKeys.orbitSeekerTesting.all, "users"] as const,
+    readiness: () => [...adminKeys.orbitSeekerTesting.all, "readiness"] as const,
+    issues: () => [...adminKeys.orbitSeekerTesting.all, "issues"] as const,
+  },
   orbitTierCapabilities: {
     all: ["admin", "orbitTierCapabilities"] as const,
     list: () => [...adminKeys.orbitTierCapabilities.all, "list"] as const,

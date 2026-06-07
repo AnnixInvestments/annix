@@ -11,7 +11,9 @@ import { Injectable, Logger } from "@nestjs/common";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { Candidate } from "../entities/candidate.entity";
+import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { CandidateRepository } from "../repositories/candidate.repository";
+import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 @Injectable()
 export class WorkProfileService {
@@ -21,6 +23,7 @@ export class WorkProfileService {
     private readonly candidateRepo: CandidateRepository,
     private readonly aiChatService: AiChatService,
     private readonly extractionMetricService: ExtractionMetricService,
+    private readonly seekerTelemetry: SeekerTelemetryService,
   ) {}
 
   async forSeeker(email: string | null): Promise<{
@@ -68,6 +71,8 @@ export class WorkProfileService {
         ),
       );
     }
+    const cid = candidates[0] ? candidates[0].id : null;
+    await this.seekerTelemetry.record(cid, SEEKER_EVENTS.profileUpdated);
     return { saved: true, candidateIds: candidates.map((c) => c.id) };
   }
 

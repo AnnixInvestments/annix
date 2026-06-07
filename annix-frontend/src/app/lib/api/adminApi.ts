@@ -1,6 +1,19 @@
 import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import type {
+  CreateSeekerTestingIssueInput,
+  CreateSeekerTestPhaseInput,
+  SeekerErrorsLatency,
+  SeekerProgressRow,
+  SeekerReadinessReport,
+  SeekerReadinessSnapshot,
+  SeekerTestingIssue,
+  SeekerTestingOverview,
+  SeekerTestPhase,
+  UpdateSeekerTestingIssueInput,
+  UpdateSeekerTestPhaseInput,
+} from "@/app/lib/api/seeker-testing.types";
+import type {
   Branding,
   BrandingAdminView,
   BrandingAssetSlot,
@@ -1094,6 +1107,68 @@ class AdminApiClient {
 
   async orbitJobMarketStats(): Promise<JobMarketStats> {
     return this.request("/admin/annix-orbit/job-market/stats");
+  }
+
+  orbitSeekerTestingPhases(): Promise<SeekerTestPhase[]> {
+    return this.request("/admin/annix-orbit/seeker-testing/phases");
+  }
+
+  createOrbitSeekerTestingPhase(body: CreateSeekerTestPhaseInput): Promise<SeekerTestPhase> {
+    return this.request("/admin/annix-orbit/seeker-testing/phases", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  updateOrbitSeekerTestingPhase(
+    id: string,
+    body: UpdateSeekerTestPhaseInput,
+  ): Promise<SeekerTestPhase> {
+    return this.request(`/admin/annix-orbit/seeker-testing/phases/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+
+  orbitSeekerTestingOverview(): Promise<SeekerTestingOverview> {
+    return this.request("/admin/annix-orbit/seeker-testing/overview");
+  }
+
+  orbitSeekerTestingErrorsLatency(): Promise<SeekerErrorsLatency> {
+    return this.request("/admin/annix-orbit/seeker-testing/errors-latency");
+  }
+
+  orbitSeekerTestingUsers(): Promise<SeekerProgressRow[]> {
+    return this.request("/admin/annix-orbit/seeker-testing/users");
+  }
+
+  orbitSeekerTestingReadiness(): Promise<SeekerReadinessReport> {
+    return this.request("/admin/annix-orbit/seeker-testing/readiness");
+  }
+
+  recalculateOrbitSeekerTestingReadiness(): Promise<SeekerReadinessSnapshot> {
+    return this.request("/admin/annix-orbit/seeker-testing/recalculate", { method: "POST" });
+  }
+
+  orbitSeekerTestingIssues(): Promise<SeekerTestingIssue[]> {
+    return this.request("/admin/annix-orbit/seeker-testing/issues");
+  }
+
+  createOrbitSeekerTestingIssue(body: CreateSeekerTestingIssueInput): Promise<SeekerTestingIssue> {
+    return this.request("/admin/annix-orbit/seeker-testing/issues", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  updateOrbitSeekerTestingIssue(
+    id: string,
+    body: UpdateSeekerTestingIssueInput,
+  ): Promise<SeekerTestingIssue> {
+    return this.request(`/admin/annix-orbit/seeker-testing/issues/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
   }
 
   async orbitClusterUsage(): Promise<OrbitClusterUsage> {

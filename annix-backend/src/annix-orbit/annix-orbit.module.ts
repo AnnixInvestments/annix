@@ -63,6 +63,7 @@ import { AdminOrbitDismissReasonsController } from "./controllers/admin-orbit-di
 import { AdminOrbitEarlyAccessController } from "./controllers/admin-orbit-early-access.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
+import { AdminOrbitSeekerTestingController } from "./controllers/admin-orbit-seeker-testing.controller";
 import { AdminOrbitTierCapabilitiesController } from "./controllers/admin-orbit-tier-capabilities.controller";
 import { AdminOrbitUsersController } from "./controllers/admin-orbit-users.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
@@ -140,8 +141,15 @@ import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { SeekerEmploymentRecord } from "./entities/seeker-employment-record.entity";
 import { SeekerInterviewEvent } from "./entities/seeker-interview-event.entity";
 import { SeekerInterviewReminder } from "./entities/seeker-interview-reminder.entity";
+import { SeekerLaunchReadinessSnapshot } from "./entities/seeker-launch-readiness-snapshot.entity";
 import { SeekerMute } from "./entities/seeker-mute.entity";
+import { SeekerTestEvent } from "./entities/seeker-test-event.entity";
+import { SeekerTestParticipant } from "./entities/seeker-test-participant.entity";
+import { SeekerTestPhase } from "./entities/seeker-test-phase.entity";
+import { SeekerTestingIssue } from "./entities/seeker-testing-issue.entity";
 import { SeekerUsageCounter } from "./entities/seeker-usage-counter.entity";
+import { SeekerWorkflowProgress } from "./entities/seeker-workflow-progress.entity";
+import { SeekerWorkflowStep } from "./entities/seeker-workflow-step.entity";
 import { SourceRespectRank } from "./entities/source-respect-rank.entity";
 import { AnnixOrbitAuthGuard } from "./guards/annix-orbit-auth.guard";
 import { AnnixOrbitRoleGuard } from "./guards/annix-orbit-role.guard";
@@ -265,12 +273,33 @@ import { PostgresSeekerInterviewEventRepository } from "./repositories/seeker-in
 import { SeekerInterviewReminderRepository } from "./repositories/seeker-interview-reminder.repository";
 import { MongoSeekerInterviewReminderRepository } from "./repositories/seeker-interview-reminder.repository.mongo";
 import { PostgresSeekerInterviewReminderRepository } from "./repositories/seeker-interview-reminder.repository.postgres";
+import { SeekerLaunchReadinessSnapshotRepository } from "./repositories/seeker-launch-readiness-snapshot.repository";
+import { MongoSeekerLaunchReadinessSnapshotRepository } from "./repositories/seeker-launch-readiness-snapshot.repository.mongo";
+import { PostgresSeekerLaunchReadinessSnapshotRepository } from "./repositories/seeker-launch-readiness-snapshot.repository.postgres";
 import { SeekerMuteRepository } from "./repositories/seeker-mute.repository";
 import { MongoSeekerMuteRepository } from "./repositories/seeker-mute.repository.mongo";
 import { PostgresSeekerMuteRepository } from "./repositories/seeker-mute.repository.postgres";
+import { SeekerTestEventRepository } from "./repositories/seeker-test-event.repository";
+import { MongoSeekerTestEventRepository } from "./repositories/seeker-test-event.repository.mongo";
+import { PostgresSeekerTestEventRepository } from "./repositories/seeker-test-event.repository.postgres";
+import { SeekerTestParticipantRepository } from "./repositories/seeker-test-participant.repository";
+import { MongoSeekerTestParticipantRepository } from "./repositories/seeker-test-participant.repository.mongo";
+import { PostgresSeekerTestParticipantRepository } from "./repositories/seeker-test-participant.repository.postgres";
+import { SeekerTestPhaseRepository } from "./repositories/seeker-test-phase.repository";
+import { MongoSeekerTestPhaseRepository } from "./repositories/seeker-test-phase.repository.mongo";
+import { PostgresSeekerTestPhaseRepository } from "./repositories/seeker-test-phase.repository.postgres";
+import { SeekerTestingIssueRepository } from "./repositories/seeker-testing-issue.repository";
+import { MongoSeekerTestingIssueRepository } from "./repositories/seeker-testing-issue.repository.mongo";
+import { PostgresSeekerTestingIssueRepository } from "./repositories/seeker-testing-issue.repository.postgres";
 import { SeekerUsageCounterRepository } from "./repositories/seeker-usage-counter.repository";
 import { MongoSeekerUsageCounterRepository } from "./repositories/seeker-usage-counter.repository.mongo";
 import { PostgresSeekerUsageCounterRepository } from "./repositories/seeker-usage-counter.repository.postgres";
+import { SeekerWorkflowProgressRepository } from "./repositories/seeker-workflow-progress.repository";
+import { MongoSeekerWorkflowProgressRepository } from "./repositories/seeker-workflow-progress.repository.mongo";
+import { PostgresSeekerWorkflowProgressRepository } from "./repositories/seeker-workflow-progress.repository.postgres";
+import { SeekerWorkflowStepRepository } from "./repositories/seeker-workflow-step.repository";
+import { MongoSeekerWorkflowStepRepository } from "./repositories/seeker-workflow-step.repository.mongo";
+import { PostgresSeekerWorkflowStepRepository } from "./repositories/seeker-workflow-step.repository.postgres";
 import { SourceRespectRankRepository } from "./repositories/source-respect-rank.repository";
 import { MongoSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.mongo";
 import { PostgresSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.postgres";
@@ -314,8 +343,15 @@ import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
 import { SeekerEmploymentRecordSchema } from "./schemas/seeker-employment-record.schema";
 import { SeekerInterviewEventSchema } from "./schemas/seeker-interview-event.schema";
 import { SeekerInterviewReminderSchema } from "./schemas/seeker-interview-reminder.schema";
+import { SeekerLaunchReadinessSnapshotSchema } from "./schemas/seeker-launch-readiness-snapshot.schema";
 import { SeekerMuteSchema } from "./schemas/seeker-mute.schema";
+import { SeekerTestEventSchema } from "./schemas/seeker-test-event.schema";
+import { SeekerTestParticipantSchema } from "./schemas/seeker-test-participant.schema";
+import { SeekerTestPhaseSchema } from "./schemas/seeker-test-phase.schema";
+import { SeekerTestingIssueSchema } from "./schemas/seeker-testing-issue.schema";
 import { SeekerUsageCounterSchema } from "./schemas/seeker-usage-counter.schema";
+import { SeekerWorkflowProgressSchema } from "./schemas/seeker-workflow-progress.schema";
+import { SeekerWorkflowStepSchema } from "./schemas/seeker-workflow-step.schema";
 import { SourceRespectRankSchema } from "./schemas/source-respect-rank.schema";
 import { AssistedPortalAdapters } from "./services/adapters/assisted-portal-adapters.service";
 import { FacebookPortalAdapter } from "./services/adapters/facebook-portal-adapter.service";
@@ -381,7 +417,10 @@ import { SeekerCompanyResearchService } from "./services/seeker-company-research
 import { SeekerEmploymentService } from "./services/seeker-employment.service";
 import { SeekerInterviewEventsService } from "./services/seeker-interview-events.service";
 import { SeekerJobFeedService } from "./services/seeker-job-feed.service";
+import { SeekerLaunchReadinessService } from "./services/seeker-launch-readiness.service";
 import { SeekerReminderPreferencesService } from "./services/seeker-reminder-preferences.service";
+import { SeekerTelemetryService } from "./services/seeker-telemetry.service";
+import { SeekerWorkflowProgressService } from "./services/seeker-workflow-progress.service";
 import { SettingsService } from "./services/settings.service";
 import { TestCandidateSeederService } from "./services/test-candidate-seeder.service";
 import { WorkProfileService } from "./services/work-profile.service";
@@ -454,6 +493,16 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "AnnixOrbitPlacement", schema: AnnixOrbitPlacementSchema },
               { name: "AnnixOrbitTalentCandidate", schema: AnnixOrbitTalentCandidateSchema },
               { name: "AnnixOrbitSubmission", schema: AnnixOrbitSubmissionSchema },
+              { name: "SeekerTestPhase", schema: SeekerTestPhaseSchema },
+              { name: "SeekerTestParticipant", schema: SeekerTestParticipantSchema },
+              { name: "SeekerWorkflowProgress", schema: SeekerWorkflowProgressSchema },
+              { name: "SeekerWorkflowStep", schema: SeekerWorkflowStepSchema },
+              { name: "SeekerTestingIssue", schema: SeekerTestingIssueSchema },
+              {
+                name: "SeekerLaunchReadinessSnapshot",
+                schema: SeekerLaunchReadinessSnapshotSchema,
+              },
+              { name: "SeekerTestEvent", schema: SeekerTestEventSchema },
             ],
             ORBIT_CONNECTION,
           ),
@@ -524,6 +573,13 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             SeekerUsageCounter,
             CvEscoSkill,
             CvGeocodeCache,
+            SeekerTestPhase,
+            SeekerTestParticipant,
+            SeekerWorkflowProgress,
+            SeekerWorkflowStep,
+            SeekerTestingIssue,
+            SeekerLaunchReadinessSnapshot,
+            SeekerTestEvent,
             Rfq,
           ]),
         ]),
@@ -596,6 +652,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdminOrbitDelistReportsController,
     AdminOrbitTierCapabilitiesController,
     PublicTierPlansController,
+    AdminOrbitSeekerTestingController,
   ],
   providers: [
     AnnixOrbitAuthGuard,
@@ -673,11 +730,49 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     OrbitEarlyAccessService,
     OrbitJobDelistService,
     OrbitTierCapabilityService,
+    SeekerTelemetryService,
+    SeekerWorkflowProgressService,
+    SeekerLaunchReadinessService,
     repositoryProvider(CandidateRepository, PostgresCandidateRepository, MongoCandidateRepository),
     repositoryProvider(
       OrbitEarlyAccessSignupRepository,
       PostgresOrbitEarlyAccessSignupRepository,
       MongoOrbitEarlyAccessSignupRepository,
+    ),
+    repositoryProvider(
+      SeekerTestPhaseRepository,
+      PostgresSeekerTestPhaseRepository,
+      MongoSeekerTestPhaseRepository,
+    ),
+    repositoryProvider(
+      SeekerTestParticipantRepository,
+      PostgresSeekerTestParticipantRepository,
+      MongoSeekerTestParticipantRepository,
+    ),
+    repositoryProvider(
+      SeekerWorkflowProgressRepository,
+      PostgresSeekerWorkflowProgressRepository,
+      MongoSeekerWorkflowProgressRepository,
+    ),
+    repositoryProvider(
+      SeekerWorkflowStepRepository,
+      PostgresSeekerWorkflowStepRepository,
+      MongoSeekerWorkflowStepRepository,
+    ),
+    repositoryProvider(
+      SeekerTestingIssueRepository,
+      PostgresSeekerTestingIssueRepository,
+      MongoSeekerTestingIssueRepository,
+    ),
+    repositoryProvider(
+      SeekerLaunchReadinessSnapshotRepository,
+      PostgresSeekerLaunchReadinessSnapshotRepository,
+      MongoSeekerLaunchReadinessSnapshotRepository,
+    ),
+    repositoryProvider(
+      SeekerTestEventRepository,
+      PostgresSeekerTestEventRepository,
+      MongoSeekerTestEventRepository,
     ),
     repositoryProvider(
       JobPostingRepository,

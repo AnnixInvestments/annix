@@ -246,6 +246,24 @@ const orbitAdminCards: AppHubCard[] = [
     hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/orbit/seeker-testing",
+    title: "Seeker Testing",
+    description:
+      "Beta testing & launch readiness — errors/latency from real users, workflow funnel, KPIs, bug tracker and the go-live checklist.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    color: "bg-orange-100 text-orange-600",
+    hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
+  },
+  {
     href: "/admin/portal/scheduled-jobs?app=orbit",
     title: "Scheduled Jobs",
     description: "Orbit background cron jobs — ingestion, alerts, POPIA purges. Pause and retune.",

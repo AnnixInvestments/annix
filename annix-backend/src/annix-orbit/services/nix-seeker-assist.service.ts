@@ -4,7 +4,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
-import { now } from "../../lib/datetime";
+import { now, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
@@ -15,8 +15,10 @@ import {
   IndividualDocumentKind,
 } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
+import { CandidateRepository } from "../repositories/candidate.repository";
 import {
   calendarAdvisoryPrompt,
   credentialPhotoPrompt,
@@ -30,6 +32,7 @@ import {
   seekerCvImprovementPrompt,
 } from "./nix-prompts";
 import { SeekerJobFeedService } from "./seeker-job-feed.service";
+import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 type CredentialPhotoMediaType = "image/jpeg" | "image/png" | "image/webp";
 
@@ -113,7 +116,21 @@ export class NixSeekerAssistService {
     private readonly learningRepo: NixLearningRepository,
     private readonly userRepo: UserRepository,
     private readonly seekerJobFeed: SeekerJobFeedService,
+    private readonly seekerTelemetry: SeekerTelemetryService,
+    private readonly candidateRepo: CandidateRepository,
   ) {}
+
+  private async candidateIdForUser(userId: number): Promise<number | null> {
+    try {
+      const user = await this.userRepo.findById(userId);
+      if (!user || !user.email) return null;
+      const candidates = await this.candidateRepo.findByEmail(user.email);
+      const first = candidates[0];
+      return first ? first.id : null;
+    } catch {
+      return null;
+    }
+  }
 
   private async credentialCorrectionExamples(): Promise<string[]> {
     try {
@@ -195,6 +212,8 @@ export class NixSeekerAssistService {
       );
     }
 
+    const candidateId = await this.candidateIdForUser(userId);
+
     const documents = await this.documentRepo.findByProfileOrdered(profile.id);
 
     const supportingDocuments = documents
@@ -223,15 +242,48 @@ export class NixSeekerAssistService {
         }
       : null;
 
-    return this.metrics.time(METRIC_CATEGORY, "cv-improvements", async () => {
-      const prompt = seekerCvImprovementPrompt({
-        cvText: profile.rawCvText,
-        extractedCv,
-        supportingDocuments,
+    await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.aiAnalysisStarted);
+    const startedMs = nowMillis();
+
+    try {
+      const result = await this.metrics.time(METRIC_CATEGORY, "cv-improvements", async () => {
+        const prompt = seekerCvImprovementPrompt({
+          cvText: profile.rawCvText,
+          extractedCv,
+          supportingDocuments,
+        });
+        const aiResult = await this.callAi(prompt);
+        return parseNixJson<NixSeekerCvAssessmentResponse>(aiResult.content);
       });
-      const result = await this.callAi(prompt);
-      return parseNixJson<NixSeekerCvAssessmentResponse>(result.content);
-    });
+
+      if (typeof result.overallScore === "number") {
+        try {
+          profile.careerScore = result.overallScore;
+          profile.careerScoreGeneratedAt = now().toJSDate();
+          await this.profileRepo.save(profile);
+        } catch (saveError) {
+          const message = saveError instanceof Error ? saveError.message : String(saveError);
+          this.logger.warn(`Failed to persist career score: ${message}`);
+        }
+        await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.careerScoreGenerated, {
+          metadata: { score: result.overallScore },
+        });
+      }
+
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.aiAnalysisCompleted, {
+        ok: true,
+        durationMs: nowMillis() - startedMs,
+      });
+
+      return result;
+    } catch (error) {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.aiAnalysisCompleted, {
+        ok: false,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        durationMs: nowMillis() - startedMs,
+      });
+      throw error;
+    }
   }
 
   async generateCv(userId: number): Promise<NixGeneratedCv> {
@@ -308,6 +360,11 @@ export class NixSeekerAssistService {
     if (!cvBuildQuota.unlimited) {
       await this.seekerJobFeed.recordCvBuild(email);
     }
+
+    const candidateId = await this.candidateIdForUser(userId);
+    await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.cvImprovementGenerated, {
+      ok: true,
+    });
 
     return result;
   }

@@ -27,6 +27,7 @@ import {
 } from "../entities/annix-orbit-individual-document.entity";
 import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
@@ -38,6 +39,7 @@ import { CvExtractionService } from "./cv-extraction.service";
 import { EmbeddingService } from "./embedding.service";
 import { NixSeekerAssistService } from "./nix-seeker-assist.service";
 import { type EeAttributesView, PopiaService } from "./popia.service";
+import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 const DELETION_TOKEN_EXPIRY_HOURS = 1;
 
@@ -146,7 +148,20 @@ export class IndividualProfileService {
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly nixSeekerAssistService: NixSeekerAssistService,
     private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
+    private readonly seekerTelemetry: SeekerTelemetryService,
   ) {}
+
+  private async telemetryCandidateId(userId: number): Promise<number | null> {
+    try {
+      const user = await this.userRepo.findById(userId);
+      if (!user || !user.email) return null;
+      const candidates = await this.candidateRepo.findByEmail(user.email);
+      const first = candidates[0];
+      return first ? first.id : null;
+    } catch {
+      return null;
+    }
+  }
 
   // Self-service seekers live as an AnnixOrbitProfile, but matching runs against
   // the Candidate entity (linked by email). Upsert a posting-less Candidate from
@@ -333,6 +348,8 @@ export class IndividualProfileService {
       profile.onboardingCompletedAt = now().toJSDate();
       await this.profileRepo.save(profile);
     }
+    const candidateId = await this.telemetryCandidateId(userId);
+    await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.profileCompleted);
     const completedAt = profile.onboardingCompletedAt;
     return { onboardingCompletedAt: completedAt ? completedAt.toISOString() : "" };
   }
@@ -488,6 +505,16 @@ export class IndividualProfileService {
     }
 
     const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
+
+    const candidateId = await this.telemetryCandidateId(userId);
+    if (kind === IndividualDocumentKind.CV) {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.cvUploaded);
+    } else if (
+      kind === IndividualDocumentKind.QUALIFICATION ||
+      kind === IndividualDocumentKind.CERTIFICATE
+    ) {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.qualificationUploaded);
+    }
 
     return {
       id: saved.id,
