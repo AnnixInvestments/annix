@@ -9,6 +9,7 @@ import type { RbacAppAccessSummary, RbacUserWithAccessSummary } from "@/app/lib/
 import { formatDateZA } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
+  useAdminSetPendingSeekerTier,
   useRbacAllUsers,
   useRbacAppDetails,
   useRbacApps,
@@ -20,7 +21,7 @@ import {
   useRbacSendAccessLink,
 } from "@/app/lib/query/hooks";
 import { AppToggleCard } from "./components/AppToggleCard";
-import { InviteUserModal } from "./components/InviteUserModal";
+import { InviteUserModal, type OrbitInviteExtra } from "./components/InviteUserModal";
 import { UserNavigationBar } from "./components/UserNavigationBar";
 import { UserSelector } from "./components/UserSelector";
 
@@ -61,6 +62,7 @@ export default function AdminUsersPage() {
 
   const revokeMutation = useRbacRevokeAccess();
   const inviteMutation = useRbacInviteUser();
+  const pendingTierMutation = useAdminSetPendingSeekerTier();
   const sendLinkMutation = useRbacSendAccessLink();
   const deactivateMutation = useRbacDeactivateUser();
   const reactivateMutation = useRbacReactivateUser();
@@ -252,10 +254,26 @@ export default function AdminUsersPage() {
     );
   };
 
-  const handleInviteUser = (dto: Parameters<typeof inviteMutation.mutate>[0]) => {
+  const handleInviteUser = (
+    dto: Parameters<typeof inviteMutation.mutate>[0],
+    orbitExtra?: OrbitInviteExtra,
+  ) => {
     inviteMutation.mutate(dto, {
       onSuccess: (response) => {
         showToast(response.message, "success");
+        if (orbitExtra && orbitExtra.module === "seeker") {
+          pendingTierMutation.mutate(
+            {
+              email: dto.email,
+              tier: orbitExtra.tier,
+              permanent: orbitExtra.permanent,
+              trialDays: orbitExtra.permanent ? undefined : orbitExtra.trialDays,
+            },
+            {
+              onError: (err) => showToast(`Invited, but tier not set: ${err.message}`, "error"),
+            },
+          );
+        }
         setShowInviteModal(false);
       },
       onError: (err) => {
@@ -493,6 +511,9 @@ export default function AdminUsersPage() {
           setShowInviteModal(false);
           setInviteAppCode(null);
         }}
+        apps={apps}
+        selectedAppCode={inviteAppCode}
+        onAppChange={(code) => setInviteAppCode(code || null)}
         appDetails={inviteAppDetails ?? null}
         onInvite={handleInviteUser}
         isInviting={inviteMutation.isPending}

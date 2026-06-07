@@ -785,11 +785,11 @@ class AdminApiClient {
   });
 
   rbacAppDetails = createEndpoint<[code: string], RbacAppDetail>(apiClient, "GET", {
-    path: "/admin/rbac/apps/${encodeURIComponent(code)}",
+    path: (code) => `/admin/rbac/apps/${encodeURIComponent(code)}`,
   });
 
   rbacUsersWithAccess = createEndpoint<[appCode: string], RbacUserAccess[]>(apiClient, "GET", {
-    path: "/admin/rbac/apps/${encodeURIComponent(appCode)}/users",
+    path: (appCode) => `/admin/rbac/apps/${encodeURIComponent(appCode)}/users`,
   });
 
   async rbacSearchUsers(query: string): Promise<RbacSearchUser[]> {
@@ -853,7 +853,7 @@ class AdminApiClient {
     apiClient,
     "POST",
     {
-      path: "/admin/rbac/apps/${encodeURIComponent(appCode)}/roles",
+      path: (appCode) => `/admin/rbac/apps/${encodeURIComponent(appCode)}/roles`,
       body: (_appCode, dto) => dto,
     },
   );
@@ -958,18 +958,18 @@ class AdminApiClient {
   });
 
   pausePollingJob = createEndpoint<[name: string], PollingJobDto>(apiClient, "POST", {
-    path: "/admin/polling-jobs/${encodeURIComponent(name)}/pause",
+    path: (name) => `/admin/polling-jobs/${encodeURIComponent(name)}/pause`,
   });
 
   resumePollingJob = createEndpoint<[name: string], PollingJobDto>(apiClient, "POST", {
-    path: "/admin/polling-jobs/${encodeURIComponent(name)}/resume",
+    path: (name) => `/admin/polling-jobs/${encodeURIComponent(name)}/resume`,
   });
 
   updatePollingJobInterval = createEndpoint<[name: string, intervalMs: number], PollingJobDto>(
     apiClient,
     "POST",
     {
-      path: "/admin/polling-jobs/${encodeURIComponent(name)}/interval",
+      path: (name) => `/admin/polling-jobs/${encodeURIComponent(name)}/interval`,
       body: (_name, intervalMs) => ({ intervalMs }),
     },
   );
@@ -1346,6 +1346,18 @@ class AdminApiClient {
     return this.request("/admin/annix-orbit/seekers/invite-trial", {
       method: "POST",
       body: JSON.stringify({ email, tier, freeDays }),
+    });
+  }
+
+  async setPendingSeekerTier(body: {
+    email: string;
+    tier: string;
+    permanent: boolean;
+    trialDays?: number;
+  }): Promise<{ saved: boolean }> {
+    return this.request("/admin/annix-orbit/seekers/pending-tier", {
+      method: "POST",
+      body: JSON.stringify(body),
     });
   }
 

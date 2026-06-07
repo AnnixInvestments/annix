@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { now } from "../lib/datetime";
 import { PasswordService } from "../shared/auth/password.service";
 import { UserRepository } from "../user/user.repository";
 import { JwtPayload } from "./jwt.strategy";
@@ -31,6 +32,14 @@ export class AuthService {
   }
 
   async login(user: any) {
+    if (user?.id) {
+      const fresh = await this.userRepo.findById(user.id);
+      if (fresh) {
+        fresh.lastLoginAt = now().toJSDate();
+        await this.userRepo.save(fresh);
+      }
+    }
+
     const payload = {
       sub: user.id,
       username: user.username,

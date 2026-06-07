@@ -1,6 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
-import { InviteSeekerTrialDto, SetSeekerMatchTierDto } from "../dto/seeker-match-tier.dto";
+import {
+  InviteSeekerTrialDto,
+  SetPendingSeekerTierDto,
+  SetSeekerMatchTierDto,
+} from "../dto/seeker-match-tier.dto";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
 @Controller("admin/annix-orbit/seekers")
@@ -39,5 +43,15 @@ export class AdminOrbitSeekerController {
   @Post("invite-trial")
   async inviteTrial(@Body() dto: InviteSeekerTrialDto) {
     return this.feedService.inviteSeekerTrial(dto.email, dto.tier, dto.freeDays);
+  }
+
+  @Post("pending-tier")
+  async setPendingTier(@Body() dto: SetPendingSeekerTierDto) {
+    return this.feedService.setPendingSeekerTier(
+      dto.email,
+      dto.tier,
+      dto.permanent,
+      dto.trialDays ?? null,
+    );
   }
 }

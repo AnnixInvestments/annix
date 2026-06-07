@@ -15,6 +15,8 @@ describe("AuthService", () => {
   const mockUserRepo = {
     findByEmailWithRoles: jest.fn(),
     findByIdWithRoles: jest.fn(),
+    findById: jest.fn(),
+    save: jest.fn(),
   };
 
   const mockJwtService = {

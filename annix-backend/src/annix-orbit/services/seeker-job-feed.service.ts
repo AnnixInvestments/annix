@@ -41,6 +41,7 @@ import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 import { OrbitDismissReasonRepository } from "../repositories/orbit-dismiss-reason.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
+import { PendingSeekerTierRepository } from "../repositories/pending-seeker-tier.repository";
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
 import { SeekerMuteRepository } from "../repositories/seeker-mute.repository";
 import { SeekerUsageCounterRepository } from "../repositories/seeker-usage-counter.repository";
@@ -220,11 +221,45 @@ export class SeekerJobFeedService {
     private readonly notificationService: CvNotificationService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly pendingTierRepo: PendingSeekerTierRepository,
   ) {}
 
   // Union of the seeker's candidates' target countries; defaults to South Africa.
   async enabledJobCountries(): Promise<string[]> {
     return this.countriesService.enabledCountries();
+  }
+
+  // Records an admin's intended tier for a seeker who hasn't registered yet.
+  // Applied to their candidate when it is created on CV upload
+  // (see IndividualProfileService.syncCandidateFromProfile).
+  async setPendingSeekerTier(
+    email: string,
+    tier: string,
+    permanent: boolean,
+    trialDays: number | null,
+  ): Promise<{ saved: boolean }> {
+    if (!isMatchTier(tier)) {
+      throw new BadRequestException(`Invalid tier: ${tier}`);
+    }
+    const emailNormalized = email.toLowerCase().trim();
+    if (!emailNormalized) {
+      throw new BadRequestException("Email is required.");
+    }
+    const existing = await this.pendingTierRepo.findByEmailNormalized(emailNormalized);
+    if (existing) {
+      existing.tier = tier;
+      existing.permanent = permanent;
+      existing.trialDays = permanent ? null : trialDays;
+      await this.pendingTierRepo.save(existing);
+    } else {
+      await this.pendingTierRepo.create({
+        emailNormalized,
+        tier,
+        permanent,
+        trialDays: permanent ? null : trialDays,
+      });
+    }
+    return { saved: true };
   }
 
   private async targetCountriesForCandidates(candidates: Candidate[]): Promise<string[]> {

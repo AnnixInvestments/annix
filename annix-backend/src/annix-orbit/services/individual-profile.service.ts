@@ -33,6 +33,7 @@ import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-access-signup.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
+import { PendingSeekerTierRepository } from "../repositories/pending-seeker-tier.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
@@ -149,6 +150,7 @@ export class IndividualProfileService {
     private readonly nixSeekerAssistService: NixSeekerAssistService,
     private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
     private readonly seekerTelemetry: SeekerTelemetryService,
+    private readonly pendingTierRepo: PendingSeekerTierRepository,
   ) {}
 
   private async telemetryCandidateId(userId: number): Promise<number | null> {
@@ -181,6 +183,15 @@ export class IndividualProfileService {
       .filter((part): part is string => Boolean(part && part.trim().length > 0))
       .join(" ");
 
+    // An admin can pre-assign a seeker tier at invite time (before this candidate
+    // exists). Apply it now that the candidate is being created.
+    const pendingTier = await this.pendingTierRepo
+      .findByEmailNormalized(email.toLowerCase().trim())
+      .catch(() => null);
+    if (pendingTier && isMatchTier(pendingTier.tier)) {
+      profile.selectedTier = pendingTier.tier;
+    }
+
     const existing = await this.candidateRepo.findOneWhere({ email });
     const candidate =
       existing ??
@@ -197,6 +208,23 @@ export class IndividualProfileService {
       candidate.matchTier = profile.selectedTier;
     }
     const saved = await this.candidateRepo.save(candidate);
+
+    if (pendingTier) {
+      try {
+        if (!pendingTier.permanent && pendingTier.trialDays) {
+          const trialEndsAt = now().plus({ days: pendingTier.trialDays }).toJSDate();
+          await this.candidateRepo.setTrial(saved.id, pendingTier.tier, trialEndsAt);
+        }
+        await this.profileRepo.save(profile);
+        await this.pendingTierRepo.deleteByEmailNormalized(email.toLowerCase().trim());
+      } catch (err) {
+        this.logger.warn(
+          `Failed to apply pending seeker tier for ${email}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
 
     if (profile.eeDisclosure) {
       try {

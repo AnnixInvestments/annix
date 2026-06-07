@@ -336,10 +336,11 @@ export class StockControlAuthService {
       : null;
     const role = scUser?.role || StockControlRole.STOREMAN;
 
+    unifiedUser.lastLoginAt = now().toJSDate();
     if (!unifiedUser.emailVerified) {
       unifiedUser.emailVerified = true;
-      await this.unifiedUserRepo.save(unifiedUser);
     }
+    await this.unifiedUserRepo.save(unifiedUser);
 
     const tokens = this.generateTokens(unifiedUser, profile, role);
     const name =

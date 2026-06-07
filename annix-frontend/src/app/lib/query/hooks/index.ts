@@ -75,6 +75,7 @@ export {
   useAdminSetOrbitEnabledCountries,
   useAdminSetOrbitRetentionCap,
   useAdminSetOrbitSeekerMatchTier,
+  useAdminSetPendingSeekerTier,
   useAdminTriggerOrbitIngestion,
   useAdminUpdateOrbitJobMarketSource,
   useAdminVetPendingOrbitJobs,

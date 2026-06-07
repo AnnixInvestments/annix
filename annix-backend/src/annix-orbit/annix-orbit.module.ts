@@ -136,6 +136,7 @@ import { OrbitCredentialType } from "./entities/orbit-credential-type.entity";
 import { OrbitDismissReason } from "./entities/orbit-dismiss-reason.entity";
 import { OrbitEarlyAccessSignup } from "./entities/orbit-early-access-signup.entity";
 import { OrbitTierCapability } from "./entities/orbit-tier-capability.entity";
+import { PendingSeekerTier } from "./entities/pending-seeker-tier.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
 import { SeekerEmploymentRecord } from "./entities/seeker-employment-record.entity";
@@ -258,6 +259,9 @@ import { PostgresOrbitEarlyAccessSignupRepository } from "./repositories/orbit-e
 import { OrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository";
 import { MongoOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.mongo";
 import { PostgresOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.postgres";
+import { PendingSeekerTierRepository } from "./repositories/pending-seeker-tier.repository";
+import { MongoPendingSeekerTierRepository } from "./repositories/pending-seeker-tier.repository.mongo";
+import { PostgresPendingSeekerTierRepository } from "./repositories/pending-seeker-tier.repository.postgres";
 import { SalaryBenchmarkRepository } from "./repositories/salary-benchmark.repository";
 import { MongoSalaryBenchmarkRepository } from "./repositories/salary-benchmark.repository.mongo";
 import { PostgresSalaryBenchmarkRepository } from "./repositories/salary-benchmark.repository.postgres";
@@ -338,6 +342,7 @@ import { OrbitCredentialTypeSchema } from "./schemas/orbit-credential-type.schem
 import { OrbitDismissReasonSchema } from "./schemas/orbit-dismiss-reason.schema";
 import { OrbitEarlyAccessSignupSchema } from "./schemas/orbit-early-access-signup.schema";
 import { OrbitTierCapabilitySchema } from "./schemas/orbit-tier-capability.schema";
+import { PendingSeekerTierSchema } from "./schemas/pending-seeker-tier.schema";
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
 import { SeekerEmploymentRecordSchema } from "./schemas/seeker-employment-record.schema";
@@ -503,6 +508,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
                 schema: SeekerLaunchReadinessSnapshotSchema,
               },
               { name: "SeekerTestEvent", schema: SeekerTestEventSchema },
+              { name: "PendingSeekerTier", schema: PendingSeekerTierSchema },
             ],
             ORBIT_CONNECTION,
           ),
@@ -580,6 +586,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             SeekerTestingIssue,
             SeekerLaunchReadinessSnapshot,
             SeekerTestEvent,
+            PendingSeekerTier,
             Rfq,
           ]),
         ]),
@@ -773,6 +780,11 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       SeekerTestEventRepository,
       PostgresSeekerTestEventRepository,
       MongoSeekerTestEventRepository,
+    ),
+    repositoryProvider(
+      PendingSeekerTierRepository,
+      PostgresPendingSeekerTierRepository,
+      MongoPendingSeekerTierRepository,
     ),
     repositoryProvider(
       JobPostingRepository,

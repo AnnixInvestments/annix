@@ -256,3 +256,10 @@ export function useAdminSetOrbitSeekerMatchTier() {
     },
   });
 }
+
+export function useAdminSetPendingSeekerTier() {
+  return useMutation({
+    mutationFn: (body: { email: string; tier: string; permanent: boolean; trialDays?: number }) =>
+      adminApiClient.setPendingSeekerTier(body),
+  });
+}
