@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -860,6 +861,13 @@ function WorkCountriesPreference() {
   const { data } = useOrbitSeekerTargetCountries();
   const setMutation = useOrbitSetSeekerTargetCountries();
   const { showToast } = useToast();
+  const enabledQuery = useQuery({
+    queryKey: ["orbit-seeker-enabled-countries"],
+    queryFn: () => annixOrbitApiClient.seekerEnabledCountries(),
+  });
+  const enabledData = enabledQuery.data;
+  const enabled = enabledData ? enabledData.countries : WORK_COUNTRY_OPTIONS;
+  const options = WORK_COUNTRY_OPTIONS.filter((code) => enabled.includes(code));
   const selected = data ? data.targetCountries : ["za"];
 
   const toggle = (code: string) => {
@@ -881,6 +889,10 @@ function WorkCountriesPreference() {
     });
   };
 
+  if (options.length <= 1) {
+    return null;
+  }
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 dark:border-white/10">
       <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
@@ -891,7 +903,7 @@ function WorkCountriesPreference() {
         me Find a Job".
       </p>
       <div className="flex flex-wrap gap-2">
-        {WORK_COUNTRY_OPTIONS.map((code) => {
+        {options.map((code) => {
           const on = selected.includes(code);
           return (
             <button

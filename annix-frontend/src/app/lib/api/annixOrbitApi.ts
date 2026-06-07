@@ -8,6 +8,31 @@ export interface AnnixOrbitLoginDto {
   accountType?: string;
 }
 
+export interface EarlyAccessSignupPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobileNumber: string;
+  currentRole?: string;
+  industry?: string;
+  yearsExperience?: string;
+  ageRange?: string;
+  ethnicBackground?: string;
+  consentToContact: boolean;
+  source?: string;
+  campaign?: string;
+  platform?: string;
+  referredBy?: string;
+}
+
+export interface EarlyAccessSignupResult {
+  referralCode: string;
+  alreadyOnList: boolean;
+  totalSignups: number;
+  position: number;
+  referralCount: number;
+}
+
 export type AnnixOrbitUserType = "company" | "recruiter" | "individual" | "student";
 
 export interface AnnixOrbitUser {
@@ -2233,6 +2258,10 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/me/ee-attributes");
   }
 
+  async eeAttributesSuggestion(): Promise<{ populationGroup: string | null }> {
+    return this.request("/annix-orbit/me/ee-attributes/suggestion");
+  }
+
   async updateMyEeAttributes(
     input: UpdateMyEeAttributesInput,
   ): Promise<{ updated: number; consentTextVersionId: number }> {
@@ -2298,6 +2327,17 @@ class AnnixOrbitApiClient {
   async publicJobPosting(referenceNumber: string): Promise<PublicJobPosting> {
     const safeRef = encodeURIComponent(referenceNumber);
     return this.request(`/annix-orbit/public/job-postings/${safeRef}`);
+  }
+
+  async earlyAccessCount(): Promise<{ total: number }> {
+    return this.request("/annix-orbit/public/early-access/count");
+  }
+
+  async submitEarlyAccess(payload: EarlyAccessSignupPayload): Promise<EarlyAccessSignupResult> {
+    return this.request("/annix-orbit/public/early-access", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   }
 
   async portalAdapters(): Promise<PortalAdapterSummary[]> {
@@ -2373,6 +2413,10 @@ class AnnixOrbitApiClient {
 
   async seekerTargetCountries(): Promise<{ targetCountries: string[] }> {
     return this.request("/annix-orbit/seeker/jobs/target-countries");
+  }
+
+  async seekerEnabledCountries(): Promise<{ countries: string[] }> {
+    return this.request("/annix-orbit/seeker/jobs/enabled-countries");
   }
 
   async setSeekerTargetCountries(countries: string[]): Promise<{ targetCountries: string[] }> {

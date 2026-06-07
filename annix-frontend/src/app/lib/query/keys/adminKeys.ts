@@ -102,6 +102,12 @@ export const adminKeys = {
     duplicates: () => [...adminKeys.orbitJobMarket.all, "duplicates"] as const,
     clusterUsage: () => [...adminKeys.orbitJobMarket.all, "clusterUsage"] as const,
     retentionCap: () => [...adminKeys.orbitJobMarket.all, "retentionCap"] as const,
+    enabledCountries: () => [...adminKeys.orbitJobMarket.all, "enabledCountries"] as const,
+  },
+  orbitEarlyAccess: {
+    all: ["admin", "orbitEarlyAccess"] as const,
+    stats: () => [...adminKeys.orbitEarlyAccess.all, "stats"] as const,
+    list: () => [...adminKeys.orbitEarlyAccess.all, "list"] as const,
   },
   orbitSeekers: {
     all: ["admin", "orbitSeekers"] as const,

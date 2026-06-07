@@ -212,6 +212,51 @@ export class EmailService {
     });
   }
 
+  async sendAnnixOrbitEarlyAccessWelcome(
+    email: string,
+    firstName: string,
+    referralLink: string,
+  ): Promise<boolean> {
+    const safeName = firstName ? firstName : "there";
+    const html = emailLayout({
+      title: "You're on the Annix Orbit early-access list",
+      heading: "You're on the list 🎉",
+      headingColor: "#FF8A00",
+      bodyHtml: `
+          <p>Hi ${safeName},</p>
+          <p>Thanks for joining the <strong>Annix Orbit Seeker</strong> early-access list. You'll get
+          priority access — upload your CV, receive your AI Career Score, and discover better
+          opportunities — the moment we launch.</p>
+          <p>Want to move up the queue? Share your personal invite link with friends:</p>
+          <p><a href="${referralLink}">${referralLink}</a></p>`,
+      cta: {
+        href: referralLink,
+        label: "Share your invite link",
+        color: "#FF8A00",
+        expiryNote: "The more friends you invite, the sooner you get in.",
+      },
+      footerText:
+        "You're receiving this because you joined the Annix Orbit Seeker early-access list.",
+    });
+
+    const text = `
+      You're on the list
+
+      Hi ${safeName}, thanks for joining the Annix Orbit Seeker early-access list. You'll get priority
+      access the moment we launch.
+
+      Share your invite link to move up the queue: ${referralLink}
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "You're on the Annix Orbit early-access list",
+      html,
+      text,
+      isTransactional: true,
+    });
+  }
+
   async sendSupplierApprovalEmail(email: string, companyName: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/supplier/portal/dashboard`;

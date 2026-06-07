@@ -140,6 +140,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 9 * * *",
   },
+  "annix-orbit:early-access-drip": {
+    description: "Send early-access waiting-list drip emails (day 3 / day 7)",
+    module: "Annix Orbit",
+    defaultCron: "0 8 * * *",
+  },
   "annix-orbit:retry-portal-postings": {
     description:
       "Retry failed external job-portal postings with exponential backoff (1h, 6h, 24h, 72h, then abandon)",

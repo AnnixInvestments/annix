@@ -1111,6 +1111,34 @@ class AdminApiClient {
     });
   }
 
+  async orbitEnabledCountries(): Promise<{ all: string[]; enabled: string[] }> {
+    return this.request("/admin/annix-orbit/job-market/enabled-countries");
+  }
+
+  async setOrbitEnabledCountries(
+    countries: string[],
+  ): Promise<{ all: string[]; enabled: string[] }> {
+    return this.request("/admin/annix-orbit/job-market/enabled-countries", {
+      method: "PUT",
+      body: JSON.stringify({ countries }),
+    });
+  }
+
+  async orbitEarlyAccessStats(): Promise<OrbitEarlyAccessStats> {
+    return this.request("/admin/annix-orbit/early-access/stats");
+  }
+
+  async orbitEarlyAccessList(): Promise<OrbitEarlyAccessRow[]> {
+    return this.request("/admin/annix-orbit/early-access/list");
+  }
+
+  async orbitEarlyAccessExportCsv(): Promise<void> {
+    return apiClient.downloadBlob(
+      "/admin/annix-orbit/early-access/export.csv",
+      "orbit-early-access.csv",
+    );
+  }
+
   async orbitJobMarketDuplicates(limit?: number): Promise<DuplicateJobPair[]> {
     const query = limit ? `?limit=${limit}` : "";
     return this.request(`/admin/annix-orbit/job-market/duplicates${query}`);
@@ -1427,6 +1455,42 @@ class AdminApiClient {
   async rejectOrbitDelist(id: number): Promise<{ success: boolean }> {
     return this.request(`/admin/annix-orbit/delist-reports/${id}/reject`, { method: "POST" });
   }
+}
+
+export interface OrbitEarlyAccessRow {
+  id: string;
+  position: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobileNumber: string;
+  currentRole: string | null;
+  industry: string | null;
+  yearsExperience: string | null;
+  ageRange: string | null;
+  ethnicBackground: string | null;
+  consentToContact: boolean;
+  source: string;
+  campaign: string | null;
+  referralCode: string;
+  referredBy: string | null;
+  referralCount: number;
+  createdAt: string;
+}
+
+export interface OrbitEarlyAccessBucket {
+  key: string;
+  count: number;
+}
+
+export interface OrbitEarlyAccessStats {
+  total: number;
+  today: number;
+  thisWeek: number;
+  bySource: OrbitEarlyAccessBucket[];
+  byCampaign: OrbitEarlyAccessBucket[];
+  byIndustry: OrbitEarlyAccessBucket[];
+  topReferrers: OrbitEarlyAccessBucket[];
 }
 
 export interface OrbitSeekerMatchTier {

@@ -96,6 +96,24 @@ export function useAdminSetOrbitRetentionCap() {
   });
 }
 
+export function useAdminOrbitEnabledCountries() {
+  return useQuery<{ all: string[]; enabled: string[] }>({
+    queryKey: adminKeys.orbitJobMarket.enabledCountries(),
+    queryFn: () => adminApiClient.orbitEnabledCountries(),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useAdminSetOrbitEnabledCountries() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (countries: string[]) => adminApiClient.setOrbitEnabledCountries(countries),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.enabledCountries() });
+    },
+  });
+}
+
 export function useAdminOrbitJobMarketDuplicates(enabled: boolean) {
   return useQuery<DuplicateJobPair[]>({
     queryKey: adminKeys.orbitJobMarket.duplicates(),

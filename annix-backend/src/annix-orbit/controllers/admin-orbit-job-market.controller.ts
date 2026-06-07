@@ -24,6 +24,10 @@ import {
 import { isSitemapCrawlProvider } from "../services/crawl/sitemap-crawl-profiles";
 import { EmbeddingService } from "../services/embedding.service";
 import { JobIngestionService } from "../services/job-ingestion.service";
+import {
+  ALL_JOB_COUNTRIES,
+  JobMarketCountriesService,
+} from "../services/job-market-countries.service";
 import { JobMarketSourceService } from "../services/job-market-source.service";
 
 const ORBIT_SETTINGS_COLLECTION = "cv_assistant_orbit_settings";
@@ -38,8 +42,25 @@ export class AdminOrbitJobMarketController {
     private readonly sourceService: JobMarketSourceService,
     private readonly ingestionService: JobIngestionService,
     private readonly embeddingService: EmbeddingService,
+    private readonly countriesService: JobMarketCountriesService,
     @InjectConnection(ORBIT_CONNECTION) private readonly orbitConnection: Connection,
   ) {}
+
+  // Live admin toggle: which job-source countries seekers can pick from. Disabling
+  // a country (e.g. gb) hides it from the seeker "Where do you want to work?" picker
+  // and drops it from match scoping immediately.
+  @Get("enabled-countries")
+  async enabledCountries() {
+    const enabled = await this.countriesService.enabledCountries();
+    return { all: [...ALL_JOB_COUNTRIES], enabled };
+  }
+
+  @Put("enabled-countries")
+  async setEnabledCountries(@Body() body: { countries: string[] }) {
+    const enabled = await this.countriesService.setEnabledCountries(body.countries ?? []);
+    this.logger.log(`Enabled job countries set to [${enabled.join(", ")}]`);
+    return { all: [...ALL_JOB_COUNTRIES], enabled };
+  }
 
   // Atlas M0 enforces its 512 MB cap on LOGICAL size (dataSize + indexSize), not
   // the on-disk high-water mark — so this reports logical usage per env DB on the

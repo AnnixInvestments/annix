@@ -60,6 +60,7 @@ import { AdminEeTargetsController } from "./controllers/admin-ee-targets.control
 import { AdminOrbitCredentialTypesController } from "./controllers/admin-orbit-credential-types.controller";
 import { AdminOrbitDelistReportsController } from "./controllers/admin-orbit-delist-reports.controller";
 import { AdminOrbitDismissReasonsController } from "./controllers/admin-orbit-dismiss-reasons.controller";
+import { AdminOrbitEarlyAccessController } from "./controllers/admin-orbit-early-access.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
 import { AdminOrbitTierCapabilitiesController } from "./controllers/admin-orbit-tier-capabilities.controller";
@@ -82,6 +83,7 @@ import { JobPostingController } from "./controllers/job-posting.controller";
 import { NotificationController } from "./controllers/notification.controller";
 import { PortalAdaptersController } from "./controllers/portal-adapters.controller";
 import { PublicAccountController } from "./controllers/public-account.controller";
+import { PublicEarlyAccessController } from "./controllers/public-early-access.controller";
 import { PublicEeDisclosureController } from "./controllers/public-ee-disclosure.controller";
 import { PublicInterviewBookingController } from "./controllers/public-interview-booking.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
@@ -131,6 +133,7 @@ import { JobSkill } from "./entities/job-skill.entity";
 import { JobSuccessMetric } from "./entities/job-success-metric.entity";
 import { OrbitCredentialType } from "./entities/orbit-credential-type.entity";
 import { OrbitDismissReason } from "./entities/orbit-dismiss-reason.entity";
+import { OrbitEarlyAccessSignup } from "./entities/orbit-early-access-signup.entity";
 import { OrbitTierCapability } from "./entities/orbit-tier-capability.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
 import { SeekerApplyClick } from "./entities/seeker-apply-click.entity";
@@ -241,6 +244,9 @@ import { PostgresOrbitCredentialTypeRepository } from "./repositories/orbit-cred
 import { OrbitDismissReasonRepository } from "./repositories/orbit-dismiss-reason.repository";
 import { MongoOrbitDismissReasonRepository } from "./repositories/orbit-dismiss-reason.repository.mongo";
 import { PostgresOrbitDismissReasonRepository } from "./repositories/orbit-dismiss-reason.repository.postgres";
+import { OrbitEarlyAccessSignupRepository } from "./repositories/orbit-early-access-signup.repository";
+import { MongoOrbitEarlyAccessSignupRepository } from "./repositories/orbit-early-access-signup.repository.mongo";
+import { PostgresOrbitEarlyAccessSignupRepository } from "./repositories/orbit-early-access-signup.repository.postgres";
 import { OrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository";
 import { MongoOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.mongo";
 import { PostgresOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.postgres";
@@ -301,6 +307,7 @@ import { JobSkillSchema } from "./schemas/job-skill.schema";
 import { JobSuccessMetricSchema } from "./schemas/job-success-metric.schema";
 import { OrbitCredentialTypeSchema } from "./schemas/orbit-credential-type.schema";
 import { OrbitDismissReasonSchema } from "./schemas/orbit-dismiss-reason.schema";
+import { OrbitEarlyAccessSignupSchema } from "./schemas/orbit-early-access-signup.schema";
 import { OrbitTierCapabilitySchema } from "./schemas/orbit-tier-capability.schema";
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
 import { SeekerApplyClickSchema } from "./schemas/seeker-apply-click.schema";
@@ -346,6 +353,7 @@ import { InterviewBookingService } from "./services/interview-booking.service";
 import { InterviewReminderService } from "./services/interview-reminder.service";
 import { JobCategorizationService } from "./services/job-categorization.service";
 import { JobIngestionService } from "./services/job-ingestion.service";
+import { JobMarketCountriesService } from "./services/job-market-countries.service";
 import { JobMarketSourceService } from "./services/job-market-source.service";
 import { JobMatchService } from "./services/job-match.service";
 import { JobPostingService } from "./services/job-posting.service";
@@ -357,6 +365,7 @@ import { NixJobAssistService } from "./services/nix-job-assist.service";
 import { NixSeekerAssistService } from "./services/nix-seeker-assist.service";
 import { OrbitCredentialTypeService } from "./services/orbit-credential-type.service";
 import { OrbitDismissReasonService } from "./services/orbit-dismiss-reason.service";
+import { OrbitEarlyAccessService } from "./services/orbit-early-access.service";
 import { OrbitJobDelistService } from "./services/orbit-job-delist.service";
 import { OrbitTierCapabilityService } from "./services/orbit-tier-capability.service";
 import { PopiaService } from "./services/popia.service";
@@ -435,6 +444,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "CvCredential", schema: CvCredentialSchema },
               { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
               { name: "OrbitDismissReason", schema: OrbitDismissReasonSchema },
+              { name: "OrbitEarlyAccessSignup", schema: OrbitEarlyAccessSignupSchema },
               { name: "OrbitTierCapability", schema: OrbitTierCapabilitySchema },
               { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
               { name: "CvEscoSkill", schema: CvEscoSkillSchema },
@@ -509,6 +519,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             CvCredential,
             OrbitCredentialType,
             OrbitDismissReason,
+            OrbitEarlyAccessSignup,
             OrbitTierCapability,
             SeekerUsageCounter,
             CvEscoSkill,
@@ -580,6 +591,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CredentialController,
     AdminOrbitCredentialTypesController,
     AdminOrbitDismissReasonsController,
+    AdminOrbitEarlyAccessController,
+    PublicEarlyAccessController,
     AdminOrbitDelistReportsController,
     AdminOrbitTierCapabilitiesController,
     PublicTierPlansController,
@@ -613,6 +626,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     SitemapCrawlIngestionService,
     JobIngestionService,
     JobCategorizationService,
+    JobMarketCountriesService,
     JobMarketSourceService,
     JobVettingService,
     EmbeddingService,
@@ -656,9 +670,15 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     CredentialService,
     OrbitCredentialTypeService,
     OrbitDismissReasonService,
+    OrbitEarlyAccessService,
     OrbitJobDelistService,
     OrbitTierCapabilityService,
     repositoryProvider(CandidateRepository, PostgresCandidateRepository, MongoCandidateRepository),
+    repositoryProvider(
+      OrbitEarlyAccessSignupRepository,
+      PostgresOrbitEarlyAccessSignupRepository,
+      MongoOrbitEarlyAccessSignupRepository,
+    ),
     repositoryProvider(
       JobPostingRepository,
       PostgresJobPostingRepository,

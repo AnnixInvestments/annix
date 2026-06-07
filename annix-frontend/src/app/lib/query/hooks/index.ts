@@ -47,6 +47,10 @@ export {
   useAdminUpdateOrbitDismissReason,
 } from "./admin/useAdminOrbitDismissReasons";
 export {
+  useAdminOrbitEarlyAccessList,
+  useAdminOrbitEarlyAccessStats,
+} from "./admin/useAdminOrbitEarlyAccess";
+export {
   useAdminDeleteOrbitEeTarget,
   useAdminOrbitEeTargets,
   useAdminUpsertOrbitEeTarget,
@@ -58,6 +62,7 @@ export {
   useAdminDeleteOrbitExternalJob,
   useAdminDeleteOrbitJobMarketSource,
   useAdminOrbitClusterUsage,
+  useAdminOrbitEnabledCountries,
   useAdminOrbitExternalJobs,
   useAdminOrbitJobMarketDuplicates,
   useAdminOrbitJobMarketProviders,
@@ -67,6 +72,7 @@ export {
   useAdminOrbitSeekerDetail,
   useAdminOrbitSeekerMatchTier,
   useAdminOrbitSeekers,
+  useAdminSetOrbitEnabledCountries,
   useAdminSetOrbitRetentionCap,
   useAdminSetOrbitSeekerMatchTier,
   useAdminTriggerOrbitIngestion,

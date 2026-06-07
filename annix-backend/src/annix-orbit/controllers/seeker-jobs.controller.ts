@@ -100,6 +100,12 @@ export class SeekerJobsController {
     return this.feedService.targetCountriesForSeeker(req.user.email);
   }
 
+  @Get("enabled-countries")
+  async enabledCountries() {
+    const countries = await this.feedService.enabledJobCountries();
+    return { countries };
+  }
+
   @Put("target-countries")
   setTargetCountries(@Request() req: SeekerAuthRequest, @Body() dto: SetTargetCountriesDto) {
     return this.feedService.setTargetCountriesForSeeker(req.user.email, dto.countries);

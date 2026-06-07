@@ -30,6 +30,7 @@ import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
+import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-access-signup.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
@@ -144,6 +145,7 @@ export class IndividualProfileService {
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly nixSeekerAssistService: NixSeekerAssistService,
+    private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
   ) {}
 
   // Self-service seekers live as an AnnixOrbitProfile, but matching runs against
@@ -784,6 +786,20 @@ export class IndividualProfileService {
       consentGrantedAt: ee.consentGrantedAt,
       purposes: ee.purposes,
     };
+  }
+
+  async eeSuggestionForUser(userId: number): Promise<{ populationGroup: string | null }> {
+    const existing = await this.eeAttributesForUser(userId);
+    if (existing) {
+      return { populationGroup: null };
+    }
+    const user = await this.userRepo.findById(userId);
+    const email = user ? user.email : null;
+    if (!email) {
+      return { populationGroup: null };
+    }
+    const signup = await this.earlyAccessRepo.findByEmailNormalized(email.trim().toLowerCase());
+    return { populationGroup: signup ? signup.ethnicBackground : null };
   }
 
   async updateEeAttributesForUser(

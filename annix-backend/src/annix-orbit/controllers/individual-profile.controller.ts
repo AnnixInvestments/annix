@@ -170,6 +170,11 @@ export class IndividualProfileController {
     return this.individualProfileService.eeAttributesForUser(req.user.id);
   }
 
+  @Get("ee-attributes/suggestion")
+  eeAttributesSuggestion(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.eeSuggestionForUser(req.user.id);
+  }
+
   @Patch("ee-attributes")
   updateEeAttributes(
     @Request() req: { user: { id: number } },

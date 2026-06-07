@@ -48,6 +48,7 @@ import {
   type RecommendedJobFilters,
 } from "./candidate-job-matching.service";
 import { CvNotificationService } from "./cv-notification.service";
+import { JobMarketCountriesService } from "./job-market-countries.service";
 
 const HELP_FIND_JOB_OPERATION = "help-find-job";
 const CV_BUILD_OPERATION = "nix-cv-build";
@@ -211,6 +212,7 @@ export class SeekerJobFeedService {
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly usageCounterRepo: SeekerUsageCounterRepository,
     private readonly dismissReasonRepo: OrbitDismissReasonRepository,
+    private readonly countriesService: JobMarketCountriesService,
     @Inject(forwardRef(() => CvNotificationService))
     private readonly notificationService: CvNotificationService,
     @Inject(STORAGE_SERVICE)
@@ -218,10 +220,17 @@ export class SeekerJobFeedService {
   ) {}
 
   // Union of the seeker's candidates' target countries; defaults to South Africa.
-  private targetCountriesForCandidates(candidates: Candidate[]): string[] {
+  async enabledJobCountries(): Promise<string[]> {
+    return this.countriesService.enabledCountries();
+  }
+
+  private async targetCountriesForCandidates(candidates: Candidate[]): Promise<string[]> {
     const set = new Set<string>();
     candidates.forEach((c) => (c.targetCountries ?? []).forEach((code) => set.add(code)));
-    return set.size > 0 ? [...set] : ["za"];
+    const base = set.size > 0 ? [...set] : ["za"];
+    const enabled = await this.countriesService.enabledCountries();
+    const filtered = base.filter((code) => enabled.includes(code));
+    return filtered.length > 0 ? filtered : enabled;
   }
 
   private effectiveTier(candidates: Candidate[]): string {
@@ -476,7 +485,7 @@ export class SeekerJobFeedService {
     // Provider name -> source ids so the source dimension filters the same field
     // the rows carry; every facet then excludes its own dimension. The target-
     // country gate is always applied so a seeker never facets outside their scope.
-    const targetCountries = this.targetCountriesForCandidates(candidates);
+    const targetCountries = await this.targetCountriesForCandidates(candidates);
     const rf = (await this.resolveRepoFilters(options.filters ?? null)) ?? {};
     const ff = { ...rf, targetCountries };
 
@@ -530,7 +539,7 @@ export class SeekerJobFeedService {
 
   async targetCountriesForSeeker(email: string | null): Promise<{ targetCountries: string[] }> {
     const candidates = await this.candidatesForSeeker(email);
-    return { targetCountries: this.targetCountriesForCandidates(candidates) };
+    return { targetCountries: await this.targetCountriesForCandidates(candidates) };
   }
 
   async setTargetCountriesForSeeker(
@@ -773,7 +782,7 @@ export class SeekerJobFeedService {
 
     // Country gate: the seeker's target countries, narrowed to one when the Region
     // dropdown is used. UK jobs only reach seekers who opted into "gb".
-    const targetCountries = this.targetCountriesForCandidates(candidates);
+    const targetCountries = await this.targetCountriesForCandidates(candidates);
     const region = options.filters?.region ?? null;
     const effectiveCountries = region ? [region] : targetCountries;
     const displayFilters: RecommendedJobFilters = {

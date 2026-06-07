@@ -210,6 +210,11 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
 
 export default function SeekerLayout(props: { children: React.ReactNode }) {
   const { children } = props;
+  const pathname = usePathname();
+  // Public pre-launch landing page — must not be gated behind seeker auth or chrome.
+  if (pathname === "/annix/orbit/seeker/register-interest") {
+    return <>{children}</>;
+  }
   return (
     <>
       <OrbitModulePwaMeta module="seeker" />

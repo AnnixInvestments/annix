@@ -22,6 +22,7 @@ import {
 } from "@/app/lib/query/hooks";
 import { adminKeys } from "@/app/lib/query/keys/adminKeys";
 import { AddSourceForm } from "./components/AddSourceForm";
+import { EnabledCountriesControl } from "./components/EnabledCountriesControl";
 import { FindDuplicatesModal } from "./components/FindDuplicatesModal";
 import { IngestionScheduleControl } from "./components/IngestionScheduleControl";
 import { JobCard } from "./components/JobCard";
@@ -512,6 +513,8 @@ export default function AdminOrbitJobMarketPage() {
               onCancel={() => setShowAddSource(false)}
             />
           )}
+
+          <EnabledCountriesControl />
 
           <RetentionCapControl />
 
