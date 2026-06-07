@@ -1,7 +1,6 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { adminApiClient } from "@/app/lib/api/adminApi";
@@ -400,12 +399,6 @@ export default function AdminOrbitJobMarketPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <Link
-            href="/admin/portal/orbit"
-            className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
-          >
-            ← Orbit admin hub
-          </Link>
           <h1 className="text-2xl font-bold text-orange-500">Annix Orbit — Job Market</h1>
           <p className="text-orange-400 mt-1">
             Manage platform-global job-board feeds that populate Browse Jobs for every seeker.

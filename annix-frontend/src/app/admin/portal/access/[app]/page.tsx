@@ -51,10 +51,7 @@ export default function AppAccessPage() {
   return (
     <div className="mx-auto max-w-5xl space-y-10 px-4 py-8">
       <div>
-        <Link href="/admin/portal/global-apps" className="text-sm text-indigo-600 hover:underline">
-          ← Apps
-        </Link>
-        <h1 className="mt-2 text-2xl font-bold text-gray-900">{app.name} — Access & plans</h1>
+        <h1 className="text-2xl font-bold text-gray-900">{app.name} — Access & plans</h1>
         <p className="mt-1 text-sm text-gray-500">
           Manage this app's subscription tiers, invite users with a free trial, and create promo
           codes. Billing/checkout is enabled later.

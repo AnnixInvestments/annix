@@ -129,12 +129,6 @@ export default function OrbitSeekersPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between">
         <div>
-          <Link
-            href="/admin/portal/orbit"
-            className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
-          >
-            ← Orbit admin hub
-          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Seekers</h1>
           <p className="text-gray-600 mt-1 text-sm max-w-2xl">
             Every job seeker on the platform. Search by name or email, or click a row to open the
