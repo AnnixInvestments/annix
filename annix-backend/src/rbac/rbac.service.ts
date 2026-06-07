@@ -192,12 +192,44 @@ export class RbacService {
 
     const stockControlApp = allApps.find((a) => a.code === "stock-control");
 
-    const stockControlUserDtos: UserWithAccessSummaryDto[] = stockControlUsers.map((scUser) => {
+    // A Stock Control person can also have an RBAC `user` record (their main
+    // login). Merge them into that single row — folding in their Stock Control
+    // access if it isn't already shown — so the same person is never listed
+    // twice. Only Stock-Control-only people (no RBAC user) get their own row.
+    const mainUserByEmail = new Map(
+      mainUsers.map((dto) => [dto.email.toLowerCase(), dto] as const),
+    );
+
+    const stockControlOnlyDtos: UserWithAccessSummaryDto[] = [];
+    for (const scUser of stockControlUsers) {
+      const scAccess = stockControlApp
+        ? {
+            appCode: "stock-control",
+            appName: `Stock Control (${scUser.company?.name ?? "Unknown"})`,
+            roleCode: scUser.role,
+            roleName: STOCK_CONTROL_ROLE_NAMES[scUser.role] ?? scUser.role,
+            useCustomPermissions: false,
+            permissionCodes: null,
+            permissionCount: null,
+            expiresAt: null,
+            accessId: -scUser.id,
+            productKeys: null,
+          }
+        : null;
+
+      const existing = mainUserByEmail.get(scUser.email.toLowerCase());
+      if (existing) {
+        const hasStockControl = existing.appAccess.some((a) => a.appCode === "stock-control");
+        if (scAccess && !hasStockControl) {
+          existing.appAccess.push(scAccess);
+        }
+        continue;
+      }
+
       const nameParts = scUser.name.split(" ");
       const firstName = nameParts[0] ?? null;
       const lastName = nameParts.slice(1).join(" ") || null;
-
-      return {
+      stockControlOnlyDtos.push({
         id: -scUser.id,
         email: scUser.email,
         firstName,
@@ -205,26 +237,11 @@ export class RbacService {
         status: scUser.emailVerified ? "active" : "pending",
         lastLoginAt: null,
         createdAt: scUser.createdAt,
-        appAccess: stockControlApp
-          ? [
-              {
-                appCode: "stock-control",
-                appName: `Stock Control (${scUser.company?.name ?? "Unknown"})`,
-                roleCode: scUser.role,
-                roleName: STOCK_CONTROL_ROLE_NAMES[scUser.role] ?? scUser.role,
-                useCustomPermissions: false,
-                permissionCodes: null,
-                permissionCount: null,
-                expiresAt: null,
-                accessId: -scUser.id,
-                productKeys: null,
-              },
-            ]
-          : [],
-      };
-    });
+        appAccess: scAccess ? [scAccess] : [],
+      });
+    }
 
-    return [...mainUsers, ...stockControlUserDtos].sort((a, b) => a.email.localeCompare(b.email));
+    return [...mainUsers, ...stockControlOnlyDtos].sort((a, b) => a.email.localeCompare(b.email));
   }
 
   async searchUsers(
