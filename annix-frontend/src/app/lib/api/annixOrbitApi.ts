@@ -824,6 +824,8 @@ export interface IndividualProfileStatus {
   onboardingComplete: boolean;
   photoUrl: string | null;
   photoVisibleToEmployers: boolean;
+  phoneType: string | null;
+  appGuideSeen: boolean;
 }
 
 export type NixSeekerImprovementArea =
@@ -2173,6 +2175,16 @@ class AnnixOrbitApiClient {
 
   async completeOnboarding(): Promise<{ onboardingCompletedAt: string }> {
     return this.request("/annix-orbit/me/onboarding/complete", { method: "POST" });
+  }
+
+  async updateSeekerPreferences(body: {
+    phoneType?: string | null;
+    appGuideSeen?: boolean;
+  }): Promise<{ phoneType: string | null; appGuideSeen: boolean }> {
+    return this.request("/annix-orbit/me/preferences", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
   }
 
   async sendAppLink(): Promise<{ sent: boolean; email: string }> {

@@ -81,6 +81,14 @@ export class IndividualProfileController {
     return this.individualProfileService.completeOnboarding(req.user.id);
   }
 
+  @Patch("preferences")
+  updatePreferences(
+    @Request() req: { user: { id: number } },
+    @Body() body: { phoneType?: string | null; appGuideSeen?: boolean },
+  ) {
+    return this.individualProfileService.updateSeekerPreferences(req.user.id, body);
+  }
+
   @Post("send-app-link")
   sendAppLink(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.sendAppLink(req.user.id);

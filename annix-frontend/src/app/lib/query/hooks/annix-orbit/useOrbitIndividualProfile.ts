@@ -53,6 +53,22 @@ export function useOrbitSendAppLink() {
   });
 }
 
+export function useOrbitUpdateSeekerPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { phoneType?: string | null; appGuideSeen?: boolean }) =>
+      annixOrbitApiClient.updateSeekerPreferences(body),
+    onSuccess: (data) => {
+      queryClient.setQueryData<IndividualProfileStatus>(
+        annixOrbitKeys.individualProfile.status(),
+        (old) =>
+          old ? { ...old, phoneType: data.phoneType, appGuideSeen: data.appGuideSeen } : old,
+      );
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
+  });
+}
+
 export function useOrbitMyDocuments(enabled = true) {
   return useQuery<IndividualDocument[]>({
     queryKey: annixOrbitKeys.individualProfile.documents(),

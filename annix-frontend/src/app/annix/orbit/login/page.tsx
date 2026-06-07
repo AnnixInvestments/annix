@@ -54,6 +54,8 @@ function AnnixOrbitLoginContent() {
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [needsSignup, setNeedsSignup] = useState(false);
+  const [phoneType, setPhoneType] = useState<"apple" | "android" | null>(null);
+  const isJobSeeker = accountType === "individual";
 
   useEffect(() => {
     if (prefilledEmail) {
@@ -77,6 +79,9 @@ function AnnixOrbitLoginContent() {
         await logout().catch(() => {});
         setError(mismatch);
         return;
+      }
+      if (isJobSeeker && phoneType) {
+        annixOrbitApiClient.updateSeekerPreferences({ phoneType }).catch(() => {});
       }
       router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
@@ -221,6 +226,41 @@ function AnnixOrbitLoginContent() {
                 Forgot password?
               </Link>
             </div>
+
+            {isJobSeeker && (
+              <div>
+                <span className="block text-sm font-medium text-gray-700 mb-2">
+                  What phone do you use?
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhoneType("apple")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                      phoneType === "apple"
+                        ? "border-[#323288] bg-[#f0f0fc] text-[#323288]"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    iPhone (Apple)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhoneType("android")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                      phoneType === "android"
+                        ? "border-[#323288] bg-[#f0f0fc] text-[#323288]"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Android
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  Helps us show you the right "add to home screen" guide.
+                </p>
+              </div>
+            )}
 
             <button
               type="submit"

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type {
   SeekerApplication,
@@ -17,7 +18,9 @@ import {
   useOrbitSeekerJobStats,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerWorkProfile,
+  useOrbitUpdateSeekerPreferences,
 } from "@/app/lib/query/hooks";
+import { AppDownloadGuidePopup, OnboardingImagePopup } from "../components/OnboardingPopups";
 
 const ICON_JOBS =
   "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z";
@@ -64,6 +67,25 @@ export default function SeekerDashboardPage() {
   const hasCv = status ? status.hasCv : false;
   const qualificationsCount = status ? status.qualificationsCount : 0;
   const certificatesCount = status ? status.certificatesCount : 0;
+  const phoneType = status ? status.phoneType : null;
+
+  const updatePreferences = useOrbitUpdateSeekerPreferences();
+  const [tourStep, setTourStep] = useState<0 | 1 | 2>(0);
+  const tourStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (!status) return;
+    if (status.appGuideSeen) return;
+    if (tourStartedRef.current) return;
+    tourStartedRef.current = true;
+    setTourStep(1);
+  }, [status]);
+
+  const advanceToFeedbackGuide = () => setTourStep(2);
+  const finishOnboardingTour = () => {
+    setTourStep(0);
+    updatePreferences.mutate({ appGuideSeen: true });
+  };
 
   const invitesData = invitesQuery.data;
   const invites = invitesData ? invitesData : [];
@@ -175,6 +197,17 @@ export default function SeekerDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {tourStep === 1 && (
+        <AppDownloadGuidePopup phoneType={phoneType} onClose={advanceToFeedbackGuide} />
+      )}
+      {tourStep === 2 && (
+        <OnboardingImagePopup
+          title="Using the Feedback Widget"
+          imageUrl="/orbit/onboarding/feedback-widget-guide.png"
+          imageAlt="How to use the Annix Orbit Feedback Widget"
+          onClose={finishOnboardingTour}
+        />
+      )}
       <DashboardHeader
         greeting={greeting}
         firstName={firstName}

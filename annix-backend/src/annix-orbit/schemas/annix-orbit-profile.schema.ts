@@ -124,6 +124,12 @@ export class AnnixOrbitProfile {
   @Prop({ type: Date, required: false })
   onboardingCompletedAt: Date;
 
+  @Prop({ type: String, required: false })
+  phoneType: string;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  appGuideSeen: boolean;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

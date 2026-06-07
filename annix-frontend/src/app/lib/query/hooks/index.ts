@@ -341,6 +341,7 @@ export {
   useOrbitSetProfilePhotoVisibility,
   useOrbitUpdateMyDocumentCredentialFields,
   useOrbitUpdateMyNotificationPreferences,
+  useOrbitUpdateSeekerPreferences,
   useOrbitUploadMyDocument,
   useOrbitUploadMyDocumentPhoto,
   useOrbitUploadProfilePhoto,

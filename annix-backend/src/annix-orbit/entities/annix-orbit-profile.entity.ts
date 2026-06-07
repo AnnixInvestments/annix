@@ -151,6 +151,12 @@ export class AnnixOrbitProfile {
   @Column({ name: "onboarding_completed_at", type: "timestamptz", nullable: true })
   onboardingCompletedAt: Date | null;
 
+  @Column({ name: "phone_type", type: "varchar", length: 20, nullable: true })
+  phoneType: string | null;
+
+  @Column({ name: "app_guide_seen", type: "boolean", default: false })
+  appGuideSeen: boolean;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

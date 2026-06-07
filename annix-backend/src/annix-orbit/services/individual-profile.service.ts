@@ -57,6 +57,8 @@ export interface IndividualProfileStatus {
   onboardingComplete: boolean;
   photoUrl: string | null;
   photoVisibleToEmployers: boolean;
+  phoneType: string | null;
+  appGuideSeen: boolean;
 }
 
 export interface IndividualDocumentSummary {
@@ -374,7 +376,25 @@ export class IndividualProfileService {
       onboardingComplete: profile.onboardingCompletedAt != null,
       photoUrl,
       photoVisibleToEmployers: profile.photoVisibleToEmployers,
+      phoneType: profile.phoneType ?? null,
+      appGuideSeen: profile.appGuideSeen === true,
     };
+  }
+
+  async updateSeekerPreferences(
+    userId: number,
+    input: { phoneType?: string | null; appGuideSeen?: boolean },
+  ): Promise<{ phoneType: string | null; appGuideSeen: boolean }> {
+    const profile = await this.profileForUser(userId);
+    if (input.phoneType !== undefined) {
+      const allowed = input.phoneType === "apple" || input.phoneType === "android";
+      profile.phoneType = allowed ? input.phoneType : null;
+    }
+    if (input.appGuideSeen !== undefined) {
+      profile.appGuideSeen = input.appGuideSeen;
+    }
+    await this.profileRepo.save(profile);
+    return { phoneType: profile.phoneType ?? null, appGuideSeen: profile.appGuideSeen === true };
   }
 
   async completeOnboarding(userId: number): Promise<{ onboardingCompletedAt: string }> {
