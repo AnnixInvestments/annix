@@ -8,7 +8,7 @@ tags: [jobs, intake]
 lastUpdated: 2026-04-05
 summary: Capture a new job from customer order through to workflow assignment.
 readingMinutes: 4
-relatedPaths: [annix-frontend/src/app/stock-control/portal/jobs, annix-backend/src/stock-control/job-cards]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/job-cards/page.tsx, annix-backend/src/stock-control/services/job-card.service.ts, annix-backend/src/stock-control/controllers/job-cards.controller.ts]
 ---
 
 ## When to create a job card

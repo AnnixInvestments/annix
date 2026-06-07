@@ -8,7 +8,7 @@ tags: [receiving, delivery-note, tax-invoice, sti, sdn]
 summary: Book stock into the warehouse and link it to the right job card.
 readingMinutes: 4
 lastUpdated: 2026-06-03
-relatedPaths: [annix-frontend/src/app/stock-control/portal/deliveries, annix-backend/src/stock-control/delivery-notes]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/deliveries, annix-backend/src/stock-control/services/delivery.service.ts, annix-backend/src/stock-control/controllers/deliveries.controller.ts]
 ---
 
 ## Before you start

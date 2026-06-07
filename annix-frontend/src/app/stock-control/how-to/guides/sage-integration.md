@@ -8,7 +8,7 @@ tags: [sage, accounting, integration]
 lastUpdated: 2026-04-11
 summary: Link your Sage Accounting company so invoices and contacts stay in sync.
 readingMinutes: 4
-relatedPaths: [annix-backend/src/sage-export, annix-backend/src/annix-sentinel/sentinel-integrations/sage]
+relatedPaths: [annix-backend/src/sage-export, annix-backend/src/stock-control/services/sage-invoice-adapter.service.ts]
 ---
 
 ## Prerequisites

@@ -8,7 +8,7 @@ tags: [rbac, permissions, security]
 lastUpdated: 2026-04-11
 summary: What each role can see and do, and how to tailor access per module.
 readingMinutes: 4
-relatedPaths: [annix-frontend/src/app/stock-control/config/navItems.tsx, annix-backend/src/auth]
+relatedPaths: [annix-frontend/src/app/stock-control/config/navItems.tsx, annix-backend/src/stock-control/capabilities]
 ---
 
 ## Built-in roles

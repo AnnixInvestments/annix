@@ -8,7 +8,7 @@ tags: [stock, audit]
 lastUpdated: 2026-04-05
 summary: Trace every time an item moved in or out of a location.
 readingMinutes: 2
-relatedPaths: [annix-frontend/src/app/stock-control/portal/stock]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/stock/page.tsx]
 ---
 
 ## Why stock movements matter

@@ -8,7 +8,7 @@ tags: [branding, settings, pdf]
 lastUpdated: 2026-04-11
 summary: Upload your logo, set colours, and control how your company appears on PDFs.
 readingMinutes: 3
-relatedPaths: [annix-frontend/src/app/stock-control/portal/settings, annix-backend/src/admin/company-profile]
+relatedPaths: [annix-backend/src/admin/admin-company-profile.service.ts, annix-frontend/src/app/admin/portal/branding]
 ---
 
 ## What branding affects

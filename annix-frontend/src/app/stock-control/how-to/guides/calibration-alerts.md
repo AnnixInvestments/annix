@@ -8,7 +8,7 @@ tags: [calibration, quality, alerts]
 lastUpdated: 2026-04-11
 summary: Get notified when measurement equipment is due for recalibration.
 readingMinutes: 3
-relatedPaths: [annix-frontend/src/app/stock-control/portal/quality, annix-backend/src/stock-control/calibration]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/quality/calibration]
 ---
 
 ## Background

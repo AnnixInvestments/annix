@@ -8,7 +8,7 @@ tags: [users, invitations]
 lastUpdated: 2026-04-11
 summary: Send an email invitation so a new user can join your workspace.
 readingMinutes: 2
-relatedPaths: [annix-frontend/src/app/stock-control/portal/settings, annix-backend/src/stock-control/users]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/settings/TeamManagementSection.tsx, annix-backend/src/stock-control/services/invitation.service.ts, annix-backend/src/stock-control/controllers/invitation.controller.ts]
 ---
 
 ## Steps

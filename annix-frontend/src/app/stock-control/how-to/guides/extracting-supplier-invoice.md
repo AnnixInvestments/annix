@@ -8,7 +8,7 @@ tags: [invoices, suppliers, ai-extraction]
 lastUpdated: 2026-04-11
 summary: Upload a supplier invoice PDF and let the AI extract line items automatically.
 readingMinutes: 3
-relatedPaths: [annix-frontend/src/app/stock-control/portal/invoices, annix-backend/src/stock-control/invoices]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/invoices, annix-backend/src/stock-control/services/invoice.service.ts]
 ---
 
 ## Overview

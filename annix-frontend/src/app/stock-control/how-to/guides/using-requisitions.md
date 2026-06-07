@@ -8,7 +8,7 @@ tags: [requisitions, stock]
 lastUpdated: 2026-04-05
 summary: Move stock between jobs or locations with a tracked paper trail.
 readingMinutes: 3
-relatedPaths: [annix-frontend/src/app/stock-control/portal/requisitions, annix-backend/src/stock-control/requisitions]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/requisitions, annix-backend/src/stock-control/services/requisition.service.ts, annix-backend/src/stock-control/controllers/requisitions.controller.ts]
 ---
 
 ## When to use a requisition
