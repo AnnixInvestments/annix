@@ -617,7 +617,7 @@ export class MongoExternalJobRepository
       .exec();
 
     const cap = await this.configuredRetentionCap();
-    const trimmed = await this.trimToNewest(cap);
+    const trimmed = await this.trimToFreshest(cap);
 
     return (deletedExpired.deletedCount ?? 0) + trimmed;
   }
@@ -635,13 +635,14 @@ export class MongoExternalJobRepository
       : EXTERNAL_JOB_RETENTION_CAP;
   }
 
-  private async trimToNewest(cap: number): Promise<number> {
+  private async trimToFreshest(cap: number): Promise<number> {
     const total = await this.documents.countDocuments({});
     if (total <= cap) return 0;
     const keep = await this.documents
       .find({}, { projection: { _id: 1 } })
-      .sort({ _id: -1 })
+      .sort({ lastSeenAt: -1, _id: -1 })
       .limit(cap)
+      .allowDiskUse(true)
       .lean()
       .exec();
     const keepIds = keep.map((doc) => doc._id);

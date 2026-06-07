@@ -1,12 +1,15 @@
 "use client";
 
 import type { MarketingResource, MarketingSiteContent } from "@annix/product-data/marketing";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
 
 function ResourceDetail(props: { resource: MarketingResource; onBack: () => void }) {
   const resource = props.resource;
   const imageUrl = resource.imageUrl ? resource.imageUrl : "";
+  const ctaUrl = resource.ctaUrl ? resource.ctaUrl : "";
+  const ctaLabelRaw = resource.ctaLabel;
+  const ctaLabel = ctaLabelRaw ? ctaLabelRaw : "Register your interest";
   const paragraphs = resource.body.split("\n\n");
   return (
     <section className="px-4 py-24 sm:px-6 lg:px-8">
@@ -31,8 +34,8 @@ function ResourceDetail(props: { resource: MarketingResource; onBack: () => void
         {imageUrl ? (
           <img
             src={imageUrl}
-            alt=""
-            className="mt-8 aspect-[16/9] w-full rounded-2xl border border-white/10 object-cover"
+            alt={resource.title}
+            className="mt-8 w-full rounded-2xl border border-white/10"
           />
         ) : null}
         <div className="mt-8 space-y-5">
@@ -42,6 +45,15 @@ function ResourceDetail(props: { resource: MarketingResource; onBack: () => void
             </p>
           ))}
         </div>
+        {ctaUrl ? (
+          <a
+            href={ctaUrl}
+            className="mt-10 inline-flex items-center gap-2 rounded-full bg-[var(--brand-accent)] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
+          >
+            {ctaLabel}
+            <ArrowRight className="h-4 w-4" />
+          </a>
+        ) : null}
       </div>
     </section>
   );

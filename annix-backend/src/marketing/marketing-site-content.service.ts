@@ -39,6 +39,11 @@ function withDefaults(stored: MarketingSiteContentTree | null): MarketingSiteCon
       }
     }
   });
+  // Surface resources added to the code defaults even when a stored tree already
+  // replaced the resources array — append any default whose slug is absent.
+  const storedSlugs = new Set(merged.resources.items.map((item) => item.slug));
+  const missingDefaults = defaults.resources.items.filter((def) => !storedSlugs.has(def.slug));
+  merged.resources.items = [...merged.resources.items, ...missingDefaults];
   return merged;
 }
 
