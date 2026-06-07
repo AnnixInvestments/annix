@@ -45,6 +45,12 @@ migration_routing_check() {
   fi
 }
 
+large_frontend_files_check() {
+  if [ -f "${ROOT_DIR}/scripts/check-large-frontend-files.sh" ]; then
+    bash "${ROOT_DIR}/scripts/check-large-frontend-files.sh"
+  fi
+}
+
 biome_check() {
   if ! pnpm biome check .; then
     echo ""
@@ -100,6 +106,7 @@ timed_step "duplication check" duplication_check
 timed_step "git pull --rebase" pull_rebase
 timed_step "collection budget" collection_budget_check
 timed_step "migration routing" migration_routing_check
+timed_step "large frontend files" large_frontend_files_check
 
 # ──────────────────────────────────────────────────────────────────────────
 # Path-based scoping: only run test/build for workspaces actually touched

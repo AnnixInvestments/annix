@@ -32,6 +32,30 @@ function Foo(props: FooProps) { const size = props.size || "md"; }
 function Foo({ size = "md" }: FooProps) {}
 ```
 
+## Component size budget
+
+Step / form components should stay below **~50 KB / ~1,200 lines**. A single
+React component spanning thousands of lines (hundreds of nested helpers and
+inline sub-renderers) is the dominant frontend build cost: SWC parses it
+linearly and the closure structure blocks tree-shaking and chunk splitting
+(issue #267 — the RFQ wizard monoliths once ran 100–400 KB each).
+
+If a component is approaching the budget, **extract its sub-renderers and
+helpers into sibling modules**, don't keep growing the file:
+
+- Inline `return (…)` sub-renderers → `…/<Feature>/components/<Name>.tsx`, each
+  a `memo()`'d component with an explicit props interface.
+- Pure helpers → `…/<Feature>/helpers.ts`; shared types → `…/types.ts`.
+- Pass parent state via props (don't lift it); for a stateful block, thread the
+  computed values down (pass-as-props) so the parent keeps owning the state/
+  effects. Worked example: `components/rfq/steps/specifications/` (the
+  SpecificationsStep extraction took it 7,682 → ~1,455 lines).
+
+A **non-blocking** pre-push warning (`scripts/check-large-frontend-files.sh`)
+flags any file over **200 KB** in `annix-frontend/src/` so an oversized
+component is noticed in review. It never fails the push — extraction is a
+judgement call, not a gate.
+
 ## Long-Running Operations
 
 ### Bulk operations — `useAdaptiveExtractionProgress`
