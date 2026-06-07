@@ -21,6 +21,9 @@ export class ExtractionMetric {
   @Column({ type: "boolean", default: true })
   succeeded: boolean;
 
+  @Column({ name: "failure_reason", type: "text", nullable: true })
+  failureReason: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 }

@@ -85,7 +85,6 @@ export const adminKeys = {
       groupBy?: "category" | "operation" | "day";
       category?: string;
     }) => [...adminKeys.metrics.all, "extractionUsage", params] as const,
-    neonConsumption: () => [...adminKeys.metrics.all, "neonConsumption"] as const,
   },
   orbitJobMarket: {
     all: ["admin", "orbitJobMarket"] as const,

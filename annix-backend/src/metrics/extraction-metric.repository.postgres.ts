@@ -103,6 +103,7 @@ export class PostgresExtractionMetricRepository
         totalDurationMs: Math.round(Number(row.total_duration_ms ?? 0)),
         totalPayloadBytes: Number(row.total_payload_bytes ?? 0),
         latestRunAt,
+        lastFailureReason: null,
       };
     });
   }

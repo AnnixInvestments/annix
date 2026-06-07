@@ -67,6 +67,15 @@ export class MongoExtractionMetricRepository
           totalPayloadBytes: { $sum: { $ifNull: ["$payloadSizeBytes", 0] } },
           latestRunAt: { $max: "$createdAt" },
           allDurations: { $push: "$durationMs" },
+          failureSamples: {
+            $push: {
+              $cond: [
+                { $eq: ["$succeeded", false] },
+                { at: "$createdAt", reason: "$failureReason" },
+                "$$REMOVE",
+              ],
+            },
+          },
         },
       },
       {
@@ -80,6 +89,15 @@ export class MongoExtractionMetricRepository
       const sorted = [...(row.allDurations as number[])].sort((a, b) => a - b);
       const p95Index = Math.min(Math.ceil(sorted.length * 0.95) - 1, sorted.length - 1);
       const p95DurationMs = sorted.length > 0 ? sorted[p95Index] : 0;
+
+      const failureSamples = (row.failureSamples ?? []) as Array<{
+        at: Date | null;
+        reason: string | null;
+      }>;
+      const latestFailureWithReason = failureSamples
+        .filter((sample) => Boolean(sample.reason))
+        .sort((a, b) => (b.at?.getTime?.() ?? 0) - (a.at?.getTime?.() ?? 0))[0];
+      const lastFailureReason = latestFailureWithReason ? latestFailureWithReason.reason : null;
 
       return {
         category: (row._id as Record<string, unknown>).category as string,
@@ -98,6 +116,7 @@ export class MongoExtractionMetricRepository
         totalDurationMs: Math.round(Number(row.totalDurationMs ?? 0)),
         totalPayloadBytes: Number(row.totalPayloadBytes ?? 0),
         latestRunAt: row.latestRunAt instanceof Date ? row.latestRunAt.toISOString() : null,
+        lastFailureReason,
       };
     });
   }

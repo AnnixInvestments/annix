@@ -28,8 +28,14 @@ export class ExtractionMetric {
   @Prop({ type: Boolean, required: true })
   succeeded: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: String, default: null })
+  failureReason: string | null;
+
+  // Date (not String): timestamps:true writes a real Date and the repository
+  // filters / groups on it as a Date ($gte, $dateToString), so the declared type
+  // must match the stored type.
+  @Prop({ type: Date })
+  createdAt: Date;
 }
 
 export const ExtractionMetricSchema = SchemaFactory.createForClass(ExtractionMetric);
