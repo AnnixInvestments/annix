@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { ConversationThread, MessageComposer } from "@/app/components/messaging";
 import { useToast } from "@/app/components/Toast";
 import { supplierMessagingApi } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useArchiveSupplierConversation,
   useSendSupplierMessage,
@@ -15,6 +16,7 @@ export default function SupplierConversationDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const conversationId = Number(params.id);
   const conversationQuery = useSupplierConversationDetail(conversationId);
@@ -68,7 +70,7 @@ export default function SupplierConversationDetailPage() {
       setLocalMessages((prev) => [...prev, newMessage]);
     } catch (error: any) {
       const rawMessage = error.message;
-      showToast(rawMessage || "Failed to send message", "error");
+      alert({ message: rawMessage || "Failed to send message", variant: "error" });
     }
   };
 
@@ -81,7 +83,7 @@ export default function SupplierConversationDetailPage() {
       router.push("/supplier/messages");
     } catch (error: any) {
       const rawMessage2 = error.message;
-      showToast(rawMessage2 || "Failed to archive conversation", "error");
+      alert({ message: rawMessage2 || "Failed to archive conversation", variant: "error" });
     }
   };
 
@@ -109,6 +111,7 @@ export default function SupplierConversationDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {AlertDialog}
       <div className="mb-6 flex items-center gap-4">
         <button
           onClick={() => router.push("/supplier/messages")}

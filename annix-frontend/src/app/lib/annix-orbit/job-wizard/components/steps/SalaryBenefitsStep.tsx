@@ -7,6 +7,7 @@ import {
   type JobPosting,
   type UpdateJobWizardPayload,
 } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitSalaryInsights } from "@/app/lib/query/hooks";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
@@ -116,6 +117,7 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
   const currencyDefault = strOr(draft.salaryCurrency, "ZAR");
   const commissionDefault = strOr(draft.commissionStructure);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const salaryGuidance = useNixCall({
     operation: "salary-guidance",
     label: "Nix is benchmarking salary for this role…",
@@ -134,7 +136,8 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
   const isGuiding = salaryGuidance.isPending;
   const handleGuidance = () => {
     salaryGuidance.mutate(draft.id, {
-      onError: () => showToast("Couldn't fetch salary guidance. Try again.", "error"),
+      onError: () =>
+        alert({ message: "Couldn't fetch salary guidance. Try again.", variant: "error" }),
     });
   };
 
@@ -180,6 +183,7 @@ export function SalaryBenefitsStep({ draft, onChange }: SalaryBenefitsStepProps)
       title="Salary & Benefits"
       subtitle="Set the band, commission and benefits. Phase 5 wires Nix into Adzuna SA market data so you'll see live percentile insights here."
     >
+      {AlertDialog}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="space-y-2">
           <FieldLabel htmlFor="salary-min">Salary min (per month)</FieldLabel>

@@ -6,6 +6,7 @@ import { FeatureGate } from "@/app/components/FeatureGate";
 import { useToast } from "@/app/components/Toast";
 import type { RfqDraftStatus } from "@/app/lib/api/client";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useCustomerDrafts, useCustomerRfqs, useDeleteDraft } from "@/app/lib/query/hooks";
 
 export default function CustomerRfqsPage() {
@@ -18,6 +19,7 @@ export default function CustomerRfqsPage() {
 
 function CustomerRfqsContent() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const rfqsQuery = useCustomerRfqs();
   const draftsQuery = useCustomerDrafts();
@@ -38,7 +40,7 @@ function CustomerRfqsContent() {
       await deleteDraftMutation.mutateAsync(draftId);
       showToast("Draft deleted successfully", "success");
     } catch (e) {
-      showToast("Failed to delete draft", "error");
+      alert({ message: "Failed to delete draft", variant: "error" });
     }
   };
 
@@ -78,6 +80,7 @@ function CustomerRfqsContent() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My RFQs</h1>

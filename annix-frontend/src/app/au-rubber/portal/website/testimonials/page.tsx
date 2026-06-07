@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient, type TestimonialDto } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAuRubberTestimonials } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 import { Breadcrumb } from "../../../components/Breadcrumb";
@@ -23,6 +24,7 @@ const ITEMS_PER_PAGE = 25;
 
 export default function TestimonialsListPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const testimonialsQuery = useAuRubberTestimonials();
   const rawData = testimonialsQuery.data;
@@ -61,7 +63,7 @@ export default function TestimonialsListPage() {
       const action = entry.isPublished ? "unpublished" : "published";
       showToast(`Testimonial from ${entry.authorName} ${action}`, "success");
     } catch {
-      showToast("Failed to update testimonial", "error");
+      alert({ message: "Failed to update testimonial", variant: "error" });
     }
   };
 
@@ -70,7 +72,7 @@ export default function TestimonialsListPage() {
       await auRubberApiClient.updateTestimonial(entry.id, { highlight: !entry.highlight });
       queryClient.invalidateQueries({ queryKey: rubberKeys.testimonials.all });
     } catch {
-      showToast("Failed to update testimonial", "error");
+      alert({ message: "Failed to update testimonial", variant: "error" });
     }
   };
 
@@ -82,12 +84,13 @@ export default function TestimonialsListPage() {
       showToast(`Testimonial from ${deleteTarget.authorName} deleted`, "success");
       setDeleteTarget(null);
     } catch {
-      showToast("Failed to delete testimonial", "error");
+      alert({ message: "Failed to delete testimonial", variant: "error" });
     }
   };
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/website"]}>
+      {AlertDialog}
       <Breadcrumb
         items={[
           { label: "Website Pages", href: "/au-rubber/portal/website" },

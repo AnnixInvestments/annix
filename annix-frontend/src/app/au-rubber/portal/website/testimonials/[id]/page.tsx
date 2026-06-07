@@ -12,6 +12,7 @@ import {
   type UpdateTestimonialDto,
 } from "@/app/lib/api/auRubberApi";
 import { now } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAuRubberTestimonial } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
@@ -33,6 +34,7 @@ export default function TestimonialEditorPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const id = params.id as string;
   const isNew = id === "new";
@@ -121,7 +123,7 @@ export default function TestimonialEditorPage() {
         showToast("Testimonial saved", "success");
       }
     } catch {
-      showToast("Failed to save testimonial", "error");
+      alert({ message: "Failed to save testimonial", variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -129,6 +131,7 @@ export default function TestimonialEditorPage() {
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/website"]}>
+      {AlertDialog}
       <Breadcrumb
         items={[
           { label: "Website Pages", href: "/au-rubber/portal/website" },

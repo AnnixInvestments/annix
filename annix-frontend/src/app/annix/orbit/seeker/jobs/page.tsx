@@ -25,6 +25,7 @@ import {
   type SeekerRecommendedJob,
 } from "@/app/lib/api/annixOrbitApi";
 import { nowMillis } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useDebouncedValue } from "@/app/lib/hooks/useDebouncedValue";
 import {
@@ -86,6 +87,7 @@ function clearNixPending(): void {
 
 export default function SeekerJobsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const extractionProgress = useExtractionProgress();
   const profileStatusQuery = useOrbitMyProfileStatus();
@@ -213,14 +215,14 @@ export default function SeekerJobsPage() {
     if (matchCount > pending.startCount) {
       clearNixPending();
       const added = matchCount - pending.startCount;
-      showToast(
-        `Your Nix matches are ready — ${added} new role${added === 1 ? "" : "s"} matched to your CV.`,
-        "success",
-      );
+      alert({
+        message: `Your Nix matches are ready — ${added} new role${added === 1 ? "" : "s"} matched to your CV.`,
+        variant: "success",
+      });
     } else if (nowMillis() - pending.startedAt > NIX_SEARCH_PENDING_TTL_MS) {
       clearNixPending();
     }
-  }, [recommendedDataForBanner, showToast, nixSearching]);
+  }, [recommendedDataForBanner, alert, nixSearching]);
 
   const browseJobsEnabled = profileReady;
   const [browseLimit, setBrowseLimit] = useState(100);
@@ -264,12 +266,9 @@ export default function SeekerJobsPage() {
     const term = filters.search.trim().toLowerCase();
     if (term.length === 0) return matches;
     return matches.filter((m) => {
-      const company = m.job.company || "";
-      const locationArea = m.job.locationArea || "";
-      const locationRaw = m.job.locationRaw || "";
-      const description = m.job.description || "";
+      const { company, locationArea, locationRaw, description, title } = m.job;
       const keywordHaystack =
-        `${m.job.title} ${company} ${locationArea} ${locationRaw} ${description}`.toLowerCase();
+        `${title} ${company || ""} ${locationArea || ""} ${locationRaw || ""} ${description || ""}`.toLowerCase();
       return keywordHaystack.includes(term);
     });
   }, [matches, filters]);
@@ -317,7 +316,7 @@ export default function SeekerJobsPage() {
           showToast("Thanks — Nix will use that to refine your matches.", "success");
         },
         onError: () => {
-          showToast("Failed to dismiss match", "error");
+          alert({ message: "Failed to dismiss match", variant: "error" });
         },
       },
     );
@@ -359,7 +358,7 @@ export default function SeekerJobsPage() {
         );
       },
       onError: () => {
-        showToast("Couldn't report this job — please try again.", "error");
+        alert({ message: "Couldn't report this job — please try again.", variant: "error" });
       },
     });
   };
@@ -377,7 +376,7 @@ export default function SeekerJobsPage() {
         showToast(res.created ? `Muted "${company}"` : `"${company}" was already muted`, "success");
       },
       onError: () => {
-        showToast("Failed to mute company", "error");
+        alert({ message: "Failed to mute company", variant: "error" });
       },
     });
   };
@@ -398,7 +397,7 @@ export default function SeekerJobsPage() {
         );
       },
       onError: () => {
-        showToast("Failed to hide category", "error");
+        alert({ message: "Failed to hide category", variant: "error" });
       },
     });
   };
@@ -421,14 +420,14 @@ export default function SeekerJobsPage() {
           consentQuery.refetch();
           return true;
         } catch {
-          showToast("Could not record consent right now — try again", "error");
+          alert({ message: "Could not record consent right now — try again", variant: "error" });
           return false;
         }
       }
       setConsentDeclined(true);
       return false;
     },
-    [confirm, grantConsentMutation, showToast, consentQuery],
+    [confirm, grantConsentMutation, showToast, alert, consentQuery],
   );
 
   useEffect(() => {
@@ -539,7 +538,10 @@ export default function SeekerJobsPage() {
         );
       }
     } catch {
-      showToast("Nix couldn't finish the search — please try again in a moment.", "error");
+      alert({
+        message: "Nix couldn't finish the search — please try again in a moment.",
+        variant: "error",
+      });
     } finally {
       setNixSearching(false);
     }
@@ -591,6 +593,7 @@ export default function SeekerJobsPage() {
           Loading jobs…
         </div>
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
@@ -607,32 +610,36 @@ export default function SeekerJobsPage() {
           brandButtonClass="bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)]"
         />
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
 
   if (hasCv === false) {
     return (
-      <BrowseAllJobsView
-        jobs={browseJobs}
-        loading={browseListLoading}
-        error={browseJobsQuery.isError}
-        onRetry={() => void browseJobsQuery.refetch()}
-        onApply={handleBrowseApply}
-        onReportDelisted={handleReportDelisted}
-        confirmDialog={ConfirmDialog}
-        variant="no-cv"
-        jobCount={jobCount}
-        matchCount={data ? data.total : 0}
-        hasCv={false}
-        searching={helpSearching}
-        onHelpFindJob={handleHelpFindJob}
-        quotaRemaining={quotaRemaining}
-        hasMore={hasMoreBrowse}
-        loadingMore={browseLoadingMore}
-        onLoadMore={handleLoadMoreBrowse}
-        browseLocked={browseLocked}
-      />
+      <>
+        <BrowseAllJobsView
+          jobs={browseJobs}
+          loading={browseListLoading}
+          error={browseJobsQuery.isError}
+          onRetry={() => void browseJobsQuery.refetch()}
+          onApply={handleBrowseApply}
+          onReportDelisted={handleReportDelisted}
+          confirmDialog={ConfirmDialog}
+          variant="no-cv"
+          jobCount={jobCount}
+          matchCount={data ? data.total : 0}
+          hasCv={false}
+          searching={helpSearching}
+          onHelpFindJob={handleHelpFindJob}
+          quotaRemaining={quotaRemaining}
+          hasMore={hasMoreBrowse}
+          loadingMore={browseLoadingMore}
+          onLoadMore={handleLoadMoreBrowse}
+          browseLocked={browseLocked}
+        />
+        {AlertDialog}
+      </>
     );
   }
 
@@ -646,6 +653,7 @@ export default function SeekerJobsPage() {
           Loading your matches…
         </div>
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
@@ -663,32 +671,36 @@ export default function SeekerJobsPage() {
           brandButtonClass="bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)]"
         />
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
 
   if (!consentHasCandidate) {
     return (
-      <BrowseAllJobsView
-        jobs={browseJobs}
-        loading={browseListLoading}
-        error={browseJobsQuery.isError}
-        onRetry={() => void browseJobsQuery.refetch()}
-        onApply={handleBrowseApply}
-        onReportDelisted={handleReportDelisted}
-        confirmDialog={ConfirmDialog}
-        variant="matches-pending"
-        jobCount={jobCount}
-        matchCount={data ? data.total : 0}
-        hasCv={true}
-        searching={helpSearching}
-        onHelpFindJob={handleHelpFindJob}
-        quotaRemaining={quotaRemaining}
-        hasMore={hasMoreBrowse}
-        loadingMore={browseLoadingMore}
-        onLoadMore={handleLoadMoreBrowse}
-        browseLocked={browseLocked}
-      />
+      <>
+        <BrowseAllJobsView
+          jobs={browseJobs}
+          loading={browseListLoading}
+          error={browseJobsQuery.isError}
+          onRetry={() => void browseJobsQuery.refetch()}
+          onApply={handleBrowseApply}
+          onReportDelisted={handleReportDelisted}
+          confirmDialog={ConfirmDialog}
+          variant="matches-pending"
+          jobCount={jobCount}
+          matchCount={data ? data.total : 0}
+          hasCv={true}
+          searching={helpSearching}
+          onHelpFindJob={handleHelpFindJob}
+          quotaRemaining={quotaRemaining}
+          hasMore={hasMoreBrowse}
+          loadingMore={browseLoadingMore}
+          onLoadMore={handleLoadMoreBrowse}
+          browseLocked={browseLocked}
+        />
+        {AlertDialog}
+      </>
     );
   }
 
@@ -723,32 +735,36 @@ export default function SeekerJobsPage() {
           </button>
         </div>
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
 
   if (matches.length === 0 && !filtersActive) {
     return (
-      <BrowseAllJobsView
-        jobs={browseJobs}
-        loading={browseListLoading}
-        error={browseJobsQuery.isError}
-        onRetry={() => void browseJobsQuery.refetch()}
-        onApply={handleBrowseApply}
-        onReportDelisted={handleReportDelisted}
-        confirmDialog={ConfirmDialog}
-        variant="matches-pending"
-        jobCount={jobCount}
-        matchCount={data ? data.total : 0}
-        hasCv={true}
-        searching={helpSearching}
-        onHelpFindJob={handleHelpFindJob}
-        quotaRemaining={quotaRemaining}
-        hasMore={hasMoreBrowse}
-        loadingMore={browseLoadingMore}
-        onLoadMore={handleLoadMoreBrowse}
-        browseLocked={browseLocked}
-      />
+      <>
+        <BrowseAllJobsView
+          jobs={browseJobs}
+          loading={browseListLoading}
+          error={browseJobsQuery.isError}
+          onRetry={() => void browseJobsQuery.refetch()}
+          onApply={handleBrowseApply}
+          onReportDelisted={handleReportDelisted}
+          confirmDialog={ConfirmDialog}
+          variant="matches-pending"
+          jobCount={jobCount}
+          matchCount={data ? data.total : 0}
+          hasCv={true}
+          searching={helpSearching}
+          onHelpFindJob={handleHelpFindJob}
+          quotaRemaining={quotaRemaining}
+          hasMore={hasMoreBrowse}
+          loadingMore={browseLoadingMore}
+          onLoadMore={handleLoadMoreBrowse}
+          browseLocked={browseLocked}
+        />
+        {AlertDialog}
+      </>
     );
   }
 
@@ -851,6 +867,7 @@ export default function SeekerJobsPage() {
         onCancel={() => setPendingDismiss(null)}
       />
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }
@@ -861,6 +878,7 @@ function WorkCountriesPreference() {
   const { data } = useOrbitSeekerTargetCountries();
   const setMutation = useOrbitSetSeekerTargetCountries();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const enabledQuery = useQuery({
     queryKey: ["orbit-seeker-enabled-countries"],
     queryFn: () => annixOrbitApiClient.seekerEnabledCountries(),
@@ -885,7 +903,7 @@ function WorkCountriesPreference() {
           'Updated. Click "Help me Find a Job" to refresh your matches for the new countries.',
           "success",
         ),
-      onError: () => showToast("Couldn't update your work countries.", "error"),
+      onError: () => alert({ message: "Couldn't update your work countries.", variant: "error" }),
     });
   };
 
@@ -895,6 +913,7 @@ function WorkCountriesPreference() {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 dark:border-white/10">
+      {AlertDialog}
       <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
         Where do you want to work?
       </p>

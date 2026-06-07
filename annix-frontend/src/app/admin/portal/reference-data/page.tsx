@@ -17,6 +17,7 @@ import { useToast } from "@/app/components/Toast";
 import { DataTable, DataTableToolbar } from "@/app/components/ui/DataTable";
 import type { ColumnSchemaInfo, ReferenceDataModuleInfo } from "@/app/lib/api/adminApi";
 import { exportToExcel } from "@/app/lib/export/exportTable";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useCreateReferenceData,
   useDeleteReferenceData,
@@ -371,6 +372,7 @@ export default function ReferenceDataPage() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [selectedEntity, setSelectedEntity] = useState<string | null>(null);
   const [sidebarSearch, setSidebarSearch] = useState("");
@@ -587,7 +589,7 @@ export default function ReferenceDataPage() {
             showToast("Record updated successfully", "success");
             setFormModal({ open: false, editRecord: null });
           },
-          onError: (err) => showToast(`Error: ${err.message}`, "error"),
+          onError: (err) => alert({ message: `Error: ${err.message}`, variant: "error" }),
         },
       );
     } else {
@@ -596,7 +598,7 @@ export default function ReferenceDataPage() {
           showToast("Record created successfully", "success");
           setFormModal({ open: false, editRecord: null });
         },
-        onError: (err) => showToast(`Error: ${err.message}`, "error"),
+        onError: (err) => alert({ message: `Error: ${err.message}`, variant: "error" }),
       });
     }
   };
@@ -723,10 +725,10 @@ export default function ReferenceDataPage() {
     const failed = results.filter((r) => r.status === "rejected").length;
 
     if (failed === 0) {
-      showToast(`${succeeded} record(s) updated successfully`, "success");
+      alert({ message: `${succeeded} record(s) updated successfully`, variant: "success" });
       setEditingRows({});
     } else {
-      showToast(`${succeeded} saved, ${failed} failed`, "error");
+      alert({ message: `${succeeded} saved, ${failed} failed`, variant: "error" });
       const failedRowIds = new Set(rowIds.filter((_, i) => results[i].status === "rejected"));
       setEditingRows((prev) =>
         keys(prev)
@@ -952,6 +954,7 @@ export default function ReferenceDataPage() {
           onCancel={() => setDeleteModal({ open: false, record: null })}
         />
       )}
+      {AlertDialog}
     </div>
   );
 }

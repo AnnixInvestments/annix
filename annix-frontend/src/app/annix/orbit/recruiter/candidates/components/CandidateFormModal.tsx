@@ -6,6 +6,7 @@ import { useToast } from "@/app/components/Toast";
 import type { OrbitTalentCandidate, OrbitTalentCandidateInput } from "@/app/lib/api/annixOrbitApi";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
 import { nowISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useOrbitCreateTalentCandidate,
   useOrbitUpdateTalentCandidate,
@@ -32,6 +33,7 @@ interface CandidateFormModalProps {
 export function CandidateFormModal(props: CandidateFormModalProps) {
   const candidate = props.candidate;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const createMutation = useOrbitCreateTalentCandidate();
   const updateMutation = useOrbitUpdateTalentCandidate();
   const isCreating = createMutation.isPending;
@@ -129,7 +131,7 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
       }
       props.onClose();
     } catch {
-      showToast("Could not save the candidate. Please try again.", "error");
+      alert({ message: "Could not save the candidate. Please try again.", variant: "error" });
     }
   };
 
@@ -138,6 +140,7 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {AlertDialog}
       <button
         type="button"
         aria-label="Close"

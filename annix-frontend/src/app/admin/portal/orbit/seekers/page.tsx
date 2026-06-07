@@ -6,6 +6,7 @@ import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminOrbitSeekers } from "@/app/lib/query/hooks";
 
 const PAGE_SIZE = 20;
@@ -50,6 +51,7 @@ function csvCell(value: string | null): string {
 export default function OrbitSeekersPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -117,9 +119,12 @@ export default function OrbitSeekersPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast(`Exported ${rows.length} seeker${rows.length === 1 ? "" : "s"}.`, "success");
+      alert({
+        message: `Exported ${rows.length} seeker${rows.length === 1 ? "" : "s"}.`,
+        variant: "success",
+      });
     } catch {
-      showToast("Could not export seekers — please try again.", "error");
+      alert({ message: "Could not export seekers — please try again.", variant: "error" });
     } finally {
       setIsExporting(false);
     }
@@ -127,6 +132,7 @@ export default function OrbitSeekersPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Seekers</h1>

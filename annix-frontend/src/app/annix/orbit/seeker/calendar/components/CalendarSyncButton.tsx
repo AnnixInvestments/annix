@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitCalendarFeed } from "@/app/lib/query/hooks";
 import { API_BASE_URL } from "@/lib/api-config";
 
@@ -17,6 +18,7 @@ function absoluteApiBase(): string {
 export function CalendarSyncButton() {
   const [open, setOpen] = useState(false);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const feedQuery = useOrbitCalendarFeed(open);
 
   const feedData = feedQuery.data;
@@ -39,7 +41,10 @@ export function CalendarSyncButton() {
       await navigator.clipboard.writeText(feedUrl);
       showToast("Feed URL copied", "success");
     } catch {
-      showToast("Couldn't copy — select the URL and copy it manually.", "error");
+      alert({
+        message: "Couldn't copy — select the URL and copy it manually.",
+        variant: "error",
+      });
     }
   };
 
@@ -60,12 +65,15 @@ export function CalendarSyncButton() {
       anchor.click();
       anchor.remove();
       URL.revokeObjectURL(objectUrl);
-      showToast(
-        "Calendar file downloaded — import it via your calendar's 'Add from file'.",
-        "success",
-      );
+      alert({
+        message: "Calendar file downloaded — import it via your calendar's 'Add from file'.",
+        variant: "success",
+      });
     } catch {
-      showToast("Couldn't download the calendar file. Please try again.", "error");
+      alert({
+        message: "Couldn't download the calendar file. Please try again.",
+        variant: "error",
+      });
     }
   };
 
@@ -75,6 +83,7 @@ export function CalendarSyncButton() {
 
   return (
     <>
+      {AlertDialog}
       <button
         type="button"
         onClick={() => setOpen(true)}

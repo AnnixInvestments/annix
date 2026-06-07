@@ -21,6 +21,7 @@ import {
   type StockLocationDto,
 } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
@@ -494,6 +495,7 @@ function DispatchedSection(props: {
 
 export default function CompoundStocksPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const scrollSentinelRef = useScrollRestoration("au-rubber:compound-stocks");
 
   const [sections, setSections] = useState<CompoundSection[]>([]);
@@ -901,10 +903,10 @@ export default function CompoundStocksPage() {
       const result = await auRubberApiClient.importCompoundOpeningStock(csvData);
       setImportResult(result);
       if (result.errors.length === 0) {
-        showToast(
-          `Successfully imported: ${result.created} created, ${result.updated} updated`,
-          "success",
-        );
+        alert({
+          message: `Successfully imported: ${result.created} created, ${result.updated} updated`,
+          variant: "success",
+        });
         setShowOpeningStockModal(false);
         resetOpeningStockForm();
         fetchData();
@@ -952,6 +954,7 @@ export default function CompoundStocksPage() {
 
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Compound Inventory" }]} />
       <div className="flex items-center justify-between">
         <div>

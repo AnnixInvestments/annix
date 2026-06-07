@@ -3,6 +3,7 @@
 import { isString } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import type { NixExtractionSummary } from "@/app/lib/query/hooks";
 import { useCreateMineLibraryMine } from "@/app/lib/query/hooks";
 
@@ -16,6 +17,7 @@ export function CreateMineModal(props: CreateMineModalProps) {
   const { seedFromExtraction, onCreated, onClose } = props;
   const createMutation = useCreateMineLibraryMine();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const seedDefaults = useMemo(
     () => seedDefaultsFromExtraction(seedFromExtraction ?? null),
@@ -55,12 +57,13 @@ export function CreateMineModal(props: CreateMineModalProps) {
       onClose();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't create the mine.";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     }
   };
 
   return (
     <div className="fixed inset-0 z-[9999] bg-black/40 flex items-start justify-center p-4 overflow-y-auto">
+      {AlertDialog}
       <form
         onSubmit={onSubmit}
         className="bg-white rounded-lg shadow-xl max-w-lg w-full mt-16 p-4 space-y-3"

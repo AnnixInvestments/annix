@@ -8,6 +8,7 @@ import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useToast } from "@/app/components/Toast";
 import { ApiError } from "@/app/lib/api/apiError";
 import type { AddWatchlistItemPayload, WatchlistItemResponse } from "@/app/lib/api/insightsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useAddToWatchlist, useRemoveFromWatchlist, useWatchlist } from "@/app/lib/query/hooks";
 import { Sparkline } from "../components/Sparkline";
@@ -21,6 +22,7 @@ export default function InsightsWatchlistPage() {
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useInsightsAuth();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const watchlistQuery = useWatchlist();
   const addMutation = useAddToWatchlist();
@@ -78,7 +80,7 @@ export default function InsightsWatchlistPage() {
         const apiMessage = err instanceof ApiError ? err.message : null;
         const fallback = err instanceof Error ? err.message : "Could not remove symbol.";
         const message = apiMessage ?? fallback;
-        showToast(message, "error");
+        alert({ message, variant: "error" });
       },
     });
   };
@@ -231,6 +233,7 @@ export default function InsightsWatchlistPage() {
         onSubmit={handleAdd}
       />
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

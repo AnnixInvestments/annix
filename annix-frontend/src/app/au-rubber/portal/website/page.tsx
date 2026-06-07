@@ -12,6 +12,7 @@ import {
 import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient, type WebsitePageDto } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAuRubberWebsitePages } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 import { Breadcrumb } from "../../components/Breadcrumb";
@@ -23,6 +24,7 @@ const ITEMS_PER_PAGE = 25;
 
 export default function WebsitePagesListPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const pagesQuery = useAuRubberWebsitePages();
   const rawPagesQueryData = pagesQuery.data;
@@ -55,7 +57,7 @@ export default function WebsitePagesListPage() {
       const action = page.isPublished ? "unpublished" : "published";
       showToast(`"${page.title}" ${action}`, "success");
     } catch {
-      showToast("Failed to update page", "error");
+      alert({ message: "Failed to update page", variant: "error" });
     }
   };
 
@@ -67,7 +69,7 @@ export default function WebsitePagesListPage() {
       showToast(`"${deleteTarget.title}" deleted`, "success");
       setDeleteTarget(null);
     } catch {
-      showToast("Failed to delete page", "error");
+      alert({ message: "Failed to delete page", variant: "error" });
     }
   };
 
@@ -80,7 +82,7 @@ export default function WebsitePagesListPage() {
       await auRubberApiClient.reorderWebsitePage(target.id, page.sortOrder);
       queryClient.invalidateQueries({ queryKey: rubberKeys.websitePages.all });
     } catch {
-      showToast("Failed to reorder page", "error");
+      alert({ message: "Failed to reorder page", variant: "error" });
     }
   };
 
@@ -93,12 +95,13 @@ export default function WebsitePagesListPage() {
       await auRubberApiClient.reorderWebsitePage(target.id, page.sortOrder);
       queryClient.invalidateQueries({ queryKey: rubberKeys.websitePages.all });
     } catch {
-      showToast("Failed to reorder page", "error");
+      alert({ message: "Failed to reorder page", variant: "error" });
     }
   };
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/website"]}>
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Website Pages" }]} />
 
       <div className="px-6 py-4">

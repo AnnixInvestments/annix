@@ -26,6 +26,7 @@ import { CalloffInput } from "@/app/components/rubber/CalloffInput";
 import { useToast } from "@/app/components/Toast";
 import type { CallOff } from "@/app/lib/api/rubberPortalApi";
 import { formatDateTimeZA, formatDateZA, fromMillis, nowMillis } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useRubberCompanies,
   useRubberOrderDetail,
@@ -136,6 +137,7 @@ export default function RubberOrderDetailPage() {
   const router = useRouter();
   const orderId = Number(params.id);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const orderQuery = useRubberOrderDetail(orderId);
   const productsQuery = useRubberProducts();
@@ -318,7 +320,7 @@ export default function RubberOrderDetailPage() {
       showToast("Order updated", "success");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update order";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -350,8 +352,10 @@ export default function RubberOrderDetailPage() {
 
   const computeKgPerRoll = (item: EditableItem): number | null => {
     const product = productById(item.productId);
-    if (!product?.specificGravity || !item.thickness || !item.width || !item.length) return null;
-    return item.thickness * (item.width / 1000) * item.length * product.specificGravity;
+    const specificGravity = product?.specificGravity;
+    const { thickness, width, length } = item;
+    if (!specificGravity || !thickness || !width || !length) return null;
+    return thickness * (width / 1000) * length * specificGravity;
   };
 
   const updateItem = (index: number, updates: Partial<EditableItem>) => {
@@ -1324,6 +1328,7 @@ export default function RubberOrderDetailPage() {
           </div>
         )}
       </div>
+      {AlertDialog}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Pagination, TableLoadingState } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import { type RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useDeleteRubberCoding,
   useRubberCodings,
@@ -17,6 +18,7 @@ const ITEMS_PER_PAGE = 15;
 
 export default function RubberCodingsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [selectedType, setSelectedType] = useState<CodingType>("COMPOUND");
   const [showModal, setShowModal] = useState(false);
   const [editingCoding, setEditingCoding] = useState<RubberProductCodingDto | null>(null);
@@ -81,7 +83,7 @@ export default function RubberCodingsPage() {
         },
         onError: (err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : "Failed to save coding";
-          showToast(errorMessage, "error");
+          alert({ message: errorMessage, variant: "error" });
         },
       },
     );
@@ -95,7 +97,7 @@ export default function RubberCodingsPage() {
       },
       onError: (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : "Failed to delete coding";
-        showToast(errorMessage, "error");
+        alert({ message: errorMessage, variant: "error" });
       },
     });
   };
@@ -342,6 +344,7 @@ export default function RubberCodingsPage() {
         onConfirm={() => deleteCodingId && handleDelete(deleteCodingId)}
         onCancel={() => setDeleteCodingId(null)}
       />
+      {AlertDialog}
     </div>
   );
 }

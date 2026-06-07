@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitMyDataExport,
@@ -17,6 +18,7 @@ import { ReminderPreferencesCard } from "./components/ReminderPreferencesCard";
 export default function SeekerSettingsPage() {
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const prefsQuery = useOrbitMyNotificationPreferences();
   const updatePrefs = useOrbitUpdateMyNotificationPreferences();
   const requestDeletion = useOrbitRequestMyAccountDeletion();
@@ -28,12 +30,12 @@ export default function SeekerSettingsPage() {
   const handleSendAppLink = async () => {
     try {
       const result = await sendAppLink.mutateAsync();
-      showToast(
-        `Sent — open the email on your phone (${result.email}) to install the app.`,
-        "success",
-      );
+      alert({
+        message: `Sent — open the email on your phone (${result.email}) to install the app.`,
+        variant: "success",
+      });
     } catch {
-      showToast("Couldn't send the app link — please try again.", "error");
+      alert({ message: "Couldn't send the app link — please try again.", variant: "error" });
     }
   };
 
@@ -71,7 +73,7 @@ export default function SeekerSettingsPage() {
       });
       showToast("Preferences saved.", "success");
     } catch {
-      showToast("Could not save preferences — please try again.", "error");
+      alert({ message: "Could not save preferences — please try again.", variant: "error" });
     }
   };
 
@@ -87,9 +89,9 @@ export default function SeekerSettingsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast("Your data export has downloaded.", "success");
+      alert({ message: "Your data export has downloaded.", variant: "success" });
     } catch {
-      showToast("Could not export your data — please try again.", "error");
+      alert({ message: "Could not export your data — please try again.", variant: "error" });
     }
   };
 
@@ -114,7 +116,7 @@ export default function SeekerSettingsPage() {
         variant: "info",
       });
     } catch {
-      showToast("Could not request deletion — please try again.", "error");
+      alert({ message: "Could not request deletion — please try again.", variant: "error" });
     }
   };
 
@@ -145,7 +147,7 @@ export default function SeekerSettingsPage() {
         variant: "info",
       });
     } catch {
-      showToast("Could not stop matching — please try again.", "error");
+      alert({ message: "Could not stop matching — please try again.", variant: "error" });
     }
   };
 
@@ -170,7 +172,7 @@ export default function SeekerSettingsPage() {
         variant: "info",
       });
     } catch {
-      showToast("Could not withdraw consent — please try again.", "error");
+      alert({ message: "Could not withdraw consent — please try again.", variant: "error" });
     }
   };
 
@@ -359,6 +361,7 @@ export default function SeekerSettingsPage() {
       </div>
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

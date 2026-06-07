@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
 import { annixOrbitApiClient, type Candidate } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitCandidateStatusUpdate,
@@ -60,6 +61,7 @@ export default function CandidatesPage() {
   const [bulkPending, setBulkPending] = useState(false);
 
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const pdfPreview = usePdfPreview();
 
@@ -167,7 +169,7 @@ export default function CandidatesPage() {
         onSuccess: () => showToast(`Candidate ${label.toLowerCase()}`, "success"),
         onError: (err) => {
           const message = err instanceof Error ? err.message : "Status update failed";
-          showToast(message, "error");
+          alert({ message, variant: "error" });
         },
       },
     );
@@ -225,10 +227,10 @@ export default function CandidatesPage() {
       const succeeded = results.filter((r) => r.status === "fulfilled").length;
       const failed = results.length - succeeded;
       if (failed === 0) {
-        showToast(
-          `${succeeded} candidate${succeeded === 1 ? "" : "s"} ${label.toLowerCase()}.`,
-          "success",
-        );
+        alert({
+          message: `${succeeded} candidate${succeeded === 1 ? "" : "s"} ${label.toLowerCase()}.`,
+          variant: "success",
+        });
       } else {
         showToast(
           `${succeeded} updated, ${failed} failed. Check the candidates list and retry the rest.`,
@@ -726,6 +728,7 @@ export default function CandidatesPage() {
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

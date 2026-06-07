@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { BroadcastPriority, BroadcastTarget } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useCreateBroadcast } from "@/app/lib/query/hooks";
 
 export default function NewBroadcastPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const createMutation = useCreateBroadcast();
 
@@ -48,7 +50,7 @@ export default function NewBroadcastPage() {
         },
         onError: (err: unknown) => {
           const message = err instanceof Error ? err.message : "Failed to create broadcast";
-          showToast(message, "error");
+          alert({ message, variant: "error" });
         },
       },
     );
@@ -58,6 +60,7 @@ export default function NewBroadcastPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {AlertDialog}
       <div className="mb-6 flex items-center gap-4">
         <button
           onClick={() => router.push("/admin/portal/broadcasts")}

@@ -6,6 +6,7 @@ import { ConversationThread, MessageComposer } from "@/app/components/messaging"
 import { useToast } from "@/app/components/Toast";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { customerMessagingApi } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useArchiveCustomerConversation,
   useCustomerConversationDetail,
@@ -17,6 +18,7 @@ export default function CustomerConversationDetailPage() {
   const params = useParams();
   const { isLoading: authLoading } = useCustomerAuth();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const conversationId = Number(params.id);
   const conversationQuery = useCustomerConversationDetail(conversationId);
@@ -44,15 +46,13 @@ export default function CustomerConversationDetailPage() {
 
   useEffect(() => {
     if (conversationQuery.error) {
-      showToast(
-        conversationQuery.error instanceof Error
-          ? conversationQuery.error.message
-          : "Failed to load conversation",
-        "error",
-      );
+      const queryError = conversationQuery.error;
+      const message =
+        queryError instanceof Error ? queryError.message : "Failed to load conversation";
+      alert({ message, variant: "error" });
       router.push("/customer/messages");
     }
-  }, [conversationQuery.error, showToast, router]);
+  }, [conversationQuery.error, alert, router]);
 
   const handleSendMessage = async (content: string) => {
     if (!conversation) return;
@@ -70,7 +70,8 @@ export default function CustomerConversationDetailPage() {
       setLocalMessages((prev) => [...prev, newMessage]);
     } catch (error: any) {
       const rawMessage = error.message;
-      showToast(rawMessage || "Failed to send message", "error");
+      const message = rawMessage || "Failed to send message";
+      alert({ message, variant: "error" });
     }
   };
 
@@ -83,7 +84,8 @@ export default function CustomerConversationDetailPage() {
       router.push("/customer/messages");
     } catch (error: any) {
       const rawMessage2 = error.message;
-      showToast(rawMessage2 || "Failed to archive conversation", "error");
+      const message = rawMessage2 || "Failed to archive conversation";
+      alert({ message, variant: "error" });
     }
   };
 
@@ -111,6 +113,7 @@ export default function CustomerConversationDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {AlertDialog}
       <div className="mb-6 flex items-center gap-4">
         <button
           onClick={() => router.push("/customer/messages")}

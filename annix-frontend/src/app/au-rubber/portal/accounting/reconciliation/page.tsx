@@ -8,6 +8,7 @@ import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { fromISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { SignOffStatusBadge } from "../../../components/accounting/SignOffStatusBadge";
 import { StatementUploadModal } from "../../../components/accounting/StatementUploadModal";
 import { Breadcrumb } from "../../../components/Breadcrumb";
@@ -33,6 +34,7 @@ interface SupplierOption {
 export default function ReconciliationListPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const [reconciliations, setReconciliations] = useState<ReconciliationItem[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
@@ -59,7 +61,7 @@ export default function ReconciliationListPage() {
       );
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load data";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -77,7 +79,7 @@ export default function ReconciliationListPage() {
       fetchData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     }
   };
 
@@ -102,7 +104,7 @@ export default function ReconciliationListPage() {
       await fetchData();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Delete failed";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setDeletingId(null);
     }
@@ -111,6 +113,7 @@ export default function ReconciliationListPage() {
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
       {ConfirmDialog}
+      {AlertDialog}
       <div className="space-y-6">
         <Breadcrumb
           items={[
@@ -150,7 +153,7 @@ export default function ReconciliationListPage() {
                   <th className="px-4 py-3">Match Summary</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Date</th>
-                  <th className="px-4 py-3 w-12 text-right">{/* delete */}</th>
+                  <th className="px-4 py-3 w-12 text-right" />
                 </tr>
               </thead>
               <tbody>

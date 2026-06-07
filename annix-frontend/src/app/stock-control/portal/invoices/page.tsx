@@ -7,6 +7,7 @@ import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
 import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAcceptAnalyzedInvoice,
   useAnalyzeDeliveryNotePhoto,
@@ -54,6 +55,7 @@ const statusLabel = (invoice: SupplierInvoice): string => {
 export default function InvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { effectiveRole } = useViewAs();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -149,12 +151,15 @@ export default function InvoicesPage() {
       showToast("Re-extracting all failed invoices...", "info");
       const result = await reExtractAllMutation.mutateAsync(undefined);
       if (result.triggered > 0) {
-        showToast(`Re-extracted ${result.triggered} invoice(s) successfully`, "success");
+        alert({
+          message: `Re-extracted ${result.triggered} invoice(s) successfully`,
+          variant: "success",
+        });
       } else {
         showToast("No failed invoices with scans to re-extract", "info");
       }
       if (result.failed.length > 0) {
-        showToast(`${result.failed.length} invoice(s) failed again`, "error");
+        alert({ message: `${result.failed.length} invoice(s) failed again`, variant: "error" });
       }
       invalidateInvoices();
     } catch (err) {
@@ -169,7 +174,10 @@ export default function InvoicesPage() {
       setIsAutoLinking(true);
       const result = await autoLinkMutation.mutateAsync(undefined);
       if (result.linked > 0) {
-        showToast(`Auto-linked ${result.linked} invoice(s) to delivery notes`, "success");
+        alert({
+          message: `Auto-linked ${result.linked} invoice(s) to delivery notes`,
+          variant: "success",
+        });
         invalidateInvoices();
       } else {
         showToast("No matching delivery notes found for unlinked invoices", "info");
@@ -647,6 +655,7 @@ export default function InvoicesPage() {
           </div>
         </div>
       )}
+      {AlertDialog}
     </div>
   );
 }

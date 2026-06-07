@@ -7,6 +7,7 @@ import type {
   DirectorResponse,
   UpdateCompanyProfileRequest,
 } from "@/app/lib/api/adminApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAnnixCompanyProfile, useUpdateAnnixCompanyProfile } from "@/app/lib/query/hooks";
 
 const inputClass =
@@ -207,6 +208,7 @@ export default function CompanyProfilePage() {
   const { data: profile, isLoading } = useAnnixCompanyProfile();
   const updateMutation = useUpdateAnnixCompanyProfile();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [form, setForm] = useState<FormState | null>(null);
 
   useEffect(() => {
@@ -228,7 +230,8 @@ export default function CompanyProfilePage() {
         showToast("Company profile updated successfully", "success");
       },
       onError: (error) => {
-        showToast(error.message, "error");
+        const message = error.message;
+        alert({ message, variant: "error" });
       },
     });
   };
@@ -254,6 +257,7 @@ export default function CompanyProfilePage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">Company Profile</h1>

@@ -16,6 +16,7 @@ import {
   type ConversationSummary,
   customerMessagingApi,
 } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useArchiveCustomerConversation,
   useCustomerBroadcasts,
@@ -36,6 +37,7 @@ function CustomerMessagesContent() {
   const router = useRouter();
   const { customer, isLoading: authLoading } = useCustomerAuth();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const conversationsQuery = useCustomerConversations();
   const broadcastsQuery = useCustomerBroadcasts();
@@ -59,7 +61,8 @@ function CustomerMessagesContent() {
       conversationsQuery.refetch();
     } catch (error: any) {
       const rawMessage = error.message;
-      showToast(rawMessage || "Failed to load conversation", "error");
+      const message = rawMessage || "Failed to load conversation";
+      alert({ message, variant: "error" });
     }
   };
 
@@ -81,7 +84,8 @@ function CustomerMessagesContent() {
       );
     } catch (error: any) {
       const rawMessage2 = error.message;
-      showToast(rawMessage2 || "Failed to send message", "error");
+      const message = rawMessage2 || "Failed to send message";
+      alert({ message, variant: "error" });
     }
   };
 
@@ -94,7 +98,8 @@ function CustomerMessagesContent() {
       showToast("Conversation archived", "success");
     } catch (error: any) {
       const rawMessage3 = error.message;
-      showToast(rawMessage3 || "Failed to archive conversation", "error");
+      const message = rawMessage3 || "Failed to archive conversation";
+      alert({ message, variant: "error" });
     }
   };
 
@@ -103,7 +108,8 @@ function CustomerMessagesContent() {
       await markBroadcastReadMutation.mutateAsync(broadcastId);
     } catch (error: any) {
       const rawMessage4 = error.message;
-      showToast(rawMessage4 || "Failed to mark broadcast as read", "error");
+      const message = rawMessage4 || "Failed to mark broadcast as read";
+      alert({ message, variant: "error" });
     }
   };
 
@@ -117,6 +123,7 @@ function CustomerMessagesContent() {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {AlertDialog}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
         <button

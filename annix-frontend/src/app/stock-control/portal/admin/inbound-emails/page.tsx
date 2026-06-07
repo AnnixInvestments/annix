@@ -4,6 +4,7 @@ import { useCallback, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { InboundEmail, InboundEmailAttachment } from "@/app/lib/api/stockControlApi";
 import { fromISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useInboundEmailStats,
   useInboundEmails,
@@ -54,6 +55,7 @@ export default function InboundEmailsPage() {
   const reclassify = useReclassifyAttachment();
   const reprocessSkipped = useReprocessSkippedInboundEmails();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const handleFileHeld = useCallback(() => {
     reprocessSkipped.mutate(undefined, {
@@ -65,9 +67,9 @@ export default function InboundEmailsPage() {
           result.reprocessed > 0 ? "success" : "info",
         );
       },
-      onError: () => showToast("Failed to file held documents", "error"),
+      onError: () => alert({ message: "Failed to file held documents", variant: "error" }),
     });
-  }, [reprocessSkipped, showToast]);
+  }, [reprocessSkipped, showToast, alert]);
 
   const toggleExpand = useCallback((id: number) => {
     setExpandedEmailId((prev) => (prev === id ? null : id));
@@ -184,6 +186,7 @@ export default function InboundEmailsPage() {
           </div>
         )}
       </div>
+      {AlertDialog}
     </div>
   );
 }

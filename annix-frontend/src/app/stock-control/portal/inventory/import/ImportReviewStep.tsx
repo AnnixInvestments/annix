@@ -10,6 +10,7 @@ import type {
   ReviewedRow,
 } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useCreateInventoryLocation, useInventoryLocations } from "@/app/lib/query/hooks";
 
 const ADD_NEW_LOCATION = "__add_new_location__";
@@ -179,6 +180,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
   const [newLocationName, setNewLocationName] = useState("");
 
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { data: locations } = useInventoryLocations();
   const createLocation = useCreateInventoryLocation();
   const isCreatingLocation = createLocation.isPending;
@@ -208,7 +210,10 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
       setNewLocationName("");
       showToast(`Location "${name}" added`, "success");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to add location", "error");
+      alert({
+        message: err instanceof Error ? err.message : "Failed to add location",
+        variant: "error",
+      });
     }
   };
 
@@ -790,6 +795,7 @@ export function ImportReviewStep(props: ImportReviewStepProps) {
           </button>
         </div>
       </div>
+      {AlertDialog}
     </div>
   );
 }

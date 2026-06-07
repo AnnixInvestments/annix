@@ -13,6 +13,7 @@ import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient, type BlogPostDto } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAuRubberBlogPosts } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 import { Breadcrumb } from "../../../components/Breadcrumb";
@@ -24,6 +25,7 @@ const ITEMS_PER_PAGE = 25;
 
 export default function BlogPostsListPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const postsQuery = useAuRubberBlogPosts();
   const rawData = postsQuery.data;
@@ -51,7 +53,7 @@ export default function BlogPostsListPage() {
       const action = post.isPublished ? "unpublished" : "published";
       showToast(`"${post.title}" ${action}`, "success");
     } catch {
-      showToast("Failed to update post", "error");
+      alert({ message: "Failed to update post", variant: "error" });
     }
   };
 
@@ -63,12 +65,13 @@ export default function BlogPostsListPage() {
       showToast(`"${deleteTarget.title}" deleted`, "success");
       setDeleteTarget(null);
     } catch {
-      showToast("Failed to delete post", "error");
+      alert({ message: "Failed to delete post", variant: "error" });
     }
   };
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/website"]}>
+      {AlertDialog}
       <Breadcrumb
         items={[
           { label: "Website Pages", href: "/au-rubber/portal/website" },

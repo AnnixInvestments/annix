@@ -6,6 +6,7 @@ import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
 import { authedFetch } from "@/app/lib/api/authedFetch";
 import { formatDateTimeZA, nowISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import type { AnalysisResult } from "@/app/lib/query/hooks";
 import {
   useAddDrawingComment,
@@ -24,6 +25,7 @@ export default function DrawingDetailPage() {
   const id = params?.id as string;
   const drawingId = parseInt(id, 10);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const { data: drawing, isLoading, error } = useDrawingDetail(drawingId);
   const { data: versions = [] } = useDrawingVersions(drawingId);
@@ -65,7 +67,7 @@ export default function DrawingDetailPage() {
       link.click();
       URL.revokeObjectURL(link.href);
     } catch (err) {
-      showToast("Download failed", "error");
+      alert({ message: "Download failed", variant: "error" });
     }
   };
 
@@ -86,7 +88,7 @@ export default function DrawingDetailPage() {
       await addCommentMutation.mutateAsync(newComment);
       setNewComment("");
     } catch (err) {
-      showToast("Failed to add comment", "error");
+      alert({ message: "Failed to add comment", variant: "error" });
     }
   };
 
@@ -186,6 +188,7 @@ export default function DrawingDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-8">
+      {AlertDialog}
       <div className="w-full px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">

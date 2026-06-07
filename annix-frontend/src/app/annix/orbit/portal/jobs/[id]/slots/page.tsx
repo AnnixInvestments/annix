@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { InterviewSlot } from "@/app/lib/api/annixOrbitApi";
 import { formatDateLongZA, formatTimeZA, fromISO, nowMillis } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitDeleteInterviewSlot,
@@ -21,6 +22,7 @@ export default function PerJobSlotsPage() {
   const validJobId = Number.isFinite(jobId) ? jobId : null;
 
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -89,7 +91,7 @@ export default function PerJobSlotsPage() {
       onSuccess: () => showToast("Slot deleted.", "success"),
       onError: (err) => {
         const msg = err instanceof Error ? err.message : "Couldn't delete slot";
-        showToast(msg, "error");
+        alert({ message: msg, variant: "error" });
       },
     });
   };
@@ -226,6 +228,7 @@ export default function PerJobSlotsPage() {
       ) : null}
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

@@ -17,6 +17,7 @@ import {
 import { useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import type { GovernmentDocumentCategory } from "@/app/lib/query/hooks";
 import {
   useAnnixSentinelDocuments,
@@ -242,6 +243,7 @@ export default function DocumentsPage() {
   const { data: docs, isLoading: docsLoading, error: docsError } = useAnnixSentinelDocuments();
   const { data: reqs, isLoading: reqsLoading } = useAnnixSentinelRequirements();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const uploadMutation = useUploadDocument();
   const deleteMutation = useDeleteDocument();
   const [filterReqId, setFilterReqId] = useState<string>("all");
@@ -259,7 +261,8 @@ export default function DocumentsPage() {
         onSuccess: () => showToast("Document uploaded successfully", "success"),
         onError: (error) => {
           const errMsg = error.message;
-          showToast(errMsg || "Failed to upload document", "error");
+          const message = errMsg || "Failed to upload document";
+          alert({ message, variant: "error" });
         },
       },
     );
@@ -282,7 +285,8 @@ export default function DocumentsPage() {
       onSuccess: () => showToast("Document deleted", "success"),
       onError: (error) => {
         const errMsg = error.message;
-        showToast(errMsg || "Failed to delete document", "error");
+        const message = errMsg || "Failed to delete document";
+        alert({ message, variant: "error" });
       },
     });
   }
@@ -484,6 +488,7 @@ export default function DocumentsPage() {
           )}
         </div>
       )}
+      {AlertDialog}
     </div>
   );
 }

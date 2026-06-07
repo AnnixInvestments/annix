@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { ConfirmModal } from "../../../components/ConfirmModal";
 import { RequirePermission } from "../../../components/RequirePermission";
@@ -19,6 +20,7 @@ interface Director {
 
 export default function DirectorsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [directors, setDirectors] = useState<Director[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -36,7 +38,7 @@ export default function DirectorsPage() {
       setDirectors(result);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load directors";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -88,7 +90,7 @@ export default function DirectorsPage() {
       fetchDirectors();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to save";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -103,7 +105,7 @@ export default function DirectorsPage() {
       fetchDirectors();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to update";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     }
   };
 
@@ -116,7 +118,7 @@ export default function DirectorsPage() {
       fetchDirectors();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to delete";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     }
   };
 
@@ -280,6 +282,7 @@ export default function DirectorsPage() {
           onConfirm={handleDelete}
           onCancel={() => setDeleteDirectorId(null)}
         />
+        {AlertDialog}
       </div>
     </RequirePermission>
   );

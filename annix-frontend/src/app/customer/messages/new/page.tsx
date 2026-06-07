@@ -5,12 +5,14 @@ import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import { ConversationType, RelatedEntityType } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useCreateCustomerConversation } from "@/app/lib/query/hooks";
 
 export default function NewConversationPage() {
   const router = useRouter();
   const { isLoading: authLoading } = useCustomerAuth();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const createConversationMutation = useCreateCustomerConversation();
 
   const [subject, setSubject] = useState("");
@@ -49,7 +51,8 @@ export default function NewConversationPage() {
       router.push(`/customer/messages/${conversation.id}`);
     } catch (error: any) {
       const rawMessage = error.message;
-      showToast(rawMessage || "Failed to create conversation", "error");
+      const message = rawMessage || "Failed to create conversation";
+      alert({ message, variant: "error" });
     }
   };
 
@@ -63,6 +66,7 @@ export default function NewConversationPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
+      {AlertDialog}
       <div className="mb-6 flex items-center gap-4">
         <button
           onClick={() => router.push("/customer/messages")}

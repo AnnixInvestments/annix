@@ -9,6 +9,7 @@ import type {
   OrbitTalentCandidate,
 } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitCreateSubmission, useOrbitUpdateSubmission } from "@/app/lib/query/hooks";
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -32,6 +33,7 @@ interface SubmissionFormModalProps {
 export function SubmissionFormModal(props: SubmissionFormModalProps) {
   const submission = props.submission;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const createMutation = useOrbitCreateSubmission();
   const updateMutation = useOrbitUpdateSubmission();
   const isCreating = createMutation.isPending;
@@ -92,9 +94,10 @@ export function SubmissionFormModal(props: SubmissionFormModalProps) {
       props.onClose();
     } catch (err) {
       if (isApiError(err) && err.status === 400) {
-        showToast(err.message, "error");
+        const apiMessage = err.message;
+        alert({ message: apiMessage, variant: "error" });
       } else {
-        showToast("Could not save the submission. Please try again.", "error");
+        alert({ message: "Could not save the submission. Please try again.", variant: "error" });
       }
     }
   };
@@ -104,6 +107,7 @@ export function SubmissionFormModal(props: SubmissionFormModalProps) {
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {AlertDialog}
       <button
         type="button"
         aria-label="Close"

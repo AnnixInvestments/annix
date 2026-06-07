@@ -3,6 +3,7 @@
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { API_BASE_URL } from "@/lib/api-config";
 
 type PopulationGroup = "african_black" | "coloured" | "indian" | "white" | "prefer_not_to_say";
@@ -56,6 +57,7 @@ export default function EeDisclosurePage() {
   const rawToken = params ? params.token : "";
   const token = rawToken ?? "";
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [data, setData] = useState<DisclosureLookupResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,7 +138,7 @@ export default function EeDisclosurePage() {
       showToast("Disclosure submitted. Thank you.", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't submit this disclosure.";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -184,6 +186,7 @@ export default function EeDisclosurePage() {
 
   return (
     <div className="min-h-screen py-10 px-4">
+      {AlertDialog}
       <div className="max-w-2xl mx-auto bg-white rounded-2xl shadow-2xl p-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Employment Equity disclosure</h1>
         <p className="text-gray-600 mb-1">

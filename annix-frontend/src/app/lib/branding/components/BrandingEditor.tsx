@@ -15,6 +15,7 @@ import {
   googleFontsHref,
   resolveBrandAssetUrl,
 } from "@/app/lib/branding/branding";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAddBrandingImage,
   useAdminBranding,
@@ -258,6 +259,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const { brand, title } = props;
   const backHref = props.backHref;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const brandingQuery = useAdminBranding(brand);
   const updateMutation = useUpdateBranding(brand);
   const uploadMutation = useUploadBrandingAsset(brand);
@@ -337,7 +339,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       });
       showToast("Uploaded — preview updated. Publish to go live.", "success");
     } catch {
-      showToast("Upload failed — use a PNG/JPG/SVG under 10MB.", "error");
+      alert({ message: "Upload failed — use a PNG/JPG/SVG under 10MB.", variant: "error" });
     } finally {
       setUploadingKey(null);
     }
@@ -363,7 +365,10 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       setNewImageLabel("");
       showToast("Image added to the gallery.", "success");
     } catch {
-      showToast("Couldn't add the image — use a PNG/JPG/SVG under 10MB.", "error");
+      alert({
+        message: "Couldn't add the image — use a PNG/JPG/SVG under 10MB.",
+        variant: "error",
+      });
     }
   };
 
@@ -372,7 +377,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       await deleteImageMutation.mutateAsync(id);
       showToast("Image removed from the gallery.", "success");
     } catch {
-      showToast("Couldn't remove the image — please try again.", "error");
+      alert({ message: "Couldn't remove the image — please try again.", variant: "error" });
     }
   };
 
@@ -398,7 +403,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       setAssetChange({});
       showToast(`${title} branding published — it is now live.`, "success");
     } catch {
-      showToast("Could not publish branding — please try again.", "error");
+      alert({ message: "Could not publish branding — please try again.", variant: "error" });
     }
   };
 
@@ -530,6 +535,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{title} — Branding</h1>

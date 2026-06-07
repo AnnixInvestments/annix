@@ -7,6 +7,7 @@ import { useToast } from "@/app/components/Toast";
 import { DataTable } from "@/app/components/ui/DataTable";
 import type { CustomerAccountStatus, CustomerListItem } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminCustomers, useInviteCustomer } from "@/app/lib/query/hooks";
 
 function statusBadgeClass(status: CustomerAccountStatus): string {
@@ -27,6 +28,7 @@ function statusBadgeClass(status: CustomerAccountStatus): string {
 export default function AdminCustomersPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([{ id: "createdAt", desc: true }]);
   const [search, setSearch] = useState("");
@@ -77,11 +79,11 @@ export default function AdminCustomersPage() {
             setInviteEmail("");
             setInviteMessage("");
           } else {
-            showToast("Failed to send invitation", "error");
+            alert({ message: "Failed to send invitation", variant: "error" });
           }
         },
         onError: (err) => {
-          showToast(`Error: ${err.message}`, "error");
+          alert({ message: `Error: ${err.message}`, variant: "error" });
         },
       },
     );
@@ -227,6 +229,7 @@ export default function AdminCustomersPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>

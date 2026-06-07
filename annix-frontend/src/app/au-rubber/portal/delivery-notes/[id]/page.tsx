@@ -25,6 +25,7 @@ import type {
   UpdateDeliveryNoteItemEntry,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAuRubberApproveDeliveryNote,
   useAuRubberBackfillDeliveryNoteSiblings,
@@ -137,6 +138,7 @@ export default function DeliveryNoteDetailPage() {
   const refileDeliveryNoteStockMutation = useAuRubberRefileDeliveryNoteStock();
   const backfillSiblingsMutation = useAuRubberBackfillDeliveryNoteSiblings();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
 
   const noteData = noteQuery.data;
   const note = noteData ? noteData : null;
@@ -715,10 +717,10 @@ export default function DeliveryNoteDetailPage() {
           "info",
         );
       } else {
-        showToast(
-          `Created ${result.created} sibling SDN${result.created === 1 ? "" : "s"} — review them in the SDN hub.`,
-          "success",
-        );
+        alert({
+          message: `Created ${result.created} sibling SDN${result.created === 1 ? "" : "s"} — review them in the SDN hub.`,
+          variant: "success",
+        });
         router.push(
           isCustomerDn
             ? "/au-rubber/portal/delivery-notes/customers"
@@ -2226,6 +2228,7 @@ export default function DeliveryNoteDetailPage() {
         </div>
       )}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

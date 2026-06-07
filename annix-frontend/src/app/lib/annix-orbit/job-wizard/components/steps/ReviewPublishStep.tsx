@@ -2,9 +2,9 @@
 
 import { toPairs as entries } from "es-toolkit/compat";
 import { useState } from "react";
-import { useToast } from "@/app/components/Toast";
 import { annixOrbitApiClient, type JobPosting } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useOrbitClearTestCandidates,
   useOrbitPublishJobDraft,
@@ -61,7 +61,7 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
     label: "Nix is predicting candidate volume…",
     fn: (id: number) => annixOrbitApiClient.nixPredictedVolume(id),
   });
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [isPublishing, setIsPublishing] = useState(false);
   const [seedCountInput, setSeedCountInput] = useState("10");
 
@@ -76,13 +76,14 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   const handleScore = async () => {
     await onFlush();
     qualityScoreMutation.mutate(draft.id, {
-      onError: () => showToast("Couldn't fetch quality score. Try again.", "error"),
+      onError: () =>
+        alert({ message: "Couldn't fetch quality score. Try again.", variant: "error" }),
     });
   };
   const handlePredict = async () => {
     await onFlush();
     volumeMutation.mutate(draft.id, {
-      onError: () => showToast("Couldn't predict volume. Try again.", "error"),
+      onError: () => alert({ message: "Couldn't predict volume. Try again.", variant: "error" }),
     });
   };
 
@@ -95,14 +96,14 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
       const message = testMode
         ? "Job published in TEST MODE — no external portals were notified. Seed fake applicants below to walk through the company flow."
         : "Job published — candidates can now apply.";
-      showToast(message, "success");
+      alert({ message, variant: "success" });
       if (!testMode) {
         onPublished(published);
       }
     } catch (err) {
       const message =
         isApiError(err) && err.message ? err.message : "Could not publish. Please try again.";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     } finally {
       setIsPublishing(false);
     }
@@ -119,9 +120,13 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
             .filter(([, v]) => v > 0)
             .map(([k, v]) => `${v} ${k}`)
             .join(", ");
-          showToast(`Seeded ${data.created} test applicants — ${summary}.`, "success");
+          alert({
+            message: `Seeded ${data.created} test applicants — ${summary}.`,
+            variant: "success",
+          });
         },
-        onError: () => showToast("Couldn't seed test candidates. Try again.", "error"),
+        onError: () =>
+          alert({ message: "Couldn't seed test candidates. Try again.", variant: "error" }),
       },
     );
   };
@@ -129,14 +134,16 @@ export function ReviewPublishStep({ draft, onPublished, onFlush }: ReviewPublish
   const handleClearTestCandidates = () => {
     clearTestMutation.mutate(draft.id, {
       onSuccess: (data) => {
-        showToast(`Cleared ${data.deleted} test applicants.`, "success");
+        alert({ message: `Cleared ${data.deleted} test applicants.`, variant: "success" });
       },
-      onError: () => showToast("Couldn't clear test candidates. Try again.", "error"),
+      onError: () =>
+        alert({ message: "Couldn't clear test candidates. Try again.", variant: "error" }),
     });
   };
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <StepShell
         title="Review & Publish"
         subtitle="Get Nix to score this post — clarity, salary fit, candidate attraction, screening strength, matching readiness, and inclusivity."

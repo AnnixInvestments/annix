@@ -20,6 +20,7 @@ import { useState } from "react";
 import { ANNIX_SENTINEL_VERSION } from "@/app/annix-sentinel/config/version";
 import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import type { CompanyProfile, NotificationPreferences } from "@/app/lib/query/hooks";
 import {
   useCancelSubscription,
@@ -65,6 +66,7 @@ function NotificationSection() {
   const [localPrefs, setLocalPrefs] = useState<NotificationPreferences | null>(null);
   const [saved, setSaved] = useState(false);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const activePrefs = localPrefs ?? prefs ?? null;
 
@@ -85,7 +87,7 @@ function NotificationSection() {
         },
         onError: () => {
           setSaved(false);
-          showToast("Failed to save notification preferences", "error");
+          alert({ message: "Failed to save notification preferences", variant: "error" });
         },
       },
     );
@@ -177,6 +179,7 @@ function NotificationSection() {
           </>
         )}
       </button>
+      {AlertDialog}
     </div>
   );
 }
@@ -187,6 +190,7 @@ function CompanySection() {
   const [localCompany, setLocalCompany] = useState<CompanyProfile | null>(null);
   const [saved, setSaved] = useState(false);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const activeCompany = localCompany ?? company ?? null;
 
@@ -207,7 +211,7 @@ function CompanySection() {
         },
         onError: () => {
           setSaved(false);
-          showToast("Failed to save company profile", "error");
+          alert({ message: "Failed to save company profile", variant: "error" });
         },
       },
     );
@@ -353,6 +357,7 @@ function CompanySection() {
           </>
         )}
       </button>
+      {AlertDialog}
     </div>
   );
 }
@@ -423,6 +428,7 @@ function SubscriptionSection() {
   const cancelMutation = useCancelSubscription();
   const [showCancel, setShowCancel] = useState(false);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   function handleCancel() {
     cancelMutation.mutate(undefined, {
@@ -431,7 +437,7 @@ function SubscriptionSection() {
         showToast("Subscription cancelled", "success");
       },
       onError: () => {
-        showToast("Failed to cancel subscription", "error");
+        alert({ message: "Failed to cancel subscription", variant: "error" });
       },
     });
   }
@@ -523,6 +529,7 @@ function SubscriptionSection() {
           loading={cancelMutation.isPending}
         />
       )}
+      {AlertDialog}
     </div>
   );
 }

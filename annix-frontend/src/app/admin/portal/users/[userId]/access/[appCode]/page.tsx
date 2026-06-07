@@ -8,6 +8,7 @@ import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type { AssignUserAccessDto, UpdateUserAccessDto } from "@/app/lib/api/adminApi";
 import { PRODUCTS_AND_SERVICES, PROJECT_TYPES } from "@/app/lib/config/productsServices";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useFeatureFlags,
   useRbacAllUsers,
@@ -27,6 +28,7 @@ export default function EditUserAccessPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const userId = Number(params.userId);
   const appCode = params.appCode as string;
@@ -127,7 +129,7 @@ export default function EditUserAccessPage() {
       {
         onError: (err) => {
           const message = err instanceof Error ? err.message : "Failed to update flag";
-          showToast(message, "error");
+          alert({ message, variant: "error" });
         },
       },
     );
@@ -158,7 +160,7 @@ export default function EditUserAccessPage() {
             router.push(`/admin/portal/users?userId=${userId}`);
           },
           onError: (err) => {
-            showToast(`Error: ${err.message}`, "error");
+            alert({ message: `Error: ${err.message}`, variant: "error" });
           },
         },
       );
@@ -174,7 +176,7 @@ export default function EditUserAccessPage() {
             router.push(`/admin/portal/users?userId=${userId}`);
           },
           onError: (err) => {
-            showToast(`Error: ${err.message}`, "error");
+            alert({ message: `Error: ${err.message}`, variant: "error" });
           },
         },
       );
@@ -661,6 +663,7 @@ export default function EditUserAccessPage() {
           appDetails={appDetails}
         />
       )}
+      {AlertDialog}
     </div>
   );
 }

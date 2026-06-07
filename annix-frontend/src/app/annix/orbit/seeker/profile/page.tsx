@@ -2,10 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useToast } from "@/app/components/Toast";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitDeleteMyDocument,
@@ -25,7 +25,7 @@ export default function SeekerProfilePage() {
   const documentsQuery = useOrbitMyDocuments();
   const deleteMutation = useOrbitDeleteMyDocument();
   const { confirm, ConfirmDialog } = useConfirm();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [warningOpen, setWarningOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<number | null>(null);
   const [nixAutoRunKey, setNixAutoRunKey] = useState(0);
@@ -97,7 +97,7 @@ export default function SeekerProfilePage() {
       onSuccess: () => setPendingDeleteId(null),
       onError: () => {
         setPendingDeleteId(null);
-        showToast("Couldn't delete the document — please try again.", "error");
+        alert({ message: "Couldn't delete the document — please try again.", variant: "error" });
       },
     });
   };
@@ -242,6 +242,7 @@ export default function SeekerProfilePage() {
         onConfirm={handleConfirmContinue}
       />
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

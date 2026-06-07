@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import type { RbacAppDetail, RbacAppRole } from "@/app/lib/api/adminApi";
 import { PRODUCTS_AND_SERVICES } from "@/app/lib/config/productsServices";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useRbacCreateRole,
   useRbacDeleteRole,
@@ -46,6 +47,7 @@ type Tab = "roles" | "products";
 export function RoleManagementPanel(props: RoleManagementPanelProps) {
   const { isOpen, onClose, appDetails } = props;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [activeTab, setActiveTab] = useState<Tab>("roles");
   const [editingRole, setEditingRole] = useState<RbacAppRole | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -93,7 +95,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
           setIsCreating(false);
         },
         onError: (err) => {
-          showToast(`Error: ${err.message}`, "error");
+          alert({ message: `Error: ${err.message}`, variant: "error" });
         },
       },
     );
@@ -109,7 +111,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
           setEditingRole(null);
         },
         onError: (err) => {
-          showToast(`Error: ${err.message}`, "error");
+          alert({ message: `Error: ${err.message}`, variant: "error" });
         },
       },
     );
@@ -128,19 +130,20 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
       { roleId: role.id, appCode: appDetails.code },
       {
         onSuccess: (result) => {
-          showToast(
-            result.reassignedUsers > 0
-              ? `Role deleted. ${result.reassignedUsers} user(s) reassigned.`
-              : "Role deleted successfully",
-            "success",
-          );
+          alert({
+            message:
+              result.reassignedUsers > 0
+                ? `Role deleted. ${result.reassignedUsers} user(s) reassigned.`
+                : "Role deleted successfully",
+            variant: "success",
+          });
           if (selectedRoleId === role.id) {
             const rawId = appDetails.roles.find((r) => r.id !== role.id)?.id;
             setSelectedRoleId(rawId || null);
           }
         },
         onError: (err) => {
-          showToast(`Error: ${err.message}`, "error");
+          alert({ message: `Error: ${err.message}`, variant: "error" });
         },
       },
     );
@@ -156,7 +159,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
       { roleId: selectedRoleId, productKeys: newProducts },
       {
         onError: (err) => {
-          showToast(`Error: ${err.message}`, "error");
+          alert({ message: `Error: ${err.message}`, variant: "error" });
         },
       },
     );
@@ -433,6 +436,7 @@ export function RoleManagementPanel(props: RoleManagementPanelProps) {
           </div>
         </div>
       </div>
+      {AlertDialog}
     </div>,
     document.body,
   );

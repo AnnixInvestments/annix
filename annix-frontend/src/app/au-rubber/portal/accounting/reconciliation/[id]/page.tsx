@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { ReconciliationMatchView } from "../../../../components/accounting/ReconciliationMatchView";
 import { SignOffStatusBadge } from "../../../../components/accounting/SignOffStatusBadge";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
@@ -46,6 +47,7 @@ export default function ReconciliationDetailPage() {
   const params = useParams();
   const id = Number(params.id);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const [data, setData] = useState<ReconciliationDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function ReconciliationDetailPage() {
       setData(result as ReconciliationDetail);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -76,10 +78,10 @@ export default function ReconciliationDetailPage() {
     try {
       const result = await auRubberApiClient.accountingExtractStatement(id);
       setData(result as ReconciliationDetail);
-      showToast("Statement extracted successfully", "success");
+      alert({ message: "Statement extracted successfully", variant: "success" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Extraction failed";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsExtracting(false);
     }
@@ -103,10 +105,10 @@ export default function ReconciliationDetailPage() {
       await auRubberApiClient.accountingExtractStatement(id);
       const reconciled = await auRubberApiClient.accountingReconcileStatement(id);
       setData(reconciled as ReconciliationDetail);
-      showToast("Statement re-extracted and reconciled", "success");
+      alert({ message: "Statement re-extracted and reconciled", variant: "success" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Re-extraction failed";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsExtracting(false);
     }
@@ -117,10 +119,10 @@ export default function ReconciliationDetailPage() {
     try {
       const result = await auRubberApiClient.accountingReconcileStatement(id);
       setData(result as ReconciliationDetail);
-      showToast("Reconciliation complete", "success");
+      alert({ message: "Reconciliation complete", variant: "success" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Reconciliation failed";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsReconciling(false);
     }
@@ -138,7 +140,7 @@ export default function ReconciliationDetailPage() {
       showToast("Marked as resolved", "success");
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to resolve";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     }
   };
 
@@ -163,6 +165,7 @@ export default function ReconciliationDetailPage() {
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
       {ConfirmDialog}
+      {AlertDialog}
       <div className="space-y-6">
         <Breadcrumb
           items={[

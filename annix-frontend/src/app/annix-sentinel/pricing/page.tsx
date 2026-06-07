@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import AnnixSentinelLogo from "@/app/components/AnnixSentinelLogo";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useUpgradeSubscription } from "@/app/lib/query/hooks";
 
 type BillingCycle = "monthly" | "annual";
@@ -193,6 +194,7 @@ export default function PricingPage() {
   const [upgradeError, setUpgradeError] = useState<string | null>(null);
   const upgradeMutation = useUpgradeSubscription();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   function handleUpgrade(tierId: string) {
     setUpgradeError(null);
@@ -204,7 +206,7 @@ export default function PricingPage() {
       onError: (err) => {
         const message = err instanceof Error ? err.message : "Failed to upgrade subscription";
         setUpgradeError(message);
-        showToast(message, "error");
+        alert({ message, variant: "error" });
       },
     });
   }
@@ -284,6 +286,7 @@ export default function PricingPage() {
           </div>
         </div>
       </main>
+      {AlertDialog}
     </div>
   );
 }

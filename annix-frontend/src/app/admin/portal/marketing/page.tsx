@@ -11,6 +11,7 @@ import { cloneDeep } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { formatDateLongZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { marketingAdminApi, mergeMarketingDefaults } from "@/app/lib/marketing/api";
 import { MarketingSitePreview } from "@/app/lib/marketing/components/MarketingSitePreview";
@@ -678,6 +679,7 @@ export default function MarketingCmsPage() {
   const publish = usePublishMarketing();
   const discard = useDiscardMarketingDraft();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
 
   const [content, setContent] = useState<MarketingSiteContent | null>(null);
@@ -711,7 +713,7 @@ export default function MarketingCmsPage() {
       await saveDraft.mutateAsync(content);
       showToast("Draft saved", "success");
     } catch {
-      showToast("Could not save the draft. Please try again.", "error");
+      alert({ message: "Could not save the draft. Please try again.", variant: "error" });
     }
   }
 
@@ -728,7 +730,7 @@ export default function MarketingCmsPage() {
       await publish.mutateAsync();
       showToast("Published to the live site", "success");
     } catch {
-      showToast("Could not publish. Please try again.", "error");
+      alert({ message: "Could not publish. Please try again.", variant: "error" });
     }
   }
 
@@ -758,7 +760,7 @@ export default function MarketingCmsPage() {
       setContent(mergeMarketingDefaults(reverted));
       showToast("Draft reverted to the live content", "success");
     } catch {
-      showToast("Could not discard the draft. Please try again.", "error");
+      alert({ message: "Could not discard the draft. Please try again.", variant: "error" });
     }
   }
 
@@ -1026,7 +1028,7 @@ export default function MarketingCmsPage() {
                           d.hero.imageUrl = url;
                         })
                       }
-                      onError={(m) => showToast(m, "error")}
+                      onError={(m) => alert({ message: m, variant: "error" })}
                     />
                     {hero.imageUrl ? (
                       <button
@@ -1067,7 +1069,7 @@ export default function MarketingCmsPage() {
                           d.ctaBand.backgroundImageUrl = url;
                         })
                       }
-                      onError={(m) => showToast(m, "error")}
+                      onError={(m) => alert({ message: m, variant: "error" })}
                     />
                     {ctaBand.backgroundImageUrl ? (
                       <button
@@ -1108,7 +1110,7 @@ export default function MarketingCmsPage() {
                           d.site.logoUrl = url;
                         })
                       }
-                      onError={(m) => showToast(m, "error")}
+                      onError={(m) => alert({ message: m, variant: "error" })}
                     />
                     {site.logoUrl ? (
                       <button
@@ -1153,7 +1155,7 @@ export default function MarketingCmsPage() {
                           d.site.wordmarkImageUrl = url;
                         })
                       }
-                      onError={(m) => showToast(m, "error")}
+                      onError={(m) => alert({ message: m, variant: "error" })}
                     />
                     {site.wordmarkImageUrl ? (
                       <button
@@ -1305,7 +1307,7 @@ export default function MarketingCmsPage() {
                       d.ecosystem.products = items;
                     })
                   }
-                  onError={(message) => showToast(message, "error")}
+                  onError={(message) => alert({ message, variant: "error" })}
                 />
               ))}
               <button
@@ -1424,7 +1426,7 @@ export default function MarketingCmsPage() {
                             d.industries.items[index].imageUrl = url;
                           })
                         }
-                        onError={(m) => showToast(m, "error")}
+                        onError={(m) => alert({ message: m, variant: "error" })}
                       />
                       {itemImage ? (
                         <button
@@ -1538,7 +1540,7 @@ export default function MarketingCmsPage() {
                         d.partners.partners[index].logoUrl = url;
                       })
                     }
-                    onError={(m) => showToast(m, "error")}
+                    onError={(m) => alert({ message: m, variant: "error" })}
                   />
                   <button
                     type="button"
@@ -1747,7 +1749,7 @@ export default function MarketingCmsPage() {
                   d.about.leadImageUrl = null;
                 })
               }
-              onError={(m) => showToast(m, "error")}
+              onError={(m) => alert({ message: m, variant: "error" })}
             />
 
             <div className="rounded-lg border border-gray-200 p-3">
@@ -1787,7 +1789,7 @@ export default function MarketingCmsPage() {
                       d.about.storyImageUrl = null;
                     })
                   }
-                  onError={(m) => showToast(m, "error")}
+                  onError={(m) => alert({ message: m, variant: "error" })}
                 />
               </div>
             </div>
@@ -1871,7 +1873,7 @@ export default function MarketingCmsPage() {
                       d.about.missionImageUrl = null;
                     })
                   }
-                  onError={(m) => showToast(m, "error")}
+                  onError={(m) => alert({ message: m, variant: "error" })}
                 />
               </div>
             </div>
@@ -1915,7 +1917,7 @@ export default function MarketingCmsPage() {
                     })
                   }
                   onShare={() => openShare(item)}
-                  onError={(message) => showToast(message, "error")}
+                  onError={(message) => alert({ message, variant: "error" })}
                 />
               ))}
               <button
@@ -2064,7 +2066,7 @@ export default function MarketingCmsPage() {
                         d.footer.designedByLogoUrl = url;
                       })
                     }
-                    onError={(m) => showToast(m, "error")}
+                    onError={(m) => alert({ message: m, variant: "error" })}
                   />
                   {footer.designedByLogoUrl ? (
                     <button
@@ -2116,7 +2118,7 @@ export default function MarketingCmsPage() {
                         d.footer.hostedByLogoUrl = url;
                       })
                     }
-                    onError={(m) => showToast(m, "error")}
+                    onError={(m) => alert({ message: m, variant: "error" })}
                   />
                   {footer.hostedByLogoUrl ? (
                     <button
@@ -2282,12 +2284,13 @@ export default function MarketingCmsPage() {
       )}
 
       {ConfirmDialog}
+      {AlertDialog}
       <SocialShareModal
         isOpen={socialOpen}
         onClose={() => setSocialOpen(false)}
         content={content}
         initialResource={socialResource}
-        onError={(message) => showToast(message, "error")}
+        onError={(message) => alert({ message, variant: "error" })}
       />
     </div>
   );

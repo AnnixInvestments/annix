@@ -14,6 +14,7 @@ import type {
   PaperPortfolioSummary,
   PaperTrade,
 } from "@/app/lib/api/insightsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   usePaperDecisionsToday,
   usePaperHoldings,
@@ -65,6 +66,7 @@ export default function InsightsPaperPortfolioDetailPage() {
   const pauseMutation = usePausePortfolio();
   const resumeMutation = useResumePortfolio();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -157,7 +159,8 @@ export default function InsightsPaperPortfolioDetailPage() {
                       onError: (err) => {
                         const apiMsg = err instanceof ApiError ? err.message : null;
                         const fallback = err instanceof Error ? err.message : "Resume failed.";
-                        showToast(apiMsg ?? fallback, "error");
+                        const message = apiMsg ?? fallback;
+                        alert({ message, variant: "error" });
                       },
                     });
                   } else {
@@ -166,7 +169,8 @@ export default function InsightsPaperPortfolioDetailPage() {
                       onError: (err) => {
                         const apiMsg = err instanceof ApiError ? err.message : null;
                         const fallback = err instanceof Error ? err.message : "Pause failed.";
-                        showToast(apiMsg ?? fallback, "error");
+                        const message = apiMsg ?? fallback;
+                        alert({ message, variant: "error" });
                       },
                     });
                   }
@@ -371,6 +375,7 @@ export default function InsightsPaperPortfolioDetailPage() {
           )}
         </div>
       </main>
+      {AlertDialog}
     </div>
   );
 }

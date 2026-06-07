@@ -12,6 +12,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useDeleteRubberCompany,
   useRubberCompanies,
@@ -28,6 +29,7 @@ type SortColumn = "name" | "code" | "pricingTier" | "vatNumber" | "isCompoundOwn
 
 export default function RubberCompaniesPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const companiesQuery = useRubberCompanies();
   const tiersQuery = useRubberPricingTiers();
@@ -154,7 +156,10 @@ export default function RubberCompaniesPage() {
       setSelectedCompanies(new Set());
       companiesQuery.refetch();
     } else if (failCount > 0) {
-      showToast(`Failed to delete ${failCount} compan${failCount > 1 ? "ies" : "y"}`, "error");
+      alert({
+        message: `Failed to delete ${failCount} compan${failCount > 1 ? "ies" : "y"}`,
+        variant: "error",
+      });
     }
   };
 
@@ -262,7 +267,7 @@ export default function RubberCompaniesPage() {
         },
         onError: (err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : "Failed to save company";
-          showToast(errorMessage, "error");
+          alert({ message: errorMessage, variant: "error" });
         },
       },
     );
@@ -276,7 +281,7 @@ export default function RubberCompaniesPage() {
       },
       onError: (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : "Failed to delete company";
-        showToast(errorMessage, "error");
+        alert({ message: errorMessage, variant: "error" });
       },
     });
   };
@@ -796,6 +801,7 @@ export default function RubberCompaniesPage() {
         onConfirm={handleBulkDelete}
         onCancel={() => setShowBulkDeleteModal(false)}
       />
+      {AlertDialog}
     </div>
   );
 }

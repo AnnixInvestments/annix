@@ -13,6 +13,7 @@ import { AdminActionModal } from "@/app/components/modals/AdminActionModal";
 import { useToast } from "@/app/components/Toast";
 import { adminApiClient, CustomerDocument, DocumentReviewData } from "@/app/lib/api/adminApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAdminCustomerCustomFields,
   useAdminCustomerDetail,
@@ -27,6 +28,7 @@ export default function CustomerDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const customerId = parseInt(params?.id as string, 10);
 
   const customerQuery = useAdminCustomerDetail(customerId);
@@ -77,7 +79,7 @@ export default function CustomerDetailPage() {
       showToast("Customer account suspended", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to suspend customer: ${err.message}`, "error");
+      alert({ message: `Failed to suspend customer: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -95,7 +97,7 @@ export default function CustomerDetailPage() {
       showToast("Customer account reactivated", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to reactivate customer: ${err.message}`, "error");
+      alert({ message: `Failed to reactivate customer: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -112,7 +114,7 @@ export default function CustomerDetailPage() {
       showToast("Device binding reset successfully", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to reset device binding: ${err.message}`, "error");
+      alert({ message: `Failed to reset device binding: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -135,7 +137,7 @@ export default function CustomerDetailPage() {
         isLoading: false,
       });
     } catch (err: any) {
-      showToast(`Failed to load document: ${err.message}`, "error");
+      alert({ message: `Failed to load document: ${err.message}`, variant: "error" });
       setPreviewState(initialPreviewState);
     }
   };
@@ -148,7 +150,7 @@ export default function CustomerDetailPage() {
       const data = await adminApiClient.getCustomerDocumentReviewData(doc.id);
       setReviewData(data);
     } catch (err: any) {
-      showToast(`Failed to load document review data: ${err.message}`, "error");
+      alert({ message: `Failed to load document review data: ${err.message}`, variant: "error" });
       setReviewModalOpen(false);
     } finally {
       setReviewLoading(false);
@@ -168,7 +170,7 @@ export default function CustomerDetailPage() {
       setReviewModalOpen(false);
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to approve document: ${err.message}`, "error");
+      alert({ message: `Failed to approve document: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -183,7 +185,7 @@ export default function CustomerDetailPage() {
       setReviewModalOpen(false);
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to reject document: ${err.message}`, "error");
+      alert({ message: `Failed to reject document: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -203,10 +205,10 @@ export default function CustomerDetailPage() {
         refetchAll();
       } else {
         const errorMsg = result.errorMessage;
-        showToast(errorMsg ? errorMsg : "Re-verification failed", "error");
+        alert({ message: errorMsg ? errorMsg : "Re-verification failed", variant: "error" });
       }
     } catch (err: any) {
-      showToast(`Failed to re-verify document: ${err.message}`, "error");
+      alert({ message: `Failed to re-verify document: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -214,7 +216,7 @@ export default function CustomerDetailPage() {
 
   const handleApproveCustomer = async () => {
     if (!customer?.onboarding?.id) {
-      showToast("No onboarding record found", "error");
+      alert({ message: "No onboarding record found", variant: "error" });
       return;
     }
 
@@ -225,7 +227,7 @@ export default function CustomerDetailPage() {
       showToast("Customer approved successfully", "success");
       refetchAll();
     } catch (err: any) {
-      showToast(`Failed to approve customer: ${err.message}`, "error");
+      alert({ message: `Failed to approve customer: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -302,6 +304,7 @@ export default function CustomerDetailPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">

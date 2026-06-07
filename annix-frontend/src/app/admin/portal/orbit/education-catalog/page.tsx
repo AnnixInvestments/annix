@@ -8,6 +8,7 @@ import type {
   EducationProgramme,
   EducationScholarship,
 } from "@/app/lib/api/educationCatalogAdminApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useCreateEducationFaculty,
   useCreateEducationInstitution,
@@ -60,6 +61,7 @@ export default function EducationCatalogPage() {
 
 function InstitutionsPanel() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const institutionsQuery = useEducationInstitutions();
   const institutionsData = institutionsQuery.data;
   const institutions = institutionsData || [];
@@ -142,7 +144,7 @@ function InstitutionsPanel() {
       showToast(instEditingId ? "Institution updated." : "Institution added.", "success");
       setIsInstOpen(false);
     } catch {
-      showToast("Could not save the institution — please try again.", "error");
+      alert({ message: "Could not save the institution — please try again.", variant: "error" });
     }
   };
 
@@ -161,7 +163,7 @@ function InstitutionsPanel() {
       setFacName("");
       setIsFacOpen(false);
     } catch {
-      showToast("Could not save the faculty — please try again.", "error");
+      alert({ message: "Could not save the faculty — please try again.", variant: "error" });
     }
   };
 
@@ -213,12 +215,13 @@ function InstitutionsPanel() {
       showToast(progEditingId ? "Programme updated." : "Programme added.", "success");
       setIsProgOpen(false);
     } catch {
-      showToast("Could not save the programme — please try again.", "error");
+      alert({ message: "Could not save the programme — please try again.", variant: "error" });
     }
   };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {AlertDialog}
       <div className="bg-white rounded-xl border border-gray-200 p-4">
         <div className="flex items-center justify-between mb-3">
           <h2 className="text-sm font-semibold text-gray-900">Institutions</h2>
@@ -521,6 +524,7 @@ function InstitutionsPanel() {
 
 function ScholarshipsPanel() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const scholarshipsQuery = useEducationScholarships();
   const scholarshipsData = scholarshipsQuery.data;
   const scholarships = scholarshipsData || [];
@@ -594,12 +598,13 @@ function ScholarshipsPanel() {
       showToast(editingId ? "Scholarship updated." : "Scholarship added.", "success");
       setIsOpen(false);
     } catch {
-      showToast("Could not save the scholarship — please try again.", "error");
+      alert({ message: "Could not save the scholarship — please try again.", variant: "error" });
     }
   };
 
   return (
     <div className="space-y-4">
+      {AlertDialog}
       <div className="flex justify-end">
         <button
           type="button"

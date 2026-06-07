@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { type InterviewSlot } from "@/app/lib/api/annixOrbitApi";
 import { DateTime, formatTimeZA, fromISO, now } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useOrbitDeleteInterviewSlot,
   useOrbitInterviewSlotsForCompany,
@@ -21,6 +22,7 @@ const buildWeek = (anchor: DateTime): ViewWeek => {
 
 export default function CompanyCalendarPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [currentWeek, setCurrentWeek] = useState<ViewWeek>(() => buildWeek(now()));
   const [filterJob, setFilterJob] = useState<string>("all");
 
@@ -80,13 +82,14 @@ export default function CompanyCalendarPage() {
       onSuccess: () => showToast("Slot deleted.", "success"),
       onError: (err) => {
         const msg = err instanceof Error ? err.message : "Couldn't delete slot";
-        showToast(msg, "error");
+        alert({ message: msg, variant: "error" });
       },
     });
   };
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-white">Interview calendar</h1>

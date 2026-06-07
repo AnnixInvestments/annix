@@ -15,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitAutofillSeekerWorkProfile,
@@ -26,6 +27,7 @@ import { formatCurrency } from "@/app/lib/utils/currency";
 export default function SeekerWorkProfilePage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const query = useOrbitSeekerWorkProfile();
   const mutation = useOrbitUpsertSeekerWorkProfile();
   const autofillMutation = useOrbitAutofillSeekerWorkProfile();
@@ -121,7 +123,7 @@ export default function SeekerWorkProfilePage() {
         showToast("Work profile saved", "success");
         router.push("/annix/orbit/seeker/dashboard");
       },
-      onError: () => showToast("Could not save work profile", "error"),
+      onError: () => alert({ message: "Could not save work profile", variant: "error" }),
     });
   };
 
@@ -171,13 +173,16 @@ export default function SeekerWorkProfilePage() {
         } else if (reason === "no-candidate") {
           showToast("Upload a CV first", "info");
         } else {
-          showToast("Auto-fill couldn't read your CV — fill in the form manually", "error");
+          alert({
+            message: "Auto-fill couldn't read your CV — fill in the form manually",
+            variant: "error",
+          });
         }
       },
       onError: () => {
         hideExtraction();
         if (!nonDestructive) {
-          showToast("Auto-fill failed — fill in the form manually", "error");
+          alert({ message: "Auto-fill failed — fill in the form manually", variant: "error" });
         }
       },
     });
@@ -423,6 +428,7 @@ export default function SeekerWorkProfilePage() {
         </button>
       </div>
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

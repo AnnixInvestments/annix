@@ -42,6 +42,7 @@ import {
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { useAuRubberCompanies, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys";
@@ -89,6 +90,7 @@ const SERVER_SORTABLE_TI_SUPPLIER_COLUMNS = new Set<SortColumn>([
 export default function SupplierTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { branding } = useAuRubberBranding();
   const scrollSentinelRef = useScrollRestoration("au-rubber:supplier-tax-invoices");
   const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
@@ -198,10 +200,10 @@ export default function SupplierTaxInvoicesPage() {
       if (successCount === 0 && failCount === 0) {
         showToast("No approved invoices to post", "error");
       } else if (failCount === 0) {
-        showToast(
-          `${successCount} invoice${successCount > 1 ? "s" : ""} posted to Sage`,
-          "success",
-        );
+        alert({
+          message: `${successCount} invoice${successCount > 1 ? "s" : ""} posted to Sage`,
+          variant: "success",
+        });
       } else {
         showToast(
           `${successCount} posted, ${failCount} failed: ${result.failed[0].error}`,
@@ -276,10 +278,10 @@ export default function SupplierTaxInvoicesPage() {
           chain.then(() => auRubberApiClient.approveTaxInvoice(id).then(() => undefined)),
         Promise.resolve() as Promise<void>,
       );
-      showToast(
-        `Approved ${ids.length} invoice${ids.length > 1 ? "s" : ""} successfully`,
-        "success",
-      );
+      alert({
+        message: `Approved ${ids.length} invoice${ids.length > 1 ? "s" : ""} successfully`,
+        variant: "success",
+      });
       setSelectedForApproval(new Set());
       refresh();
     } catch (err) {
@@ -394,10 +396,10 @@ export default function SupplierTaxInvoicesPage() {
       setBulkUploadDetail("All files processed successfully.");
 
       await new Promise((resolve) => setTimeout(resolve, 600));
-      showToast(
-        `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
-        "success",
-      );
+      alert({
+        message: `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
+        variant: "success",
+      });
       refresh();
     } catch (err) {
       toastError(showToast, err, "Failed to upload tax invoices");
@@ -427,10 +429,10 @@ export default function SupplierTaxInvoicesPage() {
           invoiceNumber: uploadInvoiceNumber || undefined,
           invoiceDate: uploadInvoiceDate || undefined,
         });
-        showToast(
-          `${uploadFiles.length} tax invoice${uploadFiles.length > 1 ? "s" : ""} uploaded`,
-          "success",
-        );
+        alert({
+          message: `${uploadFiles.length} tax invoice${uploadFiles.length > 1 ? "s" : ""} uploaded`,
+          variant: "success",
+        });
       } else {
         await auRubberApiClient.createTaxInvoice({
           invoiceType: "SUPPLIER",
@@ -502,6 +504,7 @@ export default function SupplierTaxInvoicesPage() {
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
       {ConfirmDialog}
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Suppliers" }, { label: "Tax Invoices" }]} />
       <div className="flex items-center justify-between">
         <div>
@@ -551,10 +554,10 @@ export default function SupplierTaxInvoicesPage() {
               if (!confirmed) return;
               try {
                 const result = await auRubberApiClient.dedupeTaxInvoices();
-                showToast(
-                  `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
-                  "success",
-                );
+                alert({
+                  message: `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
+                  variant: "success",
+                });
                 refresh();
               } catch (err) {
                 toastError(showToast, err, "Dedupe failed");
@@ -1162,10 +1165,9 @@ export default function SupplierTaxInvoicesPage() {
                                   showToast("Credit note extracted", "success");
                                   refresh();
                                 } catch (err) {
-                                  showToast(
-                                    err instanceof Error ? err.message : "Extraction failed",
-                                    "error",
-                                  );
+                                  const message =
+                                    err instanceof Error ? err.message : "Extraction failed";
+                                  alert({ message: message, variant: "error" });
                                 } finally {
                                   hideExtraction();
                                 }
@@ -1197,10 +1199,9 @@ export default function SupplierTaxInvoicesPage() {
                                   );
                                   refresh();
                                 } catch (err) {
-                                  showToast(
-                                    err instanceof Error ? err.message : "Approval failed",
-                                    "error",
-                                  );
+                                  const message =
+                                    err instanceof Error ? err.message : "Approval failed";
+                                  alert({ message: message, variant: "error" });
                                 }
                               }}
                               className="p-1 text-gray-400 hover:text-green-600"
@@ -1221,10 +1222,9 @@ export default function SupplierTaxInvoicesPage() {
                                 showToast("Credit note deleted", "success");
                                 refresh();
                               } catch (err) {
-                                showToast(
-                                  err instanceof Error ? err.message : "Failed to delete",
-                                  "error",
-                                );
+                                const message =
+                                  err instanceof Error ? err.message : "Failed to delete";
+                                alert({ message: message, variant: "error" });
                               }
                             }}
                             className="p-1 text-gray-400 hover:text-red-600"

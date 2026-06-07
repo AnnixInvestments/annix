@@ -13,6 +13,7 @@ import {
   auRubberApiClient,
   type RoleTargetType,
 } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { Breadcrumb } from "../../components/Breadcrumb";
 
 export default function RbacPage() {
@@ -20,6 +21,7 @@ export default function RbacPage() {
   const { isAdmin, isLoading: authLoading } = useAuRubberAuth();
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
 
   const [users, setUsers] = useState<AuRubberUserAccessDto[]>([]);
   const [roles, setRoles] = useState<AuRubberRoleDto[]>([]);
@@ -62,7 +64,7 @@ export default function RbacPage() {
       setRoles(rolesData);
       setPermissions(permissionsData);
     } catch {
-      showToast("Failed to load RBAC data", "error");
+      alert({ message: "Failed to load RBAC data", variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -101,7 +103,7 @@ export default function RbacPage() {
       setEditingRole(null);
       loadData();
     } catch {
-      showToast("Failed to update role permissions", "error");
+      alert({ message: "Failed to update role permissions", variant: "error" });
     }
   };
 
@@ -119,7 +121,7 @@ export default function RbacPage() {
       showToast("Role deleted", "success");
       loadData();
     } catch {
-      showToast("Failed to delete role", "error");
+      alert({ message: "Failed to delete role", variant: "error" });
     }
   };
 
@@ -144,7 +146,7 @@ export default function RbacPage() {
       setNewRoleTargetType("");
       loadData();
     } catch {
-      showToast("Failed to create role", "error");
+      alert({ message: "Failed to create role", variant: "error" });
     }
   };
 
@@ -170,7 +172,7 @@ export default function RbacPage() {
       loadData();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to invite user";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     }
   };
 
@@ -189,7 +191,7 @@ export default function RbacPage() {
       setEditingUserAccess(null);
       loadData();
     } catch {
-      showToast("Failed to update user role", "error");
+      alert({ message: "Failed to update user role", variant: "error" });
     }
   };
 
@@ -207,7 +209,7 @@ export default function RbacPage() {
       showToast("Access revoked", "success");
       loadData();
     } catch {
-      showToast("Failed to revoke access", "error");
+      alert({ message: "Failed to revoke access", variant: "error" });
     }
   };
 
@@ -226,6 +228,7 @@ export default function RbacPage() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
+      {AlertDialog}
       <Breadcrumb items={[{ label: "RBAC" }]} />
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Role-Based Access Control</h1>

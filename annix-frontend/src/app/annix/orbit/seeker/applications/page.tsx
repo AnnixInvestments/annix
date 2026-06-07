@@ -10,6 +10,7 @@ import { DateInput } from "@/app/components/ui/DateInput";
 import type { SeekerApplication, SeekerApplicationStatus } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitCreateSeekerEmployment,
@@ -55,6 +56,7 @@ function formatSalary(
 export default function SeekerApplicationsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const query = useOrbitSeekerApplications();
@@ -90,7 +92,10 @@ export default function SeekerApplicationsPage() {
       }
     } catch {
       hideExtraction();
-      showToast("Couldn't refresh your CV right now — please try again.", "error");
+      alert({
+        message: "Couldn't refresh your CV right now — please try again.",
+        variant: "error",
+      });
     }
   };
   const data = query.data;
@@ -110,7 +115,8 @@ export default function SeekerApplicationsPage() {
       { id: application.id, input: { status: "accepted" } },
       {
         onSuccess: () => showToast("Marked as accepted — congratulations!", "success"),
-        onError: () => showToast("Couldn't update the status — please try again", "error"),
+        onError: () =>
+          alert({ message: "Couldn't update the status — please try again", variant: "error" }),
       },
     );
     setAcceptingApp(null);
@@ -125,7 +131,8 @@ export default function SeekerApplicationsPage() {
       { id: application.id, input: { status } },
       {
         onSuccess: () => showToast("Status updated", "success"),
-        onError: () => showToast("Couldn't update the status — please try again", "error"),
+        onError: () =>
+          alert({ message: "Couldn't update the status — please try again", variant: "error" }),
       },
     );
     if (status === "interviewing") {
@@ -142,7 +149,10 @@ export default function SeekerApplicationsPage() {
   const handleNotesSave = (id: number, notes: string) => {
     updateMutation.mutate(
       { id, input: { notes } },
-      { onError: () => showToast("Couldn't save your note — please try again", "error") },
+      {
+        onError: () =>
+          alert({ message: "Couldn't save your note — please try again", variant: "error" }),
+      },
     );
   };
 
@@ -156,7 +166,7 @@ export default function SeekerApplicationsPage() {
     if (!confirmed) return;
     deleteMutation.mutate(application.id, {
       onSuccess: () => showToast("Application removed", "success"),
-      onError: () => showToast("Couldn't remove the application", "error"),
+      onError: () => alert({ message: "Couldn't remove the application", variant: "error" }),
     });
   };
 
@@ -282,6 +292,7 @@ export default function SeekerApplicationsPage() {
         />
       ) : null}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }
@@ -292,6 +303,7 @@ function AcceptEmploymentModal(props: {
   onSaved: () => void;
 }) {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const createMutation = useOrbitCreateSeekerEmployment();
   const app = props.application;
   const appCompany = app.company;
@@ -329,7 +341,7 @@ function AcceptEmploymentModal(props: {
       showToast("Saved your new role", "success");
       props.onSaved();
     } catch {
-      showToast("Couldn't save the role — please try again", "error");
+      alert({ message: "Couldn't save the role — please try again", variant: "error" });
     }
   };
 
@@ -345,6 +357,7 @@ function AcceptEmploymentModal(props: {
       submitLabel="Save my new role"
       loading={createMutation.isPending}
     >
+      {AlertDialog}
       <div className="space-y-4">
         <p className="text-sm text-gray-600">
           We'll keep this on file so your CV stays up to date. When you next look for work, Nix can

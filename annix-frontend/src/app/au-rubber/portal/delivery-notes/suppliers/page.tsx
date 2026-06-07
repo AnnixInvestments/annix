@@ -30,6 +30,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateZA, nowMillis } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/hooks";
@@ -59,6 +60,7 @@ export default function SupplierDeliveryNotesPage() {
   const scrollSentinelRef = useScrollRestoration("au-rubber:supplier-delivery-notes");
   const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
   const [isReExtracting, setIsReExtracting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<DeliveryNoteType | "">("");
@@ -117,13 +119,16 @@ export default function SupplierDeliveryNotesPage() {
       });
       const result = await auRubberApiClient.bulkAutoLinkDeliveryNotes();
       if (result.linked > 0) {
-        showToast(`Auto-linked ${result.linked} delivery note(s) to supplier CoCs`, "success");
+        alert({
+          message: `Auto-linked ${result.linked} delivery note(s) to supplier CoCs`,
+          variant: "success",
+        });
         await notesQuery.refetch();
       } else {
         showToast("No matching delivery notes found to link", "info");
       }
     } catch (err) {
-      showToast("Failed to auto-link delivery notes", "error");
+      alert({ message: "Failed to auto-link delivery notes", variant: "error" });
     } finally {
       hideExtraction();
       setIsAutoLinking(false);
@@ -278,10 +283,10 @@ export default function SupplierDeliveryNotesPage() {
       setUploadDetail("All files processed and extracted.");
 
       await new Promise((resolve) => setTimeout(resolve, 600));
-      showToast(
-        `${files.length} file${files.length !== 1 ? "s" : ""} uploaded and extracted`,
-        "success",
-      );
+      alert({
+        message: `${files.length} file${files.length !== 1 ? "s" : ""} uploaded and extracted`,
+        variant: "success",
+      });
       notesQuery.refetch();
     } catch (err) {
       toastError(showToast, err, "Failed to upload delivery notes");
@@ -438,10 +443,10 @@ export default function SupplierDeliveryNotesPage() {
               if (!confirmed) return;
               try {
                 const result = await auRubberApiClient.dedupeDeliveryNotes();
-                showToast(
-                  `Removed ${result.deleted} duplicate(s) across ${result.groups} DN group(s); kept ${result.kept}.`,
-                  "success",
-                );
+                alert({
+                  message: `Removed ${result.deleted} duplicate(s) across ${result.groups} DN group(s); kept ${result.kept}.`,
+                  variant: "success",
+                });
                 await notesQuery.refetch();
               } catch (err) {
                 toastError(showToast, err, "Dedupe failed");
@@ -467,12 +472,13 @@ export default function SupplierDeliveryNotesPage() {
               });
               try {
                 const result = await auRubberApiClient.resliceAllDeliveryNoteBundles();
-                showToast(
-                  result.resliced.length > 0
-                    ? `Fixed ${result.resliced.length} of ${result.checked} document(s) to show only their own page(s).`
-                    : `Checked ${result.checked} document(s) — all already show only their own page(s).`,
-                  "success",
-                );
+                alert({
+                  message:
+                    result.resliced.length > 0
+                      ? `Fixed ${result.resliced.length} of ${result.checked} document(s) to show only their own page(s).`
+                      : `Checked ${result.checked} document(s) — all already show only their own page(s).`,
+                  variant: "success",
+                });
                 await notesQuery.refetch();
               } catch (err) {
                 toastError(showToast, err, "Failed to fix document pages");
@@ -947,6 +953,7 @@ export default function SupplierDeliveryNotesPage() {
         }
       />
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

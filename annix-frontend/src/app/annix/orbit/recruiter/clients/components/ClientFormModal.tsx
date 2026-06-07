@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitClient, OrbitClientInput } from "@/app/lib/api/annixOrbitApi";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitCreateClient, useOrbitUpdateClient } from "@/app/lib/query/hooks";
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -22,6 +23,7 @@ interface ClientFormModalProps {
 export function ClientFormModal(props: ClientFormModalProps) {
   const client = props.client;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const createMutation = useOrbitCreateClient();
   const updateMutation = useOrbitUpdateClient();
 
@@ -81,12 +83,13 @@ export function ClientFormModal(props: ClientFormModalProps) {
       }
       props.onClose();
     } catch {
-      showToast("Could not save the client. Please try again.", "error");
+      alert({ message: "Could not save the client. Please try again.", variant: "error" });
     }
   };
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {AlertDialog}
       <button
         type="button"
         aria-label="Close"

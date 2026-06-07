@@ -3,12 +3,12 @@
 import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { isString } from "es-toolkit/compat";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useToast } from "@/app/components/Toast";
 import {
   GOOGLE_MAP_PRESETS,
   GoogleMapDisplayConfig,
   GoogleMapPreset,
 } from "@/app/config/googleMapsConfig";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import ManualLocationInput from "./ManualLocationInput";
 
 interface Location {
@@ -51,7 +51,7 @@ function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): Googl
 
 export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerProps) {
   const { initialLocation, onLocationSelect, onClose, apiKey, config } = props;
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const displayConfig = resolveConfig(config);
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualLat, setManualLat] = useState(initialLocation?.lat?.toString() || "");
@@ -107,7 +107,7 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
       const place = autocompleteRef.current.getPlace();
 
       if (!place.geometry?.location) {
-        showToast(`No details available for input: '${place.name}'`, "error");
+        alert({ message: `No details available for input: '${place.name}'`, variant: "error" });
         return;
       }
 
@@ -218,15 +218,16 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
         },
         () => {
           setIsGettingLocation(false);
-          showToast(
-            "Unable to get your current location. Please enable location services or select a location on the map.",
-            "error",
-          );
+          alert({
+            message:
+              "Unable to get your current location. Please enable location services or select a location on the map.",
+            variant: "error",
+          });
         },
         { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
       );
     } else {
-      showToast("Geolocation is not supported by your browser.", "error");
+      alert({ message: "Geolocation is not supported by your browser.", variant: "error" });
     }
   }, [reverseGeocode]);
 
@@ -511,6 +512,7 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
 
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      {AlertDialog}
       <div className={rawContainerClassName || outerContainerClass}>
         <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
           <div>

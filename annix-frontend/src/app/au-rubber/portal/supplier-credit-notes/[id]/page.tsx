@@ -15,12 +15,14 @@ import {
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 
 export default function SupplierCreditNoteDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
   const [invoice, setInvoice] = useState<RubberTaxInvoiceDto | null>(null);
@@ -141,7 +143,7 @@ export default function SupplierCreditNoteDetailPage() {
       showToast("Data extracted successfully", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Extraction failed";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       hideExtraction();
       setIsExtracting(false);
@@ -167,7 +169,7 @@ export default function SupplierCreditNoteDetailPage() {
       router.push("/au-rubber/portal/supplier-credit-notes");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Approval failed";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     } finally {
       setIsApproving(false);
     }
@@ -547,6 +549,7 @@ export default function SupplierCreditNoteDetailPage() {
         </div>
       </div>
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { SupplierQuoteForm } from "@/app/components/pumps";
 import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useDeclinePumpQuote,
   useMarkPumpQuoteViewed,
@@ -25,6 +26,7 @@ export default function SupplierPumpQuoteDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [showQuoteForm, setShowQuoteForm] = useState(false);
 
   const rfqId = Number(params.id);
@@ -69,7 +71,7 @@ export default function SupplierPumpQuoteDetailPage() {
           router.push("/supplier/portal/pump-quotes");
         },
         onError: () => {
-          showToast("Failed to submit quote. Please try again.", "error");
+          alert({ message: "Failed to submit quote. Please try again.", variant: "error" });
         },
       },
     );
@@ -88,7 +90,7 @@ export default function SupplierPumpQuoteDetailPage() {
           router.push("/supplier/portal/pump-quotes");
         },
         onError: () => {
-          showToast("Failed to decline. Please try again.", "error");
+          alert({ message: "Failed to decline. Please try again.", variant: "error" });
         },
       },
     );
@@ -126,6 +128,7 @@ export default function SupplierPumpQuoteDetailPage() {
   if (showQuoteForm) {
     return (
       <div className="space-y-6">
+        {AlertDialog}
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Submit Quote</h1>
@@ -178,11 +181,14 @@ export default function SupplierPumpQuoteDetailPage() {
               })(),
               quantity: (() => {
                 const rawQuantity = pump?.quantity;
-                return rawQuantity || item?.quantity || 1;
+                const itemQuantity = item?.quantity;
+                return rawQuantity || itemQuantity || 1;
               })(),
               description: (() => {
                 const rawDescription = item?.description;
-                return rawDescription || rfq.description || pump?.pumpType || "";
+                const rfqDescription = rfq.description;
+                const pumpType = pump?.pumpType;
+                return rawDescription || rfqDescription || pumpType || "";
               })(),
             },
           ]}
@@ -200,6 +206,7 @@ export default function SupplierPumpQuoteDetailPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Quote Request Details</h1>

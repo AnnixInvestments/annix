@@ -37,6 +37,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import {
   useAuRubberAnalyzeSupplierCocs,
@@ -94,6 +95,7 @@ export default function SupplierCocsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const { runBulk: runAdaptiveBulk } = useAdaptiveExtractionProgress();
   const { showExtraction, hideExtraction } = useExtractionProgress();
@@ -379,10 +381,10 @@ export default function SupplierCocsPage() {
         analysis: analysisResult,
       });
 
-      showToast(
-        `Created ${result.cocIds.length} CoC${result.cocIds.length > 1 ? "s" : ""} successfully`,
-        "success",
-      );
+      alert({
+        message: `Created ${result.cocIds.length} CoC${result.cocIds.length > 1 ? "s" : ""} successfully`,
+        variant: "success",
+      });
 
       setShowAnalysisModal(false);
       setAnalysisResult(null);
@@ -412,10 +414,10 @@ export default function SupplierCocsPage() {
             compoundCode: uploadCompoundCode || undefined,
           },
         });
-        showToast(
-          `${uploadFiles.length} CoC${uploadFiles.length > 1 ? "s" : ""} uploaded`,
-          "success",
-        );
+        alert({
+          message: `${uploadFiles.length} CoC${uploadFiles.length > 1 ? "s" : ""} uploaded`,
+          variant: "success",
+        });
       } else {
         await uploadSupplierCocMutation.mutateAsync({
           cocType: uploadType,
@@ -561,7 +563,10 @@ export default function SupplierCocsPage() {
           chain.then(() => approveSupplierCocMutation.mutateAsync(id).then(() => undefined)),
         Promise.resolve() as Promise<void>,
       );
-      showToast(`Approved ${ids.length} CoC${ids.length > 1 ? "s" : ""} successfully`, "success");
+      alert({
+        message: `Approved ${ids.length} CoC${ids.length > 1 ? "s" : ""} successfully`,
+        variant: "success",
+      });
       setSelectedForApproval(new Set());
       cocsQuery.refetch();
     } catch (err) {
@@ -587,10 +592,10 @@ export default function SupplierCocsPage() {
       if (result.totalKept === 0) {
         showToast("No duplicate active CoCs found — nothing to dedupe", "info");
       } else {
-        showToast(
-          `Deduped ${result.totalKept} group${result.totalKept > 1 ? "s" : ""} (${result.totalSuperseded} superseded)`,
-          "success",
-        );
+        alert({
+          message: `Deduped ${result.totalKept} group${result.totalKept > 1 ? "s" : ""} (${result.totalSuperseded} superseded)`,
+          variant: "success",
+        });
       }
       cocsQuery.refetch();
     } catch (err) {
@@ -1391,10 +1396,10 @@ export default function SupplierCocsPage() {
                                     if (!graphPath) return;
                                     const url = await documentUrlMutation.mutateAsync(graphPath);
                                     if (!url) {
-                                      showToast(
-                                        "Rheometer graph PDF is missing from storage",
-                                        "error",
-                                      );
+                                      alert({
+                                        message: "Rheometer graph PDF is missing from storage",
+                                        variant: "error",
+                                      });
                                       return;
                                     }
                                     window.open(url, "_blank");
@@ -1917,6 +1922,7 @@ export default function SupplierCocsPage() {
           globalThis.document.body,
         )}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

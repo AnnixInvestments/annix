@@ -9,6 +9,7 @@ import {
 } from "@/app/components/orbit/TierPlans";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitTierCapability, OrbitTierFeatures } from "@/app/lib/api/adminApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAdminInviteSeekerTrial,
   useAdminOrbitSeekerMatchTier,
@@ -84,6 +85,7 @@ function toDraft(row: OrbitTierCapability): TierDraft {
 
 export default function AdminOrbitSeekerTiersPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const capabilitiesQuery = useAdminOrbitTierCapabilities();
   const updateCapability = useAdminUpdateOrbitTierCapability();
@@ -144,7 +146,7 @@ export default function AdminOrbitSeekerTiersPage() {
       await updateCapability.mutateAsync({ tier, pricing });
       showToast("Saved pricing.", "success");
     } catch {
-      showToast("Could not save pricing.", "error");
+      alert({ message: "Could not save pricing.", variant: "error" });
     } finally {
       setSavingPricingTier(null);
     }
@@ -224,7 +226,7 @@ export default function AdminOrbitSeekerTiersPage() {
       });
       showToast(`Saved "${tier}" tier capabilities.`, "success");
     } catch {
-      showToast("Could not save tier capabilities.", "error");
+      alert({ message: "Could not save tier capabilities.", variant: "error" });
     } finally {
       setSavingTier(null);
     }
@@ -232,6 +234,7 @@ export default function AdminOrbitSeekerTiersPage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
+      {AlertDialog}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Seeker tiers</h1>
@@ -431,6 +434,7 @@ const TRIAL_TIER_OPTIONS = [
 
 function InviteSeekerTrialSection() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const inviteMutation = useAdminInviteSeekerTrial();
   const [email, setEmail] = useState("");
   const [tier, setTier] = useState("medium");
@@ -450,10 +454,10 @@ function InviteSeekerTrialSection() {
       {
         onSuccess: (result) => {
           if (result.candidatesAffected > 0) {
-            showToast(
-              `Granted "${tier}" free for ${days} days to ${result.candidatesAffected} candidate(s).`,
-              "success",
-            );
+            alert({
+              message: `Granted "${tier}" free for ${days} days to ${result.candidatesAffected} candidate(s).`,
+              variant: "success",
+            });
             setEmail("");
           } else {
             showToast(
@@ -462,13 +466,14 @@ function InviteSeekerTrialSection() {
             );
           }
         },
-        onError: () => showToast("Could not grant the trial.", "error"),
+        onError: () => alert({ message: "Could not grant the trial.", variant: "error" }),
       },
     );
   };
 
   return (
     <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      {AlertDialog}
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Invite a seeker (free trial)</h2>
         <p className="text-sm text-gray-500 mt-0.5">
@@ -526,6 +531,7 @@ function InviteSeekerTrialSection() {
 
 function SeekerOverrideSection() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [emailInput, setEmailInput] = useState("");
   const [appliedEmail, setAppliedEmail] = useState("");
   const [selectedTier, setSelectedTier] = useState("soft");
@@ -558,16 +564,16 @@ function SeekerOverrideSection() {
       {
         onSuccess: (result) => {
           if (result.candidatesAffected > 0) {
-            showToast(
-              `Set tier to "${result.matchTier}" for ${result.candidatesAffected} candidate(s). The seeker should re-run "Help me Find a Job" to see the effect.`,
-              "success",
-            );
+            alert({
+              message: `Set tier to "${result.matchTier}" for ${result.candidatesAffected} candidate(s). The seeker should re-run "Help me Find a Job" to see the effect.`,
+              variant: "success",
+            });
           } else {
-            showToast("No candidate found for that email.", "error");
+            alert({ message: "No candidate found for that email.", variant: "error" });
           }
         },
         onError: () => {
-          showToast("Couldn't update the seeker's tier.", "error");
+          alert({ message: "Couldn't update the seeker's tier.", variant: "error" });
         },
       },
     );
@@ -575,6 +581,7 @@ function SeekerOverrideSection() {
 
   return (
     <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
+      {AlertDialog}
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Override a single seeker</h2>
         <p className="text-sm text-gray-500 mt-0.5">

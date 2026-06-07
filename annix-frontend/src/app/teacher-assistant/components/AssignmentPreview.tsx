@@ -9,6 +9,7 @@ import { AlertTriangle, Copy, Download, FileText, RefreshCw } from "lucide-react
 import { useMemo, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useRegenerateSection } from "@/app/lib/query/hooks";
 import { exportAssignmentAsClipboardText } from "../lib/clipboard-export";
@@ -53,6 +54,7 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
   const editor = useAssignmentEditor(initialAssignment);
   const regenerate = useRegenerateSection();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const { showExtraction, hideExtraction } = useExtractionProgress();
 
@@ -91,10 +93,10 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
         },
         onError: (error) => {
           hideExtraction();
-          showToast(
-            error instanceof Error ? error.message : "Section regeneration failed.",
-            "error",
-          );
+          alert({
+            message: error instanceof Error ? error.message : "Section regeneration failed.",
+            variant: "error",
+          });
         },
       },
     );
@@ -114,7 +116,10 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
     try {
       await downloadAssignmentAsPdf(editor.current);
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "PDF export failed.", "error");
+      alert({
+        message: error instanceof Error ? error.message : "PDF export failed.",
+        variant: "error",
+      });
     } finally {
       setIsExportingPdf(false);
     }
@@ -126,7 +131,10 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
       await downloadAssignmentAsDocx(editor.current);
       showToast("Word document downloaded.", "success");
     } catch (error) {
-      showToast(error instanceof Error ? error.message : "Word export failed.", "error");
+      alert({
+        message: error instanceof Error ? error.message : "Word export failed.",
+        variant: "error",
+      });
     } finally {
       setIsExportingDocx(false);
     }
@@ -378,6 +386,7 @@ export function AssignmentPreview(props: AssignmentPreviewProps) {
       ) : null}
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAdminOrbitEnabledCountries,
   useAdminSetOrbitEnabledCountries,
@@ -20,6 +21,7 @@ export function EnabledCountriesControl() {
   const query = useAdminOrbitEnabledCountries();
   const setCountries = useAdminSetOrbitEnabledCountries();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const data = query.data;
   const all = data ? data.all : [];
@@ -31,12 +33,14 @@ export function EnabledCountriesControl() {
     setCountries.mutate(next, {
       onSuccess: () =>
         showToast(`${countryLabel(code)} ${isOn ? "hidden from" : "shown to"} seekers.`, "success"),
-      onError: () => showToast("Couldn't update countries — please try again.", "error"),
+      onError: () =>
+        alert({ message: "Couldn't update countries — please try again.", variant: "error" }),
     });
   };
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 dark:border-white/10 dark:bg-slate-900">
+      {AlertDialog}
       <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
         Seeker job countries (live)
       </h3>

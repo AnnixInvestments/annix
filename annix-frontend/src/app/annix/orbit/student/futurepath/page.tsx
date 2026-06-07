@@ -7,6 +7,7 @@ import type {
   OrbitEducationCurriculum,
   SeekerEducationApplicationStatus,
 } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useOrbitAddSeekerEducationResult,
   useOrbitAskSeekerEducationMentor,
@@ -67,6 +68,7 @@ const BAND_CLASS: Record<string, string> = {
 
 export default function FuturePathPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const educationQuery = useOrbitSeekerEducation();
   const upsertProfile = useOrbitUpsertSeekerEducation();
   const addResult = useOrbitAddSeekerEducationResult();
@@ -166,7 +168,7 @@ export default function FuturePathPage() {
       });
       showToast("Profile saved", "success");
     } catch {
-      showToast("Could not save your profile — please try again.", "error");
+      alert({ message: "Could not save your profile — please try again.", variant: "error" });
     }
   };
 
@@ -194,7 +196,7 @@ export default function FuturePathPage() {
       setTerm("");
       showToast("Result added", "success");
     } catch {
-      showToast("Could not add the result — please try again.", "error");
+      alert({ message: "Could not add the result — please try again.", variant: "error" });
     }
   };
 
@@ -202,7 +204,7 @@ export default function FuturePathPage() {
     try {
       await deleteResult.mutateAsync(id);
     } catch {
-      showToast("Could not remove the result — please try again.", "error");
+      alert({ message: "Could not remove the result — please try again.", variant: "error" });
     }
   };
 
@@ -211,7 +213,10 @@ export default function FuturePathPage() {
       await recordConsent.mutateAsync();
       showToast("Consent recorded", "success");
     } catch {
-      showToast("Could not record consent — a guardian may need to do this.", "error");
+      alert({
+        message: "Could not record consent — a guardian may need to do this.",
+        variant: "error",
+      });
     }
   };
 
@@ -226,7 +231,7 @@ export default function FuturePathPage() {
       setGuardianEmail("");
       showToast("Guardian invited", "success");
     } catch {
-      showToast("Could not send the invite — please try again.", "error");
+      alert({ message: "Could not send the invite — please try again.", variant: "error" });
     }
   };
 
@@ -240,7 +245,10 @@ export default function FuturePathPage() {
       const result = await askMentor.mutateAsync(trimmedQuestion);
       setMentorAnswer(result.answer);
     } catch {
-      showToast("The mentor is unavailable right now — please try again.", "error");
+      alert({
+        message: "The mentor is unavailable right now — please try again.",
+        variant: "error",
+      });
     }
   };
 
@@ -260,7 +268,7 @@ export default function FuturePathPage() {
       setAppProgramme("");
       showToast("Application added", "success");
     } catch {
-      showToast("Could not add the application — please try again.", "error");
+      alert({ message: "Could not add the application — please try again.", variant: "error" });
     }
   };
 
@@ -271,7 +279,7 @@ export default function FuturePathPage() {
     try {
       await updateApplicationStatus.mutateAsync({ id, status });
     } catch {
-      showToast("Could not update the status — please try again.", "error");
+      alert({ message: "Could not update the status — please try again.", variant: "error" });
     }
   };
 
@@ -279,7 +287,7 @@ export default function FuturePathPage() {
     try {
       await deleteApplication.mutateAsync(id);
     } catch {
-      showToast("Could not remove the application — please try again.", "error");
+      alert({ message: "Could not remove the application — please try again.", variant: "error" });
     }
   };
 
@@ -289,6 +297,7 @@ export default function FuturePathPage() {
 
   return (
     <div className="space-y-8">
+      {AlertDialog}
       <header>
         <h1 className="text-2xl font-semibold" style={{ color: "var(--brand-navbar)" }}>
           FuturePath

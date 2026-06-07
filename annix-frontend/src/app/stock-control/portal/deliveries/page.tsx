@@ -9,6 +9,7 @@ import type { AnalyzedDeliveryNoteData, DeliveryNote } from "@/app/lib/api/stock
 // eslint-disable-next-line no-restricted-imports -- SdnStatus is an enum value (not type) used in runtime checks; enum is colocated with API types. Tracked as tech debt per Phase 9 of annix/annix#191.
 import { SdnStatus } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useConfirmDeliveryNote,
   useCreateDeliveryNote,
@@ -69,6 +70,7 @@ interface DeliveryFormItem {
 
 export default function DeliveriesPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { showError } = useErrorModal();
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -180,7 +182,7 @@ export default function DeliveriesPage() {
     const failCount = results.filter((r) => r.status === "rejected").length;
 
     if (successCount > 0) {
-      showToast(`${successCount} delivery note(s) added to stock`, "success");
+      alert({ message: `${successCount} delivery note(s) added to stock`, variant: "success" });
     }
     if (failCount > 0) {
       showError("Add to Stock Failed", `${failCount} delivery note(s) failed to add to stock`);
@@ -825,6 +827,7 @@ export default function DeliveriesPage() {
             />
           );
         })()}
+      {AlertDialog}
     </div>
   );
 }

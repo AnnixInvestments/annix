@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { fromISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { SignOffStatusBadge } from "../../../components/accounting/SignOffStatusBadge";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { RequirePermission } from "../../../components/RequirePermission";
@@ -30,6 +31,7 @@ interface MonthlyAccount {
 
 export default function AccountingHistoryPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [accounts, setAccounts] = useState<MonthlyAccount[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -40,7 +42,7 @@ export default function AccountingHistoryPage() {
       setAccounts(result as MonthlyAccount[]);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load history";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -55,7 +57,7 @@ export default function AccountingHistoryPage() {
       await auRubberApiClient.accountingDownloadPdf(id);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to download PDF";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     }
   };
 
@@ -66,13 +68,14 @@ export default function AccountingHistoryPage() {
       fetchAccounts();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to send sign-off requests";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     }
   };
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
       <div className="space-y-6">
+        {AlertDialog}
         <Breadcrumb
           items={[
             { label: "Accounting", href: "/au-rubber/portal/accounting" },

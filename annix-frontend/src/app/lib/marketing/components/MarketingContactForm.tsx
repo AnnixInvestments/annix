@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { type MarketingContactPayload, submitMarketingContact } from "@/app/lib/marketing/api";
 
 const EMPTY: MarketingContactPayload = {
@@ -14,6 +15,7 @@ const EMPTY: MarketingContactPayload = {
 
 export function MarketingContactForm() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [form, setForm] = useState<MarketingContactPayload>(EMPTY);
   const [submitting, setSubmitting] = useState(false);
   const companyValue = form.company === undefined ? "" : form.company;
@@ -34,7 +36,7 @@ export function MarketingContactForm() {
     } catch (error) {
       const fallback = "Something went wrong — please try again.";
       const message = error instanceof Error ? error.message : fallback;
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     } finally {
       setSubmitting(false);
     }
@@ -42,6 +44,7 @@ export function MarketingContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      {AlertDialog}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Name" required value={form.name} onChange={(v) => update("name", v)} />
         <Field

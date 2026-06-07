@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useNixCall } from "../hooks/useNixCall";
 
 export interface SourcingQueriesPanelProps {
@@ -11,6 +12,7 @@ export interface SourcingQueriesPanelProps {
 
 export function SourcingQueriesPanel({ jobId }: SourcingQueriesPanelProps) {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const sourcing = useNixCall({
     operation: "sourcing-queries",
     label: "Nix is generating Boolean search strings…",
@@ -22,7 +24,7 @@ export function SourcingQueriesPanel({ jobId }: SourcingQueriesPanelProps) {
 
   const handleGenerate = () => {
     sourcing.mutate(jobId, {
-      onError: () => showToast("Couldn't generate sourcing queries.", "error"),
+      onError: () => alert({ message: "Couldn't generate sourcing queries.", variant: "error" }),
     });
   };
 
@@ -33,12 +35,13 @@ export function SourcingQueriesPanel({ jobId }: SourcingQueriesPanelProps) {
       showToast(`Copied ${label} query to clipboard`, "success");
       setTimeout(() => setCopied(null), 2000);
     } catch {
-      showToast("Couldn't copy — try selecting the text manually.", "error");
+      alert({ message: "Couldn't copy — try selecting the text manually.", variant: "error" });
     }
   };
 
   return (
     <div className="rounded-xl bg-white shadow-md border border-[#252560]/30 p-6 space-y-4">
+      {AlertDialog}
       <div className="flex items-center justify-between">
         <div>
           <h3 className="font-bold text-[#1a1a40]">Source candidates outside the funnel</h3>

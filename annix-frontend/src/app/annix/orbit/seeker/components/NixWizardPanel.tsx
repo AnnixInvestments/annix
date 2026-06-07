@@ -3,7 +3,6 @@
 import { isNumber } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
-import { useToast } from "@/app/components/Toast";
 import type {
   NixSeekerCvAssessment,
   NixSeekerCvImprovement,
@@ -12,6 +11,7 @@ import type {
   NixSeekerRankingPotential,
 } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitNixWizardImprovements } from "@/app/lib/query/hooks";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { NixCvBuilder } from "./NixCvBuilder";
@@ -66,7 +66,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
     ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
     : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
   const mutation = useOrbitNixWizardImprovements();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [copied, setCopied] = useState(false);
   const lastAutoRunKey = useRef<number | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -140,7 +140,10 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
       })
       .catch(() => {
         setCopied(false);
-        showToast("Couldn't copy to your clipboard — please copy it manually", "error");
+        alert({
+          message: "Couldn't copy to your clipboard — please copy it manually",
+          variant: "error",
+        });
       });
   };
 
@@ -190,6 +193,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
       )}
 
       {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} onStartSearch={props.onStartSearch} />}
+      {AlertDialog}
     </div>
   );
 }

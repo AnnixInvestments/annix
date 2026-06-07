@@ -6,6 +6,7 @@ import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type { SeekerInterviewBooking, SeekerInterviewEvent } from "@/app/lib/api/annixOrbitApi";
 import { DateTime, formatTimeZA, fromISO, now } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitCreateSeekerInterviewEvent,
@@ -86,6 +87,7 @@ export function InterviewCalendar(props: {
   prefill: InterviewCalendarPrefill | null;
 }) {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const eventsQuery = useOrbitSeekerInterviewEvents();
   const createMutation = useOrbitCreateSeekerInterviewEvent();
@@ -220,7 +222,7 @@ export function InterviewCalendar(props: {
       }
       closeForm();
     } catch {
-      showToast("Couldn't save the interview — please try again", "error");
+      alert({ message: "Couldn't save the interview — please try again", variant: "error" });
     }
   };
 
@@ -238,7 +240,7 @@ export function InterviewCalendar(props: {
       showToast("Interview removed", "success");
       closeForm();
     } catch {
-      showToast("Couldn't remove the interview — please try again", "error");
+      alert({ message: "Couldn't remove the interview — please try again", variant: "error" });
     }
   };
 
@@ -503,6 +505,7 @@ export function InterviewCalendar(props: {
         </FormModal>
       ) : null}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

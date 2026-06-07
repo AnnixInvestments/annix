@@ -8,6 +8,7 @@ import type {
   EeTargetOccupationalLevel,
   OrbitEeTarget,
 } from "@/app/lib/api/adminApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdminDeleteOrbitEeTarget,
@@ -45,6 +46,7 @@ function levelLabel(value: EeTargetOccupationalLevel): string {
 
 export default function OrbitEeTargetsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const targetsQuery = useAdminOrbitEeTargets();
   const upsert = useAdminUpsertOrbitEeTarget();
@@ -109,7 +111,7 @@ export default function OrbitEeTargetsPage() {
       showToast(editingId ? "Target updated." : "Target added.", "success");
       setIsFormOpen(false);
     } catch {
-      showToast("Could not save the target — please try again.", "error");
+      alert({ message: "Could not save the target — please try again.", variant: "error" });
     }
   };
 
@@ -125,7 +127,7 @@ export default function OrbitEeTargetsPage() {
       await remove.mutateAsync(target.id);
       showToast("Target deleted.", "success");
     } catch {
-      showToast("Could not delete the target — please try again.", "error");
+      alert({ message: "Could not delete the target — please try again.", variant: "error" });
     }
   };
 
@@ -328,6 +330,7 @@ export default function OrbitEeTargetsPage() {
       </FormModal>
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

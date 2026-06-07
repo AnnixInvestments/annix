@@ -4,6 +4,7 @@ import { isString } from "es-toolkit/compat";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { rfqApi } from "@/app/lib/api/client";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { log } from "@/app/lib/logger";
 import {
   buildClarificationEmailDraft,
@@ -28,6 +29,7 @@ interface PreQuoteClarificationsStepProps {
 export default function PreQuoteClarificationsStep(props: PreQuoteClarificationsStepProps) {
   const { onPrevStep, onProceed } = props;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const rfqData = useRfqWizardStore((s) => s.rfqData);
   const pendingDocuments = useRfqWizardStore((s) => s.pendingDocuments);
   const pendingTenderDocuments = useRfqWizardStore((s) => s.pendingTenderDocuments);
@@ -137,19 +139,19 @@ export default function PreQuoteClarificationsStep(props: PreQuoteClarifications
       });
       if (!result.success) {
         const rawResultError = result.error;
-        showToast(`Email failed: ${rawResultError || "unknown error"}`, "error");
+        alert({ message: `Email failed: ${rawResultError || "unknown error"}`, variant: "error" });
         setSending(false);
         return;
       }
-      showToast(
-        `Clarification email sent to ${rfqData.customerEmail}. Items pending drawings will remain omitted from the BOQ until the drawings arrive.`,
-        "success",
-      );
+      alert({
+        message: `Clarification email sent to ${rfqData.customerEmail}. Items pending drawings will remain omitted from the BOQ until the drawings arrive.`,
+        variant: "success",
+      });
       onProceed(requirements.flaggedItemIds, false);
     } catch (err) {
       log.error("[PreQuoteClarifications] Send failed", err);
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
-      showToast(`Email failed: ${errorMsg}`, "error");
+      alert({ message: `Email failed: ${errorMsg}`, variant: "error" });
       setSending(false);
     }
   };
@@ -170,6 +172,7 @@ export default function PreQuoteClarificationsStep(props: PreQuoteClarifications
 
   return (
     <div className="space-y-4">
+      {AlertDialog}
       {/* Header */}
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <h3 className="text-lg font-semibold text-gray-900 mb-2">Pre-Quote Clarifications</h3>

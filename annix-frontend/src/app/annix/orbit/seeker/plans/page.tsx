@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { TierPlans } from "@/app/components/orbit/TierPlans";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitCompleteOnboarding,
@@ -27,6 +28,7 @@ export default function SeekerPlansPage() {
   const selectingTier = selectPlan.isPending ? pendingTier : null;
 
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
 
   const router = useRouter();
@@ -56,7 +58,8 @@ export default function SeekerPlansPage() {
     if (!confirmed) return;
     selectPlan.mutate(tier, {
       onSuccess: () => showToast(`You're now on ${planLabel}.`, "success"),
-      onError: () => showToast("Couldn't switch plan. Please try again.", "error"),
+      onError: () =>
+        alert({ message: "Couldn't switch plan. Please try again.", variant: "error" }),
     });
   };
 
@@ -98,6 +101,7 @@ export default function SeekerPlansPage() {
         </button>
       </div>
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

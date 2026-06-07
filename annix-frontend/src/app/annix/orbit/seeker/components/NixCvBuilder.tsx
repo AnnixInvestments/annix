@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
-import { useToast } from "@/app/components/Toast";
 import type {
   NixGeneratedCv,
   NixGeneratedCvExperience,
@@ -11,6 +10,7 @@ import type {
 } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdoptNixCv,
@@ -32,7 +32,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const generateMutation = useGenerateNixCv();
   const generatedQuery = useNixGeneratedCv();
   const { showExtraction, hideExtraction } = useExtractionProgress();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const pdfPreview = usePdfPreview();
   const [copied, setCopied] = useState(false);
@@ -50,7 +50,8 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     }
     saveTimerRef.current = setTimeout(() => {
       persistCv(next, {
-        onError: () => showToast("Couldn't save your CV edits — please try again.", "error"),
+        onError: () =>
+          alert({ message: "Couldn't save your CV edits — please try again.", variant: "error" }),
       });
     }, 800);
   };
@@ -198,7 +199,10 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       const blob = await annixOrbitApiClient.nixWizardGeneratedCvPdf();
       pdfPreview.open(blob, "Nix-CV.pdf");
     } catch {
-      showToast("We couldn't open your PDF right now. Please try again.", "error");
+      alert({
+        message: "We couldn't open your PDF right now. Please try again.",
+        variant: "error",
+      });
     } finally {
       setDownloading(false);
     }
@@ -215,7 +219,10 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       })
       .catch(() => {
         setCopied(false);
-        showToast("Couldn't copy to clipboard — please select and copy manually.", "error");
+        alert({
+          message: "Couldn't copy to clipboard — please select and copy manually.",
+          variant: "error",
+        });
       });
   };
 
@@ -376,6 +383,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

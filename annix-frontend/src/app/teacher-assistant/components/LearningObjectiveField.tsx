@@ -5,6 +5,7 @@ import { Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { extractErrorMessage } from "@/app/lib/api/apiError";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useSuggestObjectives } from "@/app/lib/query/hooks";
 
 interface LearningObjectiveFieldProps {
@@ -19,6 +20,7 @@ interface LearningObjectiveFieldProps {
 export function LearningObjectiveField(props: LearningObjectiveFieldProps) {
   const { value, onChange, subject, topic, ageBucket, difficulty } = props;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const suggest = useSuggestObjectives();
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
@@ -39,7 +41,10 @@ export function LearningObjectiveField(props: LearningObjectiveFieldProps) {
           setSuggestions(result.suggestions);
         },
         onError: (error) => {
-          showToast(extractErrorMessage(error, "Couldn't get suggestions right now."), "error");
+          alert({
+            message: extractErrorMessage(error, "Couldn't get suggestions right now."),
+            variant: "error",
+          });
         },
       },
     );
@@ -52,6 +57,7 @@ export function LearningObjectiveField(props: LearningObjectiveFieldProps) {
 
   return (
     <div>
+      {AlertDialog}
       <div className="flex items-baseline justify-between mb-2 gap-2">
         <label htmlFor="learningObjective" className="block text-sm font-medium text-gray-700">
           Learning objective (optional)

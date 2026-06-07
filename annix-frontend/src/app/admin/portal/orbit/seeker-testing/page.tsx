@@ -13,6 +13,7 @@ import type {
 } from "@/app/lib/api/seeker-testing.types";
 import { brandingCssVars } from "@/app/lib/branding/branding";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAdminCreateSeekerTestingIssue,
   useAdminOrbitSeekerTestingErrorsLatency,
@@ -399,6 +400,7 @@ function SectionCard(props: { title: string; subtitle?: string; children: React.
 
 export default function SeekerTestingPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const brandingQuery = useBranding("annix-orbit");
   const overviewQuery = useAdminOrbitSeekerTestingOverview();
@@ -445,7 +447,8 @@ export default function SeekerTestingPage() {
   const handleRecalculate = () => {
     recalculate.mutate(undefined, {
       onSuccess: () => showToast("Readiness recalculated.", "success"),
-      onError: () => showToast("Could not recalculate readiness — please try again.", "error"),
+      onError: () =>
+        alert({ message: "Could not recalculate readiness — please try again.", variant: "error" }),
     });
   };
 
@@ -454,7 +457,7 @@ export default function SeekerTestingPage() {
       { id, body: { status } },
       {
         onSuccess: () => showToast("Phase updated.", "success"),
-        onError: () => showToast("Could not update phase.", "error"),
+        onError: () => alert({ message: "Could not update phase.", variant: "error" }),
       },
     );
   };
@@ -464,7 +467,7 @@ export default function SeekerTestingPage() {
       { id, body: { status } },
       {
         onSuccess: () => showToast("Issue updated.", "success"),
-        onError: () => showToast("Could not update issue.", "error"),
+        onError: () => alert({ message: "Could not update issue.", variant: "error" }),
       },
     );
   };
@@ -486,7 +489,7 @@ export default function SeekerTestingPage() {
           setIssueDescription("");
           setIssueSeverity("medium");
         },
-        onError: () => showToast("Could not log issue.", "error"),
+        onError: () => alert({ message: "Could not log issue.", variant: "error" }),
       },
     );
   };
@@ -500,6 +503,7 @@ export default function SeekerTestingPage() {
       style={cssVars as React.CSSProperties}
       className="min-h-screen space-y-6 rounded-2xl bg-slate-950 p-6 text-white"
     >
+      {AlertDialog}
       <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Seeker Testing &amp; Launch Readiness</h1>

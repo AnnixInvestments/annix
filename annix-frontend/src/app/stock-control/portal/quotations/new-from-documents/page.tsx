@@ -9,6 +9,7 @@ import { useToast } from "@/app/components/Toast";
 import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
 import { DocNumberAutocomplete } from "@/app/lib/nix/components/library";
 import { isEmlFile, parseEmail } from "@/app/lib/nix/emlAttachmentExtractor";
@@ -40,6 +41,7 @@ export default function QuoteFromDocumentsPage() {
   const router = useRouter();
   const auth = useStockControlAuth();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
   const userId = auth.user?.id;
 
@@ -92,10 +94,10 @@ export default function QuoteFromDocumentsPage() {
         void parseEmail(file)
           .then((parsed) => {
             if (!parsed) {
-              showToast(
-                `Couldn't read ${file.name}. Save the attachments out of your mail client and drop them individually.`,
-                "error",
-              );
+              alert({
+                message: `Couldn't read ${file.name}. Save the attachments out of your mail client and drop them individually.`,
+                variant: "error",
+              });
               return;
             }
             let attachmentsAdded = 0;
@@ -125,7 +127,7 @@ export default function QuoteFromDocumentsPage() {
             );
           })
           .catch(() => {
-            showToast(`Couldn't read ${file.name}.`, "error");
+            alert({ message: `Couldn't read ${file.name}.`, variant: "error" });
           });
         return;
       }
@@ -137,7 +139,7 @@ export default function QuoteFromDocumentsPage() {
         ],
       }));
     },
-    [showToast],
+    [showToast, alert],
   );
 
   const removeDocumentFrom = useCallback(
@@ -373,6 +375,7 @@ export default function QuoteFromDocumentsPage() {
           </button>
         </div>
       )}
+      {AlertDialog}
     </div>
   );
 }

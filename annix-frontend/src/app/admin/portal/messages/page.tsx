@@ -4,8 +4,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { ConversationList, ConversationThread, MessageComposer } from "@/app/components/messaging";
-import { useToast } from "@/app/components/Toast";
 import type { ConversationDetail, ConversationSummary } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAdminConversationDetail,
   useAdminConversations,
@@ -15,7 +15,7 @@ import { messagingKeys } from "@/app/lib/query/keys";
 
 export default function AdminMessagesPage() {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
 
   const [selectedConversationId, setSelectedConversationId] = useState<number | null>(null);
@@ -83,7 +83,7 @@ export default function AdminMessagesPage() {
         },
         onError: (err: unknown) => {
           const message = err instanceof Error ? err.message : "Failed to send message";
-          showToast(message, "error");
+          alert({ message, variant: "error" });
         },
       },
     );
@@ -99,6 +99,7 @@ export default function AdminMessagesPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {AlertDialog}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
         <div className="flex gap-4">
