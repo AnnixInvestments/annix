@@ -28,7 +28,7 @@ export class User {
   @Prop({ type: String, required: false })
   passwordHash: string;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: true, default: false })
   emailVerified: boolean;
 
   @Prop({ type: String, required: false })
