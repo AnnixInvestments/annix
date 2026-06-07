@@ -7,6 +7,7 @@ import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { sourceRespectRank } from "../config/job-source-providers";
+import { resolveMonthlySalary } from "../config/salary-period";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting } from "../entities/job-posting.entity";
@@ -915,6 +916,7 @@ export class JobIngestionService {
     const savedJobsRaw = await Promise.all(
       fresh.map(async (job) => {
         try {
+          const monthly = resolveMonthlySalary(source.provider, job.salaryMin, job.salaryMax);
           return await this.externalJobRepo.create({
             title: job.title,
             company: job.company,
@@ -924,6 +926,9 @@ export class JobIngestionService {
             salaryMin: job.salaryMin,
             salaryMax: job.salaryMax,
             salaryCurrency: country === "za" ? "ZAR" : null,
+            salaryPeriod: monthly.salaryPeriod,
+            salaryMonthlyMin: monthly.salaryMonthlyMin,
+            salaryMonthlyMax: monthly.salaryMonthlyMax,
             description: job.description,
             category: job.category,
             canonicalCategory: this.jobCategorizationService.ruleBased({

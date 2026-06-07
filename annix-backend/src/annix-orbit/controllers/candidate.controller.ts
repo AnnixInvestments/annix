@@ -22,6 +22,7 @@ import { CandidateStatus } from "../entities/candidate.entity";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { CandidateService } from "../services/candidate.service";
 import { EeDisclosureService } from "../services/ee-disclosure.service";
+import { IndividualProfileService } from "../services/individual-profile.service";
 import { PopiaService } from "../services/popia.service";
 import { ReferenceService } from "../services/reference.service";
 import { WorkflowAutomationService } from "../services/workflow-automation.service";
@@ -37,6 +38,7 @@ export class CandidateController {
     private readonly workflowService: WorkflowAutomationService,
     private readonly popiaService: PopiaService,
     private readonly eeDisclosureService: EeDisclosureService,
+    private readonly individualProfileService: IndividualProfileService,
   ) {}
 
   @Get()
@@ -118,6 +120,18 @@ export class CandidateController {
     }
     const url = await this.storageService.presignedUrl(candidate.cvFilePath, 3600);
     return { url };
+  }
+
+  @Get(":id/photo-url")
+  async photoUrl(
+    @Request() req: { user: { companyId: number } },
+    @Param("id", ParseIntPipe) id: number,
+  ) {
+    const candidate = await this.candidateService.findById(req.user.companyId, id);
+    const photoUrl = await this.individualProfileService.employerVisiblePhotoUrlByEmail(
+      candidate.email,
+    );
+    return { photoUrl };
   }
 
   @Post(":id/reject")

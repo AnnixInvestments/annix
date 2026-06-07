@@ -151,16 +151,19 @@ export class SeekerApplicationsService {
         };
       }
     }
+    // The live job is gone (pruned / re-ingested / delisted) — fall back to the
+    // snapshot captured at apply time so the application still shows what was
+    // applied to, rather than a blank "Job application".
     return {
       id: click.id,
       externalJobId: click.externalJobId,
-      title: "Job application",
-      company: null,
-      location: null,
+      title: click.jobTitle ?? "Job application",
+      company: click.jobCompany ?? null,
+      location: click.jobLocation ?? null,
       sourceUrl: click.sourceUrl,
-      salaryMin: null,
-      salaryMax: null,
-      salaryCurrency: null,
+      salaryMin: click.jobSalaryMin ?? null,
+      salaryMax: click.jobSalaryMax ?? null,
+      salaryCurrency: click.jobSalaryCurrency ?? null,
       status,
       notes,
       appliedAt,

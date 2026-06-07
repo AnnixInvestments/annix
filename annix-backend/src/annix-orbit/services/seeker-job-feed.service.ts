@@ -562,6 +562,16 @@ export class SeekerJobFeedService {
       }),
     );
 
+    // Hard salary limit: when the seeker has set their expected monthly minimum,
+    // drop jobs whose (normalised monthly) pay is below it. Jobs with no pay data
+    // are kept — we can't judge them and don't want to hide most of the board.
+    const candidateById = new Map(candidates.map((c) => [c.id, c]));
+    flat = flat.filter((match) => {
+      const candidate = candidateById.get(match.candidateId);
+      if (!candidate) return true;
+      return !this.matchingService.isBelowSalaryFloor(candidate, match.externalJob);
+    });
+
     if (flat.length === 0) {
       return { matches: [], candidateIds: candidates.map((c) => c.id) };
     }
@@ -927,13 +937,46 @@ export class SeekerJobFeedService {
       }
     }
 
+    const jobSnapshot = await this.applyClickJobSnapshot(input.externalJobId);
     const saved = await this.applyClickRepo.create({
       candidateId,
       externalJobId: input.externalJobId,
       matchId: input.matchId,
       sourceUrl: input.sourceUrl,
+      ...jobSnapshot,
     });
     return { recorded: true, clickId: saved.id };
+  }
+
+  // Denormalise the job's display fields onto the apply-click so the seeker's
+  // application survives the external job being pruned off the board later.
+  private async applyClickJobSnapshot(externalJobId: number | null): Promise<{
+    jobTitle: string | null;
+    jobCompany: string | null;
+    jobLocation: string | null;
+    jobSalaryMin: number | null;
+    jobSalaryMax: number | null;
+    jobSalaryCurrency: string | null;
+  }> {
+    const empty = {
+      jobTitle: null,
+      jobCompany: null,
+      jobLocation: null,
+      jobSalaryMin: null,
+      jobSalaryMax: null,
+      jobSalaryCurrency: null,
+    };
+    if (externalJobId === null) return empty;
+    const job = await this.externalJobRepo.findById(externalJobId);
+    if (!job) return empty;
+    return {
+      jobTitle: job.title,
+      jobCompany: job.company,
+      jobLocation: job.locationArea ?? job.locationRaw ?? null,
+      jobSalaryMin: job.salaryMin,
+      jobSalaryMax: job.salaryMax,
+      jobSalaryCurrency: job.salaryCurrency,
+    };
   }
 
   async matchTierForSeeker(email: string | null): Promise<{

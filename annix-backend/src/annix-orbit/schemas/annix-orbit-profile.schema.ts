@@ -35,6 +35,13 @@ export class AnnixOrbitProfile {
   @Prop({ type: String, required: false })
   cvFilePath: string;
 
+  // Optional seeker profile photo, shown to employers when visibility is on.
+  @Prop({ type: String, default: null })
+  photoFilePath: string | null;
+
+  @Prop({ type: Boolean, default: true })
+  photoVisibleToEmployers: boolean;
+
   @Prop({ type: String, required: false })
   rawCvText: string;
 

@@ -15,8 +15,8 @@ export class NixCvPdfService {
 
   constructor(private readonly puppeteerPool: PuppeteerPoolService) {}
 
-  async renderPdf(cv: NixGeneratedCv): Promise<Buffer> {
-    const html = this.buildHtml(cv);
+  async renderPdf(cv: NixGeneratedCv, photoDataUri?: string | null): Promise<Buffer> {
+    const html = this.buildHtml(cv, photoDataUri ?? null);
     this.logger.log(`Rendering Nix CV PDF for ${cv.fullName || "(unnamed seeker)"}`);
     const rendered = await this.renderWithRetry(html);
     return this.applyMetadata(rendered, cv);
@@ -52,10 +52,13 @@ export class NixCvPdfService {
     return Buffer.from(saved);
   }
 
-  private buildHtml(cv: NixGeneratedCv): string {
+  private buildHtml(cv: NixGeneratedCv, photoDataUri: string | null): string {
     const contactLine = this.buildContactLine(cv);
     const headerLocation = cv.location
       ? `<p class="header-location">${escapeHtml(cv.location)}</p>`
+      : "";
+    const photoHtml = photoDataUri
+      ? `<img class="header-photo" src="${photoDataUri}" alt="" />`
       : "";
 
     return `<!DOCTYPE html>
@@ -73,7 +76,9 @@ export class NixCvPdfService {
     line-height: 1.5;
   }
   .cv { padding: 4px 2px; }
-  .header { border-bottom: 3px solid #323288; padding-bottom: 12px; margin-bottom: 16px; }
+  .header { border-bottom: 3px solid #323288; padding-bottom: 12px; margin-bottom: 16px; display: flex; align-items: center; gap: 16px; }
+  .header-photo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 2px solid #c0c0eb; flex-shrink: 0; }
+  .header-text { flex: 1; min-width: 0; }
   .header-name { font-size: 24px; font-weight: 700; color: #252560; margin: 0; letter-spacing: 0.01em; }
   .header-title { font-size: 13px; font-weight: 600; color: #323288; margin: 4px 0 0; text-transform: uppercase; letter-spacing: 0.04em; }
   .header-location { font-size: 11px; color: #4b5563; margin: 4px 0 0; }
@@ -107,10 +112,13 @@ export class NixCvPdfService {
 <body>
 <div class="cv">
   <header class="header">
-    <h1 class="header-name">${escapeHtml(cv.fullName || "Curriculum Vitae")}</h1>
-    ${cv.headlineTitle ? `<p class="header-title">${escapeHtml(cv.headlineTitle)}</p>` : ""}
-    ${headerLocation}
-    ${contactLine ? `<p class="header-contact">${contactLine}</p>` : ""}
+    ${photoHtml}
+    <div class="header-text">
+      <h1 class="header-name">${escapeHtml(cv.fullName || "Curriculum Vitae")}</h1>
+      ${cv.headlineTitle ? `<p class="header-title">${escapeHtml(cv.headlineTitle)}</p>` : ""}
+      ${headerLocation}
+      ${contactLine ? `<p class="header-contact">${contactLine}</p>` : ""}
+    </div>
   </header>
   ${this.renderSummary(cv)}
   ${this.renderSkillLine("Core Competencies", cv.coreCompetencies)}

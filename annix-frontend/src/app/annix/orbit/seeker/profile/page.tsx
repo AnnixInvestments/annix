@@ -16,6 +16,7 @@ import { CredentialPhotoCapture } from "../components/CredentialPhotoCapture";
 import { IndividualDocumentUploader } from "../components/IndividualDocumentUploader";
 import { MissingDocsWarningModal } from "../components/MissingDocsWarningModal";
 import { NixWizardPanel } from "../components/NixWizardPanel";
+import { ProfilePhotoAvatar } from "../components/ProfilePhotoAvatar";
 
 export default function SeekerProfilePage() {
   const router = useRouter();
@@ -119,6 +120,8 @@ export default function SeekerProfilePage() {
             : "Upload your CV to get started — we will use it to find jobs you are qualified for."}
         </p>
       </div>
+
+      <ProfilePhotoAvatar />
 
       {!hasCv && <CvRequiredBanner />}
 

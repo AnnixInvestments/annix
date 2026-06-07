@@ -48,6 +48,8 @@ export interface IndividualProfileStatus {
   cvOriginalFilename: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
+  photoUrl: string | null;
+  photoVisibleToEmployers: boolean;
 }
 
 export interface IndividualDocumentSummary {
@@ -304,6 +306,9 @@ export class IndividualProfileService {
       (d) => d.kind === IndividualDocumentKind.CERTIFICATE,
     ).length;
     const photoCredentialCapture = await this.photoCredentialCaptureAllowed(user?.email ?? null);
+    const photoUrl = profile.photoFilePath
+      ? await this.storageService.presignedUrl(profile.photoFilePath, 3600)
+      : null;
 
     return {
       profileComplete: cvDoc !== null,
@@ -314,7 +319,68 @@ export class IndividualProfileService {
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
       photoCredentialCapture,
       dismissWarningAcknowledged: profile.dismissWarningAcknowledgedAt != null,
+      photoUrl,
+      photoVisibleToEmployers: profile.photoVisibleToEmployers,
     };
+  }
+
+  async uploadProfilePhoto(
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<{ photoUrl: string }> {
+    const profile = await this.profileForUser(userId);
+    const stored = await this.storageService.upload(file, `annix-orbit/profile-photos/${userId}`);
+    profile.photoFilePath = stored.path;
+    await this.profileRepo.save(profile);
+    const photoUrl = await this.storageService.presignedUrl(stored.path, 3600);
+    return { photoUrl };
+  }
+
+  async removeProfilePhoto(userId: number): Promise<void> {
+    const profile = await this.profileForUser(userId);
+    profile.photoFilePath = null;
+    await this.profileRepo.save(profile);
+  }
+
+  async setPhotoVisibility(
+    userId: number,
+    visible: boolean,
+  ): Promise<{ photoVisibleToEmployers: boolean }> {
+    const profile = await this.profileForUser(userId);
+    profile.photoVisibleToEmployers = visible;
+    await this.profileRepo.save(profile);
+    return { photoVisibleToEmployers: visible };
+  }
+
+  async employerVisiblePhotoUrlByEmail(email: string | null): Promise<string | null> {
+    if (!email || email.trim().length === 0) {
+      return null;
+    }
+    const user = await this.userRepo.findOneByEmail(email);
+    if (!user) {
+      return null;
+    }
+    const profile = await this.profileRepo.findByUserId(user.id);
+    if (!profile?.photoFilePath || !profile.photoVisibleToEmployers) {
+      return null;
+    }
+    return this.storageService.presignedUrl(profile.photoFilePath, 3600);
+  }
+
+  async profilePhotoDataUri(userId: number): Promise<string | null> {
+    const profile = await this.profileRepo.findByUserId(userId);
+    if (!profile?.photoFilePath) {
+      return null;
+    }
+    try {
+      const buffer = await this.storageService.download(profile.photoFilePath);
+      const mimeType = imageMimeTypeForPath(profile.photoFilePath);
+      return `data:${mimeType};base64,${buffer.toString("base64")}`;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Could not embed profile photo for user ${userId}: ${message}`);
+      return null;
+    }
   }
 
   async acknowledgeDismissWarning(userId: number): Promise<{ acknowledgedAt: string }> {
@@ -979,4 +1045,18 @@ export class IndividualProfileService {
     this.logger.log(`POPIA self-erasure completed for user ${userId}`);
     return { message: "Your account and all associated data have been permanently deleted." };
   }
+}
+
+function imageMimeTypeForPath(path: string): string {
+  const lower = path.toLowerCase();
+  if (lower.endsWith(".png")) {
+    return "image/png";
+  }
+  if (lower.endsWith(".webp")) {
+    return "image/webp";
+  }
+  if (lower.endsWith(".gif")) {
+    return "image/gif";
+  }
+  return "image/jpeg";
 }
