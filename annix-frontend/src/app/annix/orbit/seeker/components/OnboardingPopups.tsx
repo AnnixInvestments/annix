@@ -24,7 +24,7 @@ function PopupShell(props: { title: string; onClose: () => void; children: React
       aria-modal="true"
     >
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden />
-      <div className="relative flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div className="relative flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         <div
           className="flex items-center justify-between px-4 py-3 text-white"
           style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
