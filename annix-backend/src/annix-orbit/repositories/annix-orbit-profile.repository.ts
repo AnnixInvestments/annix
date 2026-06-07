@@ -11,6 +11,7 @@ export abstract class AnnixOrbitProfileRepository extends CrudRepository<AnnixOr
   abstract findByValidDeletionToken(token: string, now: Date): Promise<AnnixOrbitProfile | null>;
   abstract findByCalendarFeedToken(token: string): Promise<AnnixOrbitProfile | null>;
   abstract setPushEnabledForUser(userId: number, enabled: boolean): Promise<void>;
+  abstract setSelectedTier(userId: number, tier: string): Promise<void>;
   abstract findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]>;
   abstract adminPage(params: {
     userType: AnnixOrbitUserType | null;

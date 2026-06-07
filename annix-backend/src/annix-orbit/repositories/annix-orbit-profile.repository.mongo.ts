@@ -103,6 +103,10 @@ export class MongoAnnixOrbitProfileRepository
     await this.documents.updateMany({ userId }, { pushEnabled: enabled }).exec();
   }
 
+  async setSelectedTier(userId: number, tier: string): Promise<void> {
+    await this.documents.updateMany({ userId }, { selectedTier: tier }).exec();
+  }
+
   async findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]> {
     if (userIds.length === 0) {
       return [];

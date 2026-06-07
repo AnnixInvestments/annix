@@ -36,7 +36,8 @@ function serverMessage(error: unknown, fallback: string): string {
   }
 }
 
-export function EeDisclosureManager() {
+export function EeDisclosureManager(props: { onUpdated?: () => void }) {
+  const onUpdated = props.onUpdated;
   const { data, isLoading, isError } = useMyEeAttributes();
   const { confirm, ConfirmDialog } = useConfirm();
   const updateMutation = useUpdateMyEeAttributes();
@@ -105,6 +106,7 @@ export function EeDisclosureManager() {
         hideCancel: true,
         variant: "info",
       });
+      onUpdated?.();
     } catch (err) {
       await confirm({
         title: "Couldn't update disclosure",

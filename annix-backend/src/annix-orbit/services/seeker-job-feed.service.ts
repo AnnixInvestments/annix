@@ -484,11 +484,7 @@ export class SeekerJobFeedService {
     if (email) {
       const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
       if (user) {
-        const profile = await this.profileRepo.findByUserId(user.id);
-        if (profile) {
-          profile.selectedTier = tier;
-          await this.profileRepo.save(profile);
-        }
+        await this.profileRepo.setSelectedTier(user.id, tier);
       }
     }
     return this.entitlementsForSeeker(email);

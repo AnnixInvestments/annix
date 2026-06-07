@@ -1,13 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { EeDisclosureManager } from "@/app/annix/orbit/components/EeDisclosureManager";
 import { useOrbitMyProfileStatus } from "@/app/lib/query/hooks";
 
 export default function SeekerEeAttributesPage() {
+  const router = useRouter();
   const statusQuery = useOrbitMyProfileStatus();
   const status = statusQuery.data;
   const inOnboarding = status ? status.onboardingComplete === false : false;
+
+  const handleUpdated = () => {
+    if (inOnboarding) {
+      router.push("/annix/orbit/seeker/plans");
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -24,7 +32,7 @@ export default function SeekerEeAttributesPage() {
         </div>
       )}
 
-      <EeDisclosureManager />
+      <EeDisclosureManager onUpdated={handleUpdated} />
 
       {inOnboarding && (
         <div className="flex justify-end">
