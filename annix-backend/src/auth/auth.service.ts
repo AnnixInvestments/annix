@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { now } from "../lib/datetime";
+import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { PasswordService } from "../shared/auth/password.service";
 import { UserRepository } from "../user/user.repository";
 import { JwtPayload } from "./jwt.strategy";
@@ -13,6 +14,8 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly userRepo: UserRepository,
     private readonly passwordService: PasswordService,
+    private readonly accessRepo: UserAppAccessRepository,
+    private readonly appRepo: AppRepository,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -88,12 +91,24 @@ export class AuthService {
     }
   }
 
-  async invitePreview(token: string): Promise<{ email: string; firstName: string | null }> {
+  async invitePreview(
+    token: string,
+  ): Promise<{ email: string; firstName: string | null; apps: string[] }> {
     const user = await this.userRepo.findByValidResetPasswordToken(token, now().toJSDate());
     if (!user) {
       throw new BadRequestException("This invitation link is invalid or has expired.");
     }
-    return { email: user.email, firstName: user.firstName ?? null };
+    return {
+      email: user.email,
+      firstName: user.firstName ?? null,
+      apps: await this.appsFor(user.id),
+    };
+  }
+
+  private async appsFor(userId: number): Promise<string[]> {
+    const access = await this.accessRepo.findManyWhere({ userId });
+    const apps = await Promise.all(access.map((row) => this.appRepo.findById(row.appId)));
+    return apps.filter((app): app is NonNullable<typeof app> => app != null).map((app) => app.code);
   }
 
   async acceptInvite(token: string, password: string): Promise<{ message: string }> {

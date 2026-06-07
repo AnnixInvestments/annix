@@ -2,6 +2,7 @@ import { UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Test, TestingModule } from "@nestjs/testing";
+import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { PasswordService } from "../shared/auth/password.service";
 import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
@@ -35,6 +36,14 @@ describe("AuthService", () => {
     hashSimple: jest.fn(),
   };
 
+  const mockAccessRepo = {
+    findManyWhere: jest.fn(),
+  };
+
+  const mockAppRepo = {
+    findById: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -43,6 +52,8 @@ describe("AuthService", () => {
         { provide: JwtService, useValue: mockJwtService },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: PasswordService, useValue: mockPasswordService },
+        { provide: UserAppAccessRepository, useValue: mockAccessRepo },
+        { provide: AppRepository, useValue: mockAppRepo },
       ],
     }).compile();
 

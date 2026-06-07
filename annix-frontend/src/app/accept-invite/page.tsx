@@ -4,14 +4,33 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import React, { Suspense, useEffect, useState } from "react";
 import { extractErrorMessage, throwIfNotOk } from "@/app/lib/api/apiError";
+import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 import { API_BASE_URL } from "@/lib/api-config";
 
-const LOGIN_ROUTE = "/admin/login";
+const DEFAULT_LOGIN_ROUTE = "/admin/login";
 const MIN_PASSWORD_LENGTH = 8;
+
+const APP_LOGIN_ROUTES: Record<string, string> = {
+  "annix-orbit": "/annix/orbit/login",
+  admin: "/admin/login",
+  "stock-control": "/stock-control/login",
+  "au-rubber": "/au-rubber/login",
+  customer: "/customer/login",
+  supplier: "/supplier/login",
+  "annix-rep": "/annix-rep/login",
+  "annix-sentinel": "/annix-sentinel/auth/login",
+  "teacher-assistant": "/teacher-assistant/login",
+};
+
+function loginRouteForApps(apps: string[]): string {
+  const primary = apps.find((code) => APP_LOGIN_ROUTES[code]);
+  return primary ? APP_LOGIN_ROUTES[primary] : DEFAULT_LOGIN_ROUTE;
+}
 
 interface InviteDetails {
   email: string;
   firstName: string | null;
+  apps: string[];
 }
 
 async function fetchInviteDetails(token: string): Promise<InviteDetails> {
@@ -32,10 +51,10 @@ async function submitAcceptInvite(token: string, password: string): Promise<{ me
 
 function PageShell(props: { title: string; children: React.ReactNode }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <div className="text-center">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-teal-500 mb-4">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-[var(--brand-navbar,#323288)] mb-4 shadow-lg">
             <svg
               className="w-10 h-10 text-white"
               fill="none"
@@ -66,6 +85,7 @@ function AcceptInviteContent() {
 
   const [isLoadingInvite, setIsLoadingInvite] = useState(true);
   const [inviteEmail, setInviteEmail] = useState<string | null>(null);
+  const [inviteApps, setInviteApps] = useState<string[]>([]);
   const [inviteError, setInviteError] = useState<string | null>(null);
 
   const [password, setPassword] = useState("");
@@ -86,7 +106,9 @@ function AcceptInviteContent() {
     fetchInviteDetails(token)
       .then((details) => {
         if (!active) return;
+        const detailApps = details.apps;
         setInviteEmail(details.email);
+        setInviteApps(detailApps ?? []);
       })
       .catch((err) => {
         if (!active) return;
@@ -103,6 +125,7 @@ function AcceptInviteContent() {
 
   const passwordTooShort = password.length > 0 && password.length < MIN_PASSWORD_LENGTH;
   const passwordsMismatch = confirmPassword.length > 0 && password !== confirmPassword;
+  const loginRoute = loginRouteForApps(inviteApps);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -138,7 +161,7 @@ function AcceptInviteContent() {
     return (
       <PageShell title="Accept Invite">
         <div className="text-center py-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mx-auto" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--brand-navbar,#323288)] mx-auto" />
           <p className="mt-4 text-gray-600">Checking your invite…</p>
         </div>
       </PageShell>
@@ -166,8 +189,8 @@ function AcceptInviteContent() {
           </div>
           <p className="text-gray-700">{inviteError}</p>
           <Link
-            href={LOGIN_ROUTE}
-            className="mt-6 w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors"
+            href={loginRoute}
+            className="mt-6 w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
           >
             Go to Sign In
           </Link>
@@ -197,8 +220,8 @@ function AcceptInviteContent() {
           </div>
           <p className="text-gray-700">Your account is ready. You can now sign in.</p>
           <Link
-            href={LOGIN_ROUTE}
-            className="mt-6 w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 transition-colors"
+            href={loginRoute}
+            className="mt-6 w-full inline-flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)] transition-colors"
           >
             Sign In
           </Link>
@@ -235,7 +258,7 @@ function AcceptInviteContent() {
               minLength={MIN_PASSWORD_LENGTH}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500 pr-10"
+              className="block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--brand-navbar,#323288)] focus:ring-[var(--brand-navbar,#323288)] pr-10"
             />
             <button
               type="button"
@@ -274,7 +297,7 @@ function AcceptInviteContent() {
             minLength={MIN_PASSWORD_LENGTH}
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-teal-500 focus:ring-teal-500"
+            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-[var(--brand-navbar,#323288)] focus:ring-[var(--brand-navbar,#323288)]"
           />
           {passwordsMismatch && <p className="mt-1 text-xs text-red-600">Passwords do not match</p>}
         </div>
@@ -288,14 +311,17 @@ function AcceptInviteContent() {
         <button
           type="submit"
           disabled={isSubmitting}
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-navbar,#323288)] disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
         >
           {isSubmitting ? "Activating…" : "Activate Account"}
         </button>
       </form>
 
       <div className="mt-6 text-center">
-        <Link href={LOGIN_ROUTE} className="text-sm text-teal-600 hover:text-teal-800">
+        <Link
+          href={loginRoute}
+          className="text-sm text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+        >
           Already have an account? Sign in
         </Link>
       </div>
@@ -305,17 +331,19 @@ function AcceptInviteContent() {
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-gradient-to-br from-teal-900 via-teal-800 to-slate-900 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-300 mx-auto" />
-            <p className="mt-4 text-white">Loading…</p>
+    <BrandingProvider brand="annix-orbit">
+      <Suspense
+        fallback={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto" />
+              <p className="mt-4 text-white">Loading…</p>
+            </div>
           </div>
-        </div>
-      }
-    >
-      <AcceptInviteContent />
-    </Suspense>
+        }
+      >
+        <AcceptInviteContent />
+      </Suspense>
+    </BrandingProvider>
   );
 }
