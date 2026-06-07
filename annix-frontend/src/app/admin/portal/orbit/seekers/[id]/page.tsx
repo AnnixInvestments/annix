@@ -212,12 +212,6 @@ export default function OrbitSeekerDetailPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <Link
-            href="/admin/portal/orbit/seekers"
-            className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
-          >
-            ← Seekers
-          </Link>
           <h1 className="text-2xl font-bold text-gray-900">{name}</h1>
           <p className="text-gray-600 mt-1 text-sm">{email}</p>
           <div className="flex flex-wrap items-center gap-2 mt-3">

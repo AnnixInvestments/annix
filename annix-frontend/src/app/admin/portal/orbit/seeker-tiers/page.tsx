@@ -234,12 +234,6 @@ export default function AdminOrbitSeekerTiersPage() {
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <Link
-            href="/admin/portal/orbit"
-            className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
-          >
-            ← Orbit admin hub
-          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Seeker tiers</h1>
           <p className="text-gray-600 mt-1 text-sm max-w-2xl">
             Define what each tier unlocks — match strictness, how many matched jobs a seeker sees,

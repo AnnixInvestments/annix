@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
@@ -30,12 +29,6 @@ export default function EducationCatalogPage() {
   return (
     <div className="space-y-6">
       <div>
-        <Link
-          href="/admin/portal/orbit"
-          className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
-        >
-          ← Orbit admin hub
-        </Link>
         <h1 className="text-2xl font-bold text-gray-900">Education catalog</h1>
         <p className="text-gray-600 mt-1 text-sm max-w-2xl">
           The owner-verified institutions, faculties, programmes and scholarships that FuturePath

@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
 import type { AdmissionDraft } from "@/app/lib/api/educationIngestionAdminApi";
 import {
@@ -230,12 +229,6 @@ export default function AdminEducationIngestionPage() {
 
   return (
     <div className="px-4 py-8 max-w-5xl mx-auto">
-      <Link
-        href="/admin/portal/orbit"
-        className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
-      >
-        ← Orbit admin hub
-      </Link>
       <h1 className="text-2xl font-bold text-gray-900">Admission data — ingest & verify</h1>
       <p className="mt-1 text-sm text-gray-500">
         Scraped marks stay as drafts until you approve them. Approve some and not others — only

@@ -10,6 +10,7 @@ import { LayoutProvider } from "@/app/context/LayoutContext";
 import { useFeatureFlags } from "@/app/hooks/useFeatureFlags";
 import { RFQ_VERSION } from "@/app/lib/config/rfq/version";
 import { NixAppProvider, NixAssistant } from "@/app/lib/nix";
+import { AdminBackButton } from "../components/AdminBackButton";
 
 const navItems = [
   {
@@ -81,6 +82,7 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
       <AdminNavigation />
       <main className="py-6">
         <div className="w-full px-4 sm:px-6 lg:px-8">
+          <AdminBackButton />
           <ErrorBoundary>{children}</ErrorBoundary>
         </div>
       </main>
