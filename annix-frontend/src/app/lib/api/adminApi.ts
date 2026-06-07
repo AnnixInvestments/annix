@@ -2219,11 +2219,20 @@ export interface UpdateUserAccessDto {
   expiresAt?: string | null;
 }
 
+export interface InviteAppGrant {
+  appCode: string;
+  roleCode?: string | null;
+  useCustomPermissions?: boolean;
+  permissionCodes?: string[];
+  expiresAt?: string | null;
+}
+
 export interface InviteUserDto {
   email: string;
   firstName?: string;
   lastName?: string;
-  appCode: string;
+  apps?: InviteAppGrant[];
+  appCode?: string;
   roleCode?: string | null;
   useCustomPermissions?: boolean;
   permissionCodes?: string[];
@@ -2235,6 +2244,8 @@ export interface InviteUserResponse {
   email: string;
   accessId: number;
   isNewUser: boolean;
+  appNames?: string[];
+  emailSent?: boolean;
   message: string;
 }
 

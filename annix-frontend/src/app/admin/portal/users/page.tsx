@@ -11,7 +11,6 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdminSetPendingSeekerTier,
   useRbacAllUsers,
-  useRbacAppDetails,
   useRbacApps,
   useRbacDeactivateUser,
   useRbacDeleteUser,
@@ -54,11 +53,9 @@ export default function AdminUsersPage() {
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteAppCode, setInviteAppCode] = useState<string | null>(null);
 
   const { data: apps = [], isLoading: appsLoading } = useRbacApps();
   const { data: allUsers = [], isLoading: usersLoading } = useRbacAllUsers();
-  const { data: inviteAppDetails } = useRbacAppDetails(inviteAppCode ?? "");
 
   const revokeMutation = useRbacRevokeAccess();
   const inviteMutation = useRbacInviteUser();
@@ -260,7 +257,8 @@ export default function AdminUsersPage() {
   ) => {
     inviteMutation.mutate(dto, {
       onSuccess: (response) => {
-        showToast(response.message, "success");
+        const emailFailed = response.emailSent === false;
+        showToast(response.message, emailFailed ? "warning" : "success");
         if (orbitExtra && orbitExtra.module === "seeker") {
           pendingTierMutation.mutate(
             {
@@ -294,15 +292,7 @@ export default function AdminUsersPage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            setInviteAppCode(
-              (() => {
-                const rawCode = apps[0]?.code;
-                return rawCode || null;
-              })(),
-            );
-            setShowInviteModal(true);
-          }}
+          onClick={() => setShowInviteModal(true)}
           disabled={apps.length === 0}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -507,14 +497,8 @@ export default function AdminUsersPage() {
 
       <InviteUserModal
         isOpen={showInviteModal}
-        onClose={() => {
-          setShowInviteModal(false);
-          setInviteAppCode(null);
-        }}
+        onClose={() => setShowInviteModal(false)}
         apps={apps}
-        selectedAppCode={inviteAppCode}
-        onAppChange={(code) => setInviteAppCode(code || null)}
-        appDetails={inviteAppDetails ?? null}
         onInvite={handleInviteUser}
         isInviting={inviteMutation.isPending}
       />

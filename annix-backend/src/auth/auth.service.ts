@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { now } from "../lib/datetime";
@@ -86,5 +86,31 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException("Invalid refresh token");
     }
+  }
+
+  async invitePreview(token: string): Promise<{ email: string; firstName: string | null }> {
+    const user = await this.userRepo.findByValidResetPasswordToken(token, now().toJSDate());
+    if (!user) {
+      throw new BadRequestException("This invitation link is invalid or has expired.");
+    }
+    return { email: user.email, firstName: user.firstName ?? null };
+  }
+
+  async acceptInvite(token: string, password: string): Promise<{ message: string }> {
+    if (!password || password.length < 8) {
+      throw new BadRequestException("Password must be at least 8 characters long.");
+    }
+    const user = await this.userRepo.findByValidResetPasswordToken(token, now().toJSDate());
+    if (!user) {
+      throw new BadRequestException("This invitation link is invalid or has expired.");
+    }
+    user.passwordHash = await this.passwordService.hashSimple(password);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    if (user.status === "invited") {
+      user.status = "active";
+    }
+    await this.userRepo.save(user);
+    return { message: "Your account is ready. You can now sign in with your new password." };
   }
 }

@@ -291,7 +291,7 @@ export default function SeekerSettingsPage() {
                   type="button"
                   onClick={handleExport}
                   disabled={dataExport.isPending}
-                  className="bg-white text-[var(--brand-navbar-active,#252560)] border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                  className="bg-white text-[var(--brand-navbar-active,#252560)] border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] dark:text-white dark:border-white/30 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                 >
                   {dataExport.isPending ? "Preparing..." : "Download data"}
                 </button>

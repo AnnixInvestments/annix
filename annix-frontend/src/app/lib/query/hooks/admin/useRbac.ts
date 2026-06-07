@@ -102,7 +102,17 @@ export function useRbacInviteUser() {
   return useMutation<InviteUserResponse, Error, InviteUserDto>({
     mutationFn: (dto) => adminApiClient.rbacInviteUser(dto),
     onSuccess: (_data, variables) => {
-      queryClient.invalidateQueries({ queryKey: rbacKeys.apps.users(variables.appCode) });
+      const grantedApps = variables.apps;
+      const fallbackCode = variables.appCode;
+      const codes =
+        grantedApps && grantedApps.length > 0
+          ? grantedApps.map((grant) => grant.appCode)
+          : fallbackCode
+            ? [fallbackCode]
+            : [];
+      codes.forEach((code) =>
+        queryClient.invalidateQueries({ queryKey: rbacKeys.apps.users(code) }),
+      );
       queryClient.invalidateQueries({ queryKey: rbacKeys.users.list() });
     },
   });

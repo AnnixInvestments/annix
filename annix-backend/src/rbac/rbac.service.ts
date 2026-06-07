@@ -6,9 +6,13 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../email/email.service";
+import { now } from "../lib/datetime";
+import { PasswordService } from "../shared/auth/password.service";
 import { StockControlRole } from "../stock-control/entities/stock-control-user.entity";
 import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
+import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
 import { UserSyncService } from "../user-sync/user-sync.service";
 import {
@@ -16,7 +20,7 @@ import {
   UpdateUserAccessDto,
   UserAccessResponseDto,
 } from "./dto/assign-user-access.dto";
-import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
+import { InviteAppGrantDto, InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
 import {
   CreateRoleDto,
   RoleProductsResponseDto,
@@ -64,6 +68,7 @@ export class RbacService {
     private readonly stockControlUserRepo: StockControlUserRepository,
     private readonly userSyncService: UserSyncService,
     private readonly emailService: EmailService,
+    private readonly passwordService: PasswordService,
   ) {}
 
   private invalidateAppCaches(): void {
@@ -439,21 +444,51 @@ export class RbacService {
   }
 
   async inviteUser(dto: InviteUserDto, grantedById: number): Promise<InviteUserResponseDto> {
-    const app = await this.appByCode(dto.appCode);
-    if (!app) {
-      throw new NotFoundException(`App '${dto.appCode}' not found`);
+    const grants: InviteAppGrantDto[] =
+      dto.apps && dto.apps.length > 0
+        ? dto.apps
+        : dto.appCode
+          ? [
+              {
+                appCode: dto.appCode,
+                roleCode: dto.roleCode,
+                useCustomPermissions: dto.useCustomPermissions,
+                permissionCodes: dto.permissionCodes,
+                expiresAt: dto.expiresAt,
+              },
+            ]
+          : [];
+
+    if (grants.length === 0) {
+      throw new BadRequestException("Select at least one application to grant access to.");
+    }
+
+    const resolved: { grant: InviteAppGrantDto; app: App }[] = [];
+    for (const grant of grants) {
+      const app = await this.appByCode(grant.appCode);
+      if (!app) {
+        throw new NotFoundException(`App '${grant.appCode}' not found`);
+      }
+      resolved.push({ grant, app });
     }
 
     let user = await this.userRepo.findOneByEmail(dto.email);
     const isNewUser = !user;
+    let inviteToken: string | null = null;
 
     if (!user) {
+      inviteToken = uuidv4();
+      const placeholderHash = await this.passwordService.hashSimple(uuidv4());
       user = await this.userRepo.create({
         email: dto.email,
+        username: dto.email,
         firstName: dto.firstName,
         lastName: dto.lastName,
         status: "invited",
-      });
+        passwordHash: placeholderHash,
+        resetPasswordToken: inviteToken,
+        resetPasswordExpires: now().plus({ days: 7 }).toJSDate(),
+      } as Partial<User>);
 
       this.userSyncService
         .syncUserToPeer({
@@ -466,29 +501,61 @@ export class RbacService {
         .catch((error) => this.logger.error(`Peer sync failed for ${dto.email}: ${error.message}`));
     }
 
-    const existingAccess = await this.accessRepo.findOneWhere({ userId: user.id, appId: app.id });
-    if (existingAccess) {
-      throw new ConflictException(`User '${dto.email}' already has access to '${dto.appCode}'`);
+    const grantedAppNames: string[] = [];
+    const accessIds: number[] = [];
+    for (const { grant, app } of resolved) {
+      const existingAccess = await this.accessRepo.findOneWhere({ userId: user.id, appId: app.id });
+      if (existingAccess) {
+        continue;
+      }
+      const accessDto: AssignUserAccessDto = {
+        appCode: grant.appCode,
+        roleCode: grant.roleCode,
+        useCustomPermissions: grant.useCustomPermissions,
+        permissionCodes: grant.permissionCodes,
+        expiresAt: grant.expiresAt,
+      };
+      const accessResponse = await this.assignAccess(user.id, accessDto, grantedById);
+      accessIds.push(accessResponse.id);
+      grantedAppNames.push(app.name);
     }
 
-    const accessDto: AssignUserAccessDto = {
-      appCode: dto.appCode,
-      roleCode: dto.roleCode,
-      useCustomPermissions: dto.useCustomPermissions,
-      permissionCodes: dto.permissionCodes,
-      expiresAt: dto.expiresAt,
-    };
+    if (grantedAppNames.length === 0) {
+      throw new ConflictException(
+        `User '${dto.email}' already has access to the selected application(s).`,
+      );
+    }
 
-    const accessResponse = await this.assignAccess(user.id, accessDto, grantedById);
+    const appsLabel = grantedAppNames.join(", ");
+    const emailSent =
+      isNewUser && inviteToken
+        ? await this.emailService
+            .sendUserInviteEmail(dto.email, inviteToken, grantedAppNames, dto.firstName ?? null)
+            .catch((error) => {
+              this.logger.error(`Invite email failed for ${dto.email}: ${error.message}`);
+              return false;
+            })
+        : await this.emailService
+            .sendAccessGrantedEmail(dto.email, grantedAppNames)
+            .catch((error) => {
+              this.logger.error(`Access-granted email failed for ${dto.email}: ${error.message}`);
+              return false;
+            });
+
+    const baseMessage = isNewUser
+      ? `User invited and granted access to ${appsLabel}`
+      : `Existing user granted access to ${appsLabel}`;
 
     return {
       userId: user.id,
       email: user.email,
-      accessId: accessResponse.id,
+      accessId: accessIds[0] ?? 0,
       isNewUser,
-      message: isNewUser
-        ? `User invited and granted access to ${app.name}`
-        : `Existing user granted access to ${app.name}`,
+      appNames: grantedAppNames,
+      emailSent,
+      message: emailSent
+        ? baseMessage
+        : `${baseMessage}. Warning: the email could not be sent — check SMTP configuration.`,
     };
   }
 

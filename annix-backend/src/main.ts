@@ -9,6 +9,7 @@ import { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { runMongoMigrationsOnBoot } from "./lib/persistence/run-mongo-migrations";
+import { STARTUP_SPLASH_HTML } from "./lib/startup-splash";
 
 setDefaultResultOrder("ipv4first");
 setDefaultAutoSelectFamily(false);
@@ -129,7 +130,10 @@ async function bootstrap() {
         return nextMiddleware();
       }
       if (!nextReady) {
-        res.status(503).send("Starting up — please refresh in a moment.");
+        res.status(503);
+        res.setHeader("Retry-After", "3");
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        res.send(STARTUP_SPLASH_HTML);
         return;
       }
       return nextApp.getRequestHandler()(req, res);
