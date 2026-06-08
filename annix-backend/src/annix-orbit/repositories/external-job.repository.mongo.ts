@@ -189,7 +189,11 @@ export class MongoExternalJobRepository
       .exec();
   }
 
-  async publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]> {
+  async publicExternalJobs(
+    options: ExternalJobListOptions,
+  ): Promise<{ jobs: ExternalJob[]; total: number }> {
+    const page = Math.max(options.page ?? 1, 1);
+    const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
     const filter: Record<string, unknown> = { delisted: { $ne: true } };
     if (options.country) filter.country = options.country;
     if (options.category) filter.category = options.category;
@@ -199,14 +203,19 @@ export class MongoExternalJobRepository
         { company: { $regex: options.search, $options: "i" } },
       ];
     }
-    const docs = await this.documents
-      .find(filter)
-      .select({ embedding: 0 })
-      .sort({ postedAt: -1 })
-      .allowDiskUse(true)
-      .lean()
-      .exec();
-    return this.toDomainList(docs);
+    const [docs, total] = await Promise.all([
+      this.documents
+        .find(filter)
+        .select({ embedding: 0 })
+        .sort({ postedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .allowDiskUse(true)
+        .lean()
+        .exec(),
+      this.documents.countDocuments(filter).exec(),
+    ]);
+    return { jobs: this.toDomainList(docs), total };
   }
 
   async findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]> {

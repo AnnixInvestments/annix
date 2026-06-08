@@ -14,12 +14,18 @@ import {
 } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitKeys, type CvExternalJobQueryParams } from "../../keys";
 
+const SEEKER_JOBS_QUERY_POLICY = {
+  refetchOnWindowFocus: false,
+  retry: 1,
+} as const;
+
 export function useOrbitSeekerJobStats(enabled: boolean = true) {
   return useQuery<SeekerJobStats>({
     queryKey: annixOrbitKeys.seekerJobs.stats(),
     queryFn: () => annixOrbitApiClient.seekerJobStats(),
     enabled,
     staleTime: 2 * 60 * 1000,
+    ...SEEKER_JOBS_QUERY_POLICY,
   });
 }
 
@@ -36,6 +42,7 @@ export function useOrbitSeekerRecommendedJobs(
     queryFn: () => annixOrbitApiClient.seekerRecommendedJobs(filters),
     enabled,
     staleTime: 2 * 60 * 1000,
+    ...SEEKER_JOBS_QUERY_POLICY,
     // eslint-disable-next-line no-restricted-syntax -- caller opts in at 120s; polling self-stops once matches land so cold-start detection doesn't run forever
     refetchInterval: (query) => {
       if (baseInterval === false) return false;
@@ -52,6 +59,7 @@ export function useOrbitSeekerColdStartJobs(enabled: boolean = true) {
     queryFn: () => annixOrbitApiClient.seekerColdStartJobs(),
     enabled,
     staleTime: 5 * 60 * 1000,
+    ...SEEKER_JOBS_QUERY_POLICY,
   });
 }
 
@@ -73,6 +81,7 @@ export function useOrbitSeekerBrowseJobs(
     },
     enabled,
     staleTime: 5 * 60 * 1000,
+    ...SEEKER_JOBS_QUERY_POLICY,
   });
 }
 
@@ -82,6 +91,7 @@ export function useOrbitSeekerJobSources(enabled: boolean = true) {
     queryFn: () => annixOrbitApiClient.seekerJobSources(),
     enabled,
     staleTime: 5 * 60 * 1000,
+    ...SEEKER_JOBS_QUERY_POLICY,
   });
 }
 
@@ -91,6 +101,7 @@ export function useOrbitSeekerJobFacets(enabled: boolean, filters: SeekerRecomme
     queryFn: () => annixOrbitApiClient.seekerJobFacets(filters),
     enabled,
     staleTime: 60 * 1000,
+    ...SEEKER_JOBS_QUERY_POLICY,
   });
 }
 
@@ -100,6 +111,7 @@ export function useOrbitSeekerTargetCountries(enabled: boolean = true) {
     queryFn: () => annixOrbitApiClient.seekerTargetCountries(),
     enabled,
     staleTime: 5 * 60 * 1000,
+    ...SEEKER_JOBS_QUERY_POLICY,
   });
 }
 

@@ -104,7 +104,9 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract platformGlobalExternalJobs(
     options: ExternalJobListOptions,
   ): Promise<{ jobs: ExternalJob[]; total: number }>;
-  abstract publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]>;
+  abstract publicExternalJobs(
+    options: ExternalJobListOptions,
+  ): Promise<{ jobs: ExternalJob[]; total: number }>;
   abstract jobsWithEmbedding(
     categoryPool: string[] | null,
     countries?: string[] | null,

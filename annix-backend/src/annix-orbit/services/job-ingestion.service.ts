@@ -724,11 +724,16 @@ export class JobIngestionService {
     const requestedLimit = options.limit ?? 20;
     const limit = Math.min(Math.max(requestedLimit, 1), 50);
     const page = Math.max(options.page ?? 1, 1);
+    const externalLimit = page * limit;
 
     const annixJobs = await this.activeAnnixPublicJobs(options);
 
-    const externals = await this.externalJobRepo.publicExternalJobs(options);
-    const externalPublic = externals.map(toPublicJob);
+    const externalPage = await this.externalJobRepo.publicExternalJobs({
+      ...options,
+      page: 1,
+      limit: externalLimit,
+    });
+    const externalPublic = externalPage.jobs.map(toPublicJob);
 
     const merged = [...annixJobs, ...externalPublic].sort((a, b) => {
       const aPosted = a.postedAt;
@@ -739,7 +744,7 @@ export class JobIngestionService {
       return bPosted.localeCompare(aPosted);
     });
 
-    const total = merged.length;
+    const total = annixJobs.length + externalPage.total;
     const start = (page - 1) * limit;
     const jobs = merged.slice(start, start + limit);
     return { jobs, total };

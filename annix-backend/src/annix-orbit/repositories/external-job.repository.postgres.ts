@@ -152,7 +152,11 @@ export class PostgresExternalJobRepository
     });
   }
 
-  publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]> {
+  async publicExternalJobs(
+    options: ExternalJobListOptions,
+  ): Promise<{ jobs: ExternalJob[]; total: number }> {
+    const page = Math.max(options.page ?? 1, 1);
+    const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
     const qb = this.repository.createQueryBuilder("job").where("job.delisted IS NOT TRUE");
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
@@ -166,7 +170,11 @@ export class PostgresExternalJobRepository
       });
     }
     qb.orderBy("job.postedAt", "DESC", "NULLS LAST");
-    return qb.getMany();
+    const [jobs, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    return { jobs, total };
   }
 
   findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]> {
