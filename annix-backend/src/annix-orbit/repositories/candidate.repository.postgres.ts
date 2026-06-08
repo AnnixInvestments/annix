@@ -3,6 +3,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { LessThan, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
   CandidateAllForCompanyFilters,
   CandidateEmbeddingCoverageRow,
@@ -254,6 +255,26 @@ export class PostgresCandidateRepository
 
   candidatesWithEmbedding(): Promise<Candidate[]> {
     return this.repository.createQueryBuilder("c").where("c.embedding IS NOT NULL").getMany();
+  }
+
+  async *candidateEmbeddingBatches(batchSize: number): AsyncGenerator<EmbeddingSimilarityBatch> {
+    let lastId = 0;
+    while (true) {
+      const rows = await this.repository
+        .createQueryBuilder("c")
+        .select("c.id", "id")
+        .addSelect("c.embedding", "embedding")
+        .where("c.embedding IS NOT NULL")
+        .andWhere("c.id > :lastId", { lastId })
+        .orderBy("c.id", "ASC")
+        .limit(batchSize)
+        .getRawMany<{ id: number | string; embedding: unknown }>();
+      if (rows.length === 0) {
+        return;
+      }
+      yield rows.map((row) => ({ id: Number(row.id), embedding: row.embedding ?? null }));
+      lastId = Number(rows[rows.length - 1].id);
+    }
   }
 
   jobAlertCandidates(): Promise<Candidate[]> {

@@ -1,5 +1,6 @@
 import { CrudRepository } from "../../lib/persistence/crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 
 export interface ExternalJobListOptions {
   country?: string;
@@ -108,6 +109,11 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
     categoryPool: string[] | null,
     countries?: string[] | null,
   ): Promise<ExternalJob[]>;
+  abstract jobEmbeddingBatches(
+    categoryPool: string[] | null,
+    countries: string[] | null,
+    batchSize: number,
+  ): AsyncIterable<EmbeddingSimilarityBatch>;
   abstract findPendingVetting(limit: number): Promise<ExternalJob[]>;
   abstract updateVetting(id: number, update: VettingUpdate): Promise<void>;
   abstract findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]>;

@@ -1,5 +1,6 @@
 import { CrudRepository } from "../../lib/persistence/crud-repository";
 import { Candidate } from "../entities/candidate.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 
 export interface CandidateAllForCompanyFilters {
   status?: string;
@@ -56,6 +57,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract grantMatchingConsent(ids: number[], consentedAt: Date): Promise<void>;
   abstract withdrawMatching(ids: number[]): Promise<void>;
   abstract candidatesWithEmbedding(): Promise<Candidate[]>;
+  abstract candidateEmbeddingBatches(batchSize: number): AsyncIterable<EmbeddingSimilarityBatch>;
   abstract jobAlertCandidates(): Promise<Candidate[]>;
   abstract countNewForJobsSince(jobPostingIds: number[], since: Date): Promise<number>;
   abstract countForCompanyByStatuses(

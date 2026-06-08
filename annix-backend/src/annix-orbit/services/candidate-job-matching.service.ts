@@ -15,7 +15,11 @@ import {
 } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
-import { decodeEmbedding } from "../lib/embedding-codec";
+import {
+  cosineSimilarity,
+  parseEmbedding,
+  rankEmbeddingBatches,
+} from "../lib/embedding-similarity";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
@@ -56,6 +60,7 @@ const UNLIMITED_STORAGE_CEILING = 25000;
 // Score + persist matches in bounded batches so a full-pool run doesn't open
 // thousands of concurrent writes against the database at once.
 const MATCH_PERSIST_CHUNK = 200;
+const EMBEDDING_SCAN_BATCH_SIZE = 1000;
 
 // "Not for me" learning: down-weight a job whose embedding is very close to a
 // job the seeker already dismissed. Gentle + tunable — only jobs above the
@@ -198,9 +203,11 @@ export class CandidateJobMatchingService {
 
       const matches: CandidateJobMatch[] = [];
       for (const batch of chunk(similarJobs, MATCH_PERSIST_CHUNK)) {
+        const jobs = await this.externalJobRepo.findByIds(batch.map((row) => row.jobId));
+        const jobsById = new Map(jobs.map((job) => [job.id, job]));
         const batchResults = await Promise.all(
           batch.map(async (row) => {
-            const job = await this.externalJobRepo.findById(row.jobId);
+            const job = jobsById.get(row.jobId);
             if (!job) {
               return null;
             }
@@ -390,13 +397,12 @@ export class CandidateJobMatchingService {
       return [];
     }
 
-    const jobs = await this.externalJobRepo.jobsWithEmbedding(categoryPool, countries);
-
-    return rankBySimilarity(
+    const ranked = await rankEmbeddingBatches(
       candidateVector,
-      jobs.map((job) => ({ id: job.id, embedding: job.embedding })),
+      this.externalJobRepo.jobEmbeddingBatches(categoryPool, countries, EMBEDDING_SCAN_BATCH_SIZE),
       limit,
-    ).map((row) => ({ jobId: row.id, similarity: row.similarity }));
+    );
+    return ranked.map((row) => ({ jobId: row.id, similarity: row.similarity }));
   }
 
   private async findSimilarCandidatesByEmbedding(
@@ -408,13 +414,12 @@ export class CandidateJobMatchingService {
       return [];
     }
 
-    const candidates = await this.candidateRepo.candidatesWithEmbedding();
-
-    return rankBySimilarity(
+    const ranked = await rankEmbeddingBatches(
       jobVector,
-      candidates.map((candidate) => ({ id: candidate.id, embedding: candidate.embedding })),
+      this.candidateRepo.candidateEmbeddingBatches(EMBEDDING_SCAN_BATCH_SIZE),
       limit,
-    ).map((row) => ({ candidateId: row.id, similarity: row.similarity }));
+    );
+    return ranked.map((row) => ({ candidateId: row.id, similarity: row.similarity }));
   }
 
   private calculateSkillsOverlap(
@@ -763,42 +768,4 @@ export class CandidateJobMatchingService {
 
     return parts.join(". ");
   }
-}
-
-function parseEmbedding(raw: unknown): number[] | null {
-  return decodeEmbedding(raw);
-}
-
-function cosineSimilarity(a: number[], b: number[]): number | null {
-  if (a.length === 0 || a.length !== b.length) {
-    return null;
-  }
-  const dot = a.reduce((sum, value, index) => sum + value * b[index], 0);
-  const magnitudeA = Math.sqrt(a.reduce((sum, value) => sum + value * value, 0));
-  const magnitudeB = Math.sqrt(b.reduce((sum, value) => sum + value * value, 0));
-  if (magnitudeA === 0 || magnitudeB === 0) {
-    return null;
-  }
-  return dot / (magnitudeA * magnitudeB);
-}
-
-function rankBySimilarity(
-  queryVector: number[],
-  rows: Array<{ id: number; embedding: Buffer | null }>,
-  limit: number,
-): Array<{ id: number; similarity: number }> {
-  return rows
-    .flatMap((row) => {
-      const vector = parseEmbedding(row.embedding);
-      if (vector === null) {
-        return [];
-      }
-      const similarity = cosineSimilarity(queryVector, vector);
-      if (similarity === null) {
-        return [];
-      }
-      return [{ id: row.id, similarity }];
-    })
-    .sort((left, right) => right.similarity - left.similarity)
-    .slice(0, limit);
 }

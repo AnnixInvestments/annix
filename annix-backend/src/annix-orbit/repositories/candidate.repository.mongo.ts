@@ -5,6 +5,7 @@ import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { encodeEmbedding } from "../lib/embedding-codec";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
   CandidateAllForCompanyFilters,
   CandidateEmbeddingCoverageRow,
@@ -283,6 +284,27 @@ export class MongoCandidateRepository
       .lean()
       .exec();
     return this.toDomainList(docs);
+  }
+
+  async *candidateEmbeddingBatches(batchSize: number): AsyncGenerator<EmbeddingSimilarityBatch> {
+    const cursor = this.documents
+      .find({ embedding: { $ne: null } })
+      .select({ _id: 1, embedding: 1 })
+      .sort({ _id: 1 })
+      .lean()
+      .cursor();
+
+    let batch: EmbeddingSimilarityBatch = [];
+    for await (const doc of cursor) {
+      batch.push({ id: Number(doc._id), embedding: doc.embedding ?? null });
+      if (batch.length >= batchSize) {
+        yield batch;
+        batch = [];
+      }
+    }
+    if (batch.length > 0) {
+      yield batch;
+    }
   }
 
   async jobAlertCandidates(): Promise<Candidate[]> {

@@ -4,6 +4,7 @@ import { In, IsNull, LessThan, MoreThan, Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
   DedupCandidateRow,
   DelistReportRow,
@@ -103,6 +104,32 @@ export class PostgresExternalJobRepository
     categoryPool: string[] | null,
     countries: string[] | null = null,
   ): Promise<ExternalJob[]> {
+    return this.jobsWithEmbeddingQuery(categoryPool, countries).getMany();
+  }
+
+  async *jobEmbeddingBatches(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+    batchSize: number,
+  ): AsyncGenerator<EmbeddingSimilarityBatch> {
+    let lastId = 0;
+    while (true) {
+      const rows = await this.jobsWithEmbeddingQuery(categoryPool, countries)
+        .select("job.id", "id")
+        .addSelect("job.embedding", "embedding")
+        .andWhere("job.id > :lastId", { lastId })
+        .orderBy("job.id", "ASC")
+        .limit(batchSize)
+        .getRawMany<{ id: number | string; embedding: unknown }>();
+      if (rows.length === 0) {
+        return;
+      }
+      yield rows.map((row) => ({ id: Number(row.id), embedding: row.embedding ?? null }));
+      lastId = Number(rows[rows.length - 1].id);
+    }
+  }
+
+  private jobsWithEmbeddingQuery(categoryPool: string[] | null, countries: string[] | null = null) {
     const qb = this.repository.createQueryBuilder("job").where("job.embedding IS NOT NULL");
     if (categoryPool !== null && categoryPool.length > 0) {
       qb.andWhere("job.canonical_category IN (:...categoryPool)", { categoryPool });
@@ -110,7 +137,7 @@ export class PostgresExternalJobRepository
     if (countries !== null && countries.length > 0) {
       qb.andWhere("job.country IN (:...countries)", { countries });
     }
-    return qb.getMany();
+    return qb;
   }
 
   findPendingVetting(limit: number): Promise<ExternalJob[]> {

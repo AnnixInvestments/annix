@@ -5,6 +5,7 @@ import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
 import { encodeEmbedding } from "../lib/embedding-codec";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
   DedupCandidateRow,
   DelistReportRow,
@@ -125,6 +126,40 @@ export class MongoExternalJobRepository
     categoryPool: string[] | null,
     countries: string[] | null = null,
   ): Promise<ExternalJob[]> {
+    const filter = this.embeddingFilter(categoryPool, countries);
+    const docs = await this.documents.find(filter).lean().exec();
+    return this.toDomainList(docs);
+  }
+
+  async *jobEmbeddingBatches(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+    batchSize: number,
+  ): AsyncGenerator<EmbeddingSimilarityBatch> {
+    const cursor = this.documents
+      .find(this.embeddingFilter(categoryPool, countries))
+      .select({ _id: 1, embedding: 1 })
+      .sort({ _id: 1 })
+      .lean()
+      .cursor();
+
+    let batch: EmbeddingSimilarityBatch = [];
+    for await (const doc of cursor) {
+      batch.push({ id: Number(doc._id), embedding: doc.embedding ?? null });
+      if (batch.length >= batchSize) {
+        yield batch;
+        batch = [];
+      }
+    }
+    if (batch.length > 0) {
+      yield batch;
+    }
+  }
+
+  private embeddingFilter(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+  ): Record<string, unknown> {
     const filter: Record<string, unknown> = { embedding: { $ne: null } };
     if (categoryPool !== null && categoryPool.length > 0) {
       filter.canonicalCategory = { $in: categoryPool };
@@ -132,8 +167,7 @@ export class MongoExternalJobRepository
     if (countries !== null && countries.length > 0) {
       filter.country = { $in: countries };
     }
-    const docs = await this.documents.find(filter).lean().exec();
-    return this.toDomainList(docs);
+    return filter;
   }
 
   async findPendingVetting(limit: number): Promise<ExternalJob[]> {
