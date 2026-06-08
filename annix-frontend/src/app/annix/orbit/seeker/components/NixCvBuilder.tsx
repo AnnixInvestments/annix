@@ -100,10 +100,6 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const queryCv = generatedQuery.data ? generatedQuery.data.cv : null;
   const sourceCv: NixGeneratedCv | null = mutationCv ? mutationCv : queryCv;
   const cv: NixGeneratedCv | null = editedCv ? editedCv : sourceCv;
-  const buildHighlight = hasCv && !cv;
-  const buildPalette = buildHighlight
-    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
-    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
   const profileStatus = profileStatusQuery.data;
   const photoUrl = profileStatus ? profileStatus.photoUrl : null;
 
@@ -286,11 +282,11 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   };
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 px-2 py-4 sm:p-6 space-y-4">
+    <div className="bg-[var(--brand-accent,#FF8A00)] rounded-xl border border-[var(--brand-accent-light,#FF9C33)] px-2 py-4 sm:p-6 space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-xl">
-          <h3 className="text-base font-semibold text-gray-800">Get Nix to build my CV</h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <h3 className="text-base font-semibold text-[#1a1a40]">Get Nix to build my CV</h3>
+          <p className="text-sm text-[#1a1a40]/80 mt-1">
             Nix takes the genuinely strong parts of your CV, applies the Wizard's suggestions, and
             writes a complete, recruiter-ready CV you can download as a PDF.
           </p>
@@ -299,10 +295,10 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
           type="button"
           onClick={handleBuild}
           disabled={!hasCv || isBuilding}
-          className={`${buildPalette} px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap`}
+          className="bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)] px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
           title={hasCv ? undefined : "Upload your CV first to use the Nix CV builder"}
         >
-          {isBuilding ? "Nix is building…" : cv ? "Rebuild my CV" : "Get Nix to build my CV"}
+          {isBuilding ? "Nix is building…" : "Click Here to Improve my CV"}
         </button>
       </div>
 

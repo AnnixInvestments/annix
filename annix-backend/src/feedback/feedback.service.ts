@@ -148,6 +148,22 @@ export class FeedbackService {
     };
   }
 
+  listForAppContext(appContext: string): Promise<CustomerFeedback[]> {
+    return this.feedbackRepository.findManyWhere({
+      appContext,
+    } as Partial<CustomerFeedback>);
+  }
+
+  async setTestingSeverity(id: number, severity: string): Promise<boolean> {
+    const feedback = await this.feedbackRepository.findById(id);
+    if (!feedback) {
+      return false;
+    }
+    feedback.testingSeverityOverride = severity;
+    await this.feedbackRepository.save(feedback);
+    return true;
+  }
+
   private processGeneralFeedbackAsync(
     feedback: CustomerFeedback,
     submitter: FeedbackSubmitter,

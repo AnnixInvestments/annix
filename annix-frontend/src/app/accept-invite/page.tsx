@@ -7,7 +7,13 @@ import { extractErrorMessage, throwIfNotOk } from "@/app/lib/api/apiError";
 import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 import { API_BASE_URL } from "@/lib/api-config";
 
-const DEFAULT_LOGIN_ROUTE = "/admin/login";
+// When the invite token is already consumed (e.g. the link is opened again
+// after the password was set), the preview can't tell us which app was granted,
+// so we can't resolve the exact portal login. This page is Annix Orbit-branded
+// and invites are seeker-centric, so default to the Orbit seeker login rather
+// than the admin portal — a re-clicked seeker invite must not dump the user on
+// the "manage the platform" admin login (which rejects their credentials).
+const DEFAULT_LOGIN_ROUTE = "/annix/orbit/login";
 const MIN_PASSWORD_LENGTH = 8;
 
 const APP_LOGIN_ROUTES: Record<string, string> = {

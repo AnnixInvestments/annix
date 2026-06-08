@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { isString } from "es-toolkit/compat";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
@@ -86,6 +87,7 @@ function clearNixPending(): void {
 }
 
 export default function SeekerJobsPage() {
+  const router = useRouter();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
@@ -444,7 +446,7 @@ export default function SeekerJobsPage() {
   // we poll for results and keep the branded progress modal up until they land.
   const waitForMatches = async (startCount: number): Promise<boolean> => {
     const startedAt = nowMillis();
-    const deadline = startedAt + 120_000;
+    const deadline = startedAt + 60_000;
     const minVisibleMs = 4000;
     const poll = async (): Promise<boolean> => {
       if (nowMillis() >= deadline) return false;
@@ -487,8 +489,9 @@ export default function SeekerJobsPage() {
           label: "Nix is reading your CV and searching the jobs…",
           estimatedDurationMs: nixSearchEstimateMs,
         },
-        async (): Promise<"found" | "pending" | "cooldown" | "quota"> => {
+        async (): Promise<"found" | "pending" | "cooldown" | "quota" | "error"> => {
           let rateLimited = false;
+          let triggerFailed = false;
           try {
             const result = await rematchMutation.mutateAsync();
             if (!result.triggered && result.reason === "rate-limited") {
@@ -498,10 +501,16 @@ export default function SeekerJobsPage() {
               quotaBlock = { used: result.used, allowance: result.allowance };
             }
           } catch {
-            // best-effort trigger — keep going and poll for results
+            // A hard trigger failure (no candidate / bad state / server error)
+            // means matching never started — fail fast rather than polling for
+            // a minute and leaving the user staring at a spinner.
+            triggerFailed = true;
           }
           if (quotaBlock) {
             return "quota";
+          }
+          if (triggerFailed) {
+            return "error";
           }
           if (rateLimited) {
             await recommendedQuery.refetch().catch(() => {});
@@ -516,30 +525,44 @@ export default function SeekerJobsPage() {
         const block = quotaBlock as { used: number; allowance: number } | null;
         const allowance = block ? block.allowance : 0;
         await consentQuery.refetch().catch(() => {});
-        await confirm({
-          title: "You've used your monthly matches",
-          message: `You've used all ${allowance} of your "Help me Find a Job" matches this month. Your matches reset at the start of next month — higher plans with more matches are coming soon.`,
-          confirmLabel: "Got it",
+        const upgrade = await confirm({
+          title: "You're out of matches on your plan",
+          message: `You've used all ${allowance} of your "Help me Find a Job" matches this month on your current plan. Upgrade to a higher plan for more matches and unlock more job opportunities — or wait for your matches to reset next month.`,
+          confirmLabel: "See plans",
+          cancelLabel: "Maybe later",
           variant: "info",
-          hideCancel: true,
         });
+        if (upgrade) {
+          router.push("/annix/orbit/seeker/plans");
+        }
       } else if (outcome === "found") {
         clearNixPending();
         showToast("Nix found jobs that match your CV.", "success");
       } else if (outcome === "cooldown") {
         clearNixPending();
         showToast("Nix searched recently — your matches are up to date.", "info");
+      } else if (outcome === "error") {
+        clearNixPending();
+        alert({
+          message:
+            "Nix couldn't search for matches right now. Please make sure your CV has finished uploading, then try again in a few minutes.",
+          variant: "error",
+        });
       } else {
-        // Still running server-side — keep the pending marker so the return-banner
-        // and push notification surface the result once matches land.
-        showToast(
-          "Nix is still searching — you can leave this page and we'll let you know when your matches are ready.",
-          "info",
-        );
+        // Timed out waiting for matches — fail clearly with a retry rather than
+        // leaving the user on an endless spinner. A late result can still arrive
+        // via the background notification.
+        clearNixPending();
+        alert({
+          message:
+            "Nix couldn't find new matches in time. This is usually temporary — please try again in a few minutes.",
+          variant: "error",
+        });
       }
     } catch {
+      clearNixPending();
       alert({
-        message: "Nix couldn't finish the search — please try again in a moment.",
+        message: "Nix couldn't finish the search — please try again in a few minutes.",
         variant: "error",
       });
     } finally {
@@ -550,6 +573,22 @@ export default function SeekerJobsPage() {
   // "Help me Find a Job": no CV → send to the CV page; CV present → fire Nix
   // (grant consent first if needed, which kicks off matching, otherwise rematch).
   const handleHelpFindJob = async () => {
+    // Nix matches against the seeker's CV — there's nothing to search without
+    // one. Prompt to upload first rather than silently bouncing them away.
+    if (hasCv === false) {
+      const goUpload = await confirm({
+        title: "Upload your CV first",
+        message:
+          "To find matching jobs, Nix needs your CV. Upload it and Nix will match jobs to you.",
+        confirmLabel: "Upload my CV now",
+        cancelLabel: "Cancel",
+        variant: "info",
+      });
+      if (goUpload) {
+        router.push("/annix/orbit/seeker/profile");
+      }
+      return;
+    }
     // Best-effort: ask to enable notifications (within this click gesture) so a
     // completion push can reach the user if they lock their screen / leave.
     void pushNotifications.requestPermissionAndSubscribe();
@@ -996,18 +1035,31 @@ function JobsTopBar(props: {
             <p className="text-sm text-white/85 mt-1">
               {quotaNote ?? "Let Nix match these jobs to your CV and surface the best fits."}
             </p>
+            <span
+              className="mt-3 inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+            >
+              {searching ? "Searching…" : "Click Here"}
+            </span>
           </button>
         ) : (
-          <Link
-            href="/annix/orbit/seeker/profile"
-            className="rounded-xl p-5 transition-opacity hover:opacity-90 flex flex-col justify-center"
+          <button
+            type="button"
+            onClick={onHelpFindJob}
+            className="rounded-xl p-5 text-left transition-opacity hover:opacity-90 flex flex-col justify-center"
             style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
           >
             <p className="text-lg font-bold text-white">Help me Find a Job</p>
             <p className="text-sm text-white/85 mt-1">
               Upload your CV first and Nix will match jobs to you →
             </p>
-          </Link>
+            <span
+              className="mt-3 inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+            >
+              Click Here
+            </span>
+          </button>
         )
       ) : null}
     </div>

@@ -11,6 +11,7 @@ import { FeedbackAttachmentRepository } from "./feedback-attachment.repository";
 interface FeedbackTranslation {
   classification: FeedbackClassification;
   confidence: number;
+  severity: string;
   likelyLocation: string | null;
   reproductionSteps: string[];
   likelyCause: string | null;
@@ -18,6 +19,13 @@ interface FeedbackTranslation {
   riskFlags: string[];
   fixScope: string | null;
   autoFixable: boolean;
+}
+
+const VALID_SEVERITIES = ["low", "medium", "high", "critical"];
+
+function normaliseSeverity(value: unknown): string {
+  const lower = typeof value === "string" ? value.trim().toLowerCase() : "";
+  return VALID_SEVERITIES.includes(lower) ? lower : "medium";
 }
 
 type ClaudeRoutingMode = "autofix" | "investigation" | "skip";
@@ -36,6 +44,7 @@ Valid classifications:
 Return JSON with exactly these keys:
 - classification
 - confidence
+- severity
 - likelyLocation
 - reproductionSteps
 - likelyCause
@@ -46,6 +55,7 @@ Return JSON with exactly these keys:
 
 Rules:
 - confidence must be a number from 0 to 1
+- severity must be exactly one of: low, medium, high, critical. Judge real user impact: critical = data loss / broken auth / a core flow unusable for everyone; high = a key feature broken or blocking many users; medium = a meaningful but worked-around problem; low = cosmetic or minor. Feature requests and ordinary questions are low unless they describe a real defect.
 - reproductionSteps must be an array of concise strings
 - riskFlags must be an array of concise lowercase strings
 - likelyLocation, likelyCause, affectedSurface, and fixScope must be strings or null
@@ -149,6 +159,7 @@ export class FeedbackGithubService {
     return {
       classification: "question",
       confidence: 0,
+      severity: "medium",
       likelyLocation: feedback.pageUrl || null,
       reproductionSteps: [],
       likelyCause: null,
@@ -192,6 +203,7 @@ export class FeedbackGithubService {
       const classification = translation.classification;
 
       feedback.aiClassification = classification;
+      feedback.severity = translation.severity;
       feedback.translatorConfidence = translation.confidence;
       feedback.translatorLikelyLocation = translation.likelyLocation;
       feedback.translatorReproductionSteps = translation.reproductionSteps;
@@ -454,6 +466,7 @@ export class FeedbackGithubService {
       return {
         classification: parsed.classification,
         confidence: this.normalizeConfidence(parsed.confidence),
+        severity: normaliseSeverity(parsed.severity),
         likelyLocation: this.normalizeNullableString(parsed.likelyLocation, 255),
         reproductionSteps: this.normalizeStringArray(parsed.reproductionSteps, 6),
         likelyCause: this.normalizeNullableString(parsed.likelyCause, 2000),

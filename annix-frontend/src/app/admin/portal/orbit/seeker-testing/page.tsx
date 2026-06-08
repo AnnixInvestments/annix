@@ -315,10 +315,12 @@ function UsersTable(props: { users: SeekerProgressRow[] }) {
 function IssuesTable(props: {
   issues: SeekerTestingIssue[];
   onStatusChange: (id: string, status: string) => void;
+  onSeverityChange: (id: string, severity: string) => void;
   disabled: boolean;
 }) {
   const issues = props.issues;
   const onStatusChange = props.onStatusChange;
+  const onSeverityChange = props.onSeverityChange;
   const disabled = props.disabled;
   if (issues.length === 0) {
     return (
@@ -344,13 +346,39 @@ function IssuesTable(props: {
             const page = rawIssuePage || "—";
             return (
               <tr key={issue.id} className="text-slate-200">
-                <td className="px-4 py-3 font-medium">{issue.title}</td>
+                <td className="px-4 py-3 font-medium">
+                  <div className="flex items-center gap-2">
+                    <span>{issue.title}</span>
+                    {issue.source === "feedback" ? (
+                      <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-semibold text-orange-300">
+                        From feedback
+                      </span>
+                    ) : null}
+                  </div>
+                  {issue.submitterEmail ? (
+                    <p className="mt-0.5 text-[11px] text-slate-400">{issue.submitterEmail}</p>
+                  ) : null}
+                </td>
                 <td className="px-4 py-3">
-                  <span
-                    className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${severityClass(issue.severity)}`}
-                  >
-                    {humanise(issue.severity)}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${severityClass(issue.severity)}`}
+                    >
+                      {humanise(issue.severity)}
+                    </span>
+                    <select
+                      value={issue.severity}
+                      disabled={disabled}
+                      onChange={(e) => onSeverityChange(issue.id, e.target.value)}
+                      className="rounded-lg border border-white/15 bg-slate-900 px-2 py-1 text-xs text-white disabled:opacity-50"
+                    >
+                      {SEVERITIES.map((option) => (
+                        <option key={option} value={option}>
+                          {humanise(option)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-2">
@@ -468,6 +496,16 @@ export default function SeekerTestingPage() {
       {
         onSuccess: () => showToast("Issue updated.", "success"),
         onError: () => alert({ message: "Could not update issue.", variant: "error" }),
+      },
+    );
+  };
+
+  const handleIssueSeverity = (id: string, severity: string) => {
+    updateIssue.mutate(
+      { id, body: { severity } },
+      {
+        onSuccess: () => showToast("Severity updated.", "success"),
+        onError: () => alert({ message: "Could not update severity.", variant: "error" }),
       },
     );
   };
@@ -677,6 +715,7 @@ export default function SeekerTestingPage() {
           </button>
         </form>
         <IssuesTable
+          onSeverityChange={handleIssueSeverity}
           issues={issues}
           onStatusChange={handleIssueStatus}
           disabled={updateIssue.isPending}

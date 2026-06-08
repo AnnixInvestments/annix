@@ -84,6 +84,7 @@ export interface SeekerTestPhase {
 
 export interface SeekerTestingIssue {
   id: string;
+  source?: "manual" | "feedback";
   userId: number | null;
   phaseId: string | null;
   page: string | null;
@@ -93,7 +94,8 @@ export interface SeekerTestingIssue {
   description: string;
   screenshotUrl: string | null;
   status: string;
-  resolvedAt: string | null;
+  submitterEmail?: string | null;
+  resolvedAt?: string | null;
   createdAt: string;
 }
 

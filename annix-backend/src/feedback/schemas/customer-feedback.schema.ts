@@ -91,6 +91,12 @@ export class CustomerFeedback {
   @Prop({ type: Date, required: false })
   verifiedAt: Date;
 
+  @Prop({ type: String, required: false, default: null })
+  severity: string | null;
+
+  @Prop({ type: String, required: false, default: null })
+  testingSeverityOverride: string | null;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 }

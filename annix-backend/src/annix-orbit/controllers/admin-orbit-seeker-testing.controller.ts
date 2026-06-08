@@ -9,6 +9,8 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { CustomerFeedback } from "../../feedback/entities/customer-feedback.entity";
+import { FeedbackService } from "../../feedback/feedback.service";
 import { fromISO, now } from "../../lib/datetime";
 import {
   CreateSeekerTestingIssueDto,
@@ -33,7 +35,10 @@ export class AdminOrbitSeekerTestingController {
     private readonly progress: SeekerWorkflowProgressService,
     private readonly telemetry: SeekerTelemetryService,
     private readonly readiness: SeekerLaunchReadinessService,
+    private readonly feedback: FeedbackService,
   ) {}
+
+  private static readonly ORBIT_FEEDBACK_CONTEXT = "annix-orbit";
 
   @Get("phases")
   phasesList() {
@@ -105,8 +110,55 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Get("issues")
-  issuesList() {
-    return this.issues.listNewestFirst();
+  async issuesList() {
+    const manual = await this.issues.listNewestFirst();
+    const manualMapped = manual.map((issue) => ({
+      id: issue.id,
+      source: "manual" as const,
+      userId: issue.userId,
+      phaseId: issue.phaseId,
+      page: issue.page,
+      workflowStep: issue.workflowStep,
+      severity: issue.severity,
+      title: issue.title,
+      description: issue.description,
+      screenshotUrl: issue.screenshotUrl,
+      status: issue.status,
+      submitterEmail: null as string | null,
+      createdAt: issue.createdAt,
+    }));
+    const feedback = await this.feedback
+      .listForAppContext(AdminOrbitSeekerTestingController.ORBIT_FEEDBACK_CONTEXT)
+      .catch(() => []);
+    const feedbackMapped = feedback.map((item) => this.feedbackToIssue(item));
+    return [...manualMapped, ...feedbackMapped].sort((a, b) => {
+      const at = a.createdAt ? a.createdAt.getTime() : 0;
+      const bt = b.createdAt ? b.createdAt.getTime() : 0;
+      return bt - at;
+    });
+  }
+
+  private feedbackToIssue(item: CustomerFeedback) {
+    const content = item.content ?? "";
+    const trimmed = content.trim();
+    const title = trimmed.length > 120 ? `${trimmed.slice(0, 117)}…` : trimmed || "Feedback";
+    const override = item.testingSeverityOverride;
+    const assessed = item.severity;
+    return {
+      id: `fb-${item.id}`,
+      source: "feedback" as const,
+      userId: null as number | null,
+      phaseId: null as string | null,
+      page: item.pageUrl ?? null,
+      workflowStep: null as string | null,
+      severity: override || assessed || "medium",
+      title,
+      description: content,
+      screenshotUrl: null as string | null,
+      status: item.status === "resolved" ? "resolved" : "open",
+      submitterEmail: item.submitterEmail ?? null,
+      createdAt: item.createdAt,
+    };
   }
 
   @Post("issues")
@@ -126,6 +178,19 @@ export class AdminOrbitSeekerTestingController {
 
   @Patch("issues/:id")
   async updateIssue(@Param("id") id: string, @Body() dto: UpdateSeekerTestingIssueDto) {
+    if (id.startsWith("fb-")) {
+      const feedbackId = Number.parseInt(id.slice(3), 10);
+      if (!Number.isInteger(feedbackId)) {
+        throw new NotFoundException("Issue not found");
+      }
+      if (dto.severity !== undefined) {
+        const updated = await this.feedback.setTestingSeverity(feedbackId, dto.severity);
+        if (!updated) {
+          throw new NotFoundException("Issue not found");
+        }
+      }
+      return { id, severity: dto.severity };
+    }
     const issue = await this.issues.findById(id);
     if (!issue) {
       throw new NotFoundException("Issue not found");

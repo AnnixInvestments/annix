@@ -297,20 +297,21 @@ export default function ExtractionProgressModalView(props: {
               <button
                 type="button"
                 onClick={() => setMinimized(true)}
-                aria-label="Minimize"
-                title="Minimize"
-                className="text-xl leading-none text-white/70 transition-colors hover:text-white"
+                aria-label="Minimize — keeps working in the background"
+                title="Minimize — keeps working in the background"
+                className="inline-flex items-center gap-1 text-xs font-medium text-white/80 transition-colors hover:text-white"
               >
-                –
+                Minimize <span className="text-xl leading-none">–</span>
               </button>
               {canClose ? (
                 <button
                   type="button"
                   onClick={onClose}
-                  aria-label="Close"
-                  className="text-xl leading-none text-white/70 transition-colors hover:text-white"
+                  aria-label="Cancel"
+                  title="Cancel"
+                  className="inline-flex items-center gap-1 text-xs font-medium text-white/80 transition-colors hover:text-white"
                 >
-                  ×
+                  Cancel <span className="text-xl leading-none">×</span>
                 </button>
               ) : null}
             </div>

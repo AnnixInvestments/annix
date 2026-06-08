@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { useOrbitUploadMyDocument } from "@/app/lib/query/hooks";
 
 const ACCEPT_ATTR = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
@@ -91,9 +92,11 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
           if (onUploaded) onUploaded();
           if (inputRef.current) inputRef.current.value = "";
         },
-        onError: () => {
+        onError: (err) => {
           setProgress(null);
-          setError("Upload failed — please check the file and try again.");
+          setError(
+            extractErrorMessage(err, "Upload failed — please check the file and try again."),
+          );
         },
       },
     );
