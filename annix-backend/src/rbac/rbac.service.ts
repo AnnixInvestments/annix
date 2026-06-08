@@ -445,7 +445,22 @@ export class RbacService {
     if (userId === actingUserId) {
       throw new ForbiddenException("You cannot delete your own account.");
     }
-    await this.loadManagedUser(userId);
+
+    // A negative id is a Stock-Control-only person synthesised by the merged
+    // users list (id = -stockControlUserId); they have no RBAC user record, so
+    // delete their Stock Control account directly.
+    if (userId < 0) {
+      const stockControlUserId = -userId;
+      const scUser = await this.stockControlUserRepo.findById(stockControlUserId);
+      if (!scUser) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      await this.stockControlUserRepo.remove(scUser);
+      this.logger.log(`Stock Control user ${stockControlUserId} deleted by ${actingUserId}`);
+      return;
+    }
+
+    const user = await this.loadManagedUser(userId);
     const accesses = await this.accessRepo.findWithApp(userId);
     await Promise.all(
       accesses.map(async (access) => {
@@ -455,8 +470,19 @@ export class RbacService {
       }),
     );
     await this.userRepo.deleteById(userId);
+
+    // The merged user list folds a person's Stock Control account into their
+    // RBAC row, so deleting the RBAC user alone would leave them reappearing as
+    // a stock-control-only row. Remove the matching Stock Control account too.
+    const scUser = await this.stockControlUserRepo.findOneByEmailCaseInsensitive(user.email);
+    if (scUser) {
+      await this.stockControlUserRepo.remove(scUser);
+    }
+
     this.logger.log(
-      `User ${userId} deleted by ${actingUserId} (${accesses.length} grants removed)`,
+      `User ${userId} deleted by ${actingUserId} (${accesses.length} grants removed${
+        scUser ? ", + Stock Control account" : ""
+      })`,
     );
   }
 

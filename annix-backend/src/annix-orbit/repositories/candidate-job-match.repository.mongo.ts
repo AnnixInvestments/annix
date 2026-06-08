@@ -92,22 +92,51 @@ export class MongoCandidateJobMatchRepository
     limit: number,
     filters: RecommendedMatchCountFilters | null = null,
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
-    const externalJobModel = this.model.db.model<Record<string, unknown>>("ExternalJob");
-    const liveJobs = await externalJobModel
-      .find(buildLiveJobFilter(filters))
-      .select("_id")
-      .lean()
-      .exec();
-    const liveJobIds = liveJobs.map((job) => job._id as number);
-    const filter: Record<string, unknown> = {
-      candidateId,
-      externalJobId: { $in: liveJobIds },
-    };
+    const jobFilter = buildLiveJobFilter(filters);
+    const matchFilter: Record<string, unknown> = { candidateId };
     if (!includeDismissed) {
-      filter.dismissed = false;
+      matchFilter.dismissed = false;
     }
+
+    // A "narrow" filter (province / city / category / source / search / salary)
+    // can exclude most of a candidate's top-ranked matches, so we must select the
+    // top-N OF THE FILTERED SET — pre-resolve the matching job ids and constrain
+    // the match query by them.
+    //
+    // The default browse (country + still-live only) excludes very little, so we
+    // skip that all-jobs id pre-fetch (slow once there are 12k+ jobs) and push the
+    // live/country filter into the populate `match`. A candidate's top matches are
+    // already in their target countries, so dropping the rare out-of-scope row
+    // from the fetch window is cheap and keeps the query O(candidate's matches)
+    // regardless of how many jobs exist in total.
+    const isNarrow = Boolean(
+      filters &&
+        (filters.province ||
+          filters.city ||
+          filters.category ||
+          filters.search ||
+          (filters.sourceIds && filters.sourceIds.length > 0) ||
+          (filters.minSalary != null && filters.minSalary > 0)),
+    );
+
+    if (!isNarrow) {
+      const docs = await this.documents
+        .find(matchFilter)
+        .sort({ overallScore: -1 })
+        .limit(limit)
+        .populate({ path: "externalJob", select: "-embedding", match: jobFilter })
+        .lean()
+        .exec();
+      const live = docs.filter((doc) => (doc as Record<string, unknown>).externalJob != null);
+      return this.toDomainList(live) as Array<CandidateJobMatch & { externalJob: ExternalJob }>;
+    }
+
+    const externalJobModel = this.model.db.model<Record<string, unknown>>("ExternalJob");
+    const liveJobs = await externalJobModel.find(jobFilter).select("_id").lean().exec();
+    const liveJobIds = liveJobs.map((job) => job._id as number);
+    matchFilter.externalJobId = { $in: liveJobIds };
     const docs = await this.documents
-      .find(filter)
+      .find(matchFilter)
       .sort({ overallScore: -1 })
       .limit(limit)
       .populate({ path: "externalJob", select: "-embedding" })

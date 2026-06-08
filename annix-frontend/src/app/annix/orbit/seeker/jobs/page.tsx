@@ -688,9 +688,26 @@ export default function SeekerJobsPage() {
     return (
       <div className="space-y-6">
         <PageHeader subtitle={matchedSubtitle} />
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
-          Loading your matches…
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-xl border border-white/10 bg-white/5"
+            />
+          ))}
         </div>
+        <div className="h-12 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+        <div className="space-y-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="space-y-3 rounded-xl border border-gray-200 bg-white p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-gray-200" />
+              <div className="h-3 w-1/3 animate-pulse rounded bg-gray-100" />
+              <div className="h-2 w-full animate-pulse rounded-full bg-gray-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" />
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-sm text-white/70">Finding the best matches for your CV…</p>
         {ConfirmDialog}
         {AlertDialog}
       </div>
