@@ -150,6 +150,10 @@ jobs:
         run: docker pull ${{ env.APP_IMAGE }}:${{ github.sha }}
 
       - name: Setup Fly.io CLI
+        # This step can transiently 504 while fetching the flyctl binary
+        # (e.g. GH Actions run 27123294429 failed the test deploy here). It is
+        # an infra hiccup, not a deploy problem — a re-run / re-push clears it,
+        # and the Deploy step below already retries the actual deploy.
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io (${{ matrix.environment }})
