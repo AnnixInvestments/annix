@@ -226,7 +226,7 @@ export default function SeekerJobsPage() {
     }
   }, [recommendedDataForBanner, alert, nixSearching]);
 
-  const browseJobsEnabled = profileReady;
+  const browseJobsEnabled = profileReady && !nixSearching;
   const [browseLimit, setBrowseLimit] = useState(100);
   const browseJobsQuery = useOrbitSeekerBrowseJobs({ limit: browseLimit }, browseJobsEnabled);
   const browseJobsData = browseJobsQuery.data;
@@ -247,7 +247,10 @@ export default function SeekerJobsPage() {
   // actually have a match in the seeker's set, recomputed as filters narrow (each
   // facet excludes its own dimension server-side, so a choice never empties its
   // own dropdown and no zero-result option is ever offered).
-  const facetsQuery = useOrbitSeekerJobFacets(consentEnabled, debouncedServerFilters);
+  const facetsQuery = useOrbitSeekerJobFacets(
+    consentEnabled && !nixSearching,
+    debouncedServerFilters,
+  );
   const facets = facetsQuery.data;
   const providers = facets ? facets.sources : [];
   const provinceOptions = facets ? facets.provinces : [];

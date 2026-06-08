@@ -186,13 +186,20 @@ export class CandidateJobMatchingService {
     return maxJobResults == null ? UNLIMITED_STORAGE_CEILING : maxJobResults;
   }
 
-  async matchCandidateToJobs(candidateId: number): Promise<CandidateJobMatch[]> {
+  async matchCandidateToJobs(
+    candidateId: number,
+    options: { storageLimit?: number } = {},
+  ): Promise<CandidateJobMatch[]> {
     const candidate = await this.candidateRepo.findById(candidateId);
     if (!candidate) {
       return [];
     } else {
       const narrowing = this.resolveCategoryNarrowing(candidate);
-      const matchLimit = await this.storageMatchLimit(candidate.matchTier);
+      const tierStorageLimit = await this.storageMatchLimit(candidate.matchTier);
+      const matchLimit =
+        options.storageLimit == null
+          ? tierStorageLimit
+          : Math.min(tierStorageLimit, options.storageLimit);
       const dismissedVectors = await this.loadDismissedJobVectors(candidateId);
       const similarJobs = await this.findSimilarJobsByEmbedding(
         candidate,

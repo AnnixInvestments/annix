@@ -60,6 +60,7 @@ const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
 const MAX_COLD_START = 12;
 const MAX_LOCKED_TEASERS = 3;
+const MANUAL_REMATCH_STORAGE_LIMIT = 500;
 // How many ranked matches the Browse Jobs feed loads at once. The headline "Nix
 // matches" count is the true total (counted in the DB, not loaded), so a seeker
 // sees the real number without us shipping thousands of populated job rows.
@@ -995,11 +996,14 @@ export class SeekerJobFeedService {
     candidates.forEach((c) => this.lastRematchByCandidate.set(c.id, now));
 
     const normalizedEmail = email ? email.trim().toLowerCase() : "";
-    void Promise.all(
-      candidates.map((candidate) =>
-        this.metrics
+    void (async () => {
+      const results: Array<{ ran: boolean; matches: CandidateJobMatch[] }> = [];
+      for (const candidate of candidates) {
+        const result = await this.metrics
           .time(NIX_SEARCH_METRIC_CATEGORY, NIX_SEARCH_METRIC_OPERATION, () =>
-            this.matchingService.matchCandidateToJobs(candidate.id),
+            this.matchingService.matchCandidateToJobs(candidate.id, {
+              storageLimit: MANUAL_REMATCH_STORAGE_LIMIT,
+            }),
           )
           .then((matches) => ({ ran: true, matches }))
           .catch((err) => {
@@ -1007,9 +1011,9 @@ export class SeekerJobFeedService {
               `Manual rematch failed for candidate ${candidate.id}: ${err instanceof Error ? err.message : String(err)}`,
             );
             return { ran: false, matches: [] as CandidateJobMatch[] };
-          }),
-      ),
-    ).then(async (results) => {
+          });
+        results.push(result);
+      }
       const ranSuccessfully = results.some((r) => r.ran);
       if (!ranSuccessfully) {
         candidates.forEach((c) => this.lastRematchByCandidate.delete(c.id));
@@ -1024,7 +1028,7 @@ export class SeekerJobFeedService {
       }
       const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0);
       await this.notifySearchComplete(userId, totalMatches);
-    });
+    })();
 
     return { triggered: true, rematchedCandidates: candidates.map((c) => c.id) };
   }
