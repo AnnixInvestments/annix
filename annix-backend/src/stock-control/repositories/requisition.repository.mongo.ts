@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import { Requisition, RequisitionSource, RequisitionStatus } from "../entities/requisition.entity";
 import { RequisitionRepository } from "./requisition.repository";
 
@@ -61,7 +62,7 @@ export class MongoRequisitionRepository
   async findOneForCompanyWithDetails(id: number, companyId: number): Promise<Requisition | null> {
     const doc = await this.documents
       .findOne({ _id: id, companyId })
-      .populate(["jobCard", "items", "items.stockItem"])
+      .populate(nestPopulate(["jobCard", "items", "items.stockItem"]))
       .lean()
       .exec();
     return this.toDomain(doc);

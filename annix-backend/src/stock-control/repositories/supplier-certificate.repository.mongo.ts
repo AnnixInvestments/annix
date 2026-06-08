@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import { SupplierCertificate } from "../entities/supplier-certificate.entity";
 import {
   type CertificateFilters,
@@ -77,7 +78,7 @@ export class MongoSupplierCertificateRepository
   ): Promise<SupplierCertificate | null> {
     const doc = await this.documents
       .findOne({ _id: id, companyId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .lean()
       .exec();
     return this.toDomain(doc);

@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { MongoCrudRepository } from "../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../lib/persistence/nest-populate";
 import { RfqItem } from "./entities/rfq-item.entity";
 import { RfqItemRepository } from "./rfq-item.repository";
 
@@ -33,7 +34,7 @@ export class MongoRfqItemRepository
   ): Promise<RfqItem[]> {
     const documents = await this.documents
       .find({ rfqId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .sort({ lineNumber: 1 })
       .lean()
       .exec();

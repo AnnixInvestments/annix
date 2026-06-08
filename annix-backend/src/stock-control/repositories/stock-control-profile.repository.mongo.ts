@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import { StockControlProfile } from "../entities/stock-control-profile.entity";
 import { StockControlProfileRepository } from "./stock-control-profile.repository";
 
@@ -24,7 +25,11 @@ export class MongoStockControlProfileRepository
     userId: number,
     relations: string[],
   ): Promise<StockControlProfile | null> {
-    const doc = await this.documents.findOne({ userId }).populate(relations).lean().exec();
+    const doc = await this.documents
+      .findOne({ userId })
+      .populate(nestPopulate(relations))
+      .lean()
+      .exec();
     return this.toDomain(doc);
   }
 

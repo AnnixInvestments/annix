@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import {
   AdminTransferStatus,
   StockControlAdminTransfer,
@@ -33,7 +34,7 @@ export class MongoStockControlAdminTransferRepository
   ): Promise<StockControlAdminTransfer | null> {
     const doc = await this.documents
       .findOne({ companyId, status: AdminTransferStatus.PENDING })
-      .populate(["initiatedBy", "initiatedBy.company"])
+      .populate(nestPopulate(["initiatedBy", "initiatedBy.company"]))
       .lean()
       .exec();
     return this.toDomain(doc);

@@ -6,6 +6,7 @@ import {
   type EntityId,
   type PersistedEntity,
 } from "./crud-repository";
+import { nestPopulate } from "./nest-populate";
 import { MongoTransactionContext, type TransactionContext } from "./transaction-context";
 
 type MongoDocument = Record<string, unknown>;
@@ -143,7 +144,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   async findById(id: EntityId, relations: string[] = []): Promise<Entity | null> {
     const document = await this.documents
       .findById(id)
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .session(this.session)
       .lean()
       .exec();
@@ -153,7 +154,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   async findAll(relations: string[] = []): Promise<Entity[]> {
     const documents = await this.documents
       .find()
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .session(this.session)
       .lean()
       .exec();

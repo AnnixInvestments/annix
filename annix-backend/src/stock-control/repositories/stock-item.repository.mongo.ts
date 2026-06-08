@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import { StockItem } from "../entities/stock-item.entity";
 import {
   type SohByLocationRow,
@@ -64,7 +65,7 @@ export class MongoStockItemRepository
   ): Promise<StockItem | null> {
     const doc = await this.documents
       .findOne({ _id: id, companyId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .lean()
       .exec();
     return this.toDomain(doc);

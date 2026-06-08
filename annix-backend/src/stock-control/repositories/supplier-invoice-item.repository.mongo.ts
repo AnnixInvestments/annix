@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import { SupplierInvoiceItem } from "../entities/supplier-invoice-item.entity";
 import { SupplierInvoiceItemRepository } from "./supplier-invoice-item.repository";
 
@@ -40,7 +41,11 @@ export class MongoSupplierInvoiceItemRepository
     invoiceId: number,
     relations: string[],
   ): Promise<SupplierInvoiceItem[]> {
-    const docs = await this.documents.find({ invoiceId }).populate(relations).lean().exec();
+    const docs = await this.documents
+      .find({ invoiceId })
+      .populate(nestPopulate(relations))
+      .lean()
+      .exec();
     return this.toDomainList(docs);
   }
 
@@ -56,7 +61,7 @@ export class MongoSupplierInvoiceItemRepository
   ): Promise<SupplierInvoiceItem | null> {
     const doc = await this.documents
       .findOne({ _id: id, invoiceId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .lean()
       .exec();
     return this.toDomain(doc);

@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import { InvoiceExtractionStatus, SupplierInvoice } from "../entities/supplier-invoice.entity";
 import {
   type SageExportInvoiceFilters,
@@ -44,7 +45,7 @@ export class MongoSupplierInvoiceRepository
   }
 
   async findOneByIdWithRelations(id: number, relations: string[]): Promise<SupplierInvoice | null> {
-    const doc = await this.documents.findById(id).populate(relations).lean().exec();
+    const doc = await this.documents.findById(id).populate(nestPopulate(relations)).lean().exec();
     return this.toDomain(doc);
   }
 
@@ -60,7 +61,7 @@ export class MongoSupplierInvoiceRepository
   ): Promise<SupplierInvoice | null> {
     const doc = await this.documents
       .findOne({ _id: id, companyId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .lean()
       .exec();
     return this.toDomain(doc);
