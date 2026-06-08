@@ -16,8 +16,8 @@ export class CvPushSubscription {
   @Prop({ type: Number, required: true })
   userId: number;
 
-  @Prop({ type: Number, required: true })
-  companyId: number;
+  @Prop({ type: Number, default: null })
+  companyId: number | null;
 
   @Prop({ type: String, required: true })
   endpoint: string;

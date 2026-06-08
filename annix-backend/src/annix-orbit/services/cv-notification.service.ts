@@ -45,7 +45,7 @@ export class CvNotificationService {
 
   async subscribe(
     userId: number,
-    companyId: number,
+    companyId: number | null,
     subscription: { endpoint: string; keys: { p256dh: string; auth: string } },
   ): Promise<void> {
     const existing = await this.pushSubRepo.findByEndpoint(subscription.endpoint);

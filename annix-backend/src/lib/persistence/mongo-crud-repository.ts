@@ -182,7 +182,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   async save(entity: Entity): Promise<Entity> {
     const saved = await this.documents
       .findByIdAndUpdate(entity.id, toMongoShape(entity as unknown as MongoDocument), {
-        new: true,
+        returnDocument: "after",
         upsert: true,
         ...this.sessionOption,
       })
