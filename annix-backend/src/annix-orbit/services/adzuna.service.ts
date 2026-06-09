@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { DateTime } from "../../lib/datetime";
+import { DateTime, nowMillis } from "../../lib/datetime";
 import { stripHtmlToText } from "../../lib/html-text";
 import { IngestedJobResult } from "./ingested-job.types";
 
@@ -222,14 +222,14 @@ export class AdzunaService {
   }
 
   private assertAvailable(): void {
-    if (Date.now() < this.unavailableUntilMs) {
+    if (nowMillis() < this.unavailableUntilMs) {
       throw new Error("Adzuna API is temporarily unavailable. Ingestion will retry shortly.");
     }
   }
 
   private recordRetryableFailure(status: number): void {
     if (ADZUNA_RETRYABLE_STATUSES.has(status)) {
-      this.unavailableUntilMs = Date.now() + ADZUNA_OUTAGE_MS;
+      this.unavailableUntilMs = nowMillis() + ADZUNA_OUTAGE_MS;
     }
   }
 
