@@ -41,6 +41,7 @@ const MIN_HEIGHT = 300;
 const DEFAULT_WIDTH = 340;
 const DEFAULT_HEIGHT = 420;
 const GEOMETRY_KEY = "feedback-widget-geometry";
+const MIN_SCREENSHOT_BYTES = 500;
 
 interface PanelGeometry {
   x: number;
@@ -439,7 +440,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
       ]);
 
-      if (!fullPageBlob || fullPageBlob.size <= 5000) {
+      if (!fullPageBlob || fullPageBlob.size <= MIN_SCREENSHOT_BYTES) {
         return null;
       }
 
@@ -499,7 +500,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
         canvas.toBlob((b) => resolve(b), "image/png"),
       );
 
-      if (croppedBlob && croppedBlob.size > 5000) {
+      if (croppedBlob && croppedBlob.size > MIN_SCREENSHOT_BYTES) {
         return new File([croppedBlob], "auto-screenshot.png", { type: "image/png" });
       }
 

@@ -92,6 +92,7 @@ export default function InvoiceDetailPage() {
   const [currentClarificationIndex, setCurrentClarificationIndex] = useState(0);
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
+  const [approvalError, setApprovalError] = useState<string | null>(null);
   const [isReExtracting, setIsReExtracting] = useState(false);
   const [editingItemId, setEditingItemId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<{
@@ -188,11 +189,14 @@ export default function InvoiceDetailPage() {
   const handleApprove = async () => {
     try {
       setIsApproving(true);
+      setApprovalError(null);
       await approveMutation.mutateAsync(invoiceId);
       await invoiceQuery.refetch();
       setShowApprovalModal(false);
     } catch (err) {
-      invoiceQuery.refetch();
+      const message = err instanceof Error ? err.message : "Failed to approve invoice";
+      setApprovalError(message);
+      await invoiceQuery.refetch();
     } finally {
       setIsApproving(false);
     }
@@ -1005,14 +1009,22 @@ export default function InvoiceDetailPage() {
                 This will apply all price updates to the matched stock items. This action cannot be
                 undone.
               </p>
+              {approvalError && (
+                <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+                  {approvalError}
+                </div>
+              )}
               <div className="flex justify-end space-x-3">
                 <button
+                  type="button"
                   onClick={() => setShowApprovalModal(false)}
+                  disabled={isApproving}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 >
                   Cancel
                 </button>
                 <button
+                  type="button"
                   onClick={handleApprove}
                   disabled={isApproving}
                   className="px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-transparent rounded-md hover:bg-teal-700 disabled:bg-gray-400"
