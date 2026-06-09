@@ -16,6 +16,7 @@ const ACCEPTED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ]);
 const ACCEPTED_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"]);
+const LEGACY_DOC_EXTENSIONS = new Set([".doc", ".xls", ".ppt"]);
 const MAX_BYTES = 10 * 1024 * 1024;
 
 const KIND_LABELS: Record<IndividualDocumentKind, string> = {
@@ -53,6 +54,7 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [docWarning, setDocWarning] = useState<string | null>(null);
   const uploadMutation = useOrbitUploadMyDocument();
   const isUploading = uploadMutation.isPending;
 
@@ -72,6 +74,14 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
     }
     if (file.size > MAX_BYTES) {
       return "File is too large. Maximum size is 10 MB.";
+    }
+    const isLegacy = LEGACY_DOC_EXTENSIONS.has(extension);
+    if (isLegacy) {
+      setDocWarning(
+        `${extension.toUpperCase()} files use an older format that may not be readable. Consider converting to ${extension === ".doc" ? "DOCX" : extension === ".xls" ? "XLSX" : "PPTX"} or PDF first.`,
+      );
+    } else {
+      setDocWarning(null);
     }
     return null;
   };
@@ -168,6 +178,11 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
           <p className="text-xs text-gray-500 mt-1">Uploading… {Math.round(progress * 100)}%</p>
         </div>
       ) : null}
+      {docWarning && (
+        <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
+          {docWarning}
+        </div>
+      )}
       {error && (
         <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
           {error}

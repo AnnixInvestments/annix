@@ -23,7 +23,7 @@ const CV_OCR_PROMPT =
 function detectCvFormat(filePath: string): SupportedCvFormat {
   const lower = filePath.toLowerCase();
   if (lower.endsWith(".pdf")) return "pdf";
-  if (lower.endsWith(".docx") || lower.endsWith(".doc")) return "docx";
+  if (lower.endsWith(".docx")) return "docx";
   if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) return "xlsx";
   return "unsupported";
 }

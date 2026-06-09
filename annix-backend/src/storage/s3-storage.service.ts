@@ -272,13 +272,14 @@ export class S3StorageService implements IStorageService, OnModuleInit {
     return `https://${this.bucketName}.s3.${this.regionName}.amazonaws.com/${key}`;
   }
 
-  async presignedUrl(path: string, expiresIn?: number): Promise<string> {
+  async presignedUrl(path: string, expiresIn?: number, filename?: string): Promise<string> {
     const key = path.replace(/\\/g, "/").replace(/^\//, "");
 
     try {
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
         Key: key,
+        ...(filename ? { ResponseContentDisposition: `attachment; filename="${filename}"` } : {}),
       });
 
       const url = await getSignedUrl(this.s3Client, command, {

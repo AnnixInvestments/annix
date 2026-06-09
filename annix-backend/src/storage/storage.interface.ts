@@ -32,7 +32,7 @@ export interface IStorageService {
   delete(path: string): Promise<void>;
   exists(path: string): Promise<boolean>;
   publicUrl(path: string): string;
-  presignedUrl(path: string, expiresIn?: number): Promise<string>;
+  presignedUrl(path: string, expiresIn?: number, filename?: string): Promise<string>;
 }
 
 export const STORAGE_SERVICE = "STORAGE_SERVICE";

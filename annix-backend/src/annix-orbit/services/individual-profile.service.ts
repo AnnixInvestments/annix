@@ -494,7 +494,7 @@ export class IndividualProfileService {
 
     const summaries = await Promise.all(
       docs.map(async (doc) => {
-        const downloadUrl = await this.storageService.presignedUrl(doc.filePath, 3600);
+        const downloadUrl = await this.storageService.presignedUrl(doc.filePath, 3600, doc.originalFilename);
         return {
           id: doc.id,
           kind: doc.kind,
@@ -618,7 +618,7 @@ export class IndividualProfileService {
       await this.documentRepo.clearScanFlagForProfileKind(profile.id, kind);
     }
 
-    const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
+    const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600, saved.originalFilename);
 
     const candidateId = await this.telemetryCandidateId(userId);
     if (kind === IndividualDocumentKind.CV) {
@@ -715,7 +715,7 @@ export class IndividualProfileService {
       }
     }
 
-    const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
+    const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600, saved.originalFilename);
     return {
       id: saved.id,
       kind: saved.kind,
