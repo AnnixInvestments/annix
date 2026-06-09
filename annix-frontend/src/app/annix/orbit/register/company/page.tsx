@@ -13,8 +13,10 @@ import {
   SOUTH_AFRICAN_PROVINCES,
 } from "@/app/lib/config/registration/constants";
 import { useAlert } from "@/app/lib/hooks/useAlert";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 
 export default function AnnixOrbitRegisterCompanyPage() {
+  const isTestEnv = useIsTestEnv();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const [popiaConsent, setPopiaConsent] = useState(false);
@@ -333,11 +335,13 @@ export default function AnnixOrbitRegisterCompanyPage() {
           </div>
         </div>
 
-        <div className="text-center mt-6 space-x-4">
-          <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
-            Choose a different account type
-          </Link>
-        </div>
+        {!isTestEnv && (
+          <div className="text-center mt-6 space-x-4">
+            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+              Choose a different account type
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

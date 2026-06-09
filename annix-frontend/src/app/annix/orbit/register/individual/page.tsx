@@ -10,8 +10,10 @@ import { parseRegistrationError } from "@/app/annix/orbit/config/registration-er
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { annixOrbitApiClient, type RegisterEeDisclosurePayload } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 
 export default function AnnixOrbitRegisterIndividualPage() {
+  const isTestEnv = useIsTestEnv();
   const router = useRouter();
   const { confirm, ConfirmDialog } = useConfirm();
   const [step, setStep] = useState<"account" | "ee">("account");
@@ -253,11 +255,13 @@ export default function AnnixOrbitRegisterIndividualPage() {
           </div>
         </div>
 
-        <div className="text-center mt-6 space-x-4">
-          <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
-            Choose a different account type
-          </Link>
-        </div>
+        {!isTestEnv && (
+          <div className="text-center mt-6 space-x-4">
+            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+              Choose a different account type
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

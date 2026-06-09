@@ -9,8 +9,10 @@ import { EeRegistrationStep } from "@/app/annix/orbit/components/EeRegistrationS
 import { parseRegistrationError } from "@/app/annix/orbit/config/registration-errors";
 import { annixOrbitApiClient, type RegisterEeDisclosurePayload } from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 
 export default function AnnixOrbitRegisterStudentPage() {
+  const isTestEnv = useIsTestEnv();
   const router = useRouter();
   const { confirm, ConfirmDialog } = useConfirm();
   const [step, setStep] = useState<"account" | "ee">("account");
@@ -243,11 +245,13 @@ export default function AnnixOrbitRegisterStudentPage() {
           </div>
         </div>
 
-        <div className="text-center mt-6 space-x-4">
-          <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
-            Choose a different account type
-          </Link>
-        </div>
+        {!isTestEnv && (
+          <div className="text-center mt-6 space-x-4">
+            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+              Choose a different account type
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

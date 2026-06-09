@@ -9,6 +9,7 @@ import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
@@ -56,6 +57,7 @@ function AnnixOrbitLoginContent() {
   const [needsSignup, setNeedsSignup] = useState(false);
   const [phoneType, setPhoneType] = useState<"apple" | "android" | null>(null);
   const isJobSeeker = accountType === "individual";
+  const isTestEnv = useIsTestEnv();
 
   useEffect(() => {
     if (prefilledEmail) {
@@ -300,21 +302,28 @@ function AnnixOrbitLoginContent() {
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Do not have an account?{" "}
-              <Link href={registerHref} className="text-[#323288] hover:text-[#252560] font-medium">
-                Register
-              </Link>
-            </p>
-          </div>
+          {!isTestEnv && (
+            <div className="mt-6 text-center">
+              <p className="text-gray-600">
+                Do not have an account?{" "}
+                <Link
+                  href={registerHref}
+                  className="text-[#323288] hover:text-[#252560] font-medium"
+                >
+                  Register
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="text-center mt-6 space-x-4">
-          <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
-            Choose a different account type
-          </Link>
-        </div>
+        {!isTestEnv && (
+          <div className="text-center mt-6 space-x-4">
+            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+              Choose a different account type
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

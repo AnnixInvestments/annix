@@ -1,6 +1,11 @@
+"use client";
+
 import Link from "next/link";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 
 export function BackToHubLink() {
+  const isTestEnv = useIsTestEnv();
+  if (isTestEnv) return null;
   return (
     <Link
       href="/annix/orbit"
