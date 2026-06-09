@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
@@ -144,6 +145,15 @@ export default function SeekerProfilePage() {
 
   return (
     <div className="space-y-6">
+      <Link
+        href="/annix/orbit/seeker/dashboard"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#3a3a8a] hover:text-[#1a1a4e]"
+      >
+        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Back to Dashboard
+      </Link>
       <div>
         <h1 className="text-3xl font-bold text-white">My CV &amp; Documents</h1>
         <p className="text-white/70 mt-2">
