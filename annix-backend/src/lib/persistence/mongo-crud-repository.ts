@@ -125,10 +125,10 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       return shaped;
     }
     if (this.hasNumericId) {
-      return { _id: await this.nextSequence(), ...shaped };
+      return { ...shaped, _id: await this.nextSequence() };
     }
     if (this.hasStringId) {
-      return { _id: randomUUID(), ...shaped };
+      return { ...shaped, _id: randomUUID() };
     }
     return shaped;
   }
@@ -180,8 +180,9 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   }
 
   async save(entity: Entity): Promise<Entity> {
+    const shaped = await this.withGeneratedId(toMongoShape(entity as unknown as MongoDocument));
     const saved = await this.documents
-      .findByIdAndUpdate(entity.id, toMongoShape(entity as unknown as MongoDocument), {
+      .findByIdAndUpdate(shaped._id, shaped, {
         returnDocument: "after",
         upsert: true,
         ...this.sessionOption,
