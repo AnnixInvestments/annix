@@ -2,22 +2,61 @@
 
 import type { PlatformLimitCard } from "@/app/lib/api/adminApi";
 
-const STATUS_BAR: Record<string, string> = {
-  ok: "bg-emerald-500",
-  warn: "bg-amber-500",
-  critical: "bg-red-500",
-  info: "bg-indigo-400",
-};
-
-const STATUS_TEXT: Record<string, string> = {
-  ok: "text-emerald-600 dark:text-emerald-400",
-  warn: "text-amber-600 dark:text-amber-400",
-  critical: "text-red-600 dark:text-red-400",
-  info: "text-gray-500 dark:text-gray-400",
+const STATUS_RING: Record<string, string> = {
+  ok: "text-emerald-500",
+  warn: "text-amber-500",
+  critical: "text-red-500",
+  info: "text-indigo-400",
 };
 
 function formatValue(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function Donut(props: {
+  percent: number | null;
+  ringColorClass: string;
+  centerLabel: string | null;
+}) {
+  const percent = props.percent;
+  const ringColorClass = props.ringColorClass;
+  const centerLabel = props.centerLabel;
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
+  const fraction = percent === null ? 1 : Math.min(Math.max(percent, 0), 100) / 100;
+  const dash = fraction * circumference;
+
+  return (
+    <div className="relative h-14 w-14 shrink-0">
+      <svg viewBox="0 0 64 64" className="h-14 w-14 -rotate-90" aria-hidden="true">
+        <circle
+          cx="32"
+          cy="32"
+          r={radius}
+          fill="none"
+          strokeWidth="7"
+          stroke="currentColor"
+          className="text-gray-100 dark:text-slate-800"
+        />
+        <circle
+          cx="32"
+          cy="32"
+          r={radius}
+          fill="none"
+          strokeWidth="7"
+          strokeLinecap="round"
+          stroke="currentColor"
+          className={ringColorClass}
+          strokeDasharray={`${dash} ${circumference}`}
+        />
+      </svg>
+      {centerLabel ? (
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-gray-700 tabular-nums dark:text-gray-200">
+          {centerLabel}
+        </span>
+      ) : null}
+    </div>
+  );
 }
 
 export function LimitGaugeCard(props: { card: PlatformLimitCard }) {
@@ -25,51 +64,40 @@ export function LimitGaugeCard(props: { card: PlatformLimitCard }) {
   const status = card.status;
   const percent = card.percent;
   const limit = card.limit;
-  const href = card.href;
+  const value = card.value;
+  const unit = card.unit;
+  const label = card.label;
+  const details = card.details;
 
-  const barColorRaw = STATUS_BAR[status];
-  const barColor = barColorRaw || STATUS_BAR.info;
-  const textColorRaw = STATUS_TEXT[status];
-  const textColor = textColorRaw || STATUS_TEXT.info;
+  const ringColorRaw = STATUS_RING[status];
+  const ringColor = ringColorRaw || STATUS_RING.info;
 
   const hasGauge = percent !== null && limit !== null;
-  const clampedPercent = percent === null ? 0 : Math.min(percent, 100);
+  const donutPercent = hasGauge ? percent : null;
+  const centerLabel = hasGauge ? `${percent}%` : null;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900">
-      <div className="flex items-center justify-between gap-2">
-        <h4 className="text-xs font-semibold text-gray-900 dark:text-white">{card.label}</h4>
-        {hasGauge ? <span className={`text-xs font-medium ${textColor}`}>{percent}%</span> : null}
-      </div>
+      <h4 className="text-xs font-semibold text-gray-900 dark:text-white">{label}</h4>
 
-      <div className="mt-1 flex items-baseline gap-1">
-        <span className="text-lg font-bold tabular-nums text-gray-900 dark:text-white">
-          {formatValue(card.value)}
-        </span>
-        <span className="text-xs text-gray-500">{card.unit}</span>
-        {limit !== null ? (
-          <span className="text-xs text-gray-400">
-            / {formatValue(limit)} {card.unit}
-          </span>
-        ) : null}
-      </div>
-
-      {hasGauge ? (
-        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800">
-          <div className={`h-full ${barColor}`} style={{ width: `${clampedPercent}%` }} />
+      <div className="mt-2 flex items-center gap-3">
+        <Donut percent={donutPercent} ringColorClass={ringColor} centerLabel={centerLabel} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-bold tabular-nums text-gray-900 dark:text-white">
+              {formatValue(value)}
+            </span>
+            <span className="text-xs text-gray-500">{unit}</span>
+          </div>
+          {limit !== null ? (
+            <div className="text-[11px] text-gray-400">
+              of {formatValue(limit)} {unit}
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </div>
 
-      <p className="mt-1.5 text-[11px] leading-snug text-gray-500">{card.details}</p>
-
-      {href ? (
-        <a
-          href={href}
-          className="mt-1.5 inline-block text-[11px] font-medium text-indigo-600 hover:underline dark:text-indigo-400"
-        >
-          View →
-        </a>
-      ) : null}
+      <p className="mt-1.5 text-[11px] leading-snug text-gray-500">{details}</p>
     </div>
   );
 }

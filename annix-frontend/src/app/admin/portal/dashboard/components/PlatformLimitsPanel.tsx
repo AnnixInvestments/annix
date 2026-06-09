@@ -39,7 +39,7 @@ export function PlatformLimitsPanel() {
         </h3>
         <span className={`text-xs font-medium ${summaryColor}`}>{summaryLabel}</span>
       </div>
-      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {cards.map((card) => (
           <LimitGaugeCard key={card.id} card={card} />
         ))}
