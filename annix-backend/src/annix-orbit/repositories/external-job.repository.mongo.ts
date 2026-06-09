@@ -665,6 +665,28 @@ export class MongoExternalJobRepository
     return (deletedExpired.deletedCount ?? 0) + trimmed;
   }
 
+  // Hard-enforce the retention cap right after ingestion (manual or scheduled),
+  // independent of the stale-sweep cron — so the job pool never sits above the
+  // cap. Deletes only the overage (the oldest by lastSeenAt), which is cheap
+  // versus re-trimming the whole collection.
+  async enforceRetentionCap(): Promise<number> {
+    const cap = await this.configuredRetentionCap();
+    const total = await this.documents.countDocuments({});
+    const overage = total - cap;
+    if (overage <= 0) return 0;
+    const oldest = await this.documents
+      .find({}, { projection: { _id: 1 } })
+      .sort({ lastSeenAt: 1, _id: 1 })
+      .limit(overage)
+      .allowDiskUse(true)
+      .lean()
+      .exec();
+    const ids = oldest.map((doc) => doc._id);
+    if (ids.length === 0) return 0;
+    const result = await this.documents.deleteMany({ _id: { $in: ids } }).exec();
+    return result.deletedCount ?? 0;
+  }
+
   // The retention cap is admin-configurable per environment (stored in this
   // env's Orbit DB by the job-market admin page); falls back to the default.
   private async configuredRetentionCap(): Promise<number> {

@@ -340,6 +340,14 @@ export class JobIngestionService {
 
     await this.maybeEmitZeroJobsAlert(source);
 
+    // Hard-enforce the retention cap on every ingest run (manual or scheduled),
+    // not just the stale-sweep cron — otherwise the pool drifts over the cap
+    // between sweeps (or indefinitely on envs where the cron is disabled).
+    await this.externalJobRepo.enforceRetentionCap().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Retention-cap enforcement failed after ingest: ${message}`);
+    });
+
     return totals;
   }
 

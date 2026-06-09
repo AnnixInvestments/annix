@@ -607,6 +607,26 @@ export class PostgresExternalJobRepository
     return result.affected ?? 0;
   }
 
+  // Postgres path is unused in production (Mongo is the live driver); the
+  // configurable cap lives in Orbit Mongo settings, so this uses the static
+  // default. Deletes only the overage (oldest by last_seen_at).
+  async enforceRetentionCap(): Promise<number> {
+    const cap = 15000;
+    const total = await this.repository.count();
+    const overage = total - cap;
+    if (overage <= 0) return 0;
+    const rows = await this.repository
+      .createQueryBuilder("job")
+      .select("job.id", "id")
+      .orderBy("job.last_seen_at", "ASC", "NULLS FIRST")
+      .limit(overage)
+      .getRawMany();
+    const ids = rows.map((row) => row.id);
+    if (ids.length === 0) return 0;
+    const result = await this.repository.delete({ id: In(ids) });
+    return result.affected ?? 0;
+  }
+
   async reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void> {
     await this.repository.update(id, {
       delistReview: "pending",
