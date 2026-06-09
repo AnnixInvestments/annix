@@ -108,6 +108,9 @@ export const adminKeys = {
     stats: () => [...adminKeys.orbitEarlyAccess.all, "stats"] as const,
     list: () => [...adminKeys.orbitEarlyAccess.all, "list"] as const,
   },
+  platformLimits: {
+    all: ["admin", "platformLimits"] as const,
+  },
   orbitSeekers: {
     all: ["admin", "orbitSeekers"] as const,
     matchTier: (email: string) => [...adminKeys.orbitSeekers.all, "matchTier", email] as const,

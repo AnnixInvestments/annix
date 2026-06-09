@@ -1179,6 +1179,10 @@ class AdminApiClient {
     return this.request("/admin/annix-orbit/job-market/retention-cap");
   }
 
+  async platformLimits(): Promise<PlatformLimitsResponse> {
+    return this.request("/admin/platform-limits");
+  }
+
   async setOrbitRetentionCap(cap: number): Promise<{ cap: number }> {
     return this.request("/admin/annix-orbit/job-market/retention-cap", {
       method: "PUT",
@@ -1633,6 +1637,26 @@ export interface OrbitClusterUsage {
   freeMb: number;
   percentUsed: number;
   databases: Array<{ name: string; logicalMb: number }>;
+}
+
+export type PlatformLimitStatus = "ok" | "warn" | "critical" | "info";
+
+export interface PlatformLimitCard {
+  id: string;
+  label: string;
+  value: number;
+  unit: string;
+  limit: number | null;
+  percent: number | null;
+  status: PlatformLimitStatus;
+  trend: string | null;
+  details: string;
+  href: string | null;
+}
+
+export interface PlatformLimitsResponse {
+  generatedAt: string;
+  cards: PlatformLimitCard[];
 }
 
 export interface OrbitSeekerSummary {

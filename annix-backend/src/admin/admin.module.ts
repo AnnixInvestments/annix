@@ -28,6 +28,7 @@ import { FeedbackModule } from "../feedback/feedback.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MessagingModule } from "../messaging/messaging.module";
+import { PlatformMetricsModule } from "../platform-metrics/platform-metrics.module";
 import { App } from "../rbac/entities/app.entity";
 import { AppPermission } from "../rbac/entities/app-permission.entity";
 import { AppRole } from "../rbac/entities/app-role.entity";
@@ -106,6 +107,8 @@ import { AdminDashboardController } from "./admin-dashboard.controller";
 import { AdminDashboardService } from "./admin-dashboard.service";
 import { AdminFeedbackController } from "./admin-feedback.controller";
 import { AdminMessagingController } from "./admin-messaging.controller";
+import { AdminPlatformLimitsController } from "./admin-platform-limits.controller";
+import { AdminPlatformLimitsService } from "./admin-platform-limits.service";
 import {
   AdminPollingJobsController,
   PublicPollingJobsController,
@@ -227,12 +230,14 @@ import { ScheduledJobsGlobalSettingsSchema } from "./schemas/scheduled-jobs-glob
     AuditModule,
     FeedbackModule,
     MessagingModule,
+    PlatformMetricsModule,
   ],
   providers: [
     AdminAuthService,
     AdminAuthGuard,
     AdminCompanyProfileService,
     AdminDashboardService,
+    AdminPlatformLimitsService,
     AdminReferenceDataService,
     AdminRfqService,
     AdminScheduledJobsService,
@@ -325,6 +330,7 @@ import { ScheduledJobsGlobalSettingsSchema } from "./schemas/scheduled-jobs-glob
     AdminAuthController,
     AdminCompanyProfileController,
     AdminDashboardController,
+    AdminPlatformLimitsController,
     AdminFeedbackController,
     AdminReferenceDataController,
     AdminRfqController,

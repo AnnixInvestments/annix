@@ -11,6 +11,7 @@ import { fromISO, now } from "@/app/lib/datetime";
 import { useAdminDashboard, useAdminFeedback, useScheduledJobs } from "@/app/lib/query/hooks";
 import { useAdminAttention } from "@/app/lib/query/hooks/admin/useAdminAttention";
 import { ClusterUsagePanel } from "./components/ClusterUsagePanel";
+import { PlatformLimitsPanel } from "./components/PlatformLimitsPanel";
 
 function formatRelativeDate(dateString: string) {
   const date = fromISO(dateString);
@@ -432,6 +433,8 @@ export default function AdminDashboardPage() {
           Refresh
         </button>
       </div>
+
+      <PlatformLimitsPanel />
 
       <ClusterUsagePanel />
 
