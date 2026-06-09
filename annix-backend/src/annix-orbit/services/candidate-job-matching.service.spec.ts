@@ -218,6 +218,30 @@ describe("CandidateJobMatchingService", () => {
       expect(result).toBeGreaterThan(1250);
     });
 
+    it("calculateDistance prefers the work profile home pin when present", () => {
+      const candidate = {
+        locationLat: -26.2,
+        locationLon: 28.04,
+        workProfile: {
+          shared: {
+            fields: ["it-software"],
+            primaryRole: null,
+            yearsExperience: null,
+            availability: null,
+            willingToTravelKm: 100,
+            homeLatitude: -33.92,
+            homeLongitude: 18.42,
+            topSkills: [],
+            certifications: [],
+          },
+        },
+      } as unknown as Candidate;
+      const capeTownJob = { locationLat: -33.93, locationLon: 18.43 } as ExternalJob;
+      const result = service.calculateDistance(candidate, capeTownJob);
+      expect(result).not.toBeNull();
+      expect(result).toBeLessThan(5);
+    });
+
     it("calculateDistance returns null when either side missing coords", () => {
       const candidate = { locationLat: -26.2, locationLon: null } as Candidate;
       const job = { locationLat: -33.92, locationLon: 18.42 } as ExternalJob;

@@ -217,6 +217,9 @@ function mergeProfiles(existing: WorkProfile | null, next: WorkProfile): WorkPro
       yearsExperience: next.shared.yearsExperience ?? existing.shared.yearsExperience,
       availability: next.shared.availability ?? existing.shared.availability,
       willingToTravelKm: next.shared.willingToTravelKm ?? existing.shared.willingToTravelKm,
+      homeAddress: next.shared.homeAddress ?? existing.shared.homeAddress,
+      homeLatitude: next.shared.homeLatitude ?? existing.shared.homeLatitude,
+      homeLongitude: next.shared.homeLongitude ?? existing.shared.homeLongitude,
       topSkills: dedupeShallow([...existing.shared.topSkills, ...next.shared.topSkills]),
       certifications: dedupeShallow([
         ...existing.shared.certifications,
@@ -253,6 +256,9 @@ function normaliseProfile(profile: WorkProfile): WorkProfile {
         ? (shared.availability as Availability)
         : null,
       willingToTravelKm: clampNonNegative(shared.willingToTravelKm),
+      homeAddress: trimToNull(shared.homeAddress),
+      homeLatitude: clampCoordinate(shared.homeLatitude, -90, 90),
+      homeLongitude: clampCoordinate(shared.homeLongitude, -180, 180),
       topSkills: cleanStringList(shared.topSkills),
       certifications: cleanStringList(shared.certifications),
       expectedSalaryMin,
@@ -284,4 +290,15 @@ function clampNonNegative(value: number | null | undefined): number | null {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) return null;
   return Math.round(n);
+}
+
+function clampCoordinate(
+  value: number | null | undefined,
+  min: number,
+  max: number,
+): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < min || n > max) return null;
+  return n;
 }

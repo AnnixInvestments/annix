@@ -680,8 +680,10 @@ export class CandidateJobMatchingService {
   }
 
   calculateDistance(candidate: Candidate, job: ExternalJob): number | null {
-    const cLat = candidate.locationLat;
-    const cLon = candidate.locationLon;
+    const workHomeLat = candidate.workProfile?.shared.homeLatitude;
+    const workHomeLon = candidate.workProfile?.shared.homeLongitude;
+    const cLat = typeof workHomeLat === "number" ? workHomeLat : candidate.locationLat;
+    const cLon = typeof workHomeLon === "number" ? workHomeLon : candidate.locationLon;
     const jLat = job.locationLat;
     const jLon = job.locationLon;
     if (cLat === null || cLon === null || jLat === null || jLon === null) {

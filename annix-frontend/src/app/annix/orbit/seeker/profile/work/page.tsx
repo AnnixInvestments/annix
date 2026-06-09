@@ -7,11 +7,15 @@ import {
   emptyWorkProfile,
   JOB_CATEGORIES,
   type JobCategoryKey,
+  TRAVEL_DISTANCE_RANGES,
+  WORK_EXPERIENCE_RANGES,
+  WORK_ROLE_SUGGESTIONS,
   type WorkProfile,
 } from "@annix/product-data/sa-market";
 import { isEqual } from "es-toolkit/compat";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { metricsApi } from "@/app/lib/api/metricsApi";
@@ -23,6 +27,14 @@ import {
   useOrbitUpsertSeekerWorkProfile,
 } from "@/app/lib/query/hooks";
 import { formatCurrency } from "@/app/lib/utils/currency";
+
+const GoogleMapLocationPicker = dynamic(() => import("@/app/components/GoogleMapLocationPicker"), {
+  ssr: false,
+  loading: () => <div className="w-full h-64 rounded-lg bg-gray-100 animate-pulse" />,
+});
+
+const rawMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_API_KEY = rawMapsKey || "";
 
 export default function SeekerWorkProfilePage() {
   const router = useRouter();
@@ -36,7 +48,10 @@ export default function SeekerWorkProfilePage() {
 
   const [profile, setProfile] = useState<WorkProfile>(emptyWorkProfile());
   const [formVersion, setFormVersion] = useState(0);
+  const [roleSuggestionsOpen, setRoleSuggestionsOpen] = useState(false);
+  const [showHomeLocationPicker, setShowHomeLocationPicker] = useState(false);
   const savedProfileRef = useRef<WorkProfile>(emptyWorkProfile());
+  const salaryCautionShownRef = useRef(false);
 
   const queryData = query.data;
   const hydratedRef = useRef(false);
@@ -53,6 +68,18 @@ export default function SeekerWorkProfilePage() {
 
   const isDirty = !isEqual(profile, savedProfileRef.current);
   const shared = profile.shared;
+  const roleValue = emptyIfNull(shared.primaryRole);
+  const roleSuggestions = useMemo(() => {
+    const queryText = String(roleValue).trim().toLowerCase();
+    if (queryText.length < 2) {
+      return WORK_ROLE_SUGGESTIONS.slice(0, 8);
+    }
+    return WORK_ROLE_SUGGESTIONS.filter((role) => role.toLowerCase().includes(queryText)).slice(
+      0,
+      8,
+    );
+  }, [roleValue]);
+  const hasSkillsOrCertifications = shared.topSkills.length > 0 || shared.certifications.length > 0;
 
   const toggleField = (key: JobCategoryKey) => {
     const current = shared.fields;
@@ -66,15 +93,56 @@ export default function SeekerWorkProfilePage() {
   };
 
   const updateYears = (value: string) => {
-    const n = Number.parseInt(value, 10);
-    const clamped = Number.isFinite(n) ? Math.min(60, Math.max(0, n)) : null;
+    const n = value.length > 0 ? Number.parseInt(value, 10) : Number.NaN;
+    const clamped = Number.isFinite(n) ? n : null;
     setProfile({ ...profile, shared: { ...shared, yearsExperience: clamped } });
   };
 
   const updateTravel = (value: string) => {
-    const n = Number.parseInt(value, 10);
-    const clamped = Number.isFinite(n) ? Math.min(2000, Math.max(0, n)) : null;
+    const n = value.length > 0 ? Number.parseInt(value, 10) : Number.NaN;
+    const clamped = Number.isFinite(n) ? n : null;
     setProfile({ ...profile, shared: { ...shared, willingToTravelKm: clamped } });
+  };
+
+  const updateHomeAddress = (value: string) => {
+    const trimmed = value.length === 0 ? null : value;
+    setProfile({ ...profile, shared: { ...shared, homeAddress: trimmed } });
+  };
+
+  const updateHomeLocation = (
+    location: { lat: number; lng: number },
+    addressComponents?: { address: string; region: string; country: string },
+  ) => {
+    const selectedAddress = addressComponents ? addressComponents.address : null;
+    const currentHomeAddress = shared.homeAddress;
+    const homeAddress =
+      selectedAddress !== null && selectedAddress !== undefined
+        ? selectedAddress
+        : currentHomeAddress !== null && currentHomeAddress !== undefined
+          ? currentHomeAddress
+          : null;
+    setProfile({
+      ...profile,
+      shared: {
+        ...shared,
+        homeAddress,
+        homeLatitude: location.lat,
+        homeLongitude: location.lng,
+      },
+    });
+    setShowHomeLocationPicker(false);
+  };
+
+  const clearHomeLocation = () => {
+    setProfile({
+      ...profile,
+      shared: {
+        ...shared,
+        homeAddress: null,
+        homeLatitude: null,
+        homeLongitude: null,
+      },
+    });
   };
 
   const updateAvailability = (value: string) => {
@@ -96,19 +164,35 @@ export default function SeekerWorkProfilePage() {
     setProfile({ ...profile, shared: { ...shared, certifications: csvToArray(value) } });
   };
 
+  const showSalaryCaution = async () => {
+    if (salaryCautionShownRef.current) return;
+    salaryCautionShownRef.current = true;
+    await confirm({
+      title: "Salary matching note",
+      message:
+        "Not all job listings include salary information in the title or listing data. If you set a salary range, some returned jobs may still be below your expected salary because the source did not publish enough salary detail.",
+      confirmLabel: "I understand",
+      cancelLabel: "Close",
+      variant: "warning",
+    });
+  };
+
   const updateSalaryMin = (value: string) => {
+    void showSalaryCaution();
     const n = Number.parseInt(value, 10);
     const clamped = Number.isFinite(n) && n >= 0 ? n : null;
     setProfile({ ...profile, shared: { ...shared, expectedSalaryMin: clamped } });
   };
 
   const updateSalaryMax = (value: string) => {
+    void showSalaryCaution();
     const n = Number.parseInt(value, 10);
     const clamped = Number.isFinite(n) && n >= 0 ? n : null;
     setProfile({ ...profile, shared: { ...shared, expectedSalaryMax: clamped } });
   };
 
-  const applySalarySuggestion = (min: number | null, max: number | null) => {
+  const applySalarySuggestion = async (min: number | null, max: number | null) => {
+    await showSalaryCaution();
     setProfile({
       ...profile,
       shared: { ...shared, expectedSalaryMin: min, expectedSalaryMax: max },
@@ -192,6 +276,47 @@ export default function SeekerWorkProfilePage() {
     void runAutofill(false);
   };
 
+  const handleSkillsAutofill = () => {
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Nix is reading your CV for skills and certifications…",
+      estimatedDurationMs: 12000,
+    });
+    autofillMutation.mutate(undefined, {
+      onSuccess: (result) => {
+        hideExtraction();
+        if (result.extracted) {
+          setProfile((prev) => ({
+            ...prev,
+            shared: {
+              ...prev.shared,
+              topSkills: result.profile.shared.topSkills,
+              certifications: result.profile.shared.certifications,
+            },
+          }));
+          setFormVersion((v) => v + 1);
+          showToast("Skills and certifications refreshed from your CV", "success");
+          return;
+        }
+        const reason = result.reason;
+        if (reason === "no-cv-text" || reason === "no-candidate") {
+          showToast("Upload and analyse your CV first", "info");
+          router.push("/annix/orbit/seeker/profile#cv-section");
+          return;
+        }
+        alert({
+          message: "Nix couldn't read skills from your CV — try the CV Wizard first",
+          variant: "error",
+        });
+        router.push("/annix/orbit/seeker/profile#nix-section");
+      },
+      onError: () => {
+        hideExtraction();
+        alert({ message: "Could not refresh skills from your CV", variant: "error" });
+      },
+    });
+  };
+
   useEffect(() => {
     if (!hydratedRef.current) return;
     if (autoTriedRef.current) return;
@@ -223,6 +348,10 @@ export default function SeekerWorkProfilePage() {
   const availabilityValue = emptyIfNull(shared.availability);
   const salaryMinValue = emptyIfNull(shared.expectedSalaryMin);
   const salaryMaxValue = emptyIfNull(shared.expectedSalaryMax);
+  const savedHomeLatitude = shared.homeLatitude;
+  const savedHomeLongitude = shared.homeLongitude;
+  const homeLat = savedHomeLatitude === undefined ? null : savedHomeLatitude;
+  const homeLng = savedHomeLongitude === undefined ? null : savedHomeLongitude;
   const suggestedSalaryAnnualMin = queryData ? queryData.suggestedSalaryMin : null;
   const suggestedSalaryAnnualMax = queryData ? queryData.suggestedSalaryMax : null;
   // Nix's CV-derived suggestion is an annual figure; the profile is now captured
@@ -293,39 +422,111 @@ export default function SeekerWorkProfilePage() {
       <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
         <h2 className="text-lg font-semibold text-gray-900">About your work</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <label className="block sm:col-span-2">
+          <label className="block sm:col-span-2 relative">
             <span className="text-sm text-gray-700">Primary role / job title</span>
             <input
               key={`role-${formVersion}`}
               type="text"
-              defaultValue={emptyIfNull(shared.primaryRole)}
-              onChange={(e) => updatePrimaryRole(e.target.value)}
+              value={roleValue}
+              onFocus={() => setRoleSuggestionsOpen(true)}
+              onBlur={() => window.setTimeout(() => setRoleSuggestionsOpen(false), 120)}
+              onChange={(e) => {
+                updatePrimaryRole(e.target.value);
+                setRoleSuggestionsOpen(true);
+              }}
               placeholder="e.g. Registered Nurse, Software Developer, Boilermaker"
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
             />
+            {roleSuggestionsOpen && roleSuggestions.length > 0 ? (
+              <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg overflow-hidden">
+                {roleSuggestions.map((role) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      updatePrimaryRole(role);
+                      setRoleSuggestionsOpen(false);
+                    }}
+                    className="block w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-[var(--brand-navbar-50,#f0f0fc)] hover:text-[var(--brand-navbar,#323288)]"
+                  >
+                    {role}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </label>
           <label className="block">
             <span className="text-sm text-gray-700">Years of experience</span>
-            <input
-              type="number"
-              min={0}
-              max={60}
+            <select
               value={yearsValue}
               onChange={(e) => updateYears(e.target.value)}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
+            >
+              <option value="">Not specified</option>
+              {WORK_EXPERIENCE_RANGES.map((range) => (
+                <option key={range.value} value={range.value}>
+                  {range.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="block">
             <span className="text-sm text-gray-700">Willing to travel (km)</span>
-            <input
-              type="number"
-              min={0}
-              max={2000}
+            <select
               value={travelValue}
               onChange={(e) => updateTravel(e.target.value)}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
-            />
+            >
+              <option value="">Not specified</option>
+              {TRAVEL_DISTANCE_RANGES.map((range) => (
+                <option key={range.value} value={range.value}>
+                  {range.label}
+                </option>
+              ))}
+            </select>
           </label>
+          <div className="sm:col-span-2 space-y-2">
+            <label className="block">
+              <span className="text-sm text-gray-700">Home address</span>
+              <input
+                type="text"
+                value={emptyIfNull(shared.homeAddress)}
+                onChange={(e) => updateHomeAddress(e.target.value)}
+                placeholder="Optional, used with your travel range"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-2">
+              {GOOGLE_MAPS_API_KEY ? (
+                <button
+                  type="button"
+                  onClick={() => setShowHomeLocationPicker(true)}
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+                >
+                  Pin home on map
+                </button>
+              ) : null}
+              {homeLat !== null && homeLng !== null ? (
+                <>
+                  <span className="text-xs text-gray-500">
+                    Pin: {homeLat.toFixed(5)}, {homeLng.toFixed(5)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={clearHomeLocation}
+                    className="text-xs font-medium text-red-600 hover:text-red-700"
+                  >
+                    Clear pin
+                  </button>
+                </>
+              ) : (
+                <span className="text-xs text-gray-500">
+                  Add a pin if you want travel distance matched from your home area.
+                </span>
+              )}
+            </div>
+          </div>
           <label className="block sm:col-span-2">
             <span className="text-sm text-gray-700">Availability</span>
             <select
@@ -360,7 +561,7 @@ export default function SeekerWorkProfilePage() {
             </span>
             <button
               type="button"
-              onClick={() => applySalarySuggestion(suggestedSalaryMin, suggestedSalaryMax)}
+              onClick={() => void applySalarySuggestion(suggestedSalaryMin, suggestedSalaryMax)}
               className="shrink-0 px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-200 text-amber-900 hover:bg-amber-300"
             >
               Use this range
@@ -396,7 +597,33 @@ export default function SeekerWorkProfilePage() {
       </section>
 
       <section className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
-        <h2 className="text-lg font-semibold text-gray-900">Skills &amp; certifications</h2>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Skills &amp; certifications</h2>
+            <p className="text-sm text-gray-600 mt-0.5">
+              These can be filled from your analysed CV and refreshed after you improve it.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSkillsAutofill}
+              disabled={autofillMutation.isPending}
+              className="px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-100 text-amber-800 hover:bg-amber-200 disabled:opacity-50"
+            >
+              {autofillMutation.isPending ? "Reading CV…" : "Fill from CV"}
+            </button>
+            {!hasSkillsOrCertifications ? (
+              <button
+                type="button"
+                onClick={() => router.push("/annix/orbit/seeker/profile#nix-section")}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                Analyse CV
+              </button>
+            ) : null}
+          </div>
+        </div>
         <label className="block">
           <span className="text-sm text-gray-700">Top skills (comma-separated)</span>
           <input
@@ -433,6 +660,17 @@ export default function SeekerWorkProfilePage() {
           {mutation.isPending ? "Saving…" : "Save work profile"}
         </button>
       </div>
+      {showHomeLocationPicker ? (
+        <GoogleMapLocationPicker
+          apiKey={GOOGLE_MAPS_API_KEY}
+          initialLocation={
+            homeLat !== null && homeLng !== null ? { lat: homeLat, lng: homeLng } : undefined
+          }
+          onLocationSelect={updateHomeLocation}
+          onClose={() => setShowHomeLocationPicker(false)}
+          config="responsive"
+        />
+      ) : null}
       {ConfirmDialog}
       {AlertDialog}
     </div>
@@ -468,6 +706,9 @@ function mergeEmptyWorkProfile(current: WorkProfile, incoming: WorkProfile): Wor
   const years = c.yearsExperience;
   const avail = c.availability;
   const travel = c.willingToTravelKm;
+  const homeAddress = c.homeAddress;
+  const homeLatitude = c.homeLatitude;
+  const homeLongitude = c.homeLongitude;
   return {
     ...current,
     shared: {
@@ -477,6 +718,11 @@ function mergeEmptyWorkProfile(current: WorkProfile, incoming: WorkProfile): Wor
       yearsExperience: years === null ? i.yearsExperience : years,
       availability: avail === null ? i.availability : avail,
       willingToTravelKm: travel === null ? i.willingToTravelKm : travel,
+      homeAddress: homeAddress === null || homeAddress === undefined ? i.homeAddress : homeAddress,
+      homeLatitude:
+        homeLatitude === null || homeLatitude === undefined ? i.homeLatitude : homeLatitude,
+      homeLongitude:
+        homeLongitude === null || homeLongitude === undefined ? i.homeLongitude : homeLongitude,
       topSkills: c.topSkills.length > 0 ? c.topSkills : i.topSkills,
       certifications: c.certifications.length > 0 ? c.certifications : i.certifications,
     },

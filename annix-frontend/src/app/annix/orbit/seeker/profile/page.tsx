@@ -12,6 +12,7 @@ import {
   useOrbitDeleteMyDocument,
   useOrbitMyDocuments,
   useOrbitMyProfileStatus,
+  useOrbitSeekerWorkProfile,
 } from "@/app/lib/query/hooks";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { CredentialFieldsEditor } from "../components/CredentialFieldsEditor";
@@ -26,6 +27,7 @@ export default function SeekerProfilePage() {
   const { user } = useAnnixOrbitAuth();
   const statusQuery = useOrbitMyProfileStatus();
   const documentsQuery = useOrbitMyDocuments();
+  const workProfileQuery = useOrbitSeekerWorkProfile();
   const deleteMutation = useOrbitDeleteMyDocument();
   const { confirm, ConfirmDialog } = useConfirm();
   const { alert, AlertDialog } = useAlert();
@@ -34,6 +36,7 @@ export default function SeekerProfilePage() {
   const [nixAutoRunKey, setNixAutoRunKey] = useState(0);
   const [cvBuilt, setCvBuilt] = useState(false);
   const [skippedSteps, setSkippedSteps] = useState<Set<number>>(new Set());
+  const [focusedStep, setFocusedStep] = useState<number | null>(null);
 
   const skipStep = (step: number) => {
     setSkippedSteps((prev) => new Set([...prev, step]));
@@ -42,17 +45,21 @@ export default function SeekerProfilePage() {
   useEffect(() => {
     const statusLoading = statusQuery.isLoading;
     const documentsLoading = documentsQuery.isLoading;
-    if (statusLoading || documentsLoading) return;
+    const workProfileLoading = workProfileQuery.isLoading;
+    if (statusLoading || documentsLoading || workProfileLoading) return;
     const hash = window.location.hash;
     if (!hash) return;
     const target = document.getElementById(hash.slice(1));
     if (!target) return;
     target.scrollIntoView({ behavior: "smooth", block: "start" });
-  }, [statusQuery.isLoading, documentsQuery.isLoading]);
+  }, [statusQuery.isLoading, documentsQuery.isLoading, workProfileQuery.isLoading]);
 
   const status = statusQuery.data;
   const documentsData = documentsQuery.data;
+  const workProfileData = workProfileQuery.data;
   const documents = documentsData ? documentsData : [];
+  const workProfile = workProfileData ? workProfileData.profile : null;
+  const workShared = workProfile ? workProfile.shared : null;
   const cvDocFound = documents.find((d) => d.kind === "cv");
   const cvDoc = cvDocFound ? cvDocFound : null;
   const qualifications = documents.filter((d) => d.kind === "qualification");
@@ -83,7 +90,8 @@ export default function SeekerProfilePage() {
   const step3Done = cvBuilt || skippedSteps.has(3);
   const step4Done = qualificationsCount > 0 || skippedSteps.has(4);
   const step5Done = certificatesCount > 0 || skippedSteps.has(5);
-  const allOptionalDone = step3Done && step4Done && step5Done;
+  const step6Done = !!(workShared?.fields?.length && workShared.primaryRole);
+  const allOptionalDone = step3Done && step4Done && step5Done && step6Done;
   const activeStep = !step1Done
     ? 1
     : !step2Done
@@ -94,16 +102,47 @@ export default function SeekerProfilePage() {
           ? 4
           : !step5Done
             ? 5
-            : 6;
+            : !step6Done
+              ? 6
+              : 7;
 
-  const handleStartSearch = () => {
+  const handleStartSearch = useCallback(() => {
     if (!status) return;
     if (!allOptionalDone) {
       setWarningOpen(true);
       return;
     }
     router.push("/annix/orbit/seeker/jobs");
-  };
+  }, [allOptionalDone, router, status]);
+
+  const scrollToStep = useCallback(
+    (step: number) => {
+      if (step === 7) {
+        handleStartSearch();
+        return;
+      }
+      const targetIdByStep: Record<number, string> = {
+        1: "cv-section",
+        2: "nix-section",
+        3: "nix-section",
+        4: "qualifications",
+        5: "certificates",
+        6: "work-profile-section",
+      };
+      const targetId = targetIdByStep[step];
+      if (!targetId) return;
+      setFocusedStep(step);
+      window.history.replaceState(null, "", `#${targetId}`);
+      requestAnimationFrame(() => {
+        document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+      window.setTimeout(
+        () => setFocusedStep((current) => (current === step ? null : current)),
+        1800,
+      );
+    },
+    [handleStartSearch],
+  );
 
   const handleConfirmContinue = () => {
     setWarningOpen(false);
@@ -133,9 +172,11 @@ export default function SeekerProfilePage() {
 
   const isStatusLoading = statusQuery.isLoading;
   const isDocumentsLoading = documentsQuery.isLoading;
+  const isWorkProfileLoading = workProfileQuery.isLoading;
   const isStatusError = statusQuery.isError;
   const isDocumentsError = documentsQuery.isError;
-  if (isStatusLoading || isDocumentsLoading) {
+  const isWorkProfileError = workProfileQuery.isError;
+  if (isStatusLoading || isDocumentsLoading || isWorkProfileLoading) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[var(--brand-navbar,#323288)]" />
@@ -143,7 +184,7 @@ export default function SeekerProfilePage() {
     );
   }
 
-  if (isStatusError || isDocumentsError) {
+  if (isStatusError || isDocumentsError || isWorkProfileError) {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-xl border border-red-200 p-6 text-red-700">
@@ -177,13 +218,56 @@ export default function SeekerProfilePage() {
         <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
           Your checklist
         </h2>
-        <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
-          <StepPill num={1} label="Upload CV" done={step1Done} active={activeStep === 1} />
-          <StepPill num={2} label="Nix Wizard" done={step2Done} active={activeStep === 2} />
-          <StepPill num={3} label="Improve CV" done={step3Done} active={activeStep === 3} />
-          <StepPill num={4} label="Qualifications" done={step4Done} active={activeStep === 4} />
-          <StepPill num={5} label="Certificates" done={step5Done} active={activeStep === 5} />
-          <StepPill num={6} label="Browse Jobs" done={activeStep > 6} active={activeStep === 6} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-2">
+          <StepPill
+            num={1}
+            label="Upload CV"
+            done={step1Done}
+            active={activeStep === 1 || focusedStep === 1}
+            onClick={() => scrollToStep(1)}
+          />
+          <StepPill
+            num={2}
+            label="Nix Wizard"
+            done={step2Done}
+            active={activeStep === 2 || focusedStep === 2}
+            onClick={() => scrollToStep(2)}
+          />
+          <StepPill
+            num={3}
+            label="Improve CV"
+            done={step3Done}
+            active={activeStep === 3 || focusedStep === 3}
+            onClick={() => scrollToStep(3)}
+          />
+          <StepPill
+            num={4}
+            label="Qualifications"
+            done={step4Done}
+            active={activeStep === 4 || focusedStep === 4}
+            onClick={() => scrollToStep(4)}
+          />
+          <StepPill
+            num={5}
+            label="Certificates"
+            done={step5Done}
+            active={activeStep === 5 || focusedStep === 5}
+            onClick={() => scrollToStep(5)}
+          />
+          <StepPill
+            num={6}
+            label="Work Profile"
+            done={step6Done}
+            active={activeStep === 6 || focusedStep === 6}
+            onClick={() => scrollToStep(6)}
+          />
+          <StepPill
+            num={7}
+            label="Browse Jobs"
+            done={false}
+            active={activeStep === 7 || focusedStep === 7}
+            onClick={() => scrollToStep(7)}
+          />
         </div>
       </div>
 
@@ -191,6 +275,8 @@ export default function SeekerProfilePage() {
 
       {hasCv ? (
         <SectionCard
+          id="cv-section"
+          active={activeStep === 1 || focusedStep === 1}
           title={
             <>
               <StepVisited num={1} done={step1Done} /> Your CV
@@ -215,7 +301,8 @@ export default function SeekerProfilePage() {
         </SectionCard>
       ) : (
         <div
-          className="rounded-2xl shadow-lg p-6 sm:p-8"
+          id="cv-section"
+          className="rounded-2xl shadow-lg p-6 sm:p-8 scroll-mt-24"
           style={{
             backgroundImage:
               "linear-gradient(to bottom right, var(--brand-accent,#FF8A00), var(--brand-accent-light,#FF9C33))",
@@ -240,7 +327,14 @@ export default function SeekerProfilePage() {
         </div>
       )}
 
-      <div className="space-y-3">
+      <div
+        id="nix-section"
+        className={`space-y-3 scroll-mt-24 rounded-xl ${
+          focusedStep === 2 || focusedStep === 3
+            ? "ring-2 ring-[var(--brand-accent,#FF8A00)] ring-offset-2 ring-offset-transparent"
+            : ""
+        }`}
+      >
         <div className="flex items-center gap-4 flex-wrap">
           <StepVisited num={2} done={step2Done} />
           <StepVisited num={3} done={step3Done} />
@@ -274,7 +368,7 @@ export default function SeekerProfilePage() {
         description="Optional but strongly recommended. Degrees, diplomas, transcripts — one file per qualification."
         badge={qualifications.length > 0 ? `${qualifications.length} uploaded` : "Optional"}
         done={step4Done}
-        active={activeStep === 4}
+        active={activeStep === 4 || focusedStep === 4}
         onSkip={step4Done ? undefined : () => skipStep(4)}
       >
         <DocumentList
@@ -303,7 +397,7 @@ export default function SeekerProfilePage() {
         description="Optional but strongly recommended. Professional certifications, licenses, training certificates."
         badge={certificates.length > 0 ? `${certificates.length} uploaded` : "Optional"}
         done={step5Done}
-        active={activeStep === 5}
+        active={activeStep === 5 || focusedStep === 5}
         onSkip={step5Done ? undefined : () => skipStep(5)}
       >
         <DocumentList
@@ -320,11 +414,39 @@ export default function SeekerProfilePage() {
         <CredentialPhotoCapture kind="certificate" allowed={photoAllowed} />
       </SectionCard>
 
-      {activeStep >= 6 && (
-        <div className="bg-[var(--brand-accent,#FF8A00)] rounded-xl border border-[var(--brand-accent-light,#FF9C33)] px-2 py-4 sm:p-6 space-y-3">
+      <SectionCard
+        id="work-profile-section"
+        title={
+          <>
+            <StepVisited num={6} done={step6Done} /> Work Profile
+          </>
+        }
+        description="Required before job search. Tell Nix what roles, work fields, salary floor, and travel radius fit you."
+        badge={step6Done ? "Complete" : "Required"}
+        done={step6Done}
+        active={activeStep === 6 || focusedStep === 6}
+      >
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <p className="text-sm text-gray-600 max-w-2xl">
+            This helps Nix filter out poor matches before it starts ranking jobs against your CV.
+          </p>
+          <Link
+            href="/annix/orbit/seeker/profile/work"
+            className="bg-[#1a1a40] text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--brand-navbar-active,#252560)] transition-colors whitespace-nowrap"
+          >
+            {step6Done ? "Review work profile" : "Complete work profile"}
+          </Link>
+        </div>
+      </SectionCard>
+
+      {activeStep >= 7 && (
+        <div
+          id="browse-jobs-section"
+          className="bg-[var(--brand-accent,#FF8A00)] rounded-xl border border-[var(--brand-accent-light,#FF9C33)] px-2 py-4 sm:p-6 space-y-3 scroll-mt-24"
+        >
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <StepVisited num={6} done={false} />
+              <StepVisited num={7} done={false} />
               <h2 className="text-lg font-semibold text-[#1a1a40] mt-2">Browse Jobs</h2>
               <p className="text-sm text-[#1a1a40]/80 mt-1">
                 Your profile is ready. Start browsing jobs that match your CV and documents.
@@ -346,6 +468,7 @@ export default function SeekerProfilePage() {
         missingCvImprovement={!step3Done}
         missingQualifications={!step4Done}
         missingCertificates={!step5Done}
+        missingWorkProfile={!step6Done}
         onCancel={() => setWarningOpen(false)}
         onConfirm={handleConfirmContinue}
       />
@@ -580,15 +703,23 @@ function StepVisited(props: { num: number; done: boolean }) {
   );
 }
 
-function StepPill(props: { num: number; label: string; done: boolean; active: boolean }) {
+function StepPill(props: {
+  num: number;
+  label: string;
+  done: boolean;
+  active: boolean;
+  onClick: () => void;
+}) {
   return (
-    <div
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+    <button
+      type="button"
+      onClick={props.onClick}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-accent,#FF8A00)] ${
         props.done
-          ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
           : props.active
-            ? "bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar,#323288)] border border-[var(--brand-navbar,#323288)]"
-            : "bg-gray-50 text-gray-400 border border-gray-200"
+            ? "bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar,#323288)] border border-[var(--brand-navbar,#323288)] hover:bg-white"
+            : "bg-gray-50 text-gray-500 border border-gray-200 hover:bg-white hover:text-[var(--brand-navbar,#323288)] hover:border-[var(--brand-navbar,#323288)]"
       }`}
     >
       <span
@@ -609,7 +740,7 @@ function StepPill(props: { num: number; label: string; done: boolean; active: bo
         )}
       </span>
       <span>{props.label}</span>
-    </div>
+    </button>
   );
 }
 

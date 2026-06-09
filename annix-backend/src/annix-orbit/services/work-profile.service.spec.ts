@@ -89,6 +89,9 @@ describe("WorkProfileService", () => {
       input.shared.primaryRole = "  Data Analyst  ";
       input.shared.yearsExperience = 8.7;
       input.shared.willingToTravelKm = 75;
+      input.shared.homeAddress = "  1 Main Road, Sandton  ";
+      input.shared.homeLatitude = -26.1076;
+      input.shared.homeLongitude = 28.0567;
       input.shared.availability = "available_now";
       input.shared.topSkills = ["SQL", "SQL", " Python "];
 
@@ -100,6 +103,9 @@ describe("WorkProfileService", () => {
       expect(persisted.shared.fields).toEqual(["it-software", "finance-accounting"]);
       expect(persisted.shared.primaryRole).toBe("Data Analyst");
       expect(persisted.shared.yearsExperience).toBe(9);
+      expect(persisted.shared.homeAddress).toBe("1 Main Road, Sandton");
+      expect(persisted.shared.homeLatitude).toBe(-26.1076);
+      expect(persisted.shared.homeLongitude).toBe(28.0567);
       expect(persisted.shared.topSkills).toEqual(["SQL", "Python"]);
       expect(repo.updateTargetCategories).toHaveBeenCalledWith(3, [
         "it-software",
@@ -113,6 +119,8 @@ describe("WorkProfileService", () => {
       input.shared.fields = ["it-software", "not-a-real-field"] as never;
       input.shared.yearsExperience = -3;
       input.shared.willingToTravelKm = -100;
+      input.shared.homeLatitude = -120;
+      input.shared.homeLongitude = 220;
 
       await service.upsertForSeeker("n@example.com", input);
 
@@ -120,6 +128,8 @@ describe("WorkProfileService", () => {
       expect(persisted.shared.fields).toEqual(["it-software"]);
       expect(persisted.shared.yearsExperience).toBeNull();
       expect(persisted.shared.willingToTravelKm).toBeNull();
+      expect(persisted.shared.homeLatitude).toBeNull();
+      expect(persisted.shared.homeLongitude).toBeNull();
     });
 
     it("does not sync target categories when no fields are chosen", async () => {
