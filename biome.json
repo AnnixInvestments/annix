@@ -94,6 +94,7 @@
     "useIgnoreFile": true
   },
   "files": {
+    "maxSize": 10485760,
     "includes": [
       "**",
       "!**/node_modules",

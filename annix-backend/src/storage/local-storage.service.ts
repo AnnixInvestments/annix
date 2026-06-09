@@ -78,7 +78,11 @@ export class LocalStorageService implements IStorageService {
     return `${this.baseUrl}/api/files/${normalizedPath}`;
   }
 
-  async presignedUrl(relativePath: string, _expiresIn?: number, _filename?: string): Promise<string> {
+  async presignedUrl(
+    relativePath: string,
+    _expiresIn?: number,
+    _filename?: string,
+  ): Promise<string> {
     return this.publicUrl(relativePath);
   }
 

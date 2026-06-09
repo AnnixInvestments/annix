@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
@@ -13,11 +13,11 @@ import {
   useOrbitMyDocuments,
   useOrbitMyProfileStatus,
 } from "@/app/lib/query/hooks";
+import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { CredentialFieldsEditor } from "../components/CredentialFieldsEditor";
 import { CredentialPhotoCapture } from "../components/CredentialPhotoCapture";
 import { IndividualDocumentUploader } from "../components/IndividualDocumentUploader";
 import { MissingDocsWarningModal } from "../components/MissingDocsWarningModal";
-import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { NixWizardPanel } from "../components/NixWizardPanel";
 import { ProfilePhotoAvatar } from "../components/ProfilePhotoAvatar";
 
@@ -36,7 +36,7 @@ export default function SeekerProfilePage() {
   const [skippedSteps, setSkippedSteps] = useState<Set<number>>(new Set());
 
   const skipStep = (step: number) => {
-    setSkippedSteps(prev => new Set([...prev, step]));
+    setSkippedSteps((prev) => new Set([...prev, step]));
   };
 
   useEffect(() => {
@@ -84,7 +84,17 @@ export default function SeekerProfilePage() {
   const step4Done = qualificationsCount > 0 || skippedSteps.has(4);
   const step5Done = certificatesCount > 0 || skippedSteps.has(5);
   const allOptionalDone = step3Done && step4Done && step5Done;
-  const activeStep = !step1Done ? 1 : !step2Done ? 2 : !step3Done ? 3 : !step4Done ? 4 : !step5Done ? 5 : 6;
+  const activeStep = !step1Done
+    ? 1
+    : !step2Done
+      ? 2
+      : !step3Done
+        ? 3
+        : !step4Done
+          ? 4
+          : !step5Done
+            ? 5
+            : 6;
 
   const handleStartSearch = () => {
     if (!status) return;
@@ -164,7 +174,9 @@ export default function SeekerProfilePage() {
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 px-2 py-4 sm:p-6 space-y-3">
-        <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">Your checklist</h2>
+        <h2 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">
+          Your checklist
+        </h2>
         <div className="grid grid-cols-1 sm:grid-cols-6 gap-2">
           <StepPill num={1} label="Upload CV" done={step1Done} active={activeStep === 1} />
           <StepPill num={2} label="Nix Wizard" done={step2Done} active={activeStep === 2} />
@@ -179,7 +191,11 @@ export default function SeekerProfilePage() {
 
       {hasCv ? (
         <SectionCard
-          title={<><StepVisited num={1} done={step1Done} /> Your CV</>}
+          title={
+            <>
+              <StepVisited num={1} done={step1Done} /> Your CV
+            </>
+          }
           description="Required. We extract your skills, experience, and education from this file."
         >
           {cvDoc ? (
@@ -250,7 +266,11 @@ export default function SeekerProfilePage() {
 
       <SectionCard
         id="qualifications"
-        title={<><StepVisited num={4} done={step4Done} /> Qualifications</>}
+        title={
+          <>
+            <StepVisited num={4} done={step4Done} /> Qualifications
+          </>
+        }
         description="Optional but strongly recommended. Degrees, diplomas, transcripts — one file per qualification."
         badge={qualifications.length > 0 ? `${qualifications.length} uploaded` : "Optional"}
         done={step4Done}
@@ -275,7 +295,11 @@ export default function SeekerProfilePage() {
 
       <SectionCard
         id="certificates"
-        title={<><StepVisited num={5} done={step5Done} /> Certificates</>}
+        title={
+          <>
+            <StepVisited num={5} done={step5Done} /> Certificates
+          </>
+        }
         description="Optional but strongly recommended. Professional certifications, licenses, training certificates."
         badge={certificates.length > 0 ? `${certificates.length} uploaded` : "Optional"}
         done={step5Done}
@@ -534,11 +558,18 @@ function FileBadge(props: { kind: IndividualDocumentKind }) {
 
 function StepVisited(props: { num: number; done: boolean }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${props.done ? "text-emerald-600" : "text-gray-400"}`}>
+    <span
+      className={`inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide ${props.done ? "text-emerald-600" : "text-gray-400"}`}
+    >
       {props.done ? (
         <>
           <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2.5}
+              d="M5 13l4 4L19 7"
+            />
           </svg>
           Step {props.num}
         </>

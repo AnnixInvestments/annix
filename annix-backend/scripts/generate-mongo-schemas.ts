@@ -11,6 +11,8 @@ import { getMetadataArgsStorage } from "typeorm";
 
 const SRC_DIR = path.resolve(__dirname, "../src");
 
+type Ctor = (...args: never[]) => unknown;
+
 function findEntityFiles(dir: string): string[] {
   const results: string[] = [];
   const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -61,7 +63,7 @@ function typeormColToMongoType(
   const isArray = !!opts["array"];
 
   if (typeof rawTypeValue === "function") {
-    const ctorName = (rawTypeValue as Function).name;
+    const ctorName = (rawTypeValue as Ctor).name;
     if (ctorName === "Number") return { mongoType: "Number", isArray };
     if (ctorName === "Boolean") return { mongoType: "Boolean", isArray };
     if (ctorName === "Date") return { mongoType: "Date", isArray };
@@ -143,14 +145,14 @@ function resolveTargetClassName(typeValue: unknown): string | null {
   }
 
   if (typeof typeValue === "function") {
-    const asCtor = typeValue as Function;
+    const asCtor = typeValue as Ctor;
     if (asCtor.name && /^[A-Z]/.test(asCtor.name)) {
       return asCtor.name;
     }
     try {
       const resolved = (typeValue as (t?: unknown) => unknown)();
-      if (typeof resolved === "function" && (resolved as Function).name) {
-        return (resolved as Function).name;
+      if (typeof resolved === "function" && (resolved as Ctor).name) {
+        return (resolved as Ctor).name;
       }
     } catch {
       return null;
@@ -166,7 +168,7 @@ function resolveInverseFkField(inverseSideProperty: unknown): string | null {
   }
 
   if (typeof inverseSideProperty === "function") {
-    const fnSource = (inverseSideProperty as Function).toString();
+    const fnSource = (inverseSideProperty as Ctor).toString();
     const match = fnSource.match(/=>\s*[A-Za-z_$][\w$]*\s*[.[]\s*["']?([A-Za-z_$][\w$]*)/);
     if (match?.[1]) {
       return `${match[1]}Id`;
@@ -176,17 +178,17 @@ function resolveInverseFkField(inverseSideProperty: unknown): string | null {
   return null;
 }
 
-function collectAncestorChain(entityClass: Function): Set<Function> {
-  const chain = new Set<Function>([entityClass]);
-  let proto = Object.getPrototypeOf(entityClass) as Function | null;
+function collectAncestorChain(entityClass: Ctor): Set<Ctor> {
+  const chain = new Set<Ctor>([entityClass]);
+  let proto = Object.getPrototypeOf(entityClass) as Ctor | null;
   while (proto?.name) {
     chain.add(proto);
-    proto = Object.getPrototypeOf(proto) as Function | null;
+    proto = Object.getPrototypeOf(proto) as Ctor | null;
   }
   return chain;
 }
 
-function processEntity(entityClass: Function, tableName: string): EntitySchema {
+function processEntity(entityClass: Ctor, tableName: string): EntitySchema {
   const storage = getMetadataArgsStorage();
   const className = entityClass.name;
   const ancestorChain = collectAncestorChain(entityClass);
@@ -196,13 +198,13 @@ function processEntity(entityClass: Function, tableName: string): EntitySchema {
   );
 
   const allGenerations = storage.generations.filter(
-    (g) => typeof g.target === "function" && ancestorChain.has(g.target as Function),
+    (g) => typeof g.target === "function" && ancestorChain.has(g.target as Ctor),
   );
 
   const generatedProps = new Set(allGenerations.map((g) => g.propertyName));
 
   const allRelations = storage.relations.filter(
-    (r) => typeof r.target === "function" && ancestorChain.has(r.target as Function),
+    (r) => typeof r.target === "function" && ancestorChain.has(r.target as Ctor),
   );
 
   const columns: ProcessedColumn[] = allColumns.map((col) => {
@@ -364,7 +366,7 @@ function main(): void {
 
   const processed = tableArgs
     .map((tableArg) => {
-      const entityClass = tableArg.target as Function;
+      const entityClass = tableArg.target as Ctor;
       const className = entityClass.name;
       try {
         const schema = processEntity(entityClass, tableArg.name || className.toLowerCase());

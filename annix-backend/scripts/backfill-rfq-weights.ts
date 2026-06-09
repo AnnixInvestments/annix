@@ -366,7 +366,7 @@ async function run(rfqId: number, dryRun: boolean) {
 
   console.log("--- Will update ---");
   for (const u of updates) {
-    const shortDesc = u.desc.length > 70 ? u.desc.slice(0, 67) + "..." : u.desc;
+    const shortDesc = u.desc.length > 70 ? `${u.desc.slice(0, 67)}...` : u.desc;
     console.log(
       `Line ${String(u.line).padStart(3)} ${u.table.padEnd(13)} ` +
         `${u.weightKg.toFixed(2).padStart(8)} kg  [${u.basis}]  ${shortDesc}`,
@@ -377,7 +377,7 @@ async function run(rfqId: number, dryRun: boolean) {
   if (skipped.length) {
     console.log("\n--- Skipped (no spec data to compute) ---");
     for (const s of skipped) {
-      const shortDesc = s.desc.length > 70 ? s.desc.slice(0, 67) + "..." : s.desc;
+      const shortDesc = s.desc.length > 70 ? `${s.desc.slice(0, 67)}...` : s.desc;
       console.log(`Line ${String(s.line).padStart(3)} [${s.reason}]  ${shortDesc}`);
     }
   }

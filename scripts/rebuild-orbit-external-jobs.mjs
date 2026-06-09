@@ -30,7 +30,7 @@ for (const line of text.split(/\r?\n/)) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
   if (m) env[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
 }
-const MB = (b) => (b / 1024 / 1024).toFixed(1) + " MB";
+const MB = (b) => `${(b / 1024 / 1024).toFixed(1)} MB`;
 
 const client = new MongoClient(env.ORBIT_MONGODB_URI || env.MONGODB_URI, {
   serverSelectionTimeoutMS: 20000,

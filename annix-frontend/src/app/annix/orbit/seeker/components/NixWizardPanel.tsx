@@ -194,7 +194,9 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
         <NixResultBlock assessment={result} copied={copied} onCopy={handleCopy} />
       )}
 
-      {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} onStartSearch={props.onStartSearch} onBuilt={props.onBuilt} />}
+      {cvBuilderEnabled && (
+        <NixCvBuilder hasCv={hasCv} onStartSearch={props.onStartSearch} onBuilt={props.onBuilt} />
+      )}
 
       {AlertDialog}
     </div>

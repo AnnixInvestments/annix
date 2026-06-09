@@ -657,7 +657,7 @@
     return symbol + Math.round(value).toLocaleString('en-US');
   }
   function applyCurrency(ccy) {
-    document.querySelectorAll('.money').forEach(function (el) {
+    document.querySelectorAll('.money').forEach((el) => {
       el.textContent = fmtMoneyJs(parseFloat(el.dataset.usd), el.dataset.style, ccy);
     });
   }
@@ -665,7 +665,7 @@
     localStorage.setItem('annix-ccy', ccy);
     applyCurrency(ccy);
   }
-  (function () {
+  (() => {
     const savedCcy = localStorage.getItem('annix-ccy') || 'ZAR';
     const ccySelect = document.getElementById('ccySelect');
     if (ccySelect) ccySelect.value = savedCcy;

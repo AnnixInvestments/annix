@@ -714,7 +714,11 @@ export class SeekerJobFeedService {
     return Promise.all(
       docs.map(async (doc) => {
         const isCv = doc.kind === IndividualDocumentKind.CV;
-        const downloadUrl = await this.storageService.presignedUrl(doc.filePath, 3600, doc.originalFilename);
+        const downloadUrl = await this.storageService.presignedUrl(
+          doc.filePath,
+          3600,
+          doc.originalFilename,
+        );
         return {
           id: doc.id,
           kind: doc.kind,
