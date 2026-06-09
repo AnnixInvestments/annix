@@ -17,6 +17,20 @@ function tierLabel(tier: string): string {
   return mapped || tier;
 }
 
+function formatIngestionError(error: string): string {
+  const compact = error
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (
+    /Adzuna API returned 503/i.test(compact) ||
+    /Adzuna API is temporarily unavailable/i.test(compact)
+  ) {
+    return "Adzuna API is temporarily unavailable (HTTP 503). Existing jobs remain available; ingestion will retry on the next scheduled run.";
+  }
+  return compact.length > 260 ? `${compact.slice(0, 257)}...` : compact;
+}
+
 export interface SourceEditPayload {
   ingestionIntervalHours?: number;
   visibleTiers?: string[];
@@ -53,7 +67,9 @@ export function SourceCard({
   const lastIngested = source.lastIngestedAt
     ? fromISO(source.lastIngestedAt).toFormat("dd/MM/yyyy, HH:mm")
     : "Never";
-  const lastError = source.lastIngestionError;
+  const lastError = source.lastIngestionError
+    ? formatIngestionError(source.lastIngestionError)
+    : null;
   const countryCodes = source.countryCodes;
   const countryLabel =
     countryCodes && countryCodes.length > 0 ? countryCodes.join(", ").toUpperCase() : "—";
