@@ -22,6 +22,7 @@ export interface PlatformLimitCard {
   trend: string | null;
   details: string;
   href: string | null;
+  limitLabel: string | null;
 }
 
 export interface PlatformLimitsResponse {
@@ -37,6 +38,9 @@ const ATLAS_STORAGE_CAP_MB = 512;
 const ATLAS_COLLECTION_CAP = 500;
 const DEFAULT_RETENTION_CAP = 15000;
 const AI_DAILY_CALL_SOFT_CAP = 5000;
+const AI_DAILY_TOKEN_SOFT_CAP = 5_000_000;
+const REQUEST_P95_TARGET_MS = 1000;
+const S3_SOFT_BUDGET_GB = 25;
 const EXTERNAL_JOBS_COLLECTION = "cv_assistant_external_jobs";
 const ORBIT_SETTINGS_COLLECTION = "cv_assistant_orbit_settings";
 
@@ -51,6 +55,10 @@ function statusForPercent(percent: number): LimitStatus {
   return "ok";
 }
 
+function formatNumber(value: number): string {
+  return value.toLocaleString("en-US", { maximumFractionDigits: 1 });
+}
+
 function buildCard(input: {
   id: string;
   label: string;
@@ -61,10 +69,17 @@ function buildCard(input: {
   status?: LimitStatus;
   trend?: string | null;
   href?: string | null;
+  limitLabel?: string | null;
 }): PlatformLimitCard {
   const limit = input.limit;
   const percent = limit === null ? null : percentOf(input.value, limit);
   const status = input.status ?? (percent === null ? "info" : statusForPercent(percent));
+  const limitLabel =
+    input.limitLabel !== undefined
+      ? input.limitLabel
+      : limit === null
+        ? null
+        : `of ${formatNumber(limit)} ${input.unit}`;
   return {
     id: input.id,
     label: input.label,
@@ -76,6 +91,7 @@ function buildCard(input: {
     trend: input.trend ?? null,
     details: input.details,
     href: input.href ?? null,
+    limitLabel,
   };
 }
 
@@ -180,38 +196,44 @@ export class AdminPlatformLimitsService {
       value: snapshot.active,
       unit: "req",
       limit: HTTP_HARD_LIMIT,
+      limitLabel: `of ${HTTP_HARD_LIMIT} hard limit`,
       details: `soft limit ${HTTP_SOFT_LIMIT} · peak ${snapshot.peak5m} (5m) · ${snapshot.sampleSize5m} requests in 5m`,
     });
   }
 
   private latencyCard(snapshot: RequestMetricsSnapshot): PlatformLimitCard {
     const p95 = snapshot.p95Ms5m ?? 0;
+    const target = Number(process.env.REQUEST_P95_TARGET_MS) || REQUEST_P95_TARGET_MS;
     const slowest = snapshot.slowRoutes[0] ?? null;
     const slowestText = slowest ? ` · slowest ${slowest.route} ${slowest.p95Ms}ms` : "";
-    const status: LimitStatus = p95 >= 3000 ? "critical" : p95 >= 1000 ? "warn" : "info";
     return buildCard({
       id: "request-p95",
       label: "Request latency p95 (5m)",
       value: p95,
       unit: "ms",
-      limit: null,
-      status,
+      limit: target,
+      limitLabel: `of ${formatNumber(target)} ms target`,
       details: `over ${snapshot.sampleSize5m} requests${slowestText}`,
     });
   }
 
   private errorsCard(snapshot: RequestMetricsSnapshot): PlatformLimitCard {
     const errors = snapshot.errors5m;
+    const total = snapshot.sampleSize5m;
     const status: LimitStatus = errors >= 10 ? "critical" : errors >= 1 ? "warn" : "ok";
+    const rate = total > 0 ? Math.round((errors / total) * 1000) / 10 : 0;
     const details =
-      errors > 0 ? "server errors in the last 5 minutes" : "no server errors in the last 5 minutes";
+      errors > 0
+        ? `${rate}% of the last ${total} requests were 5xx`
+        : "no server errors in the last 5 minutes";
     return buildCard({
       id: "request-errors",
       label: "5xx responses (5m)",
       value: errors,
       unit: "errors",
-      limit: null,
+      limit: total,
       status,
+      limitLabel: `of ${formatNumber(total)} requests (5m)`,
       details,
     });
   }
@@ -250,7 +272,7 @@ export class AdminPlatformLimitsService {
     id: string,
     label: string,
   ): Promise<PlatformLimitCard | null> {
-    if (!connection?.db) return null;
+    if (!connection || !connection.db) return null;
     try {
       const collections = await connection.db.listCollections().toArray();
       const count = collections.length;
@@ -270,7 +292,7 @@ export class AdminPlatformLimitsService {
 
   private async externalJobsCard(): Promise<PlatformLimitCard | null> {
     const connection = this.orbitConnection;
-    if (!connection?.db) return null;
+    if (!connection || !connection.db) return null;
     try {
       const db = connection.db;
       const count = await db.collection(EXTERNAL_JOBS_COLLECTION).estimatedDocumentCount();
@@ -315,19 +337,22 @@ export class AdminPlatformLimitsService {
       value: totals.calls,
       unit: "calls",
       limit: softCap,
-      details: `${totals.tokens.toLocaleString()} tokens today · soft daily budget ${softCap}`,
+      limitLabel: `of ${formatNumber(softCap)} soft budget`,
+      details: `${totals.tokens.toLocaleString()} tokens today`,
     });
   }
 
   private aiTokensCard(totals: { calls: number; tokens: number }): PlatformLimitCard {
     const millions = Math.round((totals.tokens / 1_000_000) * 100) / 100;
+    const budgetTokens = Number(process.env.AI_DAILY_TOKEN_SOFT_CAP) || AI_DAILY_TOKEN_SOFT_CAP;
+    const budgetMillions = Math.round((budgetTokens / 1_000_000) * 10) / 10;
     return buildCard({
       id: "ai-tokens-today",
       label: "AI tokens today",
       value: millions,
       unit: "M",
-      limit: null,
-      status: "info",
+      limit: budgetMillions,
+      limitLabel: `of ${formatNumber(budgetMillions)}M soft budget`,
       details: `${totals.tokens.toLocaleString()} tokens across ${totals.calls} calls today`,
     });
   }
@@ -336,6 +361,7 @@ export class AdminPlatformLimitsService {
     const snapshot = this.s3Usage.snapshot();
     if (snapshot === null) return null;
     const gb = Math.round((snapshot.sizeBytes / 1024 / 1024 / 1024) * 100) / 100;
+    const budgetGb = Number(process.env.S3_SOFT_BUDGET_GB) || S3_SOFT_BUDGET_GB;
     const approxNote = snapshot.approximate ? " (approx — capped scan)" : "";
     const ageMin = Math.round((nowMillis() - snapshot.computedAtMs) / 60000);
     return buildCard({
@@ -343,8 +369,8 @@ export class AdminPlatformLimitsService {
       label: "S3 object storage",
       value: gb,
       unit: "GB",
-      limit: null,
-      status: "info",
+      limit: budgetGb,
+      limitLabel: `of ${formatNumber(budgetGb)} GB soft budget`,
       details: `${snapshot.objectCount.toLocaleString()} objects${approxNote} · refreshed ${ageMin}m ago`,
     });
   }

@@ -9,6 +9,8 @@ const STATUS_RING: Record<string, string> = {
   info: "text-indigo-400",
 };
 
+const NEUTRAL_RING = "text-gray-200 dark:text-slate-700";
+
 function formatValue(value: number): string {
   return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
 }
@@ -23,7 +25,26 @@ function Donut(props: {
   const centerLabel = props.centerLabel;
   const radius = 24;
   const circumference = 2 * Math.PI * radius;
-  const fraction = percent === null ? 1 : Math.min(Math.max(percent, 0), 100) / 100;
+
+  if (percent === null) {
+    return (
+      <div className="relative h-14 w-14 shrink-0">
+        <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden="true">
+          <circle
+            cx="32"
+            cy="32"
+            r={radius}
+            fill="none"
+            strokeWidth="4"
+            stroke="currentColor"
+            className={ringColorClass}
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  const fraction = Math.min(Math.max(percent, 0), 100) / 100;
   const dash = fraction * circumference;
 
   return (
@@ -68,13 +89,16 @@ export function LimitGaugeCard(props: { card: PlatformLimitCard }) {
   const unit = card.unit;
   const label = card.label;
   const details = card.details;
+  const limitLabel = card.limitLabel;
 
-  const ringColorRaw = STATUS_RING[status];
-  const ringColor = ringColorRaw || STATUS_RING.info;
+  const statusRingRaw = STATUS_RING[status];
+  const statusRing = statusRingRaw || STATUS_RING.info;
 
   const hasGauge = percent !== null && limit !== null;
+  const isAlerting = status === "warn" || status === "critical";
   const donutPercent = hasGauge ? percent : null;
   const centerLabel = hasGauge ? `${percent}%` : null;
+  const ringColor = hasGauge ? statusRing : isAlerting ? statusRing : NEUTRAL_RING;
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900">
@@ -89,11 +113,7 @@ export function LimitGaugeCard(props: { card: PlatformLimitCard }) {
             </span>
             <span className="text-xs text-gray-500">{unit}</span>
           </div>
-          {limit !== null ? (
-            <div className="text-[11px] text-gray-400">
-              of {formatValue(limit)} {unit}
-            </div>
-          ) : null}
+          {limitLabel ? <div className="text-[11px] text-gray-400">{limitLabel}</div> : null}
         </div>
       </div>
 

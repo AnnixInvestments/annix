@@ -1652,6 +1652,7 @@ export interface PlatformLimitCard {
   trend: string | null;
   details: string;
   href: string | null;
+  limitLabel: string | null;
 }
 
 export interface PlatformLimitsResponse {
