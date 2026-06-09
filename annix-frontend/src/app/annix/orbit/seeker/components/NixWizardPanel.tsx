@@ -55,12 +55,14 @@ export interface NixWizardPanelProps {
   highlight?: boolean;
   onRan?: () => void;
   onStartSearch?: () => void;
+  onBuilt?: () => void;
 }
 
 export function NixWizardPanel(props: NixWizardPanelProps) {
   const hasCv = props.hasCv;
   const autoRunKey = props.autoRunKey;
   const onRan = props.onRan;
+  const onBuilt = props.onBuilt;
   const runHighlighted = hasCv && props.highlight === true;
   const runPalette = runHighlighted
     ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
@@ -192,7 +194,8 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
         <NixResultBlock assessment={result} copied={copied} onCopy={handleCopy} />
       )}
 
-      {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} onStartSearch={props.onStartSearch} />}
+      {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} onStartSearch={props.onStartSearch} onBuilt={props.onBuilt} />}
+
       {AlertDialog}
     </div>
   );

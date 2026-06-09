@@ -620,6 +620,8 @@ export default function SeekerJobsPage() {
   const browseJobsLoading = browseJobsQuery.isLoading;
   const browseListLoading = browseJobsLoading || !entitlementsResolved;
 
+  const [filterTipDismissed, setFilterTipDismissed] = useState(false);
+
   const profileLoading = profileStatusQuery.isLoading;
   const profileError = profileStatusQuery.isError;
   const consentLoading = consentQuery.isLoading;
@@ -835,6 +837,24 @@ export default function SeekerJobsPage() {
     <div className="space-y-6">
       <div ref={topAnchorRef} />
       <PageHeader subtitle={matchedSubtitle} />
+
+      {!filterTipDismissed && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex items-start justify-between gap-4">
+          <p>
+            <strong>Tip:</strong> Use the filters below to narrow your job matches by location, category, salary, and more.
+          </p>
+          <button
+            type="button"
+            onClick={() => setFilterTipDismissed(true)}
+            className="text-blue-500 hover:text-blue-700 flex-shrink-0"
+            aria-label="Dismiss tip"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <JobsTopBar
         jobCount={jobCount}

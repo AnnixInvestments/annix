@@ -27,11 +27,13 @@ const NIX_BUILD_ESTIMATED_MS = 18000;
 export interface NixCvBuilderProps {
   hasCv: boolean;
   onStartSearch?: () => void;
+  onBuilt?: () => void;
 }
 
 export function NixCvBuilder(props: NixCvBuilderProps) {
   const hasCv = props.hasCv;
   const onStartSearch = props.onStartSearch;
+  const onBuilt = props.onBuilt;
   const generateMutation = useGenerateNixCv();
   const generatedQuery = useNixGeneratedCv();
   const profileStatusQuery = useOrbitMyProfileStatus();
@@ -71,6 +73,12 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   const isBuilding = generateMutation.isPending;
   const generate = generateMutation.mutate;
+
+  useEffect(() => {
+    if (generateMutation.isSuccess) {
+      onBuilt?.();
+    }
+  }, [generateMutation.isSuccess, onBuilt]);
 
   useEffect(() => {
     metricsApi
@@ -257,6 +265,7 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       await adoptMutation.mutateAsync();
       hideExtraction();
       setAdopted(true);
+      onBuilt?.();
       setAdoptMessage("Saved — Nix is now using this CV. Your job matches will refresh shortly.");
       void confirm({
         title: "CV saved",
