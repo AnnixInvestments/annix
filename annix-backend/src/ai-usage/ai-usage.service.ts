@@ -75,6 +75,11 @@ export class AiUsageService {
     return this.repo.aggregateDailyUsageByModel(model, since);
   }
 
+  async dailyTotals(since: Date): Promise<{ calls: number; tokens: number }> {
+    const summary = await this.repo.sumUsage(null, null, since.toISOString(), null);
+    return { calls: summary.totalCalls, tokens: summary.totalTokens };
+  }
+
   async usageLogs(query: AiUsageQueryDto): Promise<AiUsageListResponse> {
     const page = query.page ?? 1;
     const limit = query.limit ?? 50;

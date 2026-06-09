@@ -1,11 +1,13 @@
 import { getHeapStatistics } from "node:v8";
-import { Injectable, Logger, Optional } from "@nestjs/common";
+import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
 import { InjectConnection } from "@nestjs/mongoose";
 import type { Connection } from "mongoose";
-import { nowISO } from "../lib/datetime";
+import { AiUsageService } from "../ai-usage/ai-usage.service";
+import { now, nowISO, nowMillis } from "../lib/datetime";
 import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import type { RequestMetricsSnapshot } from "../platform-metrics/request-metrics.service";
 import { RequestMetricsService } from "../platform-metrics/request-metrics.service";
+import { S3UsageService } from "../platform-metrics/s3-usage.service";
 
 export type LimitStatus = "ok" | "warn" | "critical" | "info";
 
@@ -34,6 +36,7 @@ const HTTP_SOFT_LIMIT = 25;
 const ATLAS_STORAGE_CAP_MB = 512;
 const ATLAS_COLLECTION_CAP = 500;
 const DEFAULT_RETENTION_CAP = 15000;
+const AI_DAILY_CALL_SOFT_CAP = 5000;
 const EXTERNAL_JOBS_COLLECTION = "cv_assistant_external_jobs";
 const ORBIT_SETTINGS_COLLECTION = "cv_assistant_orbit_settings";
 
@@ -94,6 +97,10 @@ export class AdminPlatformLimitsService {
 
   constructor(
     private readonly requestMetrics: RequestMetricsService,
+    private readonly s3Usage: S3UsageService,
+    @Optional()
+    @Inject(AiUsageService)
+    private readonly aiUsageService: AiUsageService | null = null,
     @Optional() @InjectConnection() private readonly mainConnection: Connection | null = null,
     @Optional()
     @InjectConnection(ORBIT_CONNECTION)
@@ -102,12 +109,14 @@ export class AdminPlatformLimitsService {
 
   async limits(): Promise<PlatformLimitsResponse> {
     const snapshot = this.requestMetrics.snapshot();
+    const aiTotals = await this.aiDailyTotals();
     const dynamicCards = await Promise.all([
       this.orbitStorageCard(),
       this.collectionCountCard(this.mainConnection, "collections-main", "Collections — main DB"),
       this.collectionCountCard(this.orbitConnection, "collections-orbit", "Collections — Orbit DB"),
       this.externalJobsCard(),
     ]);
+    const aiCards = aiTotals ? [this.aiCallsCard(aiTotals), this.aiTokensCard(aiTotals)] : [];
     const cards = [
       this.memoryCard(),
       this.heapCard(),
@@ -116,6 +125,8 @@ export class AdminPlatformLimitsService {
       this.latencyCard(snapshot),
       this.errorsCard(snapshot),
       ...dynamicCards,
+      ...aiCards,
+      this.s3StorageCard(),
     ].filter((card): card is PlatformLimitCard => card !== null);
     return { generatedAt: nowISO(), cards };
   }
@@ -282,5 +293,59 @@ export class AdminPlatformLimitsService {
       this.logger.warn(`externalJobsCard failed: ${String(error)}`);
       return null;
     }
+  }
+
+  private async aiDailyTotals(): Promise<{ calls: number; tokens: number } | null> {
+    const service = this.aiUsageService;
+    if (service === null) return null;
+    try {
+      const since = now().startOf("day").toJSDate();
+      return await service.dailyTotals(since);
+    } catch (error) {
+      this.logger.warn(`aiDailyTotals failed: ${String(error)}`);
+      return null;
+    }
+  }
+
+  private aiCallsCard(totals: { calls: number; tokens: number }): PlatformLimitCard {
+    const softCap = Number(process.env.AI_DAILY_CALL_SOFT_CAP) || AI_DAILY_CALL_SOFT_CAP;
+    return buildCard({
+      id: "ai-calls-today",
+      label: "AI calls today",
+      value: totals.calls,
+      unit: "calls",
+      limit: softCap,
+      details: `${totals.tokens.toLocaleString()} tokens today · soft daily budget ${softCap}`,
+    });
+  }
+
+  private aiTokensCard(totals: { calls: number; tokens: number }): PlatformLimitCard {
+    const millions = Math.round((totals.tokens / 1_000_000) * 100) / 100;
+    return buildCard({
+      id: "ai-tokens-today",
+      label: "AI tokens today",
+      value: millions,
+      unit: "M",
+      limit: null,
+      status: "info",
+      details: `${totals.tokens.toLocaleString()} tokens across ${totals.calls} calls today`,
+    });
+  }
+
+  private s3StorageCard(): PlatformLimitCard | null {
+    const snapshot = this.s3Usage.snapshot();
+    if (snapshot === null) return null;
+    const gb = Math.round((snapshot.sizeBytes / 1024 / 1024 / 1024) * 100) / 100;
+    const approxNote = snapshot.approximate ? " (approx — capped scan)" : "";
+    const ageMin = Math.round((nowMillis() - snapshot.computedAtMs) / 60000);
+    return buildCard({
+      id: "s3-storage",
+      label: "S3 object storage",
+      value: gb,
+      unit: "GB",
+      limit: null,
+      status: "info",
+      details: `${snapshot.objectCount.toLocaleString()} objects${approxNote} · refreshed ${ageMin}m ago`,
+    });
   }
 }
