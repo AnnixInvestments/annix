@@ -2,6 +2,7 @@
 
 import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
 import { isString } from "es-toolkit/compat";
+import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   GOOGLE_MAP_PRESETS,
@@ -10,6 +11,12 @@ import {
 } from "@/app/config/googleMapsConfig";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import ManualLocationInput from "./ManualLocationInput";
+
+declare global {
+  interface Window {
+    gm_authFailure?: () => void;
+  }
+}
 
 interface Location {
   lat: number;
@@ -35,7 +42,7 @@ const defaultCenter: Location = {
   lng: 28.04363,
 };
 
-const libraries: ("places" | "geocoding")[] = ["places", "geocoding"];
+const libraries: "places"[] = ["places"];
 
 function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): GoogleMapDisplayConfig {
   if (!config) {
@@ -49,6 +56,197 @@ function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): Googl
   return config;
 }
 
+function OpenStreetMapLocationPicker(props: {
+  initialLocation?: Location;
+  onLocationSelect: (location: Location) => void;
+  onClose: () => void;
+  displayConfig: GoogleMapDisplayConfig;
+}) {
+  const { initialLocation, onLocationSelect, onClose, displayConfig } = props;
+  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<LeafletMap | null>(null);
+  const markerRef = useRef<LeafletMarker | null>(null);
+  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
+    initialLocation || null,
+  );
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  useEffect(() => {
+    if (!mapContainerRef.current) return;
+    let cancelled = false;
+
+    const initMap = async () => {
+      const L = await import("leaflet");
+      if (cancelled || !mapContainerRef.current) return;
+
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+      }
+
+      const startLocation = selectedLocation || defaultCenter;
+      const map = L.map(mapContainerRef.current, {
+        center: [startLocation.lat, startLocation.lng],
+        zoom: selectedLocation ? 14 : 6,
+      });
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution:
+          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
+
+      const placeMarker = (location: Location) => {
+        if (markerRef.current) {
+          markerRef.current.setLatLng([location.lat, location.lng]);
+          return;
+        }
+        markerRef.current = L.marker([location.lat, location.lng]).addTo(map);
+      };
+
+      if (selectedLocation) {
+        placeMarker(selectedLocation);
+      }
+
+      map.on("click", (event) => {
+        const location = {
+          lat: event.latlng.lat,
+          lng: event.latlng.lng,
+        };
+        setSelectedLocation(location);
+        placeMarker(location);
+      });
+
+      mapInstanceRef.current = map;
+      window.setTimeout(() => map.invalidateSize(), 150);
+    };
+
+    void initMap();
+
+    return () => {
+      cancelled = true;
+      if (mapInstanceRef.current) {
+        mapInstanceRef.current.remove();
+        mapInstanceRef.current = null;
+      }
+      markerRef.current = null;
+    };
+  }, []);
+
+  const handleUseCurrentLocation = () => {
+    if (!navigator.geolocation) return;
+    setIsGettingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const location = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setSelectedLocation(location);
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.setView([location.lat, location.lng], 14);
+        }
+        setIsGettingLocation(false);
+      },
+      () => setIsGettingLocation(false),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
+  const rawContainerClassName = displayConfig.containerClassName;
+  const outerContainerClass =
+    displayConfig.layout === "responsive"
+      ? "bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[90vh] md:max-h-[95vh] flex flex-col md:h-auto"
+      : "bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden";
+  const rawMapHeight = displayConfig.mapHeight;
+
+  return (
+    <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">
+      <div className={rawContainerClassName || outerContainerClass}>
+        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Select Location</h3>
+            <p className="text-sm text-gray-600">
+              Click on the map to pin your location. Google Maps is unavailable, so this uses
+              OpenStreetMap.
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-gray-200 rounded-full transition-colors"
+          >
+            <svg
+              className="w-5 h-5 text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+        <div className="relative">
+          <div
+            ref={mapContainerRef}
+            className="w-full"
+            style={{
+              height: `${rawMapHeight || 400}px`,
+              minHeight: displayConfig.layout === "responsive" ? "260px" : undefined,
+            }}
+          />
+          <button
+            onClick={handleUseCurrentLocation}
+            disabled={isGettingLocation}
+            className="absolute top-3 right-3 z-[1000] px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium border bg-white text-gray-700 border-gray-200 hover:bg-blue-50 disabled:opacity-60"
+          >
+            {isGettingLocation ? "Getting location..." : "My Location"}
+          </button>
+        </div>
+        {selectedLocation ? (
+          <div className="p-4 border-t bg-gray-50">
+            <div className="bg-white p-3 rounded-lg border">
+              <div className="text-xs font-medium text-gray-500 mb-1">Coordinates</div>
+              <div className="text-sm font-semibold text-gray-900">
+                {Number(selectedLocation.lat).toFixed(5)}, {Number(selectedLocation.lng).toFixed(5)}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        <div className="flex items-center justify-end gap-3 p-4 border-t bg-white">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => selectedLocation && onLocationSelect(selectedLocation)}
+            disabled={!selectedLocation}
+            className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 ${
+              selectedLocation
+                ? "bg-blue-600 text-white hover:bg-blue-700"
+                : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            }`}
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+            Confirm Location
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerProps) {
   const { initialLocation, onLocationSelect, onClose, apiKey, config } = props;
   const { alert, AlertDialog } = useAlert();
@@ -58,6 +256,7 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
   const [manualLng, setManualLng] = useState(initialLocation?.lng?.toString() || "");
   const [latError, setLatError] = useState<string | null>(null);
   const [lngError, setLngError] = useState<string | null>(null);
+  const [hasGoogleMapsAuthError, setHasGoogleMapsAuthError] = useState(false);
 
   // Check if API key is missing or empty
   const isApiKeyMissing = !apiKey || apiKey.trim() === "";
@@ -236,6 +435,17 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
       reverseGeocode(initialLocation);
     }
   }, [initialLocation, isLoaded, reverseGeocode]);
+
+  useEffect(() => {
+    const previousAuthFailure = window.gm_authFailure;
+    window.gm_authFailure = () => {
+      setHasGoogleMapsAuthError(true);
+      previousAuthFailure?.();
+    };
+    return () => {
+      window.gm_authFailure = previousAuthFailure;
+    };
+  }, []);
 
   const handleManualLocationSubmit = useCallback(() => {
     const lat = parseFloat(manualLat);
@@ -426,52 +636,14 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
     );
   }
 
-  if (loadError) {
+  if (loadError || hasGoogleMapsAuthError) {
     return (
-      <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50">
-        <div className="bg-white rounded-xl p-6 max-w-md">
-          <h3 className="text-lg font-semibold text-red-600 mb-2">Google Maps Loading Error</h3>
-          <p className="text-gray-600 mb-2">Unable to load Google Maps. This could be due to:</p>
-          <ul className="text-gray-600 text-sm mb-4 list-disc list-inside space-y-1">
-            <li>Missing or invalid API key</li>
-            <li>API key doesn't have Google Maps JavaScript API enabled</li>
-            <li>API key has incorrect referrer restrictions</li>
-          </ul>
-          <div className="bg-blue-50 p-3 rounded mb-4">
-            <p className="text-blue-700 text-sm">
-              <strong>To fix:</strong> Get a valid API key from
-              <a
-                href="https://console.cloud.google.com/google/maps-apis/overview"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 underline"
-              >
-                Google Cloud Console
-              </a>
-              and ensure these APIs are enabled:
-            </p>
-            <ul className="text-blue-700 text-sm mt-2 list-disc list-inside">
-              <li>Maps JavaScript API</li>
-              <li>Places API</li>
-              <li>Geocoding API</li>
-            </ul>
-          </div>
-          <div className="flex gap-3">
-            <button
-              onClick={() => setShowManualInput(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Enter Manually
-            </button>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
+      <OpenStreetMapLocationPicker
+        initialLocation={initialLocation}
+        onLocationSelect={onLocationSelect}
+        onClose={onClose}
+        displayConfig={displayConfig}
+      />
     );
   }
 
