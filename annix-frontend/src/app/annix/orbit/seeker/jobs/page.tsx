@@ -1309,9 +1309,9 @@ interface PageHeaderProps {
 
 function PageHeader(props: PageHeaderProps) {
   return (
-    <div>
+    <div className="w-fit max-w-full rounded-xl bg-black/30 px-4 py-3 backdrop-blur-sm">
       <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
-      <p className="text-white/70 mt-2">{props.subtitle}</p>
+      <p className="text-white/80 mt-1">{props.subtitle}</p>
     </div>
   );
 }

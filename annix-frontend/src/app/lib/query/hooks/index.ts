@@ -107,11 +107,14 @@ export {
   useAdminResendOrbitUserInvite,
   useAdminUpdateOrbitUser,
 } from "./admin/useAdminOrbitUsers";
-export { useAdminPlatformLimits } from "./admin/useAdminPlatformLimits";
+export {
+  useAdminPlatformLimitBreakdown,
+  useAdminPlatformLimits,
+} from "./admin/useAdminPlatformLimits";
 export { useAdminRfqDetail, useAdminRfqs } from "./admin/useAdminRfqs";
 export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";
-export { useAiUsageLogs } from "./admin/useAiUsage";
+export { useAiUsageDailySeries, useAiUsageLogs } from "./admin/useAiUsage";
 export {
   useAnnixCompanyProfile,
   useUpdateAnnixCompanyProfile,

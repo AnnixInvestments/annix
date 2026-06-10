@@ -787,7 +787,7 @@ export class IndividualProfileService {
 
     if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
       throw new BadRequestException(
-        "We couldn't read any text from this CV file. If it is a scanned image, please upload a text-based PDF, Word, or Excel version instead.",
+        "We couldn't read any text from your CV, even after trying automatic conversion and OCR. It may be password-protected, corrupted, or contain only images we couldn't read. Please re-upload a text-based PDF or Word document, or a clearer scan.",
       );
     }
 

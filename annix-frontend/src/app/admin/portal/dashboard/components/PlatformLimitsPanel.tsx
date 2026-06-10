@@ -1,11 +1,22 @@
 "use client";
 
+import { useState } from "react";
+import type { PlatformLimitCard } from "@/app/lib/api/adminApi";
 import { useAdminPlatformLimits } from "@/app/lib/query/hooks";
+import { AiUsageDailyChartModal, type AiUsageMetric } from "./AiUsageDailyChartModal";
+import { LimitBreakdownModal } from "./LimitBreakdownModal";
 import { LimitGaugeCard } from "./LimitGaugeCard";
+
+const AI_CARD_METRICS: Record<string, AiUsageMetric> = {
+  "ai-calls-today": "calls",
+  "ai-tokens-today": "tokens",
+};
 
 export function PlatformLimitsPanel() {
   const limitsQuery = useAdminPlatformLimits();
   const data = limitsQuery.data;
+  const [aiChartMetric, setAiChartMetric] = useState<AiUsageMetric | null>(null);
+  const [breakdownCard, setBreakdownCard] = useState<PlatformLimitCard | null>(null);
 
   if (!data) {
     return (
@@ -16,6 +27,12 @@ export function PlatformLimitsPanel() {
   }
 
   const cards = data.cards;
+  const aiCallsCard = cards.find((card) => card.id === "ai-calls-today");
+  const aiTokensCard = cards.find((card) => card.id === "ai-tokens-today");
+  const callsBudget = aiCallsCard ? aiCallsCard.limit : null;
+  const tokensCardLimitMillions = aiTokensCard ? aiTokensCard.limit : null;
+  const tokensBudget =
+    tokensCardLimitMillions !== null ? tokensCardLimitMillions * 1_000_000 : null;
   const criticalCount = cards.filter((card) => card.status === "critical").length;
   const warnCount = cards.filter((card) => card.status === "warn").length;
   const summaryLabel =
@@ -40,10 +57,25 @@ export function PlatformLimitsPanel() {
         <span className={`text-xs font-medium ${summaryColor}`}>{summaryLabel}</span>
       </div>
       <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
-        {cards.map((card) => (
-          <LimitGaugeCard key={card.id} card={card} />
-        ))}
+        {cards.map((card) => {
+          const aiMetric = AI_CARD_METRICS[card.id];
+          return (
+            <LimitGaugeCard
+              key={card.id}
+              card={card}
+              onClick={aiMetric ? () => setAiChartMetric(aiMetric) : () => setBreakdownCard(card)}
+            />
+          );
+        })}
       </div>
+      <AiUsageDailyChartModal
+        isOpen={aiChartMetric !== null}
+        initialMetric={aiChartMetric ?? "calls"}
+        callsBudget={callsBudget}
+        tokensBudget={tokensBudget}
+        onClose={() => setAiChartMetric(null)}
+      />
+      <LimitBreakdownModal card={breakdownCard} onClose={() => setBreakdownCard(null)} />
     </div>
   );
 }

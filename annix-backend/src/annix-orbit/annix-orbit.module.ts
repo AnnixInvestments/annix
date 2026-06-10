@@ -9,6 +9,7 @@ import { AuditModule } from "../audit/audit.module";
 import { EmailModule } from "../email/email.module";
 import { FeatureFlagsModule } from "../feature-flags/feature-flags.module";
 import { FeedbackModule } from "../feedback/feedback.module";
+import { LibreOfficeConversionService } from "../lib/libreoffice-conversion.service";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { ORBIT_CONNECTION } from "../lib/persistence/mongo-connections";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
@@ -672,6 +673,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     JobPostingService,
     CandidateService,
     CvExtractionService,
+    LibreOfficeConversionService,
     JobMatchService,
     ReferenceService,
     AnnixOrbitClientService,

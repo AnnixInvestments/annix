@@ -80,8 +80,9 @@ function Donut(props: {
   );
 }
 
-export function LimitGaugeCard(props: { card: PlatformLimitCard }) {
+export function LimitGaugeCard(props: { card: PlatformLimitCard; onClick?: () => void }) {
   const card = props.card;
+  const onClick = props.onClick;
   const status = card.status;
   const percent = card.percent;
   const limit = card.limit;
@@ -100,8 +101,25 @@ export function LimitGaugeCard(props: { card: PlatformLimitCard }) {
   const centerLabel = hasGauge ? `${percent}%` : null;
   const ringColor = hasGauge ? statusRing : isAlerting ? statusRing : NEUTRAL_RING;
 
+  const interactiveClasses = onClick
+    ? "cursor-pointer text-left transition hover:border-indigo-300 hover:shadow-md dark:hover:border-indigo-500/50"
+    : "";
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900">
+    <div
+      className={`rounded-xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900 ${interactiveClasses}`}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") onClick();
+            }
+          : undefined
+      }
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      title={onClick ? "View daily history" : undefined}
+    >
       <h4 className="text-xs font-semibold text-gray-900 dark:text-white">{label}</h4>
 
       <div className="mt-2 flex items-center gap-3">

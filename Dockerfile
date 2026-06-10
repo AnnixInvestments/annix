@@ -56,6 +56,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   chromium \
   ghostscript \
   fonts-liberation \
+  fonts-dejavu-core \
+  libreoffice-writer \
   libappindicator3-1 \
   libasound2 \
   libatk-bridge2.0-0 \

@@ -1,6 +1,10 @@
 import { Controller, Get, Query, UseGuards } from "@nestjs/common";
 import { ApiBearerAuth, ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
-import { AiUsageListResponse, AiUsageService } from "../ai-usage/ai-usage.service";
+import {
+  AiUsageDailySeriesResponse,
+  AiUsageListResponse,
+  AiUsageService,
+} from "../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../ai-usage/entities/ai-usage-log.entity";
 import { Roles } from "../auth/roles.decorator";
 import { RolesGuard } from "../auth/roles.guard";
@@ -13,6 +17,13 @@ import { AdminAuthGuard } from "./guards/admin-auth.guard";
 @ApiBearerAuth()
 export class AdminAiUsageController {
   constructor(private readonly aiUsageService: AiUsageService) {}
+
+  @Get("daily-series")
+  @ApiOperation({ summary: "Daily AI usage series (calls + tokens per day) for charting" })
+  @ApiQuery({ name: "days", required: false, type: Number })
+  async dailySeries(@Query("days") days?: string): Promise<AiUsageDailySeriesResponse> {
+    return this.aiUsageService.dailySeries(days ? Number(days) : 28);
+  }
 
   @Get()
   @ApiOperation({ summary: "List AI usage logs with filters" })

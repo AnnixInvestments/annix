@@ -208,7 +208,7 @@ export class NixSeekerAssistService {
     }
     if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
       throw new BadRequestException(
-        "We couldn't read any text from your CV file. If it is a scanned image, please re-upload a text-based PDF, Word, or Excel version.",
+        "We couldn't read any text from your CV, even after trying automatic conversion and OCR. It may be password-protected, corrupted, or contain only images. Please re-upload a text-based PDF or Word document, or a clearer scan.",
       );
     }
 
@@ -301,7 +301,7 @@ export class NixSeekerAssistService {
     }
     if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
       throw new BadRequestException(
-        "We couldn't read any text from your CV file. If it is a scanned image, please re-upload a text-based PDF, Word, or Excel version.",
+        "We couldn't read any text from your CV, even after trying automatic conversion and OCR. It may be password-protected, corrupted, or contain only images. Please re-upload a text-based PDF or Word document, or a clearer scan.",
       );
     }
 

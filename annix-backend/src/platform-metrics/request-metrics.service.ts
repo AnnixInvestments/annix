@@ -14,6 +14,11 @@ export interface SlowRoute {
   count: number;
 }
 
+export interface ErrorRoute {
+  route: string;
+  count: number;
+}
+
 export interface RequestMetricsSnapshot {
   active: number;
   peak5m: number;
@@ -21,6 +26,7 @@ export interface RequestMetricsSnapshot {
   errors5m: number;
   sampleSize5m: number;
   slowRoutes: SlowRoute[];
+  errorRoutes: ErrorRoute[];
 }
 
 const FIVE_MIN_MS = 5 * 60 * 1000;
@@ -45,6 +51,18 @@ function topSlowRoutes(window: RequestSample[], limit: number): SlowRoute[] {
       return { route, p95Ms: percentile(durations, 95) ?? 0, count: durations.length };
     })
     .sort((a, b) => b.p95Ms - a.p95Ms)
+    .slice(0, limit);
+}
+
+function topErrorRoutes(window: RequestSample[], limit: number): ErrorRoute[] {
+  const failures = window.filter((sample) => sample.status >= 500);
+  const counts = failures.reduce<Map<string, number>>((acc, sample) => {
+    acc.set(sample.route, (acc.get(sample.route) ?? 0) + 1);
+    return acc;
+  }, new Map());
+  return [...counts.entries()]
+    .map(([route, count]) => ({ route, count }))
+    .sort((a, b) => b.count - a.count)
     .slice(0, limit);
 }
 
@@ -84,6 +102,7 @@ export class RequestMetricsService {
       errors5m: window.filter((sample) => sample.status >= 500).length,
       sampleSize5m: window.length,
       slowRoutes: topSlowRoutes(window, 5),
+      errorRoutes: topErrorRoutes(window, 5),
     };
   }
 

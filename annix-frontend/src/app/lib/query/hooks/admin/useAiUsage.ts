@@ -8,3 +8,11 @@ export function useAiUsageLogs(params?: AiUsageQueryParams) {
     queryFn: () => adminApiClient.aiUsageLogs(params),
   });
 }
+
+export function useAiUsageDailySeries(days: number, enabled: boolean) {
+  return useQuery({
+    queryKey: adminKeys.aiUsage.dailySeries(days),
+    queryFn: () => adminApiClient.aiUsageDailySeries(days),
+    enabled,
+  });
+}

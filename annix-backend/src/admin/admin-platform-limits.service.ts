@@ -1,5 +1,5 @@
-import { getHeapStatistics } from "node:v8";
-import { Inject, Injectable, Logger, Optional } from "@nestjs/common";
+import { getHeapSpaceStatistics, getHeapStatistics } from "node:v8";
+import { Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
 import { InjectConnection } from "@nestjs/mongoose";
 import type { Connection } from "mongoose";
 import { AiUsageService } from "../ai-usage/ai-usage.service";
@@ -30,6 +30,21 @@ export interface PlatformLimitsResponse {
   cards: PlatformLimitCard[];
 }
 
+export interface PlatformLimitBreakdownRow {
+  label: string;
+  value: number;
+  unit: string;
+  percent: number | null;
+}
+
+export interface PlatformLimitBreakdown {
+  id: string;
+  title: string;
+  generatedAt: string;
+  rows: PlatformLimitBreakdownRow[];
+  note: string | null;
+}
+
 const VM_MEMORY_CAP_MB = 1024;
 const HEAP_FALLBACK_CAP_MB = 768;
 const HTTP_HARD_LIMIT = 50;
@@ -37,7 +52,7 @@ const HTTP_SOFT_LIMIT = 25;
 const ATLAS_STORAGE_CAP_MB = 512;
 const ATLAS_COLLECTION_CAP = 500;
 const DEFAULT_RETENTION_CAP = 15000;
-const AI_DAILY_CALL_SOFT_CAP = 5000;
+const AI_DAILY_CALL_SOFT_CAP = 100_000;
 const AI_DAILY_TOKEN_SOFT_CAP = 5_000_000;
 const REQUEST_P95_TARGET_MS = 1000;
 const S3_SOFT_BUDGET_GB = 25;
@@ -272,7 +287,7 @@ export class AdminPlatformLimitsService {
     id: string,
     label: string,
   ): Promise<PlatformLimitCard | null> {
-    if (!connection || !connection.db) return null;
+    if (!connection?.db) return null;
     try {
       const collections = await connection.db.listCollections().toArray();
       const count = collections.length;
@@ -292,7 +307,7 @@ export class AdminPlatformLimitsService {
 
   private async externalJobsCard(): Promise<PlatformLimitCard | null> {
     const connection = this.orbitConnection;
-    if (!connection || !connection.db) return null;
+    if (!connection?.db) return null;
     try {
       const db = connection.db;
       const count = await db.collection(EXTERNAL_JOBS_COLLECTION).estimatedDocumentCount();
@@ -337,8 +352,8 @@ export class AdminPlatformLimitsService {
       value: totals.calls,
       unit: "calls",
       limit: softCap,
-      limitLabel: `of ${formatNumber(softCap)} soft budget`,
-      details: `${totals.tokens.toLocaleString()} tokens today`,
+      limitLabel: `of ${formatNumber(softCap)} Gemini RPD`,
+      details: `binding cap: Gemini 2.5 Flash 100K requests/day (Tier 2) · ${totals.tokens.toLocaleString()} tokens today`,
     });
   }
 
@@ -352,9 +367,302 @@ export class AdminPlatformLimitsService {
       value: millions,
       unit: "M",
       limit: budgetMillions,
-      limitLabel: `of ${formatNumber(budgetMillions)}M soft budget`,
-      details: `${totals.tokens.toLocaleString()} tokens across ${totals.calls} calls today`,
+      limitLabel: `of ${formatNumber(budgetMillions)}M cost guard`,
+      details: `Gemini has no daily token cap (3–10M TPM per model) — this is a self-imposed cost guard · ${totals.tokens.toLocaleString()} tokens across ${totals.calls} calls today`,
     });
+  }
+
+  async breakdown(cardId: string): Promise<PlatformLimitBreakdown> {
+    if (cardId === "vm-memory") return this.vmMemoryBreakdown();
+    if (cardId === "node-heap") return this.nodeHeapBreakdown();
+    if (cardId === "uptime") return this.uptimeBreakdown();
+    if (cardId === "active-requests") return this.activeRequestsBreakdown();
+    if (cardId === "request-p95") return this.latencyBreakdown();
+    if (cardId === "request-errors") return this.errorsBreakdown();
+    if (cardId === "orbit-storage") return this.orbitStorageBreakdown();
+    if (cardId === "collections-main")
+      return this.collectionsBreakdown(this.mainConnection, cardId, "Collections — main DB");
+    if (cardId === "collections-orbit")
+      return this.collectionsBreakdown(this.orbitConnection, cardId, "Collections — Orbit DB");
+    if (cardId === "external-jobs") return this.externalJobsBreakdown();
+    if (cardId === "s3-storage") return this.s3Breakdown();
+    throw new NotFoundException(`No breakdown available for card '${cardId}'`);
+  }
+
+  private breakdownResult(
+    id: string,
+    title: string,
+    rows: PlatformLimitBreakdownRow[],
+    note: string | null,
+  ): PlatformLimitBreakdown {
+    return { id, title, generatedAt: nowISO(), rows, note };
+  }
+
+  private vmMemoryBreakdown(): PlatformLimitBreakdown {
+    const usage = process.memoryUsage();
+    const capMb = Number(process.env.FLY_VM_MEMORY_MB) || VM_MEMORY_CAP_MB;
+    const toMb = (bytes: number) => Math.round((bytes / 1024 / 1024) * 10) / 10;
+    const rssMb = toMb(usage.rss);
+    const rows: PlatformLimitBreakdownRow[] = [
+      { label: "Resident set (RSS)", value: rssMb, unit: "MB", percent: percentOf(rssMb, capMb) },
+      {
+        label: "V8 heap used",
+        value: toMb(usage.heapUsed),
+        unit: "MB",
+        percent: percentOf(toMb(usage.heapUsed), rssMb),
+      },
+      {
+        label: "V8 heap allocated",
+        value: toMb(usage.heapTotal),
+        unit: "MB",
+        percent: percentOf(toMb(usage.heapTotal), rssMb),
+      },
+      {
+        label: "External (buffers, C++)",
+        value: toMb(usage.external),
+        unit: "MB",
+        percent: percentOf(toMb(usage.external), rssMb),
+      },
+      {
+        label: "ArrayBuffers",
+        value: toMb(usage.arrayBuffers),
+        unit: "MB",
+        percent: percentOf(toMb(usage.arrayBuffers), rssMb),
+      },
+    ];
+    return this.breakdownResult(
+      "vm-memory",
+      "VM memory (RSS)",
+      rows,
+      `Fly VM cap ${capMb} MB · sub-segments shown as share of RSS`,
+    );
+  }
+
+  private nodeHeapBreakdown(): PlatformLimitBreakdown {
+    const heap = getHeapStatistics();
+    const limitMb = Math.round(heap.heap_size_limit / 1024 / 1024) || HEAP_FALLBACK_CAP_MB;
+    const spaces = getHeapSpaceStatistics()
+      .filter((space) => space.space_used_size > 0)
+      .sort((a, b) => b.space_used_size - a.space_used_size);
+    const rows = spaces.map((space) => {
+      const usedMb = Math.round((space.space_used_size / 1024 / 1024) * 10) / 10;
+      return {
+        label: space.space_name.replace(/_/g, " "),
+        value: usedMb,
+        unit: "MB",
+        percent: percentOf(usedMb, limitMb),
+      };
+    });
+    return this.breakdownResult(
+      "node-heap",
+      "Node heap by V8 space",
+      rows,
+      `heap limit ${formatNumber(limitMb)} MB (--max-old-space-size) · share of heap limit`,
+    );
+  }
+
+  private uptimeBreakdown(): PlatformLimitBreakdown {
+    const seconds = Math.round(process.uptime());
+    const startedAt = now().minus({ seconds }).toISO();
+    const rows: PlatformLimitBreakdownRow[] = [
+      {
+        label: "Uptime",
+        value: Math.round((seconds / 3600) * 10) / 10,
+        unit: "h",
+        percent: null,
+      },
+    ];
+    return this.breakdownResult(
+      "uptime",
+      "Process uptime",
+      rows,
+      `started ${startedAt} · Node ${process.version} · PID ${process.pid} · ${formatDuration(seconds)} — every deploy restarts the process`,
+    );
+  }
+
+  private activeRequestsBreakdown(): PlatformLimitBreakdown {
+    const snapshot = this.requestMetrics.snapshot();
+    const rows: PlatformLimitBreakdownRow[] = [
+      {
+        label: "Active right now",
+        value: snapshot.active,
+        unit: "req",
+        percent: percentOf(snapshot.active, HTTP_HARD_LIMIT),
+      },
+      {
+        label: "Peak concurrent (5m)",
+        value: snapshot.peak5m,
+        unit: "req",
+        percent: percentOf(snapshot.peak5m, HTTP_HARD_LIMIT),
+      },
+      {
+        label: "Requests handled (5m)",
+        value: snapshot.sampleSize5m,
+        unit: "req",
+        percent: null,
+      },
+      {
+        label: "5xx responses (5m)",
+        value: snapshot.errors5m,
+        unit: "errors",
+        percent: null,
+      },
+    ];
+    return this.breakdownResult(
+      "active-requests",
+      "HTTP concurrency",
+      rows,
+      `Fly concurrency: soft limit ${HTTP_SOFT_LIMIT}, hard limit ${HTTP_HARD_LIMIT} requests per machine`,
+    );
+  }
+
+  private latencyBreakdown(): PlatformLimitBreakdown {
+    const snapshot = this.requestMetrics.snapshot();
+    const target = Number(process.env.REQUEST_P95_TARGET_MS) || REQUEST_P95_TARGET_MS;
+    const rows = snapshot.slowRoutes.map((route) => ({
+      label: `${route.route} (${route.count}x)`,
+      value: route.p95Ms,
+      unit: "ms",
+      percent: percentOf(route.p95Ms, target),
+    }));
+    const overall = snapshot.p95Ms5m ?? 0;
+    return this.breakdownResult(
+      "request-p95",
+      "Slowest routes by p95 (5m)",
+      rows,
+      `overall p95 ${formatNumber(overall)} ms over ${snapshot.sampleSize5m} requests · target ${formatNumber(target)} ms`,
+    );
+  }
+
+  private errorsBreakdown(): PlatformLimitBreakdown {
+    const snapshot = this.requestMetrics.snapshot();
+    const rows = snapshot.errorRoutes.map((route) => ({
+      label: route.route,
+      value: route.count,
+      unit: "errors",
+      percent: percentOf(route.count, Math.max(1, snapshot.errors5m)),
+    }));
+    const rate =
+      snapshot.sampleSize5m > 0
+        ? Math.round((snapshot.errors5m / snapshot.sampleSize5m) * 1000) / 10
+        : 0;
+    return this.breakdownResult(
+      "request-errors",
+      "5xx responses by route (5m)",
+      rows,
+      rows.length === 0
+        ? "no server errors in the last 5 minutes"
+        : `${snapshot.errors5m} errors · ${rate}% of ${snapshot.sampleSize5m} requests`,
+    );
+  }
+
+  private async orbitStorageBreakdown(): Promise<PlatformLimitBreakdown> {
+    const connection = this.orbitConnection;
+    if (!connection) throw new NotFoundException("Orbit connection unavailable");
+    const client = connection.getClient();
+    const { databases } = await client.db().admin().listDatabases();
+    const orbitDbs = databases.filter((database) => database.name.startsWith("orbit_"));
+    const rows = await Promise.all(
+      orbitDbs.map(async (database) => {
+        const stats = await client.db(database.name).command({ dbStats: 1 });
+        const sizeMb =
+          Math.round((((stats.dataSize ?? 0) + (stats.indexSize ?? 0)) / 1024 / 1024) * 10) / 10;
+        return {
+          label: database.name,
+          value: sizeMb,
+          unit: "MB",
+          percent: percentOf(sizeMb, ATLAS_STORAGE_CAP_MB),
+        };
+      }),
+    );
+    const sorted = [...rows].sort((a, b) => b.value - a.value);
+    return this.breakdownResult(
+      "orbit-storage",
+      "Orbit cluster storage by database",
+      sorted,
+      `all orbit_* databases share the single ${ATLAS_STORAGE_CAP_MB} MB Atlas M0 logical-size cap`,
+    );
+  }
+
+  private async collectionsBreakdown(
+    connection: Connection | null,
+    id: string,
+    title: string,
+  ): Promise<PlatformLimitBreakdown> {
+    if (!connection?.db) throw new NotFoundException("Connection unavailable");
+    const collections = await connection.db.listCollections().toArray();
+    const total = collections.length;
+    const prefixCounts = collections.reduce<Map<string, number>>((acc, collection) => {
+      const prefix = collection.name.split("_")[0];
+      acc.set(prefix, (acc.get(prefix) ?? 0) + 1);
+      return acc;
+    }, new Map());
+    const rows = [...prefixCounts.entries()]
+      .map(([prefix, count]) => ({
+        label: `${prefix}_*`,
+        value: count,
+        unit: "collections",
+        percent: percentOf(count, total),
+      }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 15);
+    return this.breakdownResult(
+      id,
+      `${title} — by prefix`,
+      rows,
+      `${total} collections of the Atlas M0 ${ATLAS_COLLECTION_CAP}-collection cap · top 15 prefixes`,
+    );
+  }
+
+  private async externalJobsBreakdown(): Promise<PlatformLimitBreakdown> {
+    const connection = this.orbitConnection;
+    if (!connection?.db) throw new NotFoundException("Orbit connection unavailable");
+    const collection = connection.db.collection(EXTERNAL_JOBS_COLLECTION);
+    const total = await collection.estimatedDocumentCount();
+    const byCountry = (await collection
+      .aggregate([
+        { $group: { _id: { $ifNull: ["$country", "unknown"] }, count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 },
+      ])
+      .toArray()) as { _id: string; count: number }[];
+    const last24h = await collection.countDocuments({
+      createdAt: { $gte: now().minus({ hours: 24 }).toJSDate() },
+    });
+    const rows = byCountry.map((entry) => ({
+      label: entry._id,
+      value: entry.count,
+      unit: "jobs",
+      percent: percentOf(entry.count, total),
+    }));
+    return this.breakdownResult(
+      "external-jobs",
+      "External jobs by country",
+      rows,
+      `${formatNumber(total)} jobs total · ${formatNumber(last24h)} ingested in the last 24h`,
+    );
+  }
+
+  private s3Breakdown(): PlatformLimitBreakdown {
+    const snapshot = this.s3Usage.snapshot();
+    if (snapshot === null) throw new NotFoundException("S3 usage snapshot unavailable");
+    const gb = Math.round((snapshot.sizeBytes / 1024 / 1024 / 1024) * 100) / 100;
+    const budgetGb = Number(process.env.S3_SOFT_BUDGET_GB) || S3_SOFT_BUDGET_GB;
+    const avgKb =
+      snapshot.objectCount > 0 ? Math.round(snapshot.sizeBytes / snapshot.objectCount / 1024) : 0;
+    const rows: PlatformLimitBreakdownRow[] = [
+      { label: "Stored size", value: gb, unit: "GB", percent: percentOf(gb, budgetGb) },
+      { label: "Objects", value: snapshot.objectCount, unit: "objects", percent: null },
+      { label: "Average object size", value: avgKb, unit: "KB", percent: null },
+    ];
+    const ageMin = Math.round((nowMillis() - snapshot.computedAtMs) / 60000);
+    const approxNote = snapshot.approximate ? " · approximate (capped scan)" : "";
+    return this.breakdownResult(
+      "s3-storage",
+      "S3 object storage",
+      rows,
+      `soft budget ${formatNumber(budgetGb)} GB · snapshot refreshed ${ageMin}m ago${approxNote}`,
+    );
   }
 
   private s3StorageCard(): PlatformLimitCard | null {

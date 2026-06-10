@@ -6,6 +6,12 @@ export interface AiUsageDailySummary {
   tokens: number;
 }
 
+export interface AiUsageDailyPoint {
+  date: string;
+  calls: number;
+  tokens: number;
+}
+
 export interface AiUsageGroupRow {
   date: string;
   app: string;
@@ -20,6 +26,7 @@ export interface AiUsageGroupRow {
 
 export abstract class AiUsageLogRepository extends CrudRepository<AiUsageLog> {
   abstract aggregateDailyUsageByModel(model: string, since: Date): Promise<AiUsageDailySummary>;
+  abstract dailySeries(since: Date): Promise<AiUsageDailyPoint[]>;
   abstract queryGroupedUsage(
     app: string | null,
     provider: string | null,

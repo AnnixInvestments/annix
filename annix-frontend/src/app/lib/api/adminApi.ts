@@ -1011,6 +1011,10 @@ class AdminApiClient {
     );
   }
 
+  async aiUsageDailySeries(days = 28): Promise<AiUsageDailySeriesResponse> {
+    return this.request<AiUsageDailySeriesResponse>(`/admin/ai-usage/daily-series?days=${days}`);
+  }
+
   companyProfile = createEndpoint<[], CompanyProfileResponse>(apiClient, "GET", {
     path: "/admin/company-profile",
   });
@@ -1181,6 +1185,10 @@ class AdminApiClient {
 
   async platformLimits(): Promise<PlatformLimitsResponse> {
     return this.request("/admin/platform-limits");
+  }
+
+  async platformLimitBreakdown(cardId: string): Promise<PlatformLimitBreakdown> {
+    return this.request(`/admin/platform-limits/breakdown/${encodeURIComponent(cardId)}`);
   }
 
   async setOrbitRetentionCap(cap: number): Promise<{ cap: number }> {
@@ -1660,6 +1668,21 @@ export interface PlatformLimitsResponse {
   cards: PlatformLimitCard[];
 }
 
+export interface PlatformLimitBreakdownRow {
+  label: string;
+  value: number;
+  unit: string;
+  percent: number | null;
+}
+
+export interface PlatformLimitBreakdown {
+  id: string;
+  title: string;
+  generatedAt: string;
+  rows: PlatformLimitBreakdownRow[];
+  note: string | null;
+}
+
 export interface OrbitSeekerSummary {
   id: number;
   name: string | null;
@@ -1886,6 +1909,16 @@ export interface AiUsageListResponse {
     totalTokens: number;
     totalCalls: number;
   };
+}
+
+export interface AiUsageDailyPoint {
+  date: string;
+  calls: number;
+  tokens: number;
+}
+
+export interface AiUsageDailySeriesResponse {
+  days: AiUsageDailyPoint[];
 }
 
 export interface NixUploadResponse {

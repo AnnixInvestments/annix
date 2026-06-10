@@ -56,6 +56,7 @@ export const adminKeys = {
     all: ["admin", "aiUsage"] as const,
     list: (params?: AiUsageQueryParams) =>
       [...adminKeys.aiUsage.all, "list", params ?? {}] as const,
+    dailySeries: (days: number) => [...adminKeys.aiUsage.all, "dailySeries", days] as const,
   },
   scheduledJobs: {
     all: ["admin", "scheduledJobs"] as const,
@@ -110,6 +111,7 @@ export const adminKeys = {
   },
   platformLimits: {
     all: ["admin", "platformLimits"] as const,
+    breakdown: (cardId: string) => [...adminKeys.platformLimits.all, "breakdown", cardId] as const,
   },
   orbitSeekers: {
     all: ["admin", "orbitSeekers"] as const,

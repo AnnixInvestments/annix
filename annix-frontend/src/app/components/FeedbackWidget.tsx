@@ -429,15 +429,31 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
 
       const { toBlob } = await import("html-to-image");
 
+      const renderOptions = {
+        ...commonOptions,
+        style: {
+          overflow: "hidden",
+          maxWidth: `${viewportWidth}px`,
+        },
+      };
+
+      // WebKit (iOS Safari, every iOS in-app WebView and the installed PWA) drops
+      // images and inlined styles on the first one or two html-to-image passes,
+      // returning a blank or near-empty blob — the reason the auto-screenshot was
+      // failing on the phone app. Re-rendering warms the cloned document so the
+      // final pass is complete. Harmless single pass everywhere else.
+      const ua = window.navigator.userAgent;
+      const isWebKit =
+        /\b(iPad|iPhone|iPod)\b/.test(ua) || (ua.includes("Safari") && !ua.includes("Chrome"));
+      const warmupPasses = isWebKit ? [0, 1, 2] : [0];
+      const renderWithWarmup = warmupPasses.reduce<Promise<Blob | null>>(
+        (prev) => prev.then(() => toBlob(contentRoot, renderOptions)),
+        Promise.resolve(null),
+      );
+
       const fullPageBlob = await Promise.race([
-        toBlob(contentRoot, {
-          ...commonOptions,
-          style: {
-            overflow: "hidden",
-            maxWidth: `${viewportWidth}px`,
-          },
-        }),
-        new Promise<null>((resolve) => setTimeout(() => resolve(null), 8000)),
+        renderWithWarmup,
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), isWebKit ? 15000 : 8000)),
       ]);
 
       if (!fullPageBlob || fullPageBlob.size <= MIN_SCREENSHOT_BYTES) {
@@ -706,7 +722,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     <div
       data-feedback-widget
       data-feedback-panel
-      className="fixed z-50 bg-white rounded-lg shadow-xl border border-gray-200 overflow-hidden flex flex-col"
+      className="fixed z-50 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col"
       style={{
         left: position.x,
         top: position.y,
@@ -810,18 +826,24 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                 d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
               />
             </svg>
-            <p className="text-green-700 font-medium">Thank you for your feedback!</p>
-            <p className="text-sm text-gray-500 mt-1">Your submission is now being tracked.</p>
-            <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-3 text-left">
+            <p className="text-green-700 dark:text-green-400 font-medium">
+              Thank you for your feedback!
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+              Your submission is now being tracked.
+            </p>
+            <div className="mt-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900/50 p-3 text-left">
               <div className="flex items-center justify-between gap-3">
-                <p className="text-xs font-medium text-gray-700">
+                <p className="text-xs font-medium text-gray-700 dark:text-gray-200">
                   Feedback #{latestFeedbackId ?? "pending"}
                 </p>
                 {isRefreshingStatus && (
-                  <span className="text-[11px] text-gray-400">Refreshing…</span>
+                  <span className="text-[11px] text-gray-400 dark:text-gray-500">Refreshing…</span>
                 )}
               </div>
-              {statusSummary && <p className="mt-2 text-xs text-gray-600">{statusSummary}</p>}
+              {statusSummary && (
+                <p className="mt-2 text-xs text-gray-600 dark:text-gray-300">{statusSummary}</p>
+              )}
               <div className="mt-3 grid gap-2">
                 {FEEDBACK_STATUS_STEPS.map((step) => {
                   const state = feedbackStatus
@@ -829,10 +851,10 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                     : "upcoming";
                   const colors =
                     state === "complete"
-                      ? "border-green-200 bg-green-50 text-green-700"
+                      ? "border-green-200 bg-green-50 text-green-700 dark:border-green-500/40 dark:bg-green-500/10 dark:text-green-300"
                       : state === "current"
-                        ? "border-blue-200 bg-blue-50 text-blue-700"
-                        : "border-gray-200 bg-white text-gray-400";
+                        ? "border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-500/40 dark:bg-blue-500/10 dark:text-blue-300"
+                        : "border-gray-200 bg-white text-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-500";
 
                   return (
                     <div
@@ -849,7 +871,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
               <button
                 type="button"
                 onClick={handleStartAnother}
-                className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                className="rounded-lg border border-gray-300 dark:border-gray-600 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 Send another
               </button>
@@ -864,25 +886,27 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
           </div>
         ) : (
           <>
-            <p className="text-sm text-gray-600 mb-3">
+            <p className="text-sm text-gray-600 dark:text-gray-300 mb-3">
               Help us improve! Share your thoughts, report issues, or suggest features.
             </p>
 
             {feedbackStatus && latestFeedbackId !== null && (
-              <div className="mb-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2">
+              <div className="mb-3 rounded-lg border border-blue-100 dark:border-blue-500/30 bg-blue-50 dark:bg-blue-500/10 px-3 py-2">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-xs font-medium text-blue-900">
+                  <p className="text-xs font-medium text-blue-900 dark:text-blue-200">
                     Latest feedback #{latestFeedbackId}
                   </p>
                   <button
                     type="button"
                     onClick={() => void refreshStatus(latestFeedbackId)}
-                    className="text-[11px] text-blue-700 underline"
+                    className="text-[11px] text-blue-700 dark:text-blue-300 underline"
                   >
                     Refresh
                   </button>
                 </div>
-                {statusSummary && <p className="mt-1 text-xs text-blue-800">{statusSummary}</p>}
+                {statusSummary && (
+                  <p className="mt-1 text-xs text-blue-800 dark:text-blue-200">{statusSummary}</p>
+                )}
               </div>
             )}
 
@@ -891,8 +915,10 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                 value={displayedContent}
                 onChange={handleTextChange}
                 placeholder="Type your feedback here..."
-                className={`w-full h-24 p-3 border rounded-lg resize-none text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  isListening ? "border-red-400 bg-red-50" : "border-gray-300"
+                className={`w-full h-24 p-3 border rounded-lg resize-none text-sm text-gray-900 placeholder-gray-400 dark:placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                  isListening
+                    ? "border-red-400 bg-red-50 dark:bg-red-950/40"
+                    : "border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900"
                 }`}
                 disabled={isListening}
               />
@@ -915,15 +941,15 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                         <img
                           src={preview}
                           alt={`Attachment ${idx + 1}`}
-                          className="w-14 h-14 object-cover rounded border border-gray-200"
+                          className="w-14 h-14 object-cover rounded border border-gray-200 dark:border-gray-600"
                         />
                       ) : (
                         <div
-                          className="w-14 h-14 rounded border border-gray-200 bg-gray-50 flex flex-col items-center justify-center"
+                          className="w-14 h-14 rounded border border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700 flex flex-col items-center justify-center"
                           title={att.file.name}
                         >
                           <svg
-                            className="w-5 h-5 text-gray-400"
+                            className="w-5 h-5 text-gray-400 dark:text-gray-300"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -935,7 +961,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                               d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
                             />
                           </svg>
-                          <span className="text-[8px] text-gray-500 mt-0.5 truncate max-w-[3rem]">
+                          <span className="text-[8px] text-gray-500 dark:text-gray-400 mt-0.5 truncate max-w-[3rem]">
                             {att.file.name.split(".").pop()?.toUpperCase()}
                           </span>
                         </div>
@@ -954,7 +980,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
             )}
 
             <div className="flex items-center gap-1 mt-1">
-              <span className="text-[10px] text-gray-400 italic">
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 italic">
                 A screenshot of the page is attached automatically
               </span>
             </div>
@@ -982,8 +1008,8 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                     onClick={handleVoiceToggle}
                     className={`p-2 rounded-full transition-colors ${
                       isListening
-                        ? "bg-red-100 text-red-600 hover:bg-red-200"
-                        : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        ? "bg-red-100 text-red-600 hover:bg-red-200 dark:bg-red-500/20 dark:text-red-300 dark:hover:bg-red-500/30"
+                        : "bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600"
                     }`}
                     title={isListening ? "Stop recording" : "Start voice dictation"}
                   >
@@ -1013,7 +1039,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={attachments.length >= MAX_ATTACHMENTS}
-                  className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="p-2 rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   title="Attach file"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1035,7 +1061,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
                   className="hidden"
                 />
 
-                <span className="text-xs text-gray-400">
+                <span className="text-xs text-gray-400 dark:text-gray-500">
                   {content.length}/{FEEDBACK_MAX_LENGTH}
                   {(() => {
                     const msg = contentValidationMessage(content);
