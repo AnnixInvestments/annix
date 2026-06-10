@@ -84,7 +84,7 @@ export class IndividualProfileController {
   @Patch("preferences")
   updatePreferences(
     @Request() req: { user: { id: number } },
-    @Body() body: { phoneType?: string | null; appGuideSeen?: boolean },
+    @Body() body: { phoneType?: string | null; appGuideSeen?: boolean; ageGroup?: string | null },
   ) {
     return this.individualProfileService.updateSeekerPreferences(req.user.id, body);
   }

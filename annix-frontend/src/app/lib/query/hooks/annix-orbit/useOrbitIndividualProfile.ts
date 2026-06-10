@@ -56,13 +56,23 @@ export function useOrbitSendAppLink() {
 export function useOrbitUpdateSeekerPreferences() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { phoneType?: string | null; appGuideSeen?: boolean }) =>
-      annixOrbitApiClient.updateSeekerPreferences(body),
+    mutationFn: (body: {
+      phoneType?: string | null;
+      appGuideSeen?: boolean;
+      ageGroup?: string | null;
+    }) => annixOrbitApiClient.updateSeekerPreferences(body),
     onSuccess: (data) => {
       queryClient.setQueryData<IndividualProfileStatus>(
         annixOrbitKeys.individualProfile.status(),
         (old) =>
-          old ? { ...old, phoneType: data.phoneType, appGuideSeen: data.appGuideSeen } : old,
+          old
+            ? {
+                ...old,
+                phoneType: data.phoneType,
+                appGuideSeen: data.appGuideSeen,
+                ageGroup: data.ageGroup,
+              }
+            : old,
       );
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
     },

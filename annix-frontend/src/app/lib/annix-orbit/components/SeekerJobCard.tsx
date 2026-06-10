@@ -160,15 +160,13 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
             />
           ) : null}
         </div>
-        <a
-          href={sourceHref}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           onClick={handleApply}
           className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
         >
           View &amp; apply
-        </a>
+        </button>
       </div>
 
       {reportDelisted ? (

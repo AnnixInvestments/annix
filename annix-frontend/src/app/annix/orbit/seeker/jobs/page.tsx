@@ -12,6 +12,7 @@ import {
 } from "@/app/components/ExtractionProgressModal";
 import { ConfirmModal } from "@/app/components/modals/ConfirmModal";
 import { useToast } from "@/app/components/Toast";
+import { ExternalJobModal } from "@/app/lib/annix-orbit/components/ExternalJobModal";
 import { SeekerBrowseJobCard } from "@/app/lib/annix-orbit/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/annix-orbit/components/SeekerJobCard";
 import {
@@ -106,6 +107,8 @@ export default function SeekerJobsPage() {
   const consentHasCandidate = consentData ? consentData.hasCandidate : false;
   const consentGranted = consentData ? consentData.consented : false;
   const consentEnabled = consentReady && consentHasCandidate && consentGranted;
+
+  const [applyTarget, setApplyTarget] = useState<{ url: string; title: string } | null>(null);
 
   const [filters, setFilters] = useState<SeekerFilterState>({
     search: "",
@@ -284,6 +287,7 @@ export default function SeekerJobsPage() {
       showToast("No apply link available for this job", "error");
       return;
     }
+    setApplyTarget({ url: sourceUrl, title: match.job.title });
     annixOrbitApiClient
       .recordSeekerApplyClick({
         matchId: match.matchId,
@@ -301,6 +305,7 @@ export default function SeekerJobsPage() {
       showToast("No apply link available for this job", "error");
       return;
     }
+    setApplyTarget({ url: sourceUrl, title: job.title });
     const externalJobId = job.kind === "external" ? job.id : null;
     annixOrbitApiClient
       .recordSeekerApplyClick({
@@ -312,6 +317,14 @@ export default function SeekerJobsPage() {
         console.warn("Failed to record apply-click for external job", externalJobId, err);
       });
   };
+
+  const applyModal = applyTarget ? (
+    <ExternalJobModal
+      url={applyTarget.url}
+      title={applyTarget.title}
+      onClose={() => setApplyTarget(null)}
+    />
+  ) : null;
 
   const runDismiss = (matchId: number, reason?: string) => {
     dismissMutation.mutate(
@@ -683,6 +696,7 @@ export default function SeekerJobsPage() {
           browseLocked={browseLocked}
         />
         {AlertDialog}
+        {applyModal}
       </>
     );
   }
@@ -761,6 +775,7 @@ export default function SeekerJobsPage() {
           browseLocked={browseLocked}
         />
         {AlertDialog}
+        {applyModal}
       </>
     );
   }
@@ -953,6 +968,7 @@ export default function SeekerJobsPage() {
       />
       {ConfirmDialog}
       {AlertDialog}
+      {applyModal}
     </div>
   );
 }

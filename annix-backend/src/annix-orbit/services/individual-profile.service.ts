@@ -25,7 +25,11 @@ import {
   type CredentialFields,
   IndividualDocumentKind,
 } from "../entities/annix-orbit-individual-document.entity";
-import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import {
+  AnnixOrbitProfile,
+  AnnixOrbitUserType,
+  isSeekerAgeGroup,
+} from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
@@ -59,6 +63,7 @@ export interface IndividualProfileStatus {
   photoVisibleToEmployers: boolean;
   phoneType: string | null;
   appGuideSeen: boolean;
+  ageGroup: string | null;
 }
 
 export interface IndividualDocumentSummary {
@@ -379,13 +384,14 @@ export class IndividualProfileService {
       photoVisibleToEmployers: profile.photoVisibleToEmployers,
       phoneType: profile.phoneType ?? null,
       appGuideSeen: profile.appGuideSeen === true,
+      ageGroup: profile.ageGroup ?? null,
     };
   }
 
   async updateSeekerPreferences(
     userId: number,
-    input: { phoneType?: string | null; appGuideSeen?: boolean },
-  ): Promise<{ phoneType: string | null; appGuideSeen: boolean }> {
+    input: { phoneType?: string | null; appGuideSeen?: boolean; ageGroup?: string | null },
+  ): Promise<{ phoneType: string | null; appGuideSeen: boolean; ageGroup: string | null }> {
     const profile = await this.profileForUser(userId);
     if (input.phoneType !== undefined) {
       const allowed = input.phoneType === "apple" || input.phoneType === "android";
@@ -394,8 +400,16 @@ export class IndividualProfileService {
     if (input.appGuideSeen !== undefined) {
       profile.appGuideSeen = input.appGuideSeen;
     }
+    if (input.ageGroup !== undefined) {
+      profile.ageGroup =
+        input.ageGroup !== null && isSeekerAgeGroup(input.ageGroup) ? input.ageGroup : null;
+    }
     await this.profileRepo.save(profile);
-    return { phoneType: profile.phoneType ?? null, appGuideSeen: profile.appGuideSeen === true };
+    return {
+      phoneType: profile.phoneType ?? null,
+      appGuideSeen: profile.appGuideSeen === true,
+      ageGroup: profile.ageGroup ?? null,
+    };
   }
 
   async completeOnboarding(userId: number): Promise<{ onboardingCompletedAt: string }> {

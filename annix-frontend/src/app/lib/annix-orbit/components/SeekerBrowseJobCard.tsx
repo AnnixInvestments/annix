@@ -15,7 +15,6 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
   const postedAt = job.postedAt;
   const postedLabel = postedAt ? formatDateZA(postedAt) : null;
   const sourceUrl = job.sourceUrl;
-  const sourceHref = sourceUrl || "#";
   const kindLabel = job.kind === "annix" ? "Posted on Annix" : "External listing";
   const reportDelisted = props.onReportDelisted;
   const isExternal = job.kind === "external";
@@ -84,15 +83,13 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
           <span />
         )}
         {sourceUrl ? (
-          <a
-            href={sourceHref}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
             onClick={handleApply}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
           >
             View &amp; apply
-          </a>
+          </button>
         ) : (
           <span className="text-sm text-gray-400">No apply link</span>
         )}

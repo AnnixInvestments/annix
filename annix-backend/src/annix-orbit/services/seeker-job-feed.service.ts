@@ -68,7 +68,12 @@ const RECOMMENDED_DISPLAY_LIMIT = 100;
 // The facet rows for a candidate are filter-independent, so cache them briefly:
 // rapid filter changes then derive the count + every facet in memory with no
 // repeated database join. Invalidated whenever the candidate's matches change.
+// The join behind these rows costs seconds on M0 once a candidate has thousands
+// of matches, so the cache serves stale rows (up to the stale max) while a
+// background refresh runs — no request waits on the join after first load.
 const FACET_ROW_TTL_MS = 45_000;
+const FACET_ROW_STALE_MAX_MS = 15 * 60_000;
+const FACET_ROW_CACHE_MAX_ENTRIES = 50;
 
 const NIX_SEARCH_METRIC_CATEGORY = "annix-orbit-nix-seeker";
 const NIX_SEARCH_METRIC_OPERATION = "job-search";
@@ -187,6 +192,7 @@ export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
   private readonly lastRematchByCandidate = new Map<number, number>();
   private readonly facetRowCache = new Map<string, { rows: RecommendedFacetRow[]; at: number }>();
+  private readonly facetRowInflight = new Map<string, Promise<RecommendedFacetRow[]>>();
 
   private async cachedFacetRows(candidateIds: number[]): Promise<RecommendedFacetRow[]> {
     const key = [...candidateIds].sort((a, b) => a - b).join(",");
@@ -195,9 +201,47 @@ export class SeekerJobFeedService {
     if (cached && now - cached.at < FACET_ROW_TTL_MS) {
       return cached.rows;
     }
-    const rows = await this.matchRepo.facetRowsForCandidates(candidateIds);
-    this.facetRowCache.set(key, { rows, at: now });
-    return rows;
+    if (cached && now - cached.at < FACET_ROW_STALE_MAX_MS) {
+      void this.refreshFacetRows(key, candidateIds).catch((error) => {
+        this.logger.warn(
+          `Background facet-row refresh failed for [${key}]: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
+      return cached.rows;
+    }
+    return this.refreshFacetRows(key, candidateIds);
+  }
+
+  private refreshFacetRows(key: string, candidateIds: number[]): Promise<RecommendedFacetRow[]> {
+    const inflight = this.facetRowInflight.get(key);
+    if (inflight) {
+      return inflight;
+    }
+    const promise = this.matchRepo
+      .facetRowsForCandidates(candidateIds)
+      .then((rows) => {
+        this.facetRowCache.set(key, { rows, at: nowMillis() });
+        this.evictOldestFacetRows();
+        return rows;
+      })
+      .finally(() => {
+        this.facetRowInflight.delete(key);
+      });
+    this.facetRowInflight.set(key, promise);
+    return promise;
+  }
+
+  private evictOldestFacetRows(): void {
+    if (this.facetRowCache.size <= FACET_ROW_CACHE_MAX_ENTRIES) {
+      return;
+    }
+    const oldestKey = [...this.facetRowCache.entries()].reduce<{ key: string; at: number } | null>(
+      (oldest, [key, entry]) => (!oldest || entry.at < oldest.at ? { key, at: entry.at } : oldest),
+      null,
+    );
+    if (oldestKey) {
+      this.facetRowCache.delete(oldestKey.key);
+    }
   }
 
   private invalidateFacetCache(): void {

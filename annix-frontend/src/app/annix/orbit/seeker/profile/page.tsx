@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
-import type { IndividualDocument, IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
+import {
+  type IndividualDocument,
+  type IndividualDocumentKind,
+  SEEKER_AGE_GROUP_OPTIONS,
+} from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -13,6 +17,7 @@ import {
   useOrbitMyDocuments,
   useOrbitMyProfileStatus,
   useOrbitSeekerWorkProfile,
+  useOrbitUpdateSeekerPreferences,
 } from "@/app/lib/query/hooks";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { CredentialFieldsEditor } from "../components/CredentialFieldsEditor";
@@ -273,6 +278,8 @@ export default function SeekerProfilePage() {
 
       <ProfilePhotoAvatar />
 
+      <AgeGroupCard ageGroup={status ? status.ageGroup : null} loaded={status != null} />
+
       {hasCv ? (
         <SectionCard
           id="cv-section"
@@ -474,6 +481,68 @@ export default function SeekerProfilePage() {
       />
       {ConfirmDialog}
       {AlertDialog}
+    </div>
+  );
+}
+
+function AgeGroupCard(props: { ageGroup: string | null; loaded: boolean }) {
+  const updatePreferences = useOrbitUpdateSeekerPreferences();
+  const { alert, AlertDialog } = useAlert();
+  const [savedFlash, setSavedFlash] = useState(false);
+  const ageGroup = props.ageGroup;
+  const currentValue = ageGroup ?? "";
+
+  const handleChange = (value: string) => {
+    if (!value || value === currentValue) return;
+    updatePreferences.mutate(
+      { ageGroup: value },
+      {
+        onSuccess: () => {
+          setSavedFlash(true);
+          window.setTimeout(() => setSavedFlash(false), 2500);
+        },
+        onError: () =>
+          alert({ message: "Couldn't save your age group — please try again.", variant: "error" }),
+      },
+    );
+  };
+
+  if (!props.loaded) return null;
+
+  return (
+    <div
+      className={`bg-white rounded-xl border px-4 py-4 sm:px-6 ${
+        currentValue ? "border-[var(--brand-navbar-100,#e0e0f5)]" : "border-amber-300"
+      }`}
+    >
+      {AlertDialog}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">Your age group</h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Helps us match you with age-appropriate opportunities.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {savedFlash ? <span className="text-xs font-medium text-emerald-600">Saved</span> : null}
+          <select
+            value={currentValue}
+            onChange={(e) => handleChange(e.target.value)}
+            disabled={updatePreferences.isPending}
+            aria-label="Your age group"
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-[var(--brand-navbar,#323288)] focus:border-transparent disabled:opacity-50"
+          >
+            <option value="" disabled>
+              Select your age group
+            </option>
+            {SEEKER_AGE_GROUP_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
     </div>
   );
 }

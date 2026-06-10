@@ -127,6 +127,9 @@ export class AnnixOrbitProfile {
   @Prop({ type: String, required: false })
   phoneType: string;
 
+  @Prop({ type: String, required: false })
+  ageGroup: string;
+
   @Prop({ type: Boolean, required: false, default: false })
   appGuideSeen: boolean;
 

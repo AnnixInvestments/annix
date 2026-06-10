@@ -35,6 +35,7 @@ import {
   AnnixOrbitProfile,
   type AnnixOrbitProfileEeDisclosure,
   AnnixOrbitUserType,
+  isSeekerAgeGroup,
 } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
@@ -370,6 +371,7 @@ export class AnnixOrbitAuthService {
     name: string,
     eeDisclosure?: RegisterEeDisclosureDto,
     phone?: string,
+    ageGroup?: string,
   ) {
     await this.assertOrbitAccountAvailable(email, AnnixOrbitUserType.INDIVIDUAL);
 
@@ -398,6 +400,7 @@ export class AnnixOrbitAuthService {
       userType: AnnixOrbitUserType.INDIVIDUAL,
       eeDisclosure: disclosure,
       phone: trimmedPhone.length > 0 ? trimmedPhone : null,
+      ageGroup: ageGroup && isSeekerAgeGroup(ageGroup) ? ageGroup : null,
     } as Partial<AnnixOrbitProfile>);
 
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);

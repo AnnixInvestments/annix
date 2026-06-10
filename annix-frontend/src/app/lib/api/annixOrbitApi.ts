@@ -826,7 +826,19 @@ export interface IndividualProfileStatus {
   photoVisibleToEmployers: boolean;
   phoneType: string | null;
   appGuideSeen: boolean;
+  ageGroup: string | null;
 }
+
+// Mirrors SEEKER_AGE_GROUPS in annix-backend/src/annix-orbit/entities/annix-orbit-profile.entity.ts
+export const SEEKER_AGE_GROUP_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "under-18", label: "Under 18" },
+  { value: "18-24", label: "18 – 24" },
+  { value: "25-34", label: "25 – 34" },
+  { value: "35-44", label: "35 – 44" },
+  { value: "45-54", label: "45 – 54" },
+  { value: "55-64", label: "55 – 64" },
+  { value: "65+", label: "65 or older" },
+];
 
 export type NixSeekerImprovementArea =
   | "summary"
@@ -1469,6 +1481,7 @@ class AnnixOrbitApiClient {
     password: string;
     name: string;
     phone?: string | null;
+    ageGroup?: string | null;
     eeDisclosure?: RegisterEeDisclosurePayload | null;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/annix-orbit/auth/register/individual", {
@@ -2180,7 +2193,8 @@ class AnnixOrbitApiClient {
   async updateSeekerPreferences(body: {
     phoneType?: string | null;
     appGuideSeen?: boolean;
-  }): Promise<{ phoneType: string | null; appGuideSeen: boolean }> {
+    ageGroup?: string | null;
+  }): Promise<{ phoneType: string | null; appGuideSeen: boolean; ageGroup: string | null }> {
     return this.request("/annix-orbit/me/preferences", {
       method: "PATCH",
       body: JSON.stringify(body),

@@ -8,7 +8,11 @@ import { BackToHubLink } from "@/app/annix/orbit/components/BackToHubLink";
 import { EeRegistrationStep } from "@/app/annix/orbit/components/EeRegistrationStep";
 import { parseRegistrationError } from "@/app/annix/orbit/config/registration-errors";
 import { PhoneInput } from "@/app/components/PhoneInput";
-import { annixOrbitApiClient, type RegisterEeDisclosurePayload } from "@/app/lib/api/annixOrbitApi";
+import {
+  annixOrbitApiClient,
+  type RegisterEeDisclosurePayload,
+  SEEKER_AGE_GROUP_OPTIONS,
+} from "@/app/lib/api/annixOrbitApi";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 
@@ -20,6 +24,7 @@ export default function AnnixOrbitRegisterIndividualPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [ageGroup, setAgeGroup] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [popiaConsent, setPopiaConsent] = useState(false);
@@ -66,6 +71,7 @@ export default function AnnixOrbitRegisterIndividualPage() {
         email,
         password,
         phone: trimmedPhone.length > 0 ? trimmedPhone : null,
+        ageGroup: ageGroup.length > 0 ? ageGroup : null,
         eeDisclosure,
       });
       setSuccess(true);
@@ -185,6 +191,31 @@ export default function AnnixOrbitRegisterIndividualPage() {
               <PhoneInput id="phone" value={phone} onChange={setPhone} />
               <p className="text-xs text-gray-500 mt-1">
                 For interview reminders by SMS or WhatsApp.
+              </p>
+            </div>
+
+            <div>
+              <label htmlFor="ageGroup" className="block text-sm font-medium text-gray-700 mb-1">
+                Age group
+              </label>
+              <select
+                id="ageGroup"
+                value={ageGroup}
+                onChange={(e) => setAgeGroup(e.target.value)}
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-[#f0f0fc]0 focus:border-transparent"
+              >
+                <option value="" disabled>
+                  Select your age group
+                </option>
+                {SEEKER_AGE_GROUP_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Helps us match you with age-appropriate opportunities.
               </p>
             </div>
 

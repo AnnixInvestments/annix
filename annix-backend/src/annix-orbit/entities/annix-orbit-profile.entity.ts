@@ -28,6 +28,22 @@ export enum AnnixOrbitUserType {
   STUDENT = "student",
 }
 
+export const SEEKER_AGE_GROUPS = [
+  "under-18",
+  "18-24",
+  "25-34",
+  "35-44",
+  "45-54",
+  "55-64",
+  "65+",
+] as const;
+
+export type SeekerAgeGroup = (typeof SEEKER_AGE_GROUPS)[number];
+
+export function isSeekerAgeGroup(value: string): value is SeekerAgeGroup {
+  return (SEEKER_AGE_GROUPS as readonly string[]).includes(value);
+}
+
 export interface AnnixOrbitProfileEeDisclosure {
   populationGroup: EePopulationGroup;
   gender: EeGender;
@@ -153,6 +169,9 @@ export class AnnixOrbitProfile {
 
   @Column({ name: "phone_type", type: "varchar", length: 20, nullable: true })
   phoneType: string | null;
+
+  @Column({ name: "age_group", type: "varchar", length: 16, nullable: true })
+  ageGroup: string | null;
 
   @Column({ name: "app_guide_seen", type: "boolean", default: false })
   appGuideSeen: boolean;
