@@ -31,6 +31,9 @@ export class StockMovement {
   @PrimaryGeneratedColumn()
   id: number;
 
+  @Column({ type: "int", name: "stock_item_id" })
+  stockItemId: number;
+
   @ManyToOne(
     () => StockItem,
     (stockItem) => stockItem.movements,

@@ -1020,14 +1020,14 @@ export class InvoiceExtractionService {
         if (stockItemId === null) {
           return;
         }
-        const stockItem = item.stockItem || (await this.stockItemRepo.findById(stockItemId));
+        const stockItem = await this.stockItemRepo.findById(stockItemId);
 
         if (stockItem) {
           const oldPrice = Number(stockItem.costPerUnit) || null;
           const newPrice = Number(item.unitPrice);
 
           await this.priceHistoryRepo.create({
-            stockItemId: stockItem.id,
+            stockItemId,
             companyId: invoice.companyId,
             oldPrice,
             newPrice,

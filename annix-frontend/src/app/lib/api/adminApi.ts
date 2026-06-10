@@ -1693,6 +1693,7 @@ export interface OrbitSeekerSummary {
   hasCv: boolean;
   lastActiveAt: string | null;
   createdAt: string | null;
+  isProspect?: boolean;
 }
 
 export interface OrbitSeekerDocument {

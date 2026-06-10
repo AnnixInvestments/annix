@@ -5,12 +5,16 @@ import {
   SetPendingSeekerTierDto,
   SetSeekerMatchTierDto,
 } from "../dto/seeker-match-tier.dto";
+import { AdminOrbitUserService } from "../services/admin-orbit-user.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
 @Controller("admin/annix-orbit/seekers")
 @UseGuards(AdminAuthGuard)
 export class AdminOrbitSeekerController {
-  constructor(private readonly feedService: SeekerJobFeedService) {}
+  constructor(
+    private readonly feedService: SeekerJobFeedService,
+    private readonly userService: AdminOrbitUserService,
+  ) {}
 
   @Get()
   async list(
@@ -18,11 +22,40 @@ export class AdminOrbitSeekerController {
     @Query("page") page?: string,
     @Query("limit") limit?: string,
   ) {
-    return this.feedService.listSeekers({
+    const pageNumber = page ? Number(page) : 1;
+    const result = await this.feedService.listSeekers({
       search: search ?? null,
-      page: page ? Number(page) : 1,
+      page: pageNumber,
       limit: limit ? Number(limit) : 20,
     });
+    if (pageNumber > 1) {
+      return result;
+    }
+    const term = search ? search.trim().toLowerCase() : "";
+    const prospects = (await this.userService.seekerProspects())
+      .filter((prospect) => !prospect.hasCandidate)
+      .filter(
+        (prospect) =>
+          term.length === 0 ||
+          prospect.email.toLowerCase().includes(term) ||
+          (prospect.name ?? "").toLowerCase().includes(term),
+      )
+      .map((prospect) => ({
+        id: -prospect.userId,
+        name: prospect.name,
+        email: prospect.email,
+        matchTier: "none",
+        matchScore: null,
+        status: prospect.hasLoggedIn ? "registered" : "invited",
+        hasCv: false,
+        lastActiveAt: prospect.lastLoginAt,
+        createdAt: prospect.invitedAt,
+        isProspect: true,
+      }));
+    return {
+      seekers: [...result.seekers, ...prospects],
+      total: result.total + prospects.length,
+    };
   }
 
   @Get("lookup")

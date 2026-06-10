@@ -149,9 +149,9 @@ export class DispatchService {
     );
 
     const items: AllocationSummary[] = allocations.map((allocation) => {
-      const dispatchedQuantity = scansByItem[allocation.stockItem.id] || 0;
+      const dispatchedQuantity = scansByItem[allocation.stockItemId] || 0;
       return {
-        stockItemId: allocation.stockItem.id,
+        stockItemId: allocation.stockItemId,
         stockItem: allocation.stockItem,
         allocatedQuantity: allocation.quantityUsed,
         dispatchedQuantity,

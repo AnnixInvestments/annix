@@ -21,6 +21,7 @@ import {
 import { SeekerTestParticipantRepository } from "../repositories/seeker-test-participant.repository";
 import { SeekerTestPhaseRepository } from "../repositories/seeker-test-phase.repository";
 import { SeekerTestingIssueRepository } from "../repositories/seeker-testing-issue.repository";
+import { AdminOrbitUserService } from "../services/admin-orbit-user.service";
 import { SeekerLaunchReadinessService } from "../services/seeker-launch-readiness.service";
 import { SeekerTelemetryService } from "../services/seeker-telemetry.service";
 import { SeekerWorkflowProgressService } from "../services/seeker-workflow-progress.service";
@@ -36,6 +37,7 @@ export class AdminOrbitSeekerTestingController {
     private readonly telemetry: SeekerTelemetryService,
     private readonly readiness: SeekerLaunchReadinessService,
     private readonly feedback: FeedbackService,
+    private readonly userService: AdminOrbitUserService,
   ) {}
 
   private static readonly ORBIT_FEEDBACK_CONTEXT = "annix-orbit";
@@ -43,9 +45,14 @@ export class AdminOrbitSeekerTestingController {
   @Get("phases")
   async phasesList() {
     const phases = await this.phases.listNewestFirst();
+    const registeredProspects = (await this.userService.seekerProspects()).filter(
+      (prospect) => !prospect.hasCandidate && prospect.hasLoggedIn,
+    ).length;
     return Promise.all(
       phases.map(async (phase) => {
-        phase.actualUsers = await this.participants.countByPhase(String(phase.id));
+        const participantCount = await this.participants.countByPhase(String(phase.id));
+        phase.actualUsers =
+          phase.status === "active" ? participantCount + registeredProspects : participantCount;
         return phase;
       }),
     );
@@ -99,8 +106,26 @@ export class AdminOrbitSeekerTestingController {
   }
 
   @Get("users")
-  users() {
-    return this.progress.listProgress();
+  async users() {
+    const rows = await this.progress.listProgress();
+    const prospects = (await this.userService.seekerProspects()).filter(
+      (prospect) => !prospect.hasCandidate,
+    );
+    const prospectRows = prospects.map((prospect) => ({
+      id: `prospect-${prospect.userId}`,
+      participantId: null,
+      candidateId: null,
+      label: prospect.name ? `${prospect.name} (${prospect.email})` : prospect.email,
+      registeredAt: prospect.hasLoggedIn ? prospect.lastLoginAt : null,
+      cvUploadedAt: null,
+      careerScoreGeneratedAt: null,
+      firstJobsViewedAt: null,
+      timeToFirstValueSeconds: null,
+      completedSteps: prospect.hasLoggedIn ? 1 : 0,
+      lastActiveAt: prospect.lastLoginAt,
+      status: prospect.hasLoggedIn ? "registered" : "invited",
+    }));
+    return [...rows, ...prospectRows];
   }
 
   @Get("readiness")

@@ -293,19 +293,31 @@ function UsersTable(props: { users: SeekerProgressRow[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-white/5">
-          {users.map((user) => (
-            <tr key={user.id} className="text-slate-200">
-              <td className="px-4 py-3 font-medium">{user.candidateId}</td>
-              <td className="px-4 py-3 text-slate-300">
-                {user.completedSteps}/{TOTAL_STEPS}
-              </td>
-              <td className="px-4 py-3 text-slate-300">
-                {formatSeconds(user.timeToFirstValueSeconds)}
-              </td>
-              <td className="px-4 py-3 text-slate-400">{formatTs(user.registeredAt)}</td>
-              <td className="px-4 py-3 text-slate-400">{formatTs(user.lastActiveAt)}</td>
-            </tr>
-          ))}
+          {users.map((user) => {
+            const rawLabel = user.label;
+            const rawStatus = user.status;
+            const candidateLabel = rawLabel || (user.candidateId !== null ? user.candidateId : "—");
+            return (
+              <tr key={user.id} className="text-slate-200">
+                <td className="px-4 py-3 font-medium">
+                  {candidateLabel}
+                  {rawStatus ? (
+                    <span className="ml-2 rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-slate-300">
+                      {rawStatus}
+                    </span>
+                  ) : null}
+                </td>
+                <td className="px-4 py-3 text-slate-300">
+                  {user.completedSteps}/{TOTAL_STEPS}
+                </td>
+                <td className="px-4 py-3 text-slate-300">
+                  {formatSeconds(user.timeToFirstValueSeconds)}
+                </td>
+                <td className="px-4 py-3 text-slate-400">{formatTs(user.registeredAt)}</td>
+                <td className="px-4 py-3 text-slate-400">{formatTs(user.lastActiveAt)}</td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

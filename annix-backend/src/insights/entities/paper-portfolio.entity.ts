@@ -120,6 +120,14 @@ export class PaperPortfolio {
   @Column({ type: "boolean", default: false, name: "is_paused" })
   isPaused: boolean;
 
+  @ApiProperty({
+    required: false,
+    nullable: true,
+    description: "Result of the most recent rules-engine evaluation (decisions + skip reasons).",
+  })
+  @Column({ type: "jsonb", nullable: true, name: "last_evaluation_json" })
+  lastEvaluationJson: Record<string, unknown> | null;
+
   @ApiProperty()
   @CreateDateColumn({ type: "timestamptz", name: "created_at" })
   createdAt: Date;

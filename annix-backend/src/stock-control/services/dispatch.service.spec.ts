@@ -85,6 +85,7 @@ describe("DispatchService", () => {
     return {
       id,
       quantityUsed,
+      stockItemId,
       stockItem: makeStockItem(stockItemId) as StockItem,
       companyId: 1,
     };

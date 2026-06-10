@@ -31,6 +31,19 @@ export class MongoPaperTradeRepository
     return this.toDomainList(docs);
   }
 
+  async existsContributionSince(portfolioId: string, since: Date): Promise<boolean> {
+    const doc = await this.documents
+      .findOne({
+        portfolioId,
+        action: "contribution",
+        $or: [{ createdAt: { $gte: since } }, { executedAt: { $gte: since } }],
+      })
+      .session(this.session)
+      .lean()
+      .exec();
+    return doc !== null;
+  }
+
   async findEarliestBuy(portfolioId: string, assetId: string): Promise<PaperTrade | null> {
     const doc = await this.documents
       .findOne({ portfolioId, assetId, action: "buy" })

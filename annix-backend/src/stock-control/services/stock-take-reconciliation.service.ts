@@ -732,7 +732,7 @@ export class StockTakeReconciliationService {
       endDate: periodEnd,
     });
     return movements.reduce((acc, movement) => {
-      const itemId = movement.stockItem?.id ?? null;
+      const itemId = movement.stockItemId ?? null;
       if (itemId === null) return acc;
       const existing = acc.get(itemId) ?? [];
       const createdAt = movement.createdAt;

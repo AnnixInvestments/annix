@@ -464,6 +464,22 @@ export interface PaperPortfolioSummary {
   valueSparkline: number[];
   maxDrawdownPercent: number;
   volatilityScore: number;
+  lastEvaluation: PaperPortfolioEvaluation | null;
+}
+
+export interface PaperPortfolioEvaluationDecision {
+  action: string;
+  symbol: string;
+  qty: number;
+  estimatedTradeValue: number;
+  reasoning: string;
+}
+
+export interface PaperPortfolioEvaluation {
+  evaluatedAt: string;
+  decisionCount: number;
+  decisions: PaperPortfolioEvaluationDecision[];
+  skippedReasons: string[];
 }
 
 export interface SignalComponentBreakdown {

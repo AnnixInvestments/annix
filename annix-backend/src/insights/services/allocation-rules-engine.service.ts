@@ -179,15 +179,20 @@ export class AllocationRulesEngineService {
     const buyBudgetSlots = Math.max(0, maxPositions - remainingHeldCount);
 
     if (buyBudgetSlots === 0) {
-      skipped.push("No buy slots remaining (maxPositions hit)");
+      skipped.push(
+        "No new-position slots remaining (maxPositions hit) — top-ups of held assets only",
+      );
     }
 
     const tiltSectors = new Set(rules.sectorTilt?.sectors ?? []);
     const tiltBonus = rules.sectorTilt?.bonus ?? 0;
     const preferLeveraged = rules.preferLeveragedEtfs === true;
 
+    const holdingValueByAsset = new Map(
+      holdings.map((holding) => [holding.assetId, Number(holding.marketValue)]),
+    );
+
     const buyCandidates = candidateAssets
-      .filter((asset) => !heldAssetIds.has(asset.id))
       .map((asset) => {
         const signal = latestSignals.get(asset.id);
         const priceSnapshot = latestPrices.get(asset.id);
@@ -217,10 +222,14 @@ export class AllocationRulesEngineService {
       .filter((entry) => entry.signal.confidenceScore >= rules.confidenceFloor)
       .sort((a, b) => b.adjustedScore - a.adjustedScore);
 
-    let buysGenerated = 0;
+    let newPositionsGenerated = 0;
     for (const candidate of buyCandidates) {
-      if (buysGenerated >= buyBudgetSlots) break;
       if (deployableCash < MIN_BUY_VALUE) break;
+
+      const alreadyHeld = heldAssetIds.has(candidate.asset.id);
+      if (!alreadyHeld && newPositionsGenerated >= buyBudgetSlots) {
+        continue;
+      }
 
       const sector = candidate.asset.sector ?? "(unknown)";
       const currentSectorValue = sectorExposure.get(sector) ?? 0;
@@ -240,9 +249,24 @@ export class AllocationRulesEngineService {
         rules.maxPercentPerPosition !== null
           ? (rules.maxPercentPerPosition / 100) * totalPortfolioValue
           : Number.POSITIVE_INFINITY;
-      const targetValue = Math.min(deployableCash, positionCapValue, sectorRoom);
+      const currentPositionValue = alreadyHeld
+        ? (holdingValueByAsset.get(candidate.asset.id) ?? 0)
+        : 0;
+      const positionRoom = positionCapValue - currentPositionValue;
+      if (positionRoom <= MIN_BUY_VALUE) {
+        skipped.push(
+          `Buy ${candidate.asset.symbol}: position cap hit (held ${currentPositionValue.toFixed(0)}, cap ${positionCapValue.toFixed(0)})`,
+        );
+        continue;
+      }
+      const targetValue = Math.min(deployableCash, positionRoom, sectorRoom);
       const qty = Math.floor(targetValue / candidate.price);
-      if (qty <= 0) continue;
+      if (qty <= 0) {
+        skipped.push(
+          `Buy ${candidate.asset.symbol}: one unit costs ${candidate.price.toFixed(0)} but budget is ${targetValue.toFixed(0)}`,
+        );
+        continue;
+      }
       const tradeValue = qty * candidate.price;
 
       const positionPct = (tradeValue / totalPortfolioValue) * 100;
@@ -258,7 +282,8 @@ export class AllocationRulesEngineService {
       ].join(" · ");
 
       const topComponents = topThreeComponents(candidate.signal.componentBreakdownJson);
-      const reasoning = `BUY ${qty} ${candidate.asset.symbol} @ ${candidate.price.toFixed(2)}. opp=${candidate.signal.opportunityScore.toFixed(0)} risk=${candidate.signal.riskScore.toFixed(0)} conf=${candidate.signal.confidenceScore.toFixed(0)}. Top contributors: ${topComponents}. Allocation: ${positionPct.toFixed(2)}% of portfolio, ${sectorPct.toFixed(2)}% of ${sector}. Adj-score ${candidate.adjustedScore.toFixed(2)} (tilt+${candidate.sectorBonus}, lev+${candidate.leverageBonus}). Rule path: ${trace}.`;
+      const buyKind = alreadyHeld ? "TOP-UP BUY" : "BUY";
+      const reasoning = `${buyKind} ${qty} ${candidate.asset.symbol} @ ${candidate.price.toFixed(2)}. opp=${candidate.signal.opportunityScore.toFixed(0)} risk=${candidate.signal.riskScore.toFixed(0)} conf=${candidate.signal.confidenceScore.toFixed(0)}. Top contributors: ${topComponents}. Allocation: ${positionPct.toFixed(2)}% of portfolio, ${sectorPct.toFixed(2)}% of ${sector}. Adj-score ${candidate.adjustedScore.toFixed(2)} (tilt+${candidate.sectorBonus}, lev+${candidate.leverageBonus}). Rule path: ${trace}.`;
 
       decisions.push({
         action: "buy",
@@ -284,12 +309,20 @@ export class AllocationRulesEngineService {
 
       deployableCash -= tradeValue;
       sectorExposure.set(sector, currentSectorValue + tradeValue);
-      buysGenerated += 1;
+      if (alreadyHeld) {
+        holdingValueByAsset.set(candidate.asset.id, currentPositionValue + tradeValue);
+      } else {
+        newPositionsGenerated += 1;
+        heldAssetIds.add(candidate.asset.id);
+        holdingValueByAsset.set(candidate.asset.id, tradeValue);
+      }
     }
 
     if (buyCandidates.length === 0 && remainingHeldCount === 0) {
       skipped.push("No buy candidates passed the confidence floor");
     }
+
+    await this.persistEvaluation(portfolio.id, decisions, skipped);
 
     return {
       portfolioSlug: portfolio.slug,
@@ -297,6 +330,31 @@ export class AllocationRulesEngineService {
       skippedReasons: skipped,
       evaluatedAt: nowIso(),
     };
+  }
+
+  private async persistEvaluation(
+    portfolioId: string,
+    decisions: Decision[],
+    skippedReasons: string[],
+  ): Promise<void> {
+    try {
+      await this.portfolioRepo.updateById(portfolioId, {
+        lastEvaluationJson: {
+          evaluatedAt: nowIso(),
+          decisionCount: decisions.length,
+          decisions: decisions.map((decision) => ({
+            action: decision.action,
+            symbol: decision.symbol,
+            qty: decision.qty,
+            estimatedTradeValue: decision.estimatedTradeValue,
+            reasoning: decision.reasoning,
+          })),
+          skippedReasons,
+        },
+      });
+    } catch (error) {
+      this.logger.warn(`Failed to persist evaluation for ${portfolioId}: ${String(error)}`);
+    }
   }
 
   async evaluateAll(): Promise<PortfolioDecisions[]> {

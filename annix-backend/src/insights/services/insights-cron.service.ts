@@ -220,6 +220,9 @@ export class InsightsCronService implements OnApplicationBootstrap {
     timeZone: "Africa/Johannesburg",
   })
   async runMonthlyContribution(): Promise<void> {
+    if (!isInsightsCronEnabled()) {
+      return;
+    }
     this.logger.log("Insights monthly contribution starting (1st of month, 06:00 SAST).");
     try {
       const result = await this.portfolioService.addMonthlyContributionToAll();

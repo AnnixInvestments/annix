@@ -59,8 +59,10 @@ export interface SeekerErrorsLatency {
 
 export interface SeekerProgressRow {
   id: string;
-  participantId: string;
-  candidateId: number;
+  participantId: string | null;
+  candidateId: number | null;
+  label?: string | null;
+  status?: string;
   registeredAt: string | null;
   cvUploadedAt: string | null;
   careerScoreGeneratedAt: string | null;

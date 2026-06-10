@@ -56,6 +56,8 @@ const AI_DAILY_CALL_SOFT_CAP = 100_000;
 const AI_DAILY_TOKEN_SOFT_CAP = 5_000_000;
 const REQUEST_P95_TARGET_MS = 1000;
 const S3_SOFT_BUDGET_GB = 25;
+const DYNAMIC_CARDS_TTL_MS = 5 * 60 * 1000;
+const AI_TOTALS_TTL_MS = 60 * 1000;
 const EXTERNAL_JOBS_COLLECTION = "cv_assistant_external_jobs";
 const ORBIT_SETTINGS_COLLECTION = "cv_assistant_orbit_settings";
 
@@ -125,6 +127,10 @@ function formatDuration(totalSeconds: number): string {
 @Injectable()
 export class AdminPlatformLimitsService {
   private readonly logger = new Logger(AdminPlatformLimitsService.name);
+  private dynamicCardsCache: { atMs: number; cards: (PlatformLimitCard | null)[] } | null = null;
+  private refreshingDynamicCards = false;
+  private aiTotalsCache: { atMs: number; totals: { calls: number; tokens: number } | null } | null =
+    null;
 
   constructor(
     private readonly requestMetrics: RequestMetricsService,
@@ -140,12 +146,9 @@ export class AdminPlatformLimitsService {
 
   async limits(): Promise<PlatformLimitsResponse> {
     const snapshot = this.requestMetrics.snapshot();
-    const aiTotals = await this.aiDailyTotals();
-    const dynamicCards = await Promise.all([
-      this.orbitStorageCard(),
-      this.collectionCountCard(this.mainConnection, "collections-main", "Collections — main DB"),
-      this.collectionCountCard(this.orbitConnection, "collections-orbit", "Collections — Orbit DB"),
-      this.externalJobsCard(),
+    const [aiTotals, dynamicCards] = await Promise.all([
+      this.cachedAiTotals(),
+      this.cachedDynamicCards(),
     ]);
     const aiCards = aiTotals ? [this.aiCallsCard(aiTotals), this.aiTokensCard(aiTotals)] : [];
     const cards = [
@@ -160,6 +163,54 @@ export class AdminPlatformLimitsService {
       this.s3StorageCard(),
     ].filter((card): card is PlatformLimitCard => card !== null);
     return { generatedAt: nowISO(), cards };
+  }
+
+  private async cachedAiTotals(): Promise<{ calls: number; tokens: number } | null> {
+    const cache = this.aiTotalsCache;
+    if (cache && nowMillis() - cache.atMs < AI_TOTALS_TTL_MS) {
+      return cache.totals;
+    }
+    const totals = await this.aiDailyTotals();
+    this.aiTotalsCache = { atMs: nowMillis(), totals };
+    return totals;
+  }
+
+  private async cachedDynamicCards(): Promise<(PlatformLimitCard | null)[]> {
+    const cache = this.dynamicCardsCache;
+    if (cache && nowMillis() - cache.atMs < DYNAMIC_CARDS_TTL_MS) {
+      return cache.cards;
+    }
+    if (cache) {
+      void this.refreshDynamicCards().catch((error) => {
+        this.logger.warn(`background dynamic-card refresh failed: ${String(error)}`);
+      });
+      return cache.cards;
+    }
+    return this.refreshDynamicCards();
+  }
+
+  private async refreshDynamicCards(): Promise<(PlatformLimitCard | null)[]> {
+    const cache = this.dynamicCardsCache;
+    if (this.refreshingDynamicCards && cache) {
+      return cache.cards;
+    }
+    this.refreshingDynamicCards = true;
+    try {
+      const cards = await Promise.all([
+        this.orbitStorageCard(),
+        this.collectionCountCard(this.mainConnection, "collections-main", "Collections — main DB"),
+        this.collectionCountCard(
+          this.orbitConnection,
+          "collections-orbit",
+          "Collections — Orbit DB",
+        ),
+        this.externalJobsCard(),
+      ]);
+      this.dynamicCardsCache = { atMs: nowMillis(), cards };
+      return cards;
+    } finally {
+      this.refreshingDynamicCards = false;
+    }
   }
 
   private memoryCard(): PlatformLimitCard {
@@ -409,32 +460,32 @@ export class AdminPlatformLimitsService {
         label: "V8 heap used",
         value: toMb(usage.heapUsed),
         unit: "MB",
-        percent: percentOf(toMb(usage.heapUsed), rssMb),
+        percent: percentOf(toMb(usage.heapUsed), capMb),
       },
       {
         label: "V8 heap allocated",
         value: toMb(usage.heapTotal),
         unit: "MB",
-        percent: percentOf(toMb(usage.heapTotal), rssMb),
+        percent: percentOf(toMb(usage.heapTotal), capMb),
       },
       {
         label: "External (buffers, C++)",
         value: toMb(usage.external),
         unit: "MB",
-        percent: percentOf(toMb(usage.external), rssMb),
+        percent: percentOf(toMb(usage.external), capMb),
       },
       {
         label: "ArrayBuffers",
         value: toMb(usage.arrayBuffers),
         unit: "MB",
-        percent: percentOf(toMb(usage.arrayBuffers), rssMb),
+        percent: percentOf(toMb(usage.arrayBuffers), capMb),
       },
     ];
     return this.breakdownResult(
       "vm-memory",
       "VM memory (RSS)",
       rows,
-      `Fly VM cap ${capMb} MB · sub-segments shown as share of RSS`,
+      `every row shown as share of the ${capMb} MB Fly VM cap — bars only heat up near the cap`,
     );
   }
 
@@ -602,7 +653,7 @@ export class AdminPlatformLimitsService {
         label: `${prefix}_*`,
         value: count,
         unit: "collections",
-        percent: percentOf(count, total),
+        percent: percentOf(count, ATLAS_COLLECTION_CAP),
       }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 15);
@@ -610,7 +661,7 @@ export class AdminPlatformLimitsService {
       id,
       `${title} — by prefix`,
       rows,
-      `${total} collections of the Atlas M0 ${ATLAS_COLLECTION_CAP}-collection cap · top 15 prefixes`,
+      `${total} collections of the Atlas M0 ${ATLAS_COLLECTION_CAP}-collection cap · top 15 prefixes · each row shown as share of the cap`,
     );
   }
 
@@ -619,6 +670,13 @@ export class AdminPlatformLimitsService {
     if (!connection?.db) throw new NotFoundException("Orbit connection unavailable");
     const collection = connection.db.collection(EXTERNAL_JOBS_COLLECTION);
     const total = await collection.estimatedDocumentCount();
+    const settings = await connection.db
+      .collection<{ _id: string; externalJobRetentionCap?: number }>(ORBIT_SETTINGS_COLLECTION)
+      .findOne({ _id: "default" });
+    const cap =
+      settings && typeof settings.externalJobRetentionCap === "number"
+        ? settings.externalJobRetentionCap
+        : DEFAULT_RETENTION_CAP;
     const byCountry = (await collection
       .aggregate([
         { $group: { _id: { $ifNull: ["$country", "unknown"] }, count: { $sum: 1 } } },
@@ -633,13 +691,13 @@ export class AdminPlatformLimitsService {
       label: entry._id,
       value: entry.count,
       unit: "jobs",
-      percent: percentOf(entry.count, total),
+      percent: percentOf(entry.count, cap),
     }));
     return this.breakdownResult(
       "external-jobs",
       "External jobs by country",
       rows,
-      `${formatNumber(total)} jobs total · ${formatNumber(last24h)} ingested in the last 24h`,
+      `${formatNumber(total)} jobs of the ${formatNumber(cap)} retention cap · ${formatNumber(last24h)} ingested in the last 24h · each row shown as share of the cap`,
     );
   }
 

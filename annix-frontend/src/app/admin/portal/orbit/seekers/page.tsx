@@ -26,6 +26,12 @@ function statusClass(status: string): string {
   if (status === "active" || status === "accepted") {
     return "bg-green-100 text-green-700";
   }
+  if (status === "registered") {
+    return "bg-indigo-100 text-indigo-700";
+  }
+  if (status === "invited") {
+    return "bg-sky-100 text-sky-700";
+  }
   if (status === "new" || status === "screening") {
     return "bg-blue-100 text-blue-700";
   }
@@ -207,11 +213,21 @@ export default function OrbitSeekersPage() {
                 const tierBadge = tierClass(seeker.matchTier);
                 const statusBadge = statusClass(seeker.status);
                 const seekerId = seeker.id;
+                const isProspect = seeker.isProspect === true;
                 return (
                   <tr
                     key={seekerId}
-                    onClick={() => router.push(`/admin/portal/orbit/seekers/${seekerId}`)}
-                    className="text-gray-900 cursor-pointer hover:bg-violet-50 transition-colors"
+                    onClick={
+                      isProspect
+                        ? undefined
+                        : () => router.push(`/admin/portal/orbit/seekers/${seekerId}`)
+                    }
+                    title={isProspect ? "Invited via admin — no seeker profile yet" : undefined}
+                    className={
+                      isProspect
+                        ? "text-gray-500 transition-colors"
+                        : "text-gray-900 cursor-pointer hover:bg-violet-50 transition-colors"
+                    }
                   >
                     <td className="px-4 py-3 font-medium">{name}</td>
                     <td className="px-4 py-3 text-gray-600">{email}</td>

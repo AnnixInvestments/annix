@@ -697,6 +697,7 @@ describe("InvoiceExtractionService", () => {
 
       mockInvoiceRepo.findOne.mockResolvedValue(invoice);
       invoiceItemFind.mockResolvedValue([item]);
+      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
       mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
       mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
       mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
