@@ -16,6 +16,7 @@ import type {
   InboundEmailConfigResponse,
   InboundEmailConfigUpdate,
   InboundEmailStats,
+  JobCardImportCorrection,
   JobCardImportRow,
   JobCardImportUploadResponse,
   Requisition,
@@ -48,7 +49,10 @@ declare module "./base" {
     cpos(status?: string): Promise<CustomerPurchaseOrder[]>;
     cpoById(id: number): Promise<CustomerPurchaseOrder>;
     uploadCpoImportFile(file: File): Promise<JobCardImportUploadResponse>;
-    confirmCpoImport(rows: JobCardImportRow[]): Promise<CpoImportResult>;
+    confirmCpoImport(
+      rows: JobCardImportRow[],
+      corrections?: JobCardImportCorrection[],
+    ): Promise<CpoImportResult>;
     updateCpoStatus(id: number, status: string): Promise<CustomerPurchaseOrder>;
     updateCpoCoatingSpecs(id: number, coatingSpecs: string | null): Promise<CustomerPurchaseOrder>;
     deleteCpo(id: number): Promise<void>;
@@ -162,10 +166,10 @@ proto.uploadCpoImportFile = async function (file) {
   return this.uploadFile("/stock-control/cpos/upload", file);
 };
 
-proto.confirmCpoImport = async function (rows) {
+proto.confirmCpoImport = async function (rows, corrections) {
   return this.request("/stock-control/cpos/confirm", {
     method: "POST",
-    body: JSON.stringify({ rows }),
+    body: JSON.stringify({ rows, corrections }),
   });
 };
 

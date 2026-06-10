@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCardStatus } from "../entities/job-card.entity";
 import { QcMeasurementService } from "../qc/services/qc-measurement.service";
@@ -65,6 +66,13 @@ describe("JobCardImportService", () => {
     chatWithImage: jest.fn(),
   };
 
+  const mockNixLearningRepo = {
+    findActiveCorrectionsByCategoryTopByConfidence: jest.fn().mockResolvedValue([]),
+    findActiveCorrectionByPatternKeyAndCategory: jest.fn().mockResolvedValue(null),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
+  };
+
   const mockDrawingExtractionService = {
     extractFromPdfBuffers: jest.fn(),
   };
@@ -90,6 +98,7 @@ describe("JobCardImportService", () => {
         { provide: CustomerPurchaseOrderItemRepository, useValue: mockCpoItemRepo },
         { provide: JobCardExtractionCorrectionRepository, useValue: mockCorrectionRepo },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: NixLearningRepository, useValue: mockNixLearningRepo },
         { provide: DrawingExtractionService, useValue: mockDrawingExtractionService },
         { provide: CpoService, useValue: mockCpoService },
         { provide: JobCardVersionService, useValue: mockVersionService },
@@ -117,6 +126,10 @@ describe("JobCardImportService", () => {
     mockLineItemRepo.deleteForJobCard.mockResolvedValue(undefined);
     mockMappingRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
     mockMappingRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockNixLearningRepo.findActiveCorrectionsByCategoryTopByConfidence.mockResolvedValue([]);
+    mockNixLearningRepo.findActiveCorrectionByPatternKeyAndCategory.mockResolvedValue(null);
+    mockNixLearningRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
+    mockNixLearningRepo.save.mockImplementation((entity) => Promise.resolve(entity));
     mockCpoItemRepo.findForCpoOrdered.mockResolvedValue([]);
     mockCpoService.matchJobCardToCpo.mockResolvedValue(null);
     mockVersionService.archiveCurrentVersion.mockResolvedValue(null);

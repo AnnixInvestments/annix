@@ -41,8 +41,14 @@ export class AdminOrbitSeekerTestingController {
   private static readonly ORBIT_FEEDBACK_CONTEXT = "annix-orbit";
 
   @Get("phases")
-  phasesList() {
-    return this.phases.listNewestFirst();
+  async phasesList() {
+    const phases = await this.phases.listNewestFirst();
+    return Promise.all(
+      phases.map(async (phase) => {
+        phase.actualUsers = await this.participants.countByPhase(String(phase.id));
+        return phase;
+      }),
+    );
   }
 
   @Post("phases")

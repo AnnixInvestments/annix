@@ -2,6 +2,8 @@ import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nest
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ChatMessage } from "../../nix/ai-providers/claude-chat.provider";
+import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
+import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CpoStatus } from "../entities/customer-purchase-order.entity";
 import { JobCard, JobCardStatus, WORKFLOW_STATUS_DRAFT } from "../entities/job-card.entity";
@@ -56,6 +58,16 @@ export interface JobCardImportRow {
   reference?: string;
   customFields?: Record<string, string>;
   lineItems?: LineItemImportRow[];
+}
+
+export interface JobCardImportCorrection {
+  rowIndex: number;
+  lineItemIndex?: number | null;
+  fieldName: string;
+  originalValue?: string | null;
+  correctedValue: string;
+  customerName?: string | null;
+  itemDescription?: string | null;
 }
 
 export interface DeliveryLineMatch {
@@ -514,6 +526,7 @@ export class JobCardImportService {
     private readonly cpoItemRepo: CustomerPurchaseOrderItemRepository,
     private readonly correctionRepo: JobCardExtractionCorrectionRepository,
     private readonly aiChatService: AiChatService,
+    private readonly nixLearningRepo: NixLearningRepository,
     private readonly drawingExtractionService: DrawingExtractionService,
     @Inject(forwardRef(() => CpoService))
     private readonly cpoService: CpoService,
@@ -526,15 +539,86 @@ export class JobCardImportService {
 
   private async correctionHintsForCompany(companyId: number): Promise<string> {
     const corrections = await this.correctionRepo.findRecentForCompany(companyId, 50);
+    const importCorrections =
+      await this.nixLearningRepo.findActiveCorrectionsByCategoryTopByConfidence(
+        "stock-control-job-card-import",
+        50,
+      );
 
-    if (corrections.length === 0) return "";
+    if (corrections.length === 0 && importCorrections.length === 0) return "";
 
     const hints = corrections.map(
       (c) =>
         `- Customer "${c.customerName || "unknown"}", field "${c.fieldName}": AI extracted "${c.originalValue}" but user corrected to "${c.correctedValue}"`,
     );
+    const importHints = importCorrections.map(
+      (c) =>
+        `- Import field "${c.context?.fieldName || "unknown"}": AI extracted "${c.originalValue || ""}" but user corrected to "${c.learnedValue}"`,
+    );
 
-    return `\n\nPREVIOUS USER CORRECTIONS (learn from these patterns):\n${hints.join("\n")}\n\nApply these corrections when you see similar patterns. Pay attention to specification formatting and field extraction accuracy.`;
+    return `\n\nPREVIOUS USER CORRECTIONS (learn from these patterns):\n${[...hints, ...importHints].join("\n")}\n\nApply these corrections when you see similar patterns. Pay attention to specification formatting and field extraction accuracy.`;
+  }
+
+  async recordImportCorrections(
+    companyId: number,
+    corrections: JobCardImportCorrection[] | undefined,
+  ): Promise<void> {
+    const validCorrections = (corrections || []).filter(
+      (correction) =>
+        correction.fieldName &&
+        correction.correctedValue !== undefined &&
+        String(correction.correctedValue).trim() !== "" &&
+        String(correction.originalValue ?? "") !== String(correction.correctedValue),
+    );
+
+    await validCorrections.reduce(async (prev, correction) => {
+      await prev;
+      const original = String(correction.originalValue ?? "").trim();
+      const corrected = String(correction.correctedValue).trim();
+      const fieldName = correction.fieldName.trim();
+      const patternKey = `job_card_import:${fieldName}:${original.toLowerCase().slice(0, 120)}`;
+      const existing = await this.nixLearningRepo.findActiveCorrectionByPatternKeyAndCategory(
+        patternKey,
+        "stock-control-job-card-import",
+      );
+
+      if (existing) {
+        existing.learnedValue = corrected;
+        existing.confirmationCount = Number(existing.confirmationCount || 0) + 1;
+        existing.confidence = Math.min(0.99, Number(existing.confidence || 0.5) + 0.05);
+        existing.context = {
+          ...(existing.context || {}),
+          companyId,
+          fieldName,
+          rowIndex: correction.rowIndex,
+          lineItemIndex: correction.lineItemIndex ?? null,
+          customerName: correction.customerName ?? null,
+          itemDescription: correction.itemDescription ?? null,
+        };
+        await this.nixLearningRepo.save(existing);
+        return;
+      }
+
+      await this.nixLearningRepo.create({
+        learningType: LearningType.CORRECTION,
+        source: LearningSource.USER_CORRECTION,
+        category: "stock-control-job-card-import",
+        patternKey,
+        originalValue: original || undefined,
+        learnedValue: corrected,
+        context: {
+          companyId,
+          fieldName,
+          rowIndex: correction.rowIndex,
+          lineItemIndex: correction.lineItemIndex ?? null,
+          customerName: correction.customerName ?? null,
+          itemDescription: correction.itemDescription ?? null,
+        },
+        confidence: 0.75,
+        confirmationCount: 1,
+        isActive: true,
+      });
+    }, Promise.resolve());
   }
 
   async parseFile(

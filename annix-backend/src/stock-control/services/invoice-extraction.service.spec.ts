@@ -679,6 +679,67 @@ describe("InvoiceExtractionService", () => {
       expect(mockPriceHistoryRepo.create).not.toHaveBeenCalled();
     });
 
+    it("loads invoice items separately when approval relations are not populated", async () => {
+      const stockItem = { id: 50, costPerUnit: 100, name: "Widget" };
+      const invoice = {
+        id: 1,
+        companyId: 10,
+        supplierName: "Supplier A",
+      };
+      const item = {
+        id: 10,
+        stockItemId: 50,
+        unitPrice: 120,
+        quantity: 5,
+        priceUpdated: false,
+        stockItem,
+      };
+
+      mockInvoiceRepo.findOne.mockResolvedValue(invoice);
+      invoiceItemFind.mockResolvedValue([item]);
+      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
+
+      await service.applyPriceUpdates(1, 42);
+
+      expect(mockPriceHistoryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ oldPrice: 100, newPrice: 120 }),
+      );
+      expect(item.priceUpdated).toBe(true);
+    });
+
+    it("normalizes string stock item ids before looking up stock records", async () => {
+      const stockItem = { id: 50, costPerUnit: 100, name: "Widget" };
+      const invoice = {
+        id: 1,
+        companyId: 10,
+        supplierName: "Supplier A",
+        items: [
+          {
+            id: 10,
+            stockItemId: "50",
+            unitPrice: 120,
+            quantity: 5,
+            priceUpdated: false,
+          },
+        ],
+      };
+
+      mockInvoiceRepo.findOne.mockResolvedValue(invoice);
+      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
+      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
+
+      await service.applyPriceUpdates(1, 42);
+
+      expect(mockStockItemRepo.findOne).toHaveBeenCalledWith({ where: { id: 50 } });
+      expect(mockPriceHistoryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ oldPrice: 100, newPrice: 120 }),
+      );
+    });
+
     it("throws when invoice not found", async () => {
       mockInvoiceRepo.findOne.mockResolvedValue(null);
 

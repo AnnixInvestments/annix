@@ -968,6 +968,23 @@ export class InvoiceExtractionService {
     await this.invoiceRepo.save(invoice);
   }
 
+  private toPositiveNumberId(value: unknown): number | null {
+    if (value === null || value === undefined || value === "") {
+      return null;
+    }
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : null;
+  }
+
+  private async getInvoiceItemsForApproval(
+    invoice: SupplierInvoice,
+  ): Promise<SupplierInvoiceItem[]> {
+    if (Array.isArray(invoice.items) && invoice.items.length > 0) {
+      return invoice.items;
+    }
+    return this.invoiceItemRepo.findByInvoiceWithRelations(invoice.id, ["stockItem"]);
+  }
+
   async applyPriceUpdates(invoiceId: number, approvedBy: number): Promise<SupplierInvoice> {
     const invoice = await this.invoiceRepo.findOneByIdWithRelations(invoiceId, [
       "items",
@@ -980,20 +997,30 @@ export class InvoiceExtractionService {
 
     const skippedPriceClarifications =
       await this.clarificationRepo.findSkippedPriceForInvoice(invoiceId);
-    const skippedItemIds = new Set(skippedPriceClarifications.map((c) => c.invoiceItemId));
+    const skippedItemIds = new Set(
+      skippedPriceClarifications
+        .map((c) => this.toPositiveNumberId(c.invoiceItemId))
+        .filter((id): id is number => id !== null),
+    );
+    const items = await this.getInvoiceItemsForApproval(invoice);
 
-    await invoice.items
+    await items
       .filter(
         (item) =>
-          item.stockItemId &&
+          this.toPositiveNumberId(item.stockItemId) !== null &&
           item.unitPrice !== null &&
-          item.quantity > 0 &&
+          item.unitPrice !== undefined &&
+          Number(item.quantity) > 0 &&
           !item.priceUpdated &&
           !skippedItemIds.has(item.id),
       )
       .reduce(async (prev, item) => {
         await prev;
-        const stockItem = item.stockItem || (await this.stockItemRepo.findById(item.stockItemId!));
+        const stockItemId = this.toPositiveNumberId(item.stockItemId);
+        if (stockItemId === null) {
+          return;
+        }
+        const stockItem = item.stockItem || (await this.stockItemRepo.findById(stockItemId));
 
         if (stockItem) {
           const oldPrice = Number(stockItem.costPerUnit) || null;

@@ -1,6 +1,6 @@
 "use client";
 
-import { keys, values } from "es-toolkit/compat";
+import { isArray, keys, values } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Fragment, useCallback, useEffect, useRef, useState } from "react";
@@ -10,6 +10,7 @@ import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   DeliveryMatchResult,
   ImportMappingConfig,
+  JobCardImportCorrection,
   JobCardImportMapping,
   JobCardImportResult,
   JobCardImportRow,
@@ -283,6 +284,35 @@ const DETAIL_META_KEYS = new Set([
   "notes",
   "reference",
 ]);
+
+const DETAIL_EDIT_KEYS = [
+  "jobNumber",
+  "jcNumber",
+  "pageNumber",
+  "jobName",
+  "customerName",
+  "description",
+  "poNumber",
+  "siteLocation",
+  "contactPerson",
+  "dueDate",
+  "notes",
+  "reference",
+] as const;
+
+const LINE_ITEM_EDIT_KEYS = [
+  "itemCode",
+  "itemDescription",
+  "itemNo",
+  "quantity",
+  "jtNo",
+  "m2",
+  "notes",
+] as const;
+
+function cloneImportRows(rows: JobCardImportRow[]): JobCardImportRow[] {
+  return JSON.parse(JSON.stringify(rows)) as JobCardImportRow[];
+}
 
 function extractMappedRows(
   grid: string[][],
@@ -814,7 +844,7 @@ export default function JobCardImportPage() {
       setSourceFileName(importJob.sourceFileName);
       if (rows && rows.length > 0) {
         setIsDrawingImport(true);
-        setMappedRows(rows);
+        setPreviewRows(rows);
         setExpandedJobs(
           new Set(
             rows.map((r) => {
@@ -867,6 +897,7 @@ export default function JobCardImportPage() {
   const [dragStart, setDragStart] = useState<{ row: number; col: number } | null>(null);
   const [dragEnd, setDragEnd] = useState<{ row: number; col: number } | null>(null);
   const [mappedRows, setMappedRows] = useState<JobCardImportRow[]>([]);
+  const [originalMappedRows, setOriginalMappedRows] = useState<JobCardImportRow[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSavingMapping, setIsSavingMapping] = useState(false);
@@ -899,6 +930,131 @@ export default function JobCardImportPage() {
   const drawingInputRef = useRef<HTMLInputElement>(null);
   const hasCheckedPending = useRef(false);
   const hasCheckedJobId = useRef(false);
+
+  const setPreviewRows = (rows: JobCardImportRow[]) => {
+    setMappedRows(rows);
+    setOriginalMappedRows(cloneImportRows(rows));
+  };
+
+  const updateMappedRow = (
+    rowIndex: number,
+    field: (typeof DETAIL_EDIT_KEYS)[number],
+    value: string,
+  ) => {
+    setMappedRows((prev) =>
+      prev.map((row, index) => (index === rowIndex ? { ...row, [field]: value } : row)),
+    );
+  };
+
+  const updateMappedLineItem = (
+    rowIndex: number,
+    lineItemIndex: number,
+    field: (typeof LINE_ITEM_EDIT_KEYS)[number],
+    value: string,
+  ) => {
+    setMappedRows((prev) =>
+      prev.map((row, index) => {
+        if (index !== rowIndex) return row;
+        const existingLineItems = isArray(row.lineItems) ? row.lineItems : [];
+        const lineItems = [...existingLineItems];
+        const currentLineItem = lineItems[lineItemIndex];
+        const current = currentLineItem ? currentLineItem : {};
+        lineItems[lineItemIndex] = {
+          ...current,
+          [field]: field === "m2" ? (value === "" ? undefined : Number(value)) : value,
+        };
+        return { ...row, lineItems };
+      }),
+    );
+  };
+
+  const addMappedLineItem = (rowIndex: number) => {
+    setMappedRows((prev) =>
+      prev.map((row, index) =>
+        index === rowIndex
+          ? {
+              ...row,
+              lineItems: [
+                ...(isArray(row.lineItems) ? row.lineItems : []),
+                {
+                  itemCode: "",
+                  itemDescription: "",
+                  itemNo: "",
+                  quantity: "1",
+                  jtNo: "",
+                },
+              ],
+            }
+          : row,
+      ),
+    );
+  };
+
+  const removeMappedLineItem = (rowIndex: number, lineItemIndex: number) => {
+    setMappedRows((prev) =>
+      prev.map((row, index) =>
+        index === rowIndex
+          ? {
+              ...row,
+              lineItems: (isArray(row.lineItems) ? row.lineItems : []).filter(
+                (_, itemIndex) => itemIndex !== lineItemIndex,
+              ),
+            }
+          : row,
+      ),
+    );
+  };
+
+  const importCorrections = (rows: JobCardImportRow[]): JobCardImportCorrection[] => {
+    const corrections: JobCardImportCorrection[] = [];
+
+    rows.forEach((row, rowIndex) => {
+      const originalRow = originalMappedRows[rowIndex];
+      const original = originalRow ? originalRow : {};
+      const rowCustomerName = row.customerName;
+      const correctionCustomerName = rowCustomerName == null ? null : rowCustomerName;
+      DETAIL_EDIT_KEYS.forEach((fieldName) => {
+        const originalValue = original[fieldName] == null ? "" : String(original[fieldName]);
+        const correctedValue = row[fieldName] == null ? "" : String(row[fieldName]);
+        if (originalValue !== correctedValue) {
+          corrections.push({
+            rowIndex,
+            fieldName,
+            originalValue,
+            correctedValue,
+            customerName: correctionCustomerName,
+          });
+        }
+      });
+
+      const rowLineItems = isArray(row.lineItems) ? row.lineItems : [];
+      rowLineItems.forEach((lineItem, lineItemIndex) => {
+        const originalLineItems = original.lineItems;
+        const originalLineItemRaw = originalLineItems
+          ? originalLineItems[lineItemIndex]
+          : undefined;
+        const originalLineItem = originalLineItemRaw ? originalLineItemRaw : {};
+        LINE_ITEM_EDIT_KEYS.forEach((fieldName) => {
+          const originalValue =
+            originalLineItem[fieldName] == null ? "" : String(originalLineItem[fieldName]);
+          const correctedValue = lineItem[fieldName] == null ? "" : String(lineItem[fieldName]);
+          if (originalValue !== correctedValue) {
+            corrections.push({
+              rowIndex,
+              lineItemIndex,
+              fieldName: `lineItems.${fieldName}`,
+              originalValue,
+              correctedValue,
+              customerName: correctionCustomerName,
+              itemDescription: lineItem.itemDescription == null ? null : lineItem.itemDescription,
+            });
+          }
+        });
+      });
+    });
+
+    return corrections;
+  };
 
   const handleAutoDetect = async () => {
     if (grid.length === 0) return;
@@ -999,7 +1155,7 @@ export default function JobCardImportPage() {
       const drawingRows = response.drawingRows;
       if (drawingRows && drawingRows.length > 0) {
         setIsDrawingImport(true);
-        setMappedRows(drawingRows);
+        setPreviewRows(drawingRows);
         setExpandedJobs(
           new Set(
             drawingRows.map((r) => {
@@ -1027,7 +1183,7 @@ export default function JobCardImportPage() {
           setCustomFields(savedCf);
           setCustomRegions(savedCfRegions);
           const rows = extractMappedRows(response.grid, savedRegions, savedCf, savedCfRegions);
-          setMappedRows(rows);
+          setPreviewRows(rows);
           setStep("preview");
           calculateM2ForRows(rows);
         } else {
@@ -1062,7 +1218,7 @@ export default function JobCardImportPage() {
       const drawingRows = response.drawingRows;
       if (drawingRows && drawingRows.length > 0) {
         setIsDrawingImport(true);
-        setMappedRows(drawingRows);
+        setPreviewRows(drawingRows);
         setExpandedJobs(
           new Set(
             drawingRows.map((r) => {
@@ -1248,7 +1404,7 @@ export default function JobCardImportPage() {
       const config = regionsToMappingConfig(regions, customFields, customRegions);
       await saveMappingMutation.mutateAsync(config);
       const rows = extractMappedRows(grid, regions, customFields, customRegions);
-      setMappedRows(rows);
+      setPreviewRows(rows);
       setStep("preview");
       calculateM2ForRows(rows);
     } catch (err) {
@@ -1357,6 +1513,7 @@ export default function JobCardImportPage() {
       });
       const importResult = await confirmImportMutation.mutateAsync({
         rows: rowsWithM2,
+        corrections: importCorrections(rowsWithM2),
         sourceFilePath,
         sourceFileName,
       });
@@ -1407,6 +1564,7 @@ export default function JobCardImportPage() {
     setDragStart(null);
     setDragEnd(null);
     setMappedRows([]);
+    setOriginalMappedRows([]);
     setResult(null);
     setError(null);
     setCollapsedGroups({});
@@ -2245,42 +2403,27 @@ export default function JobCardImportPage() {
                           Line Items
                         </th>
                       )}
-                      {Array.from(DETAIL_META_KEYS).some((k) => regions[k]) && (
-                        <th
-                          scope="col"
-                          className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Extra
-                        </th>
-                      )}
+                      <th
+                        scope="col"
+                        className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Extra
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {mappedRows.map((row, index) => {
                       const rowJobNumber = row.jobNumber;
+                      const rowJobName = row.jobName;
+                      const rowNotes = row.notes;
                       const rowJcNumber = row.jcNumber;
                       const rowPageNumber = row.pageNumber;
-                      const rowJobName = row.jobName;
                       const rowCustomerName = row.customerName;
                       const rowDescription = row.description;
-                      const rowPoNumber = row.poNumber;
-                      const rowSiteLocation = row.siteLocation;
-                      const rowContactPerson = row.contactPerson;
-                      const rowDueDate = row.dueDate;
-                      const rowNotes = row.notes;
-                      const rowReference = row.reference;
                       const missingRequired = !rowJobNumber || !rowJobName;
                       const lineCount = row.lineItems ? row.lineItems.length : 0;
-                      const jobNumberKey = rowJobNumber || "";
+                      const jobNumberKey = rowJobNumber || `row-${index}`;
                       const isExpanded = expandedJobs.has(jobNumberKey);
-                      const extraFields = [
-                        rowPoNumber ? `PO: ${rowPoNumber}` : null,
-                        rowSiteLocation ? `Site: ${rowSiteLocation}` : null,
-                        rowContactPerson ? `Contact: ${rowContactPerson}` : null,
-                        rowDueDate ? `Due: ${rowDueDate}` : null,
-                        rowNotes && !regions["notes"] ? `Notes: ${rowNotes}` : null,
-                        rowReference ? `Ref: ${rowReference}` : null,
-                      ].filter(Boolean);
 
                       return (
                         <Fragment key={index}>
@@ -2288,37 +2431,66 @@ export default function JobCardImportPage() {
                             <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                               {index + 1}
                             </td>
-                            <td
-                              className={`px-4 py-3 whitespace-nowrap text-sm ${!rowJobNumber ? "text-red-500 font-medium" : "text-gray-900"}`}
-                            >
-                              {rowJobNumber || "Missing"}
+                            <td className="px-4 py-3 min-w-40">
+                              <input
+                                value={rowJobNumber ? rowJobNumber : ""}
+                                onChange={(e) =>
+                                  updateMappedRow(index, "jobNumber", e.target.value)
+                                }
+                                placeholder="Job number"
+                                className={`w-full rounded border px-2 py-1 text-sm ${!rowJobNumber ? "border-red-300 text-red-600" : "border-gray-300 text-gray-900"}`}
+                              />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {rowJcNumber || "-"}
+                            <td className="px-4 py-3 min-w-36">
+                              <input
+                                value={rowJcNumber ? rowJcNumber : ""}
+                                onChange={(e) => updateMappedRow(index, "jcNumber", e.target.value)}
+                                placeholder="JC number"
+                                className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                              />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {rowPageNumber || "-"}
+                            <td className="px-4 py-3 min-w-24">
+                              <input
+                                value={rowPageNumber ? rowPageNumber : ""}
+                                onChange={(e) =>
+                                  updateMappedRow(index, "pageNumber", e.target.value)
+                                }
+                                placeholder="Page"
+                                className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                              />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {rowJcNumber || "-"}
+                            <td className="px-4 py-3 min-w-52">
+                              <input
+                                value={rowJobName ? rowJobName : ""}
+                                onChange={(e) => updateMappedRow(index, "jobName", e.target.value)}
+                                placeholder="Job name"
+                                className={`w-full rounded border px-2 py-1 text-sm ${!rowJobName ? "border-red-300 text-red-600" : "border-gray-300 text-gray-900"}`}
+                              />
                             </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
-                              {rowPageNumber || "-"}
+                            <td className="px-4 py-3 min-w-48">
+                              <input
+                                value={rowCustomerName ? rowCustomerName : ""}
+                                onChange={(e) =>
+                                  updateMappedRow(index, "customerName", e.target.value)
+                                }
+                                placeholder="Customer"
+                                className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                              />
                             </td>
-                            <td
-                              className={`px-4 py-3 whitespace-nowrap text-sm ${!rowJobName ? "text-red-500 font-medium" : "text-gray-900"}`}
-                            >
-                              {rowJobName || "Missing"}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                              {rowCustomerName || "-"}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-gray-900 max-w-xs truncate">
-                              {rowDescription || "-"}
+                            <td className="px-4 py-3 min-w-72">
+                              <textarea
+                                value={rowDescription ? rowDescription : ""}
+                                onChange={(e) =>
+                                  updateMappedRow(index, "description", e.target.value)
+                                }
+                                placeholder="Description"
+                                rows={2}
+                                className="w-full rounded border border-gray-300 px-2 py-1 text-sm text-gray-900"
+                              />
                             </td>
                             {hasLineItemMapped && (
                               <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
-                                {lineCount > 0 ? (
+                                <div className="flex items-center gap-3">
                                   <button
                                     onClick={() => toggleJobExpanded(jobNumberKey)}
                                     className="text-teal-600 hover:text-teal-800 font-medium"
@@ -2326,30 +2498,48 @@ export default function JobCardImportPage() {
                                     {lineCount} item{lineCount !== 1 ? "s" : ""}{" "}
                                     {isExpanded ? "[-]" : "[+]"}
                                   </button>
-                                ) : (
-                                  "-"
-                                )}
+                                  <button
+                                    onClick={() => {
+                                      addMappedLineItem(index);
+                                      setExpandedJobs((prev) => new Set(prev).add(jobNumberKey));
+                                    }}
+                                    className="text-xs font-medium text-blue-600 hover:text-blue-800"
+                                  >
+                                    Add
+                                  </button>
+                                </div>
                               </td>
                             )}
-                            {extraFields.length > 0 ? (
-                              <td className="px-4 py-3 text-xs text-gray-500 max-w-xs">
-                                {extraFields.join(" | ")}
-                              </td>
-                            ) : Array.from(DETAIL_META_KEYS).some((k) => regions[k]) ? (
-                              <td className="px-4 py-3 text-sm text-gray-500">-</td>
-                            ) : null}
+                            <td className="px-4 py-3 min-w-80">
+                              <div className="grid grid-cols-2 gap-2">
+                                {[
+                                  ["poNumber", "PO"] as const,
+                                  ["siteLocation", "Site"] as const,
+                                  ["contactPerson", "Contact"] as const,
+                                  ["dueDate", "Due"] as const,
+                                  ["reference", "Ref"] as const,
+                                  ["notes", "Notes"] as const,
+                                ].map(([field, label]) => {
+                                  const fieldValue = row[field];
+                                  return (
+                                    <input
+                                      key={field}
+                                      value={fieldValue ? fieldValue : ""}
+                                      onChange={(e) =>
+                                        updateMappedRow(index, field, e.target.value)
+                                      }
+                                      placeholder={label}
+                                      className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                    />
+                                  );
+                                })}
+                              </div>
+                            </td>
                           </tr>
                           {isExpanded && row.lineItems && row.lineItems.length > 0 && (
                             <tr className="bg-gray-50">
                               <td className="p-0"></td>
-                              <td
-                                colSpan={
-                                  6 +
-                                  (hasLineItemMapped ? 1 : 0) +
-                                  (Array.from(DETAIL_META_KEYS).some((k) => regions[k]) ? 1 : 0)
-                                }
-                                className="p-0"
-                              >
+                              <td colSpan={7 + (hasLineItemMapped ? 1 : 0)} className="p-0">
                                 <table className="w-full">
                                   <thead>
                                     <tr className="bg-gray-100 border-b border-gray-200">
@@ -2371,6 +2561,12 @@ export default function JobCardImportPage() {
                                       <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-20">
                                         m&sup2;
                                       </th>
+                                      <th className="px-3 py-1.5 text-left text-[10px] font-semibold text-gray-500 uppercase w-48">
+                                        Notes
+                                      </th>
+                                      <th className="px-3 py-1.5 text-right text-[10px] font-semibold text-gray-500 uppercase w-20">
+                                        Action
+                                      </th>
                                     </tr>
                                   </thead>
                                   <tbody className="divide-y divide-gray-100">
@@ -2386,110 +2582,153 @@ export default function JobCardImportPage() {
                                         ? m2Results[liItemDescription]
                                         : null;
                                       const m2r = m2rRaw ? m2rRaw : null;
+                                      const manualKey = `${index}-${liIdx}`;
+                                      const manualValRaw = manualM2[manualKey];
+                                      const manualVal =
+                                        manualValRaw != null ? manualValRaw : undefined;
+                                      const m2rExternal = m2r ? m2r.externalM2 : null;
+                                      const m2rTotal = m2r ? m2r.totalM2 : null;
+                                      const autoVal = m2rExternal || m2rTotal || undefined;
+                                      const extractedVal =
+                                        autoVal != null ? autoVal : liExtractedM2;
+                                      const displayVal =
+                                        manualVal != null ? manualVal : extractedVal;
                                       return (
-                                        <Fragment key={liIdx}>
-                                          <tr className="hover:bg-gray-100/50">
-                                            <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
-                                              {liItemCode || "-"}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-xs text-gray-900 font-medium">
-                                              {liItemDescription || "-"}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
-                                              {liItemNo || "-"}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-xs text-gray-600 text-right whitespace-nowrap">
-                                              {liQuantity || "-"}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-xs text-gray-600 whitespace-nowrap">
-                                              {liJtNo || "-"}
-                                            </td>
-                                            <td className="px-3 py-1.5 text-xs text-right whitespace-nowrap">
-                                              {isCalculatingM2 ? (
-                                                <span className="inline-block w-3 h-3 border-2 border-teal-400 border-t-transparent rounded-full animate-spin" />
-                                              ) : (
-                                                (() => {
-                                                  const manualKey = `${index}-${liIdx}`;
-                                                  const manualValRaw = manualM2[manualKey];
-                                                  const manualVal =
-                                                    manualValRaw != null ? manualValRaw : undefined;
-                                                  const m2rExternal = m2r ? m2r.externalM2 : null;
-                                                  const m2rTotal = m2r ? m2r.totalM2 : null;
-                                                  const autoVal =
-                                                    m2rExternal || m2rTotal || undefined;
-                                                  // Prefer a manual override, then a calculate-m2
-                                                  // result, then the area extracted from the drawing.
-                                                  const extractedVal =
-                                                    autoVal != null ? autoVal : liExtractedM2;
-                                                  const displayVal =
-                                                    manualVal != null ? manualVal : extractedVal;
-                                                  return displayVal != null ? (
-                                                    <span
-                                                      className={`font-medium cursor-pointer ${manualVal != null ? "text-blue-700" : "text-teal-700"}`}
-                                                      title={
-                                                        manualVal != null
-                                                          ? "Manual override — click to edit"
-                                                          : "Auto-calculated — click to override"
-                                                      }
-                                                      onClick={() => {
-                                                        // eslint-disable-next-line no-restricted-globals -- legacy sync prompt pending modal migration (issue #175)
-                                                        const input = prompt(
-                                                          "Enter m² value:",
-                                                          displayVal.toFixed(2),
-                                                        );
-                                                        if (input !== null) {
-                                                          const parsed = parseFloat(input);
-                                                          if (
-                                                            !Number.isNaN(parsed) &&
-                                                            parsed >= 0
-                                                          ) {
-                                                            setManualM2((prev) => ({
-                                                              ...prev,
-                                                              [manualKey]: parsed,
-                                                            }));
-                                                          }
-                                                        }
-                                                      }}
-                                                    >
-                                                      {displayVal.toFixed(2)}
-                                                    </span>
-                                                  ) : (
-                                                    <input
-                                                      type="number"
-                                                      step="0.01"
-                                                      min="0"
-                                                      placeholder="m²"
-                                                      className="w-16 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-teal-400"
-                                                      onBlur={(e) => {
-                                                        const parsed = parseFloat(e.target.value);
-                                                        if (!Number.isNaN(parsed) && parsed >= 0) {
-                                                          setManualM2((prev) => ({
-                                                            ...prev,
-                                                            [manualKey]: parsed,
-                                                          }));
-                                                        }
-                                                      }}
-                                                      onKeyDown={(e) => {
-                                                        if (e.key === "Enter") {
-                                                          (e.target as HTMLInputElement).blur();
-                                                        }
-                                                      }}
-                                                    />
+                                        <tr key={liIdx} className="hover:bg-gray-100/50">
+                                          <td className="px-3 py-1.5">
+                                            <input
+                                              value={liItemCode ? liItemCode : ""}
+                                              onChange={(e) =>
+                                                updateMappedLineItem(
+                                                  index,
+                                                  liIdx,
+                                                  "itemCode",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="Code"
+                                              className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                            />
+                                          </td>
+                                          <td className="px-3 py-1.5">
+                                            <input
+                                              value={liItemDescription ? liItemDescription : ""}
+                                              onChange={(e) =>
+                                                updateMappedLineItem(
+                                                  index,
+                                                  liIdx,
+                                                  "itemDescription",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="Description"
+                                              className="w-full rounded border border-gray-300 px-2 py-1 text-xs font-medium text-gray-900"
+                                            />
+                                          </td>
+                                          <td className="px-3 py-1.5">
+                                            <input
+                                              value={liItemNo ? liItemNo : ""}
+                                              onChange={(e) =>
+                                                updateMappedLineItem(
+                                                  index,
+                                                  liIdx,
+                                                  "itemNo",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="Item no"
+                                              className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                            />
+                                          </td>
+                                          <td className="px-3 py-1.5">
+                                            <input
+                                              value={liQuantity ? liQuantity : ""}
+                                              onChange={(e) =>
+                                                updateMappedLineItem(
+                                                  index,
+                                                  liIdx,
+                                                  "quantity",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="Qty"
+                                              className="w-full rounded border border-gray-300 px-2 py-1 text-right text-xs text-gray-900"
+                                            />
+                                          </td>
+                                          <td className="px-3 py-1.5">
+                                            <input
+                                              value={liJtNo ? liJtNo : ""}
+                                              onChange={(e) =>
+                                                updateMappedLineItem(
+                                                  index,
+                                                  liIdx,
+                                                  "jtNo",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="JT no"
+                                              className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                            />
+                                          </td>
+                                          <td className="px-3 py-1.5">
+                                            {isCalculatingM2 ? (
+                                              <span className="inline-block h-3 w-3 rounded-full border-2 border-teal-400 border-t-transparent animate-spin" />
+                                            ) : (
+                                              <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={displayVal != null ? String(displayVal) : ""}
+                                                onChange={(e) => {
+                                                  const rawValue = e.target.value;
+                                                  updateMappedLineItem(
+                                                    index,
+                                                    liIdx,
+                                                    "m2",
+                                                    rawValue,
                                                   );
-                                                })()
-                                              )}
-                                            </td>
-                                          </tr>
-                                          {liNotes && (
-                                            <tr className="bg-teal-50/50">
-                                              <td colSpan={6} className="px-3 py-1 pl-8">
-                                                <span className="text-[10px] italic text-teal-700 whitespace-pre-wrap">
-                                                  {liNotes}
-                                                </span>
-                                              </td>
-                                            </tr>
-                                          )}
-                                        </Fragment>
+                                                  setManualM2((prev) => {
+                                                    const next = { ...prev };
+                                                    if (rawValue === "") {
+                                                      delete next[manualKey];
+                                                      return next;
+                                                    }
+                                                    const parsed = Number(rawValue);
+                                                    if (!Number.isNaN(parsed) && parsed >= 0) {
+                                                      next[manualKey] = parsed;
+                                                    }
+                                                    return next;
+                                                  });
+                                                }}
+                                                placeholder="m²"
+                                                className="w-full rounded border border-gray-300 px-2 py-1 text-right text-xs text-gray-900"
+                                              />
+                                            )}
+                                          </td>
+                                          <td className="px-3 py-1.5">
+                                            <input
+                                              value={liNotes ? liNotes : ""}
+                                              onChange={(e) =>
+                                                updateMappedLineItem(
+                                                  index,
+                                                  liIdx,
+                                                  "notes",
+                                                  e.target.value,
+                                                )
+                                              }
+                                              placeholder="Notes"
+                                              className="w-full rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                            />
+                                          </td>
+                                          <td className="px-3 py-1.5 text-right">
+                                            <button
+                                              onClick={() => removeMappedLineItem(index, liIdx)}
+                                              className="text-xs font-medium text-red-600 hover:text-red-800"
+                                            >
+                                              Remove
+                                            </button>
+                                          </td>
+                                        </tr>
                                       );
                                     })}
                                   </tbody>
@@ -2500,14 +2739,7 @@ export default function JobCardImportPage() {
                           {regions["notes"] && rowNotes && (
                             <tr className="bg-fuchsia-50">
                               <td className="px-4 py-2 text-xs text-gray-400"></td>
-                              <td
-                                colSpan={
-                                  6 +
-                                  (hasLineItemMapped ? 1 : 0) +
-                                  (Array.from(DETAIL_META_KEYS).some((k) => regions[k]) ? 1 : 0)
-                                }
-                                className="px-4 py-2"
-                              >
+                              <td colSpan={7 + (hasLineItemMapped ? 1 : 0)} className="px-4 py-2">
                                 <div className="text-xs">
                                   <span className="font-semibold text-fuchsia-700">Notes: </span>
                                   <span className="text-gray-700 whitespace-pre-wrap">

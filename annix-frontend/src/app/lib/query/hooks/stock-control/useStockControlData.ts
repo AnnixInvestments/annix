@@ -21,6 +21,7 @@ import type {
   JobCard,
   JobCardActionCompletion,
   JobCardApproval,
+  JobCardImportCorrection,
   JobCardImportJob,
   JobCardImportRow,
   QcControlPlanRecord,
@@ -929,6 +930,7 @@ export const useCalculateM2 = createMutationHook((descriptions: string[]) =>
 export const useConfirmJobCardImport = createMutationHook(
   (params: {
     rows: JobCardImportRow[];
+    corrections?: JobCardImportCorrection[];
     sourceFilePath?: string | null;
     sourceFileName?: string | null;
   }) =>
@@ -936,6 +938,7 @@ export const useConfirmJobCardImport = createMutationHook(
       params.rows,
       params.sourceFilePath,
       params.sourceFileName,
+      params.corrections,
     ),
   [stockControlKeys.jobCards.all],
 );
@@ -946,8 +949,10 @@ export const useConfirmDeliveryMatches = createMutationHook(
 );
 
 export const useConfirmCpoImport = createMutationHook(
-  (rows: Parameters<typeof stockControlApiClient.confirmCpoImport>[0]) =>
-    stockControlApiClient.confirmCpoImport(rows),
+  (params: {
+    rows: Parameters<typeof stockControlApiClient.confirmCpoImport>[0];
+    corrections?: Parameters<typeof stockControlApiClient.confirmCpoImport>[1];
+  }) => stockControlApiClient.confirmCpoImport(params.rows, params.corrections),
   [stockControlKeys.cpos.all, stockControlKeys.jobCards.all],
 );
 

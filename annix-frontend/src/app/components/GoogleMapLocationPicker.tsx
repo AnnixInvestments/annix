@@ -1,8 +1,8 @@
 "use client";
 
 import { Autocomplete, GoogleMap, Marker, useJsApiLoader } from "@react-google-maps/api";
-import { isString } from "es-toolkit/compat";
-import type { Map as LeafletMap, Marker as LeafletMarker } from "leaflet";
+import { isString, keys } from "es-toolkit/compat";
+import type { Map as LeafletMap, Marker as LeafletMarker, TileLayer } from "leaflet";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   GOOGLE_MAP_PRESETS,
@@ -44,6 +44,51 @@ const defaultCenter: Location = {
 
 const libraries: "places"[] = ["places"];
 
+const osmTileLayers = {
+  streets: {
+    label: "Streets",
+    url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+  },
+  terrain: {
+    label: "Terrain",
+    url: "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+    maxZoom: 17,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+  },
+  detailed: {
+    label: "Detailed",
+    url: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, &copy; <a href="https://carto.com/attributions">CARTO</a>',
+  },
+  satellite: {
+    label: "Satellite",
+    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+    maxZoom: 19,
+    attribution: "Tiles &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+  },
+} as const;
+
+type OsmTileLayerKey = keyof typeof osmTileLayers;
+
+interface OsmSearchResult {
+  place_id: number;
+  display_name: string;
+  lat: string;
+  lon: string;
+  address?: {
+    state?: string;
+    province?: string;
+    region?: string;
+    country?: string;
+  };
+}
+
 function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): GoogleMapDisplayConfig {
   if (!config) {
     return GOOGLE_MAP_PRESETS.default;
@@ -58,7 +103,7 @@ function resolveConfig(config?: GoogleMapPreset | GoogleMapDisplayConfig): Googl
 
 function OpenStreetMapLocationPicker(props: {
   initialLocation?: Location;
-  onLocationSelect: (location: Location) => void;
+  onLocationSelect: (location: Location, addressComponents?: AddressComponents) => void;
   onClose: () => void;
   displayConfig: GoogleMapDisplayConfig;
 }) {
@@ -66,10 +111,60 @@ function OpenStreetMapLocationPicker(props: {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
+  const tileLayerRef = useRef<TileLayer | null>(null);
   const [selectedLocation, setSelectedLocation] = useState<Location | null>(
     initialLocation || null,
   );
+  const [addressInfo, setAddressInfo] = useState<AddressComponents | null>(null);
+  const [mapStyle, setMapStyle] = useState<OsmTileLayerKey>("streets");
   const [isGettingLocation, setIsGettingLocation] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<OsmSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  const updateAddressFromResult = (result: OsmSearchResult) => {
+    const address = result.address;
+    const state = address ? address.state : undefined;
+    const province = address ? address.province : undefined;
+    const region = address ? address.region : undefined;
+    const country = address ? address.country : undefined;
+    setAddressInfo({
+      address: result.display_name,
+      region: state || province || region || "",
+      country: country || "",
+    });
+  };
+
+  const reverseLookupAddress = async (location: Location) => {
+    try {
+      const params = new URLSearchParams({
+        format: "jsonv2",
+        addressdetails: "1",
+        lat: String(location.lat),
+        lon: String(location.lng),
+      });
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?${params}`);
+      if (!response.ok) return;
+      const result = (await response.json()) as OsmSearchResult;
+      if (result.display_name) {
+        updateAddressFromResult(result);
+      }
+    } catch {}
+  };
+
+  const updateMarker = async (location: Location, zoom?: number) => {
+    const map = mapInstanceRef.current;
+    if (!map) return;
+    if (markerRef.current) {
+      markerRef.current.setLatLng([location.lat, location.lng]);
+    } else {
+      const L = await import("leaflet");
+      markerRef.current = L.marker([location.lat, location.lng]).addTo(map);
+    }
+    if (zoom) {
+      map.setView([location.lat, location.lng], zoom);
+    }
+  };
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -89,9 +184,10 @@ function OpenStreetMapLocationPicker(props: {
         zoom: selectedLocation ? 14 : 6,
       });
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        attribution:
-          '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      const currentLayer = osmTileLayers.streets;
+      tileLayerRef.current = L.tileLayer(currentLayer.url, {
+        attribution: currentLayer.attribution,
+        maxZoom: currentLayer.maxZoom,
       }).addTo(map);
 
       const placeMarker = (location: Location) => {
@@ -113,6 +209,7 @@ function OpenStreetMapLocationPicker(props: {
         };
         setSelectedLocation(location);
         placeMarker(location);
+        void reverseLookupAddress(location);
       });
 
       mapInstanceRef.current = map;
@@ -128,8 +225,87 @@ function OpenStreetMapLocationPicker(props: {
         mapInstanceRef.current = null;
       }
       markerRef.current = null;
+      tileLayerRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!mapInstanceRef.current) return;
+    let cancelled = false;
+    const setLayer = async () => {
+      const L = await import("leaflet");
+      if (cancelled || !mapInstanceRef.current) return;
+      if (tileLayerRef.current) {
+        mapInstanceRef.current.removeLayer(tileLayerRef.current);
+      }
+      const nextLayer = osmTileLayers[mapStyle];
+      tileLayerRef.current = L.tileLayer(nextLayer.url, {
+        attribution: nextLayer.attribution,
+        maxZoom: nextLayer.maxZoom,
+      }).addTo(mapInstanceRef.current);
+    };
+    void setLayer();
+    return () => {
+      cancelled = true;
+    };
+  }, [mapStyle]);
+
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 3) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeout = window.setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const params = new URLSearchParams({
+          format: "jsonv2",
+          addressdetails: "1",
+          limit: "6",
+          q: query,
+        });
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?${params}`, {
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          setSearchResults([]);
+          return;
+        }
+        const results = (await response.json()) as OsmSearchResult[];
+        setSearchResults(results);
+      } catch {
+        if (!controller.signal.aborted) {
+          setSearchResults([]);
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsSearching(false);
+        }
+      }
+    }, 350);
+
+    return () => {
+      window.clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [searchQuery]);
+
+  const handleSearchResultSelect = (result: OsmSearchResult) => {
+    const location = {
+      lat: Number(result.lat),
+      lng: Number(result.lon),
+    };
+    if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return;
+    setSelectedLocation(location);
+    updateAddressFromResult(result);
+    setSearchQuery(result.display_name);
+    setSearchResults([]);
+    void updateMarker(location, 16);
+  };
 
   const handleUseCurrentLocation = () => {
     if (!navigator.geolocation) return;
@@ -144,6 +320,8 @@ function OpenStreetMapLocationPicker(props: {
         if (mapInstanceRef.current) {
           mapInstanceRef.current.setView([location.lat, location.lng], 14);
         }
+        void updateMarker(location);
+        void reverseLookupAddress(location);
         setIsGettingLocation(false);
       },
       () => setIsGettingLocation(false),
@@ -161,12 +339,11 @@ function OpenStreetMapLocationPicker(props: {
   return (
     <div className="fixed inset-0 bg-black/10 backdrop-blur-md flex items-center justify-center z-50 p-4">
       <div className={rawContainerClassName || outerContainerClass}>
-        <div className="flex items-center justify-between p-4 border-b bg-gradient-to-r from-blue-50 to-indigo-50 flex-shrink-0">
+        <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-slate-100 flex-shrink-0">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900">Select Location</h3>
-            <p className="text-sm text-gray-600">
-              Click on the map to pin your location. Google Maps is unavailable, so this uses
-              OpenStreetMap.
+            <h3 className="text-lg font-semibold text-slate-950">Select Location</h3>
+            <p className="text-sm text-slate-700">
+              Search for your address or click on the map to pin your location.
             </p>
           </div>
           <button
@@ -174,7 +351,7 @@ function OpenStreetMapLocationPicker(props: {
             className="p-2 hover:bg-gray-200 rounded-full transition-colors"
           >
             <svg
-              className="w-5 h-5 text-gray-600"
+              className="w-5 h-5 text-slate-600"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -189,6 +366,51 @@ function OpenStreetMapLocationPicker(props: {
           </button>
         </div>
         <div className="relative">
+          <div className="absolute top-3 left-3 right-3 z-[1000] flex flex-col gap-2 sm:right-40">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search address, suburb, city, or area..."
+                className="w-full rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-950 shadow-lg placeholder:text-slate-500 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {(isSearching || searchResults.length > 0) && (
+                <div className="absolute left-0 right-0 top-full mt-2 max-h-56 overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-xl">
+                  {isSearching ? (
+                    <div className="px-4 py-3 text-sm text-slate-600">Searching...</div>
+                  ) : (
+                    searchResults.map((result) => (
+                      <button
+                        key={result.place_id}
+                        type="button"
+                        onClick={() => handleSearchResultSelect(result)}
+                        className="block w-full border-b border-slate-100 px-4 py-3 text-left text-sm text-slate-800 last:border-b-0 hover:bg-blue-50"
+                      >
+                        {result.display_name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(keys(osmTileLayers) as OsmTileLayerKey[]).map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setMapStyle(key)}
+                  className={`rounded-md border px-3 py-1.5 text-xs font-semibold shadow ${
+                    mapStyle === key
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                  }`}
+                >
+                  {osmTileLayers[key].label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div
             ref={mapContainerRef}
             className="w-full"
@@ -200,30 +422,35 @@ function OpenStreetMapLocationPicker(props: {
           <button
             onClick={handleUseCurrentLocation}
             disabled={isGettingLocation}
-            className="absolute top-3 right-3 z-[1000] px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium border bg-white text-gray-700 border-gray-200 hover:bg-blue-50 disabled:opacity-60"
+            className="absolute bottom-3 right-3 z-[1000] px-3 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm font-medium border bg-white text-slate-800 border-slate-200 hover:bg-blue-50 disabled:opacity-60"
           >
             {isGettingLocation ? "Getting location..." : "My Location"}
           </button>
         </div>
         {selectedLocation ? (
-          <div className="p-4 border-t bg-gray-50">
-            <div className="bg-white p-3 rounded-lg border">
-              <div className="text-xs font-medium text-gray-500 mb-1">Coordinates</div>
-              <div className="text-sm font-semibold text-gray-900">
+          <div className="p-4 border-t border-slate-300 bg-slate-100">
+            <div className="bg-white p-3 rounded-lg border border-slate-300">
+              <div className="text-xs font-medium text-slate-600 mb-1">Coordinates</div>
+              <div className="text-sm font-semibold text-slate-950">
                 {Number(selectedLocation.lat).toFixed(5)}, {Number(selectedLocation.lng).toFixed(5)}
               </div>
+              {addressInfo?.address ? (
+                <div className="mt-2 text-sm text-slate-700">{addressInfo.address}</div>
+              ) : null}
             </div>
           </div>
         ) : null}
-        <div className="flex items-center justify-end gap-3 p-4 border-t bg-white">
+        <div className="flex items-center justify-end gap-3 p-4 border-t border-slate-300 bg-slate-800">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium"
+            className="px-4 py-2 text-white border border-slate-600 rounded-lg hover:bg-slate-700 font-medium"
           >
             Cancel
           </button>
           <button
-            onClick={() => selectedLocation && onLocationSelect(selectedLocation)}
+            onClick={() =>
+              selectedLocation && onLocationSelect(selectedLocation, addressInfo || undefined)
+            }
             disabled={!selectedLocation}
             className={`px-6 py-2 rounded-lg font-medium flex items-center gap-2 ${
               selectedLocation
@@ -481,33 +708,12 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
 
   if (invalidApiKey) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-lg">
-        <div className="text-red-600 font-semibold mb-2">Google Maps Configuration Required</div>
-        <div className="text-red-600 text-sm mb-4">
-          A valid Google Maps API key is required to use this feature. Please configure
-          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY in your environment variables.
-        </div>
-        <div className="bg-blue-50 p-4 rounded mb-4">
-          <p className="text-blue-700 font-semibold mb-2">Alternative: Manual Location Entry</p>
-          <p className="text-blue-600 text-sm">
-            You can enter the location manually by providing latitude and longitude coordinates.
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setShowManualInput(true)}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Enter Location Manually
-          </button>
-          <button
-            onClick={onClose}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
-          >
-            Close
-          </button>
-        </div>
-      </div>
+      <OpenStreetMapLocationPicker
+        initialLocation={initialLocation}
+        onLocationSelect={onLocationSelect}
+        onClose={onClose}
+        displayConfig={displayConfig}
+      />
     );
   }
 
@@ -753,6 +959,11 @@ export default function GoogleMapLocationPicker(props: GoogleMapLocationPickerPr
             options={{
               streetViewControl: false,
               mapTypeControl: true,
+              mapTypeControlOptions: {
+                mapTypeIds: ["roadmap", "satellite", "hybrid", "terrain"],
+                position: google.maps.ControlPosition.TOP_RIGHT,
+                style: google.maps.MapTypeControlStyle.HORIZONTAL_BAR,
+              },
               fullscreenControl: false,
               clickableIcons: false,
             }}
