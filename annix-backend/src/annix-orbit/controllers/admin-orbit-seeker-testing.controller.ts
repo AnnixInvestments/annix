@@ -18,6 +18,8 @@ import {
   UpdateSeekerTestingIssueDto,
   UpdateSeekerTestPhaseDto,
 } from "../dto/seeker-testing.dto";
+import { Candidate } from "../entities/candidate.entity";
+import { CandidateRepository } from "../repositories/candidate.repository";
 import { SeekerTestParticipantRepository } from "../repositories/seeker-test-participant.repository";
 import { SeekerTestPhaseRepository } from "../repositories/seeker-test-phase.repository";
 import { SeekerTestingIssueRepository } from "../repositories/seeker-testing-issue.repository";
@@ -38,6 +40,7 @@ export class AdminOrbitSeekerTestingController {
     private readonly readiness: SeekerLaunchReadinessService,
     private readonly feedback: FeedbackService,
     private readonly userService: AdminOrbitUserService,
+    private readonly candidateRepo: CandidateRepository,
   ) {}
 
   private static readonly ORBIT_FEEDBACK_CONTEXT = "annix-orbit";
@@ -105,9 +108,29 @@ export class AdminOrbitSeekerTestingController {
     return { recentFailures, latency, errorRate };
   }
 
+  private candidateLabel(candidate: Candidate | null): string | null {
+    if (!candidate) {
+      return null;
+    }
+    if (candidate.name && candidate.email) {
+      return `${candidate.name} (${candidate.email})`;
+    }
+    if (candidate.name) {
+      return candidate.name;
+    }
+    return candidate.email;
+  }
+
   @Get("users")
   async users() {
     const rows = await this.progress.listProgress();
+    const candidateIds = [...new Set(rows.map((row) => row.candidateId))];
+    const candidates = await this.candidateRepo.findByIds(candidateIds);
+    const candidateById = new Map(candidates.map((candidate) => [candidate.id, candidate]));
+    const progressRows = rows.map((row) => ({
+      ...row,
+      label: this.candidateLabel(candidateById.get(row.candidateId) ?? null),
+    }));
     const prospects = (await this.userService.seekerProspects()).filter(
       (prospect) => !prospect.hasCandidate,
     );
@@ -125,7 +148,7 @@ export class AdminOrbitSeekerTestingController {
       lastActiveAt: prospect.lastLoginAt,
       status: prospect.hasLoggedIn ? "registered" : "invited",
     }));
-    return [...rows, ...prospectRows];
+    return [...progressRows, ...prospectRows];
   }
 
   @Get("readiness")

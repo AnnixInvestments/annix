@@ -31,6 +31,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
     limit: number;
   }): Promise<[Candidate[], number]>;
   abstract findByEmail(email: string): Promise<Candidate[]>;
+  abstract findByIds(ids: number[]): Promise<Candidate[]>;
   abstract findByEmailWithJobPosting(email: string): Promise<Candidate[]>;
   abstract findByEmailWithJobAndReferences(email: string): Promise<Candidate[]>;
   abstract findInactiveBefore(cutoff: Date): Promise<Candidate[]>;

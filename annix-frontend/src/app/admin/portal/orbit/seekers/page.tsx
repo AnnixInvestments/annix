@@ -8,41 +8,10 @@ import { adminApiClient } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminOrbitSeekers } from "@/app/lib/query/hooks";
+import { seekerStatusBadgeClass, seekerTierBadgeClass } from "./seekerBadges";
 
 const PAGE_SIZE = 20;
 const EXPORT_LIMIT = 10000;
-
-function tierClass(tier: string): string {
-  if (tier === "hard") {
-    return "bg-green-100 text-green-700";
-  }
-  if (tier === "medium") {
-    return "bg-amber-100 text-amber-700";
-  }
-  return "bg-gray-100 text-gray-600";
-}
-
-function statusClass(status: string): string {
-  if (status === "active" || status === "accepted") {
-    return "bg-green-100 text-green-700";
-  }
-  if (status === "registered") {
-    return "bg-indigo-100 text-indigo-700";
-  }
-  if (status === "invited") {
-    return "bg-sky-100 text-sky-700";
-  }
-  if (status === "new" || status === "screening") {
-    return "bg-blue-100 text-blue-700";
-  }
-  if (status === "shortlisted" || status === "reference_check") {
-    return "bg-violet-100 text-violet-700";
-  }
-  if (status === "suspended" || status === "rejected" || status === "deactivated") {
-    return "bg-red-100 text-red-700";
-  }
-  return "bg-gray-100 text-gray-600";
-}
 
 function csvCell(value: string | null): string {
   const raw = value || "";
@@ -210,8 +179,8 @@ export default function OrbitSeekersPage() {
                 const lastActive = lastActiveRaw ? formatDateZA(lastActiveRaw) : "—";
                 const joinedRaw = seeker.createdAt;
                 const joined = joinedRaw ? formatDateZA(joinedRaw) : "—";
-                const tierBadge = tierClass(seeker.matchTier);
-                const statusBadge = statusClass(seeker.status);
+                const tierBadge = seekerTierBadgeClass(seeker.matchTier);
+                const statusBadge = seekerStatusBadgeClass(seeker.status);
                 const seekerId = seeker.id;
                 const isProspect = seeker.isProspect === true;
                 return (

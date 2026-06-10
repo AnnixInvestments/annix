@@ -19,6 +19,8 @@ import {
   fetchFeedbackStatus,
   submitFeedbackWithAttachments,
 } from "@/app/lib/api/feedbackApi";
+import { clampPanelGeometryToViewport, type PanelGeometry } from "@/app/lib/panelGeometry";
+import { SCREENSHOT_EXCLUDE_SELECTOR } from "@/app/lib/screenshotExclusion";
 import {
   getFeedbackCaptureSnapshot,
   startFeedbackCapture,
@@ -42,13 +44,6 @@ const DEFAULT_WIDTH = 340;
 const DEFAULT_HEIGHT = 420;
 const GEOMETRY_KEY = "feedback-widget-geometry";
 const MIN_SCREENSHOT_BYTES = 500;
-
-interface PanelGeometry {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 interface Attachment {
   file: File;
@@ -405,6 +400,9 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
             if (node.closest("[data-feedback-widget]") !== null) {
               return false;
             }
+            if (node.closest(SCREENSHOT_EXCLUDE_SELECTOR) !== null) {
+              return false;
+            }
             const tag = node.tagName.toLowerCase();
             if (tag === "iframe" || tag === "video" || tag === "script" || tag === "noscript") {
               return false;
@@ -656,6 +654,22 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     });
   };
 
+  const handleOpen = () => {
+    const clamped = clampPanelGeometryToViewport(
+      { x: position.x, y: position.y, width: size.width, height: size.height },
+      MIN_WIDTH,
+      MIN_HEIGHT,
+    );
+    if (clamped) {
+      setPosition({ x: clamped.x, y: clamped.y });
+      setSize({ width: clamped.width, height: clamped.height });
+    } else {
+      setPosition(defaultPosition());
+      setSize({ width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT });
+    }
+    setIsExpanded(true);
+  };
+
   const handleClose = () => {
     setIsExpanded(false);
     if (!showSuccess) {
@@ -701,7 +715,7 @@ export function FeedbackWidget(props: FeedbackWidgetProps) {
     return (
       <button
         type="button"
-        onClick={() => setIsExpanded(true)}
+        onClick={handleOpen}
         className="fixed bottom-20 right-4 z-50 p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 transition-colors"
         title="Give Feedback"
         data-feedback-widget

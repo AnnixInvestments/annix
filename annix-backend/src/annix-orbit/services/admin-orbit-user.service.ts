@@ -39,6 +39,7 @@ export interface OrbitSeekerProspect {
   lastLoginAt: string | null;
   invitedAt: string | null;
   hasCandidate: boolean;
+  hasCv: boolean;
 }
 
 function parseUserType(value?: string | null): AnnixOrbitUserType | null {
@@ -121,6 +122,7 @@ export class AdminOrbitUserService {
     return Promise.all(
       seekerUsers.map(async (user) => {
         const candidates = await this.candidateRepo.findByEmail(user.email);
+        const profile = profileByUser.get(user.id);
         const nameParts = [user.firstName, user.lastName].filter(
           (part): part is string => Boolean(part) && String(part).trim().length > 0,
         );
@@ -133,6 +135,7 @@ export class AdminOrbitUserService {
           lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
           invitedAt: user.createdAt ? user.createdAt.toISOString() : null,
           hasCandidate: candidates.length > 0,
+          hasCv: profile ? profile.cvFilePath != null : false,
         };
       }),
     );

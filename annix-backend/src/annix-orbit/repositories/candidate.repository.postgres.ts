@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
+import { In, LessThan, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
 import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
@@ -136,6 +136,13 @@ export class PostgresCandidateRepository
 
   findByEmail(email: string): Promise<Candidate[]> {
     return this.repository.find({ where: { email } });
+  }
+
+  findByIds(ids: number[]): Promise<Candidate[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository.find({ where: { id: In(ids) } });
   }
 
   findByEmailWithJobPosting(email: string): Promise<Candidate[]> {

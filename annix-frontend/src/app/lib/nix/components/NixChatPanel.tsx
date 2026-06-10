@@ -7,6 +7,7 @@ import remarkGfm from "remark-gfm";
 import { fieldById } from "@/app/lib/config/rfq/fieldRegistry";
 import { fromISO, now, nowISO, nowMillis } from "@/app/lib/datetime";
 import { useGuidedMode } from "@/app/lib/hooks/useGuidedMode";
+import { clampPanelGeometryToViewport, type PanelGeometry } from "@/app/lib/panelGeometry";
 import {
   type ChatMessage,
   useCreateNixSession,
@@ -297,13 +298,6 @@ const CONTEXT_CONFIGS: Record<PortalContext, ContextConfig> = {
   },
 };
 
-interface PanelGeometry {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 interface PageContext {
   currentPage: string;
   rfqType?: string;
@@ -353,6 +347,11 @@ const loadSavedGeometry = (saved?: PanelGeometry | null): PanelGeometry | null =
     return null;
   }
   return null;
+};
+
+const restoredGeometry = (saved?: PanelGeometry | null): PanelGeometry | null => {
+  const geo = loadSavedGeometry(saved);
+  return geo ? clampPanelGeometryToViewport(geo, MIN_WIDTH, MIN_HEIGHT) : null;
 };
 
 const loadPersistedSessionId = (): number | null => {
@@ -485,11 +484,11 @@ export function NixChatPanel(props: NixChatPanelProps) {
   }, [historyQuery.error]);
 
   const [position, setPosition] = useState<{ x: number; y: number }>(() => {
-    const geo = loadSavedGeometry(savedGeometry);
+    const geo = restoredGeometry(savedGeometry);
     return geo ? { x: geo.x, y: geo.y } : defaultPosition();
   });
   const [size, setSize] = useState(() => {
-    const geo = loadSavedGeometry(savedGeometry);
+    const geo = restoredGeometry(savedGeometry);
     return geo
       ? { width: geo.width, height: geo.height }
       : { width: DEFAULT_WIDTH, height: DEFAULT_HEIGHT };

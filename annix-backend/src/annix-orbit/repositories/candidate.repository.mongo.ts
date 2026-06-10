@@ -150,6 +150,17 @@ export class MongoCandidateRepository
     return this.toDomainList(docs);
   }
 
+  async findByIds(ids: number[]): Promise<Candidate[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const docs = await this.documents
+      .find({ _id: { $in: ids } })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
   async findByEmailWithJobPosting(email: string): Promise<Candidate[]> {
     const docs = await this.documents.find({ email }).populate("jobPosting").lean().exec();
     return this.toDomainList(docs);

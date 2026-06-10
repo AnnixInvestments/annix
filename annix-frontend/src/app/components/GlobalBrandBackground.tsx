@@ -2,6 +2,7 @@
 
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { useBranding } from "@/app/lib/query/hooks";
+import { screenshotExcludeProps } from "@/app/lib/screenshotExclusion";
 import { useTheme } from "./ThemeProvider";
 
 const MASTER_BRAND = "annix-investments";
@@ -69,6 +70,7 @@ export function GlobalBrandBackground() {
     >
       {imageUrl ? (
         <div
+          {...screenshotExcludeProps}
           className="absolute inset-0"
           style={{
             backgroundImage: `url('${imageUrl}')`,
@@ -80,6 +82,7 @@ export function GlobalBrandBackground() {
       ) : null}
       {heroTopUrl ? (
         <div
+          {...screenshotExcludeProps}
           className="absolute inset-x-0 top-0 overflow-hidden"
           style={{
             height: `${heroTopHeight}vh`,
@@ -92,6 +95,7 @@ export function GlobalBrandBackground() {
       ) : null}
       {heroBottomUrl ? (
         <div
+          {...screenshotExcludeProps}
           className="absolute inset-x-0 bottom-0 overflow-hidden"
           style={{
             height: `${heroBottomHeight}vh`,
@@ -103,7 +107,10 @@ export function GlobalBrandBackground() {
         />
       ) : null}
       {watermarkUrl ? (
-        <div className="absolute inset-x-0 top-16 bottom-0 flex items-center justify-center">
+        <div
+          {...screenshotExcludeProps}
+          className="absolute inset-x-0 top-16 bottom-0 flex items-center justify-center"
+        >
           <div
             className="overflow-hidden rounded-[18%] bg-contain bg-center bg-no-repeat"
             style={{

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect } from "react";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { useBranding } from "@/app/lib/query/hooks";
+import { screenshotExcludeProps } from "@/app/lib/screenshotExclusion";
 import {
   type Branding,
   brandHasAsset,
@@ -94,6 +95,7 @@ export function BrandingProvider(props: {
       <div className="relative min-h-screen" style={surfaceStyle}>
         <div
           aria-hidden="true"
+          {...screenshotExcludeProps}
           className="pointer-events-none fixed inset-0 z-0"
           style={{
             backgroundImage: "var(--brand-page-background-image)",
@@ -106,6 +108,7 @@ export function BrandingProvider(props: {
         {heroTopUrl ? (
           <div
             aria-hidden="true"
+            {...screenshotExcludeProps}
             className="pointer-events-none fixed inset-x-0 top-0 z-0 overflow-hidden"
             style={{
               height: `${branding.heroTopHeightPct}vh`,
@@ -119,6 +122,7 @@ export function BrandingProvider(props: {
         {heroBottomUrl ? (
           <div
             aria-hidden="true"
+            {...screenshotExcludeProps}
             className="pointer-events-none fixed inset-x-0 bottom-0 z-0 overflow-hidden"
             style={{
               height: `${branding.heroBottomHeightPct}vh`,
@@ -131,6 +135,7 @@ export function BrandingProvider(props: {
         ) : null}
         <div
           aria-hidden="true"
+          {...screenshotExcludeProps}
           className="pointer-events-none fixed inset-x-0 top-16 bottom-0 z-0 flex items-center justify-center"
         >
           <div

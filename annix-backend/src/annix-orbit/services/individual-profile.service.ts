@@ -208,6 +208,7 @@ export class IndividualProfileService {
       profile.extractedCvData.candidateName ?? (fullName.length > 0 ? fullName : null);
     candidate.rawCvText = profile.rawCvText;
     candidate.extractedData = profile.extractedCvData;
+    candidate.cvFilePath = profile.cvFilePath;
     if (profile.selectedTier && isMatchTier(profile.selectedTier)) {
       candidate.matchTier = profile.selectedTier;
     }

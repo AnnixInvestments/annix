@@ -178,6 +178,10 @@ export interface SeekerEntitlementsResult {
   cvBuilds: SeekerCvBuildQuota;
 }
 
+function candidateHasCv(candidate: Candidate): boolean {
+  return Boolean(candidate.cvFilePath || candidate.rawCvText || candidate.extractedData);
+}
+
 @Injectable()
 export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
@@ -613,7 +617,7 @@ export class SeekerJobFeedService {
       matchTier: row.matchTier,
       matchScore: row.matchScore,
       status: row.status,
-      hasCv: Boolean(row.cvFilePath),
+      hasCv: candidateHasCv(row),
       lastActiveAt: row.lastActiveAt ? row.lastActiveAt.toISOString() : null,
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     }));
@@ -650,6 +654,7 @@ export class SeekerJobFeedService {
 
     const extracted = candidate.extractedData;
     const analysis = candidate.matchAnalysis;
+    const profileHasCv = seekerProfile ? seekerProfile.cvFilePath != null : false;
 
     return {
       id: candidate.id,
@@ -658,7 +663,7 @@ export class SeekerJobFeedService {
       matchTier: candidate.matchTier,
       matchScore: candidate.matchScore,
       status: candidate.status,
-      hasCv: Boolean(candidate.cvFilePath),
+      hasCv: candidateHasCv(candidate) || profileHasCv,
       lastActiveAt: candidate.lastActiveAt ? candidate.lastActiveAt.toISOString() : null,
       createdAt: candidate.createdAt ? candidate.createdAt.toISOString() : null,
       popiaConsent: candidate.popiaConsent,
