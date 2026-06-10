@@ -339,7 +339,23 @@ export default function SecureDocumentViewer(props: SecureDocumentViewerProps) {
             </div>
           </div>
         </div>
-        <div className="p-6" data-color-mode={resolvedTheme}>
+        <div className="p-6 secure-doc-viewer" data-color-mode={resolvedTheme}>
+          <style>{`
+            .secure-doc-viewer .wmde-markdown table {
+              display: table;
+              width: auto;
+              max-width: 100%;
+              table-layout: auto;
+            }
+            .secure-doc-viewer .wmde-markdown table th,
+            .secure-doc-viewer .wmde-markdown table td {
+              overflow-wrap: anywhere;
+            }
+            .secure-doc-viewer .wmde-markdown table code {
+              white-space: pre-wrap;
+              overflow-wrap: anywhere;
+            }
+          `}</style>
           {isExcelAttachment ? (
             <ExcelPreview documentId={document.id} />
           ) : (

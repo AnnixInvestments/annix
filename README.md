@@ -1,350 +1,73 @@
-# Annix Local Development
+# Annix
 
-This repository houses the NestJS API (`annix-backend`) and the Next.js application (`annix-frontend`). The instructions below describe everything that is needed to get both apps running locally on macOS/Linux and Windows without Docker, plus helper scripts that start both services with one command.
+Monorepo for the Annix platform:
 
-> **Current runtime targets**
->
-> - Node.js **22.21.1**
-> - pnpm **9.x** (package manager)
-> - npm **10.x** (ships with Node 22)
-> - PostgreSQL **15.x**
-> - Bash (for `run-dev.sh`) or PowerShell 5+/7 (for `run-dev.ps1`)
+- **`annix-backend`** — NestJS REST API (port `4001`, Swagger at `http://localhost:4001/swagger`)
+- **`annix-frontend`** — Next.js application (port `3000`) serving Stock Control, RFQ, AU Rubber, Annix Sentinel, FieldFlow, Annix Pulse, Annix Orbit, Annix Insights and the marketing site
+- **`packages/product-data`** — shared reference data (`@annix/product-data`)
 
----
+The database is **MongoDB Atlas** (one core ERP cluster per environment, plus dedicated per-environment Orbit clusters). There is no local database to install — dev profiles connect to Atlas directly.
 
-## ⚠️ Repo Reorganisation — Action Required
+## Runtime targets
 
-The repository structure has changed. If you cloned this repo before February 2026, or if `pnpm claude-swarm` fails, complete these one-time steps:
+- Node.js **22+** (production images build on `node:22-slim`)
+- pnpm **10.x**
 
-### 1. Re-clone or update your local path
-
-The monorepo now lives at:
-```
-/Users/<you>/dev/git-personal/au-projects/AnnixInvestments/annix
-```
-If your checkout is at a different path, update it or re-clone into this location so that sibling paths (worktrees, claude-swarm) resolve correctly.
-
-### 2. Activate git hooks
+## One-time setup
 
 ```bash
-git -C /Users/<you>/dev/git-personal/au-projects/AnnixInvestments/annix config core.hooksPath .githooks
+git config core.hooksPath .githooks
+pnpm install
 ```
 
-### 4. Script renames
+Connection strings, per-environment credentials and the full new-developer onboarding guide live in the admin portal under **Secure Documents → "Dev Environment Connections & Onboarding"** — they are deliberately not in this repo.
 
-| Old | New |
-|-----|-----|
-| `pnpm parallel-claude` | `pnpm claude-swarm` |
-| `./parallel-claude.sh` | `./claude-swarm.sh` |
-| `.\parallel-claude.ps1` | `.\claude-swarm.ps1` |
+## Running the dev environment
 
-### 5. Projects config has moved
-
-The claude-swarm projects registry moved from `.parallel-claude-projects.json` in the repo root to:
-```
-~/.config/claude-swarm/projects.json
-```
-If you have a `.parallel-claude-projects.json` in your annix checkout, move it:
-```bash
-mkdir -p ~/.config/claude-swarm
-mv .parallel-claude-projects.json ~/.config/claude-swarm/projects.json
-```
-
----
-
-## 🎨 3D Pipe Visualization
-
-The application includes interactive **3D visualization** for pipes and bends in the RFQ form:
-- Real-time 3D previews as users configure specifications
-- Multiple camera angles, drag-to-rotate, zoom controls
-- Shows flanges, welds, dimensions, and material properties
-
-For implementation details, see `3D_VISUALIZATION_GUIDE.md`.
-
----
-
-## Architecture & Ports
-
-### Application Components
-
-| Component | Port | Purpose | URL |
-|-----------|------|---------|-----|
-| **Frontend** | `3000` | Next.js web application | http://localhost:3000 |
-| **Backend API** | `4001` | NestJS REST API | http://localhost:4001 |
-| **Swagger UI** | `4001` | API documentation | http://localhost:4001/swagger |
-| **PostgreSQL** | `5432` | Database (native or Docker) | localhost:5432 |
-
-### Environment Variables
-
-Key configuration in `annix-backend/.env`:
-- `PORT=4001` - Backend API port
-- `DATABASE_HOST=localhost` - Database host
-- `DATABASE_PORT=5432` - Database port (auto-adjusted for Docker if needed)
-- `DATABASE_NAME=annix_db` - Database name
-- `DATABASE_USERNAME=annix_user` - Database user
-- `DATABASE_PASSWORD=annix_password` - Database password
-
-Frontend automatically connects to backend via `NEXT_PUBLIC_API_URL=http://localhost:4001`
-
-### Docker Configuration
-
-**Optional Docker PostgreSQL** (enabled via `USE_DOCKER_POSTGRES=1`):
-- Container name: `annix-postgres`
-- Image: `postgres:15`
-- Volume: `annix-postgres-data` (persistent storage)
-- Port: `5432` (auto-fallback to `55432-55452` if occupied)
-- Superuser: `postgres`
-- Password: Set via `DOCKER_POSTGRES_PASSWORD` (default: `postgres`)
-
-**Production Docker images** (via `docker-compose.yaml`):
-- Backend container: `annix_backend` (exposes port `4000` in prod)
-- Frontend container: `annix_frontend`
-
-Docker is completely optional for local development - you can use a native PostgreSQL installation instead.
-
----
-
-## 1. Pre‑installation Checklist
-
-### Common Requirements
-
-- **Node.js 22.21.1** (via [nvm](https://github.com/nvm-sh/nvm), [nvm-windows](https://github.com/coreybutler/nvm-windows), or the installers from [nodejs.org](https://nodejs.org/en/download/current))
-- **PostgreSQL 15** plus the `psql` client on your `PATH` (or enable the Dockerized Postgres option below so the scripts exec `psql` inside the container for you)
-- Ability to run shell/PowerShell scripts (`run-dev.sh` or `run-dev.ps1`)
-
-### macOS / Linux
-
-1. Install Postgres and keep it running:
-   ```bash
-   brew install postgresql@15
-   brew services start postgresql@15
-   ```
-   (If you use another package manager, just ensure `psql` resolves on the command line.)
-2. Install Node 22.21.1 (`nvm install 22.21.1` or download from nodejs.org).
-3. Copy the backend env file and update only the secrets you care about:
-   ```bash
-   cp annix-backend/.env.example annix-backend/.env
-   ```
-4. Make the helper script executable (first run only):
-   ```bash
-   chmod +x run-dev.sh
-   ```
-
-### Windows
-
-1. Install PostgreSQL 15 from the [official installer](https://www.postgresql.org/download/windows/) or via `winget install postgresql`.
-2. Ensure `psql.exe` is on your `PATH` (re-open PowerShell after the install so the PATH change applies).
-3. Install Node 22.21.1 with [nvm-windows](https://github.com/coreybutler/nvm-windows) or the MSI from nodejs.org.
-4. Copy the env template:
-   ```powershell
-   Copy-Item annix-backend/.env.example annix-backend/.env
-   ```
-5. Run the helper script with PowerShell 7 (recommended) or Windows PowerShell 5.1.
-
-### Automatic Database Provisioning
-
-Both helper scripts now bootstrap PostgreSQL automatically:
-
-- They check whether `annix_user` / `annix_db` already exist.
-- If not, they connect as Postgres superuser (defaults to `postgres`) and create role and database for you.
-- If your superuser requires a password, set environment variables **before** running the script:
-  - macOS/Linux: `export PG_SUPERPASS='your-password'` (and optionally `export PG_SUPERUSER='your-admin-user'`)
-  - Windows PowerShell: `$env:PG_SUPERPASS = 'your-password'`
-- No manual SQL copy/paste is required; everything is handled automatically when `psql` is available.
-
-### Testing from Root Directory
-
-You can now run all tests from the project root using the new top-level package.json:
+Dev servers are managed by the **Claude Swarm orchestrator**:
 
 ```bash
-# Run all tests (backend + frontend)
-pnpm test:all
+pnpm claude-swarm
+```
 
-# Run backend tests only  
+Pick an environment at the prompt — Local (your `annix-backend/.env`), staging, test, or production. The staging/test/production profiles fetch their secrets (core and Orbit Mongo URIs included) from the matching Fly.io app, with email delivery disabled locally.
+
+- Frontend: http://localhost:3000 · Backend: http://localhost:4001
+- Logs: `logs/frontend.log`, `logs/backend.log`, combined `logs/annix.log`
+- Status: `.claude-swarm/registry.json`
+
+Do not run `pnpm dev`, `pnpm build`, or the legacy `run-dev.*` scripts while the swarm is active — it owns the build and dev-server lifecycle, and parallel builds corrupt caches.
+
+## Tests
+
+Run from the repo root:
+
+```bash
+pnpm test:all        # backend tests + frontend type check
 pnpm test:backend
-
-# Run frontend type checking only
 pnpm test:frontend
-
-# Run backend tests with coverage
 pnpm test:coverage
-
-# Run backend tests in watch mode
 pnpm test:watch
-
-# Run e2e tests only
 pnpm test:e2e
 ```
 
-### Optional: Run Postgres via Docker
+## Database migrations (migrate-mongo, TypeScript, forward-only)
 
-If you prefer not to install PostgreSQL locally but do have Docker running, the helper scripts can spin up a containerized database automatically:
-
-- Set `USE_DOCKER_POSTGRES=1` before invoking `run-dev.sh`/`run-dev.ps1`. The script will create (or restart) a `annix-postgres` container from `postgres:15`, expose it on `localhost:<DATABASE_PORT>` (defaults to 5432), and keep data in the `annix-postgres-data` Docker volume.
-- Override `DOCKER_POSTGRES_PASSWORD` to change the container superuser password. The value is also wired into `PG_SUPERPASS` so migrations and provisioning work without any extra steps.
-- `POSTGRES_CONTAINER_NAME`, `POSTGRES_CONTAINER_VOLUME`, `POSTGRES_CONTAINER_IMAGE`, and `DOCKER_POSTGRES_PASSWORD` can be customized if you have conflicting names/images already.
-- If the requested host port is already in use (for example, a native Postgres instance is still running), the script auto-selects the first free port in the `DOCKER_POSTGRES_PORT_FALLBACK_START`–`DOCKER_POSTGRES_PORT_FALLBACK_END` range (defaults to `55432-55452`) and exports `DATABASE_PORT` for the current run so everything points to the container. Set `DATABASE_PORT` yourself to pin a specific port permanently.
-- If you have the `psql` CLI locally, the scripts use it. If not, they automatically exec `psql` inside the container when provisioning the `annix_user`/`annix_db` role and database. Install the CLI locally if you plan to run manual queries outside the helper scripts.
-- When you are done developing, stop the container with `docker stop annix-postgres` (or remove it entirely via `docker rm -f annix-postgres` if you no longer need the data volume).
-
----
-
-## 2. Helper Run Scripts
-
-The scripts perform the following:
-
-1. Ensure the correct Node.js version is active (via `nvm`/`nvm-windows` when available).
-2. Verify `annix-backend/.env` exists.
-3. Bootstrap PostgreSQL automatically (creates/updates `annix_user` + `annix_db`; honours `PG_SUPERUSER`/`PG_SUPERPASS` if authentication is needed).
-4. Install backend & frontend dependencies (`pnpm install`).
-5. Run backend migrations (`pnpm migration:run`).
-6. Export `NEXT_PUBLIC_API_URL=http://localhost:4001` (unless you already set another value) so the frontend always targets the running API.
-7. Launch both dev servers with output mirrored to the console **and** to log files in the repo root (`backend-dev.log`, `frontend-dev.log`).
-8. Terminate both servers when the script exits (Ctrl+C).
-
-### macOS / Linux
+From `annix-backend/`:
 
 ```bash
-./run-dev.sh
-# override defaults if needed:
-# NODE_VERSION=22.21.1 BACKEND_LOG=/tmp/api.log FRONTEND_LOG=/tmp/web.log ./run-dev.sh
+pnpm migrate:status / migrate:create <name> / migrate:up        # core ERP cluster
+pnpm migrate:orbit:status / migrate:orbit:create <name> / migrate:orbit:up   # Orbit cluster
 ```
 
-The script provisions the Postgres role/database (if needed), streams both servers’ logs to your terminal, and leaves a copy in `backend-dev.log` / `frontend-dev.log`. Press `Ctrl+C` once to stop both processes. Set `PG_SUPERPASS` (and optionally `PG_SUPERUSER`) beforehand if your local Postgres install prompts for a password.
+Migrations touching Orbit collections must live in `migrations-mongo-orbit/` — `scripts/check-migration-routing.ts` enforces this. Both directories run automatically on every Fly deploy via the `release_command`.
 
-### Windows
+## Git workflow
 
-Simplest option: double‑click `run-dev.bat` (or run it from `cmd.exe`) and it will launch `run-dev.ps1` for you. If you prefer PowerShell directly:
+Trunk-based and PR-free: one commit per complete change, straight to `main`. The `pre-push` hook (`.githooks/pre-push`) formats, tests and builds both apps before any push; `git push --no-verify` is for emergencies only and the hook must pass before further work builds on the branch.
 
-```powershell
-pwsh -ExecutionPolicy Bypass -File ./run-dev.ps1
-# or Windows PowerShell 5.1:
-powershell -ExecutionPolicy Bypass -File .\run-dev.ps1
-```
+Engineering conventions (code style, shared-code discovery protocol, branding, progress popups, resource budgets) are in [CLAUDE.md](CLAUDE.md), with deeper references in [docs/shared-registry.md](docs/shared-registry.md), [docs/frontend-conventions.md](docs/frontend-conventions.md), [docs/storage-architecture.md](docs/storage-architecture.md), [docs/rfq-domain-reference.md](docs/rfq-domain-reference.md) and [docs/sage-dla-compliance.md](docs/sage-dla-compliance.md).
 
-Need Docker Postgres instead of a local install? Set the environment variables in the same PowerShell session before launching the script, e.g.:
+## Deployment
 
-```powershell
-$env:USE_DOCKER_POSTGRES = '1'
-$env:DOCKER_POSTGRES_PASSWORD = 'super-secret'
-pwsh -ExecutionPolicy Bypass -File ./run-dev.ps1
-```
-
-The PowerShell helper will create (or reuse) the container, auto-select a free port if 5432 is taken, and run `psql` via `docker exec` whenever you don’t have the CLI installed locally.
-
-Both entry points do the same thing: provision Postgres, install dependencies, and keep both apps running until you close the window/press `Ctrl+C`. Define `$env:PG_SUPERPASS` before running if your Postgres superuser needs a password.
-
-If you already have Postgres/Node running remotely you can adjust the environment variables inside `annix-backend/.env` before invoking the scripts.
-
----
-
-## 3. Manual Workflow (if you prefer not to use the scripts)
-
-1. **Backend**
-   ```bash
-   cd annix-backend
-   pnpm install
-   pnpm migration:run
-   pnpm start:dev
-   ```
-   - API listens on `http://localhost:4001`.
-   - Swagger UI is available at `http://localhost:4001/swagger`.
-
-2. **Frontend**
-   ```bash
-   cd annix-frontend
-   pnpm install
-   pnpm run dev
-   ```
-   - App listens on `http://localhost:3000`.
-
-3. **Testing**
-   ```bash
-   # Run all tests (backend + frontend)
-   pnpm test:all
-   
-   # Run backend tests only
-   pnpm test:backend
-   
-   # Run frontend type checking only
-   pnpm test:frontend
-   
-   # Quick API smoke test
-   ./test_backend_data.sh
-   ```
-   - API listens on `http://localhost:4001`.
-   - Swagger UI is available at `http://localhost:4001/swagger`.
-
-2. **Frontend**
-   ```bash
-   cd annix-frontend
-   pnpm install
-   pnpm run dev
-   ```
-   - App listens on `http://localhost:3000`.
-
-3. **Testing**
-    ```bash
-    # Run all tests (backend + frontend)
-    pnpm test:all
-    
-    # Run backend tests only
-    pnpm test:backend
-    
-    # Run frontend type checking only
-    pnpm test:frontend
-    
-    # Run backend tests with coverage
-    pnpm test:coverage
-    
-    # Quick API smoke test
-    ./test_backend_data.sh
-    ```
-
----
-
-## 4. Cross-Platform Development
-
-### Automatic Lock File Management
-
-This project supports development on both **macOS** and **Windows**. The lock file (`pnpm-lock.yaml`) contains platform-specific dependencies that are automatically managed.
-
-**What happens automatically:**
-- When you `git pull` changes, lock files are regenerated for your platform
-- Git hooks ensure you always have the correct binaries for your OS
-- No more merge conflicts on platform-specific packages (e.g., `@img/sharp-darwin-arm64` vs `@img/sharp-win32-x64`)
-
-**How it works:**
-1. Pull changes normally: `git pull`
-2. Post-merge hook runs automatically and regenerates lock files
-3. Commit the regenerated files: `git commit -am "Update lock files"`
-4. Push your changes: `git push`
-
-**Manual regeneration (if needed):**
-```bash
-# Frontend
-cd annix-frontend && pnpm install --check-files
-
-# Backend
-cd annix-backend && pnpm install
-```
-
-For more details, see [CROSS_PLATFORM_SETUP.md](./CROSS_PLATFORM_SETUP.md).
-
----
-
-### Emergency Git Hook Bypass
-
-The repo includes a `pre-push` hook (`.githooks/pre-push`) that runs `pnpm test:all`, builds both apps, and runs migrations before every push. When those checks fail but you still need to share your branch so someone else can diagnose the issue, run `git push --no-verify` to skip the hook for that push only. Mention that you bypassed the hook when handing off the branch, and make sure the hook passes before merging anything permanent.
-
----
-
-## 5. Troubleshooting
-
-- **Postgres connection errors** – confirm the `annix_user/annix_password` credentials in `annix-backend/.env` match your local Postgres role and that the instance is listening on `localhost:5432`. Use `pg_isready -h localhost -p 5432` (macOS/Linux) or `psql -h localhost -U annix_user annix_db -c "SELECT 1;"` (Windows) to verify connectivity. If automatic provisioning fails because your Postgres superuser needs a password, export `PG_SUPERPASS` (and `PG_SUPERUSER` if you changed the default) before rerunning the script.
-- **Node version warnings** – both apps rely on ES modules and features that require Node 22+. If you cannot install Node 22 system-wide, run the scripts with `NODE_VERSION=<version>` plus `nvm install <version>` beforehand.
-- **Port conflicts** – override `PORT` in `annix-backend/.env` and `PORT` in `annix-frontend/.env.local` (create if necessary), then restart the scripts.
-- **Log files** – both helper scripts rotate `backend-dev.log` and `frontend-dev.log` on each run. Use `tail -f backend-dev.log` or `Get-Content -Path backend-dev.log -Wait` to inspect past runs.
-
-With the instructions above, everything touched in this assistant session can be committed on a new branch and shared without any additional manual steps.
-
+Fly.io apps: `annix-app` (production), `annix-app-staging`, `annix-app-test`, all driven by the single `fly.toml`. Secrets are set per app with `fly secrets set` — never committed to the repo.

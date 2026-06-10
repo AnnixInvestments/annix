@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isArray } from "es-toolkit/compat";
 import { asNumber, asString, asStringArray, parseFrontmatter } from "./frontmatter";
@@ -52,6 +52,11 @@ export const createHowToLoader = <TRole extends string>(
 
   const loadAllGuides = (): HowToGuide<TRole>[] => {
     if (cache) return cache;
+
+    if (!existsSync(config.guidesDir)) {
+      cache = [];
+      return cache;
+    }
 
     const files = readdirSync(config.guidesDir).filter((f) => f.endsWith(".md"));
     const guides = files.map((file) => {

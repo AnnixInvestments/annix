@@ -230,6 +230,13 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
     5. At end-of-session, the worktree branch is fully reflected on `main`, so cleanup is just `git worktree remove`.
 - **Never use `EnterWorktree` in `@annix/claude-swarm` worktrees**: if branch starts with `claude/`, work directly on the current branch — `@annix/claude-swarm` manages the worktree lifecycle, nesting puts commits on the wrong branch.
 
+### Commit Discipline — defer to push, ONE commit (hard rule)
+**Do NOT commit while iterating.** Make changes and verify them (type-check, logs), but do not run `git commit` until the user asks to push. A commit must take the system from one fully working state to the next — never an intermediate step.
+- When the user asks to push, create **exactly one** commit for the whole change.
+- If a work-in-progress change needs fixes before it ships (lint, version bump, pre-push hook complaints, conflict/rebase resolution), fold them into that single commit with `git commit --amend` — never a follow-up commit.
+- If several commits already exist for one piece of work, **squash them into one** before pushing.
+- A trail of small commits on `main` is the thing to avoid. One change = one commit = one push.
+
 ### Commit Process
 1. **Run Biome before staging**: `npx biome check --write --unsafe` on all files about to be committed. The pre-push hook rejects unformatted files.
 2. Stage with `git add` (specific files; don't blanket-add).

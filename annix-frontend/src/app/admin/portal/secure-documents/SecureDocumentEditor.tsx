@@ -61,54 +61,26 @@ export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
     onSave,
     onBack,
   } = props;
-  const [title, setTitle] = useState(
-    (() => {
-      const rawTitle = initialData?.title;
-      return rawTitle || document?.title || "";
-    })(),
-  );
-  const [description, setDescription] = useState(
-    (() => {
-      const rawDescription = initialData?.description;
-      return rawDescription || document?.description || "";
-    })(),
-  );
-  const [folder, setFolder] = useState(
-    (() => {
-      const rawFolder = initialData?.folder;
-      return rawFolder || document?.folder || "";
-    })(),
-  );
-  const [content, setContent] = useState(
-    (() => {
-      const rawContent = initialData?.content;
-      return rawContent || document?.content || "";
-    })(),
-  );
-  const [savedTitle, setSavedTitle] = useState(
-    (() => {
-      const rawTitle = initialData?.title;
-      return rawTitle || document?.title || "";
-    })(),
-  );
-  const [savedDescription, setSavedDescription] = useState(
-    (() => {
-      const rawDescription = initialData?.description;
-      return rawDescription || document?.description || "";
-    })(),
-  );
-  const [savedFolder, setSavedFolder] = useState(
-    (() => {
-      const rawFolder = initialData?.folder;
-      return rawFolder || document?.folder || "";
-    })(),
-  );
-  const [savedContent, setSavedContent] = useState(
-    (() => {
-      const rawContent = initialData?.content;
-      return rawContent || document?.content || "";
-    })(),
-  );
+  const rawInitialTitle = initialData?.title;
+  const rawDocumentTitle = document?.title;
+  const initialTitle = rawInitialTitle || rawDocumentTitle || "";
+  const rawInitialDescription = initialData?.description;
+  const rawDocumentDescription = document?.description;
+  const initialDescription = rawInitialDescription || rawDocumentDescription || "";
+  const rawInitialFolder = initialData?.folder;
+  const rawDocumentFolder = document?.folder;
+  const initialFolder = rawInitialFolder || rawDocumentFolder || "";
+  const rawInitialContent = initialData?.content;
+  const rawDocumentContent = document?.content;
+  const initialContent = rawInitialContent || rawDocumentContent || "";
+  const [title, setTitle] = useState(initialTitle);
+  const [description, setDescription] = useState(initialDescription);
+  const [folder, setFolder] = useState(initialFolder);
+  const [content, setContent] = useState(initialContent);
+  const [savedTitle, setSavedTitle] = useState(initialTitle);
+  const [savedDescription, setSavedDescription] = useState(initialDescription);
+  const [savedFolder, setSavedFolder] = useState(initialFolder);
+  const [savedContent, setSavedContent] = useState(initialContent);
   const [isSaving, setIsSaving] = useState(false);
   const [editorHeight, setEditorHeight] = useState(500);
   const [localPaneMode, setLocalPaneMode] = useState<EditorPaneMode>(paneMode);
@@ -298,6 +270,20 @@ export default function SecureDocumentEditor(props: SecureDocumentEditorProps) {
           color: #e5e7eb !important;
           -webkit-text-fill-color: #e5e7eb !important;
           caret-color: #e5e7eb !important;
+        }
+        .w-md-editor-preview .wmde-markdown table {
+          display: table;
+          width: auto;
+          max-width: 100%;
+          table-layout: auto;
+        }
+        .w-md-editor-preview .wmde-markdown table th,
+        .w-md-editor-preview .wmde-markdown table td {
+          overflow-wrap: anywhere;
+        }
+        .w-md-editor-preview .wmde-markdown table code {
+          white-space: pre-wrap;
+          overflow-wrap: anywhere;
         }
       `}</style>
       <div className="flex items-center justify-between">
