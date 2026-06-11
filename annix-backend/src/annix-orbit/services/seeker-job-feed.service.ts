@@ -1143,13 +1143,23 @@ export class SeekerJobFeedService {
     }
     const candidateIds = candidates.map((c) => c.id);
 
-    const totalMatches = await this.matchRepo.countActiveForCandidates(candidateIds);
+    // Count through the same live-job + target-country (+ plan cap) gates as
+    // the Browse Jobs header, so the dashboard and the jobs page never quote
+    // different totals. Raw match-row counts include matches to jobs that have
+    // since expired or been delisted, which inflated the dashboard figure.
+    const targetCountries = await this.targetCountriesForCandidates(candidates);
+    const facetRows = await this.cachedFacetRows(candidateIds);
+    const rawTotal = countMatchingRows(facetRows, { targetCountries });
+    const selectedTier = await this.selectedTierForEmail(email);
+    const capTier = selectedTier ?? this.effectiveTier(candidates);
+    const capability = await this.tierCapabilityRepo.findByTier(capTier);
+    const maxResults = capability ? capability.maxJobResults : null;
+    const totalMatches = maxResults == null ? rawTotal : Math.min(rawTotal, maxResults);
 
     const sevenDaysAgo = DateTime.now().minus({ days: 7 }).toJSDate();
-    const matchesLast7Days = await this.matchRepo.countActiveForCandidatesSince(
-      candidateIds,
-      sevenDaysAgo,
-    );
+    const newRows = await this.matchRepo.countActiveForCandidatesSince(candidateIds, sevenDaysAgo);
+    // "New this week" can't sensibly exceed the active total shown next to it.
+    const matchesLast7Days = Math.min(newRows, totalMatches);
 
     return { hasCandidate: true, totalMatches, matchesLast7Days };
   }
