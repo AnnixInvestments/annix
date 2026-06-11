@@ -1,6 +1,7 @@
 import { Global, Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { EmailModule } from "../email/email.module";
+import { WhatsAppModule } from "../whatsapp/whatsapp.module";
 import { EmailChannel } from "./channels/email.channel";
 import { SmsChannel } from "./channels/sms.channel";
 import { WebPushChannel } from "./channels/web-push.channel";
@@ -9,7 +10,7 @@ import { NotificationDispatcherService } from "./notification-dispatcher.service
 
 @Global()
 @Module({
-  imports: [ConfigModule, EmailModule],
+  imports: [ConfigModule, EmailModule, WhatsAppModule],
   providers: [
     EmailChannel,
     SmsChannel,

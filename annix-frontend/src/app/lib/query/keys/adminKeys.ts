@@ -159,4 +159,11 @@ export const adminKeys = {
     all: ["admin", "sso"] as const,
     identityReconciliation: () => [...adminKeys.sso.all, "identityReconciliation"] as const,
   },
+  whatsApp: {
+    all: ["admin", "whatsApp"] as const,
+    status: () => [...adminKeys.whatsApp.all, "status"] as const,
+    conversations: (page: number) => [...adminKeys.whatsApp.all, "conversations", page] as const,
+    messages: (conversationId: string) =>
+      [...adminKeys.whatsApp.all, "messages", conversationId] as const,
+  },
 } as const;

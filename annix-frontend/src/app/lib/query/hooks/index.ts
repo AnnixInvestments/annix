@@ -114,6 +114,13 @@ export {
 export { useAdminRfqDetail, useAdminRfqs } from "./admin/useAdminRfqs";
 export { useAdminSupplierDetail } from "./admin/useAdminSupplierDetail";
 export { useAdminSuppliers, useInviteSupplier } from "./admin/useAdminSuppliers";
+export {
+  useAdminMarkWhatsAppRead,
+  useAdminSendWhatsAppReply,
+  useAdminWhatsAppConversations,
+  useAdminWhatsAppMessages,
+  useAdminWhatsAppStatus,
+} from "./admin/useAdminWhatsApp";
 export { useAiUsageDailySeries, useAiUsageLogs } from "./admin/useAiUsage";
 export {
   useAnnixCompanyProfile,

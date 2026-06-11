@@ -1554,6 +1554,75 @@ class AdminApiClient {
   async rejectOrbitDelist(id: number): Promise<{ success: boolean }> {
     return this.request(`/admin/annix-orbit/delist-reports/${id}/reject`, { method: "POST" });
   }
+
+  // WhatsApp inbox (platform-wide global number)
+  async whatsAppStatus(): Promise<WhatsAppStatus> {
+    return this.request("/admin/whatsapp/status");
+  }
+
+  async whatsAppConversations(page = 1): Promise<WhatsAppConversationList> {
+    return this.request(`/admin/whatsapp/conversations?page=${page}`);
+  }
+
+  async whatsAppMessages(conversationId: string): Promise<WhatsAppMessage[]> {
+    return this.request(`/admin/whatsapp/conversations/${conversationId}/messages`);
+  }
+
+  async sendWhatsAppReply(
+    conversationId: string,
+    body: string,
+  ): Promise<{ messages: WhatsAppMessage[] }> {
+    return this.request(`/admin/whatsapp/conversations/${conversationId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    });
+  }
+
+  async markWhatsAppConversationRead(conversationId: string): Promise<{ success: boolean }> {
+    return this.request(`/admin/whatsapp/conversations/${conversationId}/read`, {
+      method: "POST",
+    });
+  }
+}
+
+export interface WhatsAppStatus {
+  configured: boolean;
+  phoneNumberId: string | null;
+}
+
+export interface WhatsAppConversation {
+  id: string;
+  waId: string;
+  profileName: string | null;
+  lastMessageAt: string;
+  lastMessagePreview: string | null;
+  lastDirection: "inbound" | "outbound";
+  unreadCount: number;
+  appContext: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WhatsAppConversationList {
+  items: WhatsAppConversation[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface WhatsAppMessage {
+  id: string;
+  conversationId: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  messageType: string;
+  waMessageId: string | null;
+  status: string | null;
+  errorDetail: string | null;
+  appContext: string | null;
+  sentBy: string | null;
+  sentAt: string;
+  createdAt: string;
 }
 
 export interface OrbitEarlyAccessRow {

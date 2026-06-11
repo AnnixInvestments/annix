@@ -55,6 +55,7 @@ import { UnifiedApiModule } from "./unified-api/unified-api.module";
 import { UserModule } from "./user/user.module";
 import { UserRolesModule } from "./user-roles/user-roles.module";
 import { UserSyncModule } from "./user-sync/user-sync.module";
+import { WhatsAppModule } from "./whatsapp/whatsapp.module";
 import { WorkflowModule } from "./workflow/workflow.module";
 
 @Module({
@@ -99,6 +100,7 @@ import { WorkflowModule } from "./workflow/workflow.module";
     StorageModule,
     EmailModule,
     NotificationsModule,
+    WhatsAppModule,
     AuditModule,
     InboundEmailModule,
 

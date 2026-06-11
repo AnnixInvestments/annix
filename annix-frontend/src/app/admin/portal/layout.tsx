@@ -49,6 +49,12 @@ const navItems = [
     icon: "M12 21v-8.25M15.75 21v-8.25M8.25 21v-8.25M3 9l9-6 9 6m-1.5 12V10.332A48.36 48.36 0 0012 9.75c-2.551 0-5.056.2-7.5.582V21M3 21h18M12 6.75h.008v.008H12V6.75z",
     roles: ["admin", "employee"],
   },
+  {
+    href: "/admin/portal/whatsapp",
+    label: "WhatsApp",
+    icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z",
+    roles: ["admin", "employee"],
+  },
 ];
 
 function AdminNavigation() {

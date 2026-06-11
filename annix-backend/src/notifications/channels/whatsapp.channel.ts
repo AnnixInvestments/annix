@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { ConfigService } from "@nestjs/config";
+import { WhatsAppCloudApiService } from "../../whatsapp/services/whatsapp-cloud-api.service";
+import { WhatsAppConversationService } from "../../whatsapp/services/whatsapp-conversation.service";
 import {
   DispatchResult,
   NotificationChannel,
@@ -7,25 +8,31 @@ import {
   NotificationRecipient,
 } from "../interfaces/notification-channel.interface";
 
+function normaliseWaId(phone: string): string {
+  return phone.replace(/[^\d]/g, "");
+}
+
+/**
+ * Sends WhatsApp notifications through the platform's global number on Meta's
+ * Cloud API (no phone, no Twilio). Every send is also recorded into the shared
+ * WhatsApp conversation store so replies and history show up in the
+ * Admin → WhatsApp inbox.
+ */
 @Injectable()
 export class WhatsAppChannel implements NotificationChannel {
   private readonly logger = new Logger(WhatsAppChannel.name);
-  private readonly accountSid: string | null;
-  private readonly authToken: string | null;
-  private readonly fromNumber: string | null;
 
-  constructor(private readonly configService: ConfigService) {
-    this.accountSid = this.configService.get<string>("TWILIO_ACCOUNT_SID") ?? null;
-    this.authToken = this.configService.get<string>("TWILIO_AUTH_TOKEN") ?? null;
-    this.fromNumber = this.configService.get<string>("TWILIO_WHATSAPP_NUMBER") ?? null;
-  }
+  constructor(
+    private readonly cloudApi: WhatsAppCloudApiService,
+    private readonly conversations: WhatsAppConversationService,
+  ) {}
 
   channelName(): string {
     return "whatsapp";
   }
 
   isEnabled(): boolean {
-    return this.accountSid !== null && this.authToken !== null && this.fromNumber !== null;
+    return this.cloudApi.isConfigured();
   }
 
   async send(
@@ -37,7 +44,7 @@ export class WhatsAppChannel implements NotificationChannel {
         channel: this.channelName(),
         success: false,
         recipientRef: recipient.phone ?? "",
-        error: "Twilio WhatsApp not configured",
+        error: "WhatsApp is not configured in this environment",
       };
     }
 
@@ -51,41 +58,35 @@ export class WhatsAppChannel implements NotificationChannel {
       };
     }
 
+    const waId = normaliseWaId(phone);
+
     try {
-      const url = `https://api.twilio.com/2010-04-01/Accounts/${this.accountSid}/Messages.json`;
-      const auth = Buffer.from(`${this.accountSid}:${this.authToken}`).toString("base64");
-      const body = new URLSearchParams({
-        To: `whatsapp:${phone}`,
-        From: `whatsapp:${this.fromNumber}`,
-        Body: content.body,
-      });
+      const result = await this.cloudApi.sendText(waId, content.body);
 
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Basic ${auth}`,
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        body: body.toString(),
-      });
+      const appContext =
+        content.data && typeof content.data.appContext === "string"
+          ? content.data.appContext
+          : null;
+      await this.conversations
+        .recordOutbound(waId, {
+          body: content.body,
+          waMessageId: result.waMessageId,
+          appContext,
+          sentBy: "system:notification",
+        })
+        .catch((recordError) =>
+          this.logger.warn(
+            `WhatsApp notification sent but could not be recorded in the inbox: ${
+              recordError instanceof Error ? recordError.message : String(recordError)
+            }`,
+          ),
+        );
 
-      if (!response.ok) {
-        const errorBody = await response.text();
-        this.logger.error(`Twilio WhatsApp failed (${response.status}): ${errorBody}`);
-        return {
-          channel: this.channelName(),
-          success: false,
-          recipientRef: phone,
-          error: `HTTP ${response.status}: ${errorBody}`,
-        };
-      }
-
-      const payload = (await response.json()) as { sid?: string };
       return {
         channel: this.channelName(),
         success: true,
         recipientRef: phone,
-        providerMessageId: payload.sid ?? null,
+        providerMessageId: result.waMessageId,
       };
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
