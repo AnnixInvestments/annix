@@ -17,6 +17,7 @@ import {
 } from "@nestjs/common";
 import { ArrayMaxSize, IsArray, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
+import { ExternalJobEmbedService } from "../services/external-job-embed.service";
 import { OrbitDismissReasonService } from "../services/orbit-dismiss-reason.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
@@ -83,7 +84,13 @@ export class SeekerJobsController {
   constructor(
     private readonly feedService: SeekerJobFeedService,
     private readonly dismissReasonService: OrbitDismissReasonService,
+    private readonly embedService: ExternalJobEmbedService,
   ) {}
+
+  @Get("embed-check")
+  embedCheck(@Query("url") url?: string) {
+    return this.embedService.checkEmbeddable(url ?? "");
+  }
 
   @Get("dismiss-reasons")
   dismissReasons() {

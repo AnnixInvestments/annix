@@ -203,7 +203,9 @@ export default function SeekerSettingsPage() {
                     </span>
                   </label>
                   <p className="text-xs text-gray-500 mt-1">
-                    Only notify me about jobs that match my CV at this score or higher.
+                    Alerts only — we'll notify you about jobs that match your CV at this score or
+                    higher. Jobs below it still appear in Browse Jobs; you just won't be alerted
+                    about them.
                   </p>
                   <input
                     id="threshold"

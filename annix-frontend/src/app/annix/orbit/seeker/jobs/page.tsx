@@ -853,30 +853,6 @@ export default function SeekerJobsPage() {
       <div ref={topAnchorRef} />
       <PageHeader subtitle={matchedSubtitle} />
 
-      {!filterTipDismissed && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800 flex items-start justify-between gap-4">
-          <p>
-            <strong>Tip:</strong> Use the filters below to narrow your job matches by location,
-            category, salary, and more.
-          </p>
-          <button
-            type="button"
-            onClick={() => setFilterTipDismissed(true)}
-            className="text-blue-500 hover:text-blue-700 flex-shrink-0"
-            aria-label="Dismiss tip"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
-        </div>
-      )}
-
       <JobsTopBar
         jobCount={jobCount}
         matchCount={totalMatches}
@@ -895,6 +871,32 @@ export default function SeekerJobsPage() {
       ) : null}
 
       <WorkCountriesPreference />
+
+      {!filterTipDismissed && (
+        // Solid backgrounds in both themes — the brand hero image sits behind
+        // this area, and the global dark-mode bg-blue-50 remap is translucent.
+        <div className="bg-[#eff6ff] dark:bg-[#101d3f] border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex items-start justify-between gap-4">
+          <p>
+            <strong>Tip:</strong> Use the filters below to narrow your job matches by location,
+            category, salary, and more.
+          </p>
+          <button
+            type="button"
+            onClick={() => setFilterTipDismissed(true)}
+            className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0"
+            aria-label="Dismiss tip"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
 
       <SeekerJobFilters
         state={filters}
