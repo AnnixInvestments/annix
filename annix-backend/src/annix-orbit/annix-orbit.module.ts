@@ -390,7 +390,6 @@ import { EeReportService } from "./services/ee-report.service";
 import { EmailTemplateService } from "./services/email-template.service";
 import { EmbeddingService } from "./services/embedding.service";
 import { EscoNormalisationService } from "./services/esco-normalisation.service";
-import { ExternalJobEmbedService } from "./services/external-job-embed.service";
 import { GeocodeService } from "./services/geocode.service";
 import { IndividualProfileService } from "./services/individual-profile.service";
 import { InterviewBookingService } from "./services/interview-booking.service";
@@ -727,7 +726,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitRecruiterLicensingRegistrar,
     AnnixOrbitStudentLicensingRegistrar,
     SeekerJobFeedService,
-    ExternalJobEmbedService,
     SeekerApplicationsService,
     SeekerCalendarService,
     SeekerCompanyResearchService,

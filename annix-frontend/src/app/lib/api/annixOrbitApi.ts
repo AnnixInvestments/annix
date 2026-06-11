@@ -2573,10 +2573,6 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/seeker/jobs/consent", { method: "POST" });
   }
 
-  async checkSeekerJobEmbed(url: string): Promise<{ embeddable: boolean }> {
-    return this.request(`/annix-orbit/seeker/jobs/embed-check?url=${encodeURIComponent(url)}`);
-  }
-
   async recordSeekerApplyClick(input: {
     matchId: number | null;
     externalJobId: number | null;

@@ -83,13 +83,15 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
           <span />
         )}
         {sourceUrl ? (
-          <button
-            type="button"
+          <a
+            href={sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
             onClick={handleApply}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
           >
             View &amp; apply
-          </button>
+          </a>
         ) : (
           <span className="text-sm text-gray-400">No apply link</span>
         )}
