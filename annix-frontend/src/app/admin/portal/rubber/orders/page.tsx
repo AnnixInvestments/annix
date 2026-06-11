@@ -14,6 +14,7 @@ import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type { RubberOrderDto } from "@/app/lib/api/rubberPortalApi";
 import { fromISO, now } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useCreateRubberOrder,
   useDeleteRubberOrder,
@@ -72,6 +73,7 @@ const exportOrdersToCSV = (orders: RubberOrderDto[]) => {
 
 export default function RubberOrdersPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<number | undefined>(undefined);
   const [searchQuery, setSearchQuery] = useState("");
@@ -199,7 +201,10 @@ export default function RubberOrdersPage() {
       setSelectedOrders(new Set());
       queryClient.invalidateQueries({ queryKey: rubberKeys.orders.all });
     } else if (failCount > 0) {
-      showToast(`Failed to delete ${failCount} order${failCount > 1 ? "s" : ""}`, "error");
+      alert({
+        message: `Failed to delete ${failCount} order${failCount > 1 ? "s" : ""}`,
+        variant: "error",
+      });
     }
   };
 
@@ -242,7 +247,7 @@ export default function RubberOrdersPage() {
         },
         onError: (err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : "Failed to create order";
-          showToast(errorMessage, "error");
+          alert({ message: errorMessage, variant: "error" });
         },
       },
     );
@@ -256,7 +261,7 @@ export default function RubberOrdersPage() {
       },
       onError: (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : "Failed to delete order";
-        showToast(errorMessage, "error");
+        alert({ message: errorMessage, variant: "error" });
       },
     });
   };
@@ -641,6 +646,7 @@ export default function RubberOrdersPage() {
         onConfirm={handleBulkDelete}
         onCancel={() => setShowBulkDeleteModal(false)}
       />
+      {AlertDialog}
     </div>
   );
 }

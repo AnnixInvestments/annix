@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { IndividualDocumentKind } from "@/app/lib/api/annixOrbitApi";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { useOrbitUploadMyDocument } from "@/app/lib/query/hooks";
 
 const ACCEPT_ATTR = ".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx";
@@ -15,6 +16,7 @@ const ACCEPTED_MIME_TYPES = new Set([
   "application/vnd.openxmlformats-officedocument.presentationml.presentation",
 ]);
 const ACCEPTED_EXTENSIONS = new Set([".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"]);
+const LEGACY_DOC_EXTENSIONS = new Set([".doc", ".xls", ".ppt"]);
 const MAX_BYTES = 10 * 1024 * 1024;
 
 const KIND_LABELS: Record<IndividualDocumentKind, string> = {
@@ -27,6 +29,7 @@ export interface IndividualDocumentUploaderProps {
   kind: IndividualDocumentKind;
   ctaLabel?: string;
   helperText?: string;
+  highlight?: boolean;
   onUploaded?: () => void;
 }
 
@@ -39,11 +42,19 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
     ? propsHelperText
     : "PDF, Word, Excel, or PowerPoint, up to 10 MB.";
   const onUploaded = props.onUploaded;
+  const highlight = props.highlight === true;
+  const buttonPalette = highlight
+    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
+  const idleDropzone = highlight
+    ? "border-[var(--brand-accent,#FF8A00)] bg-[rgba(255,138,0,0.06)] hover:border-[var(--brand-accent-light,#FF9C33)]"
+    : "border-gray-300 bg-white hover:border-[var(--brand-navbar-400,#7373c2)]";
 
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [progress, setProgress] = useState<number | null>(null);
+  const [docWarning, setDocWarning] = useState<string | null>(null);
   const uploadMutation = useOrbitUploadMyDocument();
   const isUploading = uploadMutation.isPending;
 
@@ -64,6 +75,14 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
     if (file.size > MAX_BYTES) {
       return "File is too large. Maximum size is 10 MB.";
     }
+    const isLegacy = LEGACY_DOC_EXTENSIONS.has(extension);
+    if (isLegacy) {
+      setDocWarning(
+        `${extension.toUpperCase()} files use an older format that may not be readable. Consider converting to ${extension === ".doc" ? "DOCX" : extension === ".xls" ? "XLSX" : "PPTX"} or PDF first.`,
+      );
+    } else {
+      setDocWarning(null);
+    }
     return null;
   };
 
@@ -83,9 +102,11 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
           if (onUploaded) onUploaded();
           if (inputRef.current) inputRef.current.value = "";
         },
-        onError: () => {
+        onError: (err) => {
           setProgress(null);
-          setError("Upload failed — please check the file and try again.");
+          setError(
+            extractErrorMessage(err, "Upload failed — please check the file and try again."),
+          );
         },
       },
     );
@@ -120,7 +141,7 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
         className={`rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
           isDragging
             ? "border-[var(--brand-navbar,#323288)] bg-[var(--brand-navbar-50,#f0f0fc)]"
-            : "border-gray-300 bg-white hover:border-[var(--brand-navbar-400,#7373c2)]"
+            : idleDropzone
         }`}
       >
         <input
@@ -134,7 +155,7 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
         />
         <label
           htmlFor={`uploader-${kind}`}
-          className={`inline-flex items-center justify-center bg-[var(--brand-navbar,#323288)] text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors cursor-pointer ${
+          className={`inline-flex items-center justify-center ${buttonPalette} px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer ${
             isUploading ? "opacity-50 cursor-not-allowed" : ""
           }`}
         >
@@ -157,6 +178,11 @@ export function IndividualDocumentUploader(props: IndividualDocumentUploaderProp
           <p className="text-xs text-gray-500 mt-1">Uploading… {Math.round(progress * 100)}%</p>
         </div>
       ) : null}
+      {docWarning && (
+        <div className="mt-3 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-2 rounded-lg text-sm">
+          {docWarning}
+        </div>
+      )}
       {error && (
         <div className="mt-3 bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
           {error}

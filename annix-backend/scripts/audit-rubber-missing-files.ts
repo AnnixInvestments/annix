@@ -140,7 +140,7 @@ function csvEscape(value: string | number | null | undefined): string {
 }
 
 function logLine(line: string): void {
-  process.stdout.write(line + "\n");
+  process.stdout.write(`${line}\n`);
 }
 
 async function main(): Promise<void> {
@@ -269,7 +269,7 @@ async function main(): Promise<void> {
     .join("\n");
   writeFileSync(outPath, header + body + (body.length > 0 ? "\n" : ""), "utf8");
 
-  logLine("\n" + "=".repeat(60));
+  logLine(`\n${"=".repeat(60)}`);
   logLine("Summary");
   logLine("=".repeat(60));
   for (const line of summaryLines) {
@@ -280,6 +280,6 @@ async function main(): Promise<void> {
 }
 
 void main().catch((err) => {
-  process.stderr.write((err instanceof Error ? err.stack || err.message : String(err)) + "\n");
+  process.stderr.write(`${err instanceof Error ? err.stack || err.message : String(err)}\n`);
   process.exit(1);
 });

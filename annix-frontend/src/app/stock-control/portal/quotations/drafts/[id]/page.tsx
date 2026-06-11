@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { NixDraftReview } from "@/app/lib/nix/components/draft";
 import {
   quoteRefForSession,
@@ -20,6 +21,7 @@ export default function NixExtractionDraftPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const nixQuoteFlag = useFeatureFlagEnabled(NIX_QUOTE_FROM_DOCS_FLAG);
   const rawParam = params?.id;
@@ -63,9 +65,12 @@ export default function NixExtractionDraftPage() {
       });
       router.push(`/stock-control/portal/quotations/quotes/${validSessionId}`);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to promote session", "error");
+      alert({
+        message: err instanceof Error ? err.message : "Failed to promote session",
+        variant: "error",
+      });
     }
-  }, [validSessionId, session, confirm, setStatus, router, showToast]);
+  }, [validSessionId, session, confirm, setStatus, router, showToast, alert]);
 
   const handleArchive = useCallback(async () => {
     if (!validSessionId) return;
@@ -74,9 +79,12 @@ export default function NixExtractionDraftPage() {
       showToast("Session archived.", "info");
       router.push("/stock-control/portal/quotations");
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Failed to archive session", "error");
+      alert({
+        message: err instanceof Error ? err.message : "Failed to archive session",
+        variant: "error",
+      });
     }
-  }, [validSessionId, setStatus, showToast, router]);
+  }, [validSessionId, setStatus, showToast, router, alert]);
 
   // Save & exit — every cell edit / retry / re-extract already persists
   // the moment the user makes the change, so the draft is implicitly saved
@@ -240,6 +248,7 @@ export default function NixExtractionDraftPage() {
       />
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   adminApiClient,
+  type OrbitClusterUsage,
   type OrbitSeekerDetail,
   type OrbitSeekerMatchTier,
   type OrbitSeekerSummary,
@@ -66,6 +67,50 @@ export function useAdminOrbitExternalJobs(params?: {
         limit: params?.limit,
       }),
     staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useAdminOrbitClusterUsage() {
+  return useQuery<OrbitClusterUsage>({
+    queryKey: adminKeys.orbitJobMarket.clusterUsage(),
+    queryFn: () => adminApiClient.orbitClusterUsage(),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useAdminOrbitRetentionCap() {
+  return useQuery<{ cap: number }>({
+    queryKey: adminKeys.orbitJobMarket.retentionCap(),
+    queryFn: () => adminApiClient.orbitRetentionCap(),
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function useAdminSetOrbitRetentionCap() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (cap: number) => adminApiClient.setOrbitRetentionCap(cap),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.retentionCap() });
+    },
+  });
+}
+
+export function useAdminOrbitEnabledCountries() {
+  return useQuery<{ all: string[]; enabled: string[] }>({
+    queryKey: adminKeys.orbitJobMarket.enabledCountries(),
+    queryFn: () => adminApiClient.orbitEnabledCountries(),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function useAdminSetOrbitEnabledCountries() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (countries: string[]) => adminApiClient.setOrbitEnabledCountries(countries),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.enabledCountries() });
+    },
   });
 }
 
@@ -209,5 +254,12 @@ export function useAdminSetOrbitSeekerMatchTier() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: adminKeys.orbitSeekers.all });
     },
+  });
+}
+
+export function useAdminSetPendingSeekerTier() {
+  return useMutation({
+    mutationFn: (body: { email: string; tier: string; permanent: boolean; trialDays?: number }) =>
+      adminApiClient.setPendingSeekerTier(body),
   });
 }

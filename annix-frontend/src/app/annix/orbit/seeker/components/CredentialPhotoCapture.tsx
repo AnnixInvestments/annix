@@ -5,6 +5,7 @@ import { PhotoCapture } from "@/app/components/PhotoCapture";
 import { useToast } from "@/app/components/Toast";
 import type { IndividualDocument } from "@/app/lib/api/annixOrbitApi";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitUploadMyDocumentPhoto } from "@/app/lib/query/hooks";
 
 interface CredentialPhotoCaptureProps {
@@ -17,6 +18,7 @@ export function CredentialPhotoCapture(props: CredentialPhotoCaptureProps) {
   const uploadPhoto = useOrbitUploadMyDocumentPhoto();
   const { runBulk } = useAdaptiveExtractionProgress();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const noun = kind === "qualification" ? "qualification" : "certificate";
 
   const handleCapture = async (file: File) => {
@@ -33,7 +35,10 @@ export function CredentialPhotoCapture(props: CredentialPhotoCaptureProps) {
       },
     });
     if (result.failed.length > 0) {
-      showToast("We couldn't read that photo — please try again or upload a file.", "error");
+      alert({
+        message: "We couldn't read that photo — please try again or upload a file.",
+        variant: "error",
+      });
       return;
     }
     const captured = createdDoc as IndividualDocument | null;
@@ -89,6 +94,7 @@ export function CredentialPhotoCapture(props: CredentialPhotoCaptureProps) {
 
   return (
     <div className="rounded-lg border border-dashed border-[var(--brand-navbar-200,#c0c0eb)] bg-[var(--brand-navbar-50,#f0f0fc)] px-3 py-3 space-y-2">
+      {AlertDialog}
       <div>
         <p className="text-sm font-medium text-[var(--brand-navbar-active,#252560)]">
           📷 Snap a photo of your {noun}

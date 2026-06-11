@@ -38,6 +38,23 @@ const cards: AppHubCard[] = [
     hoverColor: "hover:border-emerald-400 group-hover:bg-emerald-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/scheduled-jobs?app=pulse",
+    title: "Scheduled Jobs",
+    description: "Pulse / FieldFlow cron jobs — meeting sync, recordings, reminders and CRM sync.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    color: "bg-slate-100 text-slate-600",
+    hoverColor: "hover:border-slate-400 group-hover:bg-slate-600 group-hover:text-white",
+  },
+  {
     href: "/admin/portal/branding/annix-rep",
     title: "Branding",
     description: "Annix Pulse brand — logo, colours and identity.",

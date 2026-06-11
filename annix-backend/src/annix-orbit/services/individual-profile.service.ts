@@ -1,3 +1,4 @@
+import { isMatchTier } from "@annix/product-data/sa-market";
 import {
   BadRequestException,
   ForbiddenException,
@@ -24,18 +25,26 @@ import {
   type CredentialFields,
   IndividualDocumentKind,
 } from "../entities/annix-orbit-individual-document.entity";
-import { AnnixOrbitProfile, AnnixOrbitUserType } from "../entities/annix-orbit-profile.entity";
+import {
+  AnnixOrbitProfile,
+  AnnixOrbitUserType,
+  isSeekerAgeGroup,
+} from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
+import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-access-signup.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
+import { PendingSeekerTierRepository } from "../repositories/pending-seeker-tier.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
 import { EmbeddingService } from "./embedding.service";
 import { NixSeekerAssistService } from "./nix-seeker-assist.service";
 import { type EeAttributesView, PopiaService } from "./popia.service";
+import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 const DELETION_TOKEN_EXPIRY_HOURS = 1;
 
@@ -48,8 +57,13 @@ export interface IndividualProfileStatus {
   cvOriginalFilename: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
+  eeDisclosed: boolean;
+  onboardingComplete: boolean;
   photoUrl: string | null;
   photoVisibleToEmployers: boolean;
+  phoneType: string | null;
+  appGuideSeen: boolean;
+  ageGroup: string | null;
 }
 
 export interface IndividualDocumentSummary {
@@ -143,7 +157,22 @@ export class IndividualProfileService {
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly nixSeekerAssistService: NixSeekerAssistService,
+    private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
+    private readonly seekerTelemetry: SeekerTelemetryService,
+    private readonly pendingTierRepo: PendingSeekerTierRepository,
   ) {}
+
+  private async telemetryCandidateId(userId: number): Promise<number | null> {
+    try {
+      const user = await this.userRepo.findById(userId);
+      if (!user?.email) return null;
+      const candidates = await this.candidateRepo.findByEmail(user.email);
+      const first = candidates[0];
+      return first ? first.id : null;
+    } catch {
+      return null;
+    }
+  }
 
   // Self-service seekers live as an AnnixOrbitProfile, but matching runs against
   // the Candidate entity (linked by email). Upsert a posting-less Candidate from
@@ -163,6 +192,15 @@ export class IndividualProfileService {
       .filter((part): part is string => Boolean(part && part.trim().length > 0))
       .join(" ");
 
+    // An admin can pre-assign a seeker tier at invite time (before this candidate
+    // exists). Apply it now that the candidate is being created.
+    const pendingTier = await this.pendingTierRepo
+      .findByEmailNormalized(email.toLowerCase().trim())
+      .catch(() => null);
+    if (pendingTier && isMatchTier(pendingTier.tier)) {
+      profile.selectedTier = pendingTier.tier;
+    }
+
     const existing = await this.candidateRepo.findOneWhere({ email });
     const candidate =
       existing ??
@@ -175,7 +213,28 @@ export class IndividualProfileService {
       profile.extractedCvData.candidateName ?? (fullName.length > 0 ? fullName : null);
     candidate.rawCvText = profile.rawCvText;
     candidate.extractedData = profile.extractedCvData;
+    candidate.cvFilePath = profile.cvFilePath;
+    if (profile.selectedTier && isMatchTier(profile.selectedTier)) {
+      candidate.matchTier = profile.selectedTier;
+    }
     const saved = await this.candidateRepo.save(candidate);
+
+    if (pendingTier) {
+      try {
+        if (!pendingTier.permanent && pendingTier.trialDays) {
+          const trialEndsAt = now().plus({ days: pendingTier.trialDays }).toJSDate();
+          await this.candidateRepo.setTrial(saved.id, pendingTier.tier, trialEndsAt);
+        }
+        await this.profileRepo.save(profile);
+        await this.pendingTierRepo.deleteByEmailNormalized(email.toLowerCase().trim());
+      } catch (err) {
+        this.logger.warn(
+          `Failed to apply pending seeker tier for ${email}: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        );
+      }
+    }
 
     if (profile.eeDisclosure) {
       try {
@@ -319,9 +378,50 @@ export class IndividualProfileService {
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
       photoCredentialCapture,
       dismissWarningAcknowledged: profile.dismissWarningAcknowledgedAt != null,
+      eeDisclosed: profile.eeDisclosure != null,
+      onboardingComplete: profile.onboardingCompletedAt != null,
       photoUrl,
       photoVisibleToEmployers: profile.photoVisibleToEmployers,
+      phoneType: profile.phoneType ?? null,
+      appGuideSeen: profile.appGuideSeen === true,
+      ageGroup: profile.ageGroup ?? null,
     };
+  }
+
+  async updateSeekerPreferences(
+    userId: number,
+    input: { phoneType?: string | null; appGuideSeen?: boolean; ageGroup?: string | null },
+  ): Promise<{ phoneType: string | null; appGuideSeen: boolean; ageGroup: string | null }> {
+    const profile = await this.profileForUser(userId);
+    if (input.phoneType !== undefined) {
+      const allowed = input.phoneType === "apple" || input.phoneType === "android";
+      profile.phoneType = allowed ? input.phoneType : null;
+    }
+    if (input.appGuideSeen !== undefined) {
+      profile.appGuideSeen = input.appGuideSeen;
+    }
+    if (input.ageGroup !== undefined) {
+      profile.ageGroup =
+        input.ageGroup !== null && isSeekerAgeGroup(input.ageGroup) ? input.ageGroup : null;
+    }
+    await this.profileRepo.save(profile);
+    return {
+      phoneType: profile.phoneType ?? null,
+      appGuideSeen: profile.appGuideSeen === true,
+      ageGroup: profile.ageGroup ?? null,
+    };
+  }
+
+  async completeOnboarding(userId: number): Promise<{ onboardingCompletedAt: string }> {
+    const profile = await this.profileForUser(userId);
+    if (!profile.onboardingCompletedAt) {
+      profile.onboardingCompletedAt = now().toJSDate();
+      await this.profileRepo.save(profile);
+    }
+    const candidateId = await this.telemetryCandidateId(userId);
+    await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.profileCompleted);
+    const completedAt = profile.onboardingCompletedAt;
+    return { onboardingCompletedAt: completedAt ? completedAt.toISOString() : "" };
   }
 
   async uploadProfilePhoto(
@@ -409,7 +509,11 @@ export class IndividualProfileService {
 
     const summaries = await Promise.all(
       docs.map(async (doc) => {
-        const downloadUrl = await this.storageService.presignedUrl(doc.filePath, 3600);
+        const downloadUrl = await this.storageService.presignedUrl(
+          doc.filePath,
+          3600,
+          doc.originalFilename,
+        );
         return {
           id: doc.id,
           kind: doc.kind,
@@ -533,7 +637,21 @@ export class IndividualProfileService {
       await this.documentRepo.clearScanFlagForProfileKind(profile.id, kind);
     }
 
-    const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
+    const downloadUrl = await this.storageService.presignedUrl(
+      saved.filePath,
+      3600,
+      saved.originalFilename,
+    );
+
+    const candidateId = await this.telemetryCandidateId(userId);
+    if (kind === IndividualDocumentKind.CV) {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.cvUploaded);
+    } else if (
+      kind === IndividualDocumentKind.QUALIFICATION ||
+      kind === IndividualDocumentKind.CERTIFICATE
+    ) {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.qualificationUploaded);
+    }
 
     return {
       id: saved.id,
@@ -620,7 +738,11 @@ export class IndividualProfileService {
       }
     }
 
-    const downloadUrl = await this.storageService.presignedUrl(saved.filePath, 3600);
+    const downloadUrl = await this.storageService.presignedUrl(
+      saved.filePath,
+      3600,
+      saved.originalFilename,
+    );
     return {
       id: saved.id,
       kind: saved.kind,
@@ -680,7 +802,7 @@ export class IndividualProfileService {
 
     if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
       throw new BadRequestException(
-        "We couldn't read any text from this CV file. If it is a scanned image, please upload a text-based PDF, Word, or Excel version instead.",
+        "We couldn't read any text from your CV, even after trying automatic conversion and OCR. It may be password-protected, corrupted, or contain only images we couldn't read. Please re-upload a text-based PDF or Word document, or a clearer scan.",
       );
     }
 
@@ -832,6 +954,20 @@ export class IndividualProfileService {
       consentGrantedAt: ee.consentGrantedAt,
       purposes: ee.purposes,
     };
+  }
+
+  async eeSuggestionForUser(userId: number): Promise<{ populationGroup: string | null }> {
+    const existing = await this.eeAttributesForUser(userId);
+    if (existing) {
+      return { populationGroup: null };
+    }
+    const user = await this.userRepo.findById(userId);
+    const email = user ? user.email : null;
+    if (!email) {
+      return { populationGroup: null };
+    }
+    const signup = await this.earlyAccessRepo.findByEmailNormalized(email.trim().toLowerCase());
+    return { populationGroup: signup ? signup.ethnicBackground : null };
   }
 
   async updateEeAttributesForUser(

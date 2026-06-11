@@ -21,9 +21,11 @@ import {
 } from "@/app/lib/query/hooks";
 import { adminKeys } from "@/app/lib/query/keys/adminKeys";
 import { AddSourceForm } from "./components/AddSourceForm";
+import { EnabledCountriesControl } from "./components/EnabledCountriesControl";
 import { FindDuplicatesModal } from "./components/FindDuplicatesModal";
 import { IngestionScheduleControl } from "./components/IngestionScheduleControl";
 import { JobCard } from "./components/JobCard";
+import { RetentionCapControl } from "./components/RetentionCapControl";
 import { SourceCard } from "./components/SourceCard";
 
 // Background crawl/DPSA ingestion returns immediately; we keep the branded
@@ -34,6 +36,16 @@ async function lastIngestedFor(sourceId: number): Promise<string | null> {
     const sources = await adminApiClient.orbitJobMarketSources();
     const match = sources.find((source) => source.id === sourceId);
     return match ? match.lastIngestedAt : null;
+  } catch {
+    return null;
+  }
+}
+
+async function ingestErrorFor(sourceId: number): Promise<string | null> {
+  try {
+    const sources = await adminApiClient.orbitJobMarketSources();
+    const match = sources.find((source) => source.id === sourceId);
+    return match ? match.lastIngestionError : null;
   } catch {
     return null;
   }
@@ -108,6 +120,8 @@ export default function AdminOrbitJobMarketPage() {
   const [isVettingPending, setIsVettingPending] = useState(false);
   const [isBackfilling, setIsBackfilling] = useState(false);
   const [backfillSummary, setBackfillSummary] = useState<string | null>(null);
+  const [isCategorizing, setIsCategorizing] = useState(false);
+  const [categorizeSummary, setCategorizeSummary] = useState<string | null>(null);
 
   const handleBackfillEmbeddings = async () => {
     setIsBackfilling(true);
@@ -164,6 +178,60 @@ export default function AdminOrbitJobMarketPage() {
     }
   };
 
+  const handleBackfillCategories = async () => {
+    setIsCategorizing(true);
+    setCategorizeSummary(null);
+    showExtraction({
+      brand: "annix-orbit",
+      label: "Starting category backfill…",
+      estimatedDurationMs: 8000,
+      backgroundSafe: true,
+    });
+    try {
+      const triggered = await adminApiClient.backfillOrbitCategories();
+      const stats = await metricsApi
+        .extractionStats("orbit-category-backfill", "all")
+        .catch(() => null);
+      const learnedMs = stats ? stats.averageMs : null;
+      updateExtraction({
+        label: triggered.alreadyRunning
+          ? "Category backfill already running — tracking progress…"
+          : "Classifying jobs into categories…",
+        estimatedDurationMs: learnedMs || 180_000,
+      });
+
+      const poll = async (attempt: number): Promise<void> => {
+        await new Promise((resolve) => globalThis.setTimeout(resolve, 4000));
+        const coverage = await adminApiClient.orbitCategoryCoverage().catch(() => null);
+        if (coverage) {
+          updateExtraction({
+            label: `Classifying jobs into categories — ${coverage.classified} / ${coverage.total} done…`,
+          });
+          if (!coverage.running) return;
+        }
+        if (attempt >= 225) return;
+        return poll(attempt + 1);
+      };
+      await poll(0);
+
+      hideExtraction();
+      const finalCoverage = await adminApiClient.orbitCategoryCoverage().catch(() => null);
+      if (finalCoverage) {
+        const lastError = finalCoverage.lastError;
+        const base = `Categorized ${finalCoverage.classified}/${finalCoverage.total} jobs.`;
+        setCategorizeSummary(lastError ? `${base} Last error: ${lastError}` : base);
+      } else {
+        setCategorizeSummary("Category backfill finished.");
+      }
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
+    } catch (error) {
+      hideExtraction();
+      setCategorizeSummary(`Failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setIsCategorizing(false);
+    }
+  };
+
   const handleVetPending = async () => {
     setIsVettingPending(true);
     setVetSummary("Loading pending jobs…");
@@ -211,6 +279,7 @@ export default function AdminOrbitJobMarketPage() {
       brand: "annix-orbit",
       label: `Fetching jobs from ${sourceName}…`,
       estimatedDurationMs: 8000,
+      backgroundSafe: true,
     });
 
     try {
@@ -230,21 +299,38 @@ export default function AdminOrbitJobMarketPage() {
         const completed = await waitForBackgroundIngestion(sourceId);
         hideExtraction();
         queryClient.invalidateQueries({ queryKey: adminKeys.orbitJobMarket.all });
-        if (!completed) {
-          setIngestionStatus((prev) => ({
-            ...prev,
-            [sourceId]:
-              "No new jobs reported — this source may be disabled (e.g. DPSA needs DPSA_INGESTION_ENABLED) or found nothing new.",
-          }));
-          return;
-        }
         const afterCount = await jobCountForSource(sourceId);
         const delta = afterCount - baselineCount;
-        const message =
+
+        if (completed) {
+          const ingestError = await ingestErrorFor(sourceId);
+          if (ingestError) {
+            setIngestionStatus((prev) => ({
+              ...prev,
+              [sourceId]: "Error: last run failed — see the details above.",
+            }));
+            return;
+          }
+          const message =
+            delta > 0
+              ? `Done — ${delta} new job${delta === 1 ? "" : "s"} ingested. Re-run to fetch more.`
+              : "Done — no new jobs found (all current postings already ingested).";
+          setIngestionStatus((prev) => ({ ...prev, [sourceId]: message }));
+          return;
+        }
+
+        // The poll window elapsed before the source marked itself complete. The
+        // run keeps going server-side (it survives this page), so report what has
+        // already landed rather than claiming nothing happened. A climbing job
+        // count means it is actively ingesting; a flat count for a gate-able
+        // source (DPSA) hints it may be disabled.
+        const stillRunningMessage =
           delta > 0
-            ? `Done — ${delta} new job${delta === 1 ? "" : "s"} ingested. Re-run to fetch more.`
-            : "Done — no new jobs found (all current postings already ingested).";
-        setIngestionStatus((prev) => ({ ...prev, [sourceId]: message }));
+            ? `${delta} new job${delta === 1 ? "" : "s"} ingested so far — still fetching in the background. Refresh in a few minutes for the final count.`
+            : provider === "dpsa"
+              ? "No new jobs yet — DPSA ingestion may be disabled (needs DPSA_INGESTION_ENABLED) or found nothing new."
+              : "Still fetching in the background — large sources can take several minutes. Refresh shortly to see the new jobs.";
+        setIngestionStatus((prev) => ({ ...prev, [sourceId]: stillRunningMessage }));
         return;
       }
 
@@ -313,8 +399,8 @@ export default function AdminOrbitJobMarketPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Annix Orbit — Job Market</h1>
-          <p className="text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-orange-500">Annix Orbit — Job Market</h1>
+          <p className="text-orange-400 mt-1">
             Manage platform-global job-board feeds that populate Browse Jobs for every seeker.
           </p>
         </div>
@@ -339,15 +425,15 @@ export default function AdminOrbitJobMarketPage() {
         </div>
       )}
 
-      <div className="border-b border-gray-200">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200">
         <nav className="-mb-px flex space-x-8">
           <button
             type="button"
             onClick={() => setActiveTab("sources")}
             className={`py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
               activeTab === "sources"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-orange-500 text-orange-500"
+                : "border-transparent text-orange-300 hover:text-orange-400 hover:border-orange-300"
             }`}
           >
             Data Sources ({sources.length})
@@ -357,26 +443,29 @@ export default function AdminOrbitJobMarketPage() {
             onClick={() => setActiveTab("jobs")}
             className={`py-3 px-1 border-b-2 text-sm font-medium transition-colors ${
               activeTab === "jobs"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                ? "border-orange-500 text-orange-500"
+                : "border-transparent text-orange-300 hover:text-orange-400 hover:border-orange-300"
             }`}
           >
             Ingested Jobs ({jobsTotal})
           </button>
         </nav>
-      </div>
-
-      {activeTab === "sources" && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-end gap-2">
-            {backfillSummary && (
-              <span className="mr-auto text-sm text-gray-600">{backfillSummary}</span>
-            )}
+        {activeTab === "sources" && (
+          <div className="flex flex-wrap items-center justify-end gap-2 pb-2">
+            <button
+              type="button"
+              onClick={handleBackfillCategories}
+              disabled={isCategorizing}
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+              title="Classify any jobs missing a category (rule-based, then AI for the rest) so the seeker category filter is complete"
+            >
+              {isCategorizing ? "Categorizing…" : "Backfill Categories"}
+            </button>
             <button
               type="button"
               onClick={handleBackfillEmbeddings}
               disabled={isBackfilling}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium disabled:opacity-50"
               title="Embed any CVs and jobs that are missing an embedding so Nix can match them"
             >
               {isBackfilling ? "Backfilling…" : "Backfill Embeddings"}
@@ -384,7 +473,7 @@ export default function AdminOrbitJobMarketPage() {
             <button
               type="button"
               onClick={() => setShowDuplicates(true)}
-              className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              className="px-4 py-2 border border-gray-300 bg-white text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
             >
               Find Duplicates
             </button>
@@ -396,6 +485,17 @@ export default function AdminOrbitJobMarketPage() {
               Add Source
             </button>
           </div>
+        )}
+      </div>
+
+      {activeTab === "sources" && (
+        <div className="space-y-4">
+          {(backfillSummary || categorizeSummary) && (
+            <div className="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+              {backfillSummary && <span>{backfillSummary}</span>}
+              {categorizeSummary && <span>{categorizeSummary}</span>}
+            </div>
+          )}
 
           {showAddSource && (
             <AddSourceForm
@@ -406,6 +506,10 @@ export default function AdminOrbitJobMarketPage() {
               onCancel={() => setShowAddSource(false)}
             />
           )}
+
+          <EnabledCountriesControl />
+
+          <RetentionCapControl />
 
           <IngestionScheduleControl />
 

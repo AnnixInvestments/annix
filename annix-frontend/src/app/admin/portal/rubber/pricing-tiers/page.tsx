@@ -8,6 +8,7 @@ import {
 } from "@/app/components/shared/TableComponents";
 import { useToast } from "@/app/components/Toast";
 import type { RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useDeleteRubberPricingTier,
   useRubberCompanies,
@@ -19,6 +20,7 @@ import { ConfirmModal } from "../components/ConfirmModal";
 
 export default function RubberPricingTiersPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const tiersQuery = useRubberPricingTiers();
   const companiesQuery = useRubberCompanies();
   const saveMutation = useSaveRubberPricingTier();
@@ -74,7 +76,7 @@ export default function RubberPricingTiersPage() {
         },
         onError: (err: unknown) => {
           const errorMessage = err instanceof Error ? err.message : "Failed to save pricing tier";
-          showToast(errorMessage, "error");
+          alert({ message: errorMessage, variant: "error" });
         },
       },
     );
@@ -88,7 +90,7 @@ export default function RubberPricingTiersPage() {
       },
       onError: (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : "Failed to delete pricing tier";
-        showToast(errorMessage, "error");
+        alert({ message: errorMessage, variant: "error" });
       },
     });
   };
@@ -309,6 +311,7 @@ export default function RubberPricingTiersPage() {
         onConfirm={() => deleteTierId && handleDelete(deleteTierId)}
         onCancel={() => setDeleteTierId(null)}
       />
+      {AlertDialog}
     </div>
   );
 }

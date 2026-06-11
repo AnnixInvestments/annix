@@ -1,6 +1,7 @@
 "use client";
 
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useOrbitAcceptGuardianLink,
   useOrbitGuardianStudents,
@@ -9,6 +10,7 @@ import {
 
 export default function GuardianDashboardPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const studentsQuery = useOrbitGuardianStudents();
   const acceptLink = useOrbitAcceptGuardianLink();
   const recordConsent = useOrbitRecordGuardianConsent();
@@ -21,7 +23,7 @@ export default function GuardianDashboardPage() {
       await acceptLink.mutateAsync(linkId);
       showToast("Invite accepted", "success");
     } catch {
-      showToast("Could not accept the invite — please try again.", "error");
+      alert({ message: "Could not accept the invite — please try again.", variant: "error" });
     }
   };
 
@@ -30,12 +32,13 @@ export default function GuardianDashboardPage() {
       await recordConsent.mutateAsync(linkId);
       showToast("Consent recorded", "success");
     } catch {
-      showToast("Could not record consent — please try again.", "error");
+      alert({ message: "Could not record consent — please try again.", variant: "error" });
     }
   };
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <header>
         <h1 className="text-2xl font-semibold" style={{ color: "var(--brand-navbar)" }}>
           For parents &amp; guardians

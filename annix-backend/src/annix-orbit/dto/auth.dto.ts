@@ -3,6 +3,7 @@ import {
   IsArray,
   IsBoolean,
   IsEmail,
+  IsIn,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -12,6 +13,7 @@ import {
 } from "class-validator";
 import { COMPANY_SIZE_VALUES } from "../../lib/dto/common-company.dto";
 import { RequiredIn, RequiredString } from "../../lib/dto/validation-decorators";
+import { SEEKER_AGE_GROUPS } from "../entities/annix-orbit-profile.entity";
 
 export class RegisterEeDisclosureDto {
   @IsString()
@@ -116,6 +118,10 @@ export class RegisterIndividualDto {
   @IsString()
   @MaxLength(40)
   phone?: string;
+
+  @IsOptional()
+  @IsIn(SEEKER_AGE_GROUPS)
+  ageGroup?: string;
 
   @IsOptional()
   @ValidateNested()

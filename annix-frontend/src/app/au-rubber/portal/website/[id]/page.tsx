@@ -10,6 +10,7 @@ import {
   type CreateWebsitePageDto,
   type UpdateWebsitePageDto,
 } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAuRubberWebsitePage } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 import { Breadcrumb } from "../../../components/Breadcrumb";
@@ -30,6 +31,7 @@ export default function WebsitePageEditorPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const id = params.id as string;
   const isNew = id === "new";
@@ -96,7 +98,7 @@ export default function WebsitePageEditorPage() {
       setHeroImageUrl(result.url);
       showToast("Image uploaded", "success");
     } catch {
-      showToast("Failed to upload image", "error");
+      alert({ message: "Failed to upload image", variant: "error" });
     } finally {
       setUploading(false);
     }
@@ -140,7 +142,7 @@ export default function WebsitePageEditorPage() {
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to save page";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -156,6 +158,7 @@ export default function WebsitePageEditorPage() {
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/website"]}>
+      {AlertDialog}
       <Breadcrumb
         items={[
           { label: "Website Pages", href: "/au-rubber/portal/website" },

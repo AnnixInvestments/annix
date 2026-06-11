@@ -12,6 +12,7 @@ import {
   type UpdateBlogPostDto,
 } from "@/app/lib/api/auRubberApi";
 import { now } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAuRubberBlogPost } from "@/app/lib/query/hooks";
 import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 import { Breadcrumb } from "../../../../components/Breadcrumb";
@@ -35,6 +36,7 @@ export default function BlogPostEditorPage() {
   const params = useParams();
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const id = params.id as string;
   const isNew = id === "new";
@@ -99,7 +101,7 @@ export default function BlogPostEditorPage() {
       setHeroImageUrl(result.url);
       showToast("Image uploaded", "success");
     } catch {
-      showToast("Failed to upload image", "error");
+      alert({ message: "Failed to upload image", variant: "error" });
     } finally {
       setUploading(false);
     }
@@ -152,7 +154,7 @@ export default function BlogPostEditorPage() {
         showToast("Blog post saved", "success");
       }
     } catch {
-      showToast("Failed to save blog post", "error");
+      alert({ message: "Failed to save blog post", variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -160,6 +162,7 @@ export default function BlogPostEditorPage() {
 
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/website"]}>
+      {AlertDialog}
       <Breadcrumb
         items={[
           { label: "Website Pages", href: "/au-rubber/portal/website" },

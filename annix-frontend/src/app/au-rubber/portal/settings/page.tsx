@@ -15,6 +15,7 @@ import type {
   CandidateImage,
 } from "@/app/lib/api/auRubberApi";
 import { auRubberTokenStore } from "@/app/lib/api/portalTokenStores";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAuRubberAccessPermissions,
   useAuRubberAccessRoles,
@@ -116,6 +117,7 @@ function CandidateThumbnail({
 
 function BrandingTab() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { branding, setBranding, resetBranding, colors } = useAuRubberBranding();
   const scrapeBrandingMutation = useAuRubberScrapeBranding();
 
@@ -235,7 +237,7 @@ function BrandingTab() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to extract branding";
       setError(message);
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       setIsExtracting(false);
     }
@@ -273,6 +275,7 @@ function BrandingTab() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="bg-white shadow rounded-lg p-6">
         <h2 className="text-lg font-medium text-gray-900 mb-4">Brand Extraction</h2>
         <p className="text-sm text-gray-600 mb-4">
@@ -510,6 +513,7 @@ function BrandingTab() {
 
 function AccessControlTab() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const usersQuery = useAuRubberAccessUsers();
   const rolesQuery = useAuRubberAccessRoles();
@@ -578,7 +582,7 @@ function AccessControlTab() {
       showToast("Role permissions updated", "success");
       setEditingRole(null);
     } catch (err) {
-      showToast("Failed to update role permissions", "error");
+      alert({ message: "Failed to update role permissions", variant: "error" });
     }
   };
 
@@ -595,7 +599,7 @@ function AccessControlTab() {
       await deleteRoleMutation.mutateAsync(roleId);
       showToast("Role deleted", "success");
     } catch (err) {
-      showToast("Failed to delete role", "error");
+      alert({ message: "Failed to delete role", variant: "error" });
     }
   };
 
@@ -617,7 +621,7 @@ function AccessControlTab() {
       setNewRoleName("");
       setNewRoleDescription("");
     } catch (err) {
-      showToast("Failed to create role", "error");
+      alert({ message: "Failed to create role", variant: "error" });
     }
   };
 
@@ -642,7 +646,7 @@ function AccessControlTab() {
       setInviteRole("");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to invite user";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     }
   };
 
@@ -663,7 +667,7 @@ function AccessControlTab() {
       showToast("User role updated", "success");
       setEditingUserAccess(null);
     } catch (err) {
-      showToast("Failed to update user role", "error");
+      alert({ message: "Failed to update user role", variant: "error" });
     }
   };
 
@@ -680,7 +684,7 @@ function AccessControlTab() {
       await revokeUserAccessMutation.mutateAsync(accessId);
       showToast("Access revoked", "success");
     } catch (err) {
-      showToast("Failed to revoke access", "error");
+      alert({ message: "Failed to revoke access", variant: "error" });
     }
   };
 
@@ -695,6 +699,7 @@ function AccessControlTab() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
+      {AlertDialog}
       <PasskeyManagementSection
         authHeaders={auRubberTokenStore.authHeaders()}
         title="Your passkeys"

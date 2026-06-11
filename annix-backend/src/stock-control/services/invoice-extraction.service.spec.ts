@@ -1,7 +1,9 @@
 import { Test, TestingModule } from "@nestjs/testing";
 
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import { ClarificationStatus, ClarificationType } from "../entities/invoice-clarification.entity";
 import { InvoiceExtractionStatus } from "../entities/supplier-invoice.entity";
 import { InvoiceItemMatchStatus } from "../entities/supplier-invoice-item.entity";
@@ -98,6 +100,16 @@ describe("InvoiceExtractionService", () => {
     chatWithImage: jest.fn(),
   };
 
+  const mockExtractionMetricService = {
+    time: jest.fn((_category: string, _operation: string, fn: () => unknown) => fn()),
+  };
+
+  const mockFifoBridgeService = {
+    createBatchesFromInvoice: jest
+      .fn()
+      .mockResolvedValue({ created: 0, reconciled: 0, skipped: 0, errors: [] }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -111,6 +123,8 @@ describe("InvoiceExtractionService", () => {
         { provide: InvoiceExtractionCorrectionRepository, useValue: mockCorrectionRepo },
         { provide: AiUsageService, useValue: mockAiUsageService },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: ExtractionMetricService, useValue: mockExtractionMetricService },
+        { provide: SupplierInvoiceFifoBridgeService, useValue: mockFifoBridgeService },
       ],
     }).compile();
 
@@ -677,6 +691,68 @@ describe("InvoiceExtractionService", () => {
       await service.applyPriceUpdates(1, 42);
 
       expect(mockPriceHistoryRepo.create).not.toHaveBeenCalled();
+    });
+
+    it("loads invoice items separately when approval relations are not populated", async () => {
+      const stockItem = { id: 50, costPerUnit: 100, name: "Widget" };
+      const invoice = {
+        id: 1,
+        companyId: 10,
+        supplierName: "Supplier A",
+      };
+      const item = {
+        id: 10,
+        stockItemId: 50,
+        unitPrice: 120,
+        quantity: 5,
+        priceUpdated: false,
+        stockItem,
+      };
+
+      mockInvoiceRepo.findOne.mockResolvedValue(invoice);
+      invoiceItemFind.mockResolvedValue([item]);
+      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
+      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
+
+      await service.applyPriceUpdates(1, 42);
+
+      expect(mockPriceHistoryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ oldPrice: 100, newPrice: 120 }),
+      );
+      expect(item.priceUpdated).toBe(true);
+    });
+
+    it("normalizes string stock item ids before looking up stock records", async () => {
+      const stockItem = { id: 50, costPerUnit: 100, name: "Widget" };
+      const invoice = {
+        id: 1,
+        companyId: 10,
+        supplierName: "Supplier A",
+        items: [
+          {
+            id: 10,
+            stockItemId: "50",
+            unitPrice: 120,
+            quantity: 5,
+            priceUpdated: false,
+          },
+        ],
+      };
+
+      mockInvoiceRepo.findOne.mockResolvedValue(invoice);
+      mockStockItemRepo.findOne.mockResolvedValue(stockItem);
+      mockInvoiceRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockInvoiceItemRepo.save.mockImplementation((entity) => Promise.resolve(entity));
+      mockClarificationRepo.findSkippedPriceForInvoice.mockResolvedValue([]);
+
+      await service.applyPriceUpdates(1, 42);
+
+      expect(mockStockItemRepo.findOne).toHaveBeenCalledWith({ where: { id: 50 } });
+      expect(mockPriceHistoryRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ oldPrice: 100, newPrice: 120 }),
+      );
     });
 
     it("throws when invoice not found", async () => {

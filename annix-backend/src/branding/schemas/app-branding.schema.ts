@@ -19,10 +19,10 @@ export class AppBranding {
   @Prop({ type: String, required: true, default: "#F2F4F7" })
   navbarColorLight: string;
 
-  @Prop({ type: String, required: true, default: "#F8FAFC" })
+  @Prop({ type: String, required: true, default: "#0a1733" })
   backgroundLight: string;
 
-  @Prop({ type: String, required: true, default: "#0F172A" })
+  @Prop({ type: String, required: true, default: "#0a1733" })
   backgroundDark: string;
 
   @Prop({ type: String, required: true, default: "#FF8A00" })
@@ -34,13 +34,13 @@ export class AppBranding {
   @Prop({ type: String, required: true, default: "#CC6900" })
   accentOrangeDark: string;
 
-  @Prop({ type: String, required: true, default: "#1a1a40" })
+  @Prop({ type: String, required: true, default: "#0b1b3a" })
   gradientFrom: string;
 
-  @Prop({ type: String, required: true, default: "#0d0d20" })
+  @Prop({ type: String, required: true, default: "#0a1733" })
   gradientVia: string;
 
-  @Prop({ type: String, required: true, default: "#1a1a40" })
+  @Prop({ type: String, required: true, default: "#070f24" })
   gradientTo: string;
 
   @Prop({ type: String, required: true, default: "" })
@@ -127,6 +127,18 @@ export class AppBranding {
   @Prop({ type: String, required: false })
   pageBackgroundPathDark: string;
 
+  @Prop({ type: String, required: false })
+  heroTopPath: string;
+
+  @Prop({ type: String, required: false })
+  heroTopPathDark: string;
+
+  @Prop({ type: String, required: false })
+  heroBottomPath: string;
+
+  @Prop({ type: String, required: false })
+  heroBottomPathDark: string;
+
   @Prop({ type: Boolean, required: true, default: true })
   watermarkEnabled: boolean;
 
@@ -139,14 +151,26 @@ export class AppBranding {
   @Prop({ type: String, required: true, default: "pulse" })
   loadingAnimation: string;
 
+  @Prop({ type: Number, required: true, default: 60 })
+  heroTopHeightPct: number;
+
+  @Prop({ type: Number, required: true, default: 40 })
+  heroBottomHeightPct: number;
+
+  @Prop({ type: Number, required: true, default: 45 })
+  heroTopFadePct: number;
+
+  @Prop({ type: Number, required: true, default: 45 })
+  heroBottomFadePct: number;
+
   @Prop({ type: [String], required: true, default: [] })
   inheritedFields: string[];
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const AppBrandingSchema = SchemaFactory.createForClass(AppBranding);

@@ -13,6 +13,7 @@ import {
 import { useToast } from "@/app/components/Toast";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useDeleteRubberProduct, useRubberProducts } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../components/Breadcrumb";
 import { ConfirmModal } from "../components/ConfirmModal";
@@ -95,6 +96,7 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 
 export default function RubberProductsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const productsQuery = useRubberProducts();
   const deleteMutation = useDeleteRubberProduct();
   const products = (() => {
@@ -240,7 +242,10 @@ export default function RubberProductsPage() {
       setSelectedProducts(new Set());
       productsQuery.refetch();
     } else if (failCount > 0) {
-      showToast(`Failed to delete ${failCount} product${failCount > 1 ? "s" : ""}`, "error");
+      alert({
+        message: `Failed to delete ${failCount} product${failCount > 1 ? "s" : ""}`,
+        variant: "error",
+      });
     }
   };
 
@@ -281,7 +286,7 @@ export default function RubberProductsPage() {
       },
       onError: (err: unknown) => {
         const errorMessage = err instanceof Error ? err.message : "Failed to delete product";
-        showToast(errorMessage, "error");
+        alert({ message: errorMessage, variant: "error" });
       },
     });
   };
@@ -738,6 +743,7 @@ export default function RubberProductsPage() {
           productsQuery.refetch();
         }}
       />
+      {AlertDialog}
     </div>
   );
 }

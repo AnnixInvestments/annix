@@ -135,6 +135,10 @@ export class UpdateInvoiceItemDto {
 export class ConfirmCpoImportDto {
   @IsArray()
   rows: any[];
+
+  @IsOptional()
+  @IsArray()
+  corrections?: any[];
 }
 
 export class AddCpoItemDto {

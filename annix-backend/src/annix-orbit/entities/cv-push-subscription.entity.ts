@@ -21,12 +21,12 @@ export class CvPushSubscription {
   @Column({ name: "user_id" })
   userId: number;
 
-  @ManyToOne(() => AnnixOrbitCompany, { onDelete: "CASCADE" })
+  @ManyToOne(() => AnnixOrbitCompany, { nullable: true, onDelete: "SET NULL" })
   @JoinColumn({ name: "company_id" })
-  company: AnnixOrbitCompany;
+  company: AnnixOrbitCompany | null;
 
-  @Column({ name: "company_id" })
-  companyId: number;
+  @Column({ name: "company_id", nullable: true })
+  companyId: number | null;
 
   @Column({ type: "text", unique: true })
   endpoint: string;

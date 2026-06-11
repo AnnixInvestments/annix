@@ -57,6 +57,21 @@ export class AnnixOrbitProfile {
   @Prop({ type: Date, required: false })
   cvUploadedAt: Date;
 
+  @Prop({ type: Number, required: false, default: null })
+  careerScore: number | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  careerScoreGeneratedAt: Date | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  firstJobsViewedAt: Date | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  interviewPrepUsedAt: Date | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  profileUpdatedAfterSuggestionAt: Date | null;
+
   @Prop({
     type: {
       populationGroup: String,
@@ -106,11 +121,23 @@ export class AnnixOrbitProfile {
   @Prop({ type: String, required: false })
   selectedTier: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  onboardingCompletedAt: Date;
 
   @Prop({ type: String, required: false })
-  updatedAt: string;
+  phoneType: string;
+
+  @Prop({ type: String, required: false })
+  ageGroup: string;
+
+  @Prop({ type: Boolean, required: false, default: false })
+  appGuideSeen: boolean;
+
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
+
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const AnnixOrbitProfileSchema = SchemaFactory.createForClass(AnnixOrbitProfile);

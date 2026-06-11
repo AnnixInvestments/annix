@@ -31,8 +31,8 @@ export class RubberDeliveryNoteCorrection {
   @Prop({ type: String, required: false })
   correctedBy: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const RubberDeliveryNoteCorrectionSchema = SchemaFactory.createForClass(

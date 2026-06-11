@@ -75,6 +75,7 @@ export interface HowToIndexClientProps {
   recentKey: string;
   heading?: string;
   subheading?: string;
+  onDarkSurface?: boolean;
 }
 
 export default function HowToIndexClient(props: HowToIndexClientProps) {
@@ -135,12 +136,20 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
   }, [recent, visibleGuides, query, activeCategory]);
 
   const rawHeading = props.heading;
+  const onDark = props.onDarkSurface === true;
+  const headingClass = onDark
+    ? "text-2xl font-bold text-white"
+    : "text-2xl font-bold text-gray-900";
+  const subheadingClass = onDark ? "text-sm text-white/70 mt-1" : "text-sm text-gray-600 mt-1";
+  const sectionLabelClass = onDark
+    ? "text-sm font-semibold text-white/60 uppercase tracking-wider mb-3"
+    : "text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3";
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">{rawHeading || "How To Guides"}</h1>
-        {props.subheading && <p className="text-sm text-gray-600 mt-1">{props.subheading}</p>}
+        <h1 className={headingClass}>{rawHeading || "How To Guides"}</h1>
+        {props.subheading && <p className={subheadingClass}>{props.subheading}</p>}
       </div>
       <div className="mb-6 flex flex-col sm:flex-row gap-3">
         <div className="flex-1 relative">
@@ -196,9 +205,7 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
       </div>
       {recentGuides.length > 0 && (
         <section className="mb-8">
-          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-            Recently viewed
-          </h2>
+          <h2 className={sectionLabelClass}>Recently viewed</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {recentGuides.map((g) => (
               <HowToCard
@@ -219,9 +226,7 @@ export default function HowToIndexClient(props: HowToIndexClientProps) {
       <div className="space-y-8">
         {entries(grouped).map(([category, guides]) => (
           <section key={category}>
-            <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
-              {category}
-            </h2>
+            <h2 className={sectionLabelClass}>{category}</h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {guides.map((g) => (
                 <HowToCard

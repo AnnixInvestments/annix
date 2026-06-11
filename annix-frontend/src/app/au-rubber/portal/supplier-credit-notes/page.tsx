@@ -26,6 +26,7 @@ import {
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
@@ -46,6 +47,7 @@ const SERVER_SORTABLE_COLUMNS = new Set<SortColumn>([
 export default function SupplierCreditNotesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { branding } = useAuRubberBranding();
   const scrollSentinelRef = useScrollRestoration("au-rubber:supplier-credit-notes");
   const { confirm, ConfirmDialog } = useConfirm();
@@ -205,7 +207,10 @@ export default function SupplierCreditNotesPage() {
       setBulkUploadDetail("All files processed successfully.");
 
       await new Promise((resolve) => setTimeout(resolve, 600));
-      showToast(`${files.length} credit note${files.length !== 1 ? "s" : ""} uploaded`, "success");
+      alert({
+        message: `${files.length} credit note${files.length !== 1 ? "s" : ""} uploaded`,
+        variant: "success",
+      });
       refresh();
     } catch (err) {
       toastError(showToast, err, "Failed to upload credit notes");
@@ -230,10 +235,10 @@ export default function SupplierCreditNotesPage() {
       setIsUploading(true);
       if (uploadFiles.length > 0) {
         await uploadCreditNotes(uploadFiles, uploadSupplierId);
-        showToast(
-          `${uploadFiles.length} credit note${uploadFiles.length > 1 ? "s" : ""} uploaded`,
-          "success",
-        );
+        alert({
+          message: `${uploadFiles.length} credit note${uploadFiles.length > 1 ? "s" : ""} uploaded`,
+          variant: "success",
+        });
       } else {
         await auRubberApiClient.createTaxInvoice({
           invoiceType: "SUPPLIER",
@@ -304,6 +309,7 @@ export default function SupplierCreditNotesPage() {
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
       {ConfirmDialog}
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Suppliers" }, { label: "Credit Notes" }]} />
       <div className="flex items-center justify-between">
         <div>

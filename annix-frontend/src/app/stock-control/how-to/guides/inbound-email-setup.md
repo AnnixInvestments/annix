@@ -8,7 +8,7 @@ tags: [email, inbound, automation]
 lastUpdated: 2026-05-30
 summary: Route supplier emails into the portal so delivery notes auto-extract.
 readingMinutes: 4
-relatedPaths: [annix-backend/src/inbound-email, annix-backend/src/email, annix-frontend/src/app/admin/portal/inbound-emails]
+relatedPaths: [annix-backend/src/inbound-email, annix-frontend/src/app/admin/portal/inbound-emails, annix-frontend/src/app/stock-control/portal/settings/InboundEmailConfigSection.tsx]
 ---
 
 ## How it works

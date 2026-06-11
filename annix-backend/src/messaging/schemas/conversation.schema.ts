@@ -34,11 +34,11 @@ export class Conversation {
   @Prop({ type: Boolean, required: true })
   isArchived: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const ConversationSchema = SchemaFactory.createForClass(Conversation);

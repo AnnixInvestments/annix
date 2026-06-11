@@ -15,7 +15,6 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
   const postedAt = job.postedAt;
   const postedLabel = postedAt ? formatDateZA(postedAt) : null;
   const sourceUrl = job.sourceUrl;
-  const sourceHref = sourceUrl || "#";
   const kindLabel = job.kind === "annix" ? "Posted on Annix" : "External listing";
   const reportDelisted = props.onReportDelisted;
   const isExternal = job.kind === "external";
@@ -85,7 +84,7 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
         )}
         {sourceUrl ? (
           <a
-            href={sourceHref}
+            href={sourceUrl}
             target="_blank"
             rel="noopener noreferrer"
             onClick={handleApply}

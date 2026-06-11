@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitUserRow, OrbitUserType } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdminDeactivateOrbitUser,
@@ -52,6 +54,7 @@ const PAGE_SIZE = 20;
 export default function OrbitUsersPage() {
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
 
   const [typeFilter, setTypeFilter] = useState<"" | OrbitUserType>("");
   const [search, setSearch] = useState("");
@@ -147,7 +150,7 @@ export default function OrbitUsersPage() {
       setIsFormOpen(false);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Please try again.";
-      showToast(`Could not save — ${message}`, "error");
+      alert({ message: `Could not save — ${message}`, variant: "error" });
     }
   };
 
@@ -156,7 +159,7 @@ export default function OrbitUsersPage() {
       await resend.mutateAsync(row.userId);
       showToast(`Invitation resent to ${row.email}.`, "success");
     } catch {
-      showToast("Could not resend the invitation.", "error");
+      alert({ message: "Could not resend the invitation.", variant: "error" });
     }
   };
 
@@ -172,7 +175,7 @@ export default function OrbitUsersPage() {
       await deactivate.mutateAsync(row.userId);
       showToast("User deactivated.", "success");
     } catch {
-      showToast("Could not deactivate the user.", "error");
+      alert({ message: "Could not deactivate the user.", variant: "error" });
     }
   };
 
@@ -181,7 +184,7 @@ export default function OrbitUsersPage() {
       await reactivate.mutateAsync(row.userId);
       showToast("User reactivated.", "success");
     } catch {
-      showToast("Could not reactivate the user.", "error");
+      alert({ message: "Could not reactivate the user.", variant: "error" });
     }
   };
 
@@ -204,7 +207,7 @@ export default function OrbitUsersPage() {
       await remove.mutateAsync(row.userId);
       showToast("User deleted.", "success");
     } catch {
-      showToast("Could not delete the user.", "error");
+      alert({ message: "Could not delete the user.", variant: "error" });
     }
   };
 
@@ -212,6 +215,12 @@ export default function OrbitUsersPage() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
+          <Link
+            href="/admin/portal/orbit"
+            className="text-sm text-violet-600 hover:text-violet-800 inline-flex items-center gap-1 mb-2"
+          >
+            ← Orbit admin hub
+          </Link>
           <h1 className="text-2xl font-bold text-gray-900">Orbit users</h1>
           <p className="mt-1 text-sm text-gray-600">
             Invite, configure and remove Annix Orbit accounts — job seekers, recruiters, employers
@@ -477,6 +486,7 @@ export default function OrbitUsersPage() {
       </FormModal>
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

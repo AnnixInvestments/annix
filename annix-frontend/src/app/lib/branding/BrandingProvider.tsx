@@ -3,7 +3,15 @@
 import { createContext, useContext, useEffect } from "react";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { useBranding } from "@/app/lib/query/hooks";
-import { type Branding, brandingCssVars, brandingFallback, googleFontsHref } from "./branding";
+import { screenshotExcludeProps } from "@/app/lib/screenshotExclusion";
+import {
+  type Branding,
+  brandHasAsset,
+  brandingCssVars,
+  brandingFallback,
+  googleFontsHref,
+  resolveBrandAssetUrl,
+} from "./branding";
 
 const BrandingContext = createContext<Branding | null>(null);
 
@@ -70,11 +78,24 @@ export function BrandingProvider(props: {
     backgroundColor: surfaceBackground,
   } as React.CSSProperties;
 
+  const heroTopLight = brandHasAsset("heroTop", branding, "light");
+  const heroTopDark = branding.assetsDark.heroTop;
+  const hasHeroTop = heroTopLight || heroTopDark;
+  const heroTopUrl = hasHeroTop ? resolveBrandAssetUrl("heroTop", branding, mode) : null;
+
+  const heroBottomLight = brandHasAsset("heroBottom", branding, "light");
+  const heroBottomDark = branding.assetsDark.heroBottom;
+  const hasHeroBottom = heroBottomLight || heroBottomDark;
+  const heroBottomUrl = hasHeroBottom ? resolveBrandAssetUrl("heroBottom", branding, mode) : null;
+  const heroTopTransparentStop = 100 - branding.heroTopFadePct;
+  const heroBottomTransparentStop = 100 - branding.heroBottomFadePct;
+
   return (
     <BrandingContext.Provider value={branding}>
       <div className="relative min-h-screen" style={surfaceStyle}>
         <div
           aria-hidden="true"
+          {...screenshotExcludeProps}
           className="pointer-events-none fixed inset-0 z-0"
           style={{
             backgroundImage: "var(--brand-page-background-image)",
@@ -84,17 +105,49 @@ export function BrandingProvider(props: {
             backgroundAttachment: "fixed",
           }}
         />
+        {heroTopUrl ? (
+          <div
+            aria-hidden="true"
+            {...screenshotExcludeProps}
+            className="pointer-events-none fixed inset-x-0 top-0 z-0 overflow-hidden"
+            style={{
+              height: `${branding.heroTopHeightPct}vh`,
+              backgroundImage: `linear-gradient(to bottom, transparent ${heroTopTransparentStop}%, ${surfaceBackground}), url('${heroTopUrl}')`,
+              backgroundRepeat: "no-repeat, no-repeat",
+              backgroundPosition: "center top, center top",
+              backgroundSize: "cover, cover",
+            }}
+          />
+        ) : null}
+        {heroBottomUrl ? (
+          <div
+            aria-hidden="true"
+            {...screenshotExcludeProps}
+            className="pointer-events-none fixed inset-x-0 bottom-0 z-0 overflow-hidden"
+            style={{
+              height: `${branding.heroBottomHeightPct}vh`,
+              backgroundImage: `linear-gradient(to top, transparent ${heroBottomTransparentStop}%, ${surfaceBackground}), url('${heroBottomUrl}')`,
+              backgroundRepeat: "no-repeat, no-repeat",
+              backgroundPosition: "center bottom, center bottom",
+              backgroundSize: "cover, 100% 100%",
+            }}
+          />
+        ) : null}
         <div
           aria-hidden="true"
-          className="pointer-events-none fixed inset-0 z-0"
-          style={{
-            backgroundImage: "var(--brand-watermark-image)",
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
-            backgroundSize: "var(--brand-watermark-size)",
-            opacity: "var(--brand-watermark-opacity)",
-          }}
-        />
+          {...screenshotExcludeProps}
+          className="pointer-events-none fixed inset-x-0 top-16 bottom-0 z-0 flex items-center justify-center"
+        >
+          <div
+            className="overflow-hidden rounded-[18%] bg-contain bg-center bg-no-repeat"
+            style={{
+              width: "var(--brand-watermark-size)",
+              height: "var(--brand-watermark-size)",
+              backgroundImage: "var(--brand-watermark-image)",
+              opacity: "var(--brand-watermark-opacity)",
+            }}
+          />
+        </div>
         <div className="relative z-10 min-h-screen">{children}</div>
       </div>
     </BrandingContext.Provider>

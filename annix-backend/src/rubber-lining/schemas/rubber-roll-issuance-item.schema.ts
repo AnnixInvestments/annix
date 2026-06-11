@@ -25,8 +25,8 @@ export class RubberRollIssuanceItem {
   @Prop({ type: String, required: false })
   jobName: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const RubberRollIssuanceItemSchema = SchemaFactory.createForClass(RubberRollIssuanceItem);

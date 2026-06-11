@@ -124,6 +124,7 @@ export class CpoController {
   @StockControlRoles("accounts", "manager", "admin")
   @ApiOperation({ summary: "Confirm and import mapped rows as CPO" })
   async confirm(@Body() dto: ConfirmCpoImportDto, @Req() req: any) {
+    await this.jobCardImportService.recordImportCorrections(req.user.companyId, dto.corrections);
     const result = await this.cpoService.createFromImportRows(
       req.user.companyId,
       dto.rows,

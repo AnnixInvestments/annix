@@ -14,6 +14,7 @@ import {
   type ConversationSummary,
   supplierMessagingApi,
 } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useArchiveSupplierConversation,
   useMarkSupplierBroadcastRead,
@@ -25,6 +26,7 @@ import {
 export default function SupplierMessagesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const conversationsQuery = useSupplierConversations();
   const broadcastsQuery = useSupplierBroadcasts();
@@ -48,7 +50,7 @@ export default function SupplierMessagesPage() {
       conversationsQuery.refetch();
     } catch (error: any) {
       const rawMessage = error.message;
-      showToast(rawMessage || "Failed to load conversation", "error");
+      alert({ message: rawMessage || "Failed to load conversation", variant: "error" });
     }
   };
 
@@ -70,7 +72,7 @@ export default function SupplierMessagesPage() {
       );
     } catch (error: any) {
       const rawMessage2 = error.message;
-      showToast(rawMessage2 || "Failed to send message", "error");
+      alert({ message: rawMessage2 || "Failed to send message", variant: "error" });
     }
   };
 
@@ -83,7 +85,7 @@ export default function SupplierMessagesPage() {
       showToast("Conversation archived", "success");
     } catch (error: any) {
       const rawMessage3 = error.message;
-      showToast(rawMessage3 || "Failed to archive conversation", "error");
+      alert({ message: rawMessage3 || "Failed to archive conversation", variant: "error" });
     }
   };
 
@@ -92,7 +94,7 @@ export default function SupplierMessagesPage() {
       await markBroadcastReadMutation.mutateAsync(broadcastId);
     } catch (error: any) {
       const rawMessage4 = error.message;
-      showToast(rawMessage4 || "Failed to mark broadcast as read", "error");
+      alert({ message: rawMessage4 || "Failed to mark broadcast as read", variant: "error" });
     }
   };
 
@@ -107,6 +109,7 @@ export default function SupplierMessagesPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
+      {AlertDialog}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Messages</h1>
       </div>

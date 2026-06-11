@@ -24,6 +24,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA, fromISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
@@ -55,6 +56,7 @@ const sourceColors: Record<RequisitionSourceType, string> = {
 
 export default function PurchaseRequisitionsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const scrollSentinelRef = useScrollRestoration("au-rubber:purchase-requisitions");
   const [requisitions, setRequisitions] = useState<RequisitionDto[]>([]);
   const [compoundStocks, setCompoundStocks] = useState<RubberCompoundStockDto[]>([]);
@@ -179,7 +181,10 @@ export default function PurchaseRequisitionsPage() {
       setIsCheckingLowStock(true);
       const created = await auRubberApiClient.checkLowStockRequisitions();
       if (created.length > 0) {
-        showToast(`Created ${created.length} low-stock requisition(s)`, "success");
+        alert({
+          message: `Created ${created.length} low-stock requisition(s)`,
+          variant: "success",
+        });
         fetchData();
       } else {
         showToast("No low-stock items found", "info");
@@ -280,6 +285,7 @@ export default function PurchaseRequisitionsPage() {
 
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Purchase Requisitions" }]} />
       <div className="flex items-center justify-between">
         <div>

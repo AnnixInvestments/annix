@@ -199,6 +199,15 @@ export class IssuableProductService {
     return this.productRepo.findByLegacyStockItemId(companyId, legacyStockItemId);
   }
 
+  async adjustQuantity(companyId: number, id: number, delta: number): Promise<void> {
+    const product = await this.productRepo.findByIdForCompany(companyId, id);
+    if (!product) {
+      return;
+    }
+    product.quantity = Math.max(0, Number(product.quantity || 0) + delta);
+    await this.productRepo.save(product);
+  }
+
   async countByType(companyId: number): Promise<Record<IssuableProductType, number>> {
     return this.productRepo.countByType(companyId);
   }

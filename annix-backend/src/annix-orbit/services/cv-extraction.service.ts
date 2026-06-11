@@ -6,6 +6,7 @@ import {
   extractTextFromPdf,
   extractTextFromWord,
 } from "../../lib/document-extraction";
+import { LibreOfficeConversionService } from "../../lib/libreoffice-conversion.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import {
@@ -15,7 +16,9 @@ import {
 } from "../entities/candidate.entity";
 import { CV_EXTRACTION_SYSTEM_PROMPT, cvExtractionPrompt } from "../prompts/cv-analysis.prompt";
 
-type SupportedCvFormat = "pdf" | "docx" | "xlsx" | "unsupported";
+type SupportedCvFormat = "pdf" | "docx" | "doc" | "rtf" | "odt" | "xlsx" | "image" | "unsupported";
+
+type VisionMediaType = "application/pdf" | "image/jpeg" | "image/png" | "image/webp";
 
 const CV_OCR_PROMPT =
   "Transcribe ALL readable text from this CV/résumé document verbatim, preserving the natural reading order (headings, sections, bullet points, dates). The document may be written in English, Afrikaans, isiZulu, or another South African language. Output plain text only — no commentary, no markdown.";
@@ -23,9 +26,21 @@ const CV_OCR_PROMPT =
 function detectCvFormat(filePath: string): SupportedCvFormat {
   const lower = filePath.toLowerCase();
   if (lower.endsWith(".pdf")) return "pdf";
-  if (lower.endsWith(".docx") || lower.endsWith(".doc")) return "docx";
+  if (lower.endsWith(".docx")) return "docx";
+  if (lower.endsWith(".doc")) return "doc";
+  if (lower.endsWith(".rtf")) return "rtf";
+  if (lower.endsWith(".odt")) return "odt";
   if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) return "xlsx";
+  if (/\.(jpe?g|png|webp)$/.test(lower)) return "image";
   return "unsupported";
+}
+
+function imageMediaType(filePath: string): VisionMediaType | null {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".png")) return "image/png";
+  if (lower.endsWith(".webp")) return "image/webp";
+  if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+  return null;
 }
 
 @Injectable()
@@ -37,35 +52,65 @@ export class CvExtractionService {
     private readonly storageService: IStorageService,
     private readonly aiChatService: AiChatService,
     private readonly aiUsageService: AiUsageService,
+    private readonly libreOffice: LibreOfficeConversionService,
   ) {}
 
   async extractTextFromCv(storagePath: string): Promise<string> {
     const format = detectCvFormat(storagePath);
     if (format === "unsupported") {
       throw new Error(
-        "Unsupported CV file format. Please upload a PDF, Word (.docx), or Excel (.xlsx) file.",
+        "Unsupported CV file format. Please upload a PDF, Word (.doc/.docx), or image (JPG/PNG) file.",
       );
     }
 
     const buffer = await this.storageService.download(storagePath);
 
-    if (format === "docx") return extractTextFromWord(buffer);
     if (format === "xlsx") return extractTextFromExcel(buffer);
 
+    if (format === "image") {
+      const mediaType = imageMediaType(storagePath);
+      return mediaType ? this.ocrViaVision(buffer, mediaType) : "";
+    }
+
+    if (format === "pdf") return this.extractFromPdfBuffer(buffer);
+
+    // Modern .docx has a real text layer — read it directly before paying for a
+    // conversion. Empty means an image-only docx, so fall through to LibreOffice.
+    if (format === "docx") {
+      const native = (await extractTextFromWord(buffer)).trim();
+      if (native.length > 0) return native;
+      this.logger.warn(`No text in .docx ${storagePath} — converting via LibreOffice.`);
+    }
+
+    // Legacy .doc / .rtf / .odt (and image-only .docx): mammoth can't read these,
+    // so convert to PDF with LibreOffice, then extract the text layer (OCR if scanned).
+    const pdf = await this.libreOffice.convertToPdf(buffer, format);
+    if (pdf) {
+      return this.extractFromPdfBuffer(pdf);
+    }
+
+    // LibreOffice unavailable (e.g. local dev without soffice) — last-ditch native parse.
+    if (format === "doc" || format === "docx") {
+      return (await extractTextFromWord(buffer)).trim();
+    }
+    this.logger.warn(`Could not convert ${format} CV ${storagePath} — LibreOffice unavailable.`);
+    return "";
+  }
+
+  private async extractFromPdfBuffer(buffer: Buffer): Promise<string> {
     const pdfText = await extractTextFromPdf(buffer);
     if (pdfText.trim().length > 0) {
       return pdfText;
     }
-
-    this.logger.warn(`No text layer in PDF ${storagePath} — falling back to Gemini vision OCR.`);
-    return this.ocrPdf(buffer);
+    this.logger.warn("No text layer in PDF — falling back to Gemini vision OCR.");
+    return this.ocrViaVision(buffer, "application/pdf");
   }
 
-  private async ocrPdf(buffer: Buffer): Promise<string> {
+  private async ocrViaVision(buffer: Buffer, mediaType: VisionMediaType): Promise<string> {
     try {
       const { content, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(
         buffer.toString("base64"),
-        "application/pdf",
+        mediaType,
         CV_OCR_PROMPT,
       );
 
@@ -80,7 +125,7 @@ export class CvExtractionService {
       return content.trim();
     } catch (error: unknown) {
       const msg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Gemini vision OCR failed for CV PDF: ${msg}`);
+      this.logger.error(`Gemini vision OCR failed for CV (${mediaType}): ${msg}`);
       return "";
     }
   }

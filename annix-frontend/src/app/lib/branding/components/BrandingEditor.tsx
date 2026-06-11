@@ -15,6 +15,7 @@ import {
   googleFontsHref,
   resolveBrandAssetUrl,
 } from "@/app/lib/branding/branding";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAddBrandingImage,
   useAdminBranding,
@@ -45,6 +46,10 @@ interface BrandingForm {
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
+  heroTopHeightPct: number;
+  heroBottomHeightPct: number;
+  heroTopFadePct: number;
+  heroBottomFadePct: number;
 }
 
 type ColorKey =
@@ -140,11 +145,25 @@ const PAGE_BACKGROUND_FIELD: AssetFieldDef = {
   hint: "Full-screen hero picture behind every page; the Main background colour shows underneath.",
 };
 
+const HERO_TOP_FIELD: AssetFieldDef = {
+  key: "heroTop",
+  label: "Top hero image",
+  hint: "Picture pinned to the top of every page, like the marketing home hero.",
+};
+
+const HERO_BOTTOM_FIELD: AssetFieldDef = {
+  key: "heroBottom",
+  label: "Bottom hero image",
+  hint: "Picture pinned to the bottom of every page, like the marketing home footer band.",
+};
+
 const ALL_FIELDS: AssetFieldDef[] = [
   ...LAYER_FIELDS,
   HERO_IMAGE_FIELD,
   LOGIN_CARD_FIELD,
   PAGE_BACKGROUND_FIELD,
+  HERO_TOP_FIELD,
+  HERO_BOTTOM_FIELD,
 ];
 
 const SLOT_TO_FIELD: Record<
@@ -162,6 +181,8 @@ const SLOT_TO_FIELD: Record<
   heroImage: { light: "heroImagePath", dark: "heroImagePathDark" },
   loginCard: { light: "loginCardPath", dark: "loginCardPathDark" },
   pageBackground: { light: "pageBackgroundPath", dark: "pageBackgroundPathDark" },
+  heroTop: { light: "heroTopPath", dark: "heroTopPathDark" },
+  heroBottom: { light: "heroBottomPath", dark: "heroBottomPathDark" },
 };
 
 const ASSET_SLOTS: BrandingAssetSlot[] = [
@@ -176,6 +197,8 @@ const ASSET_SLOTS: BrandingAssetSlot[] = [
   "heroImage",
   "loginCard",
   "pageBackground",
+  "heroTop",
+  "heroBottom",
 ];
 
 const MASTER_LABEL = "Annix Investments";
@@ -186,6 +209,10 @@ type AssetChangeEntry = { light?: string | null; dark?: string | null };
 type AssetChangeMap = Partial<Record<BrandingAssetSlot, AssetChangeEntry>>;
 
 function formFromBranding(branding: Branding): BrandingForm {
+  const heroTopHeightPct = branding.heroTopHeightPct;
+  const heroBottomHeightPct = branding.heroBottomHeightPct;
+  const heroTopFadePct = branding.heroTopFadePct;
+  const heroBottomFadePct = branding.heroBottomFadePct;
   return {
     navbarColor: branding.navbarColor,
     navbarColorLight: branding.navbarColorLight,
@@ -207,6 +234,10 @@ function formFromBranding(branding: Branding): BrandingForm {
     watermarkOpacity: branding.watermarkOpacity,
     watermarkMaxSizePx: branding.watermarkMaxSizePx,
     loadingAnimation: branding.loadingAnimation,
+    heroTopHeightPct: heroTopHeightPct ?? 60,
+    heroBottomHeightPct: heroBottomHeightPct ?? 40,
+    heroTopFadePct: heroTopFadePct ?? 45,
+    heroBottomFadePct: heroBottomFadePct ?? 45,
   };
 }
 
@@ -228,6 +259,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const { brand, title } = props;
   const backHref = props.backHref;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const brandingQuery = useAdminBranding(brand);
   const updateMutation = useUpdateBranding(brand);
   const uploadMutation = useUploadBrandingAsset(brand);
@@ -307,10 +339,24 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       });
       showToast("Uploaded — preview updated. Publish to go live.", "success");
     } catch {
-      showToast("Upload failed — use a PNG/JPG/SVG under 10MB.", "error");
+      alert({ message: "Upload failed — use a PNG/JPG/SVG under 10MB.", variant: "error" });
     } finally {
       setUploadingKey(null);
     }
+  };
+
+  const handleClear = (slot: BrandingAssetSlot, variant: BrandingAssetVariant) => {
+    const fallbackUrl = resolveBrandAssetUrl(slot, brandingFallback(brand), variant);
+    setAssetPreview((prev) => {
+      const current = prev[slot];
+      return { ...prev, [slot]: { ...current, [variant]: fallbackUrl } };
+    });
+    setAssetChange((prev) => {
+      const existing = prev[slot];
+      const current = existing || {};
+      return { ...prev, [slot]: { ...current, [variant]: null } };
+    });
+    showToast("Cleared — publish to remove it.", "success");
   };
 
   const handleAddImage = async (file: File) => {
@@ -319,7 +365,10 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       setNewImageLabel("");
       showToast("Image added to the gallery.", "success");
     } catch {
-      showToast("Couldn't add the image — use a PNG/JPG/SVG under 10MB.", "error");
+      alert({
+        message: "Couldn't add the image — use a PNG/JPG/SVG under 10MB.",
+        variant: "error",
+      });
     }
   };
 
@@ -328,7 +377,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       await deleteImageMutation.mutateAsync(id);
       showToast("Image removed from the gallery.", "success");
     } catch {
-      showToast("Couldn't remove the image — please try again.", "error");
+      alert({ message: "Couldn't remove the image — please try again.", variant: "error" });
     }
   };
 
@@ -354,7 +403,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
       setAssetChange({});
       showToast(`${title} branding published — it is now live.`, "success");
     } catch {
-      showToast("Could not publish branding — please try again.", "error");
+      alert({ message: "Could not publish branding — please try again.", variant: "error" });
     }
   };
 
@@ -423,9 +472,15 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const previewFontBody = effectiveValue("fontBody");
   const previewWatermarkEnabled = effectiveValue("watermarkEnabled");
   const previewWatermarkOpacityRaw = effectiveValue("watermarkOpacity");
+  const previewWatermarkSizeRaw = effectiveValue("watermarkMaxSizePx");
   const previewAnimation = effectiveValue("loadingAnimation");
 
   const watermarkOpacityForPreview = previewWatermarkEnabled ? previewWatermarkOpacityRaw : 0;
+  const watermarkWidthForPreview = Math.max(20, Math.min(95, (previewWatermarkSizeRaw / 880) * 70));
+  const heroTopHeightForPreview = effectiveValue("heroTopHeightPct");
+  const heroBottomHeightForPreview = effectiveValue("heroBottomHeightPct");
+  const heroTopTransparentStopPreview = 100 - effectiveValue("heroTopFadePct");
+  const heroBottomTransparentStopPreview = 100 - effectiveValue("heroBottomFadePct");
   const displayFontStack = `'${previewFontDisplay}', sans-serif`;
   const headingsFontStack = `'${previewFontHeadings}', sans-serif`;
   const bodyFontStack = `'${previewFontBody}', sans-serif`;
@@ -445,6 +500,10 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const textCropPreview = themeUrl("textCrop");
   const pageBackgroundPreview = themeUrl("pageBackground");
   const showPageBackgroundLayer = slotHasAsset("pageBackground", previewTheme);
+  const heroTopPreview = themeUrl("heroTop");
+  const showHeroTopLayer = slotHasAsset("heroTop", previewTheme);
+  const heroBottomPreview = themeUrl("heroBottom");
+  const showHeroBottomLayer = slotHasAsset("heroBottom", previewTheme);
 
   const hasTextCrop = slotHasAsset("textCrop", previewTheme);
   const navbarTextUrl = hasTextCrop ? textCropPreview : wordmarkPreview;
@@ -471,10 +530,12 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
   const heroWordsInherited = !isMaster && inherited.has("heroWords");
   const watermarkEnabledInherited = !isMaster && inherited.has("watermarkEnabled");
   const watermarkOpacityInherited = !isMaster && inherited.has("watermarkOpacity");
+  const watermarkSizeInherited = !isMaster && inherited.has("watermarkMaxSizePx");
   const animationInherited = !isMaster && inherited.has("loadingAnimation");
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">{title} — Branding</h1>
@@ -560,6 +621,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                     lightInheriting={slotInheriting(slot, "light")}
                     darkInheriting={slotInheriting(slot, "dark")}
                     onFile={(variant, file) => handleUpload(slot, variant, file)}
+                    onClear={(variant) => handleClear(slot, variant)}
                   />
                 );
               })}
@@ -601,6 +663,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               lightInheriting={slotInheriting("heroImage", "light")}
               darkInheriting={slotInheriting("heroImage", "dark")}
               onFile={(variant, file) => handleUpload("heroImage", variant, file)}
+              onClear={(variant) => handleClear("heroImage", variant)}
             />
           </section>
 
@@ -631,6 +694,124 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                 lightInheriting={slotInheriting("pageBackground", "light")}
                 darkInheriting={slotInheriting("pageBackground", "dark")}
                 onFile={(variant, file) => handleUpload("pageBackground", variant, file)}
+                onClear={(variant) => handleClear("pageBackground", variant)}
+              />
+            )}
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Top hero image</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              A picture pinned to the top of every page (Light and Dark variants), fading down into
+              the Main background colour — like the marketing home hero. Globally locked — set here
+              on {MASTER_LABEL} and every app inherits it unless it scraps to its own branding.
+            </p>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-700">Height</span>
+              <input
+                type="number"
+                min={5}
+                max={100}
+                value={form.heroTopHeightPct}
+                disabled={!isMaster && lockedScalars.has("heroTopHeightPct")}
+                onChange={(e) => setField("heroTopHeightPct", Number(e.target.value))}
+                className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              />
+              <span className="text-xs text-gray-400">% of screen</span>
+            </div>
+            <div className="mb-3">
+              <div className="flex items-center justify-between text-xs text-gray-700">
+                <span className="font-medium">Edge fade</span>
+                <span className="font-mono text-gray-400">{form.heroTopFadePct}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={form.heroTopFadePct}
+                disabled={!isMaster && lockedScalars.has("heroTopFadePct")}
+                onChange={(e) => setField("heroTopFadePct", Number(e.target.value))}
+                className="w-full disabled:opacity-50"
+              />
+            </div>
+            {brandHasAsset("heroTop", adminView.effective, "light") ||
+            brandHasAsset("heroTop", adminView.effective, "dark") ? (
+              <div
+                className="mb-3 h-40 w-full rounded-xl border border-gray-200 bg-gray-900 bg-cover bg-top bg-no-repeat"
+                style={{ backgroundImage: `url('${assetPreview.heroTop[previewTheme]}')` }}
+              />
+            ) : null}
+            {lockedSlots.has("heroTop") ? (
+              <LockedAssetRow field={HERO_TOP_FIELD} previews={assetPreview.heroTop} />
+            ) : (
+              <LayeredAssetRow
+                field={HERO_TOP_FIELD}
+                previews={assetPreview.heroTop}
+                uploadingKey={uploadingKey}
+                lightInheriting={slotInheriting("heroTop", "light")}
+                darkInheriting={slotInheriting("heroTop", "dark")}
+                onFile={(variant, file) => handleUpload("heroTop", variant, file)}
+                onClear={(variant) => handleClear("heroTop", variant)}
+              />
+            )}
+          </section>
+
+          <section className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">Bottom hero image</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              A picture pinned to the bottom of every page (Light and Dark variants), fading up into
+              the Main background colour — like the marketing home footer band. Globally locked —
+              set here on {MASTER_LABEL} and every app inherits it unless it scraps to its own
+              branding.
+            </p>
+            <div className="mb-3 flex items-center gap-2">
+              <span className="text-xs font-medium text-gray-700">Height</span>
+              <input
+                type="number"
+                min={5}
+                max={100}
+                value={form.heroBottomHeightPct}
+                disabled={!isMaster && lockedScalars.has("heroBottomHeightPct")}
+                onChange={(e) => setField("heroBottomHeightPct", Number(e.target.value))}
+                className="w-20 rounded border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50 disabled:text-gray-400"
+              />
+              <span className="text-xs text-gray-400">% of screen</span>
+            </div>
+            <div className="mb-3">
+              <div className="flex items-center justify-between text-xs text-gray-700">
+                <span className="font-medium">Edge fade</span>
+                <span className="font-mono text-gray-400">{form.heroBottomFadePct}%</span>
+              </div>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={form.heroBottomFadePct}
+                disabled={!isMaster && lockedScalars.has("heroBottomFadePct")}
+                onChange={(e) => setField("heroBottomFadePct", Number(e.target.value))}
+                className="w-full disabled:opacity-50"
+              />
+            </div>
+            {brandHasAsset("heroBottom", adminView.effective, "light") ||
+            brandHasAsset("heroBottom", adminView.effective, "dark") ? (
+              <div
+                className="mb-3 h-40 w-full rounded-xl border border-gray-200 bg-gray-900 bg-cover bg-bottom bg-no-repeat"
+                style={{ backgroundImage: `url('${assetPreview.heroBottom[previewTheme]}')` }}
+              />
+            ) : null}
+            {lockedSlots.has("heroBottom") ? (
+              <LockedAssetRow field={HERO_BOTTOM_FIELD} previews={assetPreview.heroBottom} />
+            ) : (
+              <LayeredAssetRow
+                field={HERO_BOTTOM_FIELD}
+                previews={assetPreview.heroBottom}
+                uploadingKey={uploadingKey}
+                lightInheriting={slotInheriting("heroBottom", "light")}
+                darkInheriting={slotInheriting("heroBottom", "dark")}
+                onFile={(variant, file) => handleUpload("heroBottom", variant, file)}
+                onClear={(variant) => handleClear("heroBottom", variant)}
               />
             )}
           </section>
@@ -656,6 +837,7 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               lightInheriting={slotInheriting("loginCard", "light")}
               darkInheriting={slotInheriting("loginCard", "dark")}
               onFile={(variant, file) => handleUpload("loginCard", variant, file)}
+              onClear={(variant) => handleClear("loginCard", variant)}
             />
           </section>
 
@@ -803,11 +985,35 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
                     }}
                   />
                 ) : null}
+                {showHeroTopLayer ? (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 top-0 overflow-hidden"
+                    style={{
+                      height: `${heroTopHeightForPreview}%`,
+                      backgroundImage: `linear-gradient(to bottom, transparent ${heroTopTransparentStopPreview}%, ${heroSurface}), url('${heroTopPreview}')`,
+                      backgroundRepeat: "no-repeat, no-repeat",
+                      backgroundPosition: "center top, center top",
+                      backgroundSize: "cover, cover",
+                    }}
+                  />
+                ) : null}
+                {showHeroBottomLayer ? (
+                  <div
+                    className="pointer-events-none absolute inset-x-0 bottom-0 overflow-hidden"
+                    style={{
+                      height: `${heroBottomHeightForPreview}%`,
+                      backgroundImage: `linear-gradient(to top, transparent ${heroBottomTransparentStopPreview}%, ${heroSurface}), url('${heroBottomPreview}')`,
+                      backgroundRepeat: "no-repeat, no-repeat",
+                      backgroundPosition: "center bottom, center bottom",
+                      backgroundSize: "cover, 100% 100%",
+                    }}
+                  />
+                ) : null}
                 <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
                   <div
                     className="rounded-[18%] bg-contain bg-center bg-no-repeat"
                     style={{
-                      width: "min(70%, 240px)",
+                      width: `${watermarkWidthForPreview}%`,
                       aspectRatio: "1 / 1",
                       backgroundImage: `url('${watermarkPreview}')`,
                       opacity: watermarkOpacityForPreview,
@@ -925,6 +1131,26 @@ export function BrandingEditor(props: { brand: string; title: string; backHref?:
               value={form.watermarkOpacity}
               disabled={watermarkOpacityInherited}
               onChange={(e) => setField("watermarkOpacity", Number(e.target.value))}
+              className="w-full disabled:opacity-50"
+            />
+            <InheritToggleRow
+              show={!isMaster}
+              inherited={watermarkSizeInherited}
+              onToggle={(v) => toggleInherit("watermarkMaxSizePx", v)}
+              label="Size"
+            />
+            <div className="mt-3 flex items-center justify-between text-sm text-gray-700">
+              <span>Size</span>
+              <span className="font-mono text-xs">{form.watermarkMaxSizePx}px</span>
+            </div>
+            <input
+              type="range"
+              min={120}
+              max={2000}
+              step={20}
+              value={form.watermarkMaxSizePx}
+              disabled={watermarkSizeInherited}
+              onChange={(e) => setField("watermarkMaxSizePx", Number(e.target.value))}
               className="w-full disabled:opacity-50"
             />
           </section>
@@ -1092,8 +1318,9 @@ function VariantUpload(props: {
   busy: boolean;
   inheriting: boolean;
   onFile: (file: File) => void;
+  onClear: () => void;
 }) {
-  const { variantLabel, previewUrl, busy, inheriting, onFile } = props;
+  const { variantLabel, previewUrl, busy, inheriting, onFile, onClear } = props;
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -1128,21 +1355,31 @@ function VariantUpload(props: {
           {inheriting ? `Inheriting ${MASTER_LABEL}` : "Empty inherits master"}
         </p>
       </div>
-      <label className="cursor-pointer px-2.5 py-1 text-[11px] font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200">
-        {busy ? "…" : "Upload"}
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/svg+xml,image/webp,image/x-icon"
-          className="hidden"
+      <div className="flex flex-shrink-0 items-center gap-1">
+        <label className="cursor-pointer px-2.5 py-1 text-[11px] font-medium rounded-lg bg-violet-100 text-violet-700 hover:bg-violet-200">
+          {busy ? "…" : "Upload"}
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/svg+xml,image/webp,image/x-icon"
+            className="hidden"
+            disabled={busy}
+            onChange={(e) => {
+              const fileList = e.target.files;
+              const file = fileList && fileList.length > 0 ? fileList[0] : null;
+              if (file) onFile(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <button
+          type="button"
+          onClick={onClear}
           disabled={busy}
-          onChange={(e) => {
-            const fileList = e.target.files;
-            const file = fileList && fileList.length > 0 ? fileList[0] : null;
-            if (file) onFile(file);
-            e.target.value = "";
-          }}
-        />
-      </label>
+          className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50"
+        >
+          Clear
+        </button>
+      </div>
     </div>
   );
 }
@@ -1184,8 +1421,9 @@ function LayeredAssetRow(props: {
   lightInheriting: boolean;
   darkInheriting: boolean;
   onFile: (variant: BrandingAssetVariant, file: File) => void;
+  onClear: (variant: BrandingAssetVariant) => void;
 }) {
-  const { field, previews, uploadingKey, lightInheriting, darkInheriting, onFile } = props;
+  const { field, previews, uploadingKey, lightInheriting, darkInheriting, onFile, onClear } = props;
   const lightBusy = uploadingKey === `${field.key}:light`;
   const darkBusy = uploadingKey === `${field.key}:dark`;
   return (
@@ -1201,6 +1439,7 @@ function LayeredAssetRow(props: {
           busy={lightBusy}
           inheriting={lightInheriting}
           onFile={(file) => onFile("light", file)}
+          onClear={() => onClear("light")}
         />
         <VariantUpload
           variantLabel="Dark"
@@ -1208,6 +1447,7 @@ function LayeredAssetRow(props: {
           busy={darkBusy}
           inheriting={darkInheriting}
           onFile={(file) => onFile("dark", file)}
+          onClear={() => onClear("dark")}
         />
       </div>
     </div>

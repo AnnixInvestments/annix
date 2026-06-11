@@ -8,6 +8,31 @@ export interface AnnixOrbitLoginDto {
   accountType?: string;
 }
 
+export interface EarlyAccessSignupPayload {
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobileNumber: string;
+  currentRole?: string;
+  industry?: string;
+  yearsExperience?: string;
+  ageRange?: string;
+  ethnicBackground?: string;
+  consentToContact: boolean;
+  source?: string;
+  campaign?: string;
+  platform?: string;
+  referredBy?: string;
+}
+
+export interface EarlyAccessSignupResult {
+  referralCode: string;
+  alreadyOnList: boolean;
+  totalSignups: number;
+  position: number;
+  referralCount: number;
+}
+
 export type AnnixOrbitUserType = "company" | "recruiter" | "individual" | "student";
 
 export interface AnnixOrbitUser {
@@ -472,6 +497,7 @@ export interface JobMarketSource {
   rateLimitPerDay: number;
   requestsToday: number;
   lastIngestedAt: string | null;
+  lastIngestionError: string | null;
   ingestionIntervalHours: number;
   visibleTiers: string[] | null;
   requiresVetting: boolean;
@@ -794,9 +820,25 @@ export interface IndividualProfileStatus {
   cvOriginalFilename: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
+  eeDisclosed: boolean;
+  onboardingComplete: boolean;
   photoUrl: string | null;
   photoVisibleToEmployers: boolean;
+  phoneType: string | null;
+  appGuideSeen: boolean;
+  ageGroup: string | null;
 }
+
+// Mirrors SEEKER_AGE_GROUPS in annix-backend/src/annix-orbit/entities/annix-orbit-profile.entity.ts
+export const SEEKER_AGE_GROUP_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
+  { value: "under-18", label: "Under 18" },
+  { value: "18-24", label: "18 – 24" },
+  { value: "25-34", label: "25 – 34" },
+  { value: "35-44", label: "35 – 44" },
+  { value: "45-54", label: "45 – 54" },
+  { value: "55-64", label: "55 – 64" },
+  { value: "65+", label: "65 or older" },
+];
 
 export type NixSeekerImprovementArea =
   | "summary"
@@ -1255,10 +1297,19 @@ export interface SeekerTierPlan {
   displayOrder: number;
 }
 
+export interface SeekerCvBuildQuota {
+  unlimited: boolean;
+  allowance: number | null;
+  used: number;
+  remaining: number | null;
+  resetsAt: string;
+}
+
 export interface SeekerEntitlements {
   tier: string;
   label: string;
   features: SeekerTierFeatures;
+  cvBuilds: SeekerCvBuildQuota;
 }
 
 class AnnixOrbitApiClient {
@@ -1430,6 +1481,7 @@ class AnnixOrbitApiClient {
     password: string;
     name: string;
     phone?: string | null;
+    ageGroup?: string | null;
     eeDisclosure?: RegisterEeDisclosurePayload | null;
   }): Promise<{ message: string; user: AnnixOrbitUser }> {
     return this.request("/annix-orbit/auth/register/individual", {
@@ -2134,6 +2186,21 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/me/dismiss-warning/acknowledge", { method: "POST" });
   }
 
+  async completeOnboarding(): Promise<{ onboardingCompletedAt: string }> {
+    return this.request("/annix-orbit/me/onboarding/complete", { method: "POST" });
+  }
+
+  async updateSeekerPreferences(body: {
+    phoneType?: string | null;
+    appGuideSeen?: boolean;
+    ageGroup?: string | null;
+  }): Promise<{ phoneType: string | null; appGuideSeen: boolean; ageGroup: string | null }> {
+    return this.request("/annix-orbit/me/preferences", {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+
   async sendAppLink(): Promise<{ sent: boolean; email: string }> {
     return this.request("/annix-orbit/me/send-app-link", { method: "POST" });
   }
@@ -2246,6 +2313,10 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/me/ee-attributes");
   }
 
+  async eeAttributesSuggestion(): Promise<{ populationGroup: string | null }> {
+    return this.request("/annix-orbit/me/ee-attributes/suggestion");
+  }
+
   async updateMyEeAttributes(
     input: UpdateMyEeAttributesInput,
   ): Promise<{ updated: number; consentTextVersionId: number }> {
@@ -2311,6 +2382,17 @@ class AnnixOrbitApiClient {
   async publicJobPosting(referenceNumber: string): Promise<PublicJobPosting> {
     const safeRef = encodeURIComponent(referenceNumber);
     return this.request(`/annix-orbit/public/job-postings/${safeRef}`);
+  }
+
+  async earlyAccessCount(): Promise<{ total: number }> {
+    return this.request("/annix-orbit/public/early-access/count");
+  }
+
+  async submitEarlyAccess(payload: EarlyAccessSignupPayload): Promise<EarlyAccessSignupResult> {
+    return this.request("/annix-orbit/public/early-access", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
   }
 
   async portalAdapters(): Promise<PortalAdapterSummary[]> {
@@ -2380,15 +2462,49 @@ class AnnixOrbitApiClient {
     return `${API_BASE_URL}/annix-orbit/compliance/ee-report.pdf?${query.toString()}`;
   }
 
-  async seekerRecommendedJobs(
-    filters: SeekerRecommendedFilters = {},
-  ): Promise<SeekerRecommendedJobsResponse> {
+  async seekerJobSources(): Promise<string[]> {
+    return this.request("/annix-orbit/seeker/jobs/sources");
+  }
+
+  async seekerTargetCountries(): Promise<{ targetCountries: string[] }> {
+    return this.request("/annix-orbit/seeker/jobs/target-countries");
+  }
+
+  async seekerEnabledCountries(): Promise<{ countries: string[] }> {
+    return this.request("/annix-orbit/seeker/jobs/enabled-countries");
+  }
+
+  async setSeekerTargetCountries(countries: string[]): Promise<{ targetCountries: string[] }> {
+    return this.request("/annix-orbit/seeker/jobs/target-countries", {
+      method: "PUT",
+      body: JSON.stringify({ countries }),
+    });
+  }
+
+  async seekerJobFacets(filters: SeekerRecommendedFilters = {}): Promise<SeekerJobFacets> {
     const params = new URLSearchParams();
+    if (filters.region) params.set("region", filters.region);
     if (filters.province) params.set("province", filters.province);
     if (filters.city) params.set("city", filters.city);
     if (filters.category) params.set("category", filters.category);
     if (filters.minSalary) params.set("minSalary", filters.minSalary);
     if (filters.search) params.set("search", filters.search);
+    if (filters.provider) params.set("provider", filters.provider);
+    const qs = params.toString();
+    return this.request(`/annix-orbit/seeker/jobs/facets${qs ? `?${qs}` : ""}`);
+  }
+
+  async seekerRecommendedJobs(
+    filters: SeekerRecommendedFilters = {},
+  ): Promise<SeekerRecommendedJobsResponse> {
+    const params = new URLSearchParams();
+    if (filters.region) params.set("region", filters.region);
+    if (filters.province) params.set("province", filters.province);
+    if (filters.city) params.set("city", filters.city);
+    if (filters.category) params.set("category", filters.category);
+    if (filters.minSalary) params.set("minSalary", filters.minSalary);
+    if (filters.search) params.set("search", filters.search);
+    if (filters.provider) params.set("provider", filters.provider);
     const qs = params.toString();
     return this.request(`/annix-orbit/seeker/jobs/recommended${qs ? `?${qs}` : ""}`);
   }
@@ -3106,6 +3222,7 @@ export interface SeekerRecommendedJob {
     description: string | null;
     extractedSkills: string[];
     category: string | null;
+    canonicalCategory: string | null;
     sourceUrl: string | null;
     postedAt: string | null;
     expiresAt: string | null;
@@ -3118,14 +3235,25 @@ export interface SeekerRecommendedJobsResponse {
   matches: SeekerRecommendedJob[];
   candidateIds: number[];
   hasCandidate: boolean;
+  total: number;
 }
 
 export interface SeekerRecommendedFilters {
+  region?: string;
   province?: string;
   city?: string;
   category?: string;
   minSalary?: string;
   search?: string;
+  provider?: string;
+}
+
+export interface SeekerJobFacets {
+  regions: string[];
+  provinces: string[];
+  cities: string[];
+  categories: Array<{ key: string; label: string }>;
+  sources: string[];
 }
 
 export interface SeekerColdStartJobsResponse {

@@ -37,8 +37,8 @@ export class TeamActivity {
   @Prop({ type: Boolean, required: true })
   isVisibleToTeam: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const TeamActivitySchema = SchemaFactory.createForClass(TeamActivity);

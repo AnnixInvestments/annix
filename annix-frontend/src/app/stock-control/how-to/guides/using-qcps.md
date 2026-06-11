@@ -8,7 +8,7 @@ tags: [qcp, inspection]
 lastUpdated: 2026-04-11
 summary: Create a QCP from a template, record inspection results, and route it for sign-off.
 readingMinutes: 5
-relatedPaths: [annix-frontend/src/app/stock-control/portal/quality, annix-backend/src/stock-control/qcp]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/quality/qcp-log]
 ---
 
 ## What is a QCP

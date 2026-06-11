@@ -1,5 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { LibreOfficeConversionService } from "../../lib/libreoffice-conversion.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { CvExtractionService } from "./cv-extraction.service";
@@ -8,6 +9,7 @@ describe("CvExtractionService", () => {
   let service: CvExtractionService;
   let mockStorageService: Partial<IStorageService>;
   let mockAiChatService: Partial<AiChatService>;
+  let mockLibreOffice: Partial<LibreOfficeConversionService>;
 
   beforeEach(async () => {
     mockStorageService = {
@@ -24,6 +26,10 @@ describe("CvExtractionService", () => {
       chatWithImage: jest.fn(),
     };
 
+    mockLibreOffice = {
+      convertToPdf: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CvExtractionService,
@@ -38,6 +44,10 @@ describe("CvExtractionService", () => {
         {
           provide: AiUsageService,
           useValue: { log: jest.fn() },
+        },
+        {
+          provide: LibreOfficeConversionService,
+          useValue: mockLibreOffice,
         },
       ],
     }).compile();
@@ -81,6 +91,47 @@ describe("CvExtractionService", () => {
       const text = await service.extractTextFromCv("cv-assistant/individuals/8/cv/test.pdf");
 
       expect(text).toBe("");
+    });
+
+    it("converts a legacy .doc via LibreOffice then OCRs the resulting PDF", async () => {
+      const docBuffer = Buffer.from("legacy word 97-2003 binary");
+      const pdfBuffer = Buffer.from("%PDF-1.4 converted from doc");
+      (mockStorageService.download as jest.Mock).mockResolvedValue(docBuffer);
+      (mockLibreOffice.convertToPdf as jest.Mock).mockResolvedValue(pdfBuffer);
+      (mockAiChatService.chatWithImage as jest.Mock).mockResolvedValue({
+        content: "Converted CV text",
+        providerUsed: "gemini",
+        tokensUsed: 30,
+      });
+
+      const text = await service.extractTextFromCv("cv-assistant/individuals/8/cv/test.doc");
+
+      expect(mockLibreOffice.convertToPdf).toHaveBeenCalledWith(docBuffer, "doc");
+      expect(mockAiChatService.chatWithImage).toHaveBeenCalledWith(
+        pdfBuffer.toString("base64"),
+        "application/pdf",
+        expect.any(String),
+      );
+      expect(text).toBe("Converted CV text");
+    });
+
+    it("OCRs an image CV (JPG) via Gemini vision", async () => {
+      const imageBuffer = Buffer.from("jpeg bytes");
+      (mockStorageService.download as jest.Mock).mockResolvedValue(imageBuffer);
+      (mockAiChatService.chatWithImage as jest.Mock).mockResolvedValue({
+        content: "Photo CV text",
+        providerUsed: "gemini",
+        tokensUsed: 25,
+      });
+
+      const text = await service.extractTextFromCv("cv-assistant/individuals/8/cv/scan.jpg");
+
+      expect(mockAiChatService.chatWithImage).toHaveBeenCalledWith(
+        imageBuffer.toString("base64"),
+        "image/jpeg",
+        expect.any(String),
+      );
+      expect(text).toBe("Photo CV text");
     });
 
     it("throws for unsupported formats before any download", async () => {

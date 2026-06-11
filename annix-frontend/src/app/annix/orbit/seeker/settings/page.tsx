@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitMyDataExport,
@@ -17,6 +18,7 @@ import { ReminderPreferencesCard } from "./components/ReminderPreferencesCard";
 export default function SeekerSettingsPage() {
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const prefsQuery = useOrbitMyNotificationPreferences();
   const updatePrefs = useOrbitUpdateMyNotificationPreferences();
   const requestDeletion = useOrbitRequestMyAccountDeletion();
@@ -28,12 +30,12 @@ export default function SeekerSettingsPage() {
   const handleSendAppLink = async () => {
     try {
       const result = await sendAppLink.mutateAsync();
-      showToast(
-        `Sent — open the email on your phone (${result.email}) to install the app.`,
-        "success",
-      );
+      alert({
+        message: `Sent — open the email on your phone (${result.email}) to install the app.`,
+        variant: "success",
+      });
     } catch {
-      showToast("Couldn't send the app link — please try again.", "error");
+      alert({ message: "Couldn't send the app link — please try again.", variant: "error" });
     }
   };
 
@@ -71,7 +73,7 @@ export default function SeekerSettingsPage() {
       });
       showToast("Preferences saved.", "success");
     } catch {
-      showToast("Could not save preferences — please try again.", "error");
+      alert({ message: "Could not save preferences — please try again.", variant: "error" });
     }
   };
 
@@ -87,9 +89,9 @@ export default function SeekerSettingsPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast("Your data export has downloaded.", "success");
+      alert({ message: "Your data export has downloaded.", variant: "success" });
     } catch {
-      showToast("Could not export your data — please try again.", "error");
+      alert({ message: "Could not export your data — please try again.", variant: "error" });
     }
   };
 
@@ -114,7 +116,7 @@ export default function SeekerSettingsPage() {
         variant: "info",
       });
     } catch {
-      showToast("Could not request deletion — please try again.", "error");
+      alert({ message: "Could not request deletion — please try again.", variant: "error" });
     }
   };
 
@@ -145,7 +147,7 @@ export default function SeekerSettingsPage() {
         variant: "info",
       });
     } catch {
-      showToast("Could not stop matching — please try again.", "error");
+      alert({ message: "Could not stop matching — please try again.", variant: "error" });
     }
   };
 
@@ -170,7 +172,7 @@ export default function SeekerSettingsPage() {
         variant: "info",
       });
     } catch {
-      showToast("Could not withdraw consent — please try again.", "error");
+      alert({ message: "Could not withdraw consent — please try again.", variant: "error" });
     }
   };
 
@@ -201,7 +203,9 @@ export default function SeekerSettingsPage() {
                     </span>
                   </label>
                   <p className="text-xs text-gray-500 mt-1">
-                    Only notify me about jobs that match my CV at this score or higher.
+                    Alerts only — we'll notify you about jobs that match your CV at this score or
+                    higher. Jobs below it still appear in Browse Jobs; you just won't be alerted
+                    about them.
                   </p>
                   <input
                     id="threshold"
@@ -289,7 +293,7 @@ export default function SeekerSettingsPage() {
                   type="button"
                   onClick={handleExport}
                   disabled={dataExport.isPending}
-                  className="bg-white text-[var(--brand-navbar-active,#252560)] border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
+                  className="bg-white text-[var(--brand-navbar-active,#252560)] border border-[var(--brand-navbar-200,#c0c0eb)] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] dark:text-white dark:border-white/30 dark:hover:bg-white/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors whitespace-nowrap"
                 >
                   {dataExport.isPending ? "Preparing..." : "Download data"}
                 </button>
@@ -359,6 +363,7 @@ export default function SeekerSettingsPage() {
       </div>
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

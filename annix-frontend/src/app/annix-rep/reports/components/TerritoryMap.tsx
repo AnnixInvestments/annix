@@ -39,8 +39,6 @@ export default function TerritoryMap(props: TerritoryMapProps) {
 
     const initMap = async () => {
       const L = await import("leaflet");
-      // @ts-expect-error - CSS import for leaflet styles
-      await import("leaflet/dist/leaflet.css");
 
       if (mapInstanceRef.current) {
         mapInstanceRef.current.remove();

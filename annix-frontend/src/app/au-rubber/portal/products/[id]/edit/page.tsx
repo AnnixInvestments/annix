@@ -12,12 +12,14 @@ import {
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { CreateRubberProductDto, RubberProductDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 
 export default function AuRubberProductEditPage() {
   const params = useParams();
   const router = useRouter();
   const productId = Number(params.id);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [product, setProduct] = useState<RubberProductDto | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,7 +58,7 @@ export default function AuRubberProductEditPage() {
       router.push("/au-rubber/portal/products");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update product";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
       throw err;
     } finally {
       setIsSaving(false);
@@ -113,6 +115,7 @@ export default function AuRubberProductEditPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <Breadcrumb
         items={[
           { label: "Products", href: "/au-rubber/portal/products" },

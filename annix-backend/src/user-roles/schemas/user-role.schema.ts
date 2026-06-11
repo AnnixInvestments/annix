@@ -16,11 +16,11 @@ export class UserRole {
   @Prop({ type: String, required: true })
   name: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 
   // TODO #298: relation needs embed-vs-ref review
   // many-to-many: users

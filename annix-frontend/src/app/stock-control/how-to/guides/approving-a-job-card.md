@@ -8,7 +8,7 @@ tags: [jobs, approval]
 lastUpdated: 2026-04-05
 summary: Review a submitted job card and move it into production.
 readingMinutes: 2
-relatedPaths: [annix-frontend/src/app/stock-control/portal/jobs, annix-backend/src/stock-control/job-cards]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/WorkflowActionsBar.tsx, annix-backend/src/stock-control/services/job-card-workflow.service.ts]
 ---
 
 ## What approval means

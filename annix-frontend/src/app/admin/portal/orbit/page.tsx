@@ -228,6 +228,59 @@ const orbitAdminCards: AppHubCard[] = [
     hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/orbit/early-access",
+    title: "Early Access",
+    description:
+      "Pre-launch waiting list — deduplicated registrants, sources, campaigns, referrals and CSV export.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"
+        />
+      </svg>
+    ),
+    color: "bg-orange-100 text-orange-600",
+    hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
+  },
+  {
+    href: "/admin/portal/orbit/seeker-testing",
+    title: "Seeker Testing",
+    description:
+      "Beta testing & launch readiness — errors/latency from real users, workflow funnel, KPIs, bug tracker and the go-live checklist.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    color: "bg-orange-100 text-orange-600",
+    hoverColor: "hover:border-orange-400 group-hover:bg-orange-600 group-hover:text-white",
+  },
+  {
+    href: "/admin/portal/scheduled-jobs?app=orbit",
+    title: "Scheduled Jobs",
+    description: "Orbit background cron jobs — ingestion, alerts, POPIA purges. Pause and retune.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    color: "bg-slate-100 text-slate-600",
+    hoverColor: "hover:border-slate-400 group-hover:bg-slate-600 group-hover:text-white",
+  },
+  {
     href: "/admin/portal/branding/annix-orbit",
     title: "Branding",
     description: "Orbit brand — logo, colours, tagline and watermark.",

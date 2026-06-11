@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitCredentialType } from "@/app/lib/api/adminApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdminCreateOrbitCredentialType,
@@ -14,6 +15,7 @@ import {
 
 export default function OrbitCredentialTypesPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const typesQuery = useAdminOrbitCredentialTypes();
   const create = useAdminCreateOrbitCredentialType();
@@ -46,7 +48,8 @@ export default function OrbitCredentialTypesPage() {
   };
 
   const openEdit = (type: OrbitCredentialType) => {
-    const nextDescription = type.description || "";
+    const rawDescription = type.description;
+    const nextDescription = rawDescription || "";
     setEditingId(type.id);
     setCode(type.code);
     setLabel(type.label);
@@ -94,7 +97,10 @@ export default function OrbitCredentialTypesPage() {
       showToast(editingId ? "Credential type updated." : "Credential type added.", "success");
       setIsFormOpen(false);
     } catch {
-      showToast("Could not save the credential type — please try again.", "error");
+      alert({
+        message: "Could not save the credential type — please try again.",
+        variant: "error",
+      });
     }
   };
 
@@ -110,7 +116,7 @@ export default function OrbitCredentialTypesPage() {
       await remove.mutateAsync(type.id);
       showToast("Credential type deleted.", "success");
     } catch {
-      showToast("Could not delete the credential type.", "error");
+      alert({ message: "Could not delete the credential type.", variant: "error" });
     }
   };
 
@@ -275,6 +281,7 @@ export default function OrbitCredentialTypesPage() {
       </FormModal>
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

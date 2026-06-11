@@ -4,6 +4,7 @@ import { useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitDismissReason } from "@/app/lib/api/adminApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdminCreateOrbitDismissReason,
@@ -27,6 +28,7 @@ function muteActionLabel(value: string | null): string {
 
 export default function OrbitDismissReasonsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const reasonsQuery = useAdminOrbitDismissReasons();
   const create = useAdminCreateOrbitDismissReason();
@@ -107,7 +109,7 @@ export default function OrbitDismissReasonsPage() {
       showToast(editingId ? "Reason updated." : "Reason added.", "success");
       setIsFormOpen(false);
     } catch {
-      showToast("Could not save the reason — please try again.", "error");
+      alert({ message: "Could not save the reason — please try again.", variant: "error" });
     }
   };
 
@@ -123,7 +125,7 @@ export default function OrbitDismissReasonsPage() {
       await remove.mutateAsync(reason.id);
       showToast("Reason deleted.", "success");
     } catch {
-      showToast("Could not delete the reason.", "error");
+      alert({ message: "Could not delete the reason.", variant: "error" });
     }
   };
 
@@ -290,6 +292,7 @@ export default function OrbitDismissReasonsPage() {
       </FormModal>
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

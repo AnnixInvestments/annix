@@ -43,7 +43,7 @@ export class Candidate {
   @Prop({ type: Number, required: false })
   beeLevel: number;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: false, default: false })
   popiaConsent: boolean;
 
   @Prop({ type: Date, required: false })
@@ -52,13 +52,13 @@ export class Candidate {
   @Prop({ type: Date, required: false })
   lastActiveAt: Date;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: false, default: false })
   jobAlertsOptIn: boolean;
 
   @Prop({ type: Date, required: false })
   rejectionSentAt: Date;
 
-  @Prop({ type: Boolean, required: true })
+  @Prop({ type: Boolean, required: false, default: false })
   isTestFixture: boolean;
 
   @Prop({ type: Object, required: false })
@@ -73,11 +73,11 @@ export class Candidate {
   @Prop({ type: Date, required: false })
   acceptanceSentAt: Date;
 
-  @Prop({ type: Number, required: true })
-  jobPostingId: number;
+  @Prop({ type: Number, required: false })
+  jobPostingId: number | null;
 
-  @Prop({ type: String, required: false })
-  embedding: string;
+  @Prop({ type: Buffer, required: false })
+  embedding: Buffer;
 
   @Prop({ type: String, required: false })
   matchTier: string;
@@ -85,17 +85,20 @@ export class Candidate {
   @Prop({ type: [String], required: false })
   targetCategories: string[];
 
+  @Prop({ type: [String], required: false })
+  targetCountries: string[];
+
   @Prop({ type: String, required: false })
   trialTier: string;
 
   @Prop({ type: Date, required: false })
   trialEndsAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const CandidateSchema = SchemaFactory.createForClass(Candidate);

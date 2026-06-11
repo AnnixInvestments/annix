@@ -5,10 +5,10 @@ category: Accounts
 roles: [accounts, manager, admin]
 order: 1
 tags: [invoices, suppliers, ai-extraction]
-lastUpdated: 2026-04-11
+lastUpdated: 2026-06-11
 summary: Upload a supplier invoice PDF and let the AI extract line items automatically.
 readingMinutes: 3
-relatedPaths: [annix-frontend/src/app/stock-control/portal/invoices, annix-backend/src/stock-control/invoices]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/invoices, annix-backend/src/stock-control/services/invoice.service.ts]
 ---
 
 ## Overview
@@ -25,6 +25,10 @@ Supplier invoices are extracted using AI so that you don't have to retype line i
 6. Correct any values the AI got wrong. You can click directly on a field to edit it.
 7. Link each line to a delivery note or job card
 8. Click **Save** to post the invoice
+
+## Linked delivery notes
+
+The Invoice Details card lists every delivery note linked to the invoice by its real delivery number. If a linked delivery note carries the wrong number, open it from the link and correct the number with the pencil icon next to **Delivery Number**.
 
 ## If extraction fails
 

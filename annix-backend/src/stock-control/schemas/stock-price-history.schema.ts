@@ -46,8 +46,8 @@ export class StockPriceHistory {
   @Prop({ type: String, required: false })
   unifiedChangedBy: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
   @Prop({ type: Number, required: false })
   changedByUserId: number;

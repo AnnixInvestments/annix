@@ -1,6 +1,19 @@
 import { type ApiClient, createApiClient, createEndpoint } from "@/app/lib/api/createApiClient";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import type {
+  CreateSeekerTestingIssueInput,
+  CreateSeekerTestPhaseInput,
+  SeekerErrorsLatency,
+  SeekerProgressRow,
+  SeekerReadinessReport,
+  SeekerReadinessSnapshot,
+  SeekerTestingIssue,
+  SeekerTestingOverview,
+  SeekerTestPhase,
+  UpdateSeekerTestingIssueInput,
+  UpdateSeekerTestPhaseInput,
+} from "@/app/lib/api/seeker-testing.types";
+import type {
   Branding,
   BrandingAdminView,
   BrandingAssetSlot,
@@ -772,11 +785,11 @@ class AdminApiClient {
   });
 
   rbacAppDetails = createEndpoint<[code: string], RbacAppDetail>(apiClient, "GET", {
-    path: "/admin/rbac/apps/${encodeURIComponent(code)}",
+    path: (code) => `/admin/rbac/apps/${encodeURIComponent(code)}`,
   });
 
   rbacUsersWithAccess = createEndpoint<[appCode: string], RbacUserAccess[]>(apiClient, "GET", {
-    path: "/admin/rbac/apps/${encodeURIComponent(appCode)}/users",
+    path: (appCode) => `/admin/rbac/apps/${encodeURIComponent(appCode)}/users`,
   });
 
   async rbacSearchUsers(query: string): Promise<RbacSearchUser[]> {
@@ -840,7 +853,7 @@ class AdminApiClient {
     apiClient,
     "POST",
     {
-      path: "/admin/rbac/apps/${encodeURIComponent(appCode)}/roles",
+      path: (appCode) => `/admin/rbac/apps/${encodeURIComponent(appCode)}/roles`,
       body: (_appCode, dto) => dto,
     },
   );
@@ -945,18 +958,18 @@ class AdminApiClient {
   });
 
   pausePollingJob = createEndpoint<[name: string], PollingJobDto>(apiClient, "POST", {
-    path: "/admin/polling-jobs/${encodeURIComponent(name)}/pause",
+    path: (name) => `/admin/polling-jobs/${encodeURIComponent(name)}/pause`,
   });
 
   resumePollingJob = createEndpoint<[name: string], PollingJobDto>(apiClient, "POST", {
-    path: "/admin/polling-jobs/${encodeURIComponent(name)}/resume",
+    path: (name) => `/admin/polling-jobs/${encodeURIComponent(name)}/resume`,
   });
 
   updatePollingJobInterval = createEndpoint<[name: string, intervalMs: number], PollingJobDto>(
     apiClient,
     "POST",
     {
-      path: "/admin/polling-jobs/${encodeURIComponent(name)}/interval",
+      path: (name) => `/admin/polling-jobs/${encodeURIComponent(name)}/interval`,
       body: (_name, intervalMs) => ({ intervalMs }),
     },
   );
@@ -996,6 +1009,10 @@ class AdminApiClient {
     return this.request<AiUsageListResponse>(
       `/admin/ai-usage${queryString ? `?${queryString}` : ""}`,
     );
+  }
+
+  async aiUsageDailySeries(days = 28): Promise<AiUsageDailySeriesResponse> {
+    return this.request<AiUsageDailySeriesResponse>(`/admin/ai-usage/daily-series?days=${days}`);
   }
 
   companyProfile = createEndpoint<[], CompanyProfileResponse>(apiClient, "GET", {
@@ -1096,6 +1113,119 @@ class AdminApiClient {
     return this.request("/admin/annix-orbit/job-market/stats");
   }
 
+  orbitSeekerTestingPhases(): Promise<SeekerTestPhase[]> {
+    return this.request("/admin/annix-orbit/seeker-testing/phases");
+  }
+
+  createOrbitSeekerTestingPhase(body: CreateSeekerTestPhaseInput): Promise<SeekerTestPhase> {
+    return this.request("/admin/annix-orbit/seeker-testing/phases", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  updateOrbitSeekerTestingPhase(
+    id: string,
+    body: UpdateSeekerTestPhaseInput,
+  ): Promise<SeekerTestPhase> {
+    return this.request(`/admin/annix-orbit/seeker-testing/phases/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+
+  orbitSeekerTestingOverview(): Promise<SeekerTestingOverview> {
+    return this.request("/admin/annix-orbit/seeker-testing/overview");
+  }
+
+  orbitSeekerTestingErrorsLatency(): Promise<SeekerErrorsLatency> {
+    return this.request("/admin/annix-orbit/seeker-testing/errors-latency");
+  }
+
+  orbitSeekerTestingUsers(): Promise<SeekerProgressRow[]> {
+    return this.request("/admin/annix-orbit/seeker-testing/users");
+  }
+
+  orbitSeekerTestingReadiness(): Promise<SeekerReadinessReport> {
+    return this.request("/admin/annix-orbit/seeker-testing/readiness");
+  }
+
+  recalculateOrbitSeekerTestingReadiness(): Promise<SeekerReadinessSnapshot> {
+    return this.request("/admin/annix-orbit/seeker-testing/recalculate", { method: "POST" });
+  }
+
+  orbitSeekerTestingIssues(): Promise<SeekerTestingIssue[]> {
+    return this.request("/admin/annix-orbit/seeker-testing/issues");
+  }
+
+  createOrbitSeekerTestingIssue(body: CreateSeekerTestingIssueInput): Promise<SeekerTestingIssue> {
+    return this.request("/admin/annix-orbit/seeker-testing/issues", {
+      method: "POST",
+      body: JSON.stringify(body),
+    });
+  }
+
+  updateOrbitSeekerTestingIssue(
+    id: string,
+    body: UpdateSeekerTestingIssueInput,
+  ): Promise<SeekerTestingIssue> {
+    return this.request(`/admin/annix-orbit/seeker-testing/issues/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+
+  async orbitClusterUsage(): Promise<OrbitClusterUsage> {
+    return this.request("/admin/annix-orbit/job-market/cluster-usage");
+  }
+
+  async orbitRetentionCap(): Promise<{ cap: number }> {
+    return this.request("/admin/annix-orbit/job-market/retention-cap");
+  }
+
+  async platformLimits(): Promise<PlatformLimitsResponse> {
+    return this.request("/admin/platform-limits");
+  }
+
+  async platformLimitBreakdown(cardId: string): Promise<PlatformLimitBreakdown> {
+    return this.request(`/admin/platform-limits/breakdown/${encodeURIComponent(cardId)}`);
+  }
+
+  async setOrbitRetentionCap(cap: number): Promise<{ cap: number }> {
+    return this.request("/admin/annix-orbit/job-market/retention-cap", {
+      method: "PUT",
+      body: JSON.stringify({ cap }),
+    });
+  }
+
+  async orbitEnabledCountries(): Promise<{ all: string[]; enabled: string[] }> {
+    return this.request("/admin/annix-orbit/job-market/enabled-countries");
+  }
+
+  async setOrbitEnabledCountries(
+    countries: string[],
+  ): Promise<{ all: string[]; enabled: string[] }> {
+    return this.request("/admin/annix-orbit/job-market/enabled-countries", {
+      method: "PUT",
+      body: JSON.stringify({ countries }),
+    });
+  }
+
+  async orbitEarlyAccessStats(): Promise<OrbitEarlyAccessStats> {
+    return this.request("/admin/annix-orbit/early-access/stats");
+  }
+
+  async orbitEarlyAccessList(): Promise<OrbitEarlyAccessRow[]> {
+    return this.request("/admin/annix-orbit/early-access/list");
+  }
+
+  async orbitEarlyAccessExportCsv(): Promise<void> {
+    return apiClient.downloadBlob(
+      "/admin/annix-orbit/early-access/export.csv",
+      "orbit-early-access.csv",
+    );
+  }
+
   async orbitJobMarketDuplicates(limit?: number): Promise<DuplicateJobPair[]> {
     const query = limit ? `?limit=${limit}` : "";
     return this.request(`/admin/annix-orbit/job-market/duplicates${query}`);
@@ -1144,6 +1274,21 @@ class AdminApiClient {
     lastError: string | null;
   }> {
     return this.request("/admin/annix-orbit/job-market/embeddings/coverage");
+  }
+
+  async backfillOrbitCategories(): Promise<{ started: boolean; alreadyRunning: boolean }> {
+    return this.request("/admin/annix-orbit/job-market/categories/backfill", {
+      method: "POST",
+    });
+  }
+
+  async orbitCategoryCoverage(): Promise<{
+    total: number;
+    classified: number;
+    running: boolean;
+    lastError: string | null;
+  }> {
+    return this.request("/admin/annix-orbit/job-market/categories/coverage");
   }
 
   async orbitSeekerMatchTier(email: string): Promise<OrbitSeekerMatchTier> {
@@ -1213,6 +1358,18 @@ class AdminApiClient {
     return this.request("/admin/annix-orbit/seekers/invite-trial", {
       method: "POST",
       body: JSON.stringify({ email, tier, freeDays }),
+    });
+  }
+
+  async setPendingSeekerTier(body: {
+    email: string;
+    tier: string;
+    permanent: boolean;
+    trialDays?: number;
+  }): Promise<{ saved: boolean }> {
+    return this.request("/admin/annix-orbit/seekers/pending-tier", {
+      method: "POST",
+      body: JSON.stringify(body),
     });
   }
 
@@ -1397,6 +1554,111 @@ class AdminApiClient {
   async rejectOrbitDelist(id: number): Promise<{ success: boolean }> {
     return this.request(`/admin/annix-orbit/delist-reports/${id}/reject`, { method: "POST" });
   }
+
+  // WhatsApp inbox (platform-wide global number)
+  async whatsAppStatus(): Promise<WhatsAppStatus> {
+    return this.request("/admin/whatsapp/status");
+  }
+
+  async whatsAppConversations(page = 1): Promise<WhatsAppConversationList> {
+    return this.request(`/admin/whatsapp/conversations?page=${page}`);
+  }
+
+  async whatsAppMessages(conversationId: string): Promise<WhatsAppMessage[]> {
+    return this.request(`/admin/whatsapp/conversations/${conversationId}/messages`);
+  }
+
+  async sendWhatsAppReply(
+    conversationId: string,
+    body: string,
+  ): Promise<{ messages: WhatsAppMessage[] }> {
+    return this.request(`/admin/whatsapp/conversations/${conversationId}/reply`, {
+      method: "POST",
+      body: JSON.stringify({ body }),
+    });
+  }
+
+  async markWhatsAppConversationRead(conversationId: string): Promise<{ success: boolean }> {
+    return this.request(`/admin/whatsapp/conversations/${conversationId}/read`, {
+      method: "POST",
+    });
+  }
+}
+
+export interface WhatsAppStatus {
+  configured: boolean;
+  phoneNumberId: string | null;
+}
+
+export interface WhatsAppConversation {
+  id: string;
+  waId: string;
+  profileName: string | null;
+  lastMessageAt: string;
+  lastMessagePreview: string | null;
+  lastDirection: "inbound" | "outbound";
+  unreadCount: number;
+  appContext: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WhatsAppConversationList {
+  items: WhatsAppConversation[];
+  total: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface WhatsAppMessage {
+  id: string;
+  conversationId: string;
+  direction: "inbound" | "outbound";
+  body: string;
+  messageType: string;
+  waMessageId: string | null;
+  status: string | null;
+  errorDetail: string | null;
+  appContext: string | null;
+  sentBy: string | null;
+  sentAt: string;
+  createdAt: string;
+}
+
+export interface OrbitEarlyAccessRow {
+  id: string;
+  position: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  mobileNumber: string;
+  currentRole: string | null;
+  industry: string | null;
+  yearsExperience: string | null;
+  ageRange: string | null;
+  ethnicBackground: string | null;
+  consentToContact: boolean;
+  source: string;
+  campaign: string | null;
+  referralCode: string;
+  referredBy: string | null;
+  referralCount: number;
+  createdAt: string;
+}
+
+export interface OrbitEarlyAccessBucket {
+  key: string;
+  count: number;
+}
+
+export interface OrbitEarlyAccessStats {
+  total: number;
+  today: number;
+  thisWeek: number;
+  bySource: OrbitEarlyAccessBucket[];
+  byCampaign: OrbitEarlyAccessBucket[];
+  byIndustry: OrbitEarlyAccessBucket[];
+  topReferrers: OrbitEarlyAccessBucket[];
 }
 
 export interface OrbitSeekerMatchTier {
@@ -1446,6 +1708,50 @@ export interface OrbitUserUpdateInput {
   tier?: string | null;
 }
 
+export interface OrbitClusterUsage {
+  capMb: number;
+  totalMb: number;
+  freeMb: number;
+  percentUsed: number;
+  databases: Array<{ name: string; logicalMb: number }>;
+}
+
+export type PlatformLimitStatus = "ok" | "warn" | "critical" | "info";
+
+export interface PlatformLimitCard {
+  id: string;
+  label: string;
+  value: number;
+  unit: string;
+  limit: number | null;
+  percent: number | null;
+  status: PlatformLimitStatus;
+  trend: string | null;
+  details: string;
+  href: string | null;
+  limitLabel: string | null;
+}
+
+export interface PlatformLimitsResponse {
+  generatedAt: string;
+  cards: PlatformLimitCard[];
+}
+
+export interface PlatformLimitBreakdownRow {
+  label: string;
+  value: number;
+  unit: string;
+  percent: number | null;
+}
+
+export interface PlatformLimitBreakdown {
+  id: string;
+  title: string;
+  generatedAt: string;
+  rows: PlatformLimitBreakdownRow[];
+  note: string | null;
+}
+
 export interface OrbitSeekerSummary {
   id: number;
   name: string | null;
@@ -1456,6 +1762,7 @@ export interface OrbitSeekerSummary {
   hasCv: boolean;
   lastActiveAt: string | null;
   createdAt: string | null;
+  isProspect?: boolean;
 }
 
 export interface OrbitSeekerDocument {
@@ -1672,6 +1979,16 @@ export interface AiUsageListResponse {
     totalTokens: number;
     totalCalls: number;
   };
+}
+
+export interface AiUsageDailyPoint {
+  date: string;
+  calls: number;
+  tokens: number;
+}
+
+export interface AiUsageDailySeriesResponse {
+  days: AiUsageDailyPoint[];
 }
 
 export interface NixUploadResponse {
@@ -2030,11 +2347,20 @@ export interface UpdateUserAccessDto {
   expiresAt?: string | null;
 }
 
+export interface InviteAppGrant {
+  appCode: string;
+  roleCode?: string | null;
+  useCustomPermissions?: boolean;
+  permissionCodes?: string[];
+  expiresAt?: string | null;
+}
+
 export interface InviteUserDto {
   email: string;
   firstName?: string;
   lastName?: string;
-  appCode: string;
+  apps?: InviteAppGrant[];
+  appCode?: string;
   roleCode?: string | null;
   useCustomPermissions?: boolean;
   permissionCodes?: string[];
@@ -2046,6 +2372,8 @@ export interface InviteUserResponse {
   email: string;
   accessId: number;
   isNewUser: boolean;
+  appNames?: string[];
+  emailSent?: boolean;
   message: string;
 }
 
@@ -2165,10 +2493,13 @@ export interface IdentityReconciliationReport {
 
 export type NightSuspensionHours = 6 | 8 | 12 | null;
 
+export type JobApp = "orbit" | "core" | "pulse" | "insights" | "sentinel" | "forge" | "global";
+
 export interface ScheduledJobDto {
   name: string;
   description: string;
   module: string;
+  app: JobApp;
   active: boolean;
   cronTime: string;
   defaultCron: string;
@@ -2179,6 +2510,7 @@ export interface ScheduledJobDto {
 
 export interface GlobalSettingsDto {
   suspendOnWeekendsAndHolidays: boolean;
+  pauseAllJobs: boolean;
 }
 
 export interface PollingJobDto {

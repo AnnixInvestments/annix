@@ -25,6 +25,16 @@ export class PostgresPaperTradeRepository
     });
   }
 
+  async existsContributionSince(portfolioId: string, since: Date): Promise<boolean> {
+    const count = await this.repository
+      .createQueryBuilder("t")
+      .where("t.portfolio_id = :pid", { pid: portfolioId })
+      .andWhere("t.action = 'contribution'")
+      .andWhere("t.executed_at >= :since", { since })
+      .getCount();
+    return count > 0;
+  }
+
   findEarliestBuy(portfolioId: string, assetId: string): Promise<PaperTrade | null> {
     return this.repository.findOne({
       where: { portfolioId, assetId, action: "buy" },

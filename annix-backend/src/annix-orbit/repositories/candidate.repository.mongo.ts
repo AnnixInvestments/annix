@@ -4,6 +4,8 @@ import type { Model } from "mongoose";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { encodeEmbedding } from "../lib/embedding-codec";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
   CandidateAllForCompanyFilters,
   CandidateEmbeddingCoverageRow,
@@ -148,6 +150,17 @@ export class MongoCandidateRepository
     return this.toDomainList(docs);
   }
 
+  async findByIds(ids: number[]): Promise<Candidate[]> {
+    if (ids.length === 0) {
+      return [];
+    }
+    const docs = await this.documents
+      .find({ _id: { $in: ids } })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
   async findByEmailWithJobPosting(email: string): Promise<Candidate[]> {
     const docs = await this.documents.find({ email }).populate("jobPosting").lean().exec();
     return this.toDomainList(docs);
@@ -191,8 +204,8 @@ export class MongoCandidateRepository
     return result.deletedCount ?? 0;
   }
 
-  async setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { embedding: `[${embeddingLiteral}]` }).exec();
+  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+    await this.documents.findByIdAndUpdate(id, { embedding: encodeEmbedding(values) }).exec();
   }
 
   async clearEmbedding(id: number): Promise<void> {
@@ -209,6 +222,10 @@ export class MongoCandidateRepository
 
   async updateMatchTier(id: number, matchTier: string): Promise<void> {
     await this.documents.findByIdAndUpdate(id, { matchTier }).exec();
+  }
+
+  async updateTargetCountries(id: number, targetCountries: string[]): Promise<void> {
+    await this.documents.findByIdAndUpdate(id, { targetCountries }).exec();
   }
 
   async setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void> {
@@ -278,6 +295,27 @@ export class MongoCandidateRepository
       .lean()
       .exec();
     return this.toDomainList(docs);
+  }
+
+  async *candidateEmbeddingBatches(batchSize: number): AsyncGenerator<EmbeddingSimilarityBatch> {
+    const cursor = this.documents
+      .find({ embedding: { $ne: null } })
+      .select({ _id: 1, embedding: 1 })
+      .sort({ _id: 1 })
+      .lean()
+      .cursor();
+
+    let batch: EmbeddingSimilarityBatch = [];
+    for await (const doc of cursor) {
+      batch.push({ id: Number(doc._id), embedding: doc.embedding ?? null });
+      if (batch.length >= batchSize) {
+        yield batch;
+        batch = [];
+      }
+    }
+    if (batch.length > 0) {
+      yield batch;
+    }
   }
 
   async jobAlertCandidates(): Promise<Candidate[]> {

@@ -31,6 +31,7 @@ import {
   type TaxInvoiceStatus,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberTaxInvoices } from "@/app/lib/query/hooks";
@@ -58,6 +59,7 @@ const SERVER_SORTABLE_TI_CUSTOMER_COLUMNS = new Set<SortColumn>([
 export default function CustomerTaxInvoicesPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { branding } = useAuRubberBranding();
   const scrollSentinelRef = useScrollRestoration("au-rubber:customer-tax-invoices");
   const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
@@ -145,10 +147,10 @@ export default function CustomerTaxInvoicesPage() {
       if (successCount === 0 && failCount === 0) {
         showToast("No approved invoices to post", "error");
       } else if (failCount === 0) {
-        showToast(
-          `${successCount} invoice${successCount > 1 ? "s" : ""} posted to Sage`,
-          "success",
-        );
+        alert({
+          message: `${successCount} invoice${successCount > 1 ? "s" : ""} posted to Sage`,
+          variant: "success",
+        });
       } else {
         showToast(
           `${successCount} posted, ${failCount} failed: ${result.failed[0].error}`,
@@ -223,10 +225,10 @@ export default function CustomerTaxInvoicesPage() {
           chain.then(() => auRubberApiClient.approveTaxInvoice(id).then(() => undefined)),
         Promise.resolve() as Promise<void>,
       );
-      showToast(
-        `Approved ${ids.length} invoice${ids.length > 1 ? "s" : ""} successfully`,
-        "success",
-      );
+      alert({
+        message: `Approved ${ids.length} invoice${ids.length > 1 ? "s" : ""} successfully`,
+        variant: "success",
+      });
       setSelectedForApproval(new Set());
       refresh();
     } catch (err) {
@@ -308,10 +310,10 @@ export default function CustomerTaxInvoicesPage() {
       setBulkUploadDetail("All files processed successfully.");
 
       await new Promise((resolve) => setTimeout(resolve, 600));
-      showToast(
-        `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
-        "success",
-      );
+      alert({
+        message: `${files.length} file${files.length !== 1 ? "s" : ""} uploaded — NIX is extracting data in the background`,
+        variant: "success",
+      });
       refresh();
     } catch (err) {
       toastError(showToast, err, "Failed to upload tax invoices");
@@ -341,10 +343,10 @@ export default function CustomerTaxInvoicesPage() {
           invoiceNumber: uploadInvoiceNumber || undefined,
           invoiceDate: uploadInvoiceDate || undefined,
         });
-        showToast(
-          `${uploadFiles.length} tax invoice${uploadFiles.length > 1 ? "s" : ""} uploaded`,
-          "success",
-        );
+        alert({
+          message: `${uploadFiles.length} tax invoice${uploadFiles.length > 1 ? "s" : ""} uploaded`,
+          variant: "success",
+        });
       } else {
         await auRubberApiClient.createTaxInvoice({
           invoiceType: "CUSTOMER",
@@ -414,6 +416,7 @@ export default function CustomerTaxInvoicesPage() {
   return (
     <div ref={scrollSentinelRef} className="space-y-6">
       {ConfirmDialog}
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Customers" }, { label: "Tax Invoices" }]} />
       <div className="flex items-center justify-between">
         <div>
@@ -448,10 +451,10 @@ export default function CustomerTaxInvoicesPage() {
               if (!confirmed) return;
               try {
                 const result = await auRubberApiClient.dedupeTaxInvoices();
-                showToast(
-                  `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
-                  "success",
-                );
+                alert({
+                  message: `Removed ${result.deleted} duplicate(s) across ${result.groups} invoice group(s); kept ${result.kept}.`,
+                  variant: "success",
+                });
                 refresh();
               } catch (err) {
                 toastError(showToast, err, "Dedupe failed");
@@ -472,10 +475,10 @@ export default function CustomerTaxInvoicesPage() {
               if (!confirmed) return;
               try {
                 const result = await auRubberApiClient.rematchAllRolls();
-                showToast(
-                  `Rematched ${result.customerInvoicesDispatched} CTI(s) and ${result.customerDeliveryNotesDispatched} CDN(s); deleted ${result.orphansDeleted} orphan(s) (merged ${result.orphansMerged}).`,
-                  "success",
-                );
+                alert({
+                  message: `Rematched ${result.customerInvoicesDispatched} CTI(s) and ${result.customerDeliveryNotesDispatched} CDN(s); deleted ${result.orphansDeleted} orphan(s) (merged ${result.orphansMerged}).`,
+                  variant: "success",
+                });
                 refresh();
               } catch (err) {
                 toastError(showToast, err, "Rematch failed");
@@ -499,10 +502,10 @@ export default function CustomerTaxInvoicesPage() {
                 if (result.triggered === 0) {
                   showToast("No CTIs found with missing rolls — all good.", "info");
                 } else {
-                  showToast(
-                    `Re-triggered extraction on ${result.triggered} CTI(s): ${result.invoiceIds.join(", ")}. Wait a few minutes, refresh, then click Rematch Rolls.`,
-                    "success",
-                  );
+                  alert({
+                    message: `Re-triggered extraction on ${result.triggered} CTI(s): ${result.invoiceIds.join(", ")}. Wait a few minutes, refresh, then click Rematch Rolls.`,
+                    variant: "success",
+                  });
                 }
               } catch (err) {
                 toastError(showToast, err, "Re-extract failed");

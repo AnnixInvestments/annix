@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { CreateRubberProductDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useRubberProductDetail, useUpdateRubberProduct } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import {
@@ -18,6 +19,7 @@ export default function ProductEditPage() {
   const router = useRouter();
   const productId = Number(params.id);
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const productQuery = useRubberProductDetail(productId);
   const updateMutation = useUpdateRubberProduct();
@@ -41,7 +43,7 @@ export default function ProductEditPage() {
       router.push("/admin/portal/rubber/products");
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update product";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
       throw err;
     } finally {
       setIsSaving(false);
@@ -133,6 +135,7 @@ export default function ProductEditPage() {
           isSaving={isSaving}
         />
       </div>
+      {AlertDialog}
     </div>
   );
 }

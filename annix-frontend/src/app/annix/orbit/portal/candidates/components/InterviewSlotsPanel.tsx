@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { Candidate, InterviewSlot } from "@/app/lib/api/annixOrbitApi";
 import { formatDateTimeZA, formatTimeZA, fromISO, nowMillis } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitDeleteInterviewSlot,
@@ -25,6 +26,7 @@ export function InterviewSlotsPanel(props: InterviewSlotsPanelProps) {
     status === "shortlisted" || status === "accepted" || status === "reference_check";
 
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const [showCreateModal, setShowCreateModal] = useState(false);
   const slotsQuery = useOrbitInterviewSlotsForJob(eligible ? jobPostingId : null);
@@ -65,7 +67,7 @@ export function InterviewSlotsPanel(props: InterviewSlotsPanelProps) {
       },
       onError: (err) => {
         const msg = err instanceof Error ? err.message : "Couldn't send invite";
-        showToast(msg, "error");
+        alert({ message: msg, variant: "error" });
       },
     });
   };
@@ -92,7 +94,7 @@ export function InterviewSlotsPanel(props: InterviewSlotsPanelProps) {
       onSuccess: () => showToast("Slot deleted.", "success"),
       onError: (err) => {
         const msg = err instanceof Error ? err.message : "Couldn't delete slot";
-        showToast(msg, "error");
+        alert({ message: msg, variant: "error" });
       },
     });
   };
@@ -218,6 +220,7 @@ export function InterviewSlotsPanel(props: InterviewSlotsPanelProps) {
       )}
 
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

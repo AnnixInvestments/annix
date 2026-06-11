@@ -9,7 +9,7 @@ export interface OrbitModuleManifest {
 
 export const ORBIT_MODULE_MANIFESTS: Record<OrbitModuleKey, OrbitModuleManifest> = {
   seeker: {
-    name: "Orbit Seeker",
+    name: "Annix Orbit Seeker",
     startUrl: "/annix/orbit/seeker/dashboard",
     scope: "/annix/orbit/seeker",
     shortcuts: [

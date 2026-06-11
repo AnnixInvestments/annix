@@ -3,13 +3,18 @@
 import { toPairs as entries } from "es-toolkit/compat";
 import Link from "next/link";
 import { useState } from "react";
+import { BackToHubLink } from "@/app/annix/orbit/components/BackToHubLink";
 import { useToast } from "@/app/components/Toast";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { isApiError } from "@/app/lib/api/apiError";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
+import { useAlert } from "@/app/lib/hooks/useAlert";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 
 export default function AnnixOrbitRegisterRecruiterPage() {
+  const isTestEnv = useIsTestEnv();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [popiaConsent, setPopiaConsent] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState("");
@@ -61,12 +66,12 @@ export default function AnnixOrbitRegisterRecruiterPage() {
         if (err.isValidation()) {
           showToast("Please check your details and try again.", "error");
         } else if (err.status === 409) {
-          showToast("An account with this email already exists.", "error");
+          alert({ message: "An account with this email already exists.", variant: "error" });
         } else {
-          showToast("Registration failed. Please try again.", "error");
+          alert({ message: "Registration failed. Please try again.", variant: "error" });
         }
       } else {
-        showToast("Registration failed. Please try again.", "error");
+        alert({ message: "Registration failed. Please try again.", variant: "error" });
       }
     } finally {
       setIsLoading(false);
@@ -112,7 +117,9 @@ export default function AnnixOrbitRegisterRecruiterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
+      {AlertDialog}
       <div className="max-w-md w-full">
+        <BackToHubLink />
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-16 h-16 bg-[#e0e0f5] rounded-2xl mb-4">
@@ -281,11 +288,13 @@ export default function AnnixOrbitRegisterRecruiterPage() {
           </div>
         </div>
 
-        <div className="text-center mt-6 space-x-4">
-          <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
-            Choose a different account type
-          </Link>
-        </div>
+        {!isTestEnv && (
+          <div className="text-center mt-6 space-x-4">
+            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+              Choose a different account type
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

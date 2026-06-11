@@ -9,6 +9,7 @@ import {
 } from "../../lib/persistence/transaction-context";
 import {
   StockPurchaseBatch,
+  type StockPurchaseBatchSourceType,
   type StockPurchaseBatchStatus,
 } from "../entities/stock-purchase-batch.entity";
 import {
@@ -119,5 +120,21 @@ export class MongoStockPurchaseBatchRepository
       .lean()
       .exec();
     return this.toDomain(doc);
+  }
+
+  async findBySourceRefs(
+    companyId: number,
+    sourceType: StockPurchaseBatchSourceType,
+    sourceRefIds: number[],
+  ): Promise<StockPurchaseBatch[]> {
+    if (sourceRefIds.length === 0) {
+      return [];
+    }
+    const docs = await this.documents
+      .find({ companyId, sourceType, sourceRefId: { $in: sourceRefIds } })
+      .sort({ receivedAt: 1, _id: 1 })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
   }
 }

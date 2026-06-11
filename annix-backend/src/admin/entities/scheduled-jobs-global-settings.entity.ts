@@ -7,4 +7,7 @@ export class ScheduledJobsGlobalSettings {
 
   @Column({ type: "boolean", default: true })
   suspendOnWeekendsAndHolidays: boolean;
+
+  @Column({ type: "boolean", default: false })
+  pauseAllJobs: boolean;
 }

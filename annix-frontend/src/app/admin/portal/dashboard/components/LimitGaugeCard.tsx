@@ -1,0 +1,141 @@
+"use client";
+
+import type { PlatformLimitCard } from "@/app/lib/api/adminApi";
+
+const STATUS_RING: Record<string, string> = {
+  ok: "text-emerald-500",
+  warn: "text-amber-500",
+  critical: "text-red-500",
+  info: "text-indigo-400",
+};
+
+const NEUTRAL_RING = "text-gray-200 dark:text-slate-700";
+
+function formatValue(value: number): string {
+  return value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+}
+
+function Donut(props: {
+  percent: number | null;
+  ringColorClass: string;
+  centerLabel: string | null;
+}) {
+  const percent = props.percent;
+  const ringColorClass = props.ringColorClass;
+  const centerLabel = props.centerLabel;
+  const radius = 24;
+  const circumference = 2 * Math.PI * radius;
+
+  if (percent === null) {
+    return (
+      <div className="relative h-14 w-14 shrink-0">
+        <svg viewBox="0 0 64 64" className="h-14 w-14" aria-hidden="true">
+          <circle
+            cx="32"
+            cy="32"
+            r={radius}
+            fill="none"
+            strokeWidth="4"
+            stroke="currentColor"
+            className={ringColorClass}
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  const fraction = Math.min(Math.max(percent, 0), 100) / 100;
+  const dash = fraction * circumference;
+
+  return (
+    <div className="relative h-14 w-14 shrink-0">
+      <svg viewBox="0 0 64 64" className="h-14 w-14 -rotate-90" aria-hidden="true">
+        <circle
+          cx="32"
+          cy="32"
+          r={radius}
+          fill="none"
+          strokeWidth="7"
+          stroke="currentColor"
+          className="text-gray-100 dark:text-slate-800"
+        />
+        <circle
+          cx="32"
+          cy="32"
+          r={radius}
+          fill="none"
+          strokeWidth="7"
+          strokeLinecap="round"
+          stroke="currentColor"
+          className={ringColorClass}
+          strokeDasharray={`${dash} ${circumference}`}
+        />
+      </svg>
+      {centerLabel ? (
+        <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold text-gray-700 tabular-nums dark:text-gray-200">
+          {centerLabel}
+        </span>
+      ) : null}
+    </div>
+  );
+}
+
+export function LimitGaugeCard(props: { card: PlatformLimitCard; onClick?: () => void }) {
+  const card = props.card;
+  const onClick = props.onClick;
+  const status = card.status;
+  const percent = card.percent;
+  const limit = card.limit;
+  const value = card.value;
+  const unit = card.unit;
+  const label = card.label;
+  const details = card.details;
+  const limitLabel = card.limitLabel;
+
+  const statusRingRaw = STATUS_RING[status];
+  const statusRing = statusRingRaw || STATUS_RING.info;
+
+  const hasGauge = percent !== null && limit !== null;
+  const isAlerting = status === "warn" || status === "critical";
+  const donutPercent = hasGauge ? percent : null;
+  const centerLabel = hasGauge ? `${percent}%` : null;
+  const ringColor = hasGauge ? statusRing : isAlerting ? statusRing : NEUTRAL_RING;
+
+  const interactiveClasses = onClick
+    ? "cursor-pointer text-left transition hover:border-indigo-300 hover:shadow-md dark:hover:border-indigo-500/50"
+    : "";
+
+  return (
+    <div
+      className={`rounded-xl border border-gray-200 bg-white p-3 dark:border-white/10 dark:bg-slate-900 ${interactiveClasses}`}
+      onClick={onClick}
+      onKeyDown={
+        onClick
+          ? (event) => {
+              if (event.key === "Enter" || event.key === " ") onClick();
+            }
+          : undefined
+      }
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      title={onClick ? "View daily history" : undefined}
+    >
+      <h4 className="text-xs font-semibold text-gray-900 dark:text-white">{label}</h4>
+
+      <div className="mt-2 flex items-center gap-3">
+        <Donut percent={donutPercent} ringColorClass={ringColor} centerLabel={centerLabel} />
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1">
+            <span className="text-lg font-bold tabular-nums text-gray-900 dark:text-white">
+              {formatValue(value)}
+            </span>
+            <span className="text-xs text-gray-500">{unit}</span>
+          </div>
+          {limitLabel ? <div className="text-[11px] text-gray-400">{limitLabel}</div> : null}
+        </div>
+      </div>
+
+      <p className="mt-1.5 text-[11px] leading-snug text-gray-500">{details}</p>
+    </div>
+  );
+}

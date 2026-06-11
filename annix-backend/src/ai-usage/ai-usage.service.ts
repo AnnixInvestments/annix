@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { AiUsageLogRepository } from "./ai-usage.repository";
+import { now } from "../lib/datetime";
+import { AiUsageDailyPoint, AiUsageLogRepository } from "./ai-usage.repository";
 import { AiApp, AiProvider } from "./entities/ai-usage-log.entity";
 
 export interface LogAiUsageDto {
@@ -32,6 +33,10 @@ export interface AiUsageGroupRow {
   totalTokens: number;
   totalPages: number;
   totalTimeMs: number;
+}
+
+export interface AiUsageDailySeriesResponse {
+  days: AiUsageDailyPoint[];
 }
 
 export interface AiUsageListResponse {
@@ -73,6 +78,26 @@ export class AiUsageService {
     since: Date,
   ): Promise<{ calls: number; tokens: number }> {
     return this.repo.aggregateDailyUsageByModel(model, since);
+  }
+
+  async dailySeries(days: number): Promise<AiUsageDailySeriesResponse> {
+    const clamped = Math.min(Math.max(Math.round(days) || 28, 7), 90);
+    const start = now()
+      .minus({ days: clamped - 1 })
+      .startOf("day");
+    const rows = await this.repo.dailySeries(start.toJSDate());
+    const byDate = new Map(rows.map((row) => [row.date, row]));
+    const series = Array.from({ length: clamped }, (_, index) => {
+      const date = start.plus({ days: index }).toFormat("yyyy-MM-dd");
+      const existing = byDate.get(date);
+      return existing ?? { date, calls: 0, tokens: 0 };
+    });
+    return { days: series };
+  }
+
+  async dailyTotals(since: Date): Promise<{ calls: number; tokens: number }> {
+    const summary = await this.repo.sumUsage(null, null, since.toISOString(), null);
+    return { calls: summary.totalCalls, tokens: summary.totalTokens };
   }
 
   async usageLogs(query: AiUsageQueryDto): Promise<AiUsageListResponse> {

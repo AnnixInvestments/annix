@@ -46,11 +46,11 @@ export class SeekerInterviewEvent {
   @Prop({ type: Date, required: false })
   cancelledAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const SeekerInterviewEventSchema = SchemaFactory.createForClass(SeekerInterviewEvent);

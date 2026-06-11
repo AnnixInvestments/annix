@@ -38,11 +38,11 @@ export class AnnixOrbitSubmission {
   @Prop({ type: String, required: false })
   notes: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const AnnixOrbitSubmissionSchema = SchemaFactory.createForClass(AnnixOrbitSubmission);

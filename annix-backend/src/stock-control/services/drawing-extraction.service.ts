@@ -223,6 +223,9 @@ const DRAWING_EXTRACTION_OPTIONS = {
   responseFormat: "json" as const,
 };
 
+const DRAWING_CHUNK_PAGE_COUNT = 6;
+const DRAWING_CHUNK_THRESHOLD = 10;
+
 @Injectable()
 export class DrawingExtractionService {
   private readonly logger = new Logger(DrawingExtractionService.name);
@@ -239,6 +242,20 @@ export class DrawingExtractionService {
   async extractFromPdfBuffers(
     pdfBuffers: { buffer: Buffer; filename: string }[],
   ): Promise<DrawingExtractionResult> {
+    if (pdfBuffers.length === 1) {
+      const pdf = pdfBuffers[0];
+      const images = await this.convertPdfToImages(pdf.buffer);
+      if (images.length === 0) {
+        return this.emptyResult();
+      }
+      if (images.length > DRAWING_CHUNK_THRESHOLD) {
+        const aiResult = await this.extractLargePdfByChunks(images, pdf.filename);
+        return this.buildExtractionResult(aiResult);
+      }
+      const aiResult = await this.extractDimensionsWithVision(images);
+      return this.buildExtractionResult(aiResult);
+    }
+
     const contentParts: (TextContent | ImageContent)[] = [];
 
     const pdfContentParts = await pdfBuffers.reduce(
@@ -591,12 +608,132 @@ export class DrawingExtractionService {
       .filter((page) => page.content != null)
       .map((page) => page.content as Buffer);
 
-    if (allImages.length <= 20) {
-      return allImages;
+    return allImages;
+  }
+
+  private async extractLargePdfByChunks(
+    images: Buffer[],
+    filename: string,
+  ): Promise<{
+    drawingType: "pipe" | "tank_chute";
+    dimensions: ExtractedDimension[];
+    tankData: TankExtractionData | null;
+    confidence: number;
+  }> {
+    const chunks = Array.from(
+      { length: Math.ceil(images.length / DRAWING_CHUNK_PAGE_COUNT) },
+      (_, idx) => ({
+        start: idx * DRAWING_CHUNK_PAGE_COUNT,
+        images: images.slice(idx * DRAWING_CHUNK_PAGE_COUNT, (idx + 1) * DRAWING_CHUNK_PAGE_COUNT),
+      }),
+    );
+
+    const results = await chunks.reduce(
+      async (accPromise, chunk) => {
+        const acc = await accPromise;
+        const contentParts: (TextContent | ImageContent)[] = [
+          {
+            type: "text",
+            text: `Pages ${chunk.start + 1}-${chunk.start + chunk.images.length} from ${filename}. Extract every visible BOM row, line item, spool, section, and drawing item on these pages. Do not summarise repeated rows.`,
+          },
+          ...chunk.images.map(
+            (img): ImageContent => ({
+              type: "image",
+              source: {
+                type: "base64",
+                media_type: "image/png",
+                data: img.toString("base64"),
+              },
+            }),
+          ),
+        ];
+        contentParts.push({
+          type: "text",
+          text: "Return JSON only for these pages.",
+        });
+        const messages: ChatMessage[] = [{ role: "user", content: contentParts }];
+        const { content: response } = await this.aiChatService.chat(
+          messages,
+          DRAWING_EXTRACTION_PROMPT,
+          undefined,
+          DRAWING_EXTRACTION_OPTIONS,
+        );
+        return [...acc, this.parseAiResponse(response)];
+      },
+      Promise.resolve(
+        [] as {
+          drawingType: "pipe" | "tank_chute";
+          dimensions: ExtractedDimension[];
+          tankData: TankExtractionData | null;
+          confidence: number;
+        }[],
+      ),
+    );
+
+    return this.mergeChunkResults(results);
+  }
+
+  private mergeChunkResults(
+    results: {
+      drawingType: "pipe" | "tank_chute";
+      dimensions: ExtractedDimension[];
+      tankData: TankExtractionData | null;
+      confidence: number;
+    }[],
+  ): {
+    drawingType: "pipe" | "tank_chute";
+    dimensions: ExtractedDimension[];
+    tankData: TankExtractionData | null;
+    confidence: number;
+  } {
+    const pipeDimensions = results.flatMap((result) => result.dimensions || []);
+    if (pipeDimensions.length > 0) {
+      return {
+        drawingType: "pipe",
+        dimensions: pipeDimensions,
+        tankData: null,
+        confidence: this.averageConfidence(results),
+      };
     }
 
-    this.logger.warn(`PDF has ${allImages.length} pages, capping at 20 (first 10 + last 10)`);
-    return [...allImages.slice(0, 10), ...allImages.slice(-10)];
+    const tankResults = results.filter(
+      (result): result is typeof result & { tankData: TankExtractionData } =>
+        result.drawingType === "tank_chute" && result.tankData !== null,
+    );
+    if (tankResults.length === 0) {
+      return { drawingType: "pipe", dimensions: [], tankData: null, confidence: 0 };
+    }
+
+    const first = tankResults[0].tankData;
+    return {
+      drawingType: "tank_chute",
+      dimensions: [],
+      tankData: {
+        ...first,
+        sections: tankResults.flatMap((result) => result.tankData.sections || []),
+        plateParts: tankResults.flatMap((result) => result.tankData.plateParts || []),
+        liningAreaM2: this.sumNullable(tankResults.map((result) => result.tankData.liningAreaM2)),
+        coatingAreaM2: this.sumNullable(tankResults.map((result) => result.tankData.coatingAreaM2)),
+      },
+      confidence: this.averageConfidence(tankResults),
+    };
+  }
+
+  private averageConfidence(results: { confidence: number }[]): number {
+    if (results.length === 0) {
+      return 0;
+    }
+    return (
+      results.reduce((sum, result) => sum + (Number(result.confidence) || 0), 0) / results.length
+    );
+  }
+
+  private sumNullable(values: Array<number | null>): number | null {
+    const numbers = values.filter((value): value is number => typeof value === "number");
+    if (numbers.length === 0) {
+      return null;
+    }
+    return numbers.reduce((sum, value) => sum + value, 0);
   }
 
   private async extractDimensionsWithVision(images: Buffer[]): Promise<{

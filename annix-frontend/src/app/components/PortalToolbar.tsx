@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 import { useLayout } from "@/app/context/LayoutContext";
 import { corpId, PortalType, portalConfig } from "@/app/lib/corpId";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 import { useBranding } from "@/app/lib/query/hooks";
 import { BrandNavLockup } from "./BrandNavLockup";
 import { BrandNavLogo } from "./BrandNavLogo";
@@ -89,6 +90,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const pathname = usePathname();
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const isTestEnv = useIsTestEnv();
   const menuRef = useRef<HTMLDivElement>(null);
 
   const config = portalConfig[portalType];
@@ -117,8 +119,10 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const masterBrandingData = masterBrandingQuery.data;
   const masterBranding = masterBrandingData ?? null;
   const lightNavbar = !isBrandPortal && resolvedTheme === "light";
-  const investToolbarLight = masterBranding ? masterBranding.navbarColorLight : "#F2F4F7";
-  const investToolbarDark = masterBranding ? masterBranding.navbarColor : colors.background;
+  const masterNavbarLight = masterBranding ? masterBranding.navbarColorLight : null;
+  const masterNavbarDark = masterBranding ? masterBranding.navbarColor : null;
+  const investToolbarLight = masterNavbarLight || "#F2F4F7";
+  const investToolbarDark = masterNavbarDark || colors.background;
   const navBg = brandPrefix
     ? `var(--${brandPrefix}-navbar, ${colors.background})`
     : lightNavbar
@@ -140,9 +144,9 @@ export default function PortalToolbar(props: PortalToolbarProps) {
   const accentColorLight = brandPrefix
     ? `var(--${brandPrefix}-accent-light, ${corpId.colors.accent.orangeLight})`
     : corpId.colors.accent.orangeLight;
-  // Foreground for nav links / names / version. Navy on the light navbar so
-  // it stays legible; the brand accent (orange) on the dark navbar as before.
-  const navForeground = lightNavbar ? "#1a1a40" : accentColor;
+  // Foreground for nav links / names / version: the brand accent (orange) in both
+  // light and dark modes, so the navbar text is consistently on-brand.
+  const navForeground = accentColor;
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -541,30 +545,34 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                       </>
                     )}
 
-                    <div className="border-t border-gray-100"></div>
+                    {!isTestEnv && (
+                      <>
+                        <div className="border-t border-gray-100"></div>
 
-                    <Link
-                      href="/"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      onClick={() => setIsUserMenuOpen(false)}
-                    >
-                      <div className="flex items-center">
-                        <svg
-                          className="w-4 h-4 mr-3"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
+                        <Link
+                          href="/"
+                          className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                          onClick={() => setIsUserMenuOpen(false)}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-                          />
-                        </svg>
-                        Back to Main Site
-                      </div>
-                    </Link>
+                          <div className="flex items-center">
+                            <svg
+                              className="w-4 h-4 mr-3"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
+                              />
+                            </svg>
+                            Back to Main Site
+                          </div>
+                        </Link>
+                      </>
+                    )}
 
                     <button
                       onClick={() => {

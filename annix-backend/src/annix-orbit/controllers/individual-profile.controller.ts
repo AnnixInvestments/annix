@@ -76,6 +76,19 @@ export class IndividualProfileController {
     return this.individualProfileService.acknowledgeDismissWarning(req.user.id);
   }
 
+  @Post("onboarding/complete")
+  completeOnboarding(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.completeOnboarding(req.user.id);
+  }
+
+  @Patch("preferences")
+  updatePreferences(
+    @Request() req: { user: { id: number } },
+    @Body() body: { phoneType?: string | null; appGuideSeen?: boolean; ageGroup?: string | null },
+  ) {
+    return this.individualProfileService.updateSeekerPreferences(req.user.id, body);
+  }
+
   @Post("send-app-link")
   sendAppLink(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.sendAppLink(req.user.id);
@@ -194,6 +207,11 @@ export class IndividualProfileController {
   @Get("ee-attributes")
   eeAttributes(@Request() req: { user: { id: number } }) {
     return this.individualProfileService.eeAttributesForUser(req.user.id);
+  }
+
+  @Get("ee-attributes/suggestion")
+  eeAttributesSuggestion(@Request() req: { user: { id: number } }) {
+    return this.individualProfileService.eeSuggestionForUser(req.user.id);
   }
 
   @Patch("ee-attributes")

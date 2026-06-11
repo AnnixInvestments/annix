@@ -55,14 +55,17 @@ export class StockPurchaseBatch {
   @Prop({ type: Number, required: false })
   createdByStaffId: number;
 
+  @Prop({ type: Number, required: false })
+  reconciledInvoiceId: number;
+
   @Prop({ type: String, required: false })
   notes: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const StockPurchaseBatchSchema = SchemaFactory.createForClass(StockPurchaseBatch);

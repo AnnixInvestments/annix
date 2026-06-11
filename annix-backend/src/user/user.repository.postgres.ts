@@ -97,6 +97,10 @@ export class PostgresUserRepository extends TypeOrmCrudRepository<User> implemen
     return this.repository.findOne({ where: { email: ILike(email) } });
   }
 
+  findOneByEmailAnyScope(email: string): Promise<User | null> {
+    return this.repository.findOne({ where: { email: ILike(email) } });
+  }
+
   findOneByEmailCaseInsensitiveWithRoles(email: string): Promise<User | null> {
     return this.repository.findOne({
       where: { email: ILike(email) },

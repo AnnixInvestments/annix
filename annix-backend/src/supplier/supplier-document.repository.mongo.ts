@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { MongoCrudRepository } from "../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../lib/persistence/nest-populate";
 import {
   SupplierDocument,
   SupplierDocumentType,
@@ -46,7 +47,7 @@ export class MongoSupplierDocumentRepository
   ): Promise<SupplierDocument | null> {
     const document = await this.documents
       .findOne({ _id: id, supplierId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .session(this.session)
       .lean()
       .exec();

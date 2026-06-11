@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../../lib/persistence/nest-populate";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { type CostByJobRow, StockAllocationRepository } from "./stock-allocation.repository";
 
@@ -48,7 +49,7 @@ export class MongoStockAllocationRepository
   ): Promise<StockAllocation[]> {
     const docs = await this.documents
       .find({ jobCardId, companyId })
-      .populate(["stockItem", "stockItem.sourceJobCard"])
+      .populate(nestPopulate(["stockItem", "stockItem.sourceJobCard"]))
       .sort({ createdAt: 1 })
       .lean()
       .exec();
@@ -90,7 +91,7 @@ export class MongoStockAllocationRepository
   ): Promise<StockAllocation | null> {
     const doc = await this.documents
       .findOne({ _id: id, companyId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .lean()
       .exec();
     return this.toDomain(doc);

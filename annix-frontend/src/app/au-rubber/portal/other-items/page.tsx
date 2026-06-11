@@ -22,6 +22,7 @@ import {
   type RubberOtherStockDto,
   type StockLocationDto,
 } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
@@ -44,6 +45,7 @@ const UNIT_OF_MEASURE_OPTIONS: { value: OtherStockUnitOfMeasure; label: string }
 
 export default function OtherItemsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [items, setItems] = useState<RubberOtherStockDto[]>([]);
   const [locations, setLocations] = useState<StockLocationDto[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -282,10 +284,10 @@ export default function OtherItemsPage() {
       const result = await auRubberApiClient.importOtherStock(csvData);
       setImportResult(result);
       if (result.errors.length === 0) {
-        showToast(
-          `Successfully imported: ${result.created} created, ${result.updated} updated`,
-          "success",
-        );
+        alert({
+          message: `Successfully imported: ${result.created} created, ${result.updated} updated`,
+          variant: "success",
+        });
         setShowAddItemModal(false);
         resetItemForm();
         fetchData();
@@ -392,6 +394,7 @@ export default function OtherItemsPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Other Items" }]} />
       <div className="flex items-center justify-between">
         <div>

@@ -77,19 +77,6 @@ function AnnixSentinelIcon() {
   );
 }
 
-function AdminPortalIcon() {
-  return (
-    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M9 12.7498L11.25 14.9998L15 9.74985M12 2.71411C9.8495 4.75073 6.94563 5.99986 3.75 5.99986C3.69922 5.99986 3.64852 5.99955 3.59789 5.99892C3.2099 7.17903 3 8.43995 3 9.74991C3 15.3414 6.82432 20.0397 12 21.3719C17.1757 20.0397 21 15.3414 21 9.74991C21 8.43995 20.7901 7.17903 20.4021 5.99892C20.3515 5.99955 20.3008 5.99986 20.25 5.99986C17.0544 5.99986 14.1505 4.75073 12 2.71411Z"
-      />
-    </svg>
-  );
-}
-
 function CoreIcon() {
   return (
     <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -125,7 +112,7 @@ function MasterBrandLogo() {
 function MasterBrandHero() {
   return (
     <Link href={`/admin/portal/branding/${MASTER_BRAND.code}`} className="group block">
-      <div className="bg-gradient-to-r from-[#323288] to-[#4a4da3] rounded-xl p-6 text-white flex items-center gap-4 hover:shadow-lg transition-all">
+      <div className="bg-gradient-to-r from-[#323288] to-[#4a4da3] rounded-xl p-4 text-white flex items-center gap-4 hover:shadow-lg transition-all">
         <MasterBrandLogo />
         <div className="flex-1 min-w-0">
           <p className="text-xs uppercase tracking-widest text-blue-200 mb-1">Master brand</p>
@@ -140,19 +127,6 @@ function MasterBrandHero() {
   );
 }
 
-function MessagesIcon() {
-  return (
-    <svg className="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={1.5}
-        d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-6.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-6.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155"
-      />
-    </svg>
-  );
-}
-
 interface AppCard {
   href: string;
   title: string;
@@ -163,25 +137,6 @@ interface AppCard {
   /** Stable identifier used to look up the app's "needs attention" count. */
   appCode?: string;
 }
-
-const adminApps: AppCard[] = [
-  {
-    href: "/admin/portal/dashboard",
-    title: "Admin Dashboard",
-    description: "Manage customers, suppliers, RFQs, and system settings.",
-    icon: <AdminPortalIcon />,
-    color: "bg-indigo-100 text-indigo-600",
-    hoverColor: "hover:border-indigo-400 group-hover:bg-indigo-600 group-hover:text-white",
-  },
-  {
-    href: "/admin/portal/global-messages",
-    title: "Global Messages",
-    description: "View and manage messages across all applications.",
-    icon: <MessagesIcon />,
-    color: "bg-purple-100 text-purple-600",
-    hoverColor: "hover:border-purple-400 group-hover:bg-purple-600 group-hover:text-white",
-  },
-];
 
 const platformApps: AppCard[] = [
   {
@@ -240,7 +195,7 @@ function AppCardComponent({ app, badge }: { app: AppCard; badge?: number }) {
   return (
     <Link href={app.href} className="group">
       <div
-        className={`relative bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border-2 border-transparent ${app.hoverColor.split(" ")[0]} hover:shadow-lg transition-all duration-300 h-full`}
+        className={`relative bg-white dark:bg-slate-800 rounded-xl shadow-md p-5 border-2 border-transparent ${app.hoverColor.split(" ")[0]} hover:shadow-lg transition-all duration-300 h-full`}
       >
         {showBadge && (
           <span
@@ -250,15 +205,15 @@ function AppCardComponent({ app, badge }: { app: AppCard; badge?: number }) {
             {badge}
           </span>
         )}
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-5">
           <div
-            className={`flex-shrink-0 w-14 h-14 rounded-xl flex items-center justify-center ${app.color} ${app.hoverColor.split(" ").slice(1).join(" ")} transition-colors`}
+            className={`flex-shrink-0 w-16 h-16 rounded-xl flex items-center justify-center ${app.color} ${app.hoverColor.split(" ").slice(1).join(" ")} transition-colors`}
           >
             {app.icon}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-1">{app.title}</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400">{app.description}</p>
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-1">{app.title}</h3>
+            <p className="text-base text-gray-600 dark:text-gray-400">{app.description}</p>
           </div>
           <svg
             className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 group-hover:translate-x-1 transition-all flex-shrink-0 mt-1"
@@ -286,64 +241,21 @@ export default function GlobalAppsPage() {
     app.appCode ? attentionByApp.get(app.appCode) : undefined;
 
   return (
-    <div className="space-y-8">
-      <div className="bg-gradient-to-r from-[#323288] to-[#4a4da3] rounded-xl p-6 text-white">
-        <h1 className="text-2xl font-bold mb-2">Welcome back, {firstName}</h1>
+    <div className="space-y-3">
+      <div className="bg-gradient-to-r from-[#323288] to-[#4a4da3] rounded-xl p-4 text-white">
+        <h1 className="text-xl font-bold mb-0.5">Welcome back, {firstName}</h1>
         <p className="text-blue-100">
           Access all Annix platform applications from this central hub. Your admin session grants
           you access to all apps without re-authenticating.
         </p>
       </div>
 
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <svg
-            className="w-5 h-5 text-[#323288]"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M9 12.7498L11.25 14.9998L15 9.74985M12 2.71411C9.8495 4.75073 6.94563 5.99986 3.75 5.99986C3.69922 5.99986 3.64852 5.99955 3.59789 5.99892C3.2099 7.17903 3 8.43995 3 9.74991C3 15.3414 6.82432 20.0397 12 21.3719C17.1757 20.0397 21 15.3414 21 9.74991C21 8.43995 20.7901 7.17903 20.4021 5.99892C20.3515 5.99955 20.3008 5.99986 20.25 5.99986C17.0544 5.99986 14.1505 4.75073 12 2.71411Z"
-            />
-          </svg>
-          Admin Tools
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {adminApps.map((app) => (
-            <AppCardComponent key={app.href} app={app} />
-          ))}
-        </div>
-        <div className="mt-4">
-          <MasterBrandHero />
-        </div>
-      </div>
+      <MasterBrandHero />
 
-      <div>
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-          <svg
-            className="w-5 h-5 text-[#323288]"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"
-            />
-          </svg>
-          Platform Applications
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {platformApps.map((app) => (
-            <AppCardComponent key={app.href} app={app} badge={badgeFor(app)} />
-          ))}
-        </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {platformApps.map((app) => (
+          <AppCardComponent key={app.href} app={app} badge={badgeFor(app)} />
+        ))}
       </div>
     </div>
   );

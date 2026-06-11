@@ -40,8 +40,8 @@ export class RemoteAccessRequest {
   @Prop({ type: String, required: false })
   denialReason: string;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 
   @Prop({ type: Number, required: false })
   requestedById: number;

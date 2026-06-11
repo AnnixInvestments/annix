@@ -15,7 +15,11 @@ export function useOrbitSelectSeekerPlan() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (tier: string) => annixOrbitApiClient.selectSeekerPlan(tier),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData<SeekerEntitlements>(
+        annixOrbitKeys.seekerEntitlements.detail(),
+        data,
+      );
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerEntitlements.all });
       queryClient.invalidateQueries({ queryKey: annixOrbitKeys.seekerJobs.all });
     },

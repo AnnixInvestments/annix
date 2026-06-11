@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useToast } from "@/app/components/Toast";
 import { MonthYearPicker } from "@/app/components/ui/MonthYearPicker";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { DateTime } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { AccountsSummaryTable } from "../../../components/accounting/AccountsSummaryTable";
 import { AccountsTable } from "../../../components/accounting/AccountsTable";
 import { Breadcrumb } from "../../../components/Breadcrumb";
@@ -42,7 +42,7 @@ interface AccountData {
 }
 
 export default function AccountsPayablePage() {
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const previousMonth = DateTime.now().minus({ months: 1 });
   const [year, setYear] = useState<number>(previousMonth.year);
   const [month, setMonth] = useState<number>(previousMonth.month);
@@ -57,7 +57,7 @@ export default function AccountsPayablePage() {
       setData(result as unknown as AccountData);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load data";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -76,10 +76,10 @@ export default function AccountsPayablePage() {
     setIsGenerating(true);
     try {
       await auRubberApiClient.accountingGenerate(year, month, "PAYABLE");
-      showToast("PDF generated successfully", "success");
+      alert({ message: "PDF generated successfully", variant: "success" });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to generate PDF";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsGenerating(false);
     }
@@ -88,6 +88,7 @@ export default function AccountsPayablePage() {
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/accounting"]}>
       <div className="space-y-6">
+        {AlertDialog}
         <Breadcrumb
           items={[
             { label: "Accounting", href: "/au-rubber/portal/accounting" },

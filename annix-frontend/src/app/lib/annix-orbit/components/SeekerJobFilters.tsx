@@ -1,12 +1,22 @@
 "use client";
 
-import { useMemo } from "react";
 import { providerLabel } from "../provider-labels";
-import { citiesForProvince, SA_PROVINCES } from "../sa-locations";
+
+export const COUNTRY_LABELS: Record<string, string> = {
+  za: "South Africa",
+  gb: "United Kingdom",
+  remote: "Remote / Global",
+};
+
+export function countryLabel(code: string): string {
+  const label = COUNTRY_LABELS[code];
+  return label ?? code.toUpperCase();
+}
 
 export interface SeekerFilterState {
   search: string;
   provider: string;
+  region: string;
   province: string;
   city: string;
   category: string;
@@ -17,20 +27,53 @@ interface SeekerJobFiltersProps {
   state: SeekerFilterState;
   onChange: (next: SeekerFilterState) => void;
   providers: string[];
-  categories: string[];
+  regions: string[];
+  provinces: string[];
+  cities: string[];
+  categories: Array<{ key: string; label: string }>;
 }
+
+const RESET_STATE: SeekerFilterState = {
+  search: "",
+  provider: "all",
+  region: "",
+  province: "",
+  city: "",
+  category: "",
+  minSalary: "",
+};
 
 export function SeekerJobFilters(props: SeekerJobFiltersProps) {
   const state = props.state;
-  const province = state.province;
-  const cityOptions = useMemo(() => citiesForProvince(province || null), [province]);
+  const cityOptions = props.cities;
+  const showRegion = props.regions.length > 1;
 
   const update = (patch: Partial<SeekerFilterState>) => {
     props.onChange({ ...state, ...patch });
   };
 
+  const filtersActive =
+    state.search !== "" ||
+    state.provider !== "all" ||
+    state.region !== "" ||
+    state.province !== "" ||
+    state.city !== "" ||
+    state.category !== "" ||
+    state.minSalary !== "";
+
   return (
     <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+      {filtersActive && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => props.onChange(RESET_STATE)}
+            className="text-sm font-medium text-orange-600 hover:text-orange-700"
+          >
+            Reset all filters
+          </button>
+        </div>
+      )}
       <input
         type="search"
         aria-label="Search jobs by title, company, or location"
@@ -41,6 +84,21 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
       />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        {showRegion ? (
+          <select
+            aria-label="Filter by country/region"
+            value={state.region}
+            onChange={(e) => update({ region: e.target.value, province: "", city: "" })}
+            className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All countries</option>
+            {props.regions.map((code) => (
+              <option key={code} value={code}>
+                {countryLabel(code)}
+              </option>
+            ))}
+          </select>
+        ) : null}
         <select
           aria-label="Filter by province"
           value={state.province}
@@ -48,7 +106,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
           className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">All provinces</option>
-          {SA_PROVINCES.map((p) => (
+          {props.provinces.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>
@@ -79,8 +137,8 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         >
           <option value="">All categories</option>
           {props.categories.map((c) => (
-            <option key={c} value={c}>
-              {c}
+            <option key={c.key} value={c.key}>
+              {c.label}
             </option>
           ))}
         </select>

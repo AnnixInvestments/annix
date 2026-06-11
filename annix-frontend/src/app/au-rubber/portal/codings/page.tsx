@@ -9,6 +9,7 @@ import { useToast } from "@/app/components/Toast";
 import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient, type RubberSpecificationDto } from "@/app/lib/api/auRubberApi";
 import type { RubberProductCodingDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 import { RequirePermission } from "../../components/RequirePermission";
@@ -118,6 +119,7 @@ function SpecificationsTable({
 
 export default function AuRubberCodingsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [selectedTab, setSelectedTab] = useState<TabType>("COMPOUND");
   const isSansTab = selectedTab === SANS_1198_TAB;
   const selectedType = isSansTab ? null : (selectedTab as CodingType);
@@ -234,7 +236,7 @@ export default function AuRubberCodingsPage() {
       if (selectedType) fetchCodings(selectedType);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to save coding";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -248,7 +250,7 @@ export default function AuRubberCodingsPage() {
       if (selectedType) fetchCodings(selectedType);
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete coding";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     }
   };
 
@@ -629,6 +631,7 @@ export default function AuRubberCodingsPage() {
           onConfirm={() => deleteCodingId && handleDelete(deleteCodingId)}
           onCancel={() => setDeleteCodingId(null)}
         />
+        {AlertDialog}
       </div>
     </RequirePermission>
   );

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitClient } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useOrbitClients, useOrbitDeleteClient } from "@/app/lib/query/hooks";
 import { ClientFormModal } from "./components/ClientFormModal";
@@ -25,6 +26,7 @@ export default function RecruiterClientsPage() {
   const deleteMutation = useOrbitDeleteClient();
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrbitClient | null>(null);
@@ -51,7 +53,7 @@ export default function RecruiterClientsPage() {
       await deleteMutation.mutateAsync(client.id);
       showToast("Client deleted.", "success");
     } catch {
-      showToast("Could not delete the client. Please try again.", "error");
+      alert({ message: "Could not delete the client. Please try again.", variant: "error" });
     }
   };
 
@@ -177,6 +179,7 @@ export default function RecruiterClientsPage() {
 
       {modalOpen ? <ClientFormModal client={editing} onClose={() => setModalOpen(false)} /> : null}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

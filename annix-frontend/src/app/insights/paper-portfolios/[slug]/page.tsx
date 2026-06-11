@@ -10,10 +10,12 @@ import { ApiError } from "@/app/lib/api/apiError";
 import type {
   DecisionDto,
   PaperHolding,
+  PaperPortfolioEvaluation,
   PaperPortfolioSnapshot,
   PaperPortfolioSummary,
   PaperTrade,
 } from "@/app/lib/api/insightsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   usePaperDecisionsToday,
   usePaperHoldings,
@@ -65,6 +67,7 @@ export default function InsightsPaperPortfolioDetailPage() {
   const pauseMutation = usePausePortfolio();
   const resumeMutation = useResumePortfolio();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -157,7 +160,8 @@ export default function InsightsPaperPortfolioDetailPage() {
                       onError: (err) => {
                         const apiMsg = err instanceof ApiError ? err.message : null;
                         const fallback = err instanceof Error ? err.message : "Resume failed.";
-                        showToast(apiMsg ?? fallback, "error");
+                        const message = apiMsg ?? fallback;
+                        alert({ message, variant: "error" });
                       },
                     });
                   } else {
@@ -166,7 +170,8 @@ export default function InsightsPaperPortfolioDetailPage() {
                       onError: (err) => {
                         const apiMsg = err instanceof ApiError ? err.message : null;
                         const fallback = err instanceof Error ? err.message : "Pause failed.";
-                        showToast(apiMsg ?? fallback, "error");
+                        const message = apiMsg ?? fallback;
+                        alert({ message, variant: "error" });
                       },
                     });
                   }
@@ -263,6 +268,7 @@ export default function InsightsPaperPortfolioDetailPage() {
             isLoading={decisionsQuery.isLoading}
             evaluatedAt={todayEvaluatedAt}
             isPaused={portfolio.isPaused}
+            lastExecuted={portfolio.lastEvaluation}
           />
         ) : null}
 
@@ -371,6 +377,7 @@ export default function InsightsPaperPortfolioDetailPage() {
           )}
         </div>
       </main>
+      {AlertDialog}
     </div>
   );
 }
@@ -394,6 +401,7 @@ interface DecisionsTodayCardProps {
   isLoading: boolean;
   evaluatedAt: string | null;
   isPaused: boolean;
+  lastExecuted: PaperPortfolioEvaluation | null;
 }
 
 function DecisionsTodayCard(props: DecisionsTodayCardProps) {
@@ -475,7 +483,43 @@ function DecisionsTodayCard(props: DecisionsTodayCardProps) {
           ) : null}
         </div>
       )}
+      <LastExecutedRun evaluation={props.lastExecuted} />
     </div>
+  );
+}
+
+function LastExecutedRun(props: { evaluation: PaperPortfolioEvaluation | null }) {
+  const evaluation = props.evaluation;
+  if (!evaluation) return null;
+  const rawSkippedReasons = evaluation.skippedReasons;
+  const rawDecisions = evaluation.decisions;
+  const skippedReasons = rawSkippedReasons ?? [];
+  const decisions = rawDecisions ?? [];
+  return (
+    <details className="mt-4 border-t border-slate-200 dark:border-gray-800 pt-3 text-xs text-slate-500 dark:text-gray-500">
+      <summary className="cursor-pointer hover:text-slate-700 dark:hover:text-gray-300">
+        Last executed run ({evaluation.evaluatedAt}) — {decisions.length} decision
+        {decisions.length === 1 ? "" : "s"}, {skippedReasons.length} skip reason
+        {skippedReasons.length === 1 ? "" : "s"}
+      </summary>
+      {decisions.length > 0 ? (
+        <ul className="mt-2 ml-3 list-disc space-y-1">
+          {decisions.map((decision) => (
+            <li key={`${decision.action}-${decision.symbol}`}>
+              {decision.action.toUpperCase()} {decision.qty} {decision.symbol} (~
+              {decision.estimatedTradeValue.toFixed(0)})
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {skippedReasons.length > 0 ? (
+        <ul className="mt-2 ml-3 list-disc space-y-1">
+          {skippedReasons.map((reason) => (
+            <li key={reason}>{reason}</li>
+          ))}
+        </ul>
+      ) : null}
+    </details>
   );
 }
 

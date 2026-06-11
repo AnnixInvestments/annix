@@ -81,8 +81,12 @@ export default function ScanDeliveryNotePage() {
         selectedFile,
         result.data,
       );
+      const deliveryNoteId = Number(deliveryNote.id);
+      if (!Number.isFinite(deliveryNoteId) || deliveryNoteId <= 0) {
+        throw new Error("Delivery note was created but no ID was returned");
+      }
       showToast("Delivery note created successfully", "success");
-      router.push(`/au-rubber/portal/delivery-notes/${deliveryNote.id}`);
+      router.push(`/au-rubber/portal/delivery-notes/${deliveryNoteId}`);
     } catch (err) {
       toastError(showToast, err, "Failed to create delivery note");
     } finally {

@@ -6,9 +6,13 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
+import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../email/email.service";
+import { now } from "../lib/datetime";
+import { PasswordService } from "../shared/auth/password.service";
 import { StockControlRole } from "../stock-control/entities/stock-control-user.entity";
 import { StockControlUserRepository } from "../stock-control/repositories/stock-control-user.repository";
+import { User } from "../user/entities/user.entity";
 import { UserRepository } from "../user/user.repository";
 import { UserSyncService } from "../user-sync/user-sync.service";
 import {
@@ -16,7 +20,7 @@ import {
   UpdateUserAccessDto,
   UserAccessResponseDto,
 } from "./dto/assign-user-access.dto";
-import { InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
+import { InviteAppGrantDto, InviteUserDto, InviteUserResponseDto } from "./dto/invite-user.dto";
 import {
   CreateRoleDto,
   RoleProductsResponseDto,
@@ -64,6 +68,7 @@ export class RbacService {
     private readonly stockControlUserRepo: StockControlUserRepository,
     private readonly userSyncService: UserSyncService,
     private readonly emailService: EmailService,
+    private readonly passwordService: PasswordService,
   ) {}
 
   private invalidateAppCaches(): void {
@@ -187,12 +192,44 @@ export class RbacService {
 
     const stockControlApp = allApps.find((a) => a.code === "stock-control");
 
-    const stockControlUserDtos: UserWithAccessSummaryDto[] = stockControlUsers.map((scUser) => {
+    // A Stock Control person can also have an RBAC `user` record (their main
+    // login). Merge them into that single row — folding in their Stock Control
+    // access if it isn't already shown — so the same person is never listed
+    // twice. Only Stock-Control-only people (no RBAC user) get their own row.
+    const mainUserByEmail = new Map(
+      mainUsers.map((dto) => [dto.email.toLowerCase(), dto] as const),
+    );
+
+    const stockControlOnlyDtos: UserWithAccessSummaryDto[] = [];
+    for (const scUser of stockControlUsers) {
+      const scAccess = stockControlApp
+        ? {
+            appCode: "stock-control",
+            appName: `Stock Control (${scUser.company?.name ?? "Unknown"})`,
+            roleCode: scUser.role,
+            roleName: STOCK_CONTROL_ROLE_NAMES[scUser.role] ?? scUser.role,
+            useCustomPermissions: false,
+            permissionCodes: null,
+            permissionCount: null,
+            expiresAt: null,
+            accessId: -scUser.id,
+            productKeys: null,
+          }
+        : null;
+
+      const existing = mainUserByEmail.get(scUser.email.toLowerCase());
+      if (existing) {
+        const hasStockControl = existing.appAccess.some((a) => a.appCode === "stock-control");
+        if (scAccess && !hasStockControl) {
+          existing.appAccess.push(scAccess);
+        }
+        continue;
+      }
+
       const nameParts = scUser.name.split(" ");
       const firstName = nameParts[0] ?? null;
       const lastName = nameParts.slice(1).join(" ") || null;
-
-      return {
+      stockControlOnlyDtos.push({
         id: -scUser.id,
         email: scUser.email,
         firstName,
@@ -200,26 +237,11 @@ export class RbacService {
         status: scUser.emailVerified ? "active" : "pending",
         lastLoginAt: null,
         createdAt: scUser.createdAt,
-        appAccess: stockControlApp
-          ? [
-              {
-                appCode: "stock-control",
-                appName: `Stock Control (${scUser.company?.name ?? "Unknown"})`,
-                roleCode: scUser.role,
-                roleName: STOCK_CONTROL_ROLE_NAMES[scUser.role] ?? scUser.role,
-                useCustomPermissions: false,
-                permissionCodes: null,
-                permissionCount: null,
-                expiresAt: null,
-                accessId: -scUser.id,
-                productKeys: null,
-              },
-            ]
-          : [],
-      };
-    });
+        appAccess: scAccess ? [scAccess] : [],
+      });
+    }
 
-    return [...mainUsers, ...stockControlUserDtos].sort((a, b) => a.email.localeCompare(b.email));
+    return [...mainUsers, ...stockControlOnlyDtos].sort((a, b) => a.email.localeCompare(b.email));
   }
 
   async searchUsers(
@@ -423,7 +445,22 @@ export class RbacService {
     if (userId === actingUserId) {
       throw new ForbiddenException("You cannot delete your own account.");
     }
-    await this.loadManagedUser(userId);
+
+    // A negative id is a Stock-Control-only person synthesised by the merged
+    // users list (id = -stockControlUserId); they have no RBAC user record, so
+    // delete their Stock Control account directly.
+    if (userId < 0) {
+      const stockControlUserId = -userId;
+      const scUser = await this.stockControlUserRepo.findById(stockControlUserId);
+      if (!scUser) {
+        throw new NotFoundException(`User with ID ${userId} not found`);
+      }
+      await this.stockControlUserRepo.remove(scUser);
+      this.logger.log(`Stock Control user ${stockControlUserId} deleted by ${actingUserId}`);
+      return;
+    }
+
+    const user = await this.loadManagedUser(userId);
     const accesses = await this.accessRepo.findWithApp(userId);
     await Promise.all(
       accesses.map(async (access) => {
@@ -433,27 +470,68 @@ export class RbacService {
       }),
     );
     await this.userRepo.deleteById(userId);
+
+    // The merged user list folds a person's Stock Control account into their
+    // RBAC row, so deleting the RBAC user alone would leave them reappearing as
+    // a stock-control-only row. Remove the matching Stock Control account too.
+    const scUser = await this.stockControlUserRepo.findOneByEmailCaseInsensitive(user.email);
+    if (scUser) {
+      await this.stockControlUserRepo.remove(scUser);
+    }
+
     this.logger.log(
-      `User ${userId} deleted by ${actingUserId} (${accesses.length} grants removed)`,
+      `User ${userId} deleted by ${actingUserId} (${accesses.length} grants removed${
+        scUser ? ", + Stock Control account" : ""
+      })`,
     );
   }
 
   async inviteUser(dto: InviteUserDto, grantedById: number): Promise<InviteUserResponseDto> {
-    const app = await this.appByCode(dto.appCode);
-    if (!app) {
-      throw new NotFoundException(`App '${dto.appCode}' not found`);
+    const grants: InviteAppGrantDto[] =
+      dto.apps && dto.apps.length > 0
+        ? dto.apps
+        : dto.appCode
+          ? [
+              {
+                appCode: dto.appCode,
+                roleCode: dto.roleCode,
+                useCustomPermissions: dto.useCustomPermissions,
+                permissionCodes: dto.permissionCodes,
+                expiresAt: dto.expiresAt,
+              },
+            ]
+          : [];
+
+    if (grants.length === 0) {
+      throw new BadRequestException("Select at least one application to grant access to.");
+    }
+
+    const resolved: { grant: InviteAppGrantDto; app: App }[] = [];
+    for (const grant of grants) {
+      const app = await this.appByCode(grant.appCode);
+      if (!app) {
+        throw new NotFoundException(`App '${grant.appCode}' not found`);
+      }
+      resolved.push({ grant, app });
     }
 
     let user = await this.userRepo.findOneByEmail(dto.email);
     const isNewUser = !user;
+    let inviteToken: string | null = null;
 
     if (!user) {
+      inviteToken = uuidv4();
+      const placeholderHash = await this.passwordService.hashSimple(uuidv4());
       user = await this.userRepo.create({
         email: dto.email,
+        username: dto.email,
         firstName: dto.firstName,
         lastName: dto.lastName,
         status: "invited",
-      });
+        passwordHash: placeholderHash,
+        resetPasswordToken: inviteToken,
+        resetPasswordExpires: now().plus({ days: 7 }).toJSDate(),
+      } as Partial<User>);
 
       this.userSyncService
         .syncUserToPeer({
@@ -466,29 +544,61 @@ export class RbacService {
         .catch((error) => this.logger.error(`Peer sync failed for ${dto.email}: ${error.message}`));
     }
 
-    const existingAccess = await this.accessRepo.findOneWhere({ userId: user.id, appId: app.id });
-    if (existingAccess) {
-      throw new ConflictException(`User '${dto.email}' already has access to '${dto.appCode}'`);
+    const grantedAppNames: string[] = [];
+    const accessIds: number[] = [];
+    for (const { grant, app } of resolved) {
+      const existingAccess = await this.accessRepo.findOneWhere({ userId: user.id, appId: app.id });
+      if (existingAccess) {
+        continue;
+      }
+      const accessDto: AssignUserAccessDto = {
+        appCode: grant.appCode,
+        roleCode: grant.roleCode,
+        useCustomPermissions: grant.useCustomPermissions,
+        permissionCodes: grant.permissionCodes,
+        expiresAt: grant.expiresAt,
+      };
+      const accessResponse = await this.assignAccess(user.id, accessDto, grantedById);
+      accessIds.push(accessResponse.id);
+      grantedAppNames.push(app.name);
     }
 
-    const accessDto: AssignUserAccessDto = {
-      appCode: dto.appCode,
-      roleCode: dto.roleCode,
-      useCustomPermissions: dto.useCustomPermissions,
-      permissionCodes: dto.permissionCodes,
-      expiresAt: dto.expiresAt,
-    };
+    if (grantedAppNames.length === 0) {
+      throw new ConflictException(
+        `User '${dto.email}' already has access to the selected application(s).`,
+      );
+    }
 
-    const accessResponse = await this.assignAccess(user.id, accessDto, grantedById);
+    const appsLabel = grantedAppNames.join(", ");
+    const emailSent =
+      isNewUser && inviteToken
+        ? await this.emailService
+            .sendUserInviteEmail(dto.email, inviteToken, grantedAppNames, dto.firstName ?? null)
+            .catch((error) => {
+              this.logger.error(`Invite email failed for ${dto.email}: ${error.message}`);
+              return false;
+            })
+        : await this.emailService
+            .sendAccessGrantedEmail(dto.email, grantedAppNames)
+            .catch((error) => {
+              this.logger.error(`Access-granted email failed for ${dto.email}: ${error.message}`);
+              return false;
+            });
+
+    const baseMessage = isNewUser
+      ? `User invited and granted access to ${appsLabel}`
+      : `Existing user granted access to ${appsLabel}`;
 
     return {
       userId: user.id,
       email: user.email,
-      accessId: accessResponse.id,
+      accessId: accessIds[0] ?? 0,
       isNewUser,
-      message: isNewUser
-        ? `User invited and granted access to ${app.name}`
-        : `Existing user granted access to ${app.name}`,
+      appNames: grantedAppNames,
+      emailSent,
+      message: emailSent
+        ? baseMessage
+        : `${baseMessage}. Warning: the email could not be sent — check SMTP configuration.`,
     };
   }
 

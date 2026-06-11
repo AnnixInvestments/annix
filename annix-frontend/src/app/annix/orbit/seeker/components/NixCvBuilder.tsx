@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { PhotoCapture } from "@/app/components/PhotoCapture";
-import { useToast } from "@/app/components/Toast";
 import type {
   NixGeneratedCv,
   NixGeneratedCvExperience,
@@ -12,6 +11,8 @@ import type {
 } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
+import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdoptNixCv,
   useGenerateNixCv,
@@ -25,16 +26,21 @@ const NIX_BUILD_ESTIMATED_MS = 18000;
 
 export interface NixCvBuilderProps {
   hasCv: boolean;
+  onStartSearch?: () => void;
+  onBuilt?: () => void;
 }
 
 export function NixCvBuilder(props: NixCvBuilderProps) {
   const hasCv = props.hasCv;
+  const onStartSearch = props.onStartSearch;
+  const onBuilt = props.onBuilt;
   const generateMutation = useGenerateNixCv();
   const generatedQuery = useNixGeneratedCv();
   const profileStatusQuery = useOrbitMyProfileStatus();
   const uploadPhotoMutation = useOrbitUploadProfilePhoto();
   const { showExtraction, hideExtraction } = useExtractionProgress();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
+  const { confirm, ConfirmDialog } = useConfirm();
   const pdfPreview = usePdfPreview();
   const [copied, setCopied] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -51,7 +57,8 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     }
     saveTimerRef.current = setTimeout(() => {
       persistCv(next, {
-        onError: () => showToast("Couldn't save your CV edits — please try again.", "error"),
+        onError: () =>
+          alert({ message: "Couldn't save your CV edits — please try again.", variant: "error" }),
       });
     }, 800);
   };
@@ -66,6 +73,12 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
 
   const isBuilding = generateMutation.isPending;
   const generate = generateMutation.mutate;
+
+  useEffect(() => {
+    if (generateMutation.isSuccess) {
+      onBuilt?.();
+    }
+  }, [generateMutation.isSuccess, onBuilt]);
 
   useEffect(() => {
     metricsApi
@@ -101,9 +114,9 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   const handlePhotoUpload = async (file: File) => {
     try {
       await uploadPhotoMutation.mutateAsync({ file });
-      showToast("Photo added — Nix will include it on your CV.", "success");
+      alert({ message: "Photo added — Nix will include it on your CV.", variant: "success" });
     } catch {
-      showToast("Couldn't upload that photo — please try again.", "error");
+      alert({ message: "Couldn't upload that photo — please try again.", variant: "error" });
     }
   };
 
@@ -186,12 +199,17 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
   };
 
   const mutationError = generateMutation.error;
+  const serverMessage =
+    mutationError instanceof Error && mutationError.message.trim().length > 0
+      ? mutationError.message
+      : null;
   const buildErrorMessage = mutationError
-    ? "Nix could not build your CV right now. Please try again."
+    ? (serverMessage ?? "Nix could not build your CV right now. Please try again.")
     : null;
 
   const handleBuild = () => {
     setCopied(false);
+    setAdopted(false);
     generate();
   };
 
@@ -201,7 +219,10 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       const blob = await annixOrbitApiClient.nixWizardGeneratedCvPdf();
       pdfPreview.open(blob, "Nix-CV.pdf");
     } catch {
-      showToast("We couldn't open your PDF right now. Please try again.", "error");
+      alert({
+        message: "We couldn't open your PDF right now. Please try again.",
+        variant: "error",
+      });
     } finally {
       setDownloading(false);
     }
@@ -218,12 +239,16 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       })
       .catch(() => {
         setCopied(false);
-        showToast("Couldn't copy to clipboard — please select and copy manually.", "error");
+        alert({
+          message: "Couldn't copy to clipboard — please select and copy manually.",
+          variant: "error",
+        });
       });
   };
 
   const adoptMutation = useAdoptNixCv();
   const [adopting, setAdopting] = useState(false);
+  const [adopted, setAdopted] = useState(false);
   const [adoptMessage, setAdoptMessage] = useState<string | null>(null);
 
   const handleUseThisCv = async () => {
@@ -239,32 +264,38 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
     try {
       await adoptMutation.mutateAsync();
       hideExtraction();
+      setAdopted(true);
+      onBuilt?.();
       setAdoptMessage("Saved — Nix is now using this CV. Your job matches will refresh shortly.");
-      showToast("Your CV is saved and Nix is matching you to jobs.", "success");
+      void confirm({
+        title: "CV saved",
+        message: "Nix is now using this CV — your job matches will refresh shortly.",
+        confirmLabel: "Great",
+        hideCancel: true,
+        variant: "info",
+      });
     } catch {
       hideExtraction();
       const message = "Couldn't save your CV right now. Please try again.";
       setAdoptMessage(message);
-      showToast(message, "error");
+      void confirm({
+        title: "Couldn't save your CV",
+        message: "Something went wrong while saving your CV. Please try again in a moment.",
+        confirmLabel: "OK",
+        hideCancel: true,
+        variant: "warning",
+      });
     } finally {
       setAdopting(false);
     }
   };
 
   return (
-    <div
-      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] px-2 py-4 sm:p-6 space-y-4"
-      style={{
-        backgroundImage:
-          "linear-gradient(to bottom right, var(--brand-navbar-50,#f0f0fc), #ffffff)",
-      }}
-    >
+    <div className="bg-[var(--brand-accent,#FF8A00)] rounded-xl border border-[var(--brand-accent-light,#FF9C33)] px-2 py-4 sm:p-6 space-y-4">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="max-w-xl">
-          <h3 className="text-base font-semibold text-[var(--brand-navbar-active,#252560)]">
-            Get Nix to build my CV
-          </h3>
-          <p className="text-sm text-gray-600 mt-1">
+          <h3 className="text-base font-semibold text-[#1a1a40]">Get Nix to build my CV</h3>
+          <p className="text-sm text-[#1a1a40]/80 mt-1">
             Nix takes the genuinely strong parts of your CV, applies the Wizard's suggestions, and
             writes a complete, recruiter-ready CV you can download as a PDF.
           </p>
@@ -273,10 +304,10 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
           type="button"
           onClick={handleBuild}
           disabled={!hasCv || isBuilding}
-          className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+          className="bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)] px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
           title={hasCv ? undefined : "Upload your CV first to use the Nix CV builder"}
         >
-          {isBuilding ? "Nix is building…" : cv ? "Rebuild my CV" : "Get Nix to build my CV"}
+          {isBuilding ? "Nix is building…" : "Click Here to Improve my CV"}
         </button>
       </div>
 
@@ -295,16 +326,14 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
       {cv && !isBuilding && (
         <div className="space-y-4">
           {cv.improvementsApplied.length > 0 && (
-            <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4">
-              <h4 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb] uppercase tracking-wide mb-2">
+            <div className="bg-white rounded-lg border border-gray-200 px-2 py-4">
+              <h4 className="text-sm font-semibold text-gray-800 uppercase tracking-wide mb-2">
                 What Nix changed
               </h4>
               <ul className="space-y-1.5">
                 {cv.improvementsApplied.map((change) => (
                   <li key={change} className="text-sm text-gray-700 flex gap-2">
-                    <span className="text-[var(--brand-navbar-400,#7373c2)] dark:text-[#9ea0e8] flex-shrink-0">
-                      •
-                    </span>
+                    <span className="text-gray-500 flex-shrink-0">•</span>
                     <span>{change}</span>
                   </li>
                 ))}
@@ -351,8 +380,11 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
               type="button"
               onClick={handleUseThisCv}
               disabled={adopting}
-              className="text-white px-5 py-2.5 rounded-lg text-sm font-semibold transition-opacity hover:opacity-90 disabled:opacity-60"
-              style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+              className={`${
+                adopted
+                  ? "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+                  : "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+              } px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors disabled:opacity-60`}
               title="Save this as your CV and have Nix match it to jobs"
             >
               {adopting ? "Saving & matching…" : "Use this CV"}
@@ -368,20 +400,35 @@ export function NixCvBuilder(props: NixCvBuilderProps) {
             <button
               type="button"
               onClick={handleCopy}
-              className="border border-[var(--brand-navbar-200,#c0c0eb)] text-[var(--brand-navbar,#323288)] px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-50,#f0f0fc)] transition-colors"
+              className="border border-gray-200 text-gray-700 px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors"
             >
               {copied ? "Copied!" : "Copy text"}
             </button>
+            {onStartSearch && (
+              <button
+                type="button"
+                onClick={onStartSearch}
+                className={`${
+                  adopted
+                    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+                    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+                } px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors`}
+              >
+                Start job search
+              </button>
+            )}
           </div>
 
           {adoptMessage && (
-            <p className="text-sm text-[var(--brand-navbar-active,#252560)] bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg px-4 py-2">
+            <p className="text-sm text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-4 py-2">
               {adoptMessage}
             </p>
           )}
         </div>
       )}
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
+      {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }
@@ -497,7 +544,7 @@ function NixCvDocument(props: {
 function CvSection(props: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-bold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb] uppercase tracking-wide border-b border-[var(--brand-navbar-100,#e0e0f5)] pb-1">
+      <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide border-b border-gray-200 pb-1">
         {props.title}
       </h3>
       {props.children}
@@ -563,12 +610,12 @@ function CvSkillList(props: {
             }}
             placeholder="New entry"
             autoFocus
-            className="text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-0.5 w-40 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
+            className="text-sm border border-gray-200 rounded px-2 py-0.5 w-40 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <button
             type="button"
             onClick={commit}
-            className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
+            className="text-xs font-medium text-gray-700 hover:text-gray-900"
           >
             Add
           </button>
@@ -584,7 +631,7 @@ function CvSkillList(props: {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
+          className="text-xs font-medium text-gray-700 hover:text-gray-900"
         >
           + Add
         </button>
@@ -598,9 +645,7 @@ function CvList(props: { values: string[] }) {
     <ul className="space-y-1">
       {props.values.map((value) => (
         <li key={value} className="text-sm text-gray-800 flex gap-2">
-          <span className="text-[var(--brand-navbar-400,#7373c2)] dark:text-[#9ea0e8] flex-shrink-0">
-            •
-          </span>
+          <span className="text-gray-500 flex-shrink-0">•</span>
           <span>{value}</span>
         </li>
       ))}
@@ -686,11 +731,7 @@ function CvReferenceList(props: {
           >
             <div>
               <p className="text-sm font-bold text-gray-900">{reference.name}</p>
-              {roleLine && (
-                <p className="text-sm text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8]">
-                  {roleLine}
-                </p>
-              )}
+              {roleLine && <p className="text-sm text-gray-700">{roleLine}</p>}
               {contactLine && <p className="text-xs text-gray-500">{contactLine}</p>}
             </div>
             <button
@@ -706,49 +747,49 @@ function CvReferenceList(props: {
         );
       })}
       {adding ? (
-        <div className="space-y-2 border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg p-3 bg-[var(--brand-navbar-50,#f8f8fd)]">
+        <div className="space-y-2 border border-gray-200 rounded-lg p-3 bg-gray-50">
           <input
             type="text"
             value={name}
             onChange={(event) => setName(event.target.value)}
             placeholder="Name (required)"
             autoFocus
-            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
+            className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="text"
             value={position}
             onChange={(event) => setPosition(event.target.value)}
             placeholder="Position"
-            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
+            className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="text"
             value={company}
             onChange={(event) => setCompany(event.target.value)}
             placeholder="Company"
-            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
+            className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="text"
             value={phone}
             onChange={(event) => setPhone(event.target.value)}
             placeholder="Phone"
-            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
+            className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           <input
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="Email (required)"
-            className="w-full text-sm border border-[var(--brand-navbar-200,#c0c0eb)] rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
+            className="w-full text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-1 focus:ring-[var(--brand-navbar,#323288)]"
           />
           {emailError && <p className="text-xs text-red-600">{emailError}</p>}
           <div className="flex items-center gap-3">
             <button
               type="button"
               onClick={commit}
-              className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+              className="text-xs font-medium text-gray-700 hover:text-gray-900"
             >
               Add reference
             </button>
@@ -765,7 +806,7 @@ function CvReferenceList(props: {
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb]"
+          className="text-xs font-medium text-gray-700 hover:text-gray-900"
         >
           + Add reference
         </button>
@@ -782,9 +823,7 @@ function CvExperienceItem(props: { experience: NixGeneratedCvExperience }) {
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <p className="text-sm font-bold text-gray-900">{exp.role}</p>
-          <p className="text-sm font-semibold text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8]">
-            {employerLine}
-          </p>
+          <p className="text-sm font-semibold text-gray-700">{employerLine}</p>
         </div>
         <span className="text-xs text-gray-500 whitespace-nowrap">{exp.period}</span>
       </div>

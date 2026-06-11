@@ -24,7 +24,11 @@ import {
   StockControlRoles,
 } from "../guards/stock-control-role.guard";
 import { CoatingAnalysisService } from "../services/coating-analysis.service";
-import { JobCardImportRow, JobCardImportService } from "../services/job-card-import.service";
+import {
+  JobCardImportCorrection,
+  JobCardImportRow,
+  JobCardImportService,
+} from "../services/job-card-import.service";
 import { JobCardImportJobService } from "../services/job-card-import-job.service";
 import { JobCardWorkflowService } from "../services/job-card-workflow.service";
 import { M2CalculationService } from "../services/m2-calculation.service";
@@ -179,11 +183,13 @@ export class JobCardImportController {
     @Body()
     body: {
       rows: JobCardImportRow[];
+      corrections?: JobCardImportCorrection[];
       sourceFilePath?: string | null;
       sourceFileName?: string | null;
     },
     @Req() req: any,
   ) {
+    await this.jobCardImportService.recordImportCorrections(req.user.companyId, body.corrections);
     const result = await this.jobCardImportService.importJobCards(
       req.user.companyId,
       body.rows,

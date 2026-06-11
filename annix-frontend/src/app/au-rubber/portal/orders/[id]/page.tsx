@@ -36,6 +36,7 @@ import type {
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
 import { formatDateTimeZA, formatDateZA, fromMillis, nowMillis } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { OrderConfirmationModal } from "../components/OrderConfirmationModal";
 
 function CalloffStatusUpdate({
@@ -142,6 +143,7 @@ export default function AuRubberOrderDetailPage() {
   const orderId = Number(params.id);
   const { showToast } = useToast();
   const { confirm, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
 
   const [order, setOrder] = useState<RubberOrderDto | null>(null);
   const [products, setProducts] = useState<RubberProductDto[]>([]);
@@ -350,7 +352,7 @@ export default function AuRubberOrderDetailPage() {
       fetchOrder();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to update order";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -386,8 +388,10 @@ export default function AuRubberOrderDetailPage() {
 
   const computeKgPerRoll = (item: EditableItem): number | null => {
     const product = productById(item.productId);
-    if (!product?.specificGravity || !item.thickness || !item.width || !item.length) return null;
-    return item.thickness * (item.width / 1000) * item.length * product.specificGravity;
+    const specificGravity = product?.specificGravity;
+    const { thickness, width, length } = item;
+    if (!specificGravity || !thickness || !width || !length) return null;
+    return thickness * (width / 1000) * length * specificGravity;
   };
 
   const updateItem = (index: number, updates: Partial<EditableItem>) => {
@@ -570,6 +574,7 @@ export default function AuRubberOrderDetailPage() {
   return (
     <div className="space-y-6">
       {ConfirmDialog}
+      {AlertDialog}
       <Breadcrumb
         items={[
           { label: "Orders", href: "/au-rubber/portal/orders" },

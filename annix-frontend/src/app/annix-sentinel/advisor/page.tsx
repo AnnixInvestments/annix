@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAddAdvisorClient,
   useAdvisorDashboard,
@@ -165,6 +166,7 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
   const [error, setError] = useState<string | null>(null);
   const addClient = useAddAdvisorClient();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   if (!open) return null;
 
@@ -184,7 +186,7 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
       onError: (err) => {
         const message = err instanceof Error ? err.message : "Failed to add client";
         setError(message);
-        showToast(message, "error");
+        alert({ message, variant: "error" });
       },
     });
   }
@@ -231,6 +233,7 @@ function AddClientModal({ open, onClose }: { open: boolean; onClose: () => void 
           </button>
         </div>
       </div>
+      {AlertDialog}
     </div>
   );
 }
@@ -256,13 +259,14 @@ export default function AdvisorPage() {
   const { data, isLoading, error } = useAdvisorDashboard();
   const removeClient = useRemoveAdvisorClient();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [sortKey, setSortKey] = useState<SortKey>("score_desc");
   const [modalOpen, setModalOpen] = useState(false);
 
   function handleRemoveClient(companyId: number) {
     removeClient.mutate(companyId, {
       onSuccess: () => showToast("Client removed successfully", "success"),
-      onError: () => showToast("Failed to remove client", "error"),
+      onError: () => alert({ message: "Failed to remove client", variant: "error" }),
     });
   }
 
@@ -366,6 +370,7 @@ export default function AdvisorPage() {
       )}
 
       <AddClientModal open={modalOpen} onClose={() => setModalOpen(false)} />
+      {AlertDialog}
     </div>
   );
 }

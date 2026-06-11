@@ -33,9 +33,49 @@ export function useOrbitAcknowledgeDismissWarning() {
   });
 }
 
+export function useOrbitCompleteOnboarding() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => annixOrbitApiClient.completeOnboarding(),
+    onSuccess: () => {
+      queryClient.setQueryData<IndividualProfileStatus>(
+        annixOrbitKeys.individualProfile.status(),
+        (old) => (old ? { ...old, onboardingComplete: true } : old),
+      );
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
+  });
+}
+
 export function useOrbitSendAppLink() {
   return useMutation({
     mutationFn: () => annixOrbitApiClient.sendAppLink(),
+  });
+}
+
+export function useOrbitUpdateSeekerPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: {
+      phoneType?: string | null;
+      appGuideSeen?: boolean;
+      ageGroup?: string | null;
+    }) => annixOrbitApiClient.updateSeekerPreferences(body),
+    onSuccess: (data) => {
+      queryClient.setQueryData<IndividualProfileStatus>(
+        annixOrbitKeys.individualProfile.status(),
+        (old) =>
+          old
+            ? {
+                ...old,
+                phoneType: data.phoneType,
+                appGuideSeen: data.appGuideSeen,
+                ageGroup: data.ageGroup,
+              }
+            : old,
+      );
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
   });
 }
 

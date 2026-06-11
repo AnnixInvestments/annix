@@ -31,10 +31,7 @@ export class ExtractionMetric {
   @Prop({ type: String, default: null })
   failureReason: string | null;
 
-  // Date (not String): timestamps:true writes a real Date and the repository
-  // filters / groups on it as a Date ($gte, $dateToString), so the declared type
-  // must match the stored type.
-  @Prop({ type: Date })
+  @Prop({ type: Date, required: false })
   createdAt: Date;
 }
 

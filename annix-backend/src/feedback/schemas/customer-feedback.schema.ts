@@ -79,7 +79,7 @@ export class CustomerFeedback {
   @Prop({ type: Object, required: false })
   captureContext: Record<string, unknown>;
 
-  @Prop({ type: String, required: true })
+  @Prop({ type: String, required: true, default: "submitted" })
   status: string;
 
   @Prop({ type: String, required: false })
@@ -91,8 +91,14 @@ export class CustomerFeedback {
   @Prop({ type: Date, required: false })
   verifiedAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: String, required: false, default: null })
+  severity: string | null;
+
+  @Prop({ type: String, required: false, default: null })
+  testingSeverityOverride: string | null;
+
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const CustomerFeedbackSchema = SchemaFactory.createForClass(CustomerFeedback);

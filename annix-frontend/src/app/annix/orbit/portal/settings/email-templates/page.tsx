@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { CvEmailTemplate, CvEmailTemplateKind } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useOrbitEmailTemplates,
   useOrbitNixDraftEmailTemplate,
@@ -89,6 +90,7 @@ interface TemplateEditorProps {
 
 function TemplateEditor({ template }: TemplateEditorProps) {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const updateMutation = useOrbitUpdateEmailTemplate();
   const resetMutation = useOrbitResetEmailTemplate();
   const nixDraftMutation = useOrbitNixDraftEmailTemplate();
@@ -109,7 +111,7 @@ function TemplateEditor({ template }: TemplateEditorProps) {
       { kind: template.kind, subject, bodyHtml, bodyText },
       {
         onSuccess: () => showToast("Template saved.", "success"),
-        onError: () => showToast("Couldn't save template. Try again.", "error"),
+        onError: () => alert({ message: "Couldn't save template. Try again.", variant: "error" }),
       },
     );
   };
@@ -122,7 +124,7 @@ function TemplateEditor({ template }: TemplateEditorProps) {
         setBodyText(data.bodyText);
         showToast("Reset to default.", "success");
       },
-      onError: () => showToast("Couldn't reset template. Try again.", "error"),
+      onError: () => alert({ message: "Couldn't reset template. Try again.", variant: "error" }),
     });
   };
 
@@ -136,7 +138,8 @@ function TemplateEditor({ template }: TemplateEditorProps) {
           setBodyText(data.bodyText);
           showToast("Nix drafted a new version. Review and save when ready.", "success");
         },
-        onError: () => showToast("Nix couldn't draft right now. Try again.", "error"),
+        onError: () =>
+          alert({ message: "Nix couldn't draft right now. Try again.", variant: "error" }),
       },
     );
   };
@@ -145,6 +148,7 @@ function TemplateEditor({ template }: TemplateEditorProps) {
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {AlertDialog}
       <div className="bg-white rounded-xl p-6 space-y-4">
         <div>
           <h2 className="text-lg font-bold text-[#1a1a40]">{template.label}</h2>

@@ -12,6 +12,7 @@ import { AdminActionModal } from "@/app/components/modals/AdminActionModal";
 import { useToast } from "@/app/components/Toast";
 import { adminApiClient, DocumentReviewData } from "@/app/lib/api/adminApi";
 import { formatDateTimeZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminSupplierDetail } from "@/app/lib/query/hooks";
 
 type TabType = "overview" | "onboarding" | "documents";
@@ -20,6 +21,7 @@ export default function SupplierDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const supplierId = parseInt(params?.id as string, 10);
 
   const supplierQuery = useAdminSupplierDetail(supplierId);
@@ -48,7 +50,7 @@ export default function SupplierDetailPage() {
       showToast("Supplier account suspended", "success");
       supplierQuery.refetch();
     } catch (err: any) {
-      showToast(`Failed to suspend supplier: ${err.message}`, "error");
+      alert({ message: `Failed to suspend supplier: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -66,7 +68,7 @@ export default function SupplierDetailPage() {
       showToast("Supplier account reactivated", "success");
       supplierQuery.refetch();
     } catch (err: any) {
-      showToast(`Failed to reactivate supplier: ${err.message}`, "error");
+      alert({ message: `Failed to reactivate supplier: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -80,7 +82,7 @@ export default function SupplierDetailPage() {
       showToast("Supplier onboarding approved", "success");
       supplierQuery.refetch();
     } catch (err: any) {
-      showToast(`Failed to approve onboarding: ${err.message}`, "error");
+      alert({ message: `Failed to approve onboarding: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -101,7 +103,7 @@ export default function SupplierDetailPage() {
       showToast("Supplier onboarding rejected", "success");
       supplierQuery.refetch();
     } catch (err: any) {
-      showToast(`Failed to reject onboarding: ${err.message}`, "error");
+      alert({ message: `Failed to reject onboarding: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -126,7 +128,7 @@ export default function SupplierDetailPage() {
         isLoading: false,
       });
     } catch (err: any) {
-      showToast(`Failed to load document: ${err.message}`, "error");
+      alert({ message: `Failed to load document: ${err.message}`, variant: "error" });
       setPreviewState(initialPreviewState);
     }
   };
@@ -139,7 +141,7 @@ export default function SupplierDetailPage() {
       const data = await adminApiClient.getSupplierDocumentReviewData(supplierId, doc.id);
       setReviewData(data);
     } catch (err: any) {
-      showToast(`Failed to load document review data: ${err.message}`, "error");
+      alert({ message: `Failed to load document review data: ${err.message}`, variant: "error" });
       setReviewModalOpen(false);
     } finally {
       setReviewLoading(false);
@@ -160,7 +162,7 @@ export default function SupplierDetailPage() {
       setReviewModalOpen(false);
       supplierQuery.refetch();
     } catch (err: any) {
-      showToast(`Failed to approve document: ${err.message}`, "error");
+      alert({ message: `Failed to approve document: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +182,7 @@ export default function SupplierDetailPage() {
       setReviewModalOpen(false);
       supplierQuery.refetch();
     } catch (err: any) {
-      showToast(`Failed to reject document: ${err.message}`, "error");
+      alert({ message: `Failed to reject document: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -204,10 +206,10 @@ export default function SupplierDetailPage() {
         supplierQuery.refetch();
       } else {
         const errorMsg = result.errorMessage;
-        showToast(errorMsg ? errorMsg : "Re-verification failed", "error");
+        alert({ message: errorMsg ? errorMsg : "Re-verification failed", variant: "error" });
       }
     } catch (err: any) {
-      showToast(`Failed to re-verify document: ${err.message}`, "error");
+      alert({ message: `Failed to re-verify document: ${err.message}`, variant: "error" });
     } finally {
       setIsSubmitting(false);
     }
@@ -785,6 +787,7 @@ export default function SupplierDetailPage() {
         }
         entityType="supplier"
       />
+      {AlertDialog}
     </div>
   );
 }

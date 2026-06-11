@@ -43,11 +43,11 @@ export class HardnessTestResult {
   @Prop({ type: Number, required: false })
   rfqItemId: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const HardnessTestResultSchema = SchemaFactory.createForClass(HardnessTestResult);

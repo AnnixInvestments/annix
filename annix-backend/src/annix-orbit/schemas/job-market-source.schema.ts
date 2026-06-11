@@ -52,6 +52,9 @@ export class JobMarketSource {
   @Prop({ type: Date, required: false })
   lastHealthAlertAt: Date;
 
+  @Prop({ type: String, required: false, default: null })
+  lastIngestionError: string | null;
+
   @Prop({ type: Number, required: true, default: 6 })
   ingestionIntervalHours: number;
 
@@ -61,11 +64,11 @@ export class JobMarketSource {
   @Prop({ type: Number, required: false, default: null })
   companyId: number | null;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const JobMarketSourceSchema = SchemaFactory.createForClass(JobMarketSource);

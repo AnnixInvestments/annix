@@ -26,7 +26,7 @@ export default function HowToIndexClient(props: SeekerHowToIndexClientProps) {
 
   if (isLoading) {
     return (
-      <div className="p-12 text-center text-gray-500" role="status">
+      <div className="p-12 text-center text-white/60" role="status">
         Loading guides…
       </div>
     );
@@ -41,6 +41,7 @@ export default function HowToIndexClient(props: SeekerHowToIndexClientProps) {
       basePath="/annix/orbit/seeker/how-to"
       recentKey="annix-orbit-seeker-how-to-recent"
       subheading="Step-by-step guides for job seekers and FuturePath learners."
+      onDarkSurface
     />
   );
 }

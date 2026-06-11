@@ -1,4 +1,5 @@
 import { Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { now } from "../../lib/datetime";
 import {
   type AllocationRules,
   type ExecutorStrategy,
@@ -32,6 +33,7 @@ export interface PaperPortfolioSummary {
   valueSparkline: number[];
   maxDrawdownPercent: number;
   volatilityScore: number;
+  lastEvaluation: Record<string, unknown> | null;
 }
 
 export interface PaperHoldingDto {
@@ -203,9 +205,11 @@ export class PaperPortfolioService {
     const updated: string[] = [];
     for (const portfolio of portfolios) {
       try {
-        await this.addMonthlyContribution(portfolio);
-        credited += Number(portfolio.monthlyContribution);
-        updated.push(portfolio.slug);
+        const wasCredited = await this.addMonthlyContribution(portfolio);
+        if (wasCredited) {
+          credited += Number(portfolio.monthlyContribution);
+          updated.push(portfolio.slug);
+        }
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         this.logger.warn(`Monthly contribution failed for ${portfolio.slug}: ${message}`);
@@ -214,9 +218,18 @@ export class PaperPortfolioService {
     return { credited, portfolios: updated };
   }
 
-  async addMonthlyContribution(portfolio: PaperPortfolio): Promise<void> {
+  async addMonthlyContribution(portfolio: PaperPortfolio): Promise<boolean> {
     const amount = Number(portfolio.monthlyContribution);
-    if (amount <= 0) return;
+    if (amount <= 0) return false;
+
+    const monthStart = now().startOf("month").toJSDate();
+    const alreadyCredited = await this.tradeRepo.existsContributionSince(portfolio.id, monthStart);
+    if (alreadyCredited) {
+      this.logger.warn(
+        `Skipping monthly contribution for ${portfolio.slug}: already credited this month.`,
+      );
+      return false;
+    }
 
     const newCash = Number(portfolio.currentCashBalance) + amount;
     await this.portfolioRepo.updateById(portfolio.id, {
@@ -241,6 +254,7 @@ export class PaperPortfolioService {
       signalSnapshot: null,
       relatedNewsIds: null,
     });
+    return true;
   }
 
   private async summariseInternal(portfolio: PaperPortfolio): Promise<PaperPortfolioSummary> {
@@ -275,6 +289,7 @@ export class PaperPortfolioService {
       valueSparkline,
       maxDrawdownPercent,
       volatilityScore,
+      lastEvaluation: portfolio.lastEvaluationJson ?? null,
     };
   }
 }

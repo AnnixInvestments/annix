@@ -15,6 +15,7 @@ import { usePersistedState } from "@/app/hooks/usePersistedState";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberProductDto } from "@/app/lib/api/rubberPortalApi";
 import { now } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import { useAuRubberCodings, useAuRubberProducts } from "@/app/lib/query/hooks";
 import { Breadcrumb } from "../../components/Breadcrumb";
@@ -91,6 +92,7 @@ const exportProductsToCSV = (products: RubberProductDto[]) => {
 
 export default function AuRubberProductsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const scrollSentinelRef = useScrollRestoration("au-rubber:products");
 
   const productsQuery = useAuRubberProducts();
@@ -198,7 +200,10 @@ export default function AuRubberProductsPage() {
       setSelectedProducts(new Set());
       productsQuery.refetch();
     } else if (failCount > 0) {
-      showToast(`Failed to delete ${failCount} product${failCount > 1 ? "s" : ""}`, "error");
+      alert({
+        message: `Failed to delete ${failCount} product${failCount > 1 ? "s" : ""}`,
+        variant: "error",
+      });
     }
   };
 
@@ -240,7 +245,7 @@ export default function AuRubberProductsPage() {
       productsQuery.refetch();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete product";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     }
   };
 
@@ -271,6 +276,7 @@ export default function AuRubberProductsPage() {
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/products"]}>
       <div ref={scrollSentinelRef} className="space-y-6">
+        {AlertDialog}
         <Breadcrumb items={[{ label: "Products" }]} />
         <div className="flex items-center justify-between">
           <div>

@@ -71,6 +71,21 @@ export class DeliveriesController {
     });
   }
 
+  @StockControlRoles("accounts", "manager", "admin")
+  @Patch(":id")
+  @ApiOperation({ summary: "Update delivery note details (delivery number)" })
+  async update(
+    @Req() req: any,
+    @Param("id") id: number,
+    @Body() body: { deliveryNumber?: string },
+  ) {
+    return this.deliveryService.updateDeliveryNumber(
+      req.user.companyId,
+      id,
+      body.deliveryNumber ?? "",
+    );
+  }
+
   @StockControlRoles("manager", "admin")
   @PermissionKey("deliveries.delete")
   @Delete(":id")

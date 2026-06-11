@@ -52,8 +52,8 @@ export class StructuralSteelSection {
   @Prop({ type: Boolean, required: true })
   isActive: boolean;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
   @Prop({ type: Number, required: false })
   steelTypeId: number;

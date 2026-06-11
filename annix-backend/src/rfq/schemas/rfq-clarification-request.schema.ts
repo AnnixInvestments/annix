@@ -40,8 +40,8 @@ export class RfqClarificationRequest {
   @Prop({ type: Date, required: false })
   respondedAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const RfqClarificationRequestSchema = SchemaFactory.createForClass(RfqClarificationRequest);

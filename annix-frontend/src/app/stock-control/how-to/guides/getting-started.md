@@ -8,7 +8,7 @@ tags: [basics, onboarding]
 lastUpdated: 2026-04-11
 summary: Orientation to the portal layout, navigation, and where to find your daily tools.
 readingMinutes: 3
-relatedPaths: [annix-frontend/src/app/stock-control/portal, annix-frontend/src/app/stock-control/config/navItems.tsx]
+relatedPaths: [annix-frontend/src/app/stock-control/config/navItems.tsx, annix-frontend/src/app/stock-control/portal/layout.tsx]
 ---
 
 ## Welcome

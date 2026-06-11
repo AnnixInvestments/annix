@@ -31,8 +31,8 @@ export class IssuanceItemCoatTracking {
   @Prop({ type: Number, required: true })
   quantityIssued: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const IssuanceItemCoatTrackingSchema =

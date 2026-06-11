@@ -4,10 +4,12 @@ import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useRef, useState } from "react";
+import { BackToHubLink } from "@/app/annix/orbit/components/BackToHubLink";
 import { PasskeyLoginButton } from "@/app/components/PasskeyLoginButton";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitTokenStore } from "@/app/lib/api/portalTokenStores";
+import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 import { redirectAfterPasskeyLogin, storePasskeyJwt } from "@/app/lib/passkey";
 
 function postLoginPath(userType: string | undefined, returnUrl: string | null): string {
@@ -52,6 +54,10 @@ function AnnixOrbitLoginContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [needsSignup, setNeedsSignup] = useState(false);
+  const [phoneType, setPhoneType] = useState<"apple" | "android" | null>(null);
+  const isJobSeeker = accountType === "individual";
+  const isTestEnv = useIsTestEnv();
 
   useEffect(() => {
     if (prefilledEmail) {
@@ -66,6 +72,7 @@ function AnnixOrbitLoginContent() {
     const submitEmail = emailInput ? emailInput.value : email;
     const submitPassword = passwordInput ? passwordInput.value : "";
     setError(null);
+    setNeedsSignup(false);
 
     try {
       const profile = await login(submitEmail, submitPassword, rememberMe, accountType);
@@ -75,11 +82,30 @@ function AnnixOrbitLoginContent() {
         setError(mismatch);
         return;
       }
+      if (isJobSeeker && phoneType) {
+        annixOrbitApiClient.updateSeekerPreferences({ phoneType }).catch(() => {});
+      }
       router.push(postLoginPath(profile.userType, returnUrl));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const message = err instanceof Error ? err.message : "Login failed";
+      if (/no annix orbit account|please sign up/i.test(message)) {
+        setNeedsSignup(true);
+      } else {
+        setError(message);
+      }
     }
   };
+
+  const signupLabel =
+    accountType === "individual"
+      ? "Sign up as a job seeker"
+      : accountType === "company"
+        ? "Sign up as a company"
+        : accountType === "recruiter"
+          ? "Sign up as a recruitment agency"
+          : accountType === "student"
+            ? "Sign up as a student"
+            : "Create an account";
 
   const registerHref =
     accountType === "individual"
@@ -95,6 +121,7 @@ function AnnixOrbitLoginContent() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
+        <BackToHubLink />
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <p className="text-gray-600">
@@ -118,11 +145,26 @@ function AnnixOrbitLoginContent() {
             method="post"
             action="#"
           >
-            {error && (
+            {needsSignup ? (
+              <div className="bg-[var(--brand-navbar-50,#f0f0fc)] border border-[var(--brand-navbar-200,#c0c0eb)] rounded-lg px-4 py-4">
+                <p className="text-sm font-semibold text-gray-900">
+                  You don't have an account with us yet
+                </p>
+                <p className="text-sm text-gray-600 mt-1">
+                  No problem — signing up only takes a minute and we'll get you set up.
+                </p>
+                <Link
+                  href={registerHref}
+                  className="mt-3 inline-flex w-full items-center justify-center bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] px-4 py-2.5 rounded-lg text-sm font-semibold hover:bg-[var(--brand-accent-light,#FF9C33)] transition-colors"
+                >
+                  {signupLabel}
+                </Link>
+              </div>
+            ) : error ? (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
                 {error}
               </div>
-            )}
+            ) : null}
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
@@ -187,6 +229,41 @@ function AnnixOrbitLoginContent() {
               </Link>
             </div>
 
+            {isJobSeeker && (
+              <div>
+                <span className="block text-sm font-medium text-gray-700 mb-2">
+                  What phone do you use?
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPhoneType("apple")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                      phoneType === "apple"
+                        ? "border-[#323288] bg-[#f0f0fc] text-[#323288]"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    iPhone (Apple)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPhoneType("android")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                      phoneType === "android"
+                        ? "border-[#323288] bg-[#f0f0fc] text-[#323288]"
+                        : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                    }`}
+                  >
+                    Android
+                  </button>
+                </div>
+                <p className="mt-1 text-xs text-gray-400">
+                  Helps us show you the right "add to home screen" guide.
+                </p>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -225,21 +302,28 @@ function AnnixOrbitLoginContent() {
             </div>
           </div>
 
-          <div className="mt-6 text-center">
-            <p className="text-gray-600">
-              Do not have an account?{" "}
-              <Link href={registerHref} className="text-[#323288] hover:text-[#252560] font-medium">
-                Register
-              </Link>
-            </p>
-          </div>
+          {!isTestEnv && (
+            <div className="mt-6 text-center">
+              <p className="text-gray-600">
+                Do not have an account?{" "}
+                <Link
+                  href={registerHref}
+                  className="text-[#323288] hover:text-[#252560] font-medium"
+                >
+                  Register
+                </Link>
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="text-center mt-6 space-x-4">
-          <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
-            Choose a different account type
-          </Link>
-        </div>
+        {!isTestEnv && (
+          <div className="text-center mt-6 space-x-4">
+            <Link href="/annix/orbit" className="text-[#c0c0eb] hover:text-white text-sm">
+              Choose a different account type
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

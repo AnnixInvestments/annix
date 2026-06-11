@@ -2,9 +2,9 @@
 
 import React, { useMemo, useState } from "react";
 import { PasskeyManagementSection } from "@/app/components/PasskeyManagementSection";
-import { useToast } from "@/app/components/Toast";
 import { adminTokenStore } from "@/app/lib/api/portalTokenStores";
 import { PRODUCTS_AND_SERVICES, PROJECT_TYPES } from "@/app/lib/config/productsServices";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useFeatureFlags, useToggleFeatureFlag } from "@/app/lib/query/hooks";
 
 type CategoryConfig = {
@@ -293,7 +293,7 @@ function RfqFlagGrid({
 }
 
 export default function SettingsPage() {
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const flagsQuery = useFeatureFlags();
   const toggleMutation = useToggleFeatureFlag();
   const [activeTab, setActiveTab] = useState<string>("customer");
@@ -324,7 +324,7 @@ export default function SettingsPage() {
       {
         onError: (err) => {
           const message = err instanceof Error ? err.message : "Failed to update flag";
-          showToast(message, "error");
+          alert({ message, variant: "error" });
         },
       },
     );
@@ -484,6 +484,7 @@ export default function SettingsPage() {
           })()}
         </div>
       )}
+      {AlertDialog}
     </div>
   );
 }

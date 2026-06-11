@@ -1,5 +1,6 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { isArray, isString } from "es-toolkit/compat";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -10,6 +11,7 @@ import {
   eeFormStateFromAttributes,
   eePurposesFromState,
 } from "@/app/annix/orbit/config/ee-options";
+import { annixOrbitApiClient, type EePopulationGroupKey } from "@/app/lib/api/annixOrbitApi";
 import { BrandedLoader } from "@/app/lib/branding/components/BrandedLoader";
 import { fromISO } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -34,7 +36,8 @@ function serverMessage(error: unknown, fallback: string): string {
   }
 }
 
-export function EeDisclosureManager() {
+export function EeDisclosureManager(props: { onUpdated?: () => void }) {
+  const onUpdated = props.onUpdated;
   const { data, isLoading, isError } = useMyEeAttributes();
   const { confirm, ConfirmDialog } = useConfirm();
   const updateMutation = useUpdateMyEeAttributes();
@@ -42,14 +45,33 @@ export function EeDisclosureManager() {
 
   const [form, setForm] = useState<EeDisclosureFormState>(DEFAULT_EE_FORM_STATE);
   const [purposesError, setPurposesError] = useState(false);
+  const [prefilledFromEarlyAccess, setPrefilledFromEarlyAccess] = useState(false);
+
+  const suggestionQuery = useQuery({
+    queryKey: ["orbit-ee-suggestion"],
+    queryFn: () => annixOrbitApiClient.eeAttributesSuggestion(),
+  });
 
   const hydratedRef = useRef(false);
   useEffect(() => {
     if (hydratedRef.current) return;
-    if (!data) return;
-    hydratedRef.current = true;
-    setForm(eeFormStateFromAttributes(data));
-  }, [data]);
+    if (isLoading) return;
+    if (data) {
+      hydratedRef.current = true;
+      setForm(eeFormStateFromAttributes(data));
+      return;
+    }
+    const suggestion = suggestionQuery.data;
+    const suggestedPopulationGroup = suggestion ? suggestion.populationGroup : null;
+    if (suggestedPopulationGroup) {
+      hydratedRef.current = true;
+      setPrefilledFromEarlyAccess(true);
+      setForm((prev) => ({
+        ...prev,
+        populationGroup: suggestedPopulationGroup as EePopulationGroupKey,
+      }));
+    }
+  }, [data, isLoading, suggestionQuery.data]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,6 +106,7 @@ export function EeDisclosureManager() {
         hideCancel: true,
         variant: "info",
       });
+      onUpdated?.();
     } catch (err) {
       await confirm({
         title: "Couldn't update disclosure",
@@ -185,6 +208,12 @@ export function EeDisclosureManager() {
         onSubmit={onSubmit}
         className="space-y-6 bg-white rounded-lg border border-gray-200 p-4"
       >
+        {prefilledFromEarlyAccess ? (
+          <p className="rounded-md bg-orange-50 border border-orange-200 px-3 py-2 text-sm text-orange-800">
+            We've pre-filled your population group from your early-access registration — please
+            review and confirm, or change it. Nothing is saved until you submit.
+          </p>
+        ) : null}
         <EeDisclosureFields value={form} onChange={setForm} purposesError={purposesError} />
 
         <div className="flex flex-wrap gap-3">

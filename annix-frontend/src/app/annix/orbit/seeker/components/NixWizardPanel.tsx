@@ -3,7 +3,6 @@
 import { isNumber } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
-import { useToast } from "@/app/components/Toast";
 import type {
   NixSeekerCvAssessment,
   NixSeekerCvImprovement,
@@ -12,6 +11,7 @@ import type {
   NixSeekerRankingPotential,
 } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitNixWizardImprovements } from "@/app/lib/query/hooks";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { NixCvBuilder } from "./NixCvBuilder";
@@ -52,13 +52,23 @@ const RANKING_LABEL: Record<NixSeekerRankingPotential, string> = {
 export interface NixWizardPanelProps {
   hasCv: boolean;
   autoRunKey?: number;
+  highlight?: boolean;
+  onRan?: () => void;
+  onStartSearch?: () => void;
+  onBuilt?: () => void;
 }
 
 export function NixWizardPanel(props: NixWizardPanelProps) {
   const hasCv = props.hasCv;
   const autoRunKey = props.autoRunKey;
+  const onRan = props.onRan;
+  const onBuilt = props.onBuilt;
+  const runHighlighted = hasCv && props.highlight === true;
+  const runPalette = runHighlighted
+    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+    : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]";
   const mutation = useOrbitNixWizardImprovements();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [copied, setCopied] = useState(false);
   const lastAutoRunKey = useRef<number | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -69,6 +79,11 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
   const cvBuilderResolved = !cvBuilderFlag.isLoading;
   const cvBuilderEnabled = cvBuilderResolved && cvBuilderFlag.enabled;
   const [reviewEstimateMs, setReviewEstimateMs] = useState(NIX_REVIEW_ESTIMATED_MS);
+
+  const runSucceeded = mutation.isSuccess;
+  useEffect(() => {
+    if (runSucceeded && onRan) onRan();
+  }, [runSucceeded, onRan]);
 
   useEffect(() => {
     if (!hasCv) return;
@@ -127,18 +142,17 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
       })
       .catch(() => {
         setCopied(false);
-        showToast("Couldn't copy to your clipboard — please copy it manually", "error");
+        alert({
+          message: "Couldn't copy to your clipboard — please copy it manually",
+          variant: "error",
+        });
       });
   };
 
   return (
     <div
       ref={panelRef}
-      className="rounded-xl border border-[var(--brand-navbar-200,#c0c0eb)] px-2 py-4 sm:p-6 space-y-4 scroll-mt-24"
-      style={{
-        backgroundImage:
-          "linear-gradient(to bottom right, var(--brand-navbar-50,#f7f7ff), #ffffff)",
-      }}
+      className="bg-white rounded-xl border border-gray-200 px-2 py-4 sm:p-6 space-y-4 scroll-mt-24"
     >
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div className="flex items-start gap-3">
@@ -156,7 +170,7 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
           type="button"
           onClick={handleRun}
           disabled={!hasCv || isLoading}
-          className="bg-[var(--brand-navbar,#323288)] text-white px-5 py-2.5 rounded-lg text-sm font-medium hover:bg-[var(--brand-navbar-active,#252560)] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap"
+          className={`${runPalette} px-5 py-2.5 rounded-lg text-sm font-medium transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed whitespace-nowrap`}
           title={hasCv ? undefined : "Upload your CV first to use the Nix Wizard"}
         >
           {isLoading ? "Nix is reading…" : result ? "Re-run Nix Wizard" : "Run Nix Wizard"}
@@ -180,7 +194,11 @@ export function NixWizardPanel(props: NixWizardPanelProps) {
         <NixResultBlock assessment={result} copied={copied} onCopy={handleCopy} />
       )}
 
-      {cvBuilderEnabled && <NixCvBuilder hasCv={hasCv} />}
+      {cvBuilderEnabled && (
+        <NixCvBuilder hasCv={hasCv} onStartSearch={props.onStartSearch} onBuilt={props.onBuilt} />
+      )}
+
+      {AlertDialog}
     </div>
   );
 }
@@ -205,13 +223,11 @@ function NixResultBlock(props: {
 
   return (
     <div className="space-y-5">
-      <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2.5 py-4 flex items-center justify-between gap-4 flex-wrap">
+      <div className="bg-white rounded-lg border border-gray-200 px-2.5 py-4 flex items-center justify-between gap-4 flex-wrap">
         <div>
           <p className="text-xs uppercase tracking-wide text-gray-500 font-medium">CV score</p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-bold text-[var(--brand-navbar,#323288)] dark:text-[#9ea0e8]">
-              {score}
-            </span>
+            <span className="text-3xl font-bold text-gray-700">{score}</span>
             <span className="text-sm text-gray-500">/ 100</span>
           </div>
         </div>
@@ -224,10 +240,7 @@ function NixResultBlock(props: {
 
       {a.headline && (
         <p className="text-sm text-gray-800 leading-relaxed">
-          <span className="font-semibold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb]">
-            Nix says:
-          </span>{" "}
-          {a.headline}
+          <span className="font-semibold text-gray-800">Nix says:</span> {a.headline}
         </p>
       )}
 
@@ -260,7 +273,7 @@ function NixResultBlock(props: {
             {a.keywordGaps.map((kw) => (
               <span
                 key={kw}
-                className="text-xs bg-[var(--brand-navbar-50,#f0f0fc)] text-[var(--brand-navbar-active,#252560)] px-2.5 py-1 rounded-full border border-[var(--brand-navbar-200,#c0c0eb)]"
+                className="text-xs bg-gray-50 text-gray-800 px-2.5 py-1 rounded-full border border-gray-200"
               >
                 {kw}
               </span>
@@ -274,9 +287,7 @@ function NixResultBlock(props: {
           <ul className="space-y-1.5">
             {a.missingDocumentSuggestions.map((d) => (
               <li key={d} className="text-sm text-gray-700 flex gap-2">
-                <span className="text-[var(--brand-navbar-400,#7373c2)] dark:text-[#9ea0e8] flex-shrink-0">
-                  •
-                </span>
+                <span className="text-gray-500 flex-shrink-0">•</span>
                 <span>{d}</span>
               </li>
             ))}
@@ -286,7 +297,7 @@ function NixResultBlock(props: {
 
       {a.rewriteSummary && (
         <SectionHeading title="Suggested professional summary">
-          <div className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4 space-y-3">
+          <div className="bg-white rounded-lg border border-gray-200 px-2 py-4 space-y-3">
             <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-line">
               {a.rewriteSummary}
             </p>
@@ -297,7 +308,7 @@ function NixResultBlock(props: {
               <button
                 type="button"
                 onClick={() => props.onCopy(a.rewriteSummary as string)}
-                className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)] dark:text-[#9ea0e8] dark:hover:text-[#c0c0eb] whitespace-nowrap"
+                className="text-xs font-medium text-gray-700 hover:text-gray-900 whitespace-nowrap"
               >
                 {props.copied ? "Copied!" : "Copy summary"}
               </button>
@@ -312,9 +323,7 @@ function NixResultBlock(props: {
 function SectionHeading(props: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-[var(--brand-navbar-active,#252560)] dark:text-[#c0c0eb] uppercase tracking-wide">
-        {props.title}
-      </h3>
+      <h3 className="text-sm font-semibold text-gray-800 uppercase tracking-wide">{props.title}</h3>
       {props.children}
     </div>
   );
@@ -326,7 +335,7 @@ function ImprovementCard(props: { item: NixSeekerCvImprovement; onCopy: (text: s
   const areaLabel = AREA_LABELS[item.area];
   const example = item.example;
   return (
-    <li className="bg-white rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] px-2 py-4 space-y-2">
+    <li className="bg-white rounded-lg border border-gray-200 px-2 py-4 space-y-2">
       <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold text-gray-700 bg-gray-100 px-2 py-0.5 rounded">
           {areaLabel}
@@ -345,15 +354,13 @@ function ImprovementCard(props: { item: NixSeekerCvImprovement; onCopy: (text: s
         <span className="font-semibold">Fix:</span> {item.suggestion}
       </p>
       {example && (
-        <div className="bg-[var(--brand-navbar-50,#f7f7ff)] border border-[var(--brand-navbar-100,#e0e0f5)] rounded p-3 mt-2 space-y-2">
-          <p className="text-xs font-semibold text-[var(--brand-navbar-active,#252560)] uppercase tracking-wide">
-            Example
-          </p>
+        <div className="bg-gray-50 border border-gray-200 rounded p-3 mt-2 space-y-2">
+          <p className="text-xs font-semibold text-gray-800 uppercase tracking-wide">Example</p>
           <p className="text-sm text-gray-800 whitespace-pre-line">{example}</p>
           <button
             type="button"
             onClick={() => props.onCopy(example)}
-            className="text-xs font-medium text-[var(--brand-navbar,#323288)] hover:text-[var(--brand-navbar-active,#252560)]"
+            className="text-xs font-medium text-gray-700 hover:text-gray-900"
           >
             Copy example
           </button>

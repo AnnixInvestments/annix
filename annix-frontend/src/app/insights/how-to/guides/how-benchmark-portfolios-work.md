@@ -5,7 +5,7 @@ category: Paper Portfolios
 roles: [insights]
 order: 7
 tags: [paper-portfolios, benchmarks, drawdown, volatility]
-lastUpdated: 2026-05-12
+lastUpdated: 2026-06-10
 summary: What the two benchmark portfolios are testing, how the auto-buy works, and how to read drawdown and volatility.
 readingMinutes: 4
 relatedPaths:
@@ -27,7 +27,7 @@ Every morning at 06:00 SAST the daily cron runs three stages in order:
 2. **Benchmark execution** — for each benchmark portfolio (the ones with `riskProfile: "buy-and-hold"`):
    - Look up the fixed-holding symbol (SPY for `benchmark-spy`, STX40.JO for `benchmark-jse40`).
    - Look up that asset's latest close from `insights_price_history`.
-   - `qty = floor(cashBalance / closePrice)` — buy whole units only, no fractional shares.
+   - `qty = cashBalance / closePrice` rounded down to 6 decimal places — fractional units are allowed, so virtually all available cash deploys every run (a high unit price like the JSE Top 40 proxy no longer strands monthly contributions). Runs are skipped only when cash is below R100.
    - Record a `buy` PaperTrade with full reasoning ("date + price + qty + cash remainder").
    - Decrement cash by the deployed amount.
 3. **Snapshot capture** — for every active portfolio (all six):

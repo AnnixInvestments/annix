@@ -6,36 +6,12 @@ import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminOrbitSeekers } from "@/app/lib/query/hooks";
+import { seekerStatusBadgeClass, seekerTierBadgeClass } from "./seekerBadges";
 
 const PAGE_SIZE = 20;
 const EXPORT_LIMIT = 10000;
-
-function tierClass(tier: string): string {
-  if (tier === "hard") {
-    return "bg-green-100 text-green-700";
-  }
-  if (tier === "medium") {
-    return "bg-amber-100 text-amber-700";
-  }
-  return "bg-gray-100 text-gray-600";
-}
-
-function statusClass(status: string): string {
-  if (status === "active" || status === "accepted") {
-    return "bg-green-100 text-green-700";
-  }
-  if (status === "new" || status === "screening") {
-    return "bg-blue-100 text-blue-700";
-  }
-  if (status === "shortlisted" || status === "reference_check") {
-    return "bg-violet-100 text-violet-700";
-  }
-  if (status === "suspended" || status === "rejected" || status === "deactivated") {
-    return "bg-red-100 text-red-700";
-  }
-  return "bg-gray-100 text-gray-600";
-}
 
 function csvCell(value: string | null): string {
   const raw = value || "";
@@ -50,6 +26,7 @@ function csvCell(value: string | null): string {
 export default function OrbitSeekersPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [search, setSearch] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -117,9 +94,12 @@ export default function OrbitSeekersPage() {
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
-      showToast(`Exported ${rows.length} seeker${rows.length === 1 ? "" : "s"}.`, "success");
+      alert({
+        message: `Exported ${rows.length} seeker${rows.length === 1 ? "" : "s"}.`,
+        variant: "success",
+      });
     } catch {
-      showToast("Could not export seekers — please try again.", "error");
+      alert({ message: "Could not export seekers — please try again.", variant: "error" });
     } finally {
       setIsExporting(false);
     }
@@ -127,6 +107,7 @@ export default function OrbitSeekersPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Seekers</h1>
@@ -198,14 +179,24 @@ export default function OrbitSeekersPage() {
                 const lastActive = lastActiveRaw ? formatDateZA(lastActiveRaw) : "—";
                 const joinedRaw = seeker.createdAt;
                 const joined = joinedRaw ? formatDateZA(joinedRaw) : "—";
-                const tierBadge = tierClass(seeker.matchTier);
-                const statusBadge = statusClass(seeker.status);
+                const tierBadge = seekerTierBadgeClass(seeker.matchTier);
+                const statusBadge = seekerStatusBadgeClass(seeker.status);
                 const seekerId = seeker.id;
+                const isProspect = seeker.isProspect === true;
                 return (
                   <tr
                     key={seekerId}
-                    onClick={() => router.push(`/admin/portal/orbit/seekers/${seekerId}`)}
-                    className="text-gray-900 cursor-pointer hover:bg-violet-50 transition-colors"
+                    onClick={
+                      isProspect
+                        ? undefined
+                        : () => router.push(`/admin/portal/orbit/seekers/${seekerId}`)
+                    }
+                    title={isProspect ? "Invited via admin — no seeker profile yet" : undefined}
+                    className={
+                      isProspect
+                        ? "text-gray-500 transition-colors"
+                        : "text-gray-900 cursor-pointer hover:bg-violet-50 transition-colors"
+                    }
                   >
                     <td className="px-4 py-3 font-medium">{name}</td>
                     <td className="px-4 py-3 text-gray-600">{email}</td>

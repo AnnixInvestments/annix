@@ -28,8 +28,8 @@ export class StaffSignature {
   @Prop({ type: String, required: false })
   unifiedUserId: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const StaffSignatureSchema = SchemaFactory.createForClass(StaffSignature);

@@ -25,8 +25,8 @@ export class CvEscoSkill {
   @Prop({ type: String, required: false })
   description: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const CvEscoSkillSchema = SchemaFactory.createForClass(CvEscoSkill);

@@ -26,8 +26,8 @@ export class AnnixOrbitEeConsentTextVersion {
   @Prop({ type: Date, required: false })
   effectiveTo: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const AnnixOrbitEeConsentTextVersionSchema = SchemaFactory.createForClass(

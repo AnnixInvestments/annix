@@ -13,6 +13,7 @@ import { useConfirm } from "@/app/au-rubber/hooks/useConfirm";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import { fromISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 
 interface MatchSummary {
   matched: number;
@@ -67,6 +68,7 @@ function statusBadge(status: string): { label: string; cls: string } {
 export default function SupplierStatementsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const [recons, setRecons] = useState<ReconciliationItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -80,7 +82,7 @@ export default function SupplierStatementsPage() {
       setRecons(reconsResp as ReconciliationItem[]);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load statements";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsLoading(false);
     }
@@ -109,7 +111,7 @@ export default function SupplierStatementsPage() {
       await fetchData();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Delete failed";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setDeletingId(null);
     }
@@ -132,7 +134,7 @@ export default function SupplierStatementsPage() {
       await fetchData();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsUploading(false);
     }
@@ -143,6 +145,7 @@ export default function SupplierStatementsPage() {
   return (
     <RequirePermission permission={PAGE_PERMISSIONS["/au-rubber/portal/supplier-statements"]}>
       {ConfirmDialog}
+      {AlertDialog}
       <div className="space-y-6">
         <Breadcrumb items={[{ label: "Suppliers" }, { label: "Statements" }]} />
 
@@ -204,7 +207,7 @@ export default function SupplierStatementsPage() {
                   <th className="px-4 py-3">Audit Summary</th>
                   <th className="px-4 py-3">Status</th>
                   <th className="px-4 py-3">Uploaded</th>
-                  <th className="px-4 py-3 w-12 text-right">{/* delete */}</th>
+                  <th className="px-4 py-3 w-12 text-right" />
                 </tr>
               </thead>
               <tbody>

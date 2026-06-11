@@ -37,6 +37,10 @@ export const INHERITABLE_SCALAR_FIELDS = [
   "watermarkOpacity",
   "watermarkMaxSizePx",
   "loadingAnimation",
+  "heroTopHeightPct",
+  "heroBottomHeightPct",
+  "heroTopFadePct",
+  "heroBottomFadePct",
 ] as const;
 
 export type InheritableScalarField = (typeof INHERITABLE_SCALAR_FIELDS)[number];
@@ -56,9 +60,19 @@ export const GLOBAL_LOCKED_SCALAR_FIELDS = [
   "gradientFrom",
   "gradientVia",
   "gradientTo",
+  "heroTopHeightPct",
+  "heroBottomHeightPct",
+  "heroTopFadePct",
+  "heroBottomFadePct",
 ] as const;
 
-export const GLOBAL_LOCKED_ASSET_SLOTS = ["logoIcon", "wordmark", "pageBackground"] as const;
+export const GLOBAL_LOCKED_ASSET_SLOTS = [
+  "logoIcon",
+  "wordmark",
+  "pageBackground",
+  "heroTop",
+  "heroBottom",
+] as const;
 
 export const GLOBAL_LOCK_EXEMPT_BRANDS: readonly string[] = ["annix-sentinel"];
 
@@ -87,19 +101,23 @@ export interface PlatformBrandingScalars {
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
+  heroTopHeightPct: number;
+  heroBottomHeightPct: number;
+  heroTopFadePct: number;
+  heroBottomFadePct: number;
 }
 
 export const PLATFORM_BRANDING_DEFAULTS: PlatformBrandingScalars = {
   navbarColor: "#323288",
   navbarColorLight: "#F2F4F7",
-  backgroundLight: "#F8FAFC",
-  backgroundDark: "#0F172A",
+  backgroundLight: "#0a1733",
+  backgroundDark: "#0a1733",
   accentOrange: "#FF8A00",
   accentOrangeLight: "#FF9C33",
   accentOrangeDark: "#CC6900",
-  gradientFrom: "#1a1a40",
-  gradientVia: "#0d0d20",
-  gradientTo: "#1a1a40",
+  gradientFrom: "#0b1b3a",
+  gradientVia: "#0a1733",
+  gradientTo: "#070f24",
   tagline: "",
   description: "",
   heroWords: "",
@@ -110,4 +128,8 @@ export const PLATFORM_BRANDING_DEFAULTS: PlatformBrandingScalars = {
   watermarkOpacity: 0.1,
   watermarkMaxSizePx: 880,
   loadingAnimation: "pulse",
+  heroTopHeightPct: 60,
+  heroBottomHeightPct: 40,
+  heroTopFadePct: 45,
+  heroBottomFadePct: 45,
 };

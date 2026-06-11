@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, MoreThan, Repository } from "typeorm";
+import { In, IsNull, LessThan, MoreThan, Repository } from "typeorm";
 import { DateTime } from "../../lib/datetime";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
   DedupCandidateRow,
   DelistReportRow,
@@ -99,12 +100,44 @@ export class PostgresExternalJobRepository
     return { jobs, total };
   }
 
-  jobsWithEmbedding(categoryPool: string[] | null): Promise<ExternalJob[]> {
+  jobsWithEmbedding(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+  ): Promise<ExternalJob[]> {
+    return this.jobsWithEmbeddingQuery(categoryPool, countries).getMany();
+  }
+
+  async *jobEmbeddingBatches(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+    batchSize: number,
+  ): AsyncGenerator<EmbeddingSimilarityBatch> {
+    let lastId = 0;
+    while (true) {
+      const rows = await this.jobsWithEmbeddingQuery(categoryPool, countries)
+        .select("job.id", "id")
+        .addSelect("job.embedding", "embedding")
+        .andWhere("job.id > :lastId", { lastId })
+        .orderBy("job.id", "ASC")
+        .limit(batchSize)
+        .getRawMany<{ id: number | string; embedding: unknown }>();
+      if (rows.length === 0) {
+        return;
+      }
+      yield rows.map((row) => ({ id: Number(row.id), embedding: row.embedding ?? null }));
+      lastId = Number(rows[rows.length - 1].id);
+    }
+  }
+
+  private jobsWithEmbeddingQuery(categoryPool: string[] | null, countries: string[] | null = null) {
     const qb = this.repository.createQueryBuilder("job").where("job.embedding IS NOT NULL");
     if (categoryPool !== null && categoryPool.length > 0) {
       qb.andWhere("job.canonical_category IN (:...categoryPool)", { categoryPool });
     }
-    return qb.getMany();
+    if (countries !== null && countries.length > 0) {
+      qb.andWhere("job.country IN (:...countries)", { countries });
+    }
+    return qb;
   }
 
   findPendingVetting(limit: number): Promise<ExternalJob[]> {
@@ -119,7 +152,11 @@ export class PostgresExternalJobRepository
     });
   }
 
-  publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]> {
+  async publicExternalJobs(
+    options: ExternalJobListOptions,
+  ): Promise<{ jobs: ExternalJob[]; total: number }> {
+    const page = Math.max(options.page ?? 1, 1);
+    const limit = Math.min(Math.max(options.limit ?? 20, 1), 100);
     const qb = this.repository.createQueryBuilder("job").where("job.delisted IS NOT TRUE");
     if (options.country) {
       qb.andWhere("job.country = :country", { country: options.country });
@@ -133,7 +170,11 @@ export class PostgresExternalJobRepository
       });
     }
     qb.orderBy("job.postedAt", "DESC", "NULLS LAST");
-    return qb.getMany();
+    const [jobs, total] = await qb
+      .skip((page - 1) * limit)
+      .take(limit)
+      .getManyAndCount();
+    return { jobs, total };
   }
 
   findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]> {
@@ -152,6 +193,13 @@ export class PostgresExternalJobRepository
       "SELECT COUNT(*)::int AS total, COUNT(embedding)::int AS embedded FROM cv_assistant_external_jobs",
     );
     return { total: Number(row.total), embedded: Number(row.embedded) };
+  }
+
+  async canonicalCategoryCoverage(): Promise<{ total: number; classified: number }> {
+    const [row] = await this.repository.query(
+      "SELECT COUNT(*)::int AS total, COUNT(canonical_category)::int AS classified FROM cv_assistant_external_jobs",
+    );
+    return { total: Number(row.total), classified: Number(row.classified) };
   }
 
   countForSourceSince(sourceId: number, since: Date): Promise<number> {
@@ -177,7 +225,8 @@ export class PostgresExternalJobRepository
       .getCount();
   }
 
-  async setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void> {
+  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+    const embeddingLiteral = values.join(",");
     await this.repository
       .createQueryBuilder()
       .update(ExternalJob)
@@ -521,6 +570,14 @@ export class PostgresExternalJobRepository
     await this.repository.delete(ids);
   }
 
+  async idsLastSeenBefore(cutoff: Date): Promise<number[]> {
+    const rows = await this.repository.find({
+      where: { lastSeenAt: LessThan(cutoff) },
+      select: { id: true },
+    });
+    return rows.map((row) => row.id);
+  }
+
   async stampLastSeenByExternalIds(
     sourceId: number,
     externalIds: string[],
@@ -547,6 +604,26 @@ export class PostgresExternalJobRepository
       .andWhere("last_seen_at IS NOT NULL")
       .andWhere("last_seen_at < now() - INTERVAL '14 days'")
       .execute();
+    return result.affected ?? 0;
+  }
+
+  // Postgres path is unused in production (Mongo is the live driver); the
+  // configurable cap lives in Orbit Mongo settings, so this uses the static
+  // default. Deletes only the overage (oldest by last_seen_at).
+  async enforceRetentionCap(): Promise<number> {
+    const cap = 15000;
+    const total = await this.repository.count();
+    const overage = total - cap;
+    if (overage <= 0) return 0;
+    const rows = await this.repository
+      .createQueryBuilder("job")
+      .select("job.id", "id")
+      .orderBy("job.last_seen_at", "ASC", "NULLS FIRST")
+      .limit(overage)
+      .getRawMany();
+    const ids = rows.map((row) => row.id);
+    if (ids.length === 0) return 0;
+    const result = await this.repository.delete({ id: In(ids) });
     return result.affected ?? 0;
   }
 

@@ -24,6 +24,7 @@ export abstract class UserRepository extends CrudRepository<User> {
   abstract countUnverifiedCreatedBefore(cutoff: Date): Promise<number>;
   abstract deleteUnverifiedCreatedBefore(cutoff: Date): Promise<number>;
   abstract findOneByEmailCaseInsensitive(email: string): Promise<User | null>;
+  abstract findOneByEmailAnyScope(email: string): Promise<User | null>;
   abstract findOneByEmailCaseInsensitiveWithRoles(email: string): Promise<User | null>;
   abstract updateByEmailCaseInsensitive(email: string, changes: DeepPartial<User>): Promise<void>;
   abstract updateCompanyId(userId: number, companyId: number | null): Promise<void>;

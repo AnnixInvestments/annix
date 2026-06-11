@@ -154,6 +154,6 @@ function buildSupportCode(error: Error & { digest?: string }): string {
   const seed = error.digest ? error.digest : `${error.name}|${error.message}`;
   const hash = Array.from(seed).reduce((acc, ch) => (acc * 31 + ch.charCodeAt(0)) >>> 0, 0);
   const left = hash.toString(16).toUpperCase().padStart(8, "0").slice(0, 4);
-  const right = (hash ^ 0x9e3779b1).toString(16).toUpperCase().padStart(8, "0").slice(0, 4);
+  const right = ((hash ^ 0x9e3779b1) >>> 0).toString(16).toUpperCase().padStart(8, "0").slice(0, 4);
   return `ERR-${left}-${right}`;
 }

@@ -26,6 +26,7 @@ import type {
   RubberProductDto,
 } from "@/app/lib/api/rubberPortalApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import {
   useAuRubberCompanies,
@@ -64,6 +65,7 @@ const isDeletable = (status: number): boolean => DELETABLE_STATUSES.includes(sta
 
 export default function AuRubberOrdersPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const scrollSentinelRef = useScrollRestoration("au-rubber:orders");
 
@@ -186,7 +188,7 @@ export default function AuRubberOrdersPage() {
         setShowImportModal(true);
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : "Failed to analyze files";
-        showToast(errorMessage, "error");
+        alert({ message: errorMessage, variant: "error" });
       } finally {
         hideExtraction();
         setIsAnalyzingDrop(false);
@@ -283,7 +285,7 @@ export default function AuRubberOrdersPage() {
       ordersQuery.refetch();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to create order";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     } finally {
       setIsCreating(false);
     }
@@ -297,7 +299,7 @@ export default function AuRubberOrdersPage() {
       ordersQuery.refetch();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete order";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     }
   };
 
@@ -330,6 +332,7 @@ export default function AuRubberOrdersPage() {
         onDragLeave={handlePageDragLeave}
         onDrop={handlePageDrop}
       >
+        {AlertDialog}
         {(isDragOver || isAnalyzingDrop) && (
           <div className="fixed inset-0 z-40 bg-yellow-50/80 backdrop-blur-sm flex items-center justify-center">
             <div className="border-2 border-dashed border-yellow-400 rounded-2xl p-12 text-center bg-white/80 shadow-lg">

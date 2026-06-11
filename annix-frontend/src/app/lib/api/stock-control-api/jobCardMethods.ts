@@ -7,6 +7,7 @@ import type {
   ImportMappingConfig,
   JobCard,
   JobCardAttachment,
+  JobCardImportCorrection,
   JobCardImportJob,
   JobCardImportMapping,
   JobCardImportResult,
@@ -147,6 +148,7 @@ declare module "./base" {
       rows: JobCardImportRow[],
       sourceFilePath?: string | null,
       sourceFileName?: string | null,
+      corrections?: JobCardImportCorrection[],
     ): Promise<JobCardImportResult>;
     confirmDeliveryMatches(
       jobCardId: number,
@@ -523,10 +525,10 @@ proto.autoDetectJobCardMapping = async function (grid) {
   });
 };
 
-proto.confirmJobCardImport = async function (rows, sourceFilePath, sourceFileName) {
+proto.confirmJobCardImport = async function (rows, sourceFilePath, sourceFileName, corrections) {
   return this.request("/stock-control/job-card-import/confirm", {
     method: "POST",
-    body: JSON.stringify({ rows, sourceFilePath, sourceFileName }),
+    body: JSON.stringify({ rows, corrections, sourceFilePath, sourceFileName }),
   });
 };
 

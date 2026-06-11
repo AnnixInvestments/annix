@@ -1,5 +1,6 @@
 import { CrudRepository } from "../../lib/persistence/crud-repository";
 import { Candidate } from "../entities/candidate.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 
 export interface CandidateAllForCompanyFilters {
   status?: string;
@@ -30,17 +31,19 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
     limit: number;
   }): Promise<[Candidate[], number]>;
   abstract findByEmail(email: string): Promise<Candidate[]>;
+  abstract findByIds(ids: number[]): Promise<Candidate[]>;
   abstract findByEmailWithJobPosting(email: string): Promise<Candidate[]>;
   abstract findByEmailWithJobAndReferences(email: string): Promise<Candidate[]>;
   abstract findInactiveBefore(cutoff: Date): Promise<Candidate[]>;
   abstract markRejectionSent(id: number, rejectionSentAt: Date): Promise<void>;
   abstract markAcceptanceSent(id: number, acceptanceSentAt: Date): Promise<void>;
   abstract deleteTestFixturesForJob(jobPostingId: number): Promise<number>;
-  abstract setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void>;
+  abstract setEmbeddingVector(id: number, values: number[]): Promise<void>;
   abstract clearEmbedding(id: number): Promise<void>;
   abstract updateWorkProfile(id: number, workProfile: unknown): Promise<void>;
   abstract updateTargetCategories(id: number, targetCategories: string[]): Promise<void>;
   abstract updateMatchTier(id: number, matchTier: string): Promise<void>;
+  abstract updateTargetCountries(id: number, targetCountries: string[]): Promise<void>;
   abstract setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void>;
   abstract touchLastActiveByEmail(
     email: string,
@@ -55,6 +58,7 @@ export abstract class CandidateRepository extends CrudRepository<Candidate> {
   abstract grantMatchingConsent(ids: number[], consentedAt: Date): Promise<void>;
   abstract withdrawMatching(ids: number[]): Promise<void>;
   abstract candidatesWithEmbedding(): Promise<Candidate[]>;
+  abstract candidateEmbeddingBatches(batchSize: number): AsyncIterable<EmbeddingSimilarityBatch>;
   abstract jobAlertCandidates(): Promise<Candidate[]>;
   abstract countNewForJobsSince(jobPostingIds: number[], since: Date): Promise<number>;
   abstract countForCompanyByStatuses(

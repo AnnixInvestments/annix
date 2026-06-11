@@ -8,6 +8,7 @@ import { useToast } from "@/app/components/Toast";
 import { useCustomerAuth } from "@/app/context/CustomerAuthContext";
 import type { RfqDraftResponse, RfqDraftStatus } from "@/app/lib/api/client";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useCustomerDashboard, useCustomerDrafts, useDeleteDraft } from "@/app/lib/query/hooks";
 
 export default function CustomerDashboardPage() {
@@ -22,6 +23,7 @@ function CustomerDashboardContent() {
   const router = useRouter();
   const { customer } = useCustomerAuth();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const dashboardQuery = useCustomerDashboard();
   const draftsQuery = useCustomerDrafts();
@@ -50,7 +52,7 @@ function CustomerDashboardContent() {
       await deleteDraftMutation.mutateAsync(draftId);
       showToast("Draft deleted successfully", "success");
     } catch (e) {
-      showToast("Failed to delete draft. Please try again.", "error");
+      alert({ message: "Failed to delete draft. Please try again.", variant: "error" });
     } finally {
       setDeletingDraftId(null);
     }
@@ -99,6 +101,7 @@ function CustomerDashboardContent() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       {/* Welcome banner */}
       <div className="bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg shadow-lg p-6 text-white">
         <h1 className="text-2xl font-bold">Welcome back, {customer?.firstName}!</h1>

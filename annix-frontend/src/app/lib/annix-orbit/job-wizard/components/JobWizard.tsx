@@ -3,8 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useToast } from "@/app/components/Toast";
 import type { JobPosting, UpdateJobWizardPayload } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitCreateJobDraft, useOrbitJobWizardDraft } from "@/app/lib/query/hooks";
 import { annixOrbitKeys } from "@/app/lib/query/keys";
 import { WIZARD_STEPS, type WizardStepId } from "../constants/wizard-steps";
@@ -30,7 +30,7 @@ export interface JobWizardProps {
 
 export function JobWizard({ jobId }: JobWizardProps) {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
   const createDraft = useOrbitCreateJobDraft();
   const draftQuery = useOrbitJobWizardDraft(jobId);
@@ -66,9 +66,9 @@ export function JobWizard({ jobId }: JobWizardProps) {
         });
       })
       .catch(() => {
-        showToast("Couldn't start a new job draft. Please try again.", "error");
+        alert({ message: "Couldn't start a new job draft. Please try again.", variant: "error" });
       });
-  }, [jobId, createDraft, router, showToast]);
+  }, [jobId, createDraft, router, alert]);
 
   const draftData = draftQuery.data;
   const draft = draftData || null;
@@ -109,6 +109,7 @@ export function JobWizard({ jobId }: JobWizardProps) {
   if (isLoading || !draft) {
     return (
       <div className="flex items-center justify-center py-24">
+        {AlertDialog}
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white" />
       </div>
     );

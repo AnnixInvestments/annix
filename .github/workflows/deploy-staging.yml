@@ -171,6 +171,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=/api
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
           cache-from: type=gha,scope=pr-${{ needs.resolve-pr.outputs.pr_number }}
           cache-to: type=gha,mode=max,scope=pr-${{ needs.resolve-pr.outputs.pr_number }}
 

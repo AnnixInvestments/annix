@@ -2,7 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model, PipelineStage } from "mongoose";
 import { MongoCrudRepository } from "../lib/persistence/mongo-crud-repository";
-import { AiUsageDailySummary, AiUsageGroupRow, AiUsageLogRepository } from "./ai-usage.repository";
+import {
+  AiUsageDailyPoint,
+  AiUsageDailySummary,
+  AiUsageGroupRow,
+  AiUsageLogRepository,
+} from "./ai-usage.repository";
 import { AiUsageLog } from "./entities/ai-usage-log.entity";
 
 @Injectable()
@@ -31,6 +36,33 @@ export class MongoAiUsageLogRepository
       calls: Number(row?.calls ?? 0),
       tokens: Number(row?.tokens ?? 0),
     };
+  }
+
+  async dailySeries(since: Date): Promise<AiUsageDailyPoint[]> {
+    const pipeline: PipelineStage[] = [
+      { $match: { createdAt: { $gte: since } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: {
+              format: "%Y-%m-%d",
+              date: { $ifNull: ["$createdAt", new Date()] },
+              timezone: "Africa/Johannesburg",
+            },
+          },
+          calls: { $sum: 1 },
+          tokens: { $sum: { $ifNull: ["$tokensUsed", 0] } },
+        },
+      },
+      { $sort: { _id: 1 } },
+      { $project: { _id: 0, date: "$_id", calls: 1, tokens: 1 } },
+    ];
+    const results = await this.documents.aggregate(pipeline).exec();
+    return (results as AiUsageDailyPoint[]).map((row) => ({
+      date: row.date,
+      calls: Number(row.calls),
+      tokens: Number(row.tokens),
+    }));
   }
 
   async queryGroupedUsage(

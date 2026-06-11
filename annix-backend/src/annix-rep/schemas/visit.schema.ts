@@ -58,8 +58,8 @@ export class Visit {
   @Prop({ type: Date, required: false })
   followUpDate: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const VisitSchema = SchemaFactory.createForClass(Visit);

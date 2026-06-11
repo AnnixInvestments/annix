@@ -19,7 +19,7 @@ export class NotificationController {
 
   @Post("subscribe")
   async subscribe(
-    @Request() req: { user: { id: number; companyId: number } },
+    @Request() req: { user: { id: number; companyId: number | null } },
     @Body() body: { endpoint: string; keys: { p256dh: string; auth: string } },
   ) {
     await this.notificationService.subscribe(req.user.id, req.user.companyId, body);

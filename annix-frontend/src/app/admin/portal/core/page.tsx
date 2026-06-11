@@ -59,6 +59,23 @@ const coreAdminCards: AppHubCard[] = [
     hoverColor: "hover:border-teal-400 group-hover:bg-teal-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/scheduled-jobs?app=core",
+    title: "Scheduled Jobs",
+    description: "Core cron jobs — AU Rubber CoCs, Stock Control checks and stock snapshots.",
+    icon: (
+      <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.5}
+          d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    ),
+    color: "bg-slate-100 text-slate-600",
+    hoverColor: "hover:border-slate-400 group-hover:bg-slate-600 group-hover:text-white",
+  },
+  {
     href: "/admin/portal/branding/annix-core",
     title: "Branding",
     description: "Annix Core brand — logo, colours and identity.",

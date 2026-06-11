@@ -1,10 +1,12 @@
 "use client";
 
+import { isArray } from "es-toolkit/compat";
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type {
   CpoImportResult,
   ImportMappingConfig,
+  JobCardImportCorrection,
   JobCardImportMapping,
   JobCardImportRow,
 } from "@/app/lib/api/stockControlApi";
@@ -18,6 +20,34 @@ import { consumePendingCpoImportFile } from "./pending-file";
 
 type ImportStep = "upload" | "preview" | "result";
 
+const DETAIL_EDIT_KEYS = [
+  "jobNumber",
+  "jcNumber",
+  "pageNumber",
+  "jobName",
+  "customerName",
+  "description",
+  "poNumber",
+  "siteLocation",
+  "contactPerson",
+  "dueDate",
+  "notes",
+  "reference",
+] as const;
+
+const LINE_ITEM_EDIT_KEYS = [
+  "itemCode",
+  "itemDescription",
+  "itemNo",
+  "quantity",
+  "jtNo",
+  "m2",
+  "notes",
+] as const;
+
+const cloneImportRows = (rows: JobCardImportRow[]) =>
+  JSON.parse(JSON.stringify(rows)) as JobCardImportRow[];
+
 export default function CpoImportPage() {
   const [step, setStep] = useState<ImportStep>("upload");
   const [isUploading, setIsUploading] = useState(false);
@@ -27,6 +57,7 @@ export default function CpoImportPage() {
   const [savedMapping, setSavedMapping] = useState<JobCardImportMapping | null>(null);
   const [drawingRows, setDrawingRows] = useState<JobCardImportRow[] | null>(null);
   const [previewRows, setPreviewRows] = useState<JobCardImportRow[]>([]);
+  const [originalPreviewRows, setOriginalPreviewRows] = useState<JobCardImportRow[]>([]);
   const [importResult, setImportResult] = useState<CpoImportResult | null>(null);
   const [fileName, setFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -34,6 +65,131 @@ export default function CpoImportPage() {
   const uploadMutation = useUploadCpoImportFile();
   const autoDetectMutation = useAutoDetectJobCardMapping();
   const confirmImportMutation = useConfirmCpoImport();
+
+  const replacePreviewRows = useCallback((rows: JobCardImportRow[]) => {
+    setPreviewRows(rows);
+    setOriginalPreviewRows(cloneImportRows(rows));
+  }, []);
+
+  const updatePreviewRow = (
+    rowIndex: number,
+    field: (typeof DETAIL_EDIT_KEYS)[number],
+    value: string,
+  ) => {
+    setPreviewRows((prev) =>
+      prev.map((row, index) => (index === rowIndex ? { ...row, [field]: value } : row)),
+    );
+  };
+
+  const updatePreviewLineItem = (
+    rowIndex: number,
+    lineItemIndex: number,
+    field: (typeof LINE_ITEM_EDIT_KEYS)[number],
+    value: string,
+  ) => {
+    setPreviewRows((prev) =>
+      prev.map((row, index) => {
+        if (index !== rowIndex) return row;
+        const existingLineItems = isArray(row.lineItems) ? row.lineItems : [];
+        const lineItems = [...existingLineItems];
+        const currentLineItem = lineItems[lineItemIndex];
+        const current = currentLineItem ? currentLineItem : {};
+        lineItems[lineItemIndex] = {
+          ...current,
+          [field]: field === "m2" ? (value === "" ? undefined : Number(value)) : value,
+        };
+        return { ...row, lineItems };
+      }),
+    );
+  };
+
+  const addPreviewLineItem = (rowIndex: number) => {
+    setPreviewRows((prev) =>
+      prev.map((row, index) =>
+        index === rowIndex
+          ? {
+              ...row,
+              lineItems: [
+                ...(isArray(row.lineItems) ? row.lineItems : []),
+                {
+                  itemCode: "",
+                  itemDescription: "",
+                  itemNo: "",
+                  quantity: "1",
+                  jtNo: "",
+                },
+              ],
+            }
+          : row,
+      ),
+    );
+  };
+
+  const removePreviewLineItem = (rowIndex: number, lineItemIndex: number) => {
+    setPreviewRows((prev) =>
+      prev.map((row, index) =>
+        index === rowIndex
+          ? {
+              ...row,
+              lineItems: (isArray(row.lineItems) ? row.lineItems : []).filter(
+                (_, itemIndex) => itemIndex !== lineItemIndex,
+              ),
+            }
+          : row,
+      ),
+    );
+  };
+
+  const importCorrections = (rows: JobCardImportRow[]): JobCardImportCorrection[] => {
+    const corrections: JobCardImportCorrection[] = [];
+
+    rows.forEach((row, rowIndex) => {
+      const originalRow = originalPreviewRows[rowIndex];
+      const original = originalRow ? originalRow : {};
+      const rowCustomerName = row.customerName;
+      const correctionCustomerName = rowCustomerName == null ? null : rowCustomerName;
+      DETAIL_EDIT_KEYS.forEach((fieldName) => {
+        const originalValue = original[fieldName] == null ? "" : String(original[fieldName]);
+        const correctedValue = row[fieldName] == null ? "" : String(row[fieldName]);
+        if (originalValue !== correctedValue) {
+          corrections.push({
+            rowIndex,
+            fieldName,
+            originalValue,
+            correctedValue,
+            customerName: correctionCustomerName,
+          });
+        }
+      });
+
+      const rowLineItems = isArray(row.lineItems) ? row.lineItems : [];
+      rowLineItems.forEach((lineItem, lineItemIndex) => {
+        const originalLineItems = original.lineItems;
+        const originalLineItemRaw = originalLineItems
+          ? originalLineItems[lineItemIndex]
+          : undefined;
+        const originalLineItem = originalLineItemRaw ? originalLineItemRaw : {};
+        LINE_ITEM_EDIT_KEYS.forEach((fieldName) => {
+          const originalValue =
+            originalLineItem[fieldName] == null ? "" : String(originalLineItem[fieldName]);
+          const correctedValue = lineItem[fieldName] == null ? "" : String(lineItem[fieldName]);
+          if (originalValue !== correctedValue) {
+            corrections.push({
+              rowIndex,
+              lineItemIndex,
+              fieldName: `lineItems.${fieldName}`,
+              originalValue,
+              correctedValue,
+              customerName: correctionCustomerName,
+              itemDescription: lineItem.itemDescription == null ? null : lineItem.itemDescription,
+            });
+          }
+        });
+      });
+    });
+
+    return corrections;
+  };
 
   const processFile = useCallback(
     async (file: File) => {
@@ -49,19 +205,19 @@ export default function CpoImportPage() {
         const resultDrawingRows = result.drawingRows;
         if (resultDrawingRows && resultDrawingRows.length > 0) {
           setDrawingRows(resultDrawingRows);
-          setPreviewRows(resultDrawingRows);
+          replacePreviewRows(resultDrawingRows);
           setStep("preview");
         } else if (result.grid.length > 0) {
           const savedMappingConfig = result.savedMapping;
           const mapping = savedMappingConfig ? savedMappingConfig.mappingConfig : null;
           if (mapping) {
             const rows = extractRowsFromGrid(result.grid, mapping);
-            setPreviewRows(rows);
+            replacePreviewRows(rows);
             setStep("preview");
           } else {
             const detected = await autoDetectMutation.mutateAsync(result.grid);
             const rows = extractRowsFromGrid(result.grid, detected);
-            setPreviewRows(rows);
+            replacePreviewRows(rows);
             setStep("preview");
           }
         } else {
@@ -73,7 +229,7 @@ export default function CpoImportPage() {
         setIsUploading(false);
       }
     },
-    [uploadMutation, autoDetectMutation],
+    [uploadMutation, autoDetectMutation, replacePreviewRows],
   );
 
   useEffect(() => {
@@ -105,7 +261,10 @@ export default function CpoImportPage() {
     try {
       setIsImporting(true);
       setError(null);
-      const result = await confirmImportMutation.mutateAsync(previewRows);
+      const result = await confirmImportMutation.mutateAsync({
+        rows: previewRows,
+        corrections: importCorrections(previewRows),
+      });
       setImportResult(result);
       setStep("result");
     } catch (err) {
@@ -191,10 +350,11 @@ export default function CpoImportPage() {
                 />
               </svg>
               <h3 className="mt-4 text-lg font-medium text-gray-900">
-                Upload Job Card Excel or PDF
+                Drop CPO drawings, PDFs, images, or spreadsheets
               </h3>
               <p className="mt-2 text-sm text-gray-500">
-                Drop your file here or click to browse. Uses the same format as Job Card imports.
+                Drop your drawing pack here or click to browse. Nix will extract the CPO line items
+                for review before import.
               </p>
               <button
                 onClick={() => fileInputRef.current?.click()}
@@ -229,6 +389,7 @@ export default function CpoImportPage() {
                   onClick={() => {
                     setStep("upload");
                     setPreviewRows([]);
+                    setOriginalPreviewRows([]);
                     setGrid([]);
                     setDrawingRows(null);
                   }}
@@ -250,54 +411,177 @@ export default function CpoImportPage() {
 
             <div className="divide-y divide-gray-200">
               {previewRows.map((row, idx) => {
-                const jobNum = row.jobNumber;
-                const jobNumDisplay = jobNum || "No Job #";
                 const items = row.lineItems ? row.lineItems : [];
                 return (
                   <div key={`row-${idx}`} className="px-6 py-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div>
-                        <span className="text-sm font-medium text-gray-900">{jobNumDisplay}</span>
-                        {row.jobName && (
-                          <span className="ml-2 text-sm text-gray-500">{row.jobName}</span>
-                        )}
-                      </div>
-                      <span className="text-xs text-gray-400">{items.length} line items</span>
+                    <div className="mb-4 flex items-center justify-between">
+                      <span className="text-sm font-medium text-gray-900">CPO {idx + 1}</span>
+                      <button
+                        onClick={() => addPreviewLineItem(idx)}
+                        className="text-xs font-medium text-teal-700 hover:text-teal-900"
+                      >
+                        Add line item
+                      </button>
                     </div>
 
-                    <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-gray-500">
-                      {row.customerName && <span>Customer: {row.customerName}</span>}
-                      {row.poNumber && <span>PO: {row.poNumber}</span>}
-                      {row.siteLocation && <span>Site: {row.siteLocation}</span>}
-                      {row.dueDate && <span>Due: {row.dueDate}</span>}
+                    <div className="grid gap-3 md:grid-cols-3">
+                      {[
+                        ["jobNumber", "Job number"] as const,
+                        ["jcNumber", "JC number"] as const,
+                        ["pageNumber", "Page"] as const,
+                        ["jobName", "Job name"] as const,
+                        ["customerName", "Customer"] as const,
+                        ["poNumber", "PO"] as const,
+                        ["siteLocation", "Site"] as const,
+                        ["contactPerson", "Contact"] as const,
+                        ["dueDate", "Due"] as const,
+                        ["reference", "Reference"] as const,
+                      ].map(([field, label]) => {
+                        const fieldValue = row[field];
+                        return (
+                          <label key={field} className="text-xs font-medium text-gray-600">
+                            {label}
+                            <input
+                              value={fieldValue ? fieldValue : ""}
+                              onChange={(e) => updatePreviewRow(idx, field, e.target.value)}
+                              className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+                            />
+                          </label>
+                        );
+                      })}
+                      <label className="text-xs font-medium text-gray-600 md:col-span-3">
+                        Description
+                        <textarea
+                          value={row.description ? row.description : ""}
+                          onChange={(e) => updatePreviewRow(idx, "description", e.target.value)}
+                          rows={2}
+                          className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+                        />
+                      </label>
+                      <label className="text-xs font-medium text-gray-600 md:col-span-3">
+                        Notes
+                        <textarea
+                          value={row.notes ? row.notes : ""}
+                          onChange={(e) => updatePreviewRow(idx, "notes", e.target.value)}
+                          rows={2}
+                          className="mt-1 w-full rounded border border-gray-300 px-2 py-1.5 text-sm text-gray-900"
+                        />
+                      </label>
                     </div>
 
                     {items.length > 0 && (
-                      <div className="mt-2 overflow-x-auto">
+                      <div className="mt-4 overflow-x-auto">
                         <table className="min-w-full text-xs">
                           <thead>
                             <tr className="text-gray-500">
                               <th className="text-left pr-4 py-1 font-medium">Code</th>
                               <th className="text-left pr-4 py-1 font-medium">Description</th>
+                              <th className="text-left pr-4 py-1 font-medium">Item No</th>
                               <th className="text-right pr-4 py-1 font-medium">Qty</th>
                               <th className="text-left pr-4 py-1 font-medium">JT No</th>
                               <th className="text-right py-1 font-medium">m2</th>
+                              <th className="text-left pl-4 py-1 font-medium">Notes</th>
+                              <th className="text-right pl-4 py-1 font-medium">Action</th>
                             </tr>
                           </thead>
                           <tbody>
                             {items.map((li, liIdx) => {
-                              const code = li.itemCode ? li.itemCode : "-";
-                              const desc = li.itemDescription ? li.itemDescription : "-";
-                              const qty = li.quantity ? li.quantity : "-";
-                              const jt = li.jtNo ? li.jtNo : "-";
+                              const liItemCode = li.itemCode;
+                              const liItemDescription = li.itemDescription;
+                              const liItemNo = li.itemNo;
+                              const liQuantity = li.quantity;
+                              const liJtNo = li.jtNo;
+                              const liNotes = li.notes;
                               return (
                                 <tr key={`li-${idx}-${liIdx}`} className="text-gray-700">
-                                  <td className="pr-4 py-0.5 font-mono">{code}</td>
-                                  <td className="pr-4 py-0.5 max-w-xs truncate">{desc}</td>
-                                  <td className="pr-4 py-0.5 text-right">{qty}</td>
-                                  <td className="pr-4 py-0.5">{jt}</td>
-                                  <td className="py-0.5 text-right">
-                                    {li.m2 != null ? Number(li.m2).toFixed(2) : "-"}
+                                  <td className="pr-4 py-1">
+                                    <input
+                                      value={liItemCode ? liItemCode : ""}
+                                      onChange={(e) =>
+                                        updatePreviewLineItem(
+                                          idx,
+                                          liIdx,
+                                          "itemCode",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-32 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                    />
+                                  </td>
+                                  <td className="pr-4 py-1">
+                                    <input
+                                      value={liItemDescription ? liItemDescription : ""}
+                                      onChange={(e) =>
+                                        updatePreviewLineItem(
+                                          idx,
+                                          liIdx,
+                                          "itemDescription",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-80 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                    />
+                                  </td>
+                                  <td className="pr-4 py-1">
+                                    <input
+                                      value={liItemNo ? liItemNo : ""}
+                                      onChange={(e) =>
+                                        updatePreviewLineItem(idx, liIdx, "itemNo", e.target.value)
+                                      }
+                                      className="w-28 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                    />
+                                  </td>
+                                  <td className="pr-4 py-1">
+                                    <input
+                                      value={liQuantity ? liQuantity : ""}
+                                      onChange={(e) =>
+                                        updatePreviewLineItem(
+                                          idx,
+                                          liIdx,
+                                          "quantity",
+                                          e.target.value,
+                                        )
+                                      }
+                                      className="w-20 rounded border border-gray-300 px-2 py-1 text-right text-xs text-gray-900"
+                                    />
+                                  </td>
+                                  <td className="pr-4 py-1">
+                                    <input
+                                      value={liJtNo ? liJtNo : ""}
+                                      onChange={(e) =>
+                                        updatePreviewLineItem(idx, liIdx, "jtNo", e.target.value)
+                                      }
+                                      className="w-28 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                    />
+                                  </td>
+                                  <td className="py-1">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      step="0.01"
+                                      value={li.m2 == null ? "" : String(li.m2)}
+                                      onChange={(e) =>
+                                        updatePreviewLineItem(idx, liIdx, "m2", e.target.value)
+                                      }
+                                      className="w-20 rounded border border-gray-300 px-2 py-1 text-right text-xs text-gray-900"
+                                    />
+                                  </td>
+                                  <td className="pl-4 py-1">
+                                    <input
+                                      value={liNotes ? liNotes : ""}
+                                      onChange={(e) =>
+                                        updatePreviewLineItem(idx, liIdx, "notes", e.target.value)
+                                      }
+                                      className="w-48 rounded border border-gray-300 px-2 py-1 text-xs text-gray-900"
+                                    />
+                                  </td>
+                                  <td className="pl-4 py-1 text-right">
+                                    <button
+                                      onClick={() => removePreviewLineItem(idx, liIdx)}
+                                      className="text-xs font-medium text-red-600 hover:text-red-800"
+                                    >
+                                      Remove
+                                    </button>
                                   </td>
                                 </tr>
                               );
@@ -379,6 +663,7 @@ export default function CpoImportPage() {
               onClick={() => {
                 setStep("upload");
                 setPreviewRows([]);
+                setOriginalPreviewRows([]);
                 setGrid([]);
                 setDrawingRows(null);
                 setImportResult(null);

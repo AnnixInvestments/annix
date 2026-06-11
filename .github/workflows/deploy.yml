@@ -122,6 +122,9 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=/api
+            NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${{ secrets.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY }}
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 
@@ -150,6 +153,10 @@ jobs:
         run: docker pull ${{ env.APP_IMAGE }}:${{ github.sha }}
 
       - name: Setup Fly.io CLI
+        # This step can transiently 504 while fetching the flyctl binary
+        # (e.g. GH Actions run 27123294429 failed the test deploy here). It is
+        # an infra hiccup, not a deploy problem — a re-run / re-push clears it,
+        # and the Deploy step below already retries the actual deploy.
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io (${{ matrix.environment }})

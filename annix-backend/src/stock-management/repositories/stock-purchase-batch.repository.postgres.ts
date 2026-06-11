@@ -1,6 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, type DeepPartial as TypeOrmDeepPartial } from "typeorm";
+import { In, Repository, type DeepPartial as TypeOrmDeepPartial } from "typeorm";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import {
   type TransactionContext,
@@ -9,6 +9,7 @@ import {
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import {
   StockPurchaseBatch,
+  type StockPurchaseBatchSourceType,
   type StockPurchaseBatchStatus,
 } from "../entities/stock-purchase-batch.entity";
 import {
@@ -134,6 +135,20 @@ export class PostgresStockPurchaseBatchRepository
   findLegacyForProduct(companyId: number, productId: number): Promise<StockPurchaseBatch | null> {
     return this.repository.findOne({
       where: { companyId, productId, isLegacyBatch: true },
+    });
+  }
+
+  findBySourceRefs(
+    companyId: number,
+    sourceType: StockPurchaseBatchSourceType,
+    sourceRefIds: number[],
+  ): Promise<StockPurchaseBatch[]> {
+    if (sourceRefIds.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository.find({
+      where: { companyId, sourceType, sourceRefId: In(sourceRefIds) },
+      order: { receivedAt: "ASC", id: "ASC" },
     });
   }
 }

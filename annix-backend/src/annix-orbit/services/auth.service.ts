@@ -35,6 +35,7 @@ import {
   AnnixOrbitProfile,
   type AnnixOrbitProfileEeDisclosure,
   AnnixOrbitUserType,
+  isSeekerAgeGroup,
 } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
@@ -73,6 +74,28 @@ export class AnnixOrbitAuthService {
 
   private orbitScope(userType: AnnixOrbitUserType): string {
     return ORBIT_SCOPE_BY_USER_TYPE[userType];
+  }
+
+  private isEmployerScope(user: User): boolean {
+    const scope = user.appScope;
+    return (
+      scope === this.orbitScope(AnnixOrbitUserType.COMPANY) ||
+      scope === this.orbitScope(AnnixOrbitUserType.RECRUITER)
+    );
+  }
+
+  private fallbackUserType(user: User): AnnixOrbitUserType {
+    const scope = user.appScope;
+    if (scope === this.orbitScope(AnnixOrbitUserType.COMPANY)) {
+      return AnnixOrbitUserType.COMPANY;
+    }
+    if (scope === this.orbitScope(AnnixOrbitUserType.RECRUITER)) {
+      return AnnixOrbitUserType.RECRUITER;
+    }
+    if (scope === this.orbitScope(AnnixOrbitUserType.STUDENT)) {
+      return AnnixOrbitUserType.STUDENT;
+    }
+    return AnnixOrbitUserType.INDIVIDUAL;
   }
 
   private async assertOrbitAccountAvailable(
@@ -158,14 +181,16 @@ export class AnnixOrbitAuthService {
   }
 
   /**
-   * Self-healing for legacy users who landed in CV Assistant without a
-   * complete `cv_assistant_profile` row (e.g. accounts created in another
-   * portal before CV Assistant existed). On login we auto-provision a
-   * placeholder company so the wizard can save against a real companyId
-   * instead of 500-ing on the not-null constraint.
+   * Self-healing for legacy *employer* users who landed in CV Assistant without
+   * a complete `cv_assistant_profile` row (e.g. company/recruiter accounts
+   * created in another portal before CV Assistant existed). For those we
+   * auto-provision a placeholder company so the wizard can save against a real
+   * companyId instead of 500-ing on the not-null constraint.
    *
-   * Individual users intentionally have companyId=null and userType=individual;
-   * we leave those alone.
+   * It must NEVER convert a job seeker, student, or scope-less account into a
+   * company — sign-in only authenticates an account that registration created;
+   * it does not mint one. A profile-less non-employer login returns unchanged
+   * (null) and is rejected by the caller so the user is sent to sign up.
    */
   private async ensureCompanyProfile(
     user: User,
@@ -174,7 +199,19 @@ export class AnnixOrbitAuthService {
     if (profile && profile.userType === AnnixOrbitUserType.INDIVIDUAL) {
       return profile;
     }
+    if (profile && profile.userType === AnnixOrbitUserType.STUDENT) {
+      return profile;
+    }
     if (profile?.companyId) {
+      return profile;
+    }
+
+    const employerContext =
+      (profile &&
+        (profile.userType === AnnixOrbitUserType.COMPANY ||
+          profile.userType === AnnixOrbitUserType.RECRUITER)) ||
+      this.isEmployerScope(user);
+    if (!employerContext) {
       return profile;
     }
 
@@ -334,6 +371,7 @@ export class AnnixOrbitAuthService {
     name: string,
     eeDisclosure?: RegisterEeDisclosureDto,
     phone?: string,
+    ageGroup?: string,
   ) {
     await this.assertOrbitAccountAvailable(email, AnnixOrbitUserType.INDIVIDUAL);
 
@@ -362,6 +400,7 @@ export class AnnixOrbitAuthService {
       userType: AnnixOrbitUserType.INDIVIDUAL,
       eeDisclosure: disclosure,
       phone: trimmedPhone.length > 0 ? trimmedPhone : null,
+      ageGroup: ageGroup && isSeekerAgeGroup(ageGroup) ? ageGroup : null,
     } as Partial<AnnixOrbitProfile>);
 
     await this.emailService.sendAnnixOrbitVerificationEmail(email, verificationToken);
@@ -650,6 +689,16 @@ export class AnnixOrbitAuthService {
 
     let profile = await this.profileRepo.findByUserId(user.id);
     profile = await this.ensureCompanyProfile(user, profile);
+    if (!profile) {
+      profile = await this.provisionInvitedSeekerProfile(user);
+    }
+    if (!profile) {
+      throw new UnauthorizedException(
+        "No Annix Orbit account is set up for this email. Please sign up to get started.",
+      );
+    }
+    user.lastLoginAt = now().toJSDate();
+    await this.userRepo.save(user);
     const role = await this.resolveRole(user.id, profile);
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
     const tokens = this.generateTokens(user, profile, role);
@@ -661,7 +710,7 @@ export class AnnixOrbitAuthService {
         email: user.email,
         name: userName,
         role,
-        userType: profile?.userType ?? AnnixOrbitUserType.COMPANY,
+        userType: profile.userType,
       },
     };
   }
@@ -682,7 +731,7 @@ export class AnnixOrbitAuthService {
       email: user.email,
       name: userName,
       role,
-      userType: profile?.userType ?? AnnixOrbitUserType.COMPANY,
+      userType: profile?.userType ?? this.fallbackUserType(user),
       companyId: profile?.companyId ?? null,
       companyName: profile?.company?.name ?? null,
       createdAt: user.createdAt,
@@ -713,7 +762,7 @@ export class AnnixOrbitAuthService {
             email: user.email,
             name: userName,
             role,
-            userType: profile?.userType ?? AnnixOrbitUserType.COMPANY,
+            userType: profile?.userType ?? this.fallbackUserType(user),
             companyId: profile?.companyId ?? payload.companyId ?? null,
             type: "annix-orbit",
           },
@@ -775,6 +824,25 @@ export class AnnixOrbitAuthService {
     return AnnixOrbitRole.VIEWER;
   }
 
+  private async provisionInvitedSeekerProfile(user: User): Promise<AnnixOrbitProfile | null> {
+    const app = await this.appRepo.findByCode("annix-orbit");
+    if (!app) return null;
+    const access = await this.userAppAccessRepo.findOneByUserAndApp(user.id, app.id);
+    if (!access) return null;
+    const profile = await this.profileRepo.create({
+      userId: user.id,
+      companyId: null,
+      userType: AnnixOrbitUserType.INDIVIDUAL,
+      eeDisclosure: null,
+      phone: null,
+    } as Partial<AnnixOrbitProfile>);
+    if (!user.appScope) {
+      user.appScope = this.orbitScope(AnnixOrbitUserType.INDIVIDUAL);
+    }
+    this.logger.log(`Provisioned seeker profile for invited Orbit user ${user.id}`);
+    return profile;
+  }
+
   private async bridgeToRbac(userId: number, cvRole: string): Promise<void> {
     try {
       const app = await this.appRepo.findByCode("annix-orbit");
@@ -820,7 +888,7 @@ export class AnnixOrbitAuthService {
 
   private generateTokens(user: User, profile: AnnixOrbitProfile | null, role: string) {
     const userName = [user.firstName, user.lastName].filter(Boolean).join(" ") || user.email;
-    const userType = profile?.userType ?? AnnixOrbitUserType.COMPANY;
+    const userType = profile?.userType ?? this.fallbackUserType(user);
     const secret = this.jwtSecret();
 
     const accessToken = this.jwtService.sign(

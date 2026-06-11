@@ -17,10 +17,10 @@ export class AppBranding {
   @Column({ name: "navbar_color_light", type: "varchar", length: 9, default: "#F2F4F7" })
   navbarColorLight: string;
 
-  @Column({ name: "background_light", type: "varchar", length: 9, default: "#F8FAFC" })
+  @Column({ name: "background_light", type: "varchar", length: 9, default: "#0a1733" })
   backgroundLight: string;
 
-  @Column({ name: "background_dark", type: "varchar", length: 9, default: "#0F172A" })
+  @Column({ name: "background_dark", type: "varchar", length: 9, default: "#0a1733" })
   backgroundDark: string;
 
   @Column({ name: "accent_orange", type: "varchar", length: 9, default: "#FF8A00" })
@@ -32,13 +32,13 @@ export class AppBranding {
   @Column({ name: "accent_orange_dark", type: "varchar", length: 9, default: "#CC6900" })
   accentOrangeDark: string;
 
-  @Column({ name: "gradient_from", type: "varchar", length: 9, default: "#1a1a40" })
+  @Column({ name: "gradient_from", type: "varchar", length: 9, default: "#0b1b3a" })
   gradientFrom: string;
 
-  @Column({ name: "gradient_via", type: "varchar", length: 9, default: "#0d0d20" })
+  @Column({ name: "gradient_via", type: "varchar", length: 9, default: "#0a1733" })
   gradientVia: string;
 
-  @Column({ name: "gradient_to", type: "varchar", length: 9, default: "#1a1a40" })
+  @Column({ name: "gradient_to", type: "varchar", length: 9, default: "#070f24" })
   gradientTo: string;
 
   @Column({ name: "tagline", type: "varchar", length: 200, default: "" })
@@ -125,6 +125,18 @@ export class AppBranding {
   @Column({ name: "page_background_path_dark", type: "varchar", length: 500, nullable: true })
   pageBackgroundPathDark: string | null;
 
+  @Column({ name: "hero_top_path", type: "varchar", length: 500, nullable: true })
+  heroTopPath: string | null;
+
+  @Column({ name: "hero_top_path_dark", type: "varchar", length: 500, nullable: true })
+  heroTopPathDark: string | null;
+
+  @Column({ name: "hero_bottom_path", type: "varchar", length: 500, nullable: true })
+  heroBottomPath: string | null;
+
+  @Column({ name: "hero_bottom_path_dark", type: "varchar", length: 500, nullable: true })
+  heroBottomPathDark: string | null;
+
   @Column({ name: "watermark_enabled", type: "boolean", default: true })
   watermarkEnabled: boolean;
 
@@ -136,6 +148,18 @@ export class AppBranding {
 
   @Column({ name: "loading_animation", type: "varchar", length: 32, default: "pulse" })
   loadingAnimation: string;
+
+  @Column({ name: "hero_top_height_pct", type: "int", default: 60 })
+  heroTopHeightPct: number;
+
+  @Column({ name: "hero_bottom_height_pct", type: "int", default: 40 })
+  heroBottomHeightPct: number;
+
+  @Column({ name: "hero_top_fade_pct", type: "int", default: 45 })
+  heroTopFadePct: number;
+
+  @Column({ name: "hero_bottom_fade_pct", type: "int", default: 45 })
+  heroBottomFadePct: number;
 
   @Column({ name: "inherited_fields", type: "text", array: true, default: () => "'{}'" })
   inheritedFields: string[];

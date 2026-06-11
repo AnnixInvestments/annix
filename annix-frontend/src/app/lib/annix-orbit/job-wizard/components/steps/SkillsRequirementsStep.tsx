@@ -1,6 +1,5 @@
 "use client";
 
-import { useToast } from "@/app/components/Toast";
 import {
   annixOrbitApiClient,
   type JobPosting,
@@ -9,6 +8,7 @@ import {
   type SkillProficiency,
   type UpdateJobWizardPayload,
 } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { SKILL_IMPORTANCE_OPTIONS, SKILL_PROFICIENCY_OPTIONS } from "../../constants/skill-options";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
@@ -44,7 +44,7 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
 
   const removeSkill = (index: number) => onChange({ skills: skills.filter((_, i) => i !== index) });
 
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const skillSuggestions = useNixCall({
     operation: "skill-suggestions",
     label: "Nix is suggesting skills for this role…",
@@ -71,10 +71,13 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
         onChange(patch);
         const reason = data.reasoning;
         const note = reason ? ` (${reason})` : "";
-        showToast(`Nix filled requirements.${note}`, "success");
+        alert({ message: `Nix filled requirements.${note}`, variant: "success" });
       },
       onError: () => {
-        showToast("Nix couldn't suggest requirements right now. Try again.", "error");
+        alert({
+          message: "Nix couldn't suggest requirements right now. Try again.",
+          variant: "error",
+        });
       },
     });
   };
@@ -120,10 +123,13 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
         const skillCount = suggested.length;
         const extraNote =
           filledFields.length > 0 ? ` Also filled: ${filledFields.join(", ")}.` : "";
-        showToast(`Nix added ${skillCount} skill suggestions.${extraNote}`, "success");
+        alert({
+          message: `Nix added ${skillCount} skill suggestions.${extraNote}`,
+          variant: "success",
+        });
       },
       onError: () => {
-        showToast("Nix couldn't suggest skills right now. Try again.", "error");
+        alert({ message: "Nix couldn't suggest skills right now. Try again.", variant: "error" });
       },
     });
   };
@@ -133,6 +139,7 @@ export function SkillsRequirementsStep({ draft, onChange }: SkillsRequirementsSt
       title="Skills & Requirements"
       subtitle="Structured skills make Nix's matching dramatically better. Phase 2 will suggest a starter set from your title and outcomes."
     >
+      {AlertDialog}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-[#1a1a40]">Required & Preferred Skills</h3>

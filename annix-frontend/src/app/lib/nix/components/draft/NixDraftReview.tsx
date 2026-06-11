@@ -8,6 +8,7 @@ import {
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { useToast } from "@/app/components/Toast";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { nixApi } from "@/app/lib/nix";
 import type { NixExtractionSessionDto, NixExtractionSummary } from "@/app/lib/query/hooks";
 import { ExtractionGroup } from "./ExtractionGroup";
@@ -35,6 +36,7 @@ export function NixDraftReview(props: {
 }) {
   const { session, brand, onSessionChanged, addMoreDocumentsHref } = props;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const pdfPreview = usePdfPreview();
   const specViewer = useNixSpecViewer();
   const { showExtraction, hideExtraction } = useExtractionProgress();
@@ -81,13 +83,14 @@ export function NixDraftReview(props: {
         await nixApi.retryExtraction(extraction.id);
         await onSessionChanged();
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Re-extract failed", "error");
+        const message = err instanceof Error ? err.message : "Re-extract failed";
+        alert({ message, variant: "error" });
       } finally {
         hideExtraction();
         setRetryingId(null);
       }
     },
-    [brand, showToast, onSessionChanged, showExtraction, hideExtraction],
+    [brand, alert, onSessionChanged, showExtraction, hideExtraction],
   );
 
   const handleItemSaved = useCallback(() => {
@@ -126,14 +129,17 @@ export function NixDraftReview(props: {
       const succeeded = result.succeeded.length;
       const failed = result.failed.length;
       if (failed === 0) {
-        showToast(`Re-extracted ${succeeded} document${succeeded === 1 ? "" : "s"}`, "success");
+        alert({
+          message: `Re-extracted ${succeeded} document${succeeded === 1 ? "" : "s"}`,
+          variant: "success",
+        });
       } else {
         showToast(`Re-extracted ${succeeded}; ${failed} failed`, "info");
       }
     } finally {
       setBulkRetrying(false);
     }
-  }, [retryableExtractions, runBulk, onSessionChanged, brand, showToast]);
+  }, [retryableExtractions, runBulk, onSessionChanged, brand, showToast, alert]);
 
   const handleViewOriginal = useCallback(
     async (extraction: NixExtractionSummary) => {
@@ -148,10 +154,11 @@ export function NixDraftReview(props: {
         }
         pdfPreview.open(url, extraction.documentName);
       } catch (err) {
-        showToast(err instanceof Error ? err.message : "Failed to open document", "error");
+        const message = err instanceof Error ? err.message : "Failed to open document";
+        alert({ message, variant: "error" });
       }
     },
-    [showToast, pdfPreview],
+    [showToast, alert, pdfPreview],
   );
 
   const handleJumpToPage = useCallback(
@@ -338,6 +345,7 @@ export function NixDraftReview(props: {
 
       <PdfPreviewModal state={pdfPreview.state} onClose={pdfPreview.close} />
       <NixSpecViewerModal state={specViewer.state} onClose={specViewer.close} />
+      {AlertDialog}
     </div>
   );
 }

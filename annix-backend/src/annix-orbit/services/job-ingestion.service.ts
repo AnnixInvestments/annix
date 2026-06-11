@@ -3,7 +3,7 @@ import { ConfigService } from "@nestjs/config";
 import { Cron, CronExpression } from "@nestjs/schedule";
 import { chunk } from "es-toolkit/compat";
 import { EmailService } from "../../email/email.service";
-import { DateTime, fromISO, nowMillis } from "../../lib/datetime";
+import { DateTime, fromISO, now, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { sourceRespectRank } from "../config/job-source-providers";
@@ -11,6 +11,7 @@ import { resolveMonthlySalary } from "../config/salary-period";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting } from "../entities/job-posting.entity";
+import { resolveLocation } from "../lib/sa-locations";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import {
   DedupCandidateRow,
@@ -32,7 +33,7 @@ import { GeocodeService } from "./geocode.service";
 import { IngestedJobResult } from "./ingested-job.types";
 import { JobCategorizationService } from "./job-categorization.service";
 import { JobVettingService } from "./job-vetting.service";
-import { JoobleService } from "./jooble.service";
+import { JoobleService, joobleLocationForCountry } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
@@ -80,6 +81,8 @@ export class JobIngestionService {
   private readonly lastIngestionErrorBySource = new Map<number, string>();
   private pollInFlight = false;
   private readonly ingestingSourceIds = new Set<number>();
+  private categoryBackfillRunning = false;
+  private lastCategoryBackfillError: string | null = null;
 
   constructor(
     private readonly sourceRepo: JobMarketSourceRepository,
@@ -104,7 +107,7 @@ export class JobIngestionService {
     private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
-  @Cron(CronExpression.EVERY_HOUR, { name: "annix-orbit:poll-job-sources" })
+  @Cron(CronExpression.EVERY_6_HOURS, { name: "annix-orbit:poll-job-sources" })
   async pollSources(): Promise<void> {
     if (!isAnnixOrbitCronEnabled()) return;
     if (this.pollInFlight) {
@@ -187,6 +190,51 @@ export class JobIngestionService {
     );
 
     return { updated: matched.length + aiResults.length };
+  }
+
+  // On-demand background pass that keeps categorizing pending jobs (rule-based,
+  // then AI for the misses) until none remain — far faster than waiting for the
+  // 6-hourly poll to chip away at the backlog. The admin UI polls categoryCoverage.
+  startCategoryBackfillInBackground(): { started: boolean; alreadyRunning: boolean } {
+    if (this.categoryBackfillRunning) {
+      return { started: false, alreadyRunning: true };
+    }
+    this.categoryBackfillRunning = true;
+    this.lastCategoryBackfillError = null;
+    void this.extractionMetricService
+      .time("orbit-category-backfill", "all", async () => {
+        let totalUpdated = 0;
+        for (let pass = 0; pass < 500; pass += 1) {
+          const { updated } = await this.backfillCanonicalCategories(200);
+          totalUpdated += updated;
+          if (updated === 0) break;
+        }
+        this.logger.log(`On-demand category backfill complete: ${totalUpdated} jobs categorized`);
+        return totalUpdated;
+      })
+      .catch((err) => {
+        this.lastCategoryBackfillError = err instanceof Error ? err.message : String(err);
+        this.logger.error(`On-demand category backfill failed: ${this.lastCategoryBackfillError}`);
+      })
+      .finally(() => {
+        this.categoryBackfillRunning = false;
+      });
+    return { started: true, alreadyRunning: false };
+  }
+
+  async categoryCoverage(): Promise<{
+    total: number;
+    classified: number;
+    running: boolean;
+    lastError: string | null;
+  }> {
+    const { total, classified } = await this.externalJobRepo.canonicalCategoryCoverage();
+    return {
+      total,
+      classified,
+      running: this.categoryBackfillRunning,
+      lastError: this.lastCategoryBackfillError,
+    };
   }
 
   async ingestFromSource(
@@ -279,8 +327,10 @@ export class JobIngestionService {
     source.lastIngestedAt = DateTime.now().toJSDate();
     if (totals.error) {
       this.lastIngestionErrorBySource.set(source.id, totals.error);
+      source.lastIngestionError = totals.error;
     } else {
       this.lastIngestionErrorBySource.delete(source.id);
+      source.lastIngestionError = null;
     }
     await this.sourceRepo.save(source);
 
@@ -289,6 +339,14 @@ export class JobIngestionService {
     );
 
     await this.maybeEmitZeroJobsAlert(source);
+
+    // Hard-enforce the retention cap on every ingest run (manual or scheduled),
+    // not just the stale-sweep cron — otherwise the pool drifts over the cap
+    // between sweeps (or indefinitely on envs where the cron is disabled).
+    await this.externalJobRepo.enforceRetentionCap().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Retention-cap enforcement failed after ingest: ${message}`);
+    });
 
     return totals;
   }
@@ -403,6 +461,8 @@ export class JobIngestionService {
     const result = await this.dpsaCircularService.ingestLatestCircular(source);
 
     source.lastIngestedAt = DateTime.now().toJSDate();
+    source.lastIngestionError = null;
+    this.lastIngestionErrorBySource.delete(source.id);
     await this.sourceRepo.save(source);
 
     return { ingested: result.ingested, skipped: 0, savedIds: [] };
@@ -568,6 +628,20 @@ export class JobIngestionService {
     return { expired };
   }
 
+  @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "annix-orbit:prune-stale-jobs" })
+  async pruneStaleJobs(): Promise<{ pruned: number }> {
+    if (!isAnnixOrbitCronEnabled()) return { pruned: 0 };
+    const staleDeleteDays = 30;
+    const cutoff = now().minus({ days: staleDeleteDays }).toJSDate();
+    const staleIds = await this.externalJobRepo.idsLastSeenBefore(cutoff);
+    if (staleIds.length === 0) return { pruned: 0 };
+    const { deleted } = await this.deleteExternalJobs(staleIds);
+    this.logger.log(
+      `Stale-job prune: deleted ${deleted} listing(s) unseen for ${staleDeleteDays}+ days`,
+    );
+    return { pruned: deleted };
+  }
+
   async autoResolveDuplicates(): Promise<{ deleted: number; groups: number }> {
     const rows = await this.externalJobRepo.dedupCandidateRows();
 
@@ -658,11 +732,16 @@ export class JobIngestionService {
     const requestedLimit = options.limit ?? 20;
     const limit = Math.min(Math.max(requestedLimit, 1), 50);
     const page = Math.max(options.page ?? 1, 1);
+    const externalLimit = page * limit;
 
     const annixJobs = await this.activeAnnixPublicJobs(options);
 
-    const externals = await this.externalJobRepo.publicExternalJobs(options);
-    const externalPublic = externals.map(toPublicJob);
+    const externalPage = await this.externalJobRepo.publicExternalJobs({
+      ...options,
+      page: 1,
+      limit: externalLimit,
+    });
+    const externalPublic = externalPage.jobs.map(toPublicJob);
 
     const merged = [...annixJobs, ...externalPublic].sort((a, b) => {
       const aPosted = a.postedAt;
@@ -673,7 +752,7 @@ export class JobIngestionService {
       return bPosted.localeCompare(aPosted);
     });
 
-    const total = merged.length;
+    const total = annixJobs.length + externalPage.total;
     const start = (page - 1) * limit;
     const jobs = merged.slice(start, start + limit);
     return { jobs, total };
@@ -777,6 +856,7 @@ export class JobIngestionService {
       source.requestsToday += 1;
       const { jobs } = await this.joobleService.searchJobs(source.apiKeyEncrypted!, {
         keywords: category ?? undefined,
+        location: joobleLocationForCountry(country),
       });
       return jobs;
     }
@@ -916,6 +996,9 @@ export class JobIngestionService {
     const savedJobsRaw = await Promise.all(
       fresh.map(async (job) => {
         try {
+          const resolvedLocation = resolveLocation(
+            `${job.locationArea ?? ""} ${job.locationDisplayName ?? ""}`,
+          );
           const monthly = resolveMonthlySalary(source.provider, job.salaryMin, job.salaryMax);
           return await this.externalJobRepo.create({
             title: job.title,
@@ -935,6 +1018,8 @@ export class JobIngestionService {
               title: job.title,
               providerCategory: job.category,
             }),
+            canonicalProvince: resolvedLocation.province,
+            canonicalCity: resolvedLocation.city,
             sourceExternalId: job.id,
             sourceUrl: job.redirectUrl,
             postedAt: job.created ? fromISO(job.created).toJSDate() : null,

@@ -62,6 +62,15 @@ export class ExternalJob {
   @Prop({ type: String, required: false })
   category: string;
 
+  @Prop({ type: String, required: false })
+  canonicalCategory: string | null;
+
+  @Prop({ type: String, required: false })
+  canonicalProvince: string | null;
+
+  @Prop({ type: String, required: false })
+  canonicalCity: string | null;
+
   @Prop({ type: String, required: true })
   sourceExternalId: string;
 
@@ -80,8 +89,8 @@ export class ExternalJob {
   @Prop({ type: Number, required: true })
   sourceId: number;
 
-  @Prop({ type: String, required: false })
-  embedding: string;
+  @Prop({ type: Buffer, required: false })
+  embedding: Buffer;
 
   @Prop({ type: Boolean, required: false, default: false })
   delisted: boolean;

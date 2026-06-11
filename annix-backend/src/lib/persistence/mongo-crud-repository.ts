@@ -1,16 +1,48 @@
 import { randomUUID } from "node:crypto";
-import type { ClientSession, Model } from "mongoose";
+import type { ClientSession, Model, Schema } from "mongoose";
 import {
   CrudRepository,
   type DeepPartial,
   type EntityId,
   type PersistedEntity,
 } from "./crud-repository";
+import { nestPopulate } from "./nest-populate";
 import { MongoTransactionContext, type TransactionContext } from "./transaction-context";
 
 type MongoDocument = Record<string, unknown>;
 
 const COUNTERS_COLLECTION = "counters";
+
+const MAX_RELATION_MAPPING_DEPTH = 4;
+
+const relationRefsCache = new WeakMap<Schema, Map<string, string>>();
+
+function relationRefs(schema: Schema): Map<string, string> {
+  const cached = relationRefsCache.get(schema);
+  if (cached) {
+    return cached;
+  }
+  const refs = new Map<string, string>();
+  const virtuals = (
+    schema as unknown as {
+      virtuals: Record<string, { options?: { ref?: string } }>;
+    }
+  ).virtuals;
+  Object.entries(virtuals).forEach(([name, virtual]) => {
+    const ref = virtual.options?.ref;
+    if (ref) {
+      refs.set(name, ref);
+    }
+  });
+  Object.entries(schema.paths).forEach(([name, path]) => {
+    const ref = (path as { options?: { ref?: string } }).options?.ref;
+    if (typeof ref === "string") {
+      refs.set(name, ref);
+    }
+  });
+  relationRefsCache.set(schema, refs);
+  return refs;
+}
 
 function toMongoShape(value: MongoDocument): MongoDocument {
   if (!("id" in value)) {
@@ -65,7 +97,39 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
         }
       }
     }
+    this.mapPopulatedRelationIds(entity, this.model.schema, 0);
     return entity as unknown as Entity;
+  }
+
+  private mapPopulatedRelationIds(entity: MongoDocument, schema: Schema, depth: number): void {
+    if (depth >= MAX_RELATION_MAPPING_DEPTH) {
+      return;
+    }
+    relationRefs(schema).forEach((ref, key) => {
+      const value = entity[key];
+      if (!value || typeof value !== "object") {
+        return;
+      }
+      const childSchema = this.model.db.models[ref] ? this.model.db.models[ref].schema : null;
+      entity[key] = Array.isArray(value)
+        ? value.map((child) => this.withMappedChildId(child as MongoDocument, childSchema, depth))
+        : this.withMappedChildId(value as MongoDocument, childSchema, depth);
+    });
+  }
+
+  private withMappedChildId(
+    child: MongoDocument | null,
+    schema: Schema | null,
+    depth: number,
+  ): MongoDocument | null {
+    if (!child || typeof child !== "object" || !("_id" in child)) {
+      return child;
+    }
+    const mapped = { id: child._id, ...child };
+    if (schema) {
+      this.mapPopulatedRelationIds(mapped, schema, depth + 1);
+    }
+    return mapped;
   }
 
   protected toDomainList(documents: MongoDocument[]): Entity[] {
@@ -124,10 +188,10 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       return shaped;
     }
     if (this.hasNumericId) {
-      return { _id: await this.nextSequence(), ...shaped };
+      return { ...shaped, _id: await this.nextSequence() };
     }
     if (this.hasStringId) {
-      return { _id: randomUUID(), ...shaped };
+      return { ...shaped, _id: randomUUID() };
     }
     return shaped;
   }
@@ -143,7 +207,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   async findById(id: EntityId, relations: string[] = []): Promise<Entity | null> {
     const document = await this.documents
       .findById(id)
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .session(this.session)
       .lean()
       .exec();
@@ -153,7 +217,7 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   async findAll(relations: string[] = []): Promise<Entity[]> {
     const documents = await this.documents
       .find()
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .session(this.session)
       .lean()
       .exec();
@@ -179,9 +243,10 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   }
 
   async save(entity: Entity): Promise<Entity> {
+    const shaped = await this.withGeneratedId(toMongoShape(entity as unknown as MongoDocument));
     const saved = await this.documents
-      .findByIdAndUpdate(entity.id, toMongoShape(entity as unknown as MongoDocument), {
-        new: true,
+      .findByIdAndUpdate(shaped._id, shaped, {
+        returnDocument: "after",
         upsert: true,
         ...this.sessionOption,
       })

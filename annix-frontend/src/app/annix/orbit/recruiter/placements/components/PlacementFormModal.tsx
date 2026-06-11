@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type { OrbitClient, OrbitPlacement, OrbitPlacementInput } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitCreatePlacement, useOrbitUpdatePlacement } from "@/app/lib/query/hooks";
 
 const STATUS_OPTIONS: { value: string; label: string }[] = [
@@ -30,6 +31,7 @@ interface PlacementFormModalProps {
 export function PlacementFormModal(props: PlacementFormModalProps) {
   const placement = props.placement;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const createMutation = useOrbitCreatePlacement();
   const updateMutation = useOrbitUpdatePlacement();
   const isCreating = createMutation.isPending;
@@ -96,7 +98,7 @@ export function PlacementFormModal(props: PlacementFormModalProps) {
       }
       props.onClose();
     } catch {
-      showToast("Could not save the placement. Please try again.", "error");
+      alert({ message: "Could not save the placement. Please try again.", variant: "error" });
     }
   };
 
@@ -105,6 +107,7 @@ export function PlacementFormModal(props: PlacementFormModalProps) {
 
   return createPortal(
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+      {AlertDialog}
       <button
         type="button"
         aria-label="Close"

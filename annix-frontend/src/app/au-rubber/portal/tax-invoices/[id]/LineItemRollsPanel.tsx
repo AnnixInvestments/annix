@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient, type TaxInvoiceType } from "@/app/lib/api/auRubberApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 
 const PREFIX_SUFFIX_PATTERN = /^\d+-(\d+)$/;
 
@@ -54,6 +55,7 @@ function isMouldedProductDescription(description: string): boolean {
 export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
   const { invoiceId, invoiceType, lineIdx, description, rolls, isApproved, onSaved } = props;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<LineItemRoll[]>([]);
@@ -180,7 +182,8 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
       setEditing(false);
       onSaved();
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to save rolls", "error");
+      const message = e instanceof Error ? e.message : "Failed to save rolls";
+      alert({ message: message, variant: "error" });
     } finally {
       setSaving(false);
     }
@@ -188,7 +191,7 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
 
   const openPicker = async () => {
     if (!productCode) {
-      showToast("Cannot determine product code from description", "error");
+      alert({ message: "Cannot determine product code from description", variant: "error" });
       return;
     }
     setPicking(true);
@@ -202,7 +205,8 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
       setPickedIds(preSelected);
       setPickerOpen(true);
     } catch (e) {
-      showToast(e instanceof Error ? e.message : "Failed to load available rolls", "error");
+      const message = e instanceof Error ? e.message : "Failed to load available rolls";
+      alert({ message: message, variant: "error" });
     } finally {
       setPicking(false);
     }
@@ -281,6 +285,7 @@ export function LineItemRollsPanel(props: LineItemRollsPanelProps) {
 
   return (
     <div className="px-3 py-2 bg-gray-50 border-t border-gray-100">
+      {AlertDialog}
       <div className="flex items-center justify-between mb-1">
         <button
           type="button"

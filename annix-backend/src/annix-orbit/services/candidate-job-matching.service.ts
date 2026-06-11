@@ -7,6 +7,7 @@ import {
   type MatchTier,
 } from "@annix/product-data/sa-market";
 import { forwardRef, Inject, Injectable, Logger } from "@nestjs/common";
+import { chunk } from "es-toolkit/compat";
 import {
   CANDIDATE_SENIORITY_LEVELS,
   Candidate,
@@ -14,6 +15,11 @@ import {
 } from "../entities/candidate.entity";
 import { CandidateJobMatch, MatchDetails } from "../entities/candidate-job-match.entity";
 import { ExternalJob } from "../entities/external-job.entity";
+import {
+  cosineSimilarity,
+  parseEmbedding,
+  rankEmbeddingBatches,
+} from "../lib/embedding-similarity";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
@@ -34,9 +40,27 @@ const ADJACENT_FIELD_SCORE = 0.5;
 const OUTSIDE_RADIUS_PENALTY = 0.4;
 
 const TOP_MATCHES_LIMIT = 20;
-// Practical ceiling for tiers whose maxJobResults is null ("unlimited", e.g.
-// Trailblazer) — keeps generation/scoring bounded for performance.
+// Seekers default to South African jobs; they opt into other countries (e.g. "gb")
+// via their profile. The match pool is scoped to these so UK jobs only reach
+// seekers who asked for them.
+const DEFAULT_TARGET_COUNTRIES = ["za"];
+
+export function targetCountriesOf(countries: string[] | null | undefined): string[] {
+  return countries && countries.length > 0 ? countries : DEFAULT_TARGET_COUNTRIES;
+}
+// Ceiling for how many matches the DISPLAY/feed window considers for a tier whose
+// maxJobResults is null ("unlimited", e.g. Trailblazer). The feed only ever shows
+// the top 100, so this stays modest.
 const UNLIMITED_MATCH_CEILING = 150;
+// How many matches the unlimited tier STORES per run. Set high enough to cover the
+// whole live job pool so a single candidate-side run ranks + persists every job
+// against the CV — identical to what the per-job ingestion matching produces over
+// time, but independent of whether jobs were ingested before or after the CV.
+const UNLIMITED_STORAGE_CEILING = 25000;
+// Score + persist matches in bounded batches so a full-pool run doesn't open
+// thousands of concurrent writes against the database at once.
+const MATCH_PERSIST_CHUNK = 200;
+const EMBEDDING_SCAN_BATCH_SIZE = 1000;
 
 // "Not for me" learning: down-weight a job whose embedding is very close to a
 // job the seeker already dismissed. Gentle + tunable — only jobs above the
@@ -71,43 +95,12 @@ export interface RecommendedJobFilters {
   category?: string | null;
   minSalary?: number | null;
   search?: string | null;
-}
-
-function jobMatchesRecommendedFilters(job: ExternalJob, filters: RecommendedJobFilters): boolean {
-  const category = filters.category || null;
-  if (category && job.category !== category) {
-    return false;
-  }
-  const locationArea = job.locationArea || "";
-  const locationRaw = job.locationRaw || "";
-  const locationHaystack = `${locationArea} ${locationRaw}`.toLowerCase();
-  const province = filters.province ? filters.province.toLowerCase() : null;
-  if (province && !locationHaystack.includes(province)) {
-    return false;
-  }
-  const city = filters.city ? filters.city.toLowerCase() : null;
-  if (city && !locationHaystack.includes(city)) {
-    return false;
-  }
-  const minSalary = filters.minSalary != null && filters.minSalary > 0 ? filters.minSalary : null;
-  if (minSalary != null) {
-    const best =
-      job.salaryMax != null ? job.salaryMax : job.salaryMin != null ? job.salaryMin : null;
-    if (best != null && best < minSalary) {
-      return false;
-    }
-  }
-  const search = filters.search ? filters.search.trim().toLowerCase() : null;
-  if (search) {
-    const company = job.company || "";
-    const description = job.description || "";
-    const keywordHaystack =
-      `${job.title} ${company} ${locationArea} ${locationRaw} ${description}`.toLowerCase();
-    if (!keywordHaystack.includes(search)) {
-      return false;
-    }
-  }
-  return true;
+  provider?: string | null;
+  sourceIds?: number[] | null;
+  // The seeker's target countries (hard gate, never user-removable) and an
+  // optional single-country narrowing from the Region dropdown.
+  countries?: string[] | null;
+  region?: string | null;
 }
 
 function roleTokens(role: string): string[] {
@@ -181,26 +174,50 @@ export class CandidateJobMatchingService {
     return maxJobResults == null ? UNLIMITED_MATCH_CEILING : maxJobResults;
   }
 
-  async matchCandidateToJobs(candidateId: number): Promise<CandidateJobMatch[]> {
+  // How many matches to generate + persist for a candidate. The unlimited tier
+  // stores far more than the feed window so the true match count reflects the
+  // whole relevant pool, not just the first page.
+  private async storageMatchLimit(matchTier: string): Promise<number> {
+    const capability = await this.tierCapabilityRepo.findByTier(matchTier);
+    if (!capability) {
+      return TOP_MATCHES_LIMIT;
+    }
+    const maxJobResults = capability.maxJobResults;
+    return maxJobResults == null ? UNLIMITED_STORAGE_CEILING : maxJobResults;
+  }
+
+  async matchCandidateToJobs(
+    candidateId: number,
+    options: { storageLimit?: number } = {},
+  ): Promise<CandidateJobMatch[]> {
     const candidate = await this.candidateRepo.findById(candidateId);
     if (!candidate) {
       return [];
     } else {
       const narrowing = this.resolveCategoryNarrowing(candidate);
-      const matchLimit = await this.effectiveMatchLimit(candidate.matchTier);
+      const tierStorageLimit = await this.storageMatchLimit(candidate.matchTier);
+      const matchLimit =
+        options.storageLimit == null
+          ? tierStorageLimit
+          : Math.min(tierStorageLimit, options.storageLimit);
       const dismissedVectors = await this.loadDismissedJobVectors(candidateId);
       const similarJobs = await this.findSimilarJobsByEmbedding(
         candidate,
         matchLimit,
         narrowing.pool,
+        targetCountriesOf(candidate.targetCountries),
       );
 
-      const results = await Promise.all(
-        similarJobs.map(async (row) => {
-          const job = await this.externalJobRepo.findById(row.jobId);
-          if (!job) {
-            return null;
-          } else {
+      const matches: CandidateJobMatch[] = [];
+      for (const batch of chunk(similarJobs, MATCH_PERSIST_CHUNK)) {
+        const jobs = await this.externalJobRepo.findByIds(batch.map((row) => row.jobId));
+        const jobsById = new Map(jobs.map((job) => [job.id, job]));
+        const batchResults = await Promise.all(
+          batch.map(async (row) => {
+            const job = jobsById.get(row.jobId);
+            if (!job) {
+              return null;
+            }
             const categoryBoost = this.categoryBoostFor(job, narrowing);
             return this.scoreAndSaveMatch(
               candidate,
@@ -211,11 +228,12 @@ export class CandidateJobMatchingService {
               categoryBoost,
               dismissedVectors,
             );
-          }
-        }),
-      );
-
-      const matches = results.filter((m): m is CandidateJobMatch => m !== null);
+          }),
+        );
+        for (const result of batchResults) {
+          if (result !== null) matches.push(result);
+        }
+      }
 
       this.logger.log(`Matched candidate ${candidateId} to ${matches.length} jobs`);
 
@@ -267,27 +285,34 @@ export class CandidateJobMatchingService {
 
   async recommendedJobsForCandidate(
     candidateId: number,
-    options: { includeDismissed?: boolean; filters?: RecommendedJobFilters | null } = {},
+    options: {
+      includeDismissed?: boolean;
+      filters?: RecommendedJobFilters | null;
+      tierOverride?: string | null;
+    } = {},
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
+    const candidate = await this.candidateRepo.findById(candidateId);
+    // The seeker's chosen plan (selectedTier) is the source of truth for how many
+    // matches they may see. The candidate's stored matchTier can lag behind a plan
+    // change, so an explicit override wins; only then fall back to the stored tier.
+    const tier = options.tierOverride ?? candidate?.matchTier ?? DEFAULT_MATCH_TIER;
+    const limit = await this.effectiveMatchLimit(tier);
+
+    // Fetch at least the tier's full allowance (a higher tier than the default
+    // window must not be silently truncated), with the window as a floor so lower
+    // tiers still get a diversity pool larger than their display limit. Filters are
+    // applied in the DB query so the displayed set is the top-ranked of the FULL
+    // filtered pool — never the filtered subset of a score-capped window, which
+    // would drop matches that the headline count includes.
+    const fetchWindow = Math.max(RECOMMENDED_FETCH_WINDOW, limit);
     const allMatches = await this.matchRepo.recommendedJobsForCandidate(
       candidateId,
       options.includeDismissed ?? false,
-      RECOMMENDED_FETCH_WINDOW,
+      fetchWindow,
+      options.filters ?? null,
     );
 
-    const filters = options.filters;
-    const filtered = filters
-      ? allMatches.filter((match) =>
-          match.externalJob ? jobMatchesRecommendedFilters(match.externalJob, filters) : false,
-        )
-      : allMatches;
-
-    const candidate = await this.candidateRepo.findById(candidateId);
-    const limit = candidate
-      ? await this.effectiveMatchLimit(candidate.matchTier)
-      : TOP_MATCHES_LIMIT;
-
-    return this.applyStretchMatchDiversity(filtered, limit);
+    return this.applyStretchMatchDiversity(allMatches, limit);
   }
 
   applyStretchMatchDiversity<T extends Pick<CandidateJobMatch, "overallScore">>(
@@ -372,19 +397,19 @@ export class CandidateJobMatchingService {
     candidate: Candidate,
     limit: number,
     categoryPool: string[] | null = null,
+    countries: string[] | null = null,
   ): Promise<Array<{ jobId: number; similarity: number }>> {
     const candidateVector = parseEmbedding(candidate.embedding);
     if (candidateVector === null) {
       return [];
     }
 
-    const jobs = await this.externalJobRepo.jobsWithEmbedding(categoryPool);
-
-    return rankBySimilarity(
+    const ranked = await rankEmbeddingBatches(
       candidateVector,
-      jobs.map((job) => ({ id: job.id, embedding: job.embedding })),
+      this.externalJobRepo.jobEmbeddingBatches(categoryPool, countries, EMBEDDING_SCAN_BATCH_SIZE),
       limit,
-    ).map((row) => ({ jobId: row.id, similarity: row.similarity }));
+    );
+    return ranked.map((row) => ({ jobId: row.id, similarity: row.similarity }));
   }
 
   private async findSimilarCandidatesByEmbedding(
@@ -396,13 +421,12 @@ export class CandidateJobMatchingService {
       return [];
     }
 
-    const candidates = await this.candidateRepo.candidatesWithEmbedding();
-
-    return rankBySimilarity(
+    const ranked = await rankEmbeddingBatches(
       jobVector,
-      candidates.map((candidate) => ({ id: candidate.id, embedding: candidate.embedding })),
+      this.candidateRepo.candidateEmbeddingBatches(EMBEDDING_SCAN_BATCH_SIZE),
       limit,
-    ).map((row) => ({ candidateId: row.id, similarity: row.similarity }));
+    );
+    return ranked.map((row) => ({ candidateId: row.id, similarity: row.similarity }));
   }
 
   private calculateSkillsOverlap(
@@ -480,7 +504,7 @@ export class CandidateJobMatchingService {
       .filter((vector): vector is number[] => vector !== null);
   }
 
-  private dismissPenaltyFor(jobEmbedding: string | null, dismissedVectors: number[][]): number {
+  private dismissPenaltyFor(jobEmbedding: Buffer | null, dismissedVectors: number[][]): number {
     if (dismissedVectors.length === 0) {
       return 0;
     }
@@ -656,8 +680,10 @@ export class CandidateJobMatchingService {
   }
 
   calculateDistance(candidate: Candidate, job: ExternalJob): number | null {
-    const cLat = candidate.locationLat;
-    const cLon = candidate.locationLon;
+    const workHomeLat = candidate.workProfile?.shared.homeLatitude;
+    const workHomeLon = candidate.workProfile?.shared.homeLongitude;
+    const cLat = typeof workHomeLat === "number" ? workHomeLat : candidate.locationLat;
+    const cLon = typeof workHomeLon === "number" ? workHomeLon : candidate.locationLon;
     const jLat = job.locationLat;
     const jLon = job.locationLon;
     if (cLat === null || cLon === null || jLat === null || jLon === null) {
@@ -751,53 +777,4 @@ export class CandidateJobMatchingService {
 
     return parts.join(". ");
   }
-}
-
-function parseEmbedding(raw: string | null): number[] | null {
-  if (!raw) {
-    return null;
-  }
-  const trimmed = raw.trim().replace(/^\[/, "").replace(/\]$/, "");
-  if (trimmed.length === 0) {
-    return null;
-  }
-  const values = trimmed.split(",").map((part) => Number.parseFloat(part.trim()));
-  if (values.length === 0 || values.some((value) => Number.isNaN(value))) {
-    return null;
-  }
-  return values;
-}
-
-function cosineSimilarity(a: number[], b: number[]): number | null {
-  if (a.length === 0 || a.length !== b.length) {
-    return null;
-  }
-  const dot = a.reduce((sum, value, index) => sum + value * b[index], 0);
-  const magnitudeA = Math.sqrt(a.reduce((sum, value) => sum + value * value, 0));
-  const magnitudeB = Math.sqrt(b.reduce((sum, value) => sum + value * value, 0));
-  if (magnitudeA === 0 || magnitudeB === 0) {
-    return null;
-  }
-  return dot / (magnitudeA * magnitudeB);
-}
-
-function rankBySimilarity(
-  queryVector: number[],
-  rows: Array<{ id: number; embedding: string | null }>,
-  limit: number,
-): Array<{ id: number; similarity: number }> {
-  return rows
-    .flatMap((row) => {
-      const vector = parseEmbedding(row.embedding);
-      if (vector === null) {
-        return [];
-      }
-      const similarity = cosineSimilarity(queryVector, vector);
-      if (similarity === null) {
-        return [];
-      }
-      return [{ id: row.id, similarity }];
-    })
-    .sort((left, right) => right.similarity - left.similarity)
-    .slice(0, limit);
 }

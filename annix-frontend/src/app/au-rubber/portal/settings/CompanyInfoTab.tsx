@@ -6,6 +6,7 @@ import { useToast } from "@/app/components/Toast";
 import { useAuRubberBranding } from "@/app/context/AuRubberBrandingContext";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberAppProfileDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 
 const EMPTY_PROFILE: RubberAppProfileDto = {
   id: 1,
@@ -72,6 +73,7 @@ function TextAreaField(props: {
 
 export function CompanyInfoTab() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { branding } = useAuRubberBranding();
   const [profile, setProfile] = useState<RubberAppProfileDto>(EMPTY_PROFILE);
   const [isLoading, setIsLoading] = useState(true);
@@ -116,7 +118,7 @@ export function CompanyInfoTab() {
       showToast("Company info saved", "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to save";
-      showToast(msg, "error");
+      alert({ message: msg, variant: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -140,6 +142,7 @@ export function CompanyInfoTab() {
 
   return (
     <div className="bg-white shadow rounded-lg p-6">
+      {AlertDialog}
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-lg font-medium text-gray-900">Company Information</h2>

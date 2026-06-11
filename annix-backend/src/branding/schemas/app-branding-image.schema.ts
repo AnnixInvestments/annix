@@ -25,8 +25,8 @@ export class AppBrandingImage {
   @Prop({ type: Number, required: true, default: 0 })
   sortOrder: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const AppBrandingImageSchema = SchemaFactory.createForClass(AppBrandingImage);

@@ -2,11 +2,13 @@
 
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminLicensingCatalog, useCreateTierInvite } from "@/app/lib/query/hooks";
 
 export function InviteToTierForm(props: { moduleKey: string }) {
   const moduleKey = props.moduleKey;
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const catalogQuery = useAdminLicensingCatalog(moduleKey);
   const createInvite = useCreateTierInvite();
 
@@ -35,13 +37,14 @@ export function InviteToTierForm(props: { moduleKey: string }) {
           showToast(`Invite sent to ${trimmed}.`, "success");
           setEmail("");
         },
-        onError: () => showToast("Could not send the invite.", "error"),
+        onError: () => alert({ message: "Could not send the invite.", variant: "error" }),
       },
     );
   };
 
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-5">
+      {AlertDialog}
       <p className="text-sm text-gray-500">
         Invite a user by email to a plan with a free trial. They'll receive an email; the plan is
         applied to their account when billing/sign-up is wired (admins can grant it manually

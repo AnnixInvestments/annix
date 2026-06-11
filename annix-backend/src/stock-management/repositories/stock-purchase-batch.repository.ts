@@ -2,6 +2,7 @@ import { CrudRepository, type DeepPartial } from "../../lib/persistence/crud-rep
 import type { TransactionContext } from "../../lib/persistence/transaction-context";
 import {
   StockPurchaseBatch,
+  type StockPurchaseBatchSourceType,
   type StockPurchaseBatchStatus,
 } from "../entities/stock-purchase-batch.entity";
 
@@ -40,4 +41,9 @@ export abstract class StockPurchaseBatchRepository extends CrudRepository<StockP
     companyId: number,
     productId: number,
   ): Promise<StockPurchaseBatch | null>;
+  abstract findBySourceRefs(
+    companyId: number,
+    sourceType: StockPurchaseBatchSourceType,
+    sourceRefIds: number[],
+  ): Promise<StockPurchaseBatch[]>;
 }

@@ -3,6 +3,7 @@
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { useBranding } from "@/app/lib/query/hooks";
 import AnnixLogo from "./AnnixLogo";
+import { AnnixOrbitNavbar } from "./branding/AnnixOrbitNavbar";
 
 // Single source of truth for an app's navbar logo lockup, pulled live from the
 // per-app branding page. Used by PortalToolbar and any surface that must match
@@ -20,6 +21,10 @@ export function BrandNavLogo(props: { brand: string; isOrbit: boolean }) {
   const branding = data ?? null;
   const hasTextCrop = branding ? brandHasAsset("textCrop", branding) : false;
   const hasWordmark = branding ? brandHasAsset("wordmark", branding) : false;
+
+  if (isOrbit) {
+    return <AnnixOrbitNavbar height={40} />;
+  }
 
   if (branding && hasTextCrop) {
     const iconUrl = resolveBrandAssetUrl("logoIcon", branding);

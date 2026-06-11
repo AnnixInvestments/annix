@@ -34,6 +34,7 @@ import {
 } from "@/app/lib/api/auRubberApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useScrollRestoration } from "@/app/lib/hooks/useScrollRestoration";
 import NixProcessingPopup from "@/app/lib/nix/components/NixProcessingPopup";
 import { useAuRubberCompanies, useAuRubberDeliveryNotes } from "@/app/lib/query/hooks";
@@ -66,6 +67,7 @@ export default function CustomerDeliveryNotesPage() {
   const rawBrandingPrimaryColor = branding?.primaryColor;
   const { showExtraction, hideExtraction, updateExtraction } = useExtractionProgress();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
+  const { alert, AlertDialog } = useAlert();
   const [isReExtracting, setIsReExtracting] = useState(false);
   const [analyzeProgress, setAnalyzeProgress] = useState(0);
   const [analyzeStatus, setAnalyzeStatus] = useState("");
@@ -130,13 +132,16 @@ export default function CustomerDeliveryNotesPage() {
       });
       const result = await auRubberApiClient.bulkLinkCustomerDns();
       if (result.linked > 0) {
-        showToast(`Auto-linked ${result.linked} customer DN(s) to supplier CoCs`, "success");
+        alert({
+          message: `Auto-linked ${result.linked} customer DN(s) to supplier CoCs`,
+          variant: "success",
+        });
         await notesQuery.refetch();
       } else {
         showToast("No matching customer DNs found to link", "info");
       }
     } catch (err) {
-      showToast("Failed to auto-link customer delivery notes", "error");
+      alert({ message: "Failed to auto-link customer delivery notes", variant: "error" });
     } finally {
       hideExtraction();
       setIsAutoLinking(false);
@@ -233,7 +238,7 @@ export default function CustomerDeliveryNotesPage() {
       setAnalyzeDetail(`Found ${result.groups.length} delivery note(s)`);
       await new Promise((resolve) => setTimeout(resolve, 800));
       setAnalysisResult(result);
-      showToast(`Found ${result.groups.length} delivery note(s)`, "success");
+      alert({ message: `Found ${result.groups.length} delivery note(s)`, variant: "success" });
     } catch (err) {
       clearInterval(progressInterval);
       toastError(showToast, err, "Failed to analyze files");
@@ -264,7 +269,10 @@ export default function CustomerDeliveryNotesPage() {
         analysisResult,
         overrides,
       );
-      showToast(`Created ${result.deliveryNoteIds.length} delivery note(s)`, "success");
+      alert({
+        message: `Created ${result.deliveryNoteIds.length} delivery note(s)`,
+        variant: "success",
+      });
       setAnalysisResult(null);
       setAnalysisFiles([]);
       await notesQuery.refetch();
@@ -305,10 +313,10 @@ export default function CustomerDeliveryNotesPage() {
           deliveryNoteNumber: uploadDnNumber || undefined,
           deliveryDate: uploadDeliveryDate || undefined,
         });
-        showToast(
-          `${uploadFiles.length} delivery note${uploadFiles.length > 1 ? "s" : ""} uploaded`,
-          "success",
-        );
+        alert({
+          message: `${uploadFiles.length} delivery note${uploadFiles.length > 1 ? "s" : ""} uploaded`,
+          variant: "success",
+        });
       } else {
         await auRubberApiClient.uploadDeliveryNote({
           deliveryNoteType: uploadType,
@@ -455,10 +463,10 @@ export default function CustomerDeliveryNotesPage() {
               if (!confirmed) return;
               try {
                 const result = await auRubberApiClient.dedupeDeliveryNotes();
-                showToast(
-                  `Removed ${result.deleted} duplicate(s) across ${result.groups} DN group(s); kept ${result.kept}.`,
-                  "success",
-                );
+                alert({
+                  message: `Removed ${result.deleted} duplicate(s) across ${result.groups} DN group(s); kept ${result.kept}.`,
+                  variant: "success",
+                });
                 await notesQuery.refetch();
               } catch (err) {
                 toastError(showToast, err, "Dedupe failed");
@@ -484,12 +492,13 @@ export default function CustomerDeliveryNotesPage() {
               });
               try {
                 const result = await auRubberApiClient.resliceAllDeliveryNoteBundles();
-                showToast(
-                  result.resliced.length > 0
-                    ? `Fixed ${result.resliced.length} of ${result.checked} document(s) to show only their own page(s).`
-                    : `Checked ${result.checked} document(s) — all already show only their own page(s).`,
-                  "success",
-                );
+                alert({
+                  message:
+                    result.resliced.length > 0
+                      ? `Fixed ${result.resliced.length} of ${result.checked} document(s) to show only their own page(s).`
+                      : `Checked ${result.checked} document(s) — all already show only their own page(s).`,
+                  variant: "success",
+                });
                 await notesQuery.refetch();
               } catch (err) {
                 toastError(showToast, err, "Failed to fix document pages");
@@ -1069,6 +1078,7 @@ export default function CustomerDeliveryNotesPage() {
         />
       )}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

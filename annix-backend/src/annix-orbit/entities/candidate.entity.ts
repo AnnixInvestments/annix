@@ -153,10 +153,13 @@ export class Candidate {
   references: CandidateReference[];
 
   @Column({ type: "varchar", nullable: true })
-  embedding: string | null;
+  embedding: Buffer | null;
 
   @Column({ name: "target_categories", type: "jsonb", nullable: true })
   targetCategories: string[] | null;
+
+  @Column({ name: "target_countries", type: "jsonb", nullable: true })
+  targetCountries: string[] | null;
 
   @Column({ name: "match_tier", type: "varchar", length: 16, default: "soft" })
   matchTier: string;

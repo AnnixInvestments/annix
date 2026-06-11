@@ -49,6 +49,9 @@ export class PaperPortfolio {
   @Prop({ type: Boolean, required: true })
   isPaused: boolean;
 
+  @Prop({ type: Object, required: false })
+  lastEvaluationJson: Record<string, unknown> | null;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

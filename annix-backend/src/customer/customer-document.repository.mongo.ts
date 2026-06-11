@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { MongoCrudRepository } from "../lib/persistence/mongo-crud-repository";
+import { nestPopulate } from "../lib/persistence/nest-populate";
 import { CustomerDocumentRepository } from "./customer-document.repository";
 import {
   CustomerDocument,
@@ -38,7 +39,11 @@ export class MongoCustomerDocumentRepository
   }
 
   async findByIdWithRelations(id: number, relations: string[]): Promise<CustomerDocument | null> {
-    const document = await this.documents.findById(id).populate(relations).lean().exec();
+    const document = await this.documents
+      .findById(id)
+      .populate(nestPopulate(relations))
+      .lean()
+      .exec();
     return this.toDomain(document);
   }
 
@@ -49,7 +54,7 @@ export class MongoCustomerDocumentRepository
   ): Promise<CustomerDocument | null> {
     const document = await this.documents
       .findOne({ _id: id, customerId })
-      .populate(relations)
+      .populate(nestPopulate(relations))
       .lean()
       .exec();
     return this.toDomain(document);

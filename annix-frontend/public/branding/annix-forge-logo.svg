@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" role="img" aria-label="Annix Forge">
+  <rect width="64" height="64" rx="14" fill="#1a1a40" />
+  <path d="M22 16 H44 V24 H30 V30 H42 V38 H30 V52 H22 Z" fill="#FF8A00" />
+  <circle cx="46" cy="45" r="4" fill="#FF9C33" />
+  <text
+    x="80"
+    y="29"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="15"
+    font-weight="600"
+    letter-spacing="4"
+    fill="#6b6b8a"
+  >ANNIX</text>
+  <text
+    x="80"
+    y="52"
+    font-family="Arial, Helvetica, sans-serif"
+    font-size="30"
+    font-weight="800"
+    letter-spacing="1"
+    fill="#1a1a40"
+  >Forge</text>
+</svg>

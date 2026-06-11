@@ -5,7 +5,7 @@ category: Auto-execution
 roles: [insights]
 order: 10
 tags: [execution, allocation-rules, stop-loss, audit-log]
-lastUpdated: 2026-05-12
+lastUpdated: 2026-06-10
 summary: What the engine does every morning when it auto-trades the four signal portfolios — the order of operations, the rule precedence, and the safety nets.
 readingMinutes: 5
 relatedPaths:
@@ -78,18 +78,24 @@ candidate ranking:
 sort desc by adjustedScore
 
 for each candidate in sorted order:
-  if buyBudgetSlots = 0 → stop (maxPositions reached)
   if deployableCash < R100 → stop
+  if candidate not already held AND no new-position slots left → skip
+    (maxPositions only limits NEW positions — already-held assets can
+     still be topped up)
   position size = min(deployableCash,
-                      positionCap% × totalPortfolioValue,
+                      positionCap% × totalPortfolioValue − value already held,
                       sectorRoom)
   qty = floor(size / price)
-  if qty <= 0 → skip
-  → emit BuyDecision
-  deductions: deployableCash, sectorRoom, slot count
+  if qty <= 0 → skip (logged: "one unit costs X but budget is Y")
+  → emit BuyDecision ("BUY" for new positions, "TOP-UP BUY" for held ones)
+  deductions: deployableCash, sectorRoom, slot count (new positions only)
 ```
 
+Top-ups exist so monthly contributions still deploy when a portfolio is at `maxPositions` (e.g. `signal-very-high-risk` with all 5 slots full) — the cash flows into the best-scoring held assets within their position caps instead of accumulating forever.
+
 Note: the engine never sells then re-buys the same asset in the same day. If a sell happens, the asset is excluded from the buy candidates for that run.
+
+Every evaluation (the cron's real run, not just the preview) is also persisted to the portfolio as a **Last executed run** record — decisions plus every skip reason — shown as a disclosure under the Today's decisions card.
 
 ## Hard rules enforced per portfolio
 

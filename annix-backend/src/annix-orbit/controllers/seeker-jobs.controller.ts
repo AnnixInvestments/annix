@@ -10,11 +10,12 @@ import {
   Param,
   ParseIntPipe,
   Post,
+  Put,
   Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
-import { IsInt, IsOptional, IsString, MaxLength } from "class-validator";
+import { ArrayMaxSize, IsArray, IsInt, IsOptional, IsString, MaxLength } from "class-validator";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { OrbitDismissReasonService } from "../services/orbit-dismiss-reason.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
@@ -64,6 +65,14 @@ class SelectPlanDto {
   tier: string;
 }
 
+class SetTargetCountriesDto {
+  @IsArray()
+  @ArrayMaxSize(20)
+  @IsString({ each: true })
+  @MaxLength(8, { each: true })
+  countries: string[];
+}
+
 interface SeekerAuthRequest {
   user: { id: number; email: string; userType: string };
 }
@@ -81,29 +90,80 @@ export class SeekerJobsController {
     return this.dismissReasonService.listActive();
   }
 
-  @Get("recommended")
-  async recommended(
+  @Get("sources")
+  sources() {
+    return this.feedService.activeSourceProviders();
+  }
+
+  @Get("target-countries")
+  targetCountries(@Request() req: SeekerAuthRequest) {
+    return this.feedService.targetCountriesForSeeker(req.user.email);
+  }
+
+  @Get("enabled-countries")
+  async enabledCountries() {
+    const countries = await this.feedService.enabledJobCountries();
+    return { countries };
+  }
+
+  @Put("target-countries")
+  setTargetCountries(@Request() req: SeekerAuthRequest, @Body() dto: SetTargetCountriesDto) {
+    return this.feedService.setTargetCountriesForSeeker(req.user.email, dto.countries);
+  }
+
+  @Get("facets")
+  async facets(
     @Request() req: SeekerAuthRequest,
+    @Query("region") region?: string,
     @Query("province") province?: string,
     @Query("city") city?: string,
     @Query("category") category?: string,
     @Query("minSalary") minSalary?: string,
     @Query("search") search?: string,
+    @Query("provider") provider?: string,
   ) {
     const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
     const filters = {
+      region: region || null,
       province: province || null,
       city: city || null,
       category: category || null,
       minSalary:
         parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
       search: search || null,
+      provider: provider && provider !== "all" ? provider : null,
+    };
+    return this.feedService.recommendedFacetsForSeeker(req.user.email, { filters });
+  }
+
+  @Get("recommended")
+  async recommended(
+    @Request() req: SeekerAuthRequest,
+    @Query("region") region?: string,
+    @Query("province") province?: string,
+    @Query("city") city?: string,
+    @Query("category") category?: string,
+    @Query("minSalary") minSalary?: string,
+    @Query("search") search?: string,
+    @Query("provider") provider?: string,
+  ) {
+    const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
+    const filters = {
+      region: region || null,
+      province: province || null,
+      city: city || null,
+      category: category || null,
+      minSalary:
+        parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
+      search: search || null,
+      provider: provider && provider !== "all" ? provider : null,
     };
     const result = await this.feedService.recommendedForSeeker(req.user.email, { filters });
     return {
       matches: result.matches,
       candidateIds: result.candidateIds,
       hasCandidate: result.candidateIds.length > 0,
+      total: result.total,
     };
   }
 

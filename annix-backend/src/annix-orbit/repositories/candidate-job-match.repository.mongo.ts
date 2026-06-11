@@ -6,7 +6,68 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import type { Candidate } from "../entities/candidate.entity";
 import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
-import { CandidateJobMatchRepository } from "./candidate-job-match.repository";
+import {
+  CandidateJobMatchRepository,
+  type RecommendedFacetRow,
+  type RecommendedMatchCountFilters,
+} from "./candidate-job-match.repository";
+
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// The single source of truth for which external jobs are recommendable to a
+// seeker: live (not delisted/expired) plus any active filters. Used for both the
+// displayed list and the headline count so the two can never disagree.
+function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Record<string, unknown> {
+  const query: Record<string, unknown> = {
+    delisted: { $ne: true },
+    $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+  };
+  const and: Array<Record<string, unknown>> = [];
+
+  if (filters?.countries && filters.countries.length > 0) {
+    query.country = { $in: filters.countries };
+  }
+  if (filters?.category) {
+    query.canonicalCategory = filters.category;
+  }
+  if (filters?.sourceIds && filters.sourceIds.length > 0) {
+    query.sourceId = { $in: filters.sourceIds };
+  }
+  if (filters?.province) {
+    query.canonicalProvince = filters.province;
+  }
+  if (filters?.city) {
+    query.canonicalCity = filters.city;
+  }
+  if (filters?.search) {
+    const rx = new RegExp(escapeRegex(filters.search.trim()), "i");
+    and.push({
+      $or: [
+        { title: rx },
+        { company: rx },
+        { locationArea: rx },
+        { locationRaw: rx },
+        { description: rx },
+      ],
+    });
+  }
+  if (filters?.minSalary != null && filters.minSalary > 0) {
+    and.push({
+      $expr: {
+        $or: [
+          { $eq: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, null] },
+          { $gte: [{ $ifNull: ["$salaryMax", "$salaryMin"] }, filters.minSalary] },
+        ],
+      },
+    });
+  }
+  if (and.length > 0) {
+    query.$and = and;
+  }
+  return query;
+}
 
 @Injectable()
 export class MongoCandidateJobMatchRepository
@@ -29,29 +90,56 @@ export class MongoCandidateJobMatchRepository
     candidateId: number,
     includeDismissed: boolean,
     limit: number,
+    filters: RecommendedMatchCountFilters | null = null,
   ): Promise<Array<CandidateJobMatch & { externalJob: ExternalJob }>> {
-    const externalJobModel = this.model.db.model<Record<string, unknown>>("ExternalJob");
-    const liveJobs = await externalJobModel
-      .find({
-        delisted: { $ne: true },
-        $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
-      })
-      .select("_id")
-      .lean()
-      .exec();
-    const liveJobIds = liveJobs.map((job) => job._id as number);
-    const filter: Record<string, unknown> = {
-      candidateId,
-      externalJobId: { $in: liveJobIds },
-    };
+    const jobFilter = buildLiveJobFilter(filters);
+    const matchFilter: Record<string, unknown> = { candidateId };
     if (!includeDismissed) {
-      filter.dismissed = false;
+      matchFilter.dismissed = false;
     }
+
+    // A "narrow" filter (province / city / category / source / search / salary)
+    // can exclude most of a candidate's top-ranked matches, so we must select the
+    // top-N OF THE FILTERED SET — pre-resolve the matching job ids and constrain
+    // the match query by them.
+    //
+    // The default browse (country + still-live only) excludes very little, so we
+    // skip that all-jobs id pre-fetch (slow once there are 12k+ jobs) and push the
+    // live/country filter into the populate `match`. A candidate's top matches are
+    // already in their target countries, so dropping the rare out-of-scope row
+    // from the fetch window is cheap and keeps the query O(candidate's matches)
+    // regardless of how many jobs exist in total.
+    const isNarrow = Boolean(
+      filters &&
+        (filters.province ||
+          filters.city ||
+          filters.category ||
+          filters.search ||
+          (filters.sourceIds && filters.sourceIds.length > 0) ||
+          (filters.minSalary != null && filters.minSalary > 0)),
+    );
+
+    if (!isNarrow) {
+      const docs = await this.documents
+        .find(matchFilter)
+        .sort({ overallScore: -1 })
+        .limit(limit)
+        .populate({ path: "externalJob", select: "-embedding", match: jobFilter })
+        .lean()
+        .exec();
+      const live = docs.filter((doc) => (doc as Record<string, unknown>).externalJob != null);
+      return this.toDomainList(live) as Array<CandidateJobMatch & { externalJob: ExternalJob }>;
+    }
+
+    const externalJobModel = this.model.db.model<Record<string, unknown>>("ExternalJob");
+    const liveJobs = await externalJobModel.find(jobFilter).select("_id").lean().exec();
+    const liveJobIds = liveJobs.map((job) => job._id as number);
+    matchFilter.externalJobId = { $in: liveJobIds };
     const docs = await this.documents
-      .find(filter)
+      .find(matchFilter)
       .sort({ overallScore: -1 })
       .limit(limit)
-      .populate("externalJob")
+      .populate({ path: "externalJob", select: "-embedding" })
       .lean()
       .exec();
     return this.toDomainList(docs) as Array<CandidateJobMatch & { externalJob: ExternalJob }>;
@@ -95,6 +183,94 @@ export class MongoCandidateJobMatchRepository
     return this.documents
       .countDocuments({ candidateId: { $in: candidateIds }, dismissed: false })
       .exec();
+  }
+
+  async countRecommendedForCandidates(
+    candidateIds: number[],
+    filters: RecommendedMatchCountFilters | null,
+  ): Promise<number> {
+    if (candidateIds.length === 0) return 0;
+
+    const jobMatch = buildLiveJobFilter(filters);
+
+    const result = await this.documents
+      .aggregate<{ total: number }>([
+        { $match: { candidateId: { $in: candidateIds }, dismissed: false } },
+        {
+          $lookup: {
+            from: "cv_assistant_external_jobs",
+            let: { jid: "$externalJobId" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$jid"] } } },
+              { $match: jobMatch },
+              { $project: { _id: 1 } },
+            ],
+            as: "job",
+          },
+        },
+        { $match: { "job.0": { $exists: true } } },
+        { $group: { _id: "$externalJobId" } },
+        { $count: "total" },
+      ])
+      .exec();
+
+    return result.length > 0 ? result[0].total : 0;
+  }
+
+  async facetRowsForCandidates(candidateIds: number[]): Promise<RecommendedFacetRow[]> {
+    if (candidateIds.length === 0) return [];
+    const rows = await this.documents
+      .aggregate<RecommendedFacetRow & { _id: number }>([
+        { $match: { candidateId: { $in: candidateIds }, dismissed: false } },
+        {
+          $lookup: {
+            from: "cv_assistant_external_jobs",
+            let: { jid: "$externalJobId" },
+            pipeline: [
+              { $match: { $expr: { $eq: ["$_id", "$$jid"] } } },
+              {
+                $match: {
+                  delisted: { $ne: true },
+                  $or: [{ expiresAt: null }, { expiresAt: { $gt: new Date() } }],
+                },
+              },
+              {
+                $project: {
+                  country: 1,
+                  canonicalProvince: 1,
+                  canonicalCity: 1,
+                  canonicalCategory: 1,
+                  sourceId: 1,
+                  salaryMin: 1,
+                  salaryMax: 1,
+                  title: 1,
+                  company: 1,
+                  locationArea: 1,
+                  locationRaw: 1,
+                },
+              },
+            ],
+            as: "job",
+          },
+        },
+        { $unwind: "$job" },
+        { $group: { _id: "$externalJobId", job: { $first: "$job" } } },
+        { $replaceRoot: { newRoot: "$job" } },
+      ])
+      .exec();
+    return rows.map((row) => ({
+      country: row.country ?? null,
+      canonicalProvince: row.canonicalProvince ?? null,
+      canonicalCity: row.canonicalCity ?? null,
+      canonicalCategory: row.canonicalCategory ?? null,
+      sourceId: row.sourceId ?? null,
+      salaryMin: row.salaryMin ?? null,
+      salaryMax: row.salaryMax ?? null,
+      title: row.title ?? null,
+      company: row.company ?? null,
+      locationArea: row.locationArea ?? null,
+      locationRaw: row.locationRaw ?? null,
+    }));
   }
 
   countActiveForCandidatesSince(candidateIds: number[], since: Date): Promise<number> {

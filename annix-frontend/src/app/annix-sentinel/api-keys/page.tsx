@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import type { ApiKeyItem } from "@/app/lib/query/hooks";
 import { useApiKeysList, useGenerateApiKey, useRevokeApiKey } from "@/app/lib/query/hooks";
 
@@ -185,6 +186,7 @@ export default function ApiKeysPage() {
   const { data: keys = [], isLoading, error } = useApiKeysList();
   const revokeMutation = useRevokeApiKey();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [showGenerate, setShowGenerate] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
   const [revokeError, setRevokeError] = useState<string | null>(null);
@@ -201,7 +203,7 @@ export default function ApiKeysPage() {
       onSuccess: () => showToast("API key revoked", "success"),
       onError: () => {
         setRevokeError("Failed to revoke API key");
-        showToast("Failed to revoke API key", "error");
+        alert({ message: "Failed to revoke API key", variant: "error" });
       },
     });
   }
@@ -296,6 +298,7 @@ export default function ApiKeysPage() {
       )}
 
       {revealedKey && <KeyRevealModal apiKey={revealedKey} onClose={() => setRevealedKey(null)} />}
+      {AlertDialog}
     </div>
   );
 }

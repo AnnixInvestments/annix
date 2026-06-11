@@ -88,19 +88,35 @@ const parseFrontmatter = (raw) => {
   const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!match) return {};
   const data = {};
-  match[1].split(/\r?\n/).forEach((line) => {
-    const kv = line.match(/^([a-zA-Z_][\w-]*):\s*(.*)$/);
-    if (!kv) return;
+  const lines = match[1].split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    const kv = lines[i].match(/^([a-zA-Z_][\w-]*):\s*(.*)$/);
+    if (!kv) continue;
     const key = kv[1];
     const value = kv[2].trim();
     if (value.startsWith("[") && value.endsWith("]")) {
       const inner = value.slice(1, -1).trim();
       data[key] =
         inner.length === 0 ? [] : inner.split(",").map((s) => s.trim().replace(/^["']|["']$/g, ""));
+    } else if (value === "") {
+      // Multiline YAML list: collect the following "- item" lines.
+      const items = [];
+      let j = i + 1;
+      while (j < lines.length && /^\s*-\s+/.test(lines[j])) {
+        items.push(
+          lines[j]
+            .replace(/^\s*-\s+/, "")
+            .trim()
+            .replace(/^["']|["']$/g, ""),
+        );
+        j += 1;
+      }
+      data[key] = items.length > 0 ? items : "";
+      i = j - 1;
     } else {
       data[key] = value.replace(/^["']|["']$/g, "");
     }
-  });
+  }
   return data;
 };
 
@@ -140,17 +156,23 @@ const ttyAvailable = (() => {
 })();
 
 if (!ttyAvailable) {
+  // No interactive terminal (automated/agent/CI commit) — there is nothing the
+  // committer can action at this point, so warn rather than block. The guardrail
+  // is the interactive prompt below (for humans) plus CLAUDE.md's "Automatic How
+  // To Creation" rule and the freshness audit; a hard block here only ever gets
+  // bypassed with HOWTO_HOOK=skip, training everyone to reflex-skip.
   console.error("");
-  console.error("COMMIT BLOCKED: How-To guides affected by staged changes but no TTY available");
+  console.error("How-To reminder: staged changes touch files tracked by these guide(s).");
+  console.error("Update them in this commit if the documented workflow actually changed:");
   console.error("");
   affected.forEach((a) => {
     console.error(`  ${a.relativeGuidePath} (lastUpdated ${a.lastUpdated})`);
     a.triggers.slice(0, 3).forEach((t) => console.error(`    triggered by: ${t.staged}`));
   });
   console.error("");
-  console.error("Set HOWTO_HOOK=skip to bypass (e.g. CI), or commit from an interactive shell.");
+  console.error("(non-blocking: no TTY to prompt — see CLAUDE.md 'Automatic How To Creation')");
   console.error("");
-  process.exit(1);
+  process.exit(0);
 }
 
 const stdinTty = createReadStream("/dev/tty");

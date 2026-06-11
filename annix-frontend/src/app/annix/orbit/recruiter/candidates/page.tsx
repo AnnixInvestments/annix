@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitTalentCandidate } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useOrbitDeleteTalentCandidate, useOrbitTalentCandidates } from "@/app/lib/query/hooks";
 import { CandidateFormModal } from "./components/CandidateFormModal";
@@ -18,6 +19,7 @@ export default function RecruiterCandidatesPage() {
   const deleteMutation = useOrbitDeleteTalentCandidate();
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrbitTalentCandidate | null>(null);
@@ -44,7 +46,7 @@ export default function RecruiterCandidatesPage() {
       await deleteMutation.mutateAsync(candidate.id);
       showToast("Candidate deleted.", "success");
     } catch {
-      showToast("Could not delete the candidate. Please try again.", "error");
+      alert({ message: "Could not delete the candidate. Please try again.", variant: "error" });
     }
   };
 
@@ -200,6 +202,7 @@ export default function RecruiterCandidatesPage() {
         <CandidateFormModal candidate={editing} onClose={() => setModalOpen(false)} />
       ) : null}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

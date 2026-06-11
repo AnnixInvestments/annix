@@ -49,4 +49,11 @@ export class PostgresStockMovementBatchConsumptionRepository
       relations: { purchaseBatch: true },
     });
   }
+
+  findByPurchaseBatch(
+    companyId: number,
+    purchaseBatchId: number,
+  ): Promise<StockMovementBatchConsumption[]> {
+    return this.repository.find({ where: { companyId, purchaseBatchId } });
+  }
 }

@@ -17,6 +17,20 @@ function tierLabel(tier: string): string {
   return mapped || tier;
 }
 
+function formatIngestionError(error: string): string {
+  const compact = error
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (
+    /Adzuna API returned 503/i.test(compact) ||
+    /Adzuna API is temporarily unavailable/i.test(compact)
+  ) {
+    return "Adzuna API is temporarily unavailable (HTTP 503). Existing jobs remain available; ingestion will retry on the next scheduled run.";
+  }
+  return compact.length > 260 ? `${compact.slice(0, 257)}...` : compact;
+}
+
 export interface SourceEditPayload {
   ingestionIntervalHours?: number;
   visibleTiers?: string[];
@@ -53,6 +67,12 @@ export function SourceCard({
   const lastIngested = source.lastIngestedAt
     ? fromISO(source.lastIngestedAt).toFormat("dd/MM/yyyy, HH:mm")
     : "Never";
+  const lastError = source.lastIngestionError
+    ? formatIngestionError(source.lastIngestionError)
+    : null;
+  const countryCodes = source.countryCodes;
+  const countryLabel =
+    countryCodes && countryCodes.length > 0 ? countryCodes.join(", ").toUpperCase() : "—";
 
   const fields = credentialFields ?? [];
   const canEdit = onSave != null;
@@ -115,7 +135,7 @@ export function SourceCard({
             {jobCount != null && (
               <p className="font-semibold text-gray-900">Jobs ingested: {jobCount}</p>
             )}
-            <p>Countries: {source.countryCodes.join(", ").toUpperCase()}</p>
+            <p>Countries: {countryLabel}</p>
             <p>
               API requests: {source.requestsToday} / {source.rateLimitPerDay} today
             </p>
@@ -123,6 +143,11 @@ export function SourceCard({
             <p>Visible to: {tierSummary}</p>
             <p>Last ingested: {lastIngested}</p>
           </div>
+          {lastError && (
+            <div className="mt-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+              <span className="font-semibold">Last run failed:</span> {lastError}
+            </div>
+          )}
           {ingestionStatus && (
             <p
               className={`mt-2 text-sm ${
@@ -250,7 +275,7 @@ export function SourceCard({
               onClick={handleSave}
               disabled={saving}
               className="px-3 py-1.5 text-sm text-white rounded-lg disabled:opacity-50"
-              style={{ backgroundColor: "var(--brand-navbar)" }}
+              style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
             >
               {saving ? "Saving…" : "Save"}
             </button>

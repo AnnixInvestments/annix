@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { RatingBreakdown, SlaConfig } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAdminResponseMetrics,
   useAdminSlaConfig,
@@ -61,6 +62,7 @@ function formatDuration(minutes: number): string {
 export default function ResponseMetricsPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const metricsQuery = useAdminResponseMetrics();
   const slaQuery = useAdminSlaConfig();
@@ -98,7 +100,7 @@ export default function ResponseMetricsPage() {
       },
       onError: (err: unknown) => {
         const message = err instanceof Error ? err.message : "Failed to update SLA configuration";
-        showToast(message, "error");
+        alert({ message, variant: "error" });
       },
     });
   };
@@ -489,6 +491,7 @@ export default function ResponseMetricsPage() {
           </div>
         </>
       )}
+      {AlertDialog}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   forwardRef,
   Inject,
@@ -12,6 +13,7 @@ import {
   TypeOrmTransactionContext,
 } from "../../lib/persistence/transaction-context";
 import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote, SdnStatus } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
@@ -21,6 +23,8 @@ import { SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
 import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
 import { DnExtractionCorrectionRepository } from "../repositories/dn-extraction-correction.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
+import { SupplierInvoiceItemRepository } from "../repositories/supplier-invoice-item.repository";
 import { CpoService } from "./cpo.service";
 import { DeliveryExtractionService } from "./delivery-extraction.service";
 import { DeliveryInvoiceService } from "./delivery-invoice.service";
@@ -42,13 +46,122 @@ export class DeliveryService {
     private readonly supplierService: DeliverySupplierService,
     private readonly extractionService: DeliveryExtractionService,
     private readonly invoiceService: DeliveryInvoiceService,
+    private readonly fifoBridgeService: SupplierInvoiceFifoBridgeService,
+    private readonly supplierInvoiceRepo: SupplierInvoiceRepository,
+    private readonly supplierInvoiceItemRepo: SupplierInvoiceItemRepository,
   ) {}
+
+  private async bridgeDeliveryReceiptToStockManagement(
+    companyId: number,
+    deliveryNoteId: number,
+  ): Promise<void> {
+    try {
+      const note = await this.deliveryNoteRepo.findOneForCompanyWithItems(
+        deliveryNoteId,
+        companyId,
+      );
+      const noteItems = note ? note.items : null;
+      if (!note || !noteItems || noteItems.length === 0) {
+        return;
+      }
+
+      const alreadyInvoicedStockItemIds = await this.stockItemIdsCoveredByApprovedInvoices(
+        companyId,
+        deliveryNoteId,
+      );
+
+      const quantitiesByStockItem = noteItems.reduce((acc, item) => {
+        const itemStockItem = item.stockItem;
+        const rawStockItemId = itemStockItem
+          ? itemStockItem.id
+          : (item as unknown as { stockItemId?: number }).stockItemId;
+        const stockItemId = Number(rawStockItemId);
+        if (!Number.isFinite(stockItemId) || stockItemId <= 0) {
+          return acc;
+        }
+        if (alreadyInvoicedStockItemIds.has(stockItemId)) {
+          return acc;
+        }
+        const previous = acc.get(stockItemId);
+        return acc.set(stockItemId, (previous ? previous : 0) + Number(item.quantityReceived || 0));
+      }, new Map<number, number>());
+
+      const lines = Array.from(quantitiesByStockItem.entries())
+        .filter(([, quantity]) => quantity > 0)
+        .map(([legacyStockItemId, quantity]) => ({
+          legacyStockItemId,
+          quantity,
+          deliveryNoteId,
+          supplierName: note.supplierName || null,
+          receivedAt: note.receivedDate ? note.receivedDate : null,
+        }));
+      if (lines.length === 0) {
+        return;
+      }
+
+      const result = await this.fifoBridgeService.createBatchesFromDelivery(companyId, lines);
+      this.logger.log(
+        `FIFO bridge for delivery ${deliveryNoteId}: ${result.created} batch(es) created, ${result.skipped} skipped`,
+      );
+    } catch (error) {
+      this.logger.error(
+        `FIFO bridge failed for delivery ${deliveryNoteId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  private async stockItemIdsCoveredByApprovedInvoices(
+    companyId: number,
+    deliveryNoteId: number,
+  ): Promise<Set<number>> {
+    const invoices = await this.supplierInvoiceRepo.findCompletedLinkedToDeliveryNote(
+      companyId,
+      deliveryNoteId,
+    );
+    const itemLists = await Promise.all(
+      invoices.map((invoice) => this.supplierInvoiceItemRepo.findByInvoice(invoice.id)),
+    );
+    return new Set(
+      itemLists
+        .flat()
+        .map((item) => Number(item.stockItemId))
+        .filter((id) => Number.isFinite(id) && id > 0),
+    );
+  }
 
   private transactionManager(context: TransactionContext) {
     if (!(context instanceof TypeOrmTransactionContext)) {
       throw new Error("DeliveryService transactions require a TypeOrmTransactionContext");
     }
     return context.manager;
+  }
+
+  async updateDeliveryNumber(
+    companyId: number,
+    id: number,
+    deliveryNumber: string,
+  ): Promise<DeliveryNote> {
+    const trimmed = deliveryNumber.trim();
+    if (!trimmed) {
+      throw new BadRequestException("Delivery number is required");
+    }
+
+    const note = await this.deliveryNoteRepo.findOneForCompany(id, companyId);
+    if (!note) {
+      throw new NotFoundException(`Delivery note ${id} not found`);
+    }
+
+    if (trimmed === note.deliveryNumber) {
+      return note;
+    }
+
+    const existing = await this.deliveryNoteRepo.findOneByNumber(companyId, trimmed);
+    if (existing && existing.id !== note.id) {
+      throw new ConflictException(`Delivery note ${trimmed} already exists`);
+    }
+
+    note.deliveryNumber = trimmed;
+    return this.deliveryNoteRepo.save(note);
   }
 
   async create(
@@ -129,6 +242,8 @@ export class DeliveryService {
         const msg = err instanceof Error ? err.message : "Unknown error";
         this.logger.warn(`Failed to link DN ${savedNote.id} to calloffs: ${msg}`);
       });
+
+    await this.bridgeDeliveryReceiptToStockManagement(companyId, savedNote.id);
 
     return this.findById(companyId, savedNote.id);
   }
@@ -237,6 +352,14 @@ export class DeliveryService {
       return movements.length;
     });
 
+    try {
+      await this.fifoBridgeService.voidDeliveryBatches(companyId, id);
+    } catch (error) {
+      this.logger.error(
+        `Failed to write off FIFO batches for deleted delivery ${id}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+
     this.logger.log(`Deleted delivery note ${id} and reversed ${movementCount} stock movements`);
   }
 
@@ -282,6 +405,7 @@ export class DeliveryService {
   ): Promise<DeliveryNote> {
     const note = await this.findById(companyId, id);
     await this.extractionService.linkExtractedItemsToStock(companyId, note, receivedBy, overrides);
+    await this.bridgeDeliveryReceiptToStockManagement(companyId, id);
     return this.findById(companyId, id);
   }
 
@@ -400,6 +524,7 @@ export class DeliveryService {
         analyzedData.lineItems!,
         receivedBy,
       );
+      await this.bridgeDeliveryReceiptToStockManagement(companyId, savedNote.id);
     }
 
     this.cpoService.linkDeliveryToCalloffs(companyId, supplierName, savedNote.id).catch((err) => {

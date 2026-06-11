@@ -1,8 +1,9 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { LessThan, Repository } from "typeorm";
+import { In, LessThan, Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 import {
   CandidateAllForCompanyFilters,
   CandidateEmbeddingCoverageRow,
@@ -137,6 +138,13 @@ export class PostgresCandidateRepository
     return this.repository.find({ where: { email } });
   }
 
+  findByIds(ids: number[]): Promise<Candidate[]> {
+    if (ids.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository.find({ where: { id: In(ids) } });
+  }
+
   findByEmailWithJobPosting(email: string): Promise<Candidate[]> {
     return this.repository.find({ where: { email }, relations: ["jobPosting"] });
   }
@@ -171,7 +179,8 @@ export class PostgresCandidateRepository
     return result.affected ?? 0;
   }
 
-  async setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void> {
+  async setEmbeddingVector(id: number, values: number[]): Promise<void> {
+    const embeddingLiteral = values.join(",");
     await this.repository
       .createQueryBuilder()
       .update(Candidate)
@@ -199,6 +208,10 @@ export class PostgresCandidateRepository
 
   async updateMatchTier(id: number, matchTier: string): Promise<void> {
     await this.repository.update(id, { matchTier });
+  }
+
+  async updateTargetCountries(id: number, targetCountries: string[]): Promise<void> {
+    await this.repository.update(id, { targetCountries });
   }
 
   async setTrial(id: number, trialTier: string | null, trialEndsAt: Date | null): Promise<void> {
@@ -249,6 +262,26 @@ export class PostgresCandidateRepository
 
   candidatesWithEmbedding(): Promise<Candidate[]> {
     return this.repository.createQueryBuilder("c").where("c.embedding IS NOT NULL").getMany();
+  }
+
+  async *candidateEmbeddingBatches(batchSize: number): AsyncGenerator<EmbeddingSimilarityBatch> {
+    let lastId = 0;
+    while (true) {
+      const rows = await this.repository
+        .createQueryBuilder("c")
+        .select("c.id", "id")
+        .addSelect("c.embedding", "embedding")
+        .where("c.embedding IS NOT NULL")
+        .andWhere("c.id > :lastId", { lastId })
+        .orderBy("c.id", "ASC")
+        .limit(batchSize)
+        .getRawMany<{ id: number | string; embedding: unknown }>();
+      if (rows.length === 0) {
+        return;
+      }
+      yield rows.map((row) => ({ id: Number(row.id), embedding: row.embedding ?? null }));
+      lastId = Number(rows[rows.length - 1].id);
+    }
   }
 
   jobAlertCandidates(): Promise<Candidate[]> {

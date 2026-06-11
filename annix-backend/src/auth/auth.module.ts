@@ -6,6 +6,15 @@ import { PassportModule } from "@nestjs/passport";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { App, UserAppAccess } from "../rbac/entities";
+import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
+import { MongoAppRepository, MongoUserAppAccessRepository } from "../rbac/rbac.repository.mongo";
+import {
+  PostgresAppRepository,
+  PostgresUserAppAccessRepository,
+} from "../rbac/rbac.repository.postgres";
+import { AppSchema } from "../rbac/schemas/app.schema";
+import { UserAppAccessSchema } from "../rbac/schemas/user-app-access.schema";
 import { User } from "../user/entities/user.entity";
 import { UserSchema } from "../user/schemas/user.schema";
 import { UserRepository } from "../user/user.repository";
@@ -19,8 +28,16 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
 @Module({
   imports: [
     ConfigModule,
-    ...(isMongoDriver() ? [MongooseModule.forFeature([{ name: "User", schema: UserSchema }])] : []),
-    ...(isMongoDriver() ? [] : [TypeOrmModule.forFeature([User])]),
+    ...(isMongoDriver()
+      ? [
+          MongooseModule.forFeature([
+            { name: "User", schema: UserSchema },
+            { name: "App", schema: AppSchema },
+            { name: "UserAppAccess", schema: UserAppAccessSchema },
+          ]),
+        ]
+      : []),
+    ...(isMongoDriver() ? [] : [TypeOrmModule.forFeature([User, App, UserAppAccess])]),
     PassportModule.register({ defaultStrategy: "jwt" }),
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -38,6 +55,12 @@ import { JwtAuthGuard } from "./jwt-auth.guard";
     JwtStrategy,
     JwtAuthGuard,
     repositoryProvider(UserRepository, PostgresUserRepository, MongoUserRepository),
+    repositoryProvider(AppRepository, PostgresAppRepository, MongoAppRepository),
+    repositoryProvider(
+      UserAppAccessRepository,
+      PostgresUserAppAccessRepository,
+      MongoUserAppAccessRepository,
+    ),
   ],
   controllers: [AuthController],
   exports: [AuthService, JwtModule, PassportModule, JwtAuthGuard],

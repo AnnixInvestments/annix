@@ -2,7 +2,12 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { TypeOrmCrudRepository } from "../lib/persistence/typeorm-crud-repository";
-import { AiUsageDailySummary, AiUsageGroupRow, AiUsageLogRepository } from "./ai-usage.repository";
+import {
+  AiUsageDailyPoint,
+  AiUsageDailySummary,
+  AiUsageGroupRow,
+  AiUsageLogRepository,
+} from "./ai-usage.repository";
 import { AiUsageLog } from "./entities/ai-usage-log.entity";
 
 @Injectable()
@@ -26,6 +31,23 @@ export class PostgresAiUsageLogRepository
       calls: Number(row?.calls ?? 0),
       tokens: Number(row?.tokens ?? 0),
     };
+  }
+
+  async dailySeries(since: Date): Promise<AiUsageDailyPoint[]> {
+    const rows = await this.repository
+      .createQueryBuilder("log")
+      .select("to_char(log.created_at::date, 'YYYY-MM-DD')", "date")
+      .addSelect("COUNT(*)::int", "calls")
+      .addSelect("COALESCE(SUM(log.tokens_used), 0)::bigint", "tokens")
+      .where("log.createdAt >= :since", { since })
+      .groupBy("log.created_at::date")
+      .orderBy("log.created_at::date", "ASC")
+      .getRawMany<{ date: string; calls: number; tokens: string | number }>();
+    return rows.map((row) => ({
+      date: row.date,
+      calls: Number(row.calls),
+      tokens: Number(row.tokens),
+    }));
   }
 
   async queryGroupedUsage(

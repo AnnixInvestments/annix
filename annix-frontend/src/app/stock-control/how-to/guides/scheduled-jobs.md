@@ -8,7 +8,7 @@ tags: [cron, automation, monitoring]
 lastUpdated: 2026-04-11
 summary: See which background jobs are running, when they last ran, and override their schedules.
 readingMinutes: 3
-relatedPaths: [annix-backend/src/scheduled-jobs, annix-frontend/src/app/admin]
+relatedPaths: [annix-backend/src/admin/admin-scheduled-jobs.controller.ts, annix-backend/src/admin/admin-scheduled-jobs.service.ts, annix-frontend/src/app/admin/portal/scheduled-jobs]
 ---
 
 ## What runs in the background

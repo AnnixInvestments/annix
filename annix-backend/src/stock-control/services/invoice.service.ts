@@ -134,6 +134,7 @@ export class InvoiceService {
   async findById(companyId: number, id: number): Promise<SupplierInvoice> {
     const invoice = await this.invoiceRepo.findOneForCompanyWithRelations(id, companyId, [
       "deliveryNote",
+      "linkedDeliveryNotes",
       "items",
       "items.stockItem",
       "clarifications",

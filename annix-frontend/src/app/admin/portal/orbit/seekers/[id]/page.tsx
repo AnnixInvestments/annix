@@ -16,34 +16,9 @@ import {
 import type { OrbitSeekerActivityDay } from "@/app/lib/api/adminApi";
 import { DateTime, formatDateZA } from "@/app/lib/datetime";
 import { useAdminOrbitSeekerDetail } from "@/app/lib/query/hooks";
+import { seekerStatusBadgeClass, seekerTierBadgeClass } from "../seekerBadges";
 
 type ActivityGrain = "day" | "week" | "month";
-
-function tierClass(tier: string): string {
-  if (tier === "hard") {
-    return "bg-green-100 text-green-700";
-  }
-  if (tier === "medium") {
-    return "bg-amber-100 text-amber-700";
-  }
-  return "bg-gray-100 text-gray-600";
-}
-
-function statusClass(status: string): string {
-  if (status === "active" || status === "accepted") {
-    return "bg-green-100 text-green-700";
-  }
-  if (status === "new" || status === "screening") {
-    return "bg-blue-100 text-blue-700";
-  }
-  if (status === "shortlisted" || status === "reference_check") {
-    return "bg-violet-100 text-violet-700";
-  }
-  if (status === "suspended" || status === "rejected" || status === "deactivated") {
-    return "bg-red-100 text-red-700";
-  }
-  return "bg-gray-100 text-gray-600";
-}
 
 function bucketKey(day: string, grain: ActivityGrain): string {
   const dt = DateTime.fromISO(day);
@@ -192,8 +167,8 @@ export default function OrbitSeekerDetailPage() {
   const detailEmail = detail.email;
   const name = detailName || "—";
   const email = detailEmail || "—";
-  const tierBadge = tierClass(detail.matchTier);
-  const statusBadge = statusClass(detail.status);
+  const tierBadge = seekerTierBadgeClass(detail.matchTier);
+  const statusBadge = seekerStatusBadgeClass(detail.status);
   const lastActive = detail.lastActiveAt ? formatDateZA(detail.lastActiveAt) : "Never";
   const joined = detail.createdAt ? formatDateZA(detail.createdAt) : "—";
   const consentLabel = detail.popiaConsent

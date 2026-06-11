@@ -24,7 +24,11 @@ export class MongoSeekerUsageCounterRepository
 
   async increment(subjectId: string, operation: string, monthKey: string): Promise<void> {
     const updated = await this.documents
-      .findOneAndUpdate({ subjectId, operation, monthKey }, { $inc: { count: 1 } }, { new: true })
+      .findOneAndUpdate(
+        { subjectId, operation, monthKey },
+        { $inc: { count: 1 } },
+        { returnDocument: "after" },
+      )
       .lean()
       .exec();
     if (updated) {

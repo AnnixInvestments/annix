@@ -1,10 +1,13 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TierPlans } from "@/app/components/orbit/TierPlans";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
+  useOrbitCompleteOnboarding,
+  useOrbitMyProfileStatus,
   useOrbitSeekerEntitlements,
   useOrbitSelectSeekerPlan,
   useOrbitTierPlans,
@@ -25,7 +28,22 @@ export default function SeekerPlansPage() {
   const selectingTier = selectPlan.isPending ? pendingTier : null;
 
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
+
+  const router = useRouter();
+  const statusQuery = useOrbitMyProfileStatus();
+  const status = statusQuery.data;
+  const inOnboarding = status ? status.onboardingComplete === false : false;
+  const completeOnboarding = useOrbitCompleteOnboarding();
+  const finishPalette = inOnboarding
+    ? "bg-[var(--brand-accent,#FF8A00)] text-[#1a1a40] hover:bg-[var(--brand-accent-light,#FF9C33)]"
+    : "bg-violet-600 text-white hover:bg-violet-700";
+
+  const handleContinue = async () => {
+    await completeOnboarding.mutateAsync().catch(() => {});
+    router.push("/annix/orbit/seeker/dashboard");
+  };
 
   const handleSelectPlan = async (tier: string) => {
     const target = plans.find((plan) => plan.tier === tier);
@@ -40,15 +58,16 @@ export default function SeekerPlansPage() {
     if (!confirmed) return;
     selectPlan.mutate(tier, {
       onSuccess: () => showToast(`You're now on ${planLabel}.`, "success"),
-      onError: () => showToast("Couldn't switch plan. Please try again.", "error"),
+      onError: () =>
+        alert({ message: "Couldn't switch plan. Please try again.", variant: "error" }),
     });
   };
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="max-w-2xl">
-        <h1 className="text-2xl font-bold text-gray-900">Plans</h1>
-        <p className="mt-2 text-sm text-gray-600">
+        <h1 className="text-2xl font-bold text-white">Plans</h1>
+        <p className="mt-2 text-sm text-white/70">
           Choose how far you want to go. Start free on Explorer, or switch to a higher plan any time
           for sharper matching, more Nix Job Finds and the full toolkit. It's free while Annix Orbit
           is in testing — billing comes later.
@@ -57,9 +76,9 @@ export default function SeekerPlansPage() {
 
       <div className="mt-8">
         {isLoading ? (
-          <p className="text-sm text-gray-500">Loading plans…</p>
+          <p className="text-sm text-white/60">Loading plans…</p>
         ) : plans.length === 0 ? (
-          <p className="text-sm text-gray-500">Plans are being set up. Please check back soon.</p>
+          <p className="text-sm text-white/60">Plans are being set up. Please check back soon.</p>
         ) : (
           <TierPlans
             plans={plans}
@@ -72,14 +91,17 @@ export default function SeekerPlansPage() {
       </div>
 
       <div className="mt-8">
-        <Link
-          href="/annix/orbit/seeker/dashboard"
-          className="inline-flex items-center gap-1 rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-violet-700"
+        <button
+          type="button"
+          onClick={handleContinue}
+          disabled={completeOnboarding.isPending}
+          className={`inline-flex items-center gap-1 rounded-lg px-5 py-2.5 text-sm font-semibold transition-colors disabled:opacity-60 ${finishPalette}`}
         >
-          Continue to your dashboard →
-        </Link>
+          {inOnboarding ? "Finish setup — go to dashboard →" : "Continue to your dashboard →"}
+        </button>
       </div>
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

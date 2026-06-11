@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 
-export type ConfirmModalVariant = "danger" | "warning" | "info" | "default";
+export type ConfirmModalVariant = "danger" | "warning" | "info" | "default" | "success" | "error";
 
 export interface ConfirmModalProps {
   isOpen: boolean;
@@ -42,6 +42,16 @@ const VARIANT_STYLES = {
     icon: "text-blue-600",
     iconBg: "bg-blue-100",
     button: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+  },
+  success: {
+    icon: "text-green-600",
+    iconBg: "bg-green-100",
+    button: "bg-green-600 hover:bg-green-700 focus:ring-green-500",
+  },
+  error: {
+    icon: "text-red-600",
+    iconBg: "bg-red-100",
+    button: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
   },
 };
 
@@ -146,6 +156,38 @@ export function ConfirmModal(props: ConfirmModalProps) {
                     strokeLinejoin="round"
                     strokeWidth={2}
                     d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              )}
+              {variant === "success" && (
+                <svg
+                  className={`w-6 h-6 ${styles.icon}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              )}
+              {variant === "error" && (
+                <svg
+                  className={`w-6 h-6 ${styles.icon}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 9v2m0 4h.01M12 21a9 9 0 110-18 9 9 0 010 18z"
                   />
                 </svg>
               )}

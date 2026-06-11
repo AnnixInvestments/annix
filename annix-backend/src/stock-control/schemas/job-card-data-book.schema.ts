@@ -43,8 +43,8 @@ export class JobCardDataBook {
   @Prop({ type: String, required: false })
   unifiedCompanyId: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const JobCardDataBookSchema = SchemaFactory.createForClass(JobCardDataBook);

@@ -49,4 +49,12 @@ export class MongoStockMovementBatchConsumptionRepository
       .exec();
     return this.toDomainList(docs);
   }
+
+  async findByPurchaseBatch(
+    companyId: number,
+    purchaseBatchId: number,
+  ): Promise<StockMovementBatchConsumption[]> {
+    const docs = await this.documents.find({ companyId, purchaseBatchId }).lean().exec();
+    return this.toDomainList(docs);
+  }
 }

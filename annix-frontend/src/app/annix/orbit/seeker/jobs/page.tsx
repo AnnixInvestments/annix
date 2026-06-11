@@ -1,7 +1,9 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import { isString } from "es-toolkit/compat";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { BrandedErrorScreen } from "@/app/components/BrandedErrorScreen";
 import {
@@ -13,6 +15,7 @@ import { useToast } from "@/app/components/Toast";
 import { SeekerBrowseJobCard } from "@/app/lib/annix-orbit/components/SeekerBrowseJobCard";
 import { SeekerJobCard } from "@/app/lib/annix-orbit/components/SeekerJobCard";
 import {
+  countryLabel,
   type SeekerFilterState,
   SeekerJobFilters,
 } from "@/app/lib/annix-orbit/components/SeekerJobFilters";
@@ -23,6 +26,7 @@ import {
   type SeekerRecommendedJob,
 } from "@/app/lib/api/annixOrbitApi";
 import { nowMillis } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useDebouncedValue } from "@/app/lib/hooks/useDebouncedValue";
 import {
@@ -37,9 +41,12 @@ import {
   useOrbitSeekerColdStartJobs,
   useOrbitSeekerDismissReasons,
   useOrbitSeekerEntitlements,
+  useOrbitSeekerJobFacets,
   useOrbitSeekerMatchingConsent,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerRematch,
+  useOrbitSeekerTargetCountries,
+  useOrbitSetSeekerTargetCountries,
 } from "@/app/lib/query/hooks";
 import { useOrbitPushNotifications } from "../../hooks/useOrbitPushNotifications";
 
@@ -80,7 +87,9 @@ function clearNixPending(): void {
 }
 
 export default function SeekerJobsPage() {
+  const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const extractionProgress = useExtractionProgress();
   const profileStatusQuery = useOrbitMyProfileStatus();
@@ -101,6 +110,7 @@ export default function SeekerJobsPage() {
   const [filters, setFilters] = useState<SeekerFilterState>({
     search: "",
     provider: "all",
+    region: "",
     province: "",
     city: "",
     category: "",
@@ -109,6 +119,7 @@ export default function SeekerJobsPage() {
   const filtersActive =
     filters.search !== "" ||
     filters.provider !== "all" ||
+    filters.region !== "" ||
     filters.province !== "" ||
     filters.city !== "" ||
     filters.category !== "" ||
@@ -117,6 +128,8 @@ export default function SeekerJobsPage() {
     const next: SeekerRecommendedFilters = {};
     const search = filters.search.trim();
     if (search) next.search = search;
+    if (filters.provider !== "all") next.provider = filters.provider;
+    if (filters.region) next.region = filters.region;
     if (filters.province) next.province = filters.province;
     if (filters.city) next.city = filters.city;
     if (filters.category) next.category = filters.category;
@@ -200,20 +213,20 @@ export default function SeekerJobsPage() {
     if (!recommendedDataForBanner) return;
     const pending = readNixPending();
     if (!pending) return;
-    const matchCount = recommendedDataForBanner.matches.length;
+    const matchCount = recommendedDataForBanner.total;
     if (matchCount > pending.startCount) {
       clearNixPending();
       const added = matchCount - pending.startCount;
-      showToast(
-        `Your Nix matches are ready — ${added} new role${added === 1 ? "" : "s"} matched to your CV.`,
-        "success",
-      );
+      alert({
+        message: `Your Nix matches are ready — ${added} new role${added === 1 ? "" : "s"} matched to your CV.`,
+        variant: "success",
+      });
     } else if (nowMillis() - pending.startedAt > NIX_SEARCH_PENDING_TTL_MS) {
       clearNixPending();
     }
-  }, [recommendedDataForBanner, showToast, nixSearching]);
+  }, [recommendedDataForBanner, alert, nixSearching]);
 
-  const browseJobsEnabled = profileReady;
+  const browseJobsEnabled = profileReady && !nixSearching;
   const [browseLimit, setBrowseLimit] = useState(100);
   const browseJobsQuery = useOrbitSeekerBrowseJobs({ limit: browseLimit }, browseJobsEnabled);
   const browseJobsData = browseJobsQuery.data;
@@ -230,97 +243,38 @@ export default function SeekerJobsPage() {
   }, [data, coldStartData, showColdStart]);
   const embeddingPending = coldStartData ? coldStartData.embeddingPending : false;
 
-  // Filter options are derived from the visible matches, but server-side
-  // filtering shrinks that set — so once a provider/category is picked the
-  // dropdown would collapse to just that one. Remember the full list captured
-  // while the filter is unset so every option stays selectable at all times.
-  const allProvidersRef = useRef<string[]>([]);
-  const allCategoriesRef = useRef<string[]>([]);
+  // Facets: every dropdown lists only the provinces/cities/categories/sources that
+  // actually have a match in the seeker's set, recomputed as filters narrow (each
+  // facet excludes its own dimension server-side, so a choice never empties its
+  // own dropdown and no zero-result option is ever offered).
+  const facetsQuery = useOrbitSeekerJobFacets(
+    consentEnabled && !nixSearching,
+    debouncedServerFilters,
+  );
+  const facets = facetsQuery.data;
+  const providers = facets ? facets.sources : [];
+  const provinceOptions = facets ? facets.provinces : [];
+  const cityOptions = facets ? facets.cities : [];
+  const categoryOptions = facets ? facets.categories : [];
+  const regionOptions = facets ? facets.regions : [];
+  const topAnchorRef = useRef<HTMLDivElement>(null);
+  const scrollToFilters = () =>
+    topAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
 
-  useEffect(() => {
-    if (filters.provider !== "all") return;
-    const set = new Set<string>();
-    matches.forEach((m) => {
-      if (m.job.sourceProvider) set.add(m.job.sourceProvider);
-    });
-    allProvidersRef.current = [...set].sort();
-  }, [matches, filters.provider]);
-
-  useEffect(() => {
-    if (filters.category !== "") return;
-    const set = new Set<string>();
-    matches.forEach((m) => {
-      if (m.job.category) set.add(m.job.category);
-    });
-    allCategoriesRef.current = [...set].sort();
-  }, [matches, filters.category]);
-
-  const providers = useMemo(() => {
-    const set = new Set<string>(allProvidersRef.current);
-    matches.forEach((m) => {
-      if (m.job.sourceProvider) set.add(m.job.sourceProvider);
-    });
-    if (filters.provider !== "all") set.add(filters.provider);
-    return [...set].sort();
-  }, [matches, filters.provider]);
-
-  const categories = useMemo(() => {
-    const set = new Set<string>(allCategoriesRef.current);
-    matches.forEach((m) => {
-      if (m.job.category) set.add(m.job.category);
-    });
-    if (filters.category !== "") set.add(filters.category);
-    return [...set].sort();
-  }, [matches, filters.category]);
-
+  // The server already applies every filter (province/city/category/source/salary
+  // on canonical fields, plus search) and returns the ranked page. This only adds
+  // instant client-side narrowing on the search text while the 350ms debounce to
+  // the server is in flight — it must NOT re-apply the dropdown filters, or it
+  // would wrongly drop jobs (e.g. a "Benoni, Ekurhuleni" job has no "Gauteng"
+  // text but is correctly in Gauteng via its canonical province).
   const filtered = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
-    const provinceLower = filters.province.toLowerCase();
-    const cityLower = filters.city.toLowerCase();
-    const minSalaryNumber = filters.minSalary ? Number.parseFloat(filters.minSalary) : Number.NaN;
-    const minSalary = Number.isFinite(minSalaryNumber) ? minSalaryNumber : null;
-
+    if (term.length === 0) return matches;
     return matches.filter((m) => {
-      if (filters.provider !== "all" && m.job.sourceProvider !== filters.provider) {
-        return false;
-      }
-      if (filters.category && m.job.category !== filters.category) {
-        return false;
-      }
-      const rawCompany = m.job.company;
-      const rawLocationArea = m.job.locationArea;
-      const rawLocationRaw = m.job.locationRaw;
-      const rawDescription = m.job.description;
-      const locationArea = rawLocationArea || "";
-      const locationRaw = rawLocationRaw || "";
-      const description = rawDescription || "";
-      const locationHaystack = `${locationArea} ${locationRaw}`.toLowerCase();
-      const keywordHaystack = `${locationArea} ${locationRaw} ${description}`.toLowerCase();
-
-      if (provinceLower && !locationHaystack.includes(provinceLower)) {
-        return false;
-      }
-      if (cityLower && !locationHaystack.includes(cityLower)) {
-        return false;
-      }
-
-      if (minSalary !== null) {
-        const currency = m.job.salaryCurrency;
-        const isRand = currency == null || currency.toUpperCase() === "ZAR";
-        const max = m.job.salaryMax;
-        const min = m.job.salaryMin;
-        const best = max != null ? max : min != null ? min : null;
-        if (isRand && best != null && best < minSalary) {
-          return false;
-        }
-      }
-
-      if (term.length === 0) return true;
-      const company = rawCompany || "";
-      const titleMatch = m.job.title.toLowerCase().includes(term);
-      const companyMatch = company.toLowerCase().includes(term);
-      const locationMatch = keywordHaystack.includes(term);
-      return titleMatch || companyMatch || locationMatch;
+      const { company, locationArea, locationRaw, description, title } = m.job;
+      const keywordHaystack =
+        `${title} ${company || ""} ${locationArea || ""} ${locationRaw || ""} ${description || ""}`.toLowerCase();
+      return keywordHaystack.includes(term);
     });
   }, [matches, filters]);
 
@@ -367,7 +321,7 @@ export default function SeekerJobsPage() {
           showToast("Thanks — Nix will use that to refine your matches.", "success");
         },
         onError: () => {
-          showToast("Failed to dismiss match", "error");
+          alert({ message: "Failed to dismiss match", variant: "error" });
         },
       },
     );
@@ -409,7 +363,7 @@ export default function SeekerJobsPage() {
         );
       },
       onError: () => {
-        showToast("Couldn't report this job — please try again.", "error");
+        alert({ message: "Couldn't report this job — please try again.", variant: "error" });
       },
     });
   };
@@ -427,7 +381,7 @@ export default function SeekerJobsPage() {
         showToast(res.created ? `Muted "${company}"` : `"${company}" was already muted`, "success");
       },
       onError: () => {
-        showToast("Failed to mute company", "error");
+        alert({ message: "Failed to mute company", variant: "error" });
       },
     });
   };
@@ -448,7 +402,7 @@ export default function SeekerJobsPage() {
         );
       },
       onError: () => {
-        showToast("Failed to hide category", "error");
+        alert({ message: "Failed to hide category", variant: "error" });
       },
     });
   };
@@ -471,14 +425,14 @@ export default function SeekerJobsPage() {
           consentQuery.refetch();
           return true;
         } catch {
-          showToast("Could not record consent right now — try again", "error");
+          alert({ message: "Could not record consent right now — try again", variant: "error" });
           return false;
         }
       }
       setConsentDeclined(true);
       return false;
     },
-    [confirm, grantConsentMutation, showToast, consentQuery],
+    [confirm, grantConsentMutation, showToast, alert, consentQuery],
   );
 
   useEffect(() => {
@@ -495,7 +449,7 @@ export default function SeekerJobsPage() {
   // we poll for results and keep the branded progress modal up until they land.
   const waitForMatches = async (startCount: number): Promise<boolean> => {
     const startedAt = nowMillis();
-    const deadline = startedAt + 120_000;
+    const deadline = startedAt + 60_000;
     const minVisibleMs = 4000;
     const poll = async (): Promise<boolean> => {
       if (nowMillis() >= deadline) return false;
@@ -504,7 +458,7 @@ export default function SeekerJobsPage() {
       try {
         const refetched = await recommendedQuery.refetch();
         const refetchedData = refetched.data;
-        count = refetchedData ? refetchedData.matches.length : startCount;
+        count = refetchedData ? refetchedData.total : startCount;
       } catch {
         // transient refetch failure (e.g. backend restarting) — keep polling
       }
@@ -519,7 +473,7 @@ export default function SeekerJobsPage() {
   const runNixSearch = async () => {
     setNixSearching(true);
     const recommendedData = recommendedQuery.data;
-    const startCount = recommendedData ? recommendedData.matches.length : 0;
+    const startCount = recommendedData ? recommendedData.total : 0;
     // Record the search so that if the user locks their screen or leaves the
     // page, the return-banner (and the completion push) can still tell them
     // when matches land.
@@ -538,8 +492,9 @@ export default function SeekerJobsPage() {
           label: "Nix is reading your CV and searching the jobs…",
           estimatedDurationMs: nixSearchEstimateMs,
         },
-        async (): Promise<"found" | "pending" | "cooldown" | "quota"> => {
+        async (): Promise<"found" | "pending" | "cooldown" | "quota" | "error"> => {
           let rateLimited = false;
+          let triggerFailed = false;
           try {
             const result = await rematchMutation.mutateAsync();
             if (!result.triggered && result.reason === "rate-limited") {
@@ -549,10 +504,16 @@ export default function SeekerJobsPage() {
               quotaBlock = { used: result.used, allowance: result.allowance };
             }
           } catch {
-            // best-effort trigger — keep going and poll for results
+            // A hard trigger failure (no candidate / bad state / server error)
+            // means matching never started — fail fast rather than polling for
+            // a minute and leaving the user staring at a spinner.
+            triggerFailed = true;
           }
           if (quotaBlock) {
             return "quota";
+          }
+          if (triggerFailed) {
+            return "error";
           }
           if (rateLimited) {
             await recommendedQuery.refetch().catch(() => {});
@@ -567,29 +528,46 @@ export default function SeekerJobsPage() {
         const block = quotaBlock as { used: number; allowance: number } | null;
         const allowance = block ? block.allowance : 0;
         await consentQuery.refetch().catch(() => {});
-        await confirm({
-          title: "You've used your monthly matches",
-          message: `You've used all ${allowance} of your "Help me Find a Job" matches this month. Your matches reset at the start of next month — higher plans with more matches are coming soon.`,
-          confirmLabel: "Got it",
+        const upgrade = await confirm({
+          title: "You're out of matches on your plan",
+          message: `You've used all ${allowance} of your "Help me Find a Job" matches this month on your current plan. Upgrade to a higher plan for more matches and unlock more job opportunities — or wait for your matches to reset next month.`,
+          confirmLabel: "See plans",
+          cancelLabel: "Maybe later",
           variant: "info",
-          hideCancel: true,
         });
+        if (upgrade) {
+          router.push("/annix/orbit/seeker/plans");
+        }
       } else if (outcome === "found") {
         clearNixPending();
         showToast("Nix found jobs that match your CV.", "success");
       } else if (outcome === "cooldown") {
         clearNixPending();
         showToast("Nix searched recently — your matches are up to date.", "info");
+      } else if (outcome === "error") {
+        clearNixPending();
+        alert({
+          message:
+            "Nix couldn't search for matches right now. Please make sure your CV has finished uploading, then try again in a few minutes.",
+          variant: "error",
+        });
       } else {
-        // Still running server-side — keep the pending marker so the return-banner
-        // and push notification surface the result once matches land.
-        showToast(
-          "Nix is still searching — you can leave this page and we'll let you know when your matches are ready.",
-          "info",
-        );
+        // Timed out waiting for matches — fail clearly with a retry rather than
+        // leaving the user on an endless spinner. A late result can still arrive
+        // via the background notification.
+        clearNixPending();
+        alert({
+          message:
+            "Nix couldn't find new matches in time. This is usually temporary — please try again in a few minutes.",
+          variant: "error",
+        });
       }
     } catch {
-      showToast("Nix couldn't finish the search — please try again in a moment.", "error");
+      clearNixPending();
+      alert({
+        message: "Nix couldn't finish the search — please try again in a few minutes.",
+        variant: "error",
+      });
     } finally {
       setNixSearching(false);
     }
@@ -598,6 +576,22 @@ export default function SeekerJobsPage() {
   // "Help me Find a Job": no CV → send to the CV page; CV present → fire Nix
   // (grant consent first if needed, which kicks off matching, otherwise rematch).
   const handleHelpFindJob = async () => {
+    // Nix matches against the seeker's CV — there's nothing to search without
+    // one. Prompt to upload first rather than silently bouncing them away.
+    if (hasCv === false) {
+      const goUpload = await confirm({
+        title: "Upload your CV first",
+        message:
+          "To find matching jobs, Nix needs your CV. Upload it and Nix will match jobs to you.",
+        confirmLabel: "Upload my CV now",
+        cancelLabel: "Cancel",
+        variant: "info",
+      });
+      if (goUpload) {
+        router.push("/annix/orbit/seeker/profile");
+      }
+      return;
+    }
     // Best-effort: ask to enable notifications (within this click gesture) so a
     // completion push can reach the user if they lock their screen / leave.
     void pushNotifications.requestPermissionAndSubscribe();
@@ -626,6 +620,8 @@ export default function SeekerJobsPage() {
   const browseJobsLoading = browseJobsQuery.isLoading;
   const browseListLoading = browseJobsLoading || !entitlementsResolved;
 
+  const [filterTipDismissed, setFilterTipDismissed] = useState(false);
+
   const profileLoading = profileStatusQuery.isLoading;
   const profileError = profileStatusQuery.isError;
   const consentLoading = consentQuery.isLoading;
@@ -641,6 +637,7 @@ export default function SeekerJobsPage() {
           Loading jobs…
         </div>
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
@@ -657,32 +654,36 @@ export default function SeekerJobsPage() {
           brandButtonClass="bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)]"
         />
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
 
   if (hasCv === false) {
     return (
-      <BrowseAllJobsView
-        jobs={browseJobs}
-        loading={browseListLoading}
-        error={browseJobsQuery.isError}
-        onRetry={() => void browseJobsQuery.refetch()}
-        onApply={handleBrowseApply}
-        onReportDelisted={handleReportDelisted}
-        confirmDialog={ConfirmDialog}
-        variant="no-cv"
-        jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
-        hasCv={false}
-        searching={helpSearching}
-        onHelpFindJob={handleHelpFindJob}
-        quotaRemaining={quotaRemaining}
-        hasMore={hasMoreBrowse}
-        loadingMore={browseLoadingMore}
-        onLoadMore={handleLoadMoreBrowse}
-        browseLocked={browseLocked}
-      />
+      <>
+        <BrowseAllJobsView
+          jobs={browseJobs}
+          loading={browseListLoading}
+          error={browseJobsQuery.isError}
+          onRetry={() => void browseJobsQuery.refetch()}
+          onApply={handleBrowseApply}
+          onReportDelisted={handleReportDelisted}
+          confirmDialog={ConfirmDialog}
+          variant="no-cv"
+          jobCount={jobCount}
+          matchCount={data ? data.total : 0}
+          hasCv={false}
+          searching={helpSearching}
+          onHelpFindJob={handleHelpFindJob}
+          quotaRemaining={quotaRemaining}
+          hasMore={hasMoreBrowse}
+          loadingMore={browseLoadingMore}
+          onLoadMore={handleLoadMoreBrowse}
+          browseLocked={browseLocked}
+        />
+        {AlertDialog}
+      </>
     );
   }
 
@@ -692,10 +693,28 @@ export default function SeekerJobsPage() {
     return (
       <div className="space-y-6">
         <PageHeader subtitle={matchedSubtitle} />
-        <div className="bg-white rounded-xl border border-gray-200 p-12 text-center text-gray-500">
-          Loading your matches…
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-xl border border-white/10 bg-white/5"
+            />
+          ))}
         </div>
+        <div className="h-12 animate-pulse rounded-xl border border-white/10 bg-white/5" />
+        <div className="space-y-3">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="space-y-3 rounded-xl border border-gray-200 bg-white p-5">
+              <div className="h-5 w-2/3 animate-pulse rounded bg-gray-200" />
+              <div className="h-3 w-1/3 animate-pulse rounded bg-gray-100" />
+              <div className="h-2 w-full animate-pulse rounded-full bg-gray-100" />
+              <div className="h-3 w-5/6 animate-pulse rounded bg-gray-100" />
+            </div>
+          ))}
+        </div>
+        <p className="text-center text-sm text-white/70">Finding the best matches for your CV…</p>
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
@@ -713,32 +732,36 @@ export default function SeekerJobsPage() {
           brandButtonClass="bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)]"
         />
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
 
   if (!consentHasCandidate) {
     return (
-      <BrowseAllJobsView
-        jobs={browseJobs}
-        loading={browseListLoading}
-        error={browseJobsQuery.isError}
-        onRetry={() => void browseJobsQuery.refetch()}
-        onApply={handleBrowseApply}
-        onReportDelisted={handleReportDelisted}
-        confirmDialog={ConfirmDialog}
-        variant="matches-pending"
-        jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
-        hasCv={true}
-        searching={helpSearching}
-        onHelpFindJob={handleHelpFindJob}
-        quotaRemaining={quotaRemaining}
-        hasMore={hasMoreBrowse}
-        loadingMore={browseLoadingMore}
-        onLoadMore={handleLoadMoreBrowse}
-        browseLocked={browseLocked}
-      />
+      <>
+        <BrowseAllJobsView
+          jobs={browseJobs}
+          loading={browseListLoading}
+          error={browseJobsQuery.isError}
+          onRetry={() => void browseJobsQuery.refetch()}
+          onApply={handleBrowseApply}
+          onReportDelisted={handleReportDelisted}
+          confirmDialog={ConfirmDialog}
+          variant="matches-pending"
+          jobCount={jobCount}
+          matchCount={data ? data.total : 0}
+          hasCv={true}
+          searching={helpSearching}
+          onHelpFindJob={handleHelpFindJob}
+          quotaRemaining={quotaRemaining}
+          hasMore={hasMoreBrowse}
+          loadingMore={browseLoadingMore}
+          onLoadMore={handleLoadMoreBrowse}
+          browseLocked={browseLocked}
+        />
+        {AlertDialog}
+      </>
     );
   }
 
@@ -773,42 +796,51 @@ export default function SeekerJobsPage() {
           </button>
         </div>
         {ConfirmDialog}
+        {AlertDialog}
       </div>
     );
   }
 
   if (matches.length === 0 && !filtersActive) {
     return (
-      <BrowseAllJobsView
-        jobs={browseJobs}
-        loading={browseListLoading}
-        error={browseJobsQuery.isError}
-        onRetry={() => void browseJobsQuery.refetch()}
-        onApply={handleBrowseApply}
-        onReportDelisted={handleReportDelisted}
-        confirmDialog={ConfirmDialog}
-        variant="matches-pending"
-        jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
-        hasCv={true}
-        searching={helpSearching}
-        onHelpFindJob={handleHelpFindJob}
-        quotaRemaining={quotaRemaining}
-        hasMore={hasMoreBrowse}
-        loadingMore={browseLoadingMore}
-        onLoadMore={handleLoadMoreBrowse}
-        browseLocked={browseLocked}
-      />
+      <>
+        <BrowseAllJobsView
+          jobs={browseJobs}
+          loading={browseListLoading}
+          error={browseJobsQuery.isError}
+          onRetry={() => void browseJobsQuery.refetch()}
+          onApply={handleBrowseApply}
+          onReportDelisted={handleReportDelisted}
+          confirmDialog={ConfirmDialog}
+          variant="matches-pending"
+          jobCount={jobCount}
+          matchCount={data ? data.total : 0}
+          hasCv={true}
+          searching={helpSearching}
+          onHelpFindJob={handleHelpFindJob}
+          quotaRemaining={quotaRemaining}
+          hasMore={hasMoreBrowse}
+          loadingMore={browseLoadingMore}
+          onLoadMore={handleLoadMoreBrowse}
+          browseLocked={browseLocked}
+        />
+        {AlertDialog}
+      </>
     );
   }
 
+  const totalMatches = data ? data.total : 0;
+  const shownMatches = data ? data.matches.length : 0;
+  const hasMoreThanShown = totalMatches > shownMatches;
+
   return (
     <div className="space-y-6">
+      <div ref={topAnchorRef} />
       <PageHeader subtitle={matchedSubtitle} />
 
       <JobsTopBar
         jobCount={jobCount}
-        matchCount={data ? data.matches.length : 0}
+        matchCount={totalMatches}
         hasCv={true}
         searching={helpSearching}
         onHelpFindJob={handleHelpFindJob}
@@ -823,11 +855,42 @@ export default function SeekerJobsPage() {
         </div>
       ) : null}
 
+      <WorkCountriesPreference />
+
+      {!filterTipDismissed && (
+        // Solid backgrounds in both themes — the brand hero image sits behind
+        // this area, and the global dark-mode bg-blue-50 remap is translucent.
+        <div className="bg-[#eff6ff] dark:bg-[#101d3f] border border-blue-200 dark:border-blue-900 rounded-xl px-4 py-3 text-sm text-blue-800 dark:text-blue-200 flex items-start justify-between gap-4">
+          <p>
+            <strong>Tip:</strong> Use the filters below to narrow your job matches by location,
+            category, salary, and more.
+          </p>
+          <button
+            type="button"
+            onClick={() => setFilterTipDismissed(true)}
+            className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-300 flex-shrink-0"
+            aria-label="Dismiss tip"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </div>
+      )}
+
       <SeekerJobFilters
         state={filters}
         onChange={setFilters}
         providers={providers}
-        categories={categories}
+        regions={regionOptions}
+        provinces={provinceOptions}
+        cities={cityOptions}
+        categories={categoryOptions}
       />
 
       {filtered.length === 0 ? (
@@ -853,6 +916,28 @@ export default function SeekerJobsPage() {
           ))}
         </div>
       )}
+
+      {filtered.length > 0 && hasMoreThanShown ? (
+        <div className="rounded-xl border border-gray-200 bg-white p-5 text-center dark:border-white/10">
+          <p className="text-sm text-gray-700 dark:text-gray-200">
+            You're viewing the <span className="font-semibold">top {shownMatches}</span> jobs best
+            matched to your CV, out of{" "}
+            <span className="font-semibold">{totalMatches.toLocaleString()}</span> total matches. To
+            see the rest, use the filters at the top — pick a{" "}
+            <span className="font-medium">province, city, category, source or salary</span> and the
+            app will bring up the jobs linked to that filter.
+          </p>
+          <button
+            type="button"
+            onClick={scrollToFilters}
+            className="mt-3 inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-white transition-colors"
+            style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+          >
+            <span aria-hidden="true">↑</span> Take me to the filters
+          </button>
+        </div>
+      ) : null}
+
       <ConfirmModal
         isOpen={pendingDismiss != null}
         variant="warning"
@@ -869,6 +954,80 @@ export default function SeekerJobsPage() {
         onCancel={() => setPendingDismiss(null)}
       />
       {ConfirmDialog}
+      {AlertDialog}
+    </div>
+  );
+}
+
+const WORK_COUNTRY_OPTIONS = ["za", "gb"];
+
+function WorkCountriesPreference() {
+  const { data } = useOrbitSeekerTargetCountries();
+  const setMutation = useOrbitSetSeekerTargetCountries();
+  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
+  const enabledQuery = useQuery({
+    queryKey: ["orbit-seeker-enabled-countries"],
+    queryFn: () => annixOrbitApiClient.seekerEnabledCountries(),
+  });
+  const enabledData = enabledQuery.data;
+  const enabled = enabledData ? enabledData.countries : WORK_COUNTRY_OPTIONS;
+  const options = WORK_COUNTRY_OPTIONS.filter((code) => enabled.includes(code));
+  const selected = data ? data.targetCountries : ["za"];
+
+  const toggle = (code: string) => {
+    const set = new Set(selected);
+    if (set.has(code)) {
+      set.delete(code);
+    } else {
+      set.add(code);
+    }
+    const next = [...set];
+    const effective = next.length > 0 ? next : ["za"];
+    setMutation.mutate(effective, {
+      onSuccess: () =>
+        showToast(
+          'Updated. Click "Help me Find a Job" to refresh your matches for the new countries.',
+          "success",
+        ),
+      onError: () => alert({ message: "Couldn't update your work countries.", variant: "error" }),
+    });
+  };
+
+  if (options.length <= 1) {
+    return null;
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 p-4 dark:border-white/10">
+      {AlertDialog}
+      <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+        Where do you want to work?
+      </p>
+      <p className="text-xs text-gray-500 mb-2 dark:text-gray-400">
+        Pick the countries you want jobs from. Adding one re-scopes your matches on the next "Help
+        me Find a Job".
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {options.map((code) => {
+          const on = selected.includes(code);
+          return (
+            <button
+              key={code}
+              type="button"
+              onClick={() => toggle(code)}
+              disabled={setMutation.isPending}
+              className={`px-3 py-1.5 text-sm rounded-full border transition-colors disabled:opacity-50 ${
+                on
+                  ? "bg-indigo-100 text-indigo-800 border-indigo-300"
+                  : "bg-white text-gray-600 border-gray-300 hover:bg-gray-50"
+              }`}
+            >
+              {countryLabel(code)}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -924,18 +1083,31 @@ function JobsTopBar(props: {
             <p className="text-sm text-white/85 mt-1">
               {quotaNote ?? "Let Nix match these jobs to your CV and surface the best fits."}
             </p>
+            <span
+              className="mt-3 inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+            >
+              {searching ? "Searching…" : "Click Here"}
+            </span>
           </button>
         ) : (
-          <Link
-            href="/annix/orbit/seeker/profile"
-            className="rounded-xl p-5 transition-opacity hover:opacity-90 flex flex-col justify-center"
+          <button
+            type="button"
+            onClick={onHelpFindJob}
+            className="rounded-xl p-5 text-left transition-opacity hover:opacity-90 flex flex-col justify-center"
             style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
           >
             <p className="text-lg font-bold text-white">Help me Find a Job</p>
             <p className="text-sm text-white/85 mt-1">
               Upload your CV first and Nix will match jobs to you →
             </p>
-          </Link>
+            <span
+              className="mt-3 inline-block rounded-lg px-4 py-2 text-sm font-semibold text-white"
+              style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+            >
+              Click Here
+            </span>
+          </button>
         )
       ) : null}
     </div>
@@ -1139,9 +1311,9 @@ interface PageHeaderProps {
 
 function PageHeader(props: PageHeaderProps) {
   return (
-    <div>
+    <div className="w-fit max-w-full rounded-xl bg-black/30 px-4 py-3 backdrop-blur-sm">
       <h1 className="text-3xl font-bold text-white">Browse Jobs</h1>
-      <p className="text-white/70 mt-2">{props.subtitle}</p>
+      <p className="text-white/80 mt-1">{props.subtitle}</p>
     </div>
   );
 }

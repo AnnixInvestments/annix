@@ -52,8 +52,8 @@ export class UBoltEntity {
   @Prop({ type: String, required: false })
   materialGrade: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const UBoltEntitySchema = SchemaFactory.createForClass(UBoltEntity);

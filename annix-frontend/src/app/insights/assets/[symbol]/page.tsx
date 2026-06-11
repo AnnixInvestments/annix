@@ -4,11 +4,11 @@ import { ArrowLeft, RefreshCw, TrendingUp } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
-import { useToast } from "@/app/components/Toast";
 import { ApiError } from "@/app/lib/api/apiError";
 import { insightsApi, type PriceBar, type SignalSnapshotResponse } from "@/app/lib/api/insightsApi";
 import { fromISO, nowISO } from "@/app/lib/datetime";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAssetHistory, useInvalidateAssetData, useSignalHistory } from "@/app/lib/query/hooks";
 import { PriceChart } from "../../components/PriceChart";
 import { Sparkline } from "../../components/Sparkline";
@@ -39,7 +39,7 @@ export default function InsightsAssetDetailPage() {
   const params = useParams<{ symbol: string }>();
   const router = useRouter();
   const { user, isAuthenticated, isLoading, logout } = useInsightsAuth();
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { runBulk } = useAdaptiveExtractionProgress();
   const invalidateAsset = useInvalidateAssetData();
   const [range, setRange] = useState<Range>("1Y");
@@ -123,9 +123,9 @@ export default function InsightsAssetDetailPage() {
           : result.failed[0].error instanceof Error
             ? result.failed[0].error.message
             : "Backfill failed.";
-      showToast(errMsg, "error");
+      alert({ message: errMsg, variant: "error" });
     } else {
-      showToast(`${targetSymbol} history refreshed.`, "success");
+      alert({ message: `${targetSymbol} history refreshed.`, variant: "success" });
     }
   };
 
@@ -279,6 +279,7 @@ export default function InsightsAssetDetailPage() {
           </div>
         ) : null}
       </main>
+      {AlertDialog}
     </div>
   );
 }

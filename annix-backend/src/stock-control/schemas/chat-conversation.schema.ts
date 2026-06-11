@@ -34,8 +34,8 @@ export class ChatConversation {
   @Prop({ type: String, required: false })
   unifiedCreatedById: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const ChatConversationSchema = SchemaFactory.createForClass(ChatConversation);

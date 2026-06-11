@@ -3,6 +3,7 @@ import { extractHeadings, loadAllGuides, loadGuideBySlug } from "@/app/annix/orb
 import HowToViewerClient from "./HowToViewerClient";
 
 export const dynamic = "force-static";
+export const dynamicParams = false;
 
 export function generateStaticParams() {
   return loadAllGuides().map((g) => ({ slug: g.slug }));

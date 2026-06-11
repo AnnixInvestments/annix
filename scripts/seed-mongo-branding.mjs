@@ -42,6 +42,13 @@ const brands = [
     description: "Annix Investments — the Annix holding company.",
   },
   {
+    _id: "annix-forge",
+    ...base,
+    tagline: "Quote • Build • Inspect • Deliver",
+    description:
+      "The industrial project execution platform for quoting, fabrication, quality assurance, and traceability.",
+  },
+  {
     _id: "annix-insights",
     ...base,
     description: "Market data, news signals, and AI-driven portfolio insights.",

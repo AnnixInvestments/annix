@@ -1,4 +1,9 @@
-import { DEFAULT_MATCH_TIER, isMatchTier, type MatchTier } from "@annix/product-data/sa-market";
+import {
+  DEFAULT_MATCH_TIER,
+  isMatchTier,
+  JOB_CATEGORIES,
+  type MatchTier,
+} from "@annix/product-data/sa-market";
 import {
   BadRequestException,
   forwardRef,
@@ -21,15 +26,22 @@ import {
   type OrbitTierFeatures,
 } from "../entities/orbit-tier-capability.entity";
 import { SeekerMute } from "../entities/seeker-mute.entity";
+import { countMatchingRows, distinctPassing } from "../lib/facet-compute";
+import { citiesForProvince, SA_PROVINCES } from "../lib/sa-locations";
+import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
-import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
+import {
+  CandidateJobMatchRepository,
+  type RecommendedFacetRow,
+} from "../repositories/candidate-job-match.repository";
 import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 import { OrbitDismissReasonRepository } from "../repositories/orbit-dismiss-reason.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
+import { PendingSeekerTierRepository } from "../repositories/pending-seeker-tier.repository";
 import { SeekerApplyClickRepository } from "../repositories/seeker-apply-click.repository";
 import { SeekerMuteRepository } from "../repositories/seeker-mute.repository";
 import { SeekerUsageCounterRepository } from "../repositories/seeker-usage-counter.repository";
@@ -38,13 +50,30 @@ import {
   type RecommendedJobFilters,
 } from "./candidate-job-matching.service";
 import { CvNotificationService } from "./cv-notification.service";
+import { JobMarketCountriesService } from "./job-market-countries.service";
+import { SeekerTelemetryService } from "./seeker-telemetry.service";
 
 const HELP_FIND_JOB_OPERATION = "help-find-job";
+const CV_BUILD_OPERATION = "nix-cv-build";
 
 const REMATCH_COOLDOWN_MS = 5 * 60 * 1000;
 const APPLY_CLICK_DEDUP_MS = 5_000;
 const MAX_COLD_START = 12;
 const MAX_LOCKED_TEASERS = 3;
+const MANUAL_REMATCH_STORAGE_LIMIT = 500;
+// How many ranked matches the Browse Jobs feed loads at once. The headline "Nix
+// matches" count is the true total (counted in the DB, not loaded), so a seeker
+// sees the real number without us shipping thousands of populated job rows.
+const RECOMMENDED_DISPLAY_LIMIT = 100;
+// The facet rows for a candidate are filter-independent, so cache them briefly:
+// rapid filter changes then derive the count + every facet in memory with no
+// repeated database join. Invalidated whenever the candidate's matches change.
+// The join behind these rows costs seconds on M0 once a candidate has thousands
+// of matches, so the cache serves stale rows (up to the stale max) while a
+// background refresh runs — no request waits on the join after first load.
+const FACET_ROW_TTL_MS = 45_000;
+const FACET_ROW_STALE_MAX_MS = 15 * 60_000;
+const FACET_ROW_CACHE_MAX_ENTRIES = 50;
 
 const NIX_SEARCH_METRIC_CATEGORY = "annix-orbit-nix-seeker";
 const NIX_SEARCH_METRIC_OPERATION = "job-search";
@@ -73,6 +102,7 @@ export interface SeekerJobMatch {
     description: string | null;
     extractedSkills: string[];
     category: string | null;
+    canonicalCategory: string | null;
     sourceUrl: string | null;
     postedAt: string | null;
     expiresAt: string | null;
@@ -138,10 +168,85 @@ export interface AdminSeekerDetail extends AdminSeekerSummary {
   activity: Array<{ day: string; count: number }>;
 }
 
+export interface SeekerCvBuildQuota {
+  unlimited: boolean;
+  allowance: number | null;
+  used: number;
+  remaining: number | null;
+  resetsAt: string;
+}
+
+export interface SeekerEntitlementsResult {
+  tier: string;
+  label: string;
+  features: OrbitTierFeatures;
+  cvBuilds: SeekerCvBuildQuota;
+}
+
+function candidateHasCv(candidate: Candidate): boolean {
+  return Boolean(candidate.cvFilePath || candidate.rawCvText || candidate.extractedData);
+}
+
 @Injectable()
 export class SeekerJobFeedService {
   private readonly logger = new Logger(SeekerJobFeedService.name);
   private readonly lastRematchByCandidate = new Map<number, number>();
+  private readonly facetRowCache = new Map<string, { rows: RecommendedFacetRow[]; at: number }>();
+  private readonly facetRowInflight = new Map<string, Promise<RecommendedFacetRow[]>>();
+
+  private async cachedFacetRows(candidateIds: number[]): Promise<RecommendedFacetRow[]> {
+    const key = [...candidateIds].sort((a, b) => a - b).join(",");
+    const cached = this.facetRowCache.get(key);
+    const now = nowMillis();
+    if (cached && now - cached.at < FACET_ROW_TTL_MS) {
+      return cached.rows;
+    }
+    if (cached && now - cached.at < FACET_ROW_STALE_MAX_MS) {
+      void this.refreshFacetRows(key, candidateIds).catch((error) => {
+        this.logger.warn(
+          `Background facet-row refresh failed for [${key}]: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      });
+      return cached.rows;
+    }
+    return this.refreshFacetRows(key, candidateIds);
+  }
+
+  private refreshFacetRows(key: string, candidateIds: number[]): Promise<RecommendedFacetRow[]> {
+    const inflight = this.facetRowInflight.get(key);
+    if (inflight) {
+      return inflight;
+    }
+    const promise = this.matchRepo
+      .facetRowsForCandidates(candidateIds)
+      .then((rows) => {
+        this.facetRowCache.set(key, { rows, at: nowMillis() });
+        this.evictOldestFacetRows();
+        return rows;
+      })
+      .finally(() => {
+        this.facetRowInflight.delete(key);
+      });
+    this.facetRowInflight.set(key, promise);
+    return promise;
+  }
+
+  private evictOldestFacetRows(): void {
+    if (this.facetRowCache.size <= FACET_ROW_CACHE_MAX_ENTRIES) {
+      return;
+    }
+    const oldestKey = [...this.facetRowCache.entries()].reduce<{ key: string; at: number } | null>(
+      (oldest, [key, entry]) => (!oldest || entry.at < oldest.at ? { key, at: entry.at } : oldest),
+      null,
+    );
+    if (oldestKey) {
+      this.facetRowCache.delete(oldestKey.key);
+    }
+  }
+
+  private invalidateFacetCache(): void {
+    this.facetRowCache.clear();
+  }
 
   constructor(
     private readonly candidateRepo: CandidateRepository,
@@ -159,11 +264,61 @@ export class SeekerJobFeedService {
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly usageCounterRepo: SeekerUsageCounterRepository,
     private readonly dismissReasonRepo: OrbitDismissReasonRepository,
+    private readonly countriesService: JobMarketCountriesService,
+    private readonly seekerTelemetry: SeekerTelemetryService,
     @Inject(forwardRef(() => CvNotificationService))
     private readonly notificationService: CvNotificationService,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
+    private readonly pendingTierRepo: PendingSeekerTierRepository,
   ) {}
+
+  // Union of the seeker's candidates' target countries; defaults to South Africa.
+  async enabledJobCountries(): Promise<string[]> {
+    return this.countriesService.enabledCountries();
+  }
+
+  // Records an admin's intended tier for a seeker who hasn't registered yet.
+  // Applied to their candidate when it is created on CV upload
+  // (see IndividualProfileService.syncCandidateFromProfile).
+  async setPendingSeekerTier(
+    email: string,
+    tier: string,
+    permanent: boolean,
+    trialDays: number | null,
+  ): Promise<{ saved: boolean }> {
+    if (!isMatchTier(tier)) {
+      throw new BadRequestException(`Invalid tier: ${tier}`);
+    }
+    const emailNormalized = email.toLowerCase().trim();
+    if (!emailNormalized) {
+      throw new BadRequestException("Email is required.");
+    }
+    const existing = await this.pendingTierRepo.findByEmailNormalized(emailNormalized);
+    if (existing) {
+      existing.tier = tier;
+      existing.permanent = permanent;
+      existing.trialDays = permanent ? null : trialDays;
+      await this.pendingTierRepo.save(existing);
+    } else {
+      await this.pendingTierRepo.create({
+        emailNormalized,
+        tier,
+        permanent,
+        trialDays: permanent ? null : trialDays,
+      });
+    }
+    return { saved: true };
+  }
+
+  private async targetCountriesForCandidates(candidates: Candidate[]): Promise<string[]> {
+    const set = new Set<string>();
+    candidates.forEach((c) => (c.targetCountries ?? []).forEach((code) => set.add(code)));
+    const base = set.size > 0 ? [...set] : ["za"];
+    const enabled = await this.countriesService.enabledCountries();
+    const filtered = base.filter((code) => enabled.includes(code));
+    return filtered.length > 0 ? filtered : enabled;
+  }
 
   private effectiveTier(candidates: Candidate[]): string {
     const nowMs = nowMillis();
@@ -188,7 +343,8 @@ export class SeekerJobFeedService {
     resetsAt: string;
   }> {
     const resetsAt = DateTime.now().endOf("month").toISO() ?? "";
-    const tier = this.effectiveTier(candidates);
+    const selectedTier = await this.selectedTierForEmail(email);
+    const tier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
     const allowance = capability ? capability.monthlyNixRuns : null;
     if (allowance == null) {
@@ -203,6 +359,41 @@ export class SeekerJobFeedService {
     );
     const remaining = Math.max(0, allowance - used);
     return { unlimited: false, allowance, used, remaining, resetsAt };
+  }
+
+  async cvBuildQuotaForSeeker(email: string | null): Promise<SeekerCvBuildQuota> {
+    const resetsAt = DateTime.now().endOf("month").toISO() ?? "";
+    const candidates = await this.candidatesForSeeker(email);
+    const selectedTier = await this.selectedTierForEmail(email);
+    const tier = selectedTier ?? this.effectiveTier(candidates);
+    const capability = await this.tierCapabilityRepo.findByTier(tier);
+    const allowance = capability ? capability.monthlyCvBuilds : null;
+    if (allowance == null) {
+      return { unlimited: true, allowance: null, used: 0, remaining: null, resetsAt };
+    }
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    const monthKey = DateTime.now().toFormat("yyyy-LL");
+    const used = await this.usageCounterRepo.getCount(
+      normalizedEmail,
+      CV_BUILD_OPERATION,
+      monthKey,
+    );
+    return {
+      unlimited: false,
+      allowance,
+      used,
+      remaining: Math.max(0, allowance - used),
+      resetsAt,
+    };
+  }
+
+  async recordCvBuild(email: string | null): Promise<void> {
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    await this.usageCounterRepo.increment(
+      normalizedEmail,
+      CV_BUILD_OPERATION,
+      DateTime.now().toFormat("yyyy-LL"),
+    );
   }
 
   async muteCompanyForSeeker(
@@ -310,49 +501,144 @@ export class SeekerJobFeedService {
 
   private async selectedTierForEmail(email: string | null): Promise<string | null> {
     if (!email) return null;
-    const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+    const user = await this.userRepo.findOneByEmailAnyScope(email);
     if (!user) return null;
     const profile = await this.profileRepo.findByUserId(user.id);
     const selected = profile?.selectedTier;
     return selected && isMatchTier(selected) ? selected : null;
   }
 
-  async entitlementsForSeeker(
-    email: string | null,
-  ): Promise<{ tier: string; label: string; features: OrbitTierFeatures }> {
+  async entitlementsForSeeker(email: string | null): Promise<SeekerEntitlementsResult> {
     const candidates = await this.candidatesForSeeker(email);
     const selectedTier = await this.selectedTierForEmail(email);
     const tier = selectedTier ?? this.effectiveTier(candidates);
     const capability = await this.tierCapabilityRepo.findByTier(tier);
+    const cvBuilds = await this.cvBuildQuotaForSeeker(email);
     if (!capability) {
-      return { tier, label: tier, features: { ...DEFAULT_TIER_FEATURES } };
+      return { tier, label: tier, features: { ...DEFAULT_TIER_FEATURES }, cvBuilds };
     }
     return {
       tier: capability.tier,
       label: capability.label,
       features: { ...DEFAULT_TIER_FEATURES, ...capability.features },
+      cvBuilds,
     };
   }
 
-  async selectPlanForSeeker(
-    email: string | null,
-    tier: string,
-  ): Promise<{ tier: string; label: string; features: OrbitTierFeatures }> {
+  async selectPlanForSeeker(email: string | null, tier: string): Promise<SeekerEntitlementsResult> {
     if (!isMatchTier(tier)) {
       throw new BadRequestException(`Invalid plan: ${tier}`);
     }
     await this.setMatchTierForSeeker(email, tier);
     if (email) {
-      const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+      const user = await this.userRepo.findOneByEmailAnyScope(email);
       if (user) {
-        const profile = await this.profileRepo.findByUserId(user.id);
-        if (profile) {
-          profile.selectedTier = tier;
-          await this.profileRepo.save(profile);
-        }
+        await this.profileRepo.setSelectedTier(user.id, tier);
       }
     }
     return this.entitlementsForSeeker(email);
+  }
+
+  // Facet options for the filter dropdowns: only the provinces, cities, categories
+  // and sources that actually have a match in the seeker's set. Each facet is
+  // computed with every OTHER active filter applied but not its own, so a chosen
+  // value never collapses its own dropdown and empty options never appear.
+  async recommendedFacetsForSeeker(
+    email: string | null,
+    options: { filters?: RecommendedJobFilters | null } = {},
+  ): Promise<{
+    regions: string[];
+    provinces: string[];
+    cities: string[];
+    categories: Array<{ key: string; label: string }>;
+    sources: string[];
+  }> {
+    const empty = { regions: [], provinces: [], cities: [], categories: [], sources: [] };
+    const candidates = await this.candidatesForSeeker(email);
+    if (candidates.length === 0) return empty;
+
+    const rows = await this.cachedFacetRows(candidates.map((c) => c.id));
+    if (rows.length === 0) return empty;
+
+    const sourceList = await this.sourceRepo.findManyWhere({
+      companyId: null,
+    } as Partial<JobMarketSource>);
+    const providerBySourceId = new Map(sourceList.map((s) => [s.id, s.provider]));
+
+    // Provider name -> source ids so the source dimension filters the same field
+    // the rows carry; every facet then excludes its own dimension. The target-
+    // country gate is always applied so a seeker never facets outside their scope.
+    const targetCountries = await this.targetCountriesForCandidates(candidates);
+    const rf = (await this.resolveRepoFilters(options.filters ?? null)) ?? {};
+    const ff = { ...rf, targetCountries };
+
+    const regionValues = distinctPassing(rows, ff, new Set(["region"]), (r) => r.country);
+    const regions = targetCountries.filter((c) => regionValues.has(c));
+
+    const provinceValues = distinctPassing(
+      rows,
+      ff,
+      new Set(["province", "city"]),
+      (r) => r.canonicalProvince,
+    );
+    const provinces = SA_PROVINCES.filter((p) => provinceValues.has(p));
+
+    const cityValues = rf.province
+      ? distinctPassing(rows, ff, new Set(["city"]), (r) => r.canonicalCity)
+      : new Set<string>();
+    const orderedCities = citiesForProvince(rf.province ?? null);
+    const cities = [
+      ...orderedCities.filter((c) => cityValues.has(c)),
+      ...[...cityValues].filter((c) => !orderedCities.includes(c)).sort(),
+    ];
+
+    const categoryValues = distinctPassing(
+      rows,
+      ff,
+      new Set(["category"]),
+      (r) => r.canonicalCategory,
+    );
+    const categories = JOB_CATEGORIES.filter((c) => categoryValues.has(c.key)).map((c) => ({
+      key: c.key,
+      label: c.label,
+    }));
+
+    const sourceValues = distinctPassing(rows, ff, new Set(["source"]), (r) =>
+      r.sourceId != null ? (providerBySourceId.get(r.sourceId) ?? null) : null,
+    );
+
+    return { regions, provinces, cities, categories, sources: [...sourceValues].sort() };
+  }
+
+  // Every active platform job source, so the seeker's "source" filter lists all
+  // of them — not just the ones that happen to appear in the loaded matches.
+  async activeSourceProviders(): Promise<string[]> {
+    const sources = await this.sourceRepo.findManyWhere({
+      companyId: null,
+    } as Partial<JobMarketSource>);
+    const enabled = sources.filter((source) => source.enabled);
+    return [...new Set(enabled.map((source) => source.provider))].sort();
+  }
+
+  async targetCountriesForSeeker(email: string | null): Promise<{ targetCountries: string[] }> {
+    const candidates = await this.candidatesForSeeker(email);
+    return { targetCountries: await this.targetCountriesForCandidates(candidates) };
+  }
+
+  async setTargetCountriesForSeeker(
+    email: string | null,
+    countries: string[],
+  ): Promise<{ targetCountries: string[] }> {
+    const normalized = [
+      ...new Set(countries.map((c) => c.trim().toLowerCase()).filter((c) => c.length > 0)),
+    ];
+    const effective = normalized.length > 0 ? normalized : ["za"];
+    const candidates = await this.candidatesForSeeker(email);
+    await Promise.all(
+      candidates.map((c) => this.candidateRepo.updateTargetCountries(c.id, effective)),
+    );
+    this.invalidateFacetCache();
+    return { targetCountries: effective };
   }
 
   async listSeekers(params: {
@@ -375,7 +661,7 @@ export class SeekerJobFeedService {
       matchTier: row.matchTier,
       matchScore: row.matchScore,
       status: row.status,
-      hasCv: Boolean(row.cvFilePath),
+      hasCv: candidateHasCv(row),
       lastActiveAt: row.lastActiveAt ? row.lastActiveAt.toISOString() : null,
       createdAt: row.createdAt ? row.createdAt.toISOString() : null,
     }));
@@ -404,7 +690,7 @@ export class SeekerJobFeedService {
       sevenDaysAgo,
     );
 
-    const seekerUser = email ? await this.userRepo.findOneByEmailCaseInsensitive(email) : null;
+    const seekerUser = email ? await this.userRepo.findOneByEmailAnyScope(email) : null;
     const seekerProfile = seekerUser ? await this.profileRepo.findByUserId(seekerUser.id) : null;
     const dismissWarningAcknowledgedAt = seekerProfile?.dismissWarningAcknowledgedAt
       ? seekerProfile.dismissWarningAcknowledgedAt.toISOString()
@@ -412,6 +698,7 @@ export class SeekerJobFeedService {
 
     const extracted = candidate.extractedData;
     const analysis = candidate.matchAnalysis;
+    const profileHasCv = seekerProfile ? seekerProfile.cvFilePath != null : false;
 
     return {
       id: candidate.id,
@@ -420,7 +707,7 @@ export class SeekerJobFeedService {
       matchTier: candidate.matchTier,
       matchScore: candidate.matchScore,
       status: candidate.status,
-      hasCv: Boolean(candidate.cvFilePath),
+      hasCv: candidateHasCv(candidate) || profileHasCv,
       lastActiveAt: candidate.lastActiveAt ? candidate.lastActiveAt.toISOString() : null,
       createdAt: candidate.createdAt ? candidate.createdAt.toISOString() : null,
       popiaConsent: candidate.popiaConsent,
@@ -463,7 +750,7 @@ export class SeekerJobFeedService {
 
   private async documentsForSeekerEmail(email: string | null): Promise<AdminSeekerDocument[]> {
     if (!email) return [];
-    const user = await this.userRepo.findOneByEmailCaseInsensitive(email);
+    const user = await this.userRepo.findOneByEmailAnyScope(email);
     if (!user) return [];
     const profile = await this.profileRepo.findByUserId(user.id);
     if (!profile) return [];
@@ -476,7 +763,11 @@ export class SeekerJobFeedService {
     return Promise.all(
       docs.map(async (doc) => {
         const isCv = doc.kind === IndividualDocumentKind.CV;
-        const downloadUrl = await this.storageService.presignedUrl(doc.filePath, 3600);
+        const downloadUrl = await this.storageService.presignedUrl(
+          doc.filePath,
+          3600,
+          doc.originalFilename,
+        );
         return {
           id: doc.id,
           kind: doc.kind,
@@ -534,20 +825,92 @@ export class SeekerJobFeedService {
     return { candidatesAffected: candidateIds.length };
   }
 
+  // Translate a provider-name filter into the source ids that back it, so the
+  // count and the list filter on the same job field (sourceId).
+  private async resolveRepoFilters(
+    filters: RecommendedJobFilters | null,
+  ): Promise<RecommendedJobFilters | null> {
+    if (!filters?.provider) return filters;
+    const sources = await this.sourceRepo.findManyWhere({
+      companyId: null,
+    } as Partial<JobMarketSource>);
+    const ids = sources.filter((s) => s.provider === filters.provider).map((s) => s.id);
+    return { ...filters, sourceIds: ids.length > 0 ? ids : [-1] };
+  }
+
   async recommendedForSeeker(
     email: string | null,
     options: { includeDismissed?: boolean; filters?: RecommendedJobFilters | null } = {},
-  ): Promise<{ matches: SeekerJobMatch[]; candidateIds: number[] }> {
+  ): Promise<{ matches: SeekerJobMatch[]; candidateIds: number[]; total: number }> {
     const candidates = await this.candidatesForSeeker(email);
     if (candidates.length === 0) {
-      return { matches: [], candidateIds: [] };
+      return { matches: [], candidateIds: [], total: 0 };
     }
+
+    // The chosen plan is authoritative for match allowance. Self-heal any
+    // candidate whose stored matchTier has drifted from it so the matching,
+    // storage and stats paths all agree — this keeps every package change wired
+    // through, even for accounts that selected a plan before this sync existed.
+    const selectedTier = await this.selectedTierForEmail(email);
+    if (selectedTier) {
+      const stale = candidates.filter((candidate) => candidate.matchTier !== selectedTier);
+      if (stale.length > 0) {
+        await Promise.all(
+          stale.map((candidate) => this.candidateRepo.updateMatchTier(candidate.id, selectedTier)),
+        );
+        stale.forEach((candidate) => {
+          candidate.matchTier = selectedTier;
+        });
+      }
+    }
+
+    // The "source" filter is a provider name; resolve it to the source ids that
+    // back it so both the count and the list filter on the same job field.
+    const repoFilters = await this.resolveRepoFilters(options.filters ?? null);
+
+    // Country gate: the seeker's target countries, narrowed to one when the Region
+    // dropdown is used. UK jobs only reach seekers who opted into "gb".
+    const targetCountries = await this.targetCountriesForCandidates(candidates);
+    const region = options.filters?.region ?? null;
+    const effectiveCountries = region ? [region] : targetCountries;
+    const displayFilters: RecommendedJobFilters = {
+      ...(repoFilters ?? {}),
+      countries: effectiveCountries,
+    };
+
+    // The true count of matching jobs, counted in memory from cached rows. The plan
+    // caps how many a seeker may see (null = unlimited), applied to both the headline
+    // total and the loaded page size.
+    const candidateIds = candidates.map((c) => c.id);
+    try {
+      const cid = candidateIds[0] ?? null;
+      await this.seekerTelemetry.record(cid, SEEKER_EVENTS.jobsViewed);
+    } catch (error) {
+      this.logger.warn(
+        `Seeker telemetry (jobsViewed) failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+    const capTier = selectedTier ?? this.effectiveTier(candidates);
+    const capability = await this.tierCapabilityRepo.findByTier(capTier);
+    const maxResults = capability ? capability.maxJobResults : null;
+    const facetRows = await this.cachedFacetRows(candidateIds);
+    const rawTotal = countMatchingRows(facetRows, {
+      ...(repoFilters ?? {}),
+      targetCountries,
+      region,
+    });
+    const total = maxResults == null ? rawTotal : Math.min(rawTotal, maxResults);
+    const displayLimit =
+      maxResults == null
+        ? RECOMMENDED_DISPLAY_LIMIT
+        : Math.min(RECOMMENDED_DISPLAY_LIMIT, maxResults);
 
     const perCandidateLists = await Promise.all(
       candidates.map((candidate) =>
         this.matchingService.recommendedJobsForCandidate(candidate.id, {
           includeDismissed: options.includeDismissed ?? false,
-          filters: options.filters ?? null,
+          filters: displayFilters,
+          tierOverride: selectedTier,
         }),
       ),
     );
@@ -573,7 +936,7 @@ export class SeekerJobFeedService {
     });
 
     if (flat.length === 0) {
-      return { matches: [], candidateIds: candidates.map((c) => c.id) };
+      return { matches: [], candidateIds, total };
     }
 
     const sourceIds = [
@@ -614,7 +977,9 @@ export class SeekerJobFeedService {
     // A job available from any visible source is never shown as locked.
     bestByJob.forEach((_match, jobId) => lockedByJob.delete(jobId));
 
-    const sorted = [...bestByJob.values()].sort((a, b) => b.overallScore - a.overallScore);
+    const sorted = [...bestByJob.values()]
+      .sort((a, b) => b.overallScore - a.overallScore)
+      .slice(0, displayLimit);
     const lockedSorted = [...lockedByJob.values()]
       .sort((a, b) => b.overallScore - a.overallScore)
       .slice(0, MAX_LOCKED_TEASERS);
@@ -627,7 +992,7 @@ export class SeekerJobFeedService {
         toSeekerMatch(match, sourceById.get(match.externalJob.sourceId) ?? null, true),
       ),
     ];
-    return { matches, candidateIds: candidates.map((c) => c.id) };
+    return { matches, candidateIds, total };
   }
 
   async nixSearchEstimateMs(): Promise<number> {
@@ -683,32 +1048,40 @@ export class SeekerJobFeedService {
 
     candidates.forEach((c) => this.lastRematchByCandidate.set(c.id, now));
 
-    void Promise.all(
-      candidates.map((candidate) =>
-        this.metrics
+    const normalizedEmail = email ? email.trim().toLowerCase() : "";
+    void (async () => {
+      const results: Array<{ ran: boolean; matches: CandidateJobMatch[] }> = [];
+      for (const candidate of candidates) {
+        const result = await this.metrics
           .time(NIX_SEARCH_METRIC_CATEGORY, NIX_SEARCH_METRIC_OPERATION, () =>
-            this.matchingService.matchCandidateToJobs(candidate.id),
+            this.matchingService.matchCandidateToJobs(candidate.id, {
+              storageLimit: MANUAL_REMATCH_STORAGE_LIMIT,
+            }),
           )
+          .then((matches) => ({ ran: true, matches }))
           .catch((err) => {
             this.logger.warn(
               `Manual rematch failed for candidate ${candidate.id}: ${err instanceof Error ? err.message : String(err)}`,
             );
-            return [] as CandidateJobMatch[];
-          }),
-      ),
-    ).then((results) => {
-      const totalMatches = results.reduce((sum, matches) => sum + matches.length, 0);
-      return this.notifySearchComplete(userId, totalMatches);
-    });
-
-    if (!quota.unlimited) {
-      const normalizedEmail = email ? email.trim().toLowerCase() : "";
-      await this.usageCounterRepo.increment(
-        normalizedEmail,
-        HELP_FIND_JOB_OPERATION,
-        DateTime.now().toFormat("yyyy-LL"),
-      );
-    }
+            return { ran: false, matches: [] as CandidateJobMatch[] };
+          });
+        results.push(result);
+      }
+      const ranSuccessfully = results.some((r) => r.ran);
+      if (!ranSuccessfully) {
+        candidates.forEach((c) => this.lastRematchByCandidate.delete(c.id));
+        return;
+      }
+      if (!quota.unlimited) {
+        await this.usageCounterRepo.increment(
+          normalizedEmail,
+          HELP_FIND_JOB_OPERATION,
+          DateTime.now().toFormat("yyyy-LL"),
+        );
+      }
+      const totalMatches = results.reduce((sum, r) => sum + r.matches.length, 0);
+      await this.notifySearchComplete(userId, totalMatches);
+    })();
 
     return { triggered: true, rematchedCandidates: candidates.map((c) => c.id) };
   }
@@ -745,6 +1118,7 @@ export class SeekerJobFeedService {
     const matchesCleared = await this.matchRepo.deleteForCandidates(candidateIds);
 
     await this.candidateRepo.withdrawMatching(candidateIds);
+    this.invalidateFacetCache();
 
     candidateIds.forEach((id) => this.lastRematchByCandidate.delete(id));
 
@@ -788,6 +1162,7 @@ export class SeekerJobFeedService {
       return false;
     }
     await this.matchingService.dismissMatch(matchId, reason ?? null);
+    this.invalidateFacetCache();
 
     // Deterministic filter, driven by the admin-configured reason: a reason
     // with muteAction "company"/"category" mutes that job's company/category.
@@ -945,6 +1320,15 @@ export class SeekerJobFeedService {
       sourceUrl: input.sourceUrl,
       ...jobSnapshot,
     });
+    try {
+      await this.seekerTelemetry.record(candidateId, SEEKER_EVENTS.jobApplied, {
+        metadata: { externalJobId: input.externalJobId, matchId: input.matchId },
+      });
+    } catch (error) {
+      this.logger.warn(
+        `Seeker telemetry (jobApplied) failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
     return { recorded: true, clickId: saved.id };
   }
 
@@ -1075,6 +1459,7 @@ function toSeekerMatch(
       description: job.description,
       extractedSkills: job.extractedSkills ?? [],
       category: job.category,
+      canonicalCategory: job.canonicalCategory,
       sourceUrl: job.sourceUrl,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
       expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,
@@ -1123,6 +1508,7 @@ function toColdStartSeekerMatch(
       description: job.description,
       extractedSkills: job.extractedSkills ?? [],
       category: job.category,
+      canonicalCategory: job.canonicalCategory,
       sourceUrl: job.sourceUrl,
       postedAt: job.postedAt ? job.postedAt.toISOString() : null,
       expiresAt: job.expiresAt ? job.expiresAt.toISOString() : null,

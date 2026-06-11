@@ -5,6 +5,7 @@ import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
 import type { CredentialFields, IndividualDocument } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useOrbitUpdateMyDocumentCredentialFields } from "@/app/lib/query/hooks";
 
 interface CredentialFieldsEditorProps {
@@ -48,6 +49,7 @@ export function CredentialFieldsEditor(props: CredentialFieldsEditorProps) {
   const { doc, isOpen, onClose } = props;
   const updateFields = useOrbitUpdateMyDocumentCredentialFields();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [form, setForm] = useState<Record<keyof CredentialFields, string>>(() => initialForm(doc));
 
   const handleChange = (key: keyof CredentialFields, value: string) => {
@@ -63,7 +65,7 @@ export function CredentialFieldsEditor(props: CredentialFieldsEditorProps) {
           onClose();
         },
         onError: () => {
-          showToast("Couldn't save those details — please try again.", "error");
+          alert({ message: "Couldn't save those details — please try again.", variant: "error" });
         },
       },
     );
@@ -78,6 +80,7 @@ export function CredentialFieldsEditor(props: CredentialFieldsEditorProps) {
       submitLabel="Save details"
       loading={updateFields.isPending}
     >
+      {AlertDialog}
       <p className="text-sm text-gray-600 mb-4">
         Fix anything Nix read incorrectly. Your corrections help Nix read these documents more
         accurately over time.

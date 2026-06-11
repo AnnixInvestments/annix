@@ -1,6 +1,5 @@
 "use client";
 
-import { useToast } from "@/app/components/Toast";
 import {
   annixOrbitApiClient,
   type JobPosting,
@@ -8,6 +7,7 @@ import {
   type ScreeningQuestionType,
   type UpdateJobWizardPayload,
 } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { SCREENING_QUESTION_TYPE_OPTIONS } from "../../constants/skill-options";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr } from "../../utils/value-helpers";
@@ -36,7 +36,7 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
   const removeQuestion = (index: number) =>
     onChange({ screeningQuestions: questions.filter((_, i) => i !== index) });
 
-  const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const screeningSuggest = useNixCall({
     operation: "screening-questions",
     label: "Nix is generating screening questions…",
@@ -64,9 +64,13 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
           if (!dupe) merged.push(s);
         }
         onChange({ screeningQuestions: merged });
-        showToast(`Nix added ${suggested.length} screening questions.`, "success");
+        alert({
+          message: `Nix added ${suggested.length} screening questions.`,
+          variant: "success",
+        });
       },
-      onError: () => showToast("Nix couldn't suggest questions. Try again.", "error"),
+      onError: () =>
+        alert({ message: "Nix couldn't suggest questions. Try again.", variant: "error" }),
     });
   };
 
@@ -75,6 +79,7 @@ export function ScreeningQuestionsStep({ draft, onChange }: ScreeningQuestionsSt
       title="Screening Questions"
       subtitle="Filter out applicants who don't meet hard requirements. Click Suggest to have Nix generate a starter set from your outcomes and skills."
     >
+      {AlertDialog}
       <div className="flex justify-end">
         <button
           type="button"

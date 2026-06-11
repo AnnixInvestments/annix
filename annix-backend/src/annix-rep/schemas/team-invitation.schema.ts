@@ -46,8 +46,8 @@ export class TeamInvitation {
   @Prop({ type: Date, required: false })
   acceptedAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const TeamInvitationSchema = SchemaFactory.createForClass(TeamInvitation);

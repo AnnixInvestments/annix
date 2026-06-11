@@ -8,7 +8,7 @@ tags: [workflow, settings, templates]
 lastUpdated: 2026-04-11
 summary: Design the foreground and background workflow steps that jobs move through.
 readingMinutes: 5
-relatedPaths: [annix-frontend/src/app/stock-control/portal/settings, annix-backend/src/stock-control/workflow]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/settings/WorkflowConfigurationSection.tsx, annix-frontend/src/app/stock-control/portal/settings/WorkflowPreviewSection.tsx, annix-backend/src/stock-control/services/workflow-step-config.service.ts, annix-backend/src/stock-control/controllers/workflow.controller.ts]
 ---
 
 ## Foreground vs background steps

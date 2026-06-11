@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { DateTime } from "../../lib/datetime";
+import { DateTime, nowMillis } from "../../lib/datetime";
 import { stripHtmlToText } from "../../lib/html-text";
 import { IngestedJobResult } from "./ingested-job.types";
 
@@ -22,10 +22,13 @@ interface AdzunaApiResponse {
 }
 
 const ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs";
+const ADZUNA_OUTAGE_MS = 30 * 60 * 1000;
+const ADZUNA_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 @Injectable()
 export class AdzunaService {
   private readonly logger = new Logger(AdzunaService.name);
+  private unavailableUntilMs = 0;
 
   async searchJobs(
     appId: string,
@@ -64,12 +67,15 @@ export class AdzunaService {
 
     const url = `${ADZUNA_BASE_URL}/${country}/search/${page}?${params.toString()}`;
 
+    this.assertAvailable();
+
     const response = await fetch(url);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      this.logger.error(`Adzuna API error ${response.status}: ${errorText}`);
-      throw new Error(`Adzuna API returned ${response.status}: ${errorText}`);
+      const message = await this.describeError(response);
+      this.recordRetryableFailure(response.status);
+      this.logger.error(message);
+      throw new Error(message);
     }
 
     const data: AdzunaApiResponse = await response.json();
@@ -166,10 +172,14 @@ export class AdzunaService {
     });
 
     const url = `${ADZUNA_BASE_URL}/${country}/categories?${params.toString()}`;
+    this.assertAvailable();
+
     const response = await fetch(url);
 
     if (!response.ok) {
-      this.logger.error(`Adzuna categories API error: ${response.status}`);
+      const message = await this.describeError(response);
+      this.recordRetryableFailure(response.status);
+      this.logger.error(message);
       return [];
     }
 
@@ -209,5 +219,34 @@ export class AdzunaService {
       return null;
     }
     return posted.plus({ days: 30 }).toJSDate();
+  }
+
+  private assertAvailable(): void {
+    if (nowMillis() < this.unavailableUntilMs) {
+      throw new Error("Adzuna API is temporarily unavailable. Ingestion will retry shortly.");
+    }
+  }
+
+  private recordRetryableFailure(status: number): void {
+    if (ADZUNA_RETRYABLE_STATUSES.has(status)) {
+      this.unavailableUntilMs = nowMillis() + ADZUNA_OUTAGE_MS;
+    }
+  }
+
+  private async describeError(response: Response): Promise<string> {
+    const status = response.status;
+    const body = await response.text().catch(() => "");
+
+    if (status === 429) {
+      return "Adzuna API rate limit reached (HTTP 429). Ingestion will retry on the next scheduled run.";
+    }
+
+    if ([500, 502, 503, 504].includes(status)) {
+      return `Adzuna API is temporarily unavailable (HTTP ${status}). Existing jobs remain available; ingestion will retry on the next scheduled run.`;
+    }
+
+    const text = (stripHtmlToText(body) ?? "").replace(/\s+/g, " ").trim();
+    const detail = text.length > 220 ? `${text.slice(0, 217)}...` : text;
+    return detail ? `Adzuna API returned ${status}: ${detail}` : `Adzuna API returned ${status}`;
   }
 }

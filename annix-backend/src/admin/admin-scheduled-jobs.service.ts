@@ -9,10 +9,28 @@ import { ScheduledJobsGlobalSettingsRepository } from "./repositories/scheduled-
 
 export type NightSuspensionHours = 6 | 8 | 12 | null;
 
+export type JobApp = "orbit" | "core" | "pulse" | "insights" | "sentinel" | "forge" | "global";
+
+export function appForJob(jobName: string): JobApp {
+  if (jobName.startsWith("annix-orbit:") || jobName.startsWith("orbit-education:")) return "orbit";
+  if (jobName.startsWith("fieldflow:")) return "pulse";
+  if (jobName.startsWith("insights:")) return "insights";
+  if (jobName.startsWith("annix-sentinel:")) return "sentinel";
+  if (
+    jobName.startsWith("au-rubber:") ||
+    jobName.startsWith("stock-control:") ||
+    jobName.startsWith("stock-management:")
+  ) {
+    return "core";
+  }
+  return "global";
+}
+
 export interface ScheduledJobDto {
   name: string;
   description: string;
   module: string;
+  app: JobApp;
   active: boolean;
   cronTime: string;
   defaultCron: string;
@@ -30,6 +48,7 @@ export interface ScheduledJobExportDto {
 
 export interface GlobalSettingsDto {
   suspendOnWeekendsAndHolidays: boolean;
+  pauseAllJobs: boolean;
 }
 
 export interface SyncResultDto {
@@ -106,6 +125,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 * * * *",
   },
+  "annix-orbit:prune-stale-jobs": {
+    description: "Delete external jobs absent from their source feed for 30+ days",
+    module: "Annix Orbit",
+    defaultCron: "0 2 * * *",
+  },
   "annix-orbit:weekly-digests": {
     description: "Send weekly candidate digest emails",
     module: "Annix Orbit",
@@ -116,11 +140,22 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 9 * * *",
   },
+  "annix-orbit:early-access-drip": {
+    description: "Send early-access waiting-list drip emails (day 3 / day 7)",
+    module: "Annix Orbit",
+    defaultCron: "0 8 * * *",
+  },
   "annix-orbit:retry-portal-postings": {
     description:
       "Retry failed external job-portal postings with exponential backoff (1h, 6h, 24h, 72h, then abandon)",
     module: "Annix Orbit",
     defaultCron: "0 */6 * * *",
+  },
+  "annix-orbit:readiness-snapshot": {
+    description:
+      "Daily Seeker launch-readiness snapshot (KPIs, error rate, TTFV, criteria, status)",
+    module: "Annix Orbit",
+    defaultCron: "0 5 * * *",
   },
   "annix-orbit:refresh-salary-benchmarks": {
     description:
@@ -282,6 +317,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   private readonly syncToken: string | null;
   private lastSyncTimestamp: string | null = null;
   private suspendOnWeekendsAndHolidays = true;
+  private pauseAllJobs = false;
   private nightSuspensionByJob = new Map<string, NightSuspensionHours>();
 
   constructor(
@@ -298,9 +334,10 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
     const globalSettings = await this.globalSettingsRepo.findByKey("default");
     if (globalSettings) {
       this.suspendOnWeekendsAndHolidays = globalSettings.suspendOnWeekendsAndHolidays;
+      this.pauseAllJobs = globalSettings.pauseAllJobs;
     }
     this.logger.log(
-      `Weekend/holiday suspension: ${this.suspendOnWeekendsAndHolidays ? "ENABLED" : "DISABLED"}${!globalSettings ? " (default — no global settings row found)" : ""}`,
+      `Weekend/holiday suspension: ${this.suspendOnWeekendsAndHolidays ? "ENABLED" : "DISABLED"} | All jobs paused: ${this.pauseAllJobs ? "YES" : "no"}${!globalSettings ? " (default — no global settings row found)" : ""}`,
     );
 
     if (this.syncSource) {
@@ -397,17 +434,22 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   }
 
   globalSettings(): GlobalSettingsDto {
-    return { suspendOnWeekendsAndHolidays: this.suspendOnWeekendsAndHolidays };
+    return {
+      suspendOnWeekendsAndHolidays: this.suspendOnWeekendsAndHolidays,
+      pauseAllJobs: this.pauseAllJobs,
+    };
   }
 
   async updateGlobalSettings(settings: GlobalSettingsDto): Promise<GlobalSettingsDto> {
     this.suspendOnWeekendsAndHolidays = settings.suspendOnWeekendsAndHolidays;
+    this.pauseAllJobs = settings.pauseAllJobs;
     await this.globalSettingsRepo.save({
       settingsKey: "default",
       suspendOnWeekendsAndHolidays: settings.suspendOnWeekendsAndHolidays,
+      pauseAllJobs: settings.pauseAllJobs,
     });
     this.logger.log(
-      `Updated global settings: suspendOnWeekendsAndHolidays=${settings.suspendOnWeekendsAndHolidays}`,
+      `Updated global settings: suspendOnWeekendsAndHolidays=${settings.suspendOnWeekendsAndHolidays} pauseAllJobs=${settings.pauseAllJobs}`,
     );
     return settings;
   }
@@ -527,6 +569,11 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
   }
 
   shouldJobRun(jobName: string): boolean {
+    if (this.pauseAllJobs) {
+      this.logger.debug(`Skipping ${jobName}: all jobs paused on this environment`);
+      return false;
+    }
+
     const now = DateTime.now().setZone("Africa/Johannesburg");
 
     if (this.suspendOnWeekendsAndHolidays) {
@@ -605,6 +652,7 @@ export class AdminScheduledJobsService implements OnApplicationBootstrap {
       name,
       description: meta.description,
       module: meta.module,
+      app: appForJob(name),
       active: job.isActive,
       cronTime: this.normalizeCronToFiveField(String(job.cronTime.source)),
       defaultCron: meta.defaultCron,

@@ -152,6 +152,12 @@ export class CustomerFeedback {
   @Column({ name: "verified_at", type: "timestamptz", nullable: true })
   verifiedAt: Date | null;
 
+  @Column({ name: "severity", type: "varchar", length: 20, nullable: true })
+  severity: string | null;
+
+  @Column({ name: "testing_severity_override", type: "varchar", length: 20, nullable: true })
+  testingSeverityOverride: string | null;
+
   @OneToMany(
     () => FeedbackAttachment,
     (a) => a.feedback,

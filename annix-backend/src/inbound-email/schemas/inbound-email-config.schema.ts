@@ -46,11 +46,11 @@ export class InboundEmailConfig {
   @Prop({ type: String, required: false })
   lastError: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const InboundEmailConfigSchema = SchemaFactory.createForClass(InboundEmailConfig);

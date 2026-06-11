@@ -34,8 +34,8 @@ export class ConversationResponseMetric {
   @Prop({ type: String, required: true })
   rating: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const ConversationResponseMetricSchema = SchemaFactory.createForClass(

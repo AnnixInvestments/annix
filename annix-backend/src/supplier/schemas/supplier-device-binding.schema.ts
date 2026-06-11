@@ -34,11 +34,11 @@ export class SupplierDeviceBinding {
   @Prop({ type: String, required: false })
   ipCountry: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 
   @Prop({ type: Date, required: false })
   deactivatedAt: Date;

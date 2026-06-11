@@ -67,6 +67,10 @@ export class PostgresAnnixOrbitProfileRepository
     await this.repository.update({ userId }, { pushEnabled: enabled });
   }
 
+  async setSelectedTier(userId: number, tier: string): Promise<void> {
+    await this.repository.update({ userId }, { selectedTier: tier });
+  }
+
   findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]> {
     if (userIds.length === 0) {
       return Promise.resolve([]);

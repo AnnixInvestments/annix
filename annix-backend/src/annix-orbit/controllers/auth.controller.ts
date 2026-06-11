@@ -50,6 +50,7 @@ export class AnnixOrbitAuthController {
       dto.name,
       dto.eeDisclosure,
       dto.phone,
+      dto.ageGroup,
     );
   }
 

@@ -2,6 +2,7 @@ import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
 import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNote } from "../entities/delivery-note.entity";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
@@ -10,6 +11,8 @@ import { MovementType, ReferenceType, StockMovement } from "../entities/stock-mo
 import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
 import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
 import { DnExtractionCorrectionRepository } from "../repositories/dn-extraction-correction.repository";
+import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
+import { SupplierInvoiceItemRepository } from "../repositories/supplier-invoice-item.repository";
 import { CpoService } from "./cpo.service";
 import { DeliveryService } from "./delivery.service";
 import { DeliveryExtractionService } from "./delivery-extraction.service";
@@ -108,6 +111,19 @@ describe("DeliveryService", () => {
       .mockImplementation((work) => work(new TypeOrmTransactionContext(mockManager as never))),
   };
 
+  const mockFifoBridgeService = {
+    createBatchesFromDelivery: jest.fn().mockResolvedValue({ created: 0, skipped: 0, errors: [] }),
+    voidDeliveryBatches: jest.fn().mockResolvedValue(0),
+  };
+
+  const mockSupplierInvoiceRepo = {
+    findCompletedLinkedToDeliveryNote: jest.fn().mockResolvedValue([]),
+  };
+
+  const mockSupplierInvoiceItemRepo = {
+    findByInvoice: jest.fn().mockResolvedValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -121,6 +137,9 @@ describe("DeliveryService", () => {
         { provide: DeliverySupplierService, useValue: mockSupplierService },
         { provide: DeliveryExtractionService, useValue: mockDeliveryExtractionService },
         { provide: DeliveryInvoiceService, useValue: mockDeliveryInvoiceService },
+        { provide: SupplierInvoiceFifoBridgeService, useValue: mockFifoBridgeService },
+        { provide: SupplierInvoiceRepository, useValue: mockSupplierInvoiceRepo },
+        { provide: SupplierInvoiceItemRepository, useValue: mockSupplierInvoiceItemRepo },
       ],
     }).compile();
 

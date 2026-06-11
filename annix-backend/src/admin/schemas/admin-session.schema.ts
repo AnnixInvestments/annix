@@ -34,8 +34,8 @@ export class AdminSession {
   @Prop({ type: Date, required: false })
   revokedAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
   @Prop({ type: String, required: false })
   lastActiveAt: string;

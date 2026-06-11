@@ -28,6 +28,22 @@ export enum AnnixOrbitUserType {
   STUDENT = "student",
 }
 
+export const SEEKER_AGE_GROUPS = [
+  "under-18",
+  "18-24",
+  "25-34",
+  "35-44",
+  "45-54",
+  "55-64",
+  "65+",
+] as const;
+
+export type SeekerAgeGroup = (typeof SEEKER_AGE_GROUPS)[number];
+
+export function isSeekerAgeGroup(value: string): value is SeekerAgeGroup {
+  return (SEEKER_AGE_GROUPS as readonly string[]).includes(value);
+}
+
 export interface AnnixOrbitProfileEeDisclosure {
   populationGroup: EePopulationGroup;
   gender: EeGender;
@@ -100,6 +116,21 @@ export class AnnixOrbitProfile {
   @Column({ name: "cv_uploaded_at", type: "timestamptz", nullable: true })
   cvUploadedAt: Date | null;
 
+  @Column({ name: "career_score", type: "int", nullable: true })
+  careerScore: number | null;
+
+  @Column({ name: "career_score_generated_at", type: "timestamptz", nullable: true })
+  careerScoreGeneratedAt: Date | null;
+
+  @Column({ name: "first_jobs_viewed_at", type: "timestamptz", nullable: true })
+  firstJobsViewedAt: Date | null;
+
+  @Column({ name: "interview_prep_used_at", type: "timestamptz", nullable: true })
+  interviewPrepUsedAt: Date | null;
+
+  @Column({ name: "profile_updated_after_suggestion_at", type: "timestamptz", nullable: true })
+  profileUpdatedAfterSuggestionAt: Date | null;
+
   @Column({ name: "ee_disclosure", type: "jsonb", nullable: true })
   eeDisclosure: AnnixOrbitProfileEeDisclosure | null;
 
@@ -132,6 +163,18 @@ export class AnnixOrbitProfile {
 
   @Column({ name: "selected_tier", type: "varchar", length: 32, nullable: true })
   selectedTier: string | null;
+
+  @Column({ name: "onboarding_completed_at", type: "timestamptz", nullable: true })
+  onboardingCompletedAt: Date | null;
+
+  @Column({ name: "phone_type", type: "varchar", length: 20, nullable: true })
+  phoneType: string | null;
+
+  @Column({ name: "age_group", type: "varchar", length: 16, nullable: true })
+  ageGroup: string | null;
+
+  @Column({ name: "app_guide_seen", type: "boolean", default: false })
+  appGuideSeen: boolean;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

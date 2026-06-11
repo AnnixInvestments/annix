@@ -8,7 +8,7 @@ tags: [jobs, closure]
 lastUpdated: 2026-04-05
 summary: Finalize a completed job and archive it with the customer documentation pack.
 readingMinutes: 3
-relatedPaths: [annix-frontend/src/app/stock-control/portal/jobs, annix-backend/src/stock-control/job-cards]
+relatedPaths: [annix-frontend/src/app/stock-control/portal/job-cards/[id]/components/WorkflowActionsBar.tsx, annix-backend/src/stock-control/services/job-card-workflow.service.ts]
 ---
 
 ## Prerequisites

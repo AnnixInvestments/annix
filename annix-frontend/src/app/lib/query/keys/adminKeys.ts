@@ -56,6 +56,7 @@ export const adminKeys = {
     all: ["admin", "aiUsage"] as const,
     list: (params?: AiUsageQueryParams) =>
       [...adminKeys.aiUsage.all, "list", params ?? {}] as const,
+    dailySeries: (days: number) => [...adminKeys.aiUsage.all, "dailySeries", days] as const,
   },
   scheduledJobs: {
     all: ["admin", "scheduledJobs"] as const,
@@ -99,6 +100,18 @@ export const adminKeys = {
       limit?: number;
     }) => [...adminKeys.orbitJobMarket.all, "jobs", params ?? {}] as const,
     duplicates: () => [...adminKeys.orbitJobMarket.all, "duplicates"] as const,
+    clusterUsage: () => [...adminKeys.orbitJobMarket.all, "clusterUsage"] as const,
+    retentionCap: () => [...adminKeys.orbitJobMarket.all, "retentionCap"] as const,
+    enabledCountries: () => [...adminKeys.orbitJobMarket.all, "enabledCountries"] as const,
+  },
+  orbitEarlyAccess: {
+    all: ["admin", "orbitEarlyAccess"] as const,
+    stats: () => [...adminKeys.orbitEarlyAccess.all, "stats"] as const,
+    list: () => [...adminKeys.orbitEarlyAccess.all, "list"] as const,
+  },
+  platformLimits: {
+    all: ["admin", "platformLimits"] as const,
+    breakdown: (cardId: string) => [...adminKeys.platformLimits.all, "breakdown", cardId] as const,
   },
   orbitSeekers: {
     all: ["admin", "orbitSeekers"] as const,
@@ -111,6 +124,15 @@ export const adminKeys = {
     all: ["admin", "orbitUsers"] as const,
     list: (params?: { type?: string; search?: string; page?: number; limit?: number }) =>
       [...adminKeys.orbitUsers.all, "list", params ?? {}] as const,
+  },
+  orbitSeekerTesting: {
+    all: ["admin", "orbitSeekerTesting"] as const,
+    phases: () => [...adminKeys.orbitSeekerTesting.all, "phases"] as const,
+    overview: () => [...adminKeys.orbitSeekerTesting.all, "overview"] as const,
+    errorsLatency: () => [...adminKeys.orbitSeekerTesting.all, "errorsLatency"] as const,
+    users: () => [...adminKeys.orbitSeekerTesting.all, "users"] as const,
+    readiness: () => [...adminKeys.orbitSeekerTesting.all, "readiness"] as const,
+    issues: () => [...adminKeys.orbitSeekerTesting.all, "issues"] as const,
   },
   orbitTierCapabilities: {
     all: ["admin", "orbitTierCapabilities"] as const,
@@ -136,5 +158,12 @@ export const adminKeys = {
   sso: {
     all: ["admin", "sso"] as const,
     identityReconciliation: () => [...adminKeys.sso.all, "identityReconciliation"] as const,
+  },
+  whatsApp: {
+    all: ["admin", "whatsApp"] as const,
+    status: () => [...adminKeys.whatsApp.all, "status"] as const,
+    conversations: (page: number) => [...adminKeys.whatsApp.all, "conversations", page] as const,
+    messages: (conversationId: string) =>
+      [...adminKeys.whatsApp.all, "messages", conversationId] as const,
   },
 } as const;

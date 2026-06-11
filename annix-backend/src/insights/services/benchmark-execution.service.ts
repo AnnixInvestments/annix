@@ -6,6 +6,8 @@ import { PaperPortfolioRepository } from "../repositories/paper-portfolio.reposi
 import { PaperTradeRepository } from "../repositories/paper-trade.repository";
 import { PriceHistoryRepository } from "../repositories/price-history.repository";
 
+const MIN_DEPLOY_VALUE = 100;
+
 export interface BenchmarkExecutionResult {
   slug: string;
   symbol: string | null;
@@ -89,7 +91,7 @@ export class BenchmarkExecutionService {
 
     const closePrice = Number(latest.close);
     const cashBalance = Number(portfolio.currentCashBalance);
-    if (closePrice <= 0 || cashBalance < closePrice) {
+    if (closePrice <= 0 || cashBalance < MIN_DEPLOY_VALUE) {
       return {
         slug: portfolio.slug,
         symbol: fixed.symbol,
@@ -99,7 +101,7 @@ export class BenchmarkExecutionService {
       };
     }
 
-    const qty = Math.floor(cashBalance / closePrice);
+    const qty = Math.floor((cashBalance / closePrice) * 1_000_000) / 1_000_000;
     if (qty <= 0) {
       return {
         slug: portfolio.slug,
@@ -109,7 +111,7 @@ export class BenchmarkExecutionService {
         cashDeployed: 0,
       };
     }
-    const cashDeployed = qty * closePrice;
+    const cashDeployed = Math.min(cashBalance, qty * closePrice);
 
     const existingHolding = await this.holdingRepo.findByPortfolioAndAsset(portfolio.id, asset.id);
 
@@ -150,7 +152,7 @@ export class BenchmarkExecutionService {
       price: closePrice.toFixed(6),
       tradeValue: cashDeployed.toFixed(2),
       fees: "0",
-      appReasoning: `Buy-and-hold benchmark — automatic deployment of available cash into ${fixed.symbol} at ${latest.date} close ${closePrice}. ${qty} units bought, ${(cashBalance - cashDeployed).toFixed(2)} cash remainder.`,
+      appReasoning: `Buy-and-hold benchmark — automatic deployment of available cash into ${fixed.symbol} at ${latest.date} close ${closePrice}. ${qty} units bought (fractional), ${(cashBalance - cashDeployed).toFixed(2)} cash remainder.`,
     });
 
     const newCash = cashBalance - cashDeployed;

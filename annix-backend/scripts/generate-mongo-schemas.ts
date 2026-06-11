@@ -53,6 +53,13 @@ interface GeneratorResult {
   failed: Array<{ file: string; error: string }>;
 }
 
+type EntityClass = { name: string } & (abstract new (...args: never[]) => unknown);
+type NamedCallable = { name: string; toString(): string } & ((...args: never[]) => unknown);
+
+function isEntityClass(value: unknown): value is EntityClass {
+  return typeof value === "function" && typeof (value as { name?: unknown }).name === "string";
+}
+
 function typeormColToMongoType(
   opts: Record<string, unknown>,
   isGenerated: boolean,
@@ -61,7 +68,7 @@ function typeormColToMongoType(
   const isArray = !!opts["array"];
 
   if (typeof rawTypeValue === "function") {
-    const ctorName = (rawTypeValue as Function).name;
+    const ctorName = (rawTypeValue as NamedCallable).name;
     if (ctorName === "Number") return { mongoType: "Number", isArray };
     if (ctorName === "Boolean") return { mongoType: "Boolean", isArray };
     if (ctorName === "Date") return { mongoType: "Date", isArray };
@@ -143,14 +150,14 @@ function resolveTargetClassName(typeValue: unknown): string | null {
   }
 
   if (typeof typeValue === "function") {
-    const asCtor = typeValue as Function;
+    const asCtor = typeValue as NamedCallable;
     if (asCtor.name && /^[A-Z]/.test(asCtor.name)) {
       return asCtor.name;
     }
     try {
       const resolved = (typeValue as (t?: unknown) => unknown)();
-      if (typeof resolved === "function" && (resolved as Function).name) {
-        return (resolved as Function).name;
+      if (typeof resolved === "function" && (resolved as NamedCallable).name) {
+        return (resolved as NamedCallable).name;
       }
     } catch {
       return null;
@@ -166,7 +173,7 @@ function resolveInverseFkField(inverseSideProperty: unknown): string | null {
   }
 
   if (typeof inverseSideProperty === "function") {
-    const fnSource = (inverseSideProperty as Function).toString();
+    const fnSource = (inverseSideProperty as NamedCallable).toString();
     const match = fnSource.match(/=>\s*[A-Za-z_$][\w$]*\s*[.[]\s*["']?([A-Za-z_$][\w$]*)/);
     if (match?.[1]) {
       return `${match[1]}Id`;
@@ -176,33 +183,33 @@ function resolveInverseFkField(inverseSideProperty: unknown): string | null {
   return null;
 }
 
-function collectAncestorChain(entityClass: Function): Set<Function> {
-  const chain = new Set<Function>([entityClass]);
-  let proto = Object.getPrototypeOf(entityClass) as Function | null;
+function collectAncestorChain(entityClass: EntityClass): Set<EntityClass> {
+  const chain = new Set<EntityClass>([entityClass]);
+  let proto = Object.getPrototypeOf(entityClass) as EntityClass | null;
   while (proto?.name) {
     chain.add(proto);
-    proto = Object.getPrototypeOf(proto) as Function | null;
+    proto = Object.getPrototypeOf(proto) as EntityClass | null;
   }
   return chain;
 }
 
-function processEntity(entityClass: Function, tableName: string): EntitySchema {
+function processEntity(entityClass: EntityClass, tableName: string): EntitySchema {
   const storage = getMetadataArgsStorage();
   const className = entityClass.name;
   const ancestorChain = collectAncestorChain(entityClass);
 
   const allColumns = storage.columns.filter(
-    (c) => typeof c.target === "function" && ancestorChain.has(c.target),
+    (c) => isEntityClass(c.target) && ancestorChain.has(c.target),
   );
 
   const allGenerations = storage.generations.filter(
-    (g) => typeof g.target === "function" && ancestorChain.has(g.target as Function),
+    (g) => isEntityClass(g.target) && ancestorChain.has(g.target),
   );
 
   const generatedProps = new Set(allGenerations.map((g) => g.propertyName));
 
   const allRelations = storage.relations.filter(
-    (r) => typeof r.target === "function" && ancestorChain.has(r.target as Function),
+    (r) => isEntityClass(r.target) && ancestorChain.has(r.target),
   );
 
   const columns: ProcessedColumn[] = allColumns.map((col) => {
@@ -354,9 +361,7 @@ function main(): void {
   }
 
   const storage = getMetadataArgsStorage();
-  const tableArgs = storage.tables.filter(
-    (t) => t.type === "regular" && typeof t.target === "function",
-  );
+  const tableArgs = storage.tables.filter((t) => t.type === "regular" && isEntityClass(t.target));
 
   console.log(`\nProcessing ${tableArgs.length} entity table(s)...`);
 
@@ -364,7 +369,10 @@ function main(): void {
 
   const processed = tableArgs
     .map((tableArg) => {
-      const entityClass = tableArg.target as Function;
+      if (!isEntityClass(tableArg.target)) {
+        return null;
+      }
+      const entityClass = tableArg.target;
       const className = entityClass.name;
       try {
         const schema = processEntity(entityClass, tableArg.name || className.toLowerCase());

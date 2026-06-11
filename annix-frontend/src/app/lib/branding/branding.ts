@@ -9,7 +9,9 @@ export type BrandingAssetSlot =
   | "flashLine"
   | "heroImage"
   | "loginCard"
-  | "pageBackground";
+  | "pageBackground"
+  | "heroTop"
+  | "heroBottom";
 
 export type BrandingAssetVariant = "light" | "dark";
 
@@ -35,6 +37,10 @@ export interface Branding {
   watermarkOpacity: number;
   watermarkMaxSizePx: number;
   loadingAnimation: string;
+  heroTopHeightPct: number;
+  heroBottomHeightPct: number;
+  heroTopFadePct: number;
+  heroBottomFadePct: number;
   assets: Record<BrandingAssetSlot, boolean>;
   assetsDark: Record<BrandingAssetSlot, boolean>;
   assetVersion: number;
@@ -73,6 +79,10 @@ export const INHERITABLE_SCALAR_FIELDS = [
   "watermarkOpacity",
   "watermarkMaxSizePx",
   "loadingAnimation",
+  "heroTopHeightPct",
+  "heroBottomHeightPct",
+  "heroTopFadePct",
+  "heroBottomFadePct",
 ] as const;
 
 export type InheritableScalarField = (typeof INHERITABLE_SCALAR_FIELDS)[number];
@@ -135,6 +145,10 @@ export interface BrandingUpdate {
   loginCardPathDark?: string | null;
   pageBackgroundPath?: string | null;
   pageBackgroundPathDark?: string | null;
+  heroTopPath?: string | null;
+  heroTopPathDark?: string | null;
+  heroBottomPath?: string | null;
+  heroBottomPathDark?: string | null;
   logoIconPathDark?: string | null;
   logoLockupPathDark?: string | null;
   wordmarkPathDark?: string | null;
@@ -148,6 +162,10 @@ export interface BrandingUpdate {
   watermarkOpacity?: number;
   watermarkMaxSizePx?: number;
   loadingAnimation?: string;
+  heroTopHeightPct?: number;
+  heroBottomHeightPct?: number;
+  heroTopFadePct?: number;
+  heroBottomFadePct?: number;
   inheritedFields?: string[];
 }
 
@@ -163,6 +181,13 @@ export interface BrandingUploadResult {
  * not visually change anything until a custom asset is published.
  */
 export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSlot, string>>> = {
+  "annix-forge": {
+    logoIcon: "/branding/annix-forge-icon.svg",
+    logoLockup: "/branding/annix-forge-logo.svg",
+    wordmark: "/branding/annix-forge-wordmark.svg",
+    favicon: "/branding/annix-forge-favicon.svg",
+    watermark: "/branding/annix-forge-icon.svg",
+  },
   "annix-orbit": {
     logoIcon: "/branding/annix-orbit-icon.png",
     logoLockup: "/branding/annix-orbit-logo.png",
@@ -177,6 +202,14 @@ export const BRAND_ASSET_DEFAULTS: Record<string, Partial<Record<BrandingAssetSl
     favicon: "/branding/annix-sentinel-favicon.svg",
     watermark: "/branding/annix-sentinel-icon.svg",
   },
+};
+
+/** Platform-wide bundled defaults shown on every brand, mirroring the
+ *  globally-locked hero slots — so heroes appear on all apps/environments
+ *  without a per-env S3 upload. */
+const GLOBAL_ASSET_DEFAULTS: Partial<Record<BrandingAssetSlot, string>> = {
+  heroTop: "/branding/annix-investments-hero-top.webp",
+  heroBottom: "/branding/annix-investments-hero-bottom.webp",
 };
 
 const GENERIC_ASSET_DEFAULT = "/branding/annix-orbit-icon.png";
@@ -195,6 +228,8 @@ function emptyAssetPresence(): Record<BrandingAssetSlot, boolean> {
     heroImage: false,
     loginCard: false,
     pageBackground: false,
+    heroTop: false,
+    heroBottom: false,
   };
 }
 
@@ -203,14 +238,14 @@ export function brandingFallback(brandCode: string): Branding {
     brandCode,
     navbarColor: "#323288",
     navbarColorLight: "#F2F4F7",
-    backgroundLight: "#F8FAFC",
-    backgroundDark: "#0F172A",
+    backgroundLight: "#0a1733",
+    backgroundDark: "#0a1733",
     accentOrange: "#FF8A00",
     accentOrangeLight: "#FF9C33",
     accentOrangeDark: "#CC6900",
-    gradientFrom: "#1a1a40",
-    gradientVia: "#0d0d20",
-    gradientTo: "#1a1a40",
+    gradientFrom: "#0b1b3a",
+    gradientVia: "#0a1733",
+    gradientTo: "#070f24",
     tagline: "",
     description: "",
     heroWords: "",
@@ -221,6 +256,10 @@ export function brandingFallback(brandCode: string): Branding {
     watermarkOpacity: 0.1,
     watermarkMaxSizePx: 880,
     loadingAnimation: "pulse",
+    heroTopHeightPct: 60,
+    heroBottomHeightPct: 40,
+    heroTopFadePct: 45,
+    heroBottomFadePct: 45,
     assets: emptyAssetPresence(),
     assetsDark: emptyAssetPresence(),
     assetVersion: 0,
@@ -242,8 +281,10 @@ export function brandHasAsset(
   const hasCustom = branding.assets[slot];
   if (hasCustom) return true;
   const perBrand = BRAND_ASSET_DEFAULTS[branding.brandCode];
-  const fallback = perBrand ? perBrand[slot] : undefined;
-  return fallback != null;
+  const brandFallback = perBrand ? perBrand[slot] : undefined;
+  if (brandFallback != null) return true;
+  const globalFallback = GLOBAL_ASSET_DEFAULTS[slot];
+  return globalFallback != null;
 }
 
 export function resolveBrandAssetUrl(
@@ -263,8 +304,9 @@ export function resolveBrandAssetUrl(
     return `${ASSET_STREAM_BASE}/${branding.brandCode}/asset/${slot}?v=${branding.assetVersion}`;
   }
   const perBrand = BRAND_ASSET_DEFAULTS[branding.brandCode];
-  const fallback = perBrand ? perBrand[slot] : undefined;
-  return fallback || GENERIC_ASSET_DEFAULT;
+  const brandFallback = perBrand ? perBrand[slot] : undefined;
+  const globalFallback = GLOBAL_ASSET_DEFAULTS[slot];
+  return brandFallback || globalFallback || GENERIC_ASSET_DEFAULT;
 }
 
 export function brandingCssVars(
@@ -300,7 +342,7 @@ export function brandingCssVars(
     "--brand-font-body": fontStack(branding.fontBody, "sans-serif"),
     "--brand-watermark-image": watermarkImage,
     "--brand-watermark-opacity": String(effectiveOpacity),
-    "--brand-watermark-size": `min(85vmin, ${branding.watermarkMaxSizePx}px)`,
+    "--brand-watermark-size": `min(70vmin, ${branding.watermarkMaxSizePx}px)`,
     "--brand-page-background-image": pageBackgroundImage,
   };
 }

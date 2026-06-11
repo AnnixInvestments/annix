@@ -13,6 +13,7 @@ import { DocumentDropzone, type PendingDocument } from "@/app/components/uploads
 import type { SeekerCredential, SeekerCredentialInput } from "@/app/lib/api/annixOrbitApi";
 import { metricsApi } from "@/app/lib/api/metricsApi";
 import { DateTime, fromISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitAutofillSeekerCredentials,
@@ -26,6 +27,7 @@ import {
 
 export default function SeekerCredentialsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const query = useOrbitSeekerCredentials();
   const createMutation = useOrbitCreateSeekerCredential();
@@ -71,7 +73,7 @@ export default function SeekerCredentialsPage() {
         setDraft(emptyDraft());
         setCertDocs([]);
       },
-      onError: () => showToast("Could not add credential", "error"),
+      onError: () => alert({ message: "Could not add credential", variant: "error" }),
     });
   };
 
@@ -80,7 +82,7 @@ export default function SeekerCredentialsPage() {
       { id, input: patch },
       {
         onSuccess: () => showToast("Credential updated", "success"),
-        onError: () => showToast("Could not update credential", "error"),
+        onError: () => alert({ message: "Could not update credential", variant: "error" }),
       },
     );
   };
@@ -95,7 +97,7 @@ export default function SeekerCredentialsPage() {
     if (!confirmed) return;
     deleteMutation.mutate(id, {
       onSuccess: () => showToast("Credential deleted", "success"),
-      onError: () => showToast("Could not delete credential", "error"),
+      onError: () => alert({ message: "Could not delete credential", variant: "error" }),
     });
   };
 
@@ -124,7 +126,10 @@ export default function SeekerCredentialsPage() {
       }));
       showToast("Certificate read — review the details below, then add it", "success");
     } catch {
-      showToast("Couldn't read that certificate — please fill the form in manually", "error");
+      alert({
+        message: "Couldn't read that certificate — please fill the form in manually",
+        variant: "error",
+      });
     } finally {
       hideExtraction();
     }
@@ -145,10 +150,10 @@ export default function SeekerCredentialsPage() {
       onSuccess: (result) => {
         hideExtraction();
         if (result.created > 0) {
-          showToast(
-            `Added ${result.created} credential${result.created === 1 ? "" : "s"} from your CV`,
-            "success",
-          );
+          alert({
+            message: `Added ${result.created} credential${result.created === 1 ? "" : "s"} from your CV`,
+            variant: "success",
+          });
           return;
         }
         const reason = result.reason;
@@ -159,14 +164,17 @@ export default function SeekerCredentialsPage() {
         } else if (reason === "no-candidate") {
           showToast("Upload a CV first", "info");
         } else if (reason === "ai-failed") {
-          showToast("Couldn't read credentials from your CV — add them manually", "error");
+          alert({
+            message: "Couldn't read credentials from your CV — add them manually",
+            variant: "error",
+          });
         } else {
           showToast("No new credentials found in your CV", "info");
         }
       },
       onError: () => {
         hideExtraction();
-        showToast("Auto-fill failed — add credentials manually", "error");
+        alert({ message: "Auto-fill failed — add credentials manually", variant: "error" });
       },
     });
   };
@@ -189,8 +197,8 @@ export default function SeekerCredentialsPage() {
     <div className="max-w-4xl mx-auto p-6 space-y-6">
       <header className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Credentials &amp; tickets</h1>
-          <p className="text-sm text-gray-600 mt-1">
+          <h1 className="text-2xl font-bold text-white">Credentials &amp; tickets</h1>
+          <p className="text-sm text-white/70 mt-1">
             Track your medical, mine inductions, blasting tickets and other deployment credentials.
             You'll get an email 30, 14, and 1 day before any expire so you can renew in time.
           </p>
@@ -322,6 +330,7 @@ export default function SeekerCredentialsPage() {
         )}
       </section>
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

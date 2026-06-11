@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { DataTable } from "@/app/components/ui/DataTable";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminSuppliers, useInviteSupplier } from "@/app/lib/query/hooks";
 
 function statusBadgeClass(status: string): string {
@@ -26,6 +27,7 @@ function statusBadgeClass(status: string): string {
 export default function AdminSuppliersPage() {
   const router = useRouter();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 20 });
   const [sorting, setSorting] = useState<SortingState>([]);
   const [statusFilter, setStatusFilter] = useState<string>("");
@@ -66,11 +68,11 @@ export default function AdminSuppliersPage() {
             setInviteEmail("");
             setInviteMessage("");
           } else {
-            showToast("Failed to send invitation", "error");
+            alert({ message: "Failed to send invitation", variant: "error" });
           }
         },
         onError: (err) => {
-          showToast(`Error: ${err.message}`, "error");
+          alert({ message: `Error: ${err.message}`, variant: "error" });
         },
       },
     );
@@ -506,6 +508,7 @@ export default function AdminSuppliersPage() {
           </div>
         </div>
       )}
+      {AlertDialog}
     </div>
   );
 }

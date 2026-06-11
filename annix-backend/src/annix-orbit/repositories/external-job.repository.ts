@@ -1,5 +1,6 @@
 import { CrudRepository } from "../../lib/persistence/crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
+import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
 
 export interface ExternalJobListOptions {
   country?: string;
@@ -103,17 +104,28 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract platformGlobalExternalJobs(
     options: ExternalJobListOptions,
   ): Promise<{ jobs: ExternalJob[]; total: number }>;
-  abstract publicExternalJobs(options: ExternalJobListOptions): Promise<ExternalJob[]>;
-  abstract jobsWithEmbedding(categoryPool: string[] | null): Promise<ExternalJob[]>;
+  abstract publicExternalJobs(
+    options: ExternalJobListOptions,
+  ): Promise<{ jobs: ExternalJob[]; total: number }>;
+  abstract jobsWithEmbedding(
+    categoryPool: string[] | null,
+    countries?: string[] | null,
+  ): Promise<ExternalJob[]>;
+  abstract jobEmbeddingBatches(
+    categoryPool: string[] | null,
+    countries: string[] | null,
+    batchSize: number,
+  ): AsyncIterable<EmbeddingSimilarityBatch>;
   abstract findPendingVetting(limit: number): Promise<ExternalJob[]>;
   abstract updateVetting(id: number, update: VettingUpdate): Promise<void>;
   abstract findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]>;
   abstract jobsMissingEmbedding(): Promise<ExternalJob[]>;
   abstract embeddingCoverage(): Promise<EmbeddingCoverageRow>;
+  abstract canonicalCategoryCoverage(): Promise<{ total: number; classified: number }>;
   abstract countForSourceSince(sourceId: number, since: Date): Promise<number>;
   abstract countForSources(sourceIds: number[]): Promise<number>;
   abstract countForSourcesSince(sourceIds: number[], since: Date): Promise<number>;
-  abstract setEmbeddingVector(id: number, embeddingLiteral: string): Promise<void>;
+  abstract setEmbeddingVector(id: number, values: number[]): Promise<void>;
   abstract updateLocation(id: number, lat: number, lon: number): Promise<void>;
   abstract findDuplicateCanonicalJob(
     title: string,
@@ -163,6 +175,8 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   ): Promise<void>;
   abstract stampLastSeenByIds(ids: number[], seenAt: Date): Promise<void>;
   abstract expireStaleJobs(): Promise<number>;
+  abstract enforceRetentionCap(): Promise<number>;
+  abstract idsLastSeenBefore(cutoff: Date): Promise<number[]>;
   abstract reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void>;
   abstract confirmDelist(id: number, delistedAt: Date): Promise<void>;
   abstract rejectDelist(id: number): Promise<void>;

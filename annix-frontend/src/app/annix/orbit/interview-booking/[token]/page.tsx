@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import { fromISO } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { API_BASE_URL } from "@/lib/api-config";
 
 type LibraryName = "places" | "geocoding";
@@ -39,6 +40,7 @@ export default function InterviewBookingPage() {
   const rawToken = params ? params.token : "";
   const token = rawToken ?? "";
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const [data, setData] = useState<InterviewBookingLookupResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -150,7 +152,7 @@ export default function InterviewBookingPage() {
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't book this slot.";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     } finally {
       setSubmittingSlotId(null);
     }
@@ -172,7 +174,7 @@ export default function InterviewBookingPage() {
       await load();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Couldn't cancel.";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     } finally {
       setSubmittingSlotId(null);
     }
@@ -206,6 +208,7 @@ export default function InterviewBookingPage() {
 
   return (
     <div className="min-h-screen py-12 px-4">
+      {AlertDialog}
       <div className="max-w-3xl mx-auto space-y-6">
         <header className="bg-white rounded-2xl shadow-xl p-6">
           <p className="text-xs uppercase tracking-widest text-[#FF8A00] font-semibold">

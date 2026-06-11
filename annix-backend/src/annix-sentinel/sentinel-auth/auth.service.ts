@@ -204,6 +204,9 @@ export class AnnixSentinelAuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    user.lastLoginAt = now().toJSDate();
+    await this.userRepo.save(user);
+
     const profile = await this.profileRepo.findOne({
       where: { userId: user.id },
       relations: ["company"],

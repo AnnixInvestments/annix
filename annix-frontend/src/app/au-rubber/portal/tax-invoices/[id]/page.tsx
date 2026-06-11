@@ -14,6 +14,7 @@ import {
   type TaxInvoiceType,
 } from "@/app/lib/api/auRubberApi";
 import { formatDateTimeZA, formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { LineItemRollsPanel } from "./LineItemRollsPanel";
 
 export default function TaxInvoiceDetailPage() {
@@ -21,6 +22,7 @@ export default function TaxInvoiceDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { showExtraction, hideExtraction } = useExtractionProgress();
   const { confirm: confirmDialog, ConfirmDialog } = useConfirm();
   const [invoice, setInvoice] = useState<RubberTaxInvoiceDto | null>(null);
@@ -139,7 +141,7 @@ export default function TaxInvoiceDetailPage() {
       showToast("Data extracted successfully", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Extraction failed";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       hideExtraction();
       setIsExtracting(false);
@@ -154,14 +156,14 @@ export default function TaxInvoiceDetailPage() {
       if (result.unitPrice == null) {
         showToast("No matching S&N invoice found yet — rolls keep toll cost only.", "warning");
       } else {
-        showToast(
-          `Updated compound cost on ${result.updated} rolls at R${result.unitPrice.toFixed(2)}/kg.`,
-          "success",
-        );
+        alert({
+          message: `Updated compound cost on ${result.updated} rolls at R${result.unitPrice.toFixed(2)}/kg.`,
+          variant: "success",
+        });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : "Recompute failed";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       setIsRecomputingCosts(false);
     }
@@ -179,7 +181,7 @@ export default function TaxInvoiceDetailPage() {
       router.push(listPath);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Approval failed";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       setIsApproving(false);
     }
@@ -201,7 +203,7 @@ export default function TaxInvoiceDetailPage() {
       fetchData();
     } catch (err) {
       const message = err instanceof Error ? err.message : "Refile failed";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       setIsRefiling(false);
     }
@@ -264,7 +266,7 @@ export default function TaxInvoiceDetailPage() {
       showToast("Invoice summary updated", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Update failed";
-      showToast(message, "error");
+      alert({ message: message, variant: "error" });
     } finally {
       setIsSavingSummary(false);
     }
@@ -877,6 +879,7 @@ export default function TaxInvoiceDetailPage() {
         </div>
       </div>
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

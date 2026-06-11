@@ -1,4 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsArray,
   IsBoolean,
@@ -7,7 +8,35 @@ import {
   IsOptional,
   IsString,
   ValidateIf,
+  ValidateNested,
 } from "class-validator";
+
+export class InviteAppGrantDto {
+  @ApiProperty({ description: "App code to grant access to", example: "rfq-platform" })
+  @IsString()
+  appCode: string;
+
+  @ApiPropertyOptional({ description: "Role code to assign", example: "viewer" })
+  @IsOptional()
+  @IsString()
+  roleCode?: string | null;
+
+  @ApiPropertyOptional({ description: "Use custom permissions instead of a role" })
+  @IsOptional()
+  @IsBoolean()
+  useCustomPermissions?: boolean;
+
+  @ApiPropertyOptional({ description: "Permission codes when using custom permissions" })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  permissionCodes?: string[];
+
+  @ApiPropertyOptional({ description: "When access expires (null = never)" })
+  @IsOptional()
+  @IsDateString()
+  expiresAt?: string | null;
+}
 
 export class InviteUserDto {
   @ApiProperty({
@@ -33,12 +62,23 @@ export class InviteUserDto {
   @IsString()
   lastName?: string;
 
-  @ApiProperty({
-    description: "App code to grant access to",
+  @ApiPropertyOptional({
+    description: "Apps to grant access to (multi-app invite). Preferred over appCode.",
+    type: [InviteAppGrantDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => InviteAppGrantDto)
+  apps?: InviteAppGrantDto[];
+
+  @ApiPropertyOptional({
+    description: "Single app code to grant access to (legacy; use apps[] instead)",
     example: "rfq-platform",
   })
+  @ValidateIf((o) => !o.apps || o.apps.length === 0)
   @IsString()
-  appCode: string;
+  appCode?: string;
 
   @ApiPropertyOptional({
     description: "Role code to assign (null if using custom permissions)",
@@ -88,6 +128,15 @@ export class InviteUserResponseDto {
 
   @ApiProperty({ description: "Whether this is a new user", example: true })
   isNewUser: boolean;
+
+  @ApiPropertyOptional({
+    description: "Names of the apps access was granted to",
+    example: ["RFQ Platform", "Stock Control"],
+  })
+  appNames?: string[];
+
+  @ApiPropertyOptional({ description: "Whether the invitation email was sent", example: true })
+  emailSent?: boolean;
 
   @ApiProperty({
     description: "Message describing the result",

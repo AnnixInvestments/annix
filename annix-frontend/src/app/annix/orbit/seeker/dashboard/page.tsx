@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type {
   SeekerApplication,
@@ -17,7 +18,9 @@ import {
   useOrbitSeekerJobStats,
   useOrbitSeekerRecommendedJobs,
   useOrbitSeekerWorkProfile,
+  useOrbitUpdateSeekerPreferences,
 } from "@/app/lib/query/hooks";
+import { AppDownloadGuidePopup, OnboardingImagePopup } from "../components/OnboardingPopups";
 
 const ICON_JOBS =
   "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z";
@@ -64,6 +67,25 @@ export default function SeekerDashboardPage() {
   const hasCv = status ? status.hasCv : false;
   const qualificationsCount = status ? status.qualificationsCount : 0;
   const certificatesCount = status ? status.certificatesCount : 0;
+  const phoneType = status ? status.phoneType : null;
+
+  const updatePreferences = useOrbitUpdateSeekerPreferences();
+  const [tourStep, setTourStep] = useState<0 | 1 | 2>(0);
+  const tourStartedRef = useRef(false);
+
+  useEffect(() => {
+    if (!status) return;
+    if (status.appGuideSeen) return;
+    if (tourStartedRef.current) return;
+    tourStartedRef.current = true;
+    setTourStep(1);
+  }, [status]);
+
+  const advanceToFeedbackGuide = () => setTourStep(2);
+  const finishOnboardingTour = () => {
+    setTourStep(0);
+    updatePreferences.mutate({ appGuideSeen: true });
+  };
 
   const invitesData = invitesQuery.data;
   const invites = invitesData ? invitesData : [];
@@ -175,46 +197,65 @@ export default function SeekerDashboardPage() {
 
   return (
     <div className="space-y-6">
+      {tourStep === 1 && (
+        <AppDownloadGuidePopup phoneType={phoneType} onClose={advanceToFeedbackGuide} />
+      )}
+      {tourStep === 2 && (
+        <OnboardingImagePopup
+          title="Using the Feedback Widget"
+          imageUrl="/orbit/onboarding/feedback-widget-guide.png"
+          imageAlt="How to use the Annix Orbit Feedback Widget"
+          onClose={finishOnboardingTour}
+        />
+      )}
       <DashboardHeader
         greeting={greeting}
         firstName={firstName}
-        subtitle="Here's what's happening with your job search today."
+        subtitle={
+          hasCv
+            ? "Here's what's happening with your job search today."
+            : "Let's get your profile ready so we can match you to jobs."
+        }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard
-          tone="brand"
-          iconPath={ICON_JOBS}
-          label="Matched jobs"
-          value={`${matchesLast7Days} new`}
-          sub={matchesSub}
-          href="/annix/orbit/seeker/jobs"
-        />
-        <StatCard
-          tone="blue"
-          iconPath={ICON_APPLICATIONS}
-          label="Applications"
-          value={`${applicationsCount}`}
-          sub={applicationsSub}
-          href="/annix/orbit/seeker/applications"
-        />
-        <StatCard
-          tone="accent"
-          iconPath={ICON_INTERVIEWS}
-          label="Interview invites"
-          value={`${openInvites.length}`}
-          sub={interviewsSub}
-          href="/annix/orbit/seeker/calendar"
-        />
-        <StatCard
-          tone="emerald"
-          iconPath={ICON_PROFILE}
-          label="Profile strength"
-          value={`${strengthPercent}%`}
-          sub={`${completedSteps} of ${totalSteps} complete`}
-          href="/annix/orbit/seeker/profile"
-        />
-      </div>
+      {hasCv ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StatCard
+            tone="brand"
+            iconPath={ICON_JOBS}
+            label="Matched jobs"
+            value={`${matchesLast7Days} new`}
+            sub={matchesSub}
+            href="/annix/orbit/seeker/jobs"
+          />
+          <StatCard
+            tone="blue"
+            iconPath={ICON_APPLICATIONS}
+            label="Applications"
+            value={`${applicationsCount}`}
+            sub={applicationsSub}
+            href="/annix/orbit/seeker/applications"
+          />
+          <StatCard
+            tone="accent"
+            iconPath={ICON_INTERVIEWS}
+            label="Interview invites"
+            value={`${openInvites.length}`}
+            sub={interviewsSub}
+            href="/annix/orbit/seeker/calendar"
+          />
+          <StatCard
+            tone="emerald"
+            iconPath={ICON_PROFILE}
+            label="Profile strength"
+            value={`${strengthPercent}%`}
+            sub={`${completedSteps} of ${totalSteps} complete`}
+            href="/annix/orbit/seeker/profile"
+          />
+        </div>
+      ) : (
+        <StartCvHero firstName={firstName} />
+      )}
 
       {openInvites.length > 0 ? (
         <div
@@ -400,6 +441,54 @@ function DashboardHeader(props: { greeting: string; firstName: string; subtitle:
         {props.greeting}, {props.firstName}
       </h1>
       {props.subtitle ? <p className="text-white/70 mt-2">{props.subtitle}</p> : null}
+    </div>
+  );
+}
+
+function StartCvHero(props: { firstName: string }) {
+  const firstName = props.firstName;
+  return (
+    <div
+      className="rounded-2xl shadow-lg p-6 sm:p-10"
+      style={{
+        backgroundImage:
+          "linear-gradient(to bottom right, var(--brand-accent,#FF8A00), var(--brand-accent-light,#FF9C33))",
+      }}
+    >
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-2xl space-y-3">
+          <span className="inline-flex items-center gap-2 rounded-full bg-white/25 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[var(--brand-grad-from,#1a1a40)]">
+            Step 1 of getting hired
+          </span>
+          <h2 className="text-2xl sm:text-3xl font-bold text-[var(--brand-grad-from,#1a1a40)]">
+            Start refining your CV here, {firstName}
+          </h2>
+          <p className="text-base text-[var(--brand-grad-from,#1a1a40)]/80">
+            Upload your CV and let Annix Orbit polish it with AI, then match you to suitable jobs.
+            It only takes a couple of minutes and everything else unlocks from here.
+          </p>
+        </div>
+        <Link
+          href="/annix/orbit/seeker/profile"
+          className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-[var(--brand-navbar-active,#252560)] px-7 py-4 text-base font-semibold text-white shadow-md transition-all hover:bg-[var(--brand-grad-from,#1a1a40)] hover:shadow-lg"
+        >
+          <svg
+            aria-hidden="true"
+            className="h-6 w-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+            />
+          </svg>
+          Refine my CV
+        </Link>
+      </div>
     </div>
   );
 }

@@ -192,6 +192,8 @@ export interface MarketingResource {
   imageUrl: string | null;
   productSlug: string;
   published: boolean;
+  ctaLabel?: string | null;
+  ctaUrl?: string | null;
 }
 
 export interface MarketingResources {

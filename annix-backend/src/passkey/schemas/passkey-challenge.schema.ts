@@ -25,8 +25,8 @@ export class PasskeyChallenge {
   @Prop({ type: Date, required: true })
   expiresAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 }
 
 export const PasskeyChallengeSchema = SchemaFactory.createForClass(PasskeyChallenge);

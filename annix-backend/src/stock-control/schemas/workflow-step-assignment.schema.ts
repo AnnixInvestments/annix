@@ -37,11 +37,11 @@ export class WorkflowStepAssignment {
   @Prop({ type: String, required: false })
   unifiedSecondaryUserId: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const WorkflowStepAssignmentSchema = SchemaFactory.createForClass(WorkflowStepAssignment);

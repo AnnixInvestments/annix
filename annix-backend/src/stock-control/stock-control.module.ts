@@ -33,6 +33,7 @@ import { RubberRollStockSchema } from "../rubber-lining/schemas/rubber-roll-stoc
 import { SageExportModule } from "../sage-export/sage-export.module";
 import { SharedModule } from "../shared/shared.module";
 import { StaffLeaveModule } from "../staff-leave/staff-leave.module";
+import { StockManagementModule } from "../stock-management/stock-management.module";
 import { StorageModule } from "../storage/storage.module";
 import { User } from "../user/entities/user.entity";
 import { UserSchema } from "../user/schemas/user.schema";
@@ -783,6 +784,7 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     SageExportModule,
     SharedModule,
     StaffLeaveModule,
+    StockManagementModule,
     StorageModule,
   ],
   controllers: [

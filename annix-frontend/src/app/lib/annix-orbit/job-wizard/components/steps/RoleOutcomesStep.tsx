@@ -7,6 +7,7 @@ import {
   type JobSuccessMetric,
   type UpdateJobWizardPayload,
 } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useNixCall } from "../../hooks/useNixCall";
 import { arrOr, strOr } from "../../utils/value-helpers";
@@ -28,6 +29,7 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
   const threeMonthMetrics = filterMetrics(successMetrics, "3_months");
   const twelveMonthMetrics = filterMetrics(successMetrics, "12_months");
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const nixDescription = useNixCall({
     operation: "description",
@@ -56,7 +58,10 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
         showToast("Nix drafted a description — review and tweak as needed.", "success");
       },
       onError: () => {
-        showToast("Nix couldn't draft right now. Try again in a moment.", "error");
+        alert({
+          message: "Nix couldn't draft right now. Try again in a moment.",
+          variant: "error",
+        });
       },
     });
   };
@@ -93,7 +98,10 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
         showToast("Nix drafted your role outcomes — review and tweak as needed.", "success");
       },
       onError: () => {
-        showToast("Nix couldn't draft right now. Try again in a moment.", "error");
+        alert({
+          message: "Nix couldn't draft right now. Try again in a moment.",
+          variant: "error",
+        });
       },
     });
   };
@@ -128,6 +136,7 @@ export function RoleOutcomesStep({ draft, onChange }: RoleOutcomesStepProps) {
       subtitle="Describe what this person will do and what success looks like. Phase 2 lets Nix turn these into a polished candidate-facing description."
     >
       {ConfirmDialog}
+      {AlertDialog}
       <div className="rounded-lg border border-[#FF8A00]/40 bg-[#FF8A00]/10 p-4 flex items-start gap-3 -mt-2">
         <div className="flex-1">
           <p className="text-sm font-semibold text-[#1a1a40]">Let Nix draft this for you</p>

@@ -127,11 +127,11 @@ export class PumpProduct {
   @Prop({ type: Number, required: false })
   supplierId: number;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const PumpProductSchema = SchemaFactory.createForClass(PumpProduct);

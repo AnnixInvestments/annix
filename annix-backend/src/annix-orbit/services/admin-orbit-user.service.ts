@@ -31,6 +31,17 @@ export interface OrbitAdminUserListResult {
   limit: number;
 }
 
+export interface OrbitSeekerProspect {
+  userId: number;
+  email: string;
+  name: string | null;
+  hasLoggedIn: boolean;
+  lastLoginAt: string | null;
+  invitedAt: string | null;
+  hasCandidate: boolean;
+  hasCv: boolean;
+}
+
 function parseUserType(value?: string | null): AnnixOrbitUserType | null {
   if (value === AnnixOrbitUserType.COMPANY) return AnnixOrbitUserType.COMPANY;
   if (value === AnnixOrbitUserType.RECRUITER) return AnnixOrbitUserType.RECRUITER;
@@ -88,6 +99,46 @@ export class AdminOrbitUserService {
     const users = await this.userRepo.findByIds(profiles.map((profile) => profile.userId));
     const rows = await this.assembleRows(profiles, users);
     return { rows, total, page, limit };
+  }
+
+  async seekerProspects(): Promise<OrbitSeekerProspect[]> {
+    const app = await this.appRepo.findByCode("annix-orbit");
+    if (!app) return [];
+    const accesses = await this.userAppAccessRepo.findManyByAppId(app.id);
+    const userIds = [...new Set(accesses.map((access) => access.userId))];
+    if (userIds.length === 0) return [];
+    const users = await this.userRepo.findByIds(userIds);
+    const profiles = await this.profileRepo.findByUserIds(userIds);
+    const profileByUser = new Map(profiles.map((profile) => [profile.userId, profile]));
+    const seekerUsers = users.filter((user) => {
+      if (!user.email) return false;
+      const profile = profileByUser.get(user.id);
+      if (!profile) return true;
+      return (
+        profile.userType === AnnixOrbitUserType.INDIVIDUAL ||
+        profile.userType === AnnixOrbitUserType.STUDENT
+      );
+    });
+    return Promise.all(
+      seekerUsers.map(async (user) => {
+        const candidates = await this.candidateRepo.findByEmail(user.email);
+        const profile = profileByUser.get(user.id);
+        const nameParts = [user.firstName, user.lastName].filter(
+          (part): part is string => Boolean(part) && String(part).trim().length > 0,
+        );
+        const name = nameParts.join(" ");
+        return {
+          userId: user.id,
+          email: user.email,
+          name: name.length > 0 ? name : null,
+          hasLoggedIn: user.lastLoginAt != null,
+          lastLoginAt: user.lastLoginAt ? user.lastLoginAt.toISOString() : null,
+          invitedAt: user.createdAt ? user.createdAt.toISOString() : null,
+          hasCandidate: candidates.length > 0,
+          hasCv: profile ? profile.cvFilePath != null : false,
+        };
+      }),
+    );
   }
 
   private async assembleRows(

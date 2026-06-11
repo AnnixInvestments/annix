@@ -9,8 +9,8 @@ import type { RbacAppAccessSummary, RbacUserWithAccessSummary } from "@/app/lib/
 import { formatDateZA } from "@/app/lib/datetime";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
+  useAdminSetPendingSeekerTier,
   useRbacAllUsers,
-  useRbacAppDetails,
   useRbacApps,
   useRbacDeactivateUser,
   useRbacDeleteUser,
@@ -20,7 +20,7 @@ import {
   useRbacSendAccessLink,
 } from "@/app/lib/query/hooks";
 import { AppToggleCard } from "./components/AppToggleCard";
-import { InviteUserModal } from "./components/InviteUserModal";
+import { InviteUserModal, type OrbitInviteExtra } from "./components/InviteUserModal";
 import { UserNavigationBar } from "./components/UserNavigationBar";
 import { UserSelector } from "./components/UserSelector";
 
@@ -53,14 +53,13 @@ export default function AdminUsersPage() {
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
-  const [inviteAppCode, setInviteAppCode] = useState<string | null>(null);
 
   const { data: apps = [], isLoading: appsLoading } = useRbacApps();
   const { data: allUsers = [], isLoading: usersLoading } = useRbacAllUsers();
-  const { data: inviteAppDetails } = useRbacAppDetails(inviteAppCode ?? "");
 
   const revokeMutation = useRbacRevokeAccess();
   const inviteMutation = useRbacInviteUser();
+  const pendingTierMutation = useAdminSetPendingSeekerTier();
   const sendLinkMutation = useRbacSendAccessLink();
   const deactivateMutation = useRbacDeactivateUser();
   const reactivateMutation = useRbacReactivateUser();
@@ -252,10 +251,27 @@ export default function AdminUsersPage() {
     );
   };
 
-  const handleInviteUser = (dto: Parameters<typeof inviteMutation.mutate>[0]) => {
+  const handleInviteUser = (
+    dto: Parameters<typeof inviteMutation.mutate>[0],
+    orbitExtra?: OrbitInviteExtra,
+  ) => {
     inviteMutation.mutate(dto, {
       onSuccess: (response) => {
-        showToast(response.message, "success");
+        const emailFailed = response.emailSent === false;
+        showToast(response.message, emailFailed ? "warning" : "success");
+        if (orbitExtra && orbitExtra.module === "seeker") {
+          pendingTierMutation.mutate(
+            {
+              email: dto.email,
+              tier: orbitExtra.tier,
+              permanent: orbitExtra.permanent,
+              trialDays: orbitExtra.permanent ? undefined : orbitExtra.trialDays,
+            },
+            {
+              onError: (err) => showToast(`Invited, but tier not set: ${err.message}`, "error"),
+            },
+          );
+        }
         setShowInviteModal(false);
       },
       onError: (err) => {
@@ -276,15 +292,7 @@ export default function AdminUsersPage() {
           </p>
         </div>
         <button
-          onClick={() => {
-            setInviteAppCode(
-              (() => {
-                const rawCode = apps[0]?.code;
-                return rawCode || null;
-              })(),
-            );
-            setShowInviteModal(true);
-          }}
+          onClick={() => setShowInviteModal(true)}
           disabled={apps.length === 0}
           className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
@@ -489,11 +497,8 @@ export default function AdminUsersPage() {
 
       <InviteUserModal
         isOpen={showInviteModal}
-        onClose={() => {
-          setShowInviteModal(false);
-          setInviteAppCode(null);
-        }}
-        appDetails={inviteAppDetails ?? null}
+        onClose={() => setShowInviteModal(false)}
+        apps={apps}
         onInvite={handleInviteUser}
         isInviting={inviteMutation.isPending}
       />

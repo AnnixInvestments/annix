@@ -46,11 +46,11 @@ export class SupplierProfile {
   @Prop({ type: Date, required: false })
   documentStorageAcceptedAt: Date;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 
   @Prop({ type: Number, required: false })
   companyId: number;

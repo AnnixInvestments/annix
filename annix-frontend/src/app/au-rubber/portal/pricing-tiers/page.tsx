@@ -9,11 +9,13 @@ import {
 import { useToast } from "@/app/components/Toast";
 import { auRubberApiClient } from "@/app/lib/api/auRubberApi";
 import type { RubberCompanyDto, RubberPricingTierDto } from "@/app/lib/api/rubberPortalApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { Breadcrumb } from "../../components/Breadcrumb";
 import { ConfirmModal } from "../../components/ConfirmModal";
 
 export default function AuRubberPricingTiersPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [tiers, setTiers] = useState<RubberPricingTierDto[]>([]);
   const [companies, setCompanies] = useState<RubberCompanyDto[]>([]);
@@ -85,7 +87,7 @@ export default function AuRubberPricingTiersPage() {
       fetchData();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to save pricing tier";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     } finally {
       setIsSaving(false);
     }
@@ -99,7 +101,7 @@ export default function AuRubberPricingTiersPage() {
       fetchData();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Failed to delete pricing tier";
-      showToast(errorMessage, "error");
+      alert({ message: errorMessage, variant: "error" });
     }
   };
 
@@ -122,6 +124,7 @@ export default function AuRubberPricingTiersPage() {
 
   return (
     <div className="space-y-6">
+      {AlertDialog}
       <Breadcrumb items={[{ label: "Pricing Tiers" }]} />
       <div className="flex items-center justify-between">
         <div>

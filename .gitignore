@@ -92,3 +92,4 @@ pdf-renders/
 tmp-rfq-img/
 /tmp-*.mjs
 /tmp-*.py
+non-vcs/

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitSubmission } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitClients,
@@ -32,6 +33,7 @@ export default function RecruiterSubmissionsPage() {
   const deleteMutation = useOrbitDeleteSubmission();
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrbitSubmission | null>(null);
@@ -58,7 +60,7 @@ export default function RecruiterSubmissionsPage() {
       await deleteMutation.mutateAsync(submission.id);
       showToast("Submission deleted.", "success");
     } catch {
-      showToast("Could not delete the submission. Please try again.", "error");
+      alert({ message: "Could not delete the submission. Please try again.", variant: "error" });
     }
   };
 
@@ -192,6 +194,7 @@ export default function RecruiterSubmissionsPage() {
         />
       ) : null}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

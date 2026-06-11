@@ -127,6 +127,9 @@ export class AnnixRepAuthService {
       );
     }
 
+    user.lastLoginAt = now().toJSDate();
+    await this.userRepo.save(user);
+
     await this.invalidateAllUserSessions(user.id, SessionInvalidationReason.NEW_LOGIN);
 
     const sessionToken = uuidv4();
@@ -177,6 +180,9 @@ export class AnnixRepAuthService {
         "This account is not registered for Annix Pulse. Please register first.",
       );
     }
+
+    user.lastLoginAt = now().toJSDate();
+    await this.userRepo.save(user);
 
     await this.invalidateAllUserSessions(user.id, SessionInvalidationReason.NEW_LOGIN);
 

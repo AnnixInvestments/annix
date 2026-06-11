@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PhoneInput } from "@/app/components/PhoneInput";
 import { useToast } from "@/app/components/Toast";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useOrbitReminderPreferences,
   useOrbitUpdateReminderPreferences,
@@ -10,6 +11,7 @@ import {
 
 export function ReminderPreferencesCard() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const prefsQuery = useOrbitReminderPreferences();
   const updatePrefs = useOrbitUpdateReminderPreferences();
 
@@ -43,7 +45,11 @@ export function ReminderPreferencesCard() {
       },
       {
         onSuccess: () => showToast("Reminder settings saved", "success"),
-        onError: () => showToast("Couldn't save reminder settings — please try again", "error"),
+        onError: () =>
+          alert({
+            message: "Couldn't save reminder settings — please try again",
+            variant: "error",
+          }),
       },
     );
   };
@@ -53,6 +59,7 @@ export function ReminderPreferencesCard() {
 
   return (
     <div className="bg-white rounded-xl border border-[var(--brand-navbar-100,#e0e0f5)] p-6 space-y-4">
+      {AlertDialog}
       <div>
         <h2 className="text-lg font-semibold text-gray-900">Interview reminders</h2>
         <p className="text-sm text-gray-600 mt-1">

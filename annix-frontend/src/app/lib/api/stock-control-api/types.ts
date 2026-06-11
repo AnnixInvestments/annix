@@ -2355,6 +2355,16 @@ export interface JobCardImportRow {
   lineItems?: LineItemImportRow[];
 }
 
+export interface JobCardImportCorrection {
+  rowIndex: number;
+  lineItemIndex?: number | null;
+  fieldName: string;
+  originalValue?: string | null;
+  correctedValue: string;
+  customerName?: string | null;
+  itemDescription?: string | null;
+}
+
 export interface DeliveryLineMatch {
   deliveryItemId: number;
   deliveryItemDescription: string | null;
@@ -2597,6 +2607,7 @@ export interface SupplierInvoice {
   deliveryNoteId: number | null;
   deliveryNote?: DeliveryNote | null;
   linkedDeliveryNoteIds: number[] | null;
+  linkedDeliveryNotes?: DeliveryNote[] | null;
   approvedBy: number | null;
   approvedAt: string | null;
   exportedToSageAt: string | null;

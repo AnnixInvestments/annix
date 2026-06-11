@@ -21,6 +21,7 @@ declare module "./base" {
       items: { stockItemId: number; quantityReceived: number }[];
     }): Promise<DeliveryNote>;
     deleteDeliveryNote(id: number): Promise<void>;
+    updateDeliveryNote(id: number, data: { deliveryNumber: string }): Promise<DeliveryNote>;
     uploadDeliveryPhoto(id: number, file: File): Promise<DeliveryNote>;
     previewDeliveryStockMatches(id: number): Promise<
       Array<{
@@ -98,6 +99,13 @@ proto.createDeliveryNote = async function (data) {
 
 proto.deleteDeliveryNote = async function (id) {
   return this.request(`/stock-control/deliveries/${id}`, { method: "DELETE" });
+};
+
+proto.updateDeliveryNote = async function (id, data) {
+  return this.request(`/stock-control/deliveries/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 };
 
 proto.uploadDeliveryPhoto = async function (id, file) {

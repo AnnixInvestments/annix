@@ -2,11 +2,12 @@
 
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { useBranding } from "@/app/lib/query/hooks";
+import { screenshotExcludeProps } from "@/app/lib/screenshotExclusion";
 import { useTheme } from "./ThemeProvider";
 
 const MASTER_BRAND = "annix-investments";
-const LIGHT_BACKGROUND_FALLBACK = "#F8FAFC";
-const DARK_BACKGROUND_FALLBACK = "#0F172A";
+const LIGHT_BACKGROUND_FALLBACK = "#0a1733";
+const DARK_BACKGROUND_FALLBACK = "#0a1733";
 
 // A single fixed full-screen layer mounted once at the root. Paints the master
 // Annix Investments per-mode background colour, then the locked page-background
@@ -34,6 +35,24 @@ export function GlobalBrandBackground() {
   const imageUrl =
     branding && hasImage ? resolveBrandAssetUrl("pageBackground", branding, variant) : null;
 
+  const heroTopLight = branding ? brandHasAsset("heroTop", branding, "light") : false;
+  const heroTopDark = branding ? branding.assetsDark.heroTop : false;
+  const hasHeroTop = heroTopLight || heroTopDark;
+  const heroTopUrl =
+    branding && hasHeroTop ? resolveBrandAssetUrl("heroTop", branding, variant) : null;
+  const heroTopHeight = branding ? branding.heroTopHeightPct : 60;
+  const heroTopFade = branding ? branding.heroTopFadePct : 45;
+  const heroTopTransparentStop = 100 - heroTopFade;
+
+  const heroBottomLight = branding ? brandHasAsset("heroBottom", branding, "light") : false;
+  const heroBottomDark = branding ? branding.assetsDark.heroBottom : false;
+  const hasHeroBottom = heroBottomLight || heroBottomDark;
+  const heroBottomUrl =
+    branding && hasHeroBottom ? resolveBrandAssetUrl("heroBottom", branding, variant) : null;
+  const heroBottomHeight = branding ? branding.heroBottomHeightPct : 40;
+  const heroBottomFade = branding ? branding.heroBottomFadePct : 45;
+  const heroBottomTransparentStop = 100 - heroBottomFade;
+
   const hasWatermark = branding ? brandHasAsset("watermark", branding, variant) : false;
   const watermarkEnabled = branding ? branding.watermarkEnabled : false;
   const watermarkUrl =
@@ -51,6 +70,7 @@ export function GlobalBrandBackground() {
     >
       {imageUrl ? (
         <div
+          {...screenshotExcludeProps}
           className="absolute inset-0"
           style={{
             backgroundImage: `url('${imageUrl}')`,
@@ -60,17 +80,47 @@ export function GlobalBrandBackground() {
           }}
         />
       ) : null}
-      {watermarkUrl ? (
+      {heroTopUrl ? (
         <div
-          className="absolute inset-0"
+          {...screenshotExcludeProps}
+          className="absolute inset-x-0 top-0 overflow-hidden"
           style={{
-            backgroundImage: `url('${watermarkUrl}')`,
-            backgroundRepeat: "no-repeat",
-            backgroundPosition: "center",
-            backgroundSize: `min(85vmin, ${watermarkMaxSizePx}px)`,
-            opacity: watermarkOpacity,
+            height: `${heroTopHeight}vh`,
+            backgroundImage: `linear-gradient(to bottom, transparent ${heroTopTransparentStop}%, ${backgroundColor}), url('${heroTopUrl}')`,
+            backgroundRepeat: "no-repeat, no-repeat",
+            backgroundPosition: "center top, center top",
+            backgroundSize: "cover, cover",
           }}
         />
+      ) : null}
+      {heroBottomUrl ? (
+        <div
+          {...screenshotExcludeProps}
+          className="absolute inset-x-0 bottom-0 overflow-hidden"
+          style={{
+            height: `${heroBottomHeight}vh`,
+            backgroundImage: `linear-gradient(to top, transparent ${heroBottomTransparentStop}%, ${backgroundColor}), url('${heroBottomUrl}')`,
+            backgroundRepeat: "no-repeat, no-repeat",
+            backgroundPosition: "center bottom, center bottom",
+            backgroundSize: "cover, 100% 100%",
+          }}
+        />
+      ) : null}
+      {watermarkUrl ? (
+        <div
+          {...screenshotExcludeProps}
+          className="absolute inset-x-0 top-16 bottom-0 flex items-center justify-center"
+        >
+          <div
+            className="overflow-hidden rounded-[18%] bg-contain bg-center bg-no-repeat"
+            style={{
+              width: `min(70vmin, ${watermarkMaxSizePx}px)`,
+              height: `min(70vmin, ${watermarkMaxSizePx}px)`,
+              backgroundImage: `url('${watermarkUrl}')`,
+              opacity: watermarkOpacity,
+            }}
+          />
+        </div>
       ) : null}
     </div>
   );

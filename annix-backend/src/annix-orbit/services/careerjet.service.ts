@@ -84,21 +84,42 @@ export class CareerjetService {
     const seen = new Set<string>();
     const collected: IngestedJobResult[] = [];
     let requests = 0;
+    let successes = 0;
+    let lastError: Error | null = null;
 
     for (const keyword of CAREERJET_SWEEP_KEYWORDS) {
-      const { jobs, requests: used } = await this.fetchQuery(
-        affiliateId,
-        keyword,
-        CAREERJET_SWEEP_PAGES,
-        perKeywordTarget,
-      );
-      requests += used;
-      for (const job of jobs) {
-        if (!seen.has(job.id)) {
-          seen.add(job.id);
-          collected.push(job);
+      try {
+        const { jobs, requests: used } = await this.fetchQuery(
+          affiliateId,
+          keyword,
+          CAREERJET_SWEEP_PAGES,
+          perKeywordTarget,
+        );
+        requests += used;
+        successes += 1;
+        for (const job of jobs) {
+          if (!seen.has(job.id)) {
+            seen.add(job.id);
+            collected.push(job);
+          }
+        }
+      } catch (error) {
+        requests += 1;
+        lastError = error instanceof Error ? error : new Error(String(error));
+        this.logger.error(`Careerjet sweep failed for "${keyword}": ${lastError.message}`);
+        // 401/403 are account/IP-level — every other keyword will fail the same
+        // way, so stop the sweep and surface the error rather than burning the
+        // daily rate limit on 24 identical rejections.
+        if (/\b40[13]\b|unauthorized/i.test(lastError.message)) {
+          throw lastError;
         }
       }
+    }
+
+    // A single bad keyword shouldn't fail the whole run, but if every keyword
+    // failed the source is genuinely broken — surface it so the admin sees why.
+    if (successes === 0 && lastError) {
+      throw lastError;
     }
 
     return { jobs: collected, requests };

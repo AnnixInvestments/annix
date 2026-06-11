@@ -31,11 +31,11 @@ export class InterviewBooking {
   @Prop({ type: String, required: false })
   cancelReason: string;
 
-  @Prop({ type: String, required: false })
-  createdAt: string;
+  @Prop({ type: Date, required: false })
+  createdAt: Date;
 
-  @Prop({ type: String, required: false })
-  updatedAt: string;
+  @Prop({ type: Date, required: false })
+  updatedAt: Date;
 }
 
 export const InterviewBookingSchema = SchemaFactory.createForClass(InterviewBooking);

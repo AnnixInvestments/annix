@@ -1,6 +1,8 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, Injectable, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { now } from "../lib/datetime";
+import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
 import { PasswordService } from "../shared/auth/password.service";
 import { UserRepository } from "../user/user.repository";
 import { JwtPayload } from "./jwt.strategy";
@@ -12,6 +14,8 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly userRepo: UserRepository,
     private readonly passwordService: PasswordService,
+    private readonly accessRepo: UserAppAccessRepository,
+    private readonly appRepo: AppRepository,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -31,6 +35,14 @@ export class AuthService {
   }
 
   async login(user: any) {
+    if (user?.id) {
+      const fresh = await this.userRepo.findById(user.id);
+      if (fresh) {
+        fresh.lastLoginAt = now().toJSDate();
+        await this.userRepo.save(fresh);
+      }
+    }
+
     const payload = {
       sub: user.id,
       username: user.username,
@@ -77,5 +89,43 @@ export class AuthService {
     } catch (error) {
       throw new UnauthorizedException("Invalid refresh token");
     }
+  }
+
+  async invitePreview(
+    token: string,
+  ): Promise<{ email: string; firstName: string | null; apps: string[] }> {
+    const user = await this.userRepo.findByValidResetPasswordToken(token, now().toJSDate());
+    if (!user) {
+      throw new BadRequestException("This invitation link is invalid or has expired.");
+    }
+    return {
+      email: user.email,
+      firstName: user.firstName ?? null,
+      apps: await this.appsFor(user.id),
+    };
+  }
+
+  private async appsFor(userId: number): Promise<string[]> {
+    const access = await this.accessRepo.findManyWhere({ userId });
+    const apps = await Promise.all(access.map((row) => this.appRepo.findById(row.appId)));
+    return apps.filter((app): app is NonNullable<typeof app> => app != null).map((app) => app.code);
+  }
+
+  async acceptInvite(token: string, password: string): Promise<{ message: string }> {
+    if (!password || password.length < 8) {
+      throw new BadRequestException("Password must be at least 8 characters long.");
+    }
+    const user = await this.userRepo.findByValidResetPasswordToken(token, now().toJSDate());
+    if (!user) {
+      throw new BadRequestException("This invitation link is invalid or has expired.");
+    }
+    user.passwordHash = await this.passwordService.hashSimple(password);
+    user.resetPasswordToken = null;
+    user.resetPasswordExpires = null;
+    if (user.status === "invited") {
+      user.status = "active";
+    }
+    await this.userRepo.save(user);
+    return { message: "Your account is ready. You can now sign in with your new password." };
   }
 }

@@ -4,6 +4,7 @@ import { useToast } from "@/app/components/Toast";
 import { providerBadgeLabel } from "@/app/lib/annix-orbit/provider-labels";
 import type { OrbitDelistReport } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useAdminConfirmOrbitDelist,
@@ -13,6 +14,7 @@ import {
 
 export default function OrbitDelistReportsPage() {
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const reportsQuery = useAdminOrbitDelistReports();
   const confirmDelist = useAdminConfirmOrbitDelist();
@@ -33,14 +35,14 @@ export default function OrbitDelistReportsPage() {
     if (!confirmed) return;
     confirmDelist.mutate(report.id, {
       onSuccess: () => showToast("Job removed for all seekers.", "success"),
-      onError: () => showToast("Couldn't confirm — please try again.", "error"),
+      onError: () => alert({ message: "Couldn't confirm — please try again.", variant: "error" }),
     });
   };
 
   const handleReject = (report: OrbitDelistReport) => {
     rejectDelist.mutate(report.id, {
       onSuccess: () => showToast("Marked as still listed — kept live.", "success"),
-      onError: () => showToast("Couldn't update — please try again.", "error"),
+      onError: () => alert({ message: "Couldn't update — please try again.", variant: "error" }),
     });
   };
 
@@ -84,6 +86,7 @@ export default function OrbitDelistReportsPage() {
         </div>
       )}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

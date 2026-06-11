@@ -212,6 +212,130 @@ export class EmailService {
     });
   }
 
+  async sendUserInviteEmail(
+    email: string,
+    token: string,
+    appNames: string[],
+    firstName: string | null,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const acceptUrl = `${frontendUrl}/accept-invite?token=${token}`;
+    const appsList = appNames.join(", ");
+    const safeName = firstName ? firstName : "there";
+    const html = emailLayout({
+      title: "You've been invited to Annix",
+      heading: "Set up your account",
+      headingColor: "#323288",
+      bodyHtml: `
+          <p>Hi ${safeName},</p>
+          <p>You've been granted access to <strong>${appsList}</strong> on the Annix platform.</p>
+          <p>Set your password to activate your account and sign in.</p>`,
+      cta: {
+        href: acceptUrl,
+        label: "Set your password",
+        color: "#323288",
+        expiryNote: "This invitation link expires in 7 days.",
+      },
+      footerText: "If you did not expect this invitation, you can safely ignore this email.",
+    });
+
+    const text = `
+      Set up your Annix account
+
+      Hi ${safeName}, you've been granted access to ${appsList} on the Annix platform.
+
+      Set your password to activate your account: ${acceptUrl}
+
+      This invitation link expires in 7 days. If you did not expect this invitation, you can ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "You've been invited to Annix — set your password",
+      html,
+      text,
+      isTransactional: true,
+    });
+  }
+
+  async sendAccessGrantedEmail(email: string, appNames: string[]): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const appsList = appNames.join(", ");
+    const html = emailLayout({
+      title: "New access granted on Annix",
+      heading: "You've been granted access",
+      headingColor: "#323288",
+      bodyHtml: `
+          <p>You now have access to <strong>${appsList}</strong> on the Annix platform.</p>
+          <p>Sign in with your existing account to get started.</p>`,
+      cta: {
+        href: frontendUrl,
+        label: "Sign in",
+        color: "#323288",
+      },
+      footerText: "If you did not expect this change, please contact your administrator.",
+    });
+
+    const text = `
+      You've been granted access
+
+      You now have access to ${appsList} on the Annix platform. Sign in with your existing account: ${frontendUrl}
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "You've been granted new access on Annix",
+      html,
+      text,
+      isTransactional: true,
+    });
+  }
+
+  async sendAnnixOrbitEarlyAccessWelcome(
+    email: string,
+    firstName: string,
+    referralLink: string,
+  ): Promise<boolean> {
+    const safeName = firstName ? firstName : "there";
+    const html = emailLayout({
+      title: "You're on the Annix Orbit early-access list",
+      heading: "You're on the list 🎉",
+      headingColor: "#FF8A00",
+      bodyHtml: `
+          <p>Hi ${safeName},</p>
+          <p>Thanks for joining the <strong>Annix Orbit Seeker</strong> early-access list. You'll get
+          priority access — upload your CV, receive your AI Career Score, and discover better
+          opportunities — the moment we launch.</p>
+          <p>Want to move up the queue? Share your personal invite link with friends:</p>
+          <p><a href="${referralLink}">${referralLink}</a></p>`,
+      cta: {
+        href: referralLink,
+        label: "Share your invite link",
+        color: "#FF8A00",
+        expiryNote: "The more friends you invite, the sooner you get in.",
+      },
+      footerText:
+        "You're receiving this because you joined the Annix Orbit Seeker early-access list.",
+    });
+
+    const text = `
+      You're on the list
+
+      Hi ${safeName}, thanks for joining the Annix Orbit Seeker early-access list. You'll get priority
+      access the moment we launch.
+
+      Share your invite link to move up the queue: ${referralLink}
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: "You're on the Annix Orbit early-access list",
+      html,
+      text,
+      isTransactional: true,
+    });
+  }
+
   async sendSupplierApprovalEmail(email: string, companyName: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const portalLink = `${frontendUrl}/supplier/portal/dashboard`;

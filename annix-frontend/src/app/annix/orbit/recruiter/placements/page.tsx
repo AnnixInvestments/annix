@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitPlacement } from "@/app/lib/api/annixOrbitApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitClients,
@@ -37,6 +38,7 @@ export default function RecruiterPlacementsPage() {
   const deleteMutation = useOrbitDeletePlacement();
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrbitPlacement | null>(null);
@@ -63,7 +65,7 @@ export default function RecruiterPlacementsPage() {
       await deleteMutation.mutateAsync(placement.id);
       showToast("Placement deleted.", "success");
     } catch {
-      showToast("Could not delete the placement. Please try again.", "error");
+      alert({ message: "Could not delete the placement. Please try again.", variant: "error" });
     }
   };
 
@@ -223,6 +225,7 @@ export default function RecruiterPlacementsPage() {
         />
       ) : null}
       {ConfirmDialog}
+      {AlertDialog}
     </div>
   );
 }

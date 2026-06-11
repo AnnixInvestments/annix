@@ -112,6 +112,19 @@ export class PostgresSupplierInvoiceRepository
     });
   }
 
+  findCompletedLinkedToDeliveryNote(
+    companyId: number,
+    deliveryNoteId: number,
+  ): Promise<SupplierInvoice[]> {
+    return this.repository.find({
+      where: {
+        companyId,
+        deliveryNoteId,
+        extractionStatus: InvoiceExtractionStatus.COMPLETED,
+      },
+    });
+  }
+
   countByExtractionStatusForCompany(
     companyId: number,
     status: InvoiceExtractionStatus,

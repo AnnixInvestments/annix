@@ -8,6 +8,7 @@ import { useToast } from "@/app/components/Toast";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import type { ConversationDetail } from "@/app/lib/api/messagingApi";
 import { RelatedEntityType } from "@/app/lib/api/messagingApi";
+import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useAdminConversationDetail, useSendAdminMessage } from "@/app/lib/query/hooks";
 import { messagingKeys } from "@/app/lib/query/keys";
 
@@ -15,6 +16,7 @@ export default function AdminConversationDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { showToast } = useToast();
+  const { alert, AlertDialog } = useAlert();
   const queryClient = useQueryClient();
 
   const conversationId = Number(params.id);
@@ -48,7 +50,7 @@ export default function AdminConversationDetailPage() {
       showToast("You are now handling this feedback", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to assign feedback";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     } finally {
       setIsAssigning(false);
     }
@@ -63,7 +65,7 @@ export default function AdminConversationDetailPage() {
       showToast("Feedback unassigned", "success");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to unassign feedback";
-      showToast(message, "error");
+      alert({ message, variant: "error" });
     } finally {
       setIsAssigning(false);
     }
@@ -87,7 +89,7 @@ export default function AdminConversationDetailPage() {
         },
         onError: (err: unknown) => {
           const message = err instanceof Error ? err.message : "Failed to send message";
-          showToast(message, "error");
+          alert({ message, variant: "error" });
         },
       },
     );
@@ -135,6 +137,7 @@ export default function AdminConversationDetailPage() {
 
   return (
     <div className="max-w-4xl mx-auto">
+      {AlertDialog}
       <div className="mb-6 flex items-center gap-4">
         <button
           onClick={() => router.push("/admin/portal/messages")}
