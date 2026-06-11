@@ -85,7 +85,7 @@ export class CandidateService {
   async findById(companyId: number, id: number): Promise<Candidate> {
     const candidate = await this.candidateRepo.findByIdWithJobAndReferences(id);
 
-    if (!candidate || !candidate.jobPosting || candidate.jobPosting.companyId !== companyId) {
+    if (!candidate?.jobPosting || candidate.jobPosting.companyId !== companyId) {
       throw new NotFoundException("Candidate not found");
     }
 

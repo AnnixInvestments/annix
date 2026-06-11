@@ -639,9 +639,7 @@ export class RfqCalculationService {
 
     // Centerline arc = bend radius x angle; radius from the bend type
     // multiplier ("2D" -> 2 x nominal diameter), matching centerToFace().
-    const multiplier = dto.bendType
-      ? Number.parseFloat(dto.bendType.replace("D", "")) || 1.5
-      : 1.5;
+    const multiplier = dto.bendType ? Number.parseFloat(dto.bendType.replace("D", "")) || 1.5 : 1.5;
     const radiusMm = dto.nominalBoreMm * multiplier;
     const bendDegrees = dto.bendDegrees || 90;
     const arcLengthM = (radiusMm * ((bendDegrees * Math.PI) / 180)) / 1000;
