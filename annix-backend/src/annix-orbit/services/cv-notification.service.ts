@@ -122,7 +122,7 @@ export class CvNotificationService {
   ): Promise<void> {
     const candidate = await this.candidateRepo.findByIdWithJobPosting(candidateId);
 
-    if (!candidate || !candidate.jobPosting) {
+    if (!candidate?.jobPosting) {
       return;
     } else {
       const companyId = candidate.jobPosting.companyId;

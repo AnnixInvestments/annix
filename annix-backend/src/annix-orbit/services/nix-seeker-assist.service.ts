@@ -123,7 +123,7 @@ export class NixSeekerAssistService {
   private async candidateIdForUser(userId: number): Promise<number | null> {
     try {
       const user = await this.userRepo.findById(userId);
-      if (!user || !user.email) return null;
+      if (!user?.email) return null;
       const candidates = await this.candidateRepo.findByEmail(user.email);
       const first = candidates[0];
       return first ? first.id : null;

@@ -54,7 +54,7 @@ export class ReferenceService {
   async sendReferenceRequests(candidateId: number): Promise<number> {
     const candidate = await this.candidateRepo.findByIdWithJobAndReferences(candidateId);
 
-    if (!candidate || !candidate.jobPosting) {
+    if (!candidate?.jobPosting) {
       throw new NotFoundException("Candidate not found");
     }
 

@@ -125,7 +125,7 @@ export class RubberStatementReconciliationService {
     }
 
     const metadata = await this.detectStatementMetadata(images);
-    if (!metadata || !metadata.supplierName) {
+    if (!metadata?.supplierName) {
       throw new BadRequestException(
         "Could not detect supplier from statement letterhead — please verify the document is a supplier statement",
       );

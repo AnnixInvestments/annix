@@ -191,7 +191,13 @@ const ProjectSummaryTableInner = () => {
       }
 
       return (
-        total + entryTotal + bnwWeight + gasketWeight + stubBnwWeight + stubGasketWeight + blankWeight
+        total +
+        entryTotal +
+        bnwWeight +
+        gasketWeight +
+        stubBnwWeight +
+        stubGasketWeight +
+        blankWeight
       );
     }, 0);
   };

@@ -140,7 +140,7 @@ export class PopiaService {
   async rightToErasure(companyId: number, candidateId: number): Promise<{ message: string }> {
     const candidate = await this.candidateRepo.findByIdWithJobAndReferences(candidateId);
 
-    if (!candidate || !candidate.jobPosting || candidate.jobPosting.companyId !== companyId) {
+    if (!candidate?.jobPosting || candidate.jobPosting.companyId !== companyId) {
       return { message: "Candidate not found" };
     }
 

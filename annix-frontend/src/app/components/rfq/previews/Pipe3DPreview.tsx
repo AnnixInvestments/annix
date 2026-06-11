@@ -801,16 +801,14 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   const endViewFovDeg = 10;
   const rawOuterDiameterMm = debouncedProps.outerDiameter;
   const rawEndFlangeOdMm = debouncedProps.flangeSpecs?.flangeOdMm;
-  const rawPuddleOdMm =
-    debouncedProps.pipeType === "puddle" ? debouncedProps.puddleFlangeOdMm : 0;
+  const rawPuddleOdMm = debouncedProps.pipeType === "puddle" ? debouncedProps.puddleFlangeOdMm : 0;
   const maxDiameterM =
     Math.max(
       ((rawOuterDiameterMm || 200) / 1000) * 1.35,
       (rawEndFlangeOdMm || 0) / 1000,
       (rawPuddleOdMm || 0) / 1000,
     ) || 0.3;
-  const endViewDistance =
-    (maxDiameterM * 0.7) / Math.tan(((endViewFovDeg / 2) * Math.PI) / 180);
+  const endViewDistance = (maxDiameterM * 0.7) / Math.tan(((endViewFovDeg / 2) * Math.PI) / 180);
 
   const cameraTargets = {
     iso: {
