@@ -1,6 +1,7 @@
 import { Test, TestingModule } from "@nestjs/testing";
 
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { ClarificationStatus, ClarificationType } from "../entities/invoice-clarification.entity";
 import { InvoiceExtractionStatus } from "../entities/supplier-invoice.entity";
@@ -98,6 +99,10 @@ describe("InvoiceExtractionService", () => {
     chatWithImage: jest.fn(),
   };
 
+  const mockExtractionMetricService = {
+    time: jest.fn((_category: string, _operation: string, fn: () => unknown) => fn()),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -111,6 +116,7 @@ describe("InvoiceExtractionService", () => {
         { provide: InvoiceExtractionCorrectionRepository, useValue: mockCorrectionRepo },
         { provide: AiUsageService, useValue: mockAiUsageService },
         { provide: AiChatService, useValue: mockAiChatService },
+        { provide: ExtractionMetricService, useValue: mockExtractionMetricService },
       ],
     }).compile();
 

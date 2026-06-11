@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { InvoiceClarification, PriceChangeSummary } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
 import {
@@ -23,6 +25,7 @@ import {
 } from "@/app/lib/query/hooks";
 import { InvoiceNextAction } from "@/app/stock-control/components/NextActionBanner";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 import InvoiceClarificationPopup from "./InvoiceClarificationPopup";
 import PriceUpdateReview from "./PriceUpdateReview";
 
@@ -44,6 +47,8 @@ const STATUS_LABELS: Record<string, string> = {
   failed: "Failed",
 };
 
+const RE_EXTRACT_FALLBACK_MS = 90000;
+
 const MATCH_STATUS_COLORS: Record<string, string> = {
   matched: "bg-green-100 text-green-800",
   unmatched: "bg-red-100 text-red-800",
@@ -57,6 +62,8 @@ export default function InvoiceDetailPage() {
   const router = useRouter();
   const { user } = useStockControlAuth();
   const { effectiveRole } = useViewAs();
+  const { confirm, ConfirmDialog } = useConfirm();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const invoiceId = Number(params.id);
 
   const invoiceQuery = useInvoiceDetail(invoiceId);
@@ -177,11 +184,23 @@ export default function InvoiceDetailPage() {
   const handleReExtract = async () => {
     try {
       setIsReExtracting(true);
+      const stats = await metricsApi
+        .extractionStats("stock-control-invoices", "extract")
+        .catch(() => null);
+      const learnedMs = stats == null ? null : stats.averageMs;
+      const estimatedDurationMs =
+        learnedMs == null || learnedMs <= 0 ? RE_EXTRACT_FALLBACK_MS : learnedMs;
+      showExtraction({
+        brand: "stock-control",
+        label: "Re-extracting invoice…",
+        estimatedDurationMs,
+      });
       await reExtractMutation.mutateAsync(invoiceId);
       await invoiceQuery.refetch();
     } catch (err) {
       invoiceQuery.refetch();
     } finally {
+      hideExtraction();
       setIsReExtracting(false);
     }
   };
@@ -320,6 +339,19 @@ export default function InvoiceDetailPage() {
 
   const rawInvoiceItems = invoice.items;
   const invoiceItems = rawInvoiceItems ? rawInvoiceItems : [];
+  const primaryDeliveryNoteId = Number(invoice.deliveryNoteId);
+  const rawLinkedDnIds = invoice.linkedDeliveryNoteIds;
+  const linkedDnIds = rawLinkedDnIds ? rawLinkedDnIds : [];
+  const rawLinkedDns = invoice.linkedDeliveryNotes;
+  const linkedDns = rawLinkedDns ? rawLinkedDns : [];
+  const secondaryLinkedDns = linkedDnIds
+    .map(Number)
+    .filter((dnId) => dnId !== primaryDeliveryNoteId)
+    .map((dnId) => {
+      const linked = linkedDns.find((dn) => Number(dn.id) === dnId);
+      const linkedNumber = linked ? linked.deliveryNumber : null;
+      return { id: dnId, deliveryNumber: linkedNumber ? linkedNumber : `DN-${dnId}` };
+    });
   const allItemsResolved =
     invoiceItems.length > 0 &&
     invoiceItems.every(
@@ -332,7 +364,13 @@ export default function InvoiceDetailPage() {
     canEdit && invoice.extractionStatus === "needs_clarification" && allItemsResolved;
 
   const handleResolveAndApprove = async () => {
-    if (!window.confirm("Skip remaining clarifications and approve this invoice?")) return;
+    const confirmed = await confirm({
+      title: "Resolve & Approve",
+      message: "Skip remaining clarifications and approve this invoice?",
+      confirmLabel: "Approve",
+      variant: "warning",
+    });
+    if (!confirmed) return;
     try {
       await resolveAndApproveMutation.mutateAsync(invoiceId);
       await invoiceQuery.refetch();
@@ -343,6 +381,7 @@ export default function InvoiceDetailPage() {
 
   return (
     <div className="space-y-6">
+      {ConfirmDialog}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <Link href="/stock-control/portal/invoices" className="text-gray-500 hover:text-gray-700">
@@ -431,9 +470,7 @@ export default function InvoiceDetailPage() {
               <div>
                 <dt className="text-sm font-medium text-gray-500">
                   Delivery Note
-                  {invoice.linkedDeliveryNoteIds && invoice.linkedDeliveryNoteIds.length > 1
-                    ? "s"
-                    : ""}
+                  {secondaryLinkedDns.length > 0 ? "s" : ""}
                 </dt>
                 <dd className="mt-1 text-sm text-gray-900">
                   {invoice.deliveryNoteId ? (
@@ -449,18 +486,16 @@ export default function InvoiceDetailPage() {
                           return dnNum ? dnNum : `DN-${invoice.deliveryNoteId}`;
                         })()}
                       </Link>
-                      {invoice.linkedDeliveryNoteIds
-                        ?.filter((dnId) => dnId !== invoice.deliveryNoteId)
-                        .map((dnId) => (
-                          <div key={dnId}>
-                            <Link
-                              href={`/stock-control/portal/deliveries/${dnId}`}
-                              className="text-teal-600 hover:text-teal-800"
-                            >
-                              DN-{dnId}
-                            </Link>
-                          </div>
-                        ))}
+                      {secondaryLinkedDns.map((dn) => (
+                        <div key={dn.id}>
+                          <Link
+                            href={`/stock-control/portal/deliveries/${dn.id}`}
+                            className="text-teal-600 hover:text-teal-800"
+                          >
+                            {dn.deliveryNumber}
+                          </Link>
+                        </div>
+                      ))}
                     </div>
                   ) : (
                     <span className="inline-flex px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-800">

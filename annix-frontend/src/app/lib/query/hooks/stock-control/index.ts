@@ -202,6 +202,7 @@ export {
   useUpdateCpoCoatingSpecs,
   useUpdateCpoItem,
   useUpdateCpoStatus,
+  useUpdateDeliveryNote,
   useUpdateInvoiceItem,
   useUpdateJobCardStatus,
   useUpdateRequisitionItem,

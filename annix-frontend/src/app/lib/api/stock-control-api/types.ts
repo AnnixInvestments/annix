@@ -2607,6 +2607,7 @@ export interface SupplierInvoice {
   deliveryNoteId: number | null;
   deliveryNote?: DeliveryNote | null;
   linkedDeliveryNoteIds: number[] | null;
+  linkedDeliveryNotes?: DeliveryNote[] | null;
   approvedBy: number | null;
   approvedAt: string | null;
   exportedToSageAt: string | null;

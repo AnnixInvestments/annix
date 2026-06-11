@@ -10,6 +10,7 @@ import {
   useDeleteDeliveryNote,
   useDeliveryNoteDetail,
   useLinkDeliveryNoteToStock,
+  useUpdateDeliveryNote,
   useUploadDeliveryPhoto,
 } from "@/app/lib/query/hooks";
 import { DeliveryMatchReview } from "@/app/stock-control/components/DeliveryMatchReview";
@@ -57,10 +58,37 @@ export default function DeliveryDetailPage() {
   const uploadPhotoMutation = useUploadDeliveryPhoto();
   const linkToStockMutation = useLinkDeliveryNoteToStock();
   const deleteDeliveryMutation = useDeleteDeliveryNote();
+  const updateDeliveryMutation = useUpdateDeliveryNote();
 
   const [isUploading, setIsUploading] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
   const [showMatchReview, setShowMatchReview] = useState(false);
+  const [isEditingNumber, setIsEditingNumber] = useState(false);
+  const [numberDraft, setNumberDraft] = useState("");
+
+  const canEditNumber =
+    effectiveRole === "accounts" || effectiveRole === "manager" || effectiveRole === "admin";
+
+  const startEditingNumber = () => {
+    const currentNumber = delivery ? delivery.deliveryNumber : "";
+    setNumberDraft(currentNumber);
+    setIsEditingNumber(true);
+  };
+
+  const saveDeliveryNumber = async () => {
+    const trimmed = numberDraft.trim();
+    if (!trimmed) {
+      setMutationError("Delivery number is required");
+      return;
+    }
+    try {
+      setMutationError(null);
+      await updateDeliveryMutation.mutateAsync({ id: deliveryId, deliveryNumber: trimmed });
+      setIsEditingNumber(false);
+    } catch (err) {
+      setMutationError(err instanceof Error ? err.message : "Failed to update delivery number");
+    }
+  };
 
   const queryErrorMessage = queryError
     ? queryError instanceof Error
@@ -263,7 +291,61 @@ export default function DeliveryDetailPage() {
           <dl className="grid grid-cols-2 gap-x-4 gap-y-6">
             <div>
               <dt className="text-sm font-medium text-gray-500">Delivery Number</dt>
-              <dd className="mt-1 text-sm text-gray-900">{delivery.deliveryNumber}</dd>
+              <dd className="mt-1 text-sm text-gray-900">
+                {isEditingNumber ? (
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={numberDraft}
+                      onChange={(e) => setNumberDraft(e.target.value)}
+                      className="w-40 px-2 py-1 text-sm border border-teal-300 rounded focus:ring-1 focus:ring-teal-500 focus:border-teal-500"
+                      aria-label="Delivery number"
+                    />
+                    <button
+                      type="button"
+                      onClick={saveDeliveryNumber}
+                      disabled={updateDeliveryMutation.isPending}
+                      className="px-2 py-1 text-xs font-medium text-white bg-teal-600 rounded hover:bg-teal-700 disabled:opacity-50"
+                    >
+                      {updateDeliveryMutation.isPending ? "..." : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsEditingNumber(false)}
+                      className="px-2 py-1 text-xs text-gray-600 bg-gray-100 rounded hover:bg-gray-200"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    {delivery.deliveryNumber}
+                    {canEditNumber && (
+                      <button
+                        type="button"
+                        onClick={startEditingNumber}
+                        className="text-gray-400 hover:text-teal-600"
+                        title="Edit delivery number"
+                        aria-label="Edit delivery number"
+                      >
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </span>
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-sm font-medium text-gray-500">Supplier</dt>

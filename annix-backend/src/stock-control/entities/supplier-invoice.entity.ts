@@ -122,6 +122,8 @@ export class SupplierInvoice {
   @Column({ name: "linked_delivery_note_ids", type: "jsonb", nullable: true, default: null })
   linkedDeliveryNoteIds: number[] | null;
 
+  linkedDeliveryNotes?: DeliveryNote[] | null;
+
   @OneToMany(
     () => SupplierInvoiceItem,
     (item) => item.invoice,

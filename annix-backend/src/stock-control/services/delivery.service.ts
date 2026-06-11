@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   forwardRef,
   Inject,
@@ -49,6 +50,34 @@ export class DeliveryService {
       throw new Error("DeliveryService transactions require a TypeOrmTransactionContext");
     }
     return context.manager;
+  }
+
+  async updateDeliveryNumber(
+    companyId: number,
+    id: number,
+    deliveryNumber: string,
+  ): Promise<DeliveryNote> {
+    const trimmed = deliveryNumber.trim();
+    if (!trimmed) {
+      throw new BadRequestException("Delivery number is required");
+    }
+
+    const note = await this.deliveryNoteRepo.findOneForCompany(id, companyId);
+    if (!note) {
+      throw new NotFoundException(`Delivery note ${id} not found`);
+    }
+
+    if (trimmed === note.deliveryNumber) {
+      return note;
+    }
+
+    const existing = await this.deliveryNoteRepo.findOneByNumber(companyId, trimmed);
+    if (existing && existing.id !== note.id) {
+      throw new ConflictException(`Delivery note ${trimmed} already exists`);
+    }
+
+    note.deliveryNumber = trimmed;
+    return this.deliveryNoteRepo.save(note);
   }
 
   async create(

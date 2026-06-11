@@ -1439,6 +1439,7 @@ export {
   useUpdateCpoItem,
   useUpdateCpoStatus,
   useUpdateDashboardPreferences,
+  useUpdateDeliveryNote,
   useUpdateInboundEmailConfig,
   useUpdateInvoiceItem,
   useUpdateJobCard,

@@ -2,6 +2,7 @@ import { Injectable, Logger } from "@nestjs/common";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { fromISO, fromJSDate, now } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import {
   ClarificationStatus,
@@ -223,6 +224,7 @@ export class InvoiceExtractionService {
     private readonly correctionRepo: InvoiceExtractionCorrectionRepository,
     private readonly aiUsageService: AiUsageService,
     private readonly aiChatService: AiChatService,
+    private readonly extractionMetricService: ExtractionMetricService,
   ) {}
 
   async extractFromImage(
@@ -256,11 +258,13 @@ export class InvoiceExtractionService {
         content: response,
         providerUsed,
         tokensUsed,
-      } = await this.aiChatService.chatWithImage(
-        imageBase64,
-        mediaType,
-        "Extract the invoice details from this scanned invoice image. Return JSON only.",
-        systemPrompt,
+      } = await this.extractionMetricService.time("stock-control-invoices", "extract", () =>
+        this.aiChatService.chatWithImage(
+          imageBase64,
+          mediaType,
+          "Extract the invoice details from this scanned invoice image. Return JSON only.",
+          systemPrompt,
+        ),
       );
 
       this.aiUsageService.log({

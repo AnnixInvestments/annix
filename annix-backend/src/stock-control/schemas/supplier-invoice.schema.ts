@@ -107,6 +107,13 @@ SupplierInvoiceSchema.virtual("approvedByUser", {
   justOne: true,
 });
 
+SupplierInvoiceSchema.virtual("linkedDeliveryNotes", {
+  ref: "DeliveryNote",
+  localField: "linkedDeliveryNoteIds",
+  foreignField: "_id",
+  justOne: false,
+});
+
 SupplierInvoiceSchema.virtual("items", {
   ref: "SupplierInvoiceItem",
   localField: "_id",

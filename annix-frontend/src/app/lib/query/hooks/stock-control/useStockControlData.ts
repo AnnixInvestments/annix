@@ -144,6 +144,12 @@ export const useDeleteDeliveryNote = createMutationHook(
   [stockControlKeys.deliveries.all],
 );
 
+export const useUpdateDeliveryNote = createMutationHook(
+  (params: { id: number; deliveryNumber: string }) =>
+    stockControlApiClient.updateDeliveryNote(params.id, { deliveryNumber: params.deliveryNumber }),
+  [stockControlKeys.deliveries.all, stockControlKeys.invoices.all],
+);
+
 export const useLinkDeliveryNoteToStock = createMutationHook(
   (params: {
     id: number;
