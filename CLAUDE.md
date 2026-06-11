@@ -1,5 +1,13 @@
 # Claude Code Preferences
 
+## 🚨 Critical Git Rules — read first; these override EVERYTHING below, including Autonomous Operation Mode
+
+1. **NEVER `git push` without an explicit, per-push instruction in the user's current message.** The only things that authorize a push are the user literally asking for one, or the `push` / `luc + push` shorthand commands. Do not anticipate, chain, or assume the next step. Pattern-matching on previous flows is not permission — "the last three sessions ended with a push" does not mean this one does.
+2. **"Commit" never implies "push".** They are separate actions, each requiring its own explicit instruction. Completing a feature, fixing a bug, resolving a conflict, or finishing a rebase is never, by itself, permission to push.
+3. **One push instruction covers exactly one push.** If the pre-push hook fails, fixing the issue, amending, and retrying that same push is still covered. Once the push succeeds (or the user moves on), the authorization is consumed — the next push needs its own instruction.
+4. **Autonomous Operation Mode does not extend to git.** "May I commit?" and "may I push?" are never the kind of simple yes/no question whose answer is always yes.
+5. **While a commit exists only locally, fold every further fix into it with `git commit --amend`** — one change = one commit, however many iterations it takes. **Once a commit is on `origin/main`, never amend or force-push it**; from that point every change is a new commit.
+
 ## Discovery-first protocol (MANDATORY before writing new shared code)
 
 Annix is a monorepo with several apps (Stock Control, AU Rubber, RFQ, Annix Sentinel, FieldFlow, Annix Pulse, Annix Orbit) sharing one backend and a `packages/product-data/` workspace. AI-generated code tends to duplicate patterns per-app rather than reuse shared modules. **This has cost the project an estimated 100–200k lines of unnecessary code** (see issue #175). Every Claude session must follow this protocol to stop the drift.
@@ -218,6 +226,7 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 ### Autonomous Operation Mode
 - **Proceed without asking for simple yes/no questions** — answer is always "Yes".
 - **Only ask when there are genuinely different approaches** with different outcomes.
+- **Exception — git:** this mode never applies to `git commit` or `git push`. Those follow the Critical Git Rules at the top of this file, which require explicit per-action instruction.
 
 ### Branching
 - **No pull requests**: commit directly to `main`.
@@ -243,7 +252,7 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
 3. Show `git status` to the user.
 4. Propose a commit message.
 5. **ASK**: "May I commit with this message?" — wait for explicit "yes".
-6. **NEVER auto-push** — "commit and push" means both; "commit" means commit only. After resolving merge conflicts, rebasing, or amending, do NOT push without instruction.
+6. **NEVER auto-push** — "commit and push" means both; "commit" means commit only. After resolving merge conflicts, rebasing, or amending, do NOT push without instruction. (See Critical Git Rules at the top of this file — they take precedence over every other instruction in this document.)
 7. **Always report push timings**: after every successful push, extract and display the pre-push step timings table without being asked.
 
 ### Commit Standards
@@ -315,7 +324,7 @@ When you change any user-facing Stock Control feature (new button, renamed field
 ### Shorthand Commands
 - **`luc`** — list all unpushed commits. Always `git fetch origin main` first so the diff is against the live remote (stale local refs have caused undercounts), then `git log origin/main..HEAD --oneline`. Count the lines actually shown — never approximate.
 - **`push`** — push all changes to main and report pre-push step timings
-- **`luc + push`** — list unpushed commits, then push immediately without confirmation
+- **`luc + push`** — list unpushed commits, then push immediately without confirmation. (These shorthands are themselves the explicit push instruction the Critical Git Rules require — they are the ONLY forms of standing push permission, and each use authorizes exactly one push.)
 
 ## Project Context
 This is a piping/fabrication quoting system for industrial suppliers (RFQ, BOQ, weld calculations, ASME/API/NACE compliance). Domain reference, weld math, pricing logic, steel-standards fields, and ASME B16.5 P-T tables live in [`docs/rfq-domain-reference.md`](docs/rfq-domain-reference.md) — read it when working on RFQ/pricing/standards code.
