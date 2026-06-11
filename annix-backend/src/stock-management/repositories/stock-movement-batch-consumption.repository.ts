@@ -10,4 +10,8 @@ export abstract class StockMovementBatchConsumptionRepository extends CrudReposi
     productId: number,
     limit: number,
   ): Promise<StockMovementBatchConsumption[]>;
+  abstract findByPurchaseBatch(
+    companyId: number,
+    purchaseBatchId: number,
+  ): Promise<StockMovementBatchConsumption[]>;
 }

@@ -55,6 +55,9 @@ export class StockPurchaseBatch {
   @Prop({ type: Number, required: false })
   createdByStaffId: number;
 
+  @Prop({ type: Number, required: false })
+  reconciledInvoiceId: number;
+
   @Prop({ type: String, required: false })
   notes: string;
 

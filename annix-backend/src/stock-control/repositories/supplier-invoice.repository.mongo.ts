@@ -123,6 +123,24 @@ export class MongoSupplierInvoiceRepository
     return this.toDomainList(docs);
   }
 
+  async findCompletedLinkedToDeliveryNote(
+    companyId: number,
+    deliveryNoteId: number,
+  ): Promise<SupplierInvoice[]> {
+    const docs = await this.documents
+      .find({
+        companyId,
+        extractionStatus: InvoiceExtractionStatus.COMPLETED,
+        $or: [
+          { deliveryNoteId: { $in: [deliveryNoteId, String(deliveryNoteId)] } },
+          { linkedDeliveryNoteIds: deliveryNoteId },
+        ],
+      })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
   countByExtractionStatusForCompany(
     companyId: number,
     status: InvoiceExtractionStatus,

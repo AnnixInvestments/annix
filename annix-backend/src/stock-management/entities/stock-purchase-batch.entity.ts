@@ -99,6 +99,9 @@ export class StockPurchaseBatch {
   @Column({ name: "created_by_staff_id", type: "integer", nullable: true })
   createdByStaffId: number | null;
 
+  @Column({ name: "reconciled_invoice_id", type: "integer", nullable: true })
+  reconciledInvoiceId: number | null;
+
   @Column({ name: "notes", type: "text", nullable: true })
   notes: string | null;
 

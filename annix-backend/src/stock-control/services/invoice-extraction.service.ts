@@ -1095,14 +1095,25 @@ export class InvoiceExtractionService {
       return;
     }
 
+    const linkedIdsRaw = invoice.linkedDeliveryNoteIds;
+    const linkedIds = linkedIdsRaw ? linkedIdsRaw : [];
+    const deliveryNoteIds = Array.from(
+      new Set(
+        [Number(invoice.deliveryNoteId), ...linkedIds.map(Number)].filter(
+          (id) => Number.isFinite(id) && id > 0,
+        ),
+      ),
+    );
+
     try {
       const result = await this.fifoBridgeService.createBatchesFromInvoice(
         invoice.companyId,
         lines,
+        deliveryNoteIds,
       );
       const errorSuffix = result.errors.length > 0 ? ` (${result.errors.join("; ")})` : "";
       this.logger.log(
-        `FIFO bridge for invoice ${invoice.id}: ${result.created} batch(es) created, ${result.skipped} skipped${errorSuffix}`,
+        `FIFO bridge for invoice ${invoice.id}: ${result.created} batch(es) created, ${result.reconciled} delivery batch(es) cost-reconciled, ${result.skipped} skipped${errorSuffix}`,
       );
     } catch (error) {
       this.logger.error(`FIFO bridge failed for invoice ${invoice.id}: ${error.message}`);

@@ -105,7 +105,9 @@ describe("InvoiceExtractionService", () => {
   };
 
   const mockFifoBridgeService = {
-    createBatchesFromInvoice: jest.fn().mockResolvedValue({ created: 0, skipped: 0, errors: [] }),
+    createBatchesFromInvoice: jest
+      .fn()
+      .mockResolvedValue({ created: 0, reconciled: 0, skipped: 0, errors: [] }),
   };
 
   beforeEach(async () => {

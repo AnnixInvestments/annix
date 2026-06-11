@@ -38,6 +38,10 @@ export abstract class SupplierInvoiceRepository extends CrudRepository<SupplierI
   ): Promise<SupplierInvoice[]>;
   abstract findFailedForCompany(companyId: number): Promise<SupplierInvoice[]>;
   abstract findUnlinkedForCompany(companyId: number): Promise<SupplierInvoice[]>;
+  abstract findCompletedLinkedToDeliveryNote(
+    companyId: number,
+    deliveryNoteId: number,
+  ): Promise<SupplierInvoice[]>;
   abstract countByExtractionStatusForCompany(
     companyId: number,
     status: InvoiceExtractionStatus,
