@@ -110,6 +110,38 @@ export class PostgresJobCardRepository
     });
   }
 
+  async findActiveByJobAndJcNumber(
+    companyId: number,
+    jobNumber: string,
+    jcNumber: string,
+  ): Promise<JobCard[]> {
+    const cards = await this.repository.find({
+      where: { companyId, jobNumber, jcNumber },
+      order: { id: "DESC" },
+    });
+    return cards.filter((jc) => !jc.supersededById);
+  }
+
+  async countDeliveryChildrenForParents(
+    companyId: number,
+    parentJobCardIds: number[],
+  ): Promise<Map<number, number>> {
+    if (parentJobCardIds.length === 0) {
+      return new Map();
+    }
+    const children = await this.repository.find({
+      where: { companyId, parentJobCardId: In(parentJobCardIds) },
+      select: ["id", "parentJobCardId"],
+    });
+    return children.reduce((map, child) => {
+      const parentId = Number(child.parentJobCardId);
+      if (Number.isFinite(parentId)) {
+        map.set(parentId, (map.get(parentId) || 0) + 1);
+      }
+      return map;
+    }, new Map<number, number>());
+  }
+
   findForCpo(cpoId: number, companyId: number): Promise<JobCard[]> {
     return this.repository.find({
       where: { cpoId, companyId },

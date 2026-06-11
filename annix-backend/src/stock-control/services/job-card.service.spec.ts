@@ -11,6 +11,7 @@ import { MovementType, ReferenceType, StockMovement } from "../entities/stock-mo
 import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
 import { JobCardService } from "./job-card.service";
 import { RequisitionService } from "./requisition.service";
@@ -122,6 +123,10 @@ describe("JobCardService", () => {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
   };
 
+  const mockJobCardLineItemRepo = {
+    countForJobCard: jest.fn().mockResolvedValue(0),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -132,6 +137,7 @@ describe("JobCardService", () => {
         { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
         { provide: JobCardCoatingAnalysisRepository, useValue: mockCoatingAnalysisRepo },
         { provide: JobCardJobFileRepository, useValue: mockJobFileRepo },
+        { provide: JobCardLineItemRepository, useValue: mockJobCardLineItemRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },

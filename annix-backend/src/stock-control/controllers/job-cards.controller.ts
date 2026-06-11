@@ -104,9 +104,15 @@ export class JobCardsController {
       req.user.companyId,
       jobCards.map((jc) => ({ id: jc.id, workflowStatus: jc.workflowStatus })),
     );
+    const parentIds = jobCards.filter((jc) => !jc.parentJobCardId).map((jc) => jc.id);
+    const childCounts = await this.jobCardService.deliveryChildCounts(
+      req.user.companyId,
+      parentIds,
+    );
     return jobCards.map((jc) => ({
       ...jc,
       effectiveWorkflowStatus: effectiveStatuses[jc.id] || jc.workflowStatus,
+      deliveryJobCardCount: childCounts.get(jc.id) || 0,
     }));
   }
 

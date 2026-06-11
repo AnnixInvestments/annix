@@ -24,6 +24,7 @@ import { MovementType, ReferenceType, StockMovement } from "../entities/stock-mo
 import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
 import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
 import { RequisitionService } from "./requisition.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
@@ -37,6 +38,7 @@ export class JobCardService {
     private readonly allocationRepo: StockAllocationRepository,
     private readonly coatingAnalysisRepo: JobCardCoatingAnalysisRepository,
     private readonly jobFileRepo: JobCardJobFileRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
@@ -625,16 +627,20 @@ export class JobCardService {
 
       if (!pNum || !jcNum) return;
 
+      const refNum = (jc.reference || "").trim().toLowerCase();
+
       let key: string;
       if (jtNum) {
         // Delivery / JT-numbered cards keyed by JT (unchanged).
         key = `${pNum}|${jcNum}|jt:${jtNum}`;
       } else {
         // Plain job cards with no JT (e.g. re-imported the same .xls twice) escaped
-        // dedup before. Key them by page so different pages of one JC aren't merged but
-        // exact re-imports are. Skip CPO parents / delivery children to avoid orphaning.
+        // dedup before. Key them by page AND reference — JT-split imports store the
+        // JT base in `reference` with no jtDnNumber, so without the reference in the
+        // key, distinct JT cards of one JC would merge and hide each other's items.
+        // Skip CPO parents / delivery children to avoid orphaning.
         if (jc.cpoId || jc.parentJobCardId) return;
-        key = `${pNum}|${jcNum}|page:${pageNum}`;
+        key = `${pNum}|${jcNum}|page:${pageNum}|ref:${refNum}`;
       }
 
       const existing = groups.get(key) || [];
@@ -651,9 +657,10 @@ export class JobCardService {
     for (const [_key, cards] of duplicateGroups) {
       groupCount++;
 
-      const winner = cards[0];
+      const ranked = await this.rankDuplicates(cards);
+      const winner = ranked[0];
 
-      const losers = cards.slice(1);
+      const losers = ranked.slice(1);
 
       for (const loser of losers) {
         const versionLabel = `V${loser.versionNumber} - ${loser.jobNumber}`;
@@ -691,5 +698,43 @@ export class JobCardService {
     );
 
     return { merged: mergedCount, groups: groupCount };
+  }
+
+  async deliveryChildCounts(
+    companyId: number,
+    parentJobCardIds: number[],
+  ): Promise<Map<number, number>> {
+    return this.jobCardRepo.countDeliveryChildrenForParents(companyId, parentJobCardIds);
+  }
+
+  // The survivor of a duplicate group must be the most complete card: one with line
+  // items beats an empty one, then the furthest-progressed workflow wins (so an
+  // in-flight approval is never superseded by a fresh re-imported draft), newest last.
+  private async rankDuplicates(cards: JobCard[]): Promise<JobCard[]> {
+    const WORKFLOW_RANK: Record<string, number> = {
+      draft: 0,
+      manager_approval: 1,
+      admin_approval: 2,
+      manager_final: 3,
+      dispatched: 4,
+    };
+
+    const scored = await Promise.all(
+      cards.map(async (card) => ({
+        card,
+        itemCount: await this.lineItemRepo.countForJobCard(card.id),
+        workflowRank: WORKFLOW_RANK[card.workflowStatus] ?? 0,
+      })),
+    );
+
+    return scored
+      .sort((a, b) => {
+        const aHasItems = a.itemCount > 0 ? 1 : 0;
+        const bHasItems = b.itemCount > 0 ? 1 : 0;
+        if (aHasItems !== bHasItems) return bHasItems - aHasItems;
+        if (a.workflowRank !== b.workflowRank) return b.workflowRank - a.workflowRank;
+        return b.card.id - a.card.id;
+      })
+      .map((entry) => entry.card);
   }
 }

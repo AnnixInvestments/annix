@@ -35,6 +35,15 @@ export abstract class JobCardRepository extends CrudRepository<JobCard> {
     jobCardIds: number[],
   ): Promise<{ jobCardId: number; jtNumbers: string }[]>;
   abstract findDeliveryJobCards(companyId: number, parentJobCardId: number): Promise<JobCard[]>;
+  abstract findActiveByJobAndJcNumber(
+    companyId: number,
+    jobNumber: string,
+    jcNumber: string,
+  ): Promise<JobCard[]>;
+  abstract countDeliveryChildrenForParents(
+    companyId: number,
+    parentJobCardIds: number[],
+  ): Promise<Map<number, number>>;
   abstract findForCpo(cpoId: number, companyId: number): Promise<JobCard[]>;
   abstract findForCpoWithLineItemsOrdered(cpoId: number, companyId: number): Promise<JobCard[]>;
   abstract findChildJobCardsByCpoCreatedAsc(cpoId: number, companyId: number): Promise<JobCard[]>;

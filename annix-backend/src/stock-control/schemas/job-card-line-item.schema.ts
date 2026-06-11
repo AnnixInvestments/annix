@@ -34,6 +34,9 @@ export class JobCardLineItem {
   @Prop({ type: Number, required: false })
   m2: number;
 
+  @Prop({ type: Number, required: false })
+  liningM2: number;
+
   // Developed flat plate take-off for a fabricated tank/chute line, sourced
   // from the shared Nix plateBom. Embedded sub-document (not a collection).
   // Drives the polymer rubber cutting-diagram nesting; null for non-tank rows.

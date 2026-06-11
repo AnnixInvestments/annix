@@ -117,6 +117,47 @@ export class MongoJobCardRepository
     return this.toDomainList(docs);
   }
 
+  async findActiveByJobAndJcNumber(
+    companyId: number,
+    jobNumber: string,
+    jcNumber: string,
+  ): Promise<JobCard[]> {
+    const docs = await this.documents
+      .find({
+        companyId,
+        jobNumber,
+        jcNumber,
+        $or: [{ supersededById: null }, { supersededById: { $exists: false } }],
+      })
+      .sort({ _id: -1 })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async countDeliveryChildrenForParents(
+    companyId: number,
+    parentJobCardIds: number[],
+  ): Promise<Map<number, number>> {
+    if (parentJobCardIds.length === 0) {
+      return new Map();
+    }
+    const idVariants = [...parentJobCardIds, ...parentJobCardIds.map(String)];
+    const rows = await this.documents
+      .aggregate<{ _id: unknown; n: number }>([
+        { $match: { companyId, parentJobCardId: { $in: idVariants } } },
+        { $group: { _id: "$parentJobCardId", n: { $sum: 1 } } },
+      ])
+      .exec();
+    return rows.reduce((map, row) => {
+      const parentId = Number(row._id);
+      if (Number.isFinite(parentId)) {
+        map.set(parentId, (map.get(parentId) || 0) + row.n);
+      }
+      return map;
+    }, new Map<number, number>());
+  }
+
   async findForCpo(cpoId: number, companyId: number): Promise<JobCard[]> {
     const docs = await this.documents.find({ cpoId, companyId }).lean().exec();
     return this.toDomainList(docs);
