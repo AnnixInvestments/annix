@@ -14,7 +14,7 @@ annix-backend-latest.tar.gz
 
 # IDE files
 .idea
-.claude/
+.claude/*
 !.claude/skills/
 !.claude/skills/**
 
