@@ -10,7 +10,6 @@ import {
   SessionExpiredError,
 } from "@/app/lib/api/client";
 import { nowISO } from "@/app/lib/datetime";
-import { toNumericDraftId } from "./draft-id";
 import type { PipeItem } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import { nixApi } from "@/app/lib/nix";
@@ -39,6 +38,7 @@ import {
   submitBoqForRfq,
   validateItemsForSubmission,
 } from "../utils/rfqSubmissionHelpers";
+import { toNumericDraftId } from "./draft-id";
 import { useOrchestratorCalculations } from "./useOrchestratorCalculations";
 import { usePressureClassSelection } from "./usePressureClassSelection";
 

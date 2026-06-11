@@ -21,8 +21,8 @@ import {
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
 import { calculateBendWeldVolume } from "@/app/lib/utils/pipeCalculations";
-import { combineClassWithFlangeType } from "@/app/lib/utils/rfqFlangeCalculations";
 import { saddleWeldLengthMm } from "@/app/lib/utils/rfq/saddleWeld";
+import { combineClassWithFlangeType } from "@/app/lib/utils/rfqFlangeCalculations";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 
 export interface BendEntry {

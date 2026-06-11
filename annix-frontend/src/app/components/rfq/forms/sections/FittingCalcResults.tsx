@@ -15,12 +15,12 @@ import {
   calculateFittingWeldVolume,
   calculatePipeWeightPerMeter,
 } from "@/app/lib/utils/pipeCalculations";
+import { saddleWeldLengthMm } from "@/app/lib/utils/rfq/saddleWeld";
 import {
   calculateBlankFlangeWeight,
   flangeWeightOr,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
-import { saddleWeldLengthMm } from "@/app/lib/utils/rfq/saddleWeld";
 import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 import type { FlangeStandardItem, PressureClassItem, SteelSpecItem } from "../shared";
