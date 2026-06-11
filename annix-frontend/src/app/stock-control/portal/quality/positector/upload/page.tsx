@@ -4,7 +4,9 @@ import { toPairs as entries } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   PositectorImportResult,
   PositectorUploadResponse,
@@ -81,6 +83,8 @@ const BUNDLE_ENTITY_COLORS: Record<string, string> = {
   unknown: "bg-gray-100 text-gray-800",
 };
 
+const POSITECTOR_ANALYZE_FALLBACK_MS = 90000;
+
 export default function PositectorUploadPage() {
   const router = useRouter();
   const uploadFileMutation = useUploadPositectorFile();
@@ -98,6 +102,7 @@ export default function PositectorUploadPage() {
   const [bundleResult, setBundleResult] = useState<BundleImportResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfPreview = usePdfPreview();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const validExtensions = [".json", ".csv", ".txt", ".pdf"];
 
@@ -163,38 +168,56 @@ export default function PositectorUploadPage() {
     }
   }, []);
 
-  const processFile = useCallback(async (file: File) => {
-    if (!isValidFile(file)) {
-      setError(`Invalid file type. Accepted: ${validExtensions.join(", ")}`);
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      setError(null);
-      setUploadResponse(null);
-      setImportResult(null);
-      setBundleAnalysis(null);
-      setBundleResult(null);
-
-      const isPdf = file.name.toLowerCase().endsWith(".pdf");
-      if (isPdf) {
-        const analysis = await analyzeBundleMutation.mutateAsync(file);
-        if (analysis.reports.length > 1) {
-          setBundleAnalysis({ file, ...analysis });
-          setIsUploading(false);
-          return;
-        }
+  const processFile = useCallback(
+    async (file: File) => {
+      if (!isValidFile(file)) {
+        setError(`Invalid file type. Accepted: ${validExtensions.join(", ")}`);
+        return;
       }
 
-      const result = await uploadFileMutation.mutateAsync(file);
-      setUploadResponse(result);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to parse file");
-    } finally {
-      setIsUploading(false);
-    }
-  }, []);
+      try {
+        setIsUploading(true);
+        setError(null);
+        setUploadResponse(null);
+        setImportResult(null);
+        setBundleAnalysis(null);
+        setBundleResult(null);
+
+        const isPdf = file.name.toLowerCase().endsWith(".pdf");
+        if (isPdf) {
+          const stats = await metricsApi
+            .extractionStats("stock-control-quality", "positector-analyze")
+            .catch(() => null);
+          const learnedMs = stats == null ? null : stats.averageMs;
+          const estimatedDurationMs =
+            learnedMs == null || learnedMs <= 0 ? POSITECTOR_ANALYZE_FALLBACK_MS : learnedMs;
+          showExtraction({
+            brand: "stock-control",
+            label: "Analyzing PosiTector PDF…",
+            estimatedDurationMs,
+          });
+          try {
+            const analysis = await analyzeBundleMutation.mutateAsync(file);
+            if (analysis.reports.length > 1) {
+              setBundleAnalysis({ file, ...analysis });
+              setIsUploading(false);
+              return;
+            }
+          } finally {
+            hideExtraction();
+          }
+        }
+
+        const result = await uploadFileMutation.mutateAsync(file);
+        setUploadResponse(result);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Failed to parse file");
+      } finally {
+        setIsUploading(false);
+      }
+    },
+    [showExtraction, hideExtraction],
+  );
 
   const handleBundleImport = useCallback(async () => {
     if (!bundleAnalysis) return;

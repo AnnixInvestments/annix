@@ -70,20 +70,20 @@ export class JobCard {
   @Prop({ type: String, required: false })
   sourceFileName: string;
 
-  @Prop({ type: String, required: false })
-  cpoId: string;
+  @Prop({ type: Number, required: false })
+  cpoId: number;
 
   @Prop({ type: Boolean, default: false })
   isCpoCalloff: boolean;
 
-  @Prop({ type: String, required: false })
-  parentJobCardId: string;
+  @Prop({ type: Number, required: false })
+  parentJobCardId: number;
 
   @Prop({ type: String, required: false })
   jtDnNumber: string;
 
-  @Prop({ type: String, required: false })
-  supersededById: string;
+  @Prop({ type: Number, required: false })
+  supersededById: number;
 
   @Prop({ type: String, required: false })
   workflowCeiling: string;

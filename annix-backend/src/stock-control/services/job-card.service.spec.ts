@@ -1,18 +1,18 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
 import { AuditService } from "../../audit/audit.service";
-import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { StockAllocation } from "../entities/stock-allocation.entity";
-import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
 import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
+import { ReconciliationDocumentRepository } from "../repositories/reconciliation-document.repository";
+import { ReconciliationItemRepository } from "../repositories/reconciliation-item.repository";
 import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
+import { StockReturnRepository } from "../repositories/stock-return.repository";
 import { JobCardService } from "./job-card.service";
 import { RequisitionService } from "./requisition.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
@@ -28,16 +28,6 @@ jest.mock("../../lib/datetime", () => ({
 
 describe("JobCardService", () => {
   let service: JobCardService;
-
-  const mockQueryBuilderResult: unknown[] = [];
-  const mockQueryBuilder = {
-    where: jest.fn().mockReturnThis(),
-    andWhere: jest.fn().mockReturnThis(),
-    orderBy: jest.fn().mockReturnThis(),
-    take: jest.fn().mockReturnThis(),
-    skip: jest.fn().mockReturnThis(),
-    getMany: jest.fn().mockImplementation(() => Promise.resolve(mockQueryBuilderResult)),
-  };
 
   const jobCardFindOne = jest.fn();
   const jobCardFind = jest.fn();
@@ -70,17 +60,35 @@ describe("JobCardService", () => {
     findOnePendingForCompany: allocFindOne,
     findOneForCompanyWithRelations: allocFindOne,
     findForJobCardPaginated: jest.fn(),
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+    remove: jest.fn(),
   };
 
   const mockStockItemRepo = {
     findOne: jest.fn(),
-    save: jest.fn(),
+    findOneForCompany: jest.fn(),
+    save: jest.fn().mockImplementation((entity) => Promise.resolve(entity)),
   };
 
   const mockMovementRepo = {
-    create: jest.fn().mockImplementation((data) => ({ ...data })),
-    save: jest.fn(),
+    create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
+  };
+
+  const mockStockReturnRepo = {
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    remove: jest.fn(),
+  };
+
+  const mockReconciliationItemRepo = {
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    remove: jest.fn(),
+  };
+
+  const mockReconciliationDocumentRepo = {
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    remove: jest.fn(),
   };
 
   const mockCoatingAnalysisRepo = {
@@ -103,28 +111,13 @@ describe("JobCardService", () => {
     log: jest.fn().mockResolvedValue(null),
   };
 
-  const mockTxManager = {
-    findOne: jest.fn(),
-    save: jest.fn().mockImplementation((_entity, data) => Promise.resolve({ id: 1, ...data })),
-    create: jest.fn().mockImplementation((_entity, data) => ({ ...data })),
-    query: jest.fn().mockResolvedValue([]),
-    remove: jest.fn().mockResolvedValue(null),
-  };
-
-  const mockTxRunner = {
-    run: jest
-      .fn()
-      .mockImplementation((work: (ctx: unknown) => Promise<unknown>) =>
-        work(new TypeOrmTransactionContext(mockTxManager as never)),
-      ),
-  };
-
   const mockJobFileRepo = {
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
   };
 
   const mockJobCardLineItemRepo = {
     countForJobCard: jest.fn().mockResolvedValue(0),
+    deleteForJobCard: jest.fn().mockResolvedValue(null),
   };
 
   beforeEach(async () => {
@@ -133,15 +126,17 @@ describe("JobCardService", () => {
         JobCardService,
         { provide: JobCardRepository, useValue: mockJobCardRepo },
         { provide: StockAllocationRepository, useValue: mockAllocationRepo },
-        { provide: getRepositoryToken(StockItem), useValue: mockStockItemRepo },
-        { provide: getRepositoryToken(StockMovement), useValue: mockMovementRepo },
         { provide: JobCardCoatingAnalysisRepository, useValue: mockCoatingAnalysisRepo },
         { provide: JobCardJobFileRepository, useValue: mockJobFileRepo },
         { provide: JobCardLineItemRepository, useValue: mockJobCardLineItemRepo },
+        { provide: StockItemRepository, useValue: mockStockItemRepo },
+        { provide: StockMovementRepository, useValue: mockMovementRepo },
+        { provide: StockReturnRepository, useValue: mockStockReturnRepo },
+        { provide: ReconciliationItemRepository, useValue: mockReconciliationItemRepo },
+        { provide: ReconciliationDocumentRepository, useValue: mockReconciliationDocumentRepo },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: WorkflowNotificationService, useValue: mockNotificationService },
-        { provide: TransactionRunner, useValue: mockTxRunner },
         { provide: AuditService, useValue: mockAuditService },
       ],
     }).compile();
@@ -224,19 +219,37 @@ describe("JobCardService", () => {
   });
 
   describe("remove", () => {
-    it("removes the job card", async () => {
-      const card = { id: 1, companyId: 1 };
+    it("removes the job card and its dependents", async () => {
+      const card = { id: 1, companyId: 1, jobNumber: "JC-001" };
       mockJobCardRepo.findOne.mockResolvedValue(card);
 
       await service.remove(1, 1);
-      expect(mockTxRunner.run).toHaveBeenCalled();
-      expect(mockTxManager.query).toHaveBeenCalled();
+
+      expect(mockStockReturnRepo.findManyWhere).toHaveBeenCalledWith({
+        jobCardId: 1,
+        companyId: 1,
+      });
+      expect(mockAllocationRepo.findManyWhere).toHaveBeenCalledWith({
+        jobCardId: 1,
+        companyId: 1,
+      });
+      expect(mockReconciliationItemRepo.findManyWhere).toHaveBeenCalledWith({
+        jobCardId: 1,
+        companyId: 1,
+      });
+      expect(mockReconciliationDocumentRepo.findManyWhere).toHaveBeenCalledWith({
+        jobCardId: 1,
+        companyId: 1,
+      });
+      expect(mockJobCardLineItemRepo.deleteForJobCard).toHaveBeenCalledWith(1);
+      expect(mockJobCardRepo.remove).toHaveBeenCalledWith(card);
     });
 
     it("throws NotFoundException when job card missing", async () => {
       mockJobCardRepo.findOne.mockResolvedValue(null);
 
       await expect(service.remove(1, 999)).rejects.toThrow(NotFoundException);
+      expect(mockJobCardRepo.remove).not.toHaveBeenCalled();
     });
   });
 
@@ -251,17 +264,24 @@ describe("JobCardService", () => {
     it("deducts stock and creates allocation and movement", async () => {
       const stockItem = { id: 10, name: "Paint A", quantity: 100, minStockLevel: 0, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
 
       const result = await service.allocateStock(1, allocationData);
 
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 95 }),
       );
-      expect(mockTxManager.create).toHaveBeenCalledWith(
-        StockMovement,
+      expect(mockAllocationRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          stockItemId: 10,
+          jobCardId: 1,
+          quantityUsed: 5,
+          pendingApproval: false,
+        }),
+      );
+      expect(mockMovementRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           movementType: MovementType.OUT,
           quantity: 5,
@@ -272,14 +292,15 @@ describe("JobCardService", () => {
     });
 
     it("throws NotFoundException when stock item not found", async () => {
-      mockTxManager.findOne.mockResolvedValueOnce(null);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.allocateStock(1, allocationData)).rejects.toThrow(NotFoundException);
     });
 
     it("throws NotFoundException when job card not found", async () => {
       const stockItem = { id: 10, quantity: 100, companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(null);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(null);
 
       await expect(service.allocateStock(1, allocationData)).rejects.toThrow(NotFoundException);
     });
@@ -287,7 +308,8 @@ describe("JobCardService", () => {
     it("throws BadRequestException when insufficient stock", async () => {
       const stockItem = { id: 10, quantity: 2, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
 
       await expect(
         service.allocateStock(1, { ...allocationData, quantityUsed: 10 }),
@@ -297,7 +319,8 @@ describe("JobCardService", () => {
     it("triggers reorder requisition when stock drops below minimum", async () => {
       const stockItem = { id: 10, name: "Paint A", quantity: 20, minStockLevel: 18, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
 
       await service.allocateStock(1, allocationData);
@@ -308,7 +331,8 @@ describe("JobCardService", () => {
     it("does not trigger reorder when minStockLevel is 0", async () => {
       const stockItem = { id: 10, name: "Paint A", quantity: 10, minStockLevel: 0, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
 
       await service.allocateStock(1, allocationData);
@@ -319,7 +343,8 @@ describe("JobCardService", () => {
     it("logs audit entry after allocation", async () => {
       const stockItem = { id: 10, name: "Paint A", quantity: 100, minStockLevel: 0, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
 
       await service.allocateStock(1, allocationData);
@@ -350,7 +375,8 @@ describe("JobCardService", () => {
         companyId: 1,
       };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue({
         jobCardId: 1,
         companyId: 1,
@@ -360,8 +386,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockTxManager.create).toHaveBeenCalledWith(
-        StockAllocation,
+      expect(mockAllocationRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ pendingApproval: true }),
       );
       expect(mockNotificationService.notifyOverAllocationApproval).toHaveBeenCalled();
@@ -376,7 +401,8 @@ describe("JobCardService", () => {
         companyId: 1,
       };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue({
         jobCardId: 1,
         companyId: 1,
@@ -386,7 +412,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockTxManager.save).not.toHaveBeenCalledWith(StockItem, expect.anything());
+      expect(mockStockItemRepo.save).not.toHaveBeenCalled();
     });
 
     it("accounts for existing allocations when checking over-allocation", async () => {
@@ -398,7 +424,8 @@ describe("JobCardService", () => {
         companyId: 1,
       };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue({
         jobCardId: 1,
         companyId: 1,
@@ -408,8 +435,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, { ...allocationData, quantityUsed: 11 });
 
-      expect(mockTxManager.create).toHaveBeenCalledWith(
-        StockAllocation,
+      expect(mockAllocationRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({ pendingApproval: true }),
       );
     });
@@ -423,7 +449,8 @@ describe("JobCardService", () => {
         companyId: 1,
       };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue({
         jobCardId: 1,
         companyId: 1,
@@ -433,8 +460,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, { ...allocationData, quantityUsed: 10 });
 
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 90 }),
       );
       expect(mockNotificationService.notifyOverAllocationApproval).not.toHaveBeenCalled();
@@ -443,13 +469,13 @@ describe("JobCardService", () => {
     it("skips over-allocation check when no coating analysis exists", async () => {
       const stockItem = { id: 10, name: "Paint A", quantity: 100, minStockLevel: 0, companyId: 1 };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue(null);
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 85 }),
       );
     });
@@ -463,7 +489,8 @@ describe("JobCardService", () => {
         companyId: 1,
       };
       const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
-      mockTxManager.findOne.mockResolvedValueOnce(stockItem).mockResolvedValueOnce(jobCard);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
       mockCoatingAnalysisRepo.findOneForJobCard.mockResolvedValue({
         jobCardId: 1,
         companyId: 1,
@@ -473,8 +500,7 @@ describe("JobCardService", () => {
 
       await service.allocateStock(1, allocationData);
 
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 85 }),
       );
     });
@@ -487,29 +513,29 @@ describe("JobCardService", () => {
         companyId: 1,
         pendingApproval: true,
         quantityUsed: 10,
-        stockItem: { id: 10 },
-        jobCard: { id: 1, jobNumber: "JC-001" },
+        stockItemId: 10,
+        jobCardId: 1,
         allocatedBy: "admin",
       };
       const stockItem = { id: 10, quantity: 50, minStockLevel: 0, companyId: 1 };
+      const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
 
-      mockTxManager.findOne.mockResolvedValueOnce(allocation).mockResolvedValueOnce(stockItem);
+      allocFindOne.mockResolvedValue(allocation);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
 
       const result = await service.approveOverAllocation(1, 5, 99);
 
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 40 }),
       );
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockAllocation,
+      expect(mockAllocationRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           pendingApproval: false,
           approvedByManagerId: 99,
         }),
       );
-      expect(mockTxManager.create).toHaveBeenCalledWith(
-        StockMovement,
+      expect(mockMovementRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           movementType: MovementType.OUT,
           quantity: 10,
@@ -520,7 +546,7 @@ describe("JobCardService", () => {
     });
 
     it("throws NotFoundException when pending allocation not found", async () => {
-      mockTxManager.findOne.mockResolvedValueOnce(null);
+      allocFindOne.mockResolvedValue(null);
 
       await expect(service.approveOverAllocation(1, 999, 99)).rejects.toThrow(NotFoundException);
     });
@@ -530,10 +556,11 @@ describe("JobCardService", () => {
         id: 5,
         pendingApproval: true,
         quantityUsed: 10,
-        stockItem: { id: 10 },
-        jobCard: { id: 1, jobNumber: "JC-001" },
+        stockItemId: 10,
+        jobCardId: 1,
       };
-      mockTxManager.findOne.mockResolvedValueOnce(allocation).mockResolvedValueOnce(null);
+      allocFindOne.mockResolvedValue(allocation);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.approveOverAllocation(1, 5, 99)).rejects.toThrow(NotFoundException);
     });
@@ -543,12 +570,13 @@ describe("JobCardService", () => {
         id: 5,
         pendingApproval: true,
         quantityUsed: 10,
-        stockItem: { id: 10 },
-        jobCard: { id: 1, jobNumber: "JC-001" },
+        stockItemId: 10,
+        jobCardId: 1,
       };
       const stockItem = { id: 10, quantity: 5, companyId: 1 };
 
-      mockTxManager.findOne.mockResolvedValueOnce(allocation).mockResolvedValueOnce(stockItem);
+      allocFindOne.mockResolvedValue(allocation);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
 
       await expect(service.approveOverAllocation(1, 5, 99)).rejects.toThrow(BadRequestException);
     });
@@ -558,13 +586,16 @@ describe("JobCardService", () => {
         id: 5,
         pendingApproval: true,
         quantityUsed: 10,
-        stockItem: { id: 10 },
-        jobCard: { id: 1, jobNumber: "JC-001" },
+        stockItemId: 10,
+        jobCardId: 1,
         allocatedBy: "admin",
       };
       const stockItem = { id: 10, quantity: 15, minStockLevel: 10, companyId: 1 };
+      const jobCard = { id: 1, jobNumber: "JC-001", companyId: 1 };
 
-      mockTxManager.findOne.mockResolvedValueOnce(allocation).mockResolvedValueOnce(stockItem);
+      allocFindOne.mockResolvedValue(allocation);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
+      jobCardFindOne.mockResolvedValue(jobCard);
 
       await service.approveOverAllocation(1, 5, 99);
 
@@ -608,22 +639,20 @@ describe("JobCardService", () => {
         undone: false,
         pendingApproval: false,
         createdAt: new Date("2026-03-13T11:58:00Z"),
-        stockItem: { id: 10 },
-        jobCard: { id: 1 },
+        stockItemId: 10,
+        jobCardId: 1,
       };
       const stockItem = { id: 10, quantity: 40, companyId: 1 };
 
       mockAllocationRepo.findOne.mockResolvedValue(allocation);
-      mockTxManager.findOne.mockResolvedValue(stockItem);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
 
       const result = await service.undoAllocation(1, 5, user);
 
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 50 }),
       );
-      expect(mockTxManager.save).toHaveBeenCalledWith(
-        StockAllocation,
+      expect(mockAllocationRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({
           undone: true,
           undoneByName: "Admin User",
@@ -640,18 +669,17 @@ describe("JobCardService", () => {
         undone: false,
         pendingApproval: false,
         createdAt: new Date("2026-03-13T11:58:00Z"),
-        stockItem: { id: 10 },
-        jobCard: { id: 1 },
+        stockItemId: 10,
+        jobCardId: 1,
       };
       const stockItem = { id: 10, quantity: 40, companyId: 1 };
 
       mockAllocationRepo.findOne.mockResolvedValue(allocation);
-      mockTxManager.findOne.mockResolvedValue(stockItem);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
 
       await service.undoAllocation(1, 5, user);
 
-      expect(mockTxManager.create).toHaveBeenCalledWith(
-        StockMovement,
+      expect(mockMovementRepo.create).toHaveBeenCalledWith(
         expect.objectContaining({
           movementType: MovementType.IN,
           quantity: 10,
@@ -691,19 +719,20 @@ describe("JobCardService", () => {
       await expect(service.undoAllocation(1, 5, user)).rejects.toThrow(BadRequestException);
     });
 
-    it("rolls back transaction on failure", async () => {
+    it("propagates failure when stock item lookup fails", async () => {
       const allocation = {
         id: 5,
         undone: false,
         pendingApproval: false,
         createdAt: new Date("2026-03-13T11:58:00Z"),
-        stockItem: { id: 10 },
-        jobCard: { id: 1 },
+        stockItemId: 10,
+        jobCardId: 1,
       };
       mockAllocationRepo.findOne.mockResolvedValue(allocation);
-      mockTxManager.findOne.mockResolvedValue(null);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.undoAllocation(1, 5, user)).rejects.toThrow(NotFoundException);
+      expect(mockStockItemRepo.save).not.toHaveBeenCalled();
     });
 
     it("logs audit entry on successful undo", async () => {
@@ -714,13 +743,13 @@ describe("JobCardService", () => {
         undone: false,
         pendingApproval: false,
         createdAt: new Date("2026-03-13T11:58:00Z"),
-        stockItem: { id: 10 },
-        jobCard: { id: 1 },
+        stockItemId: 10,
+        jobCardId: 1,
       };
       const stockItem = { id: 10, quantity: 40, companyId: 1 };
 
       mockAllocationRepo.findOne.mockResolvedValue(allocation);
-      mockTxManager.findOne.mockResolvedValue(stockItem);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(stockItem);
 
       await service.undoAllocation(1, 5, user);
 

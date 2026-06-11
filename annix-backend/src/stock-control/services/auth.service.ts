@@ -14,11 +14,7 @@ import { DataSource } from "typeorm";
 import { v4 as uuidv4 } from "uuid";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import { AppRepository, UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { User } from "../../user/entities/user.entity";
@@ -29,7 +25,7 @@ import { AdminTransferStatus } from "../entities/stock-control-admin-transfer.en
 import { BrandingType } from "../entities/stock-control-company.entity";
 import { StockControlInvitationStatus } from "../entities/stock-control-invitation.entity";
 import { StockControlProfile } from "../entities/stock-control-profile.entity";
-import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
+import { StockControlRole } from "../entities/stock-control-user.entity";
 import { PushSubscriptionRepository } from "../repositories/push-subscription.repository";
 import { StaffMemberRepository } from "../repositories/staff-member.repository";
 import { StockControlAdminTransferRepository } from "../repositories/stock-control-admin-transfer.repository";
@@ -37,6 +33,9 @@ import { StockControlCompanyRepository } from "../repositories/stock-control-com
 import { StockControlInvitationRepository } from "../repositories/stock-control-invitation.repository";
 import { StockControlProfileRepository } from "../repositories/stock-control-profile.repository";
 import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
+import { UserLocationAssignmentRepository } from "../repositories/user-location-assignment.repository";
+import { WorkflowNotificationRepository } from "../repositories/workflow-notification.repository";
+import { WorkflowStepAssignmentRepository } from "../repositories/workflow-step-assignment.repository";
 import { CompanyRoleService } from "./company-role.service";
 import { PublicBrandingService } from "./public-branding.service";
 
@@ -64,16 +63,13 @@ export class StockControlAuthService {
     private readonly companyRoleService: CompanyRoleService,
     private readonly passwordService: PasswordService,
     @Optional() private readonly dataSource: DataSource,
-    private readonly txRunner: TransactionRunner,
+    private readonly appRepo: AppRepository,
+    private readonly userAppAccessRepo: UserAppAccessRepository,
+    private readonly userLocationAssignmentRepo: UserLocationAssignmentRepository,
+    private readonly workflowStepAssignmentRepo: WorkflowStepAssignmentRepository,
+    private readonly workflowNotificationRepo: WorkflowNotificationRepository,
   ) {
     this.storageType = this.configService.get<string>("STORAGE_TYPE") || "local";
-  }
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("StockControlAuthService transactions require a TypeOrmTransactionContext");
-    }
-    return context.manager;
   }
 
   private async resolveStorageUrl(path: string | null): Promise<string | null> {
@@ -751,22 +747,35 @@ export class StockControlAuthService {
       }
     }
 
-    await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      if (user.unifiedUserId !== null && user.unifiedUserId !== undefined) {
-        await manager.query(
-          `DELETE FROM user_app_access
-           WHERE user_id = $1
-             AND app_id IN (SELECT id FROM apps WHERE code = 'stock-control')`,
-          [user.unifiedUserId],
-        );
-        await manager.delete(StockControlProfile, { userId: user.unifiedUserId });
+    if (user.unifiedUserId !== null && user.unifiedUserId !== undefined) {
+      const stockControlApp = await this.appRepo.findByCode("stock-control");
+      if (stockControlApp) {
+        const appAccessRows = await this.userAppAccessRepo.findManyWhere({
+          userId: user.unifiedUserId,
+          appId: stockControlApp.id,
+        });
+        await Promise.all(appAccessRows.map((row) => this.userAppAccessRepo.remove(row)));
       }
-      await manager.query("DELETE FROM user_location_assignments WHERE user_id = $1", [user.id]);
-      await manager.query("DELETE FROM workflow_step_assignments WHERE user_id = $1", [user.id]);
-      await manager.query("DELETE FROM workflow_notifications WHERE user_id = $1", [user.id]);
-      await manager.delete(StockControlUser, { id: user.id });
+      const profiles = await this.profileRepo.findManyWhere({ userId: user.unifiedUserId });
+      await Promise.all(profiles.map((profile) => this.profileRepo.remove(profile)));
+    }
+    const locationAssignments = await this.userLocationAssignmentRepo.findManyWhere({
+      userId: user.id,
     });
+    await Promise.all(
+      locationAssignments.map((assignment) => this.userLocationAssignmentRepo.remove(assignment)),
+    );
+    const stepAssignments = await this.workflowStepAssignmentRepo.findManyWhere({
+      userId: user.id,
+    });
+    await Promise.all(
+      stepAssignments.map((assignment) => this.workflowStepAssignmentRepo.remove(assignment)),
+    );
+    const notifications = await this.workflowNotificationRepo.findManyWhere({ userId: user.id });
+    await Promise.all(
+      notifications.map((notification) => this.workflowNotificationRepo.remove(notification)),
+    );
+    await this.userRepo.remove(user);
 
     this.logger.log(`Deleted team member ${user.email} (id=${user.id}) from company ${companyId}`);
     return { message: "Team member deleted successfully." };

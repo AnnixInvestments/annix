@@ -1,6 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, Not, Repository, type DeepPartial as TypeOrmDeepPartial } from "typeorm";
+import {
+  In,
+  IsNull,
+  LessThanOrEqual,
+  Not,
+  Repository,
+  type DeepPartial as TypeOrmDeepPartial,
+} from "typeorm";
 import type { QueryDeepPartialEntity } from "typeorm/query-builder/QueryPartialEntity";
 import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
@@ -221,6 +228,30 @@ export class PostgresRubberDeliveryNoteRepository
     return this.repository.find({
       where: { linkedCocId: IsNull() },
     });
+  }
+
+  findOverdueWithoutCoc(supplierCompanyIds: number[], cutoff: Date): Promise<RubberDeliveryNote[]> {
+    if (supplierCompanyIds.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository.find({
+      where: {
+        supplierCompanyId: In(supplierCompanyIds),
+        linkedCocId: IsNull(),
+        cocOverdueWarnedAt: IsNull(),
+        status: Not(DeliveryNoteStatus.FAILED),
+        versionStatus: DocumentVersionStatus.ACTIVE,
+        createdAt: LessThanOrEqual(cutoff),
+      },
+      order: { createdAt: "ASC" },
+    });
+  }
+
+  async markCocOverdueWarned(ids: number[], warnedAt: Date): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.repository.update(ids, { cocOverdueWarnedAt: warnedAt });
   }
 
   findLinkedSupplierDeliveryNotes(): Promise<RubberDeliveryNote[]> {

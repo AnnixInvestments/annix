@@ -1,9 +1,4 @@
 import { Injectable, Logger } from "@nestjs/common";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import { WorkflowStepAssignment } from "../entities/workflow-step-assignment.entity";
 import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
@@ -47,15 +42,7 @@ export class WorkflowAssignmentService {
     private readonly userRepo: StockControlUserRepository,
     private readonly recipientRepo: WorkflowNotificationRecipientRepository,
     private readonly userLocationRepo: UserLocationAssignmentRepository,
-    private readonly txRunner: TransactionRunner,
   ) {}
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("WorkflowAssignmentService transactions require a TypeOrmTransactionContext");
-    }
-    return context.manager;
-  }
 
   async allAssignments(companyId: number): Promise<StepAssignment[]> {
     const assignments = await this.assignmentRepo.findForCompanyWithUser(companyId);
@@ -133,25 +120,24 @@ export class WorkflowAssignmentService {
         ? secondaryUserId
         : null;
 
-    await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      await manager.delete(WorkflowStepAssignment, { companyId, workflowStep: step });
+    const existingAssignments = await this.assignmentRepo.findManyWhere({
+      companyId,
+      workflowStep: step,
+    });
+    await Promise.all(existingAssignments.map((existing) => this.assignmentRepo.remove(existing)));
 
-      if (cleanedIds.length === 0) {
-        return;
-      }
-
-      const assignments = cleanedIds.map((userId) =>
-        manager.create(WorkflowStepAssignment, {
+    if (cleanedIds.length > 0) {
+      const assignments = this.assignmentRepo.buildMany(
+        cleanedIds.map((userId) => ({
           companyId,
           workflowStep: step,
           userId,
           isPrimary: cleanedPrimary === userId,
           secondaryUserId: cleanedPrimary === userId ? cleanedSecondary : null,
-        }),
+        })),
       );
-      await manager.save(assignments);
-    });
+      await this.assignmentRepo.saveMany(assignments);
+    }
 
     this.logger.log(
       `Updated ${step} assignments for company ${companyId}: ${cleanedIds.join(", ")}`,

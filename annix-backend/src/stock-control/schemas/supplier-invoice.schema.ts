@@ -16,8 +16,8 @@ export class SupplierInvoice {
   @Prop({ type: Number, required: true })
   companyId: number;
 
-  @Prop({ type: String, required: false })
-  deliveryNoteId: string;
+  @Prop({ type: Number, required: false })
+  deliveryNoteId: number;
 
   @Prop({ type: String, required: true })
   invoiceNumber: string;

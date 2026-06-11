@@ -64,6 +64,11 @@ export abstract class RubberDeliveryNoteRepository extends CrudRepository<Rubber
     statuses: DeliveryNoteStatus[],
   ): Promise<RubberDeliveryNote[]>;
   abstract findAllUnlinked(): Promise<RubberDeliveryNote[]>;
+  abstract findOverdueWithoutCoc(
+    supplierCompanyIds: number[],
+    cutoff: Date,
+  ): Promise<RubberDeliveryNote[]>;
+  abstract markCocOverdueWarned(ids: number[], warnedAt: Date): Promise<void>;
   abstract findLinkedSupplierDeliveryNotes(): Promise<RubberDeliveryNote[]>;
   abstract findAllWithCocLink(): Promise<RubberDeliveryNote[]>;
   abstract findLinkedCustomerDnsNeedingStatusRepair(

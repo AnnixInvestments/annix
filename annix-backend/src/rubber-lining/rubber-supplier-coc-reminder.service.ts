@@ -1,19 +1,18 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { Cron } from "@nestjs/schedule";
-import { InjectRepository } from "@nestjs/typeorm";
-import { In, IsNull, LessThanOrEqual, Not, Repository } from "typeorm";
 import { EmailService } from "../email/email.service";
-import { DocumentVersionStatus } from "./entities/document-version.types";
-import { CompanyType, RubberCompany } from "./entities/rubber-company.entity";
-import { DeliveryNoteStatus, RubberDeliveryNote } from "./entities/rubber-delivery-note.entity";
+import { fromJSDate, now } from "../lib/datetime";
+import { CompanyType } from "./entities/rubber-company.entity";
+import { RubberCompanyRepository } from "./repositories/rubber-company.repository";
+import { RubberDeliveryNoteRepository } from "./repositories/rubber-delivery-note.repository";
 
 /**
- * A supplier CoC is a hard prerequisite for the customer (AU) CoC chain — without
+ * A supplier CoC is a hard prerequisite for the customer (AU) CoC chain - without
  * it, the customer certificate can never be generated. This service watches for
  * supplier delivery notes that have been in the system for more than
  * OVERDUE_DAYS without a linked supplier CoC and emails a warning so the gap can
  * be chased before it blocks downstream certificates. Each DN is warned about
- * exactly once (tracked via coc_overdue_warned_at).
+ * exactly once (tracked via cocOverdueWarnedAt).
  */
 @Injectable()
 export class RubberSupplierCocReminderService {
@@ -22,10 +21,8 @@ export class RubberSupplierCocReminderService {
   private static readonly OVERDUE_DAYS = 4;
 
   constructor(
-    @InjectRepository(RubberDeliveryNote)
-    private readonly deliveryNoteRepository: Repository<RubberDeliveryNote>,
-    @InjectRepository(RubberCompany)
-    private readonly companyRepository: Repository<RubberCompany>,
+    private readonly deliveryNoteRepo: RubberDeliveryNoteRepository,
+    private readonly companyRepo: RubberCompanyRepository,
     private readonly emailService: EmailService,
   ) {}
 
@@ -43,44 +40,28 @@ export class RubberSupplierCocReminderService {
     }
   }
 
-  /**
-   * Find supplier DNs uploaded > OVERDUE_DAYS ago with no linked supplier CoC
-   * (and not already warned), email a digest to the watcher, and flag them.
-   * Returns the number of DNs warned about. Idempotent across runs.
-   */
   async warnOverdueSupplierCocs(): Promise<number> {
-    const suppliers = await this.companyRepository.find({
-      where: { companyType: CompanyType.SUPPLIER },
-    });
+    const suppliers = await this.companyRepo.findByCompanyType(CompanyType.SUPPLIER);
     if (suppliers.length === 0) return 0;
     const supplierNameById = new Map(suppliers.map((c) => [c.id, c.name]));
 
-    const cutoff = new Date(
-      Date.now() - RubberSupplierCocReminderService.OVERDUE_DAYS * 24 * 60 * 60 * 1000,
-    );
+    const cutoff = now().minus({ days: RubberSupplierCocReminderService.OVERDUE_DAYS }).toJSDate();
 
-    const overdue = await this.deliveryNoteRepository.find({
-      where: {
-        supplierCompanyId: In([...supplierNameById.keys()]),
-        linkedCocId: IsNull(),
-        cocOverdueWarnedAt: IsNull(),
-        status: Not(DeliveryNoteStatus.FAILED),
-        versionStatus: DocumentVersionStatus.ACTIVE,
-        createdAt: LessThanOrEqual(cutoff),
-      },
-      order: { createdAt: "ASC" },
-    });
+    const overdue = await this.deliveryNoteRepo.findOverdueWithoutCoc(
+      [...supplierNameById.keys()],
+      cutoff,
+    );
     if (overdue.length === 0) return 0;
 
-    const now = Date.now();
+    const today = now();
     const rows = overdue
       .map((dn) => {
-        const days = Math.floor((now - new Date(dn.createdAt).getTime()) / (24 * 60 * 60 * 1000));
+        const days = Math.floor(today.diff(fromJSDate(dn.createdAt), "days").days);
         return `<tr>
           <td style="padding:6px 12px;border:1px solid #e5e7eb;">${dn.deliveryNoteNumber}</td>
-          <td style="padding:6px 12px;border:1px solid #e5e7eb;">${supplierNameById.get(dn.supplierCompanyId) ?? "—"}</td>
-          <td style="padding:6px 12px;border:1px solid #e5e7eb;">${dn.customerReference ?? "—"}</td>
-          <td style="padding:6px 12px;border:1px solid #e5e7eb;">${new Date(dn.createdAt).toLocaleDateString("en-ZA")}</td>
+          <td style="padding:6px 12px;border:1px solid #e5e7eb;">${supplierNameById.get(dn.supplierCompanyId) ?? "-"}</td>
+          <td style="padding:6px 12px;border:1px solid #e5e7eb;">${dn.customerReference ?? "-"}</td>
+          <td style="padding:6px 12px;border:1px solid #e5e7eb;">${fromJSDate(dn.createdAt).toFormat("dd/MM/yyyy")}</td>
           <td style="padding:6px 12px;border:1px solid #e5e7eb;text-align:center;">${days}</td>
         </tr>`;
       })
@@ -114,14 +95,14 @@ export class RubberSupplierCocReminderService {
 
     await this.emailService.sendEmail({
       to: RubberSupplierCocReminderService.WARNING_RECIPIENT,
-      subject: `Supplier CoC overdue — ${overdue.length} delivery note(s) awaiting a CoC`,
+      subject: `Supplier CoC overdue - ${overdue.length} delivery note(s) awaiting a CoC`,
       fromName: "AU Industries",
       html,
     });
 
-    await this.deliveryNoteRepository.update(
+    await this.deliveryNoteRepo.markCocOverdueWarned(
       overdue.map((dn) => dn.id),
-      { cocOverdueWarnedAt: new Date() },
+      now().toJSDate(),
     );
 
     this.logger.log(

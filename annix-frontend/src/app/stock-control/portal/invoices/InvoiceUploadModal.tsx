@@ -2,12 +2,16 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { FileImportModal } from "@/app/components/modals/FileImportModal";
 import { useToast } from "@/app/components/Toast";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { AnalyzedDeliveryNoteResult, DeliveryNote } from "@/app/lib/api/stockControlApi";
 import { stockControlApiClient } from "@/app/lib/api/stockControlApi";
 import { useFileUpload } from "@/app/lib/hooks/useFileUpload";
+
+const ANALYZE_FALLBACK_MS = 120000;
 
 interface InvoiceUploadModalProps {
   deliveryNotes: DeliveryNote[];
@@ -19,6 +23,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
   const { deliveryNotes, onClose, onSuccess } = props;
   const router = useRouter();
   const { showToast } = useToast();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [form, setForm] = useState({
     deliveryNoteId: 0,
@@ -67,6 +72,17 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
     try {
       setIsAnalyzing(true);
       setError(null);
+      const stats = await metricsApi
+        .extractionStats("stock-control-deliveries", "analyze")
+        .catch(() => null);
+      const learnedMs = stats == null ? null : stats.averageMs;
+      const estimatedDurationMs =
+        learnedMs == null || learnedMs <= 0 ? ANALYZE_FALLBACK_MS : learnedMs;
+      showExtraction({
+        brand: "stock-control",
+        label: "Analyzing document…",
+        estimatedDurationMs,
+      });
       const result = await stockControlApiClient.analyzeDeliveryNotePhoto(selectedFile);
       setAnalysisResult(result);
 
@@ -85,6 +101,7 @@ export default function InvoiceUploadModal(props: InvoiceUploadModalProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to analyze document");
     } finally {
+      hideExtraction();
       setIsAnalyzing(false);
     }
   };

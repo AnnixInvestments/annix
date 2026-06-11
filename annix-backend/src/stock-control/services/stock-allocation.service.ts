@@ -1,22 +1,18 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { IsNull } from "typeorm";
 import { now } from "../../lib/datetime";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { type StockAssessmentItem } from "../entities/coating-analysis.entity";
 import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { StockReturn } from "../entities/stock-return.entity";
 import { parseRubberSpecNote, suggestPlyCombinations } from "../lib/rubberCuttingCalculator";
 import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
 import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
+import { StockReturnRepository } from "../repositories/stock-return.repository";
 
 export interface AllocationPlanItem {
   product: string;
@@ -59,15 +55,9 @@ export class StockAllocationService {
     private readonly stockItemRepo: StockItemRepository,
     private readonly analysisRepo: JobCardCoatingAnalysisRepository,
     private readonly jobCardRepo: JobCardRepository,
-    private readonly txRunner: TransactionRunner,
+    private readonly movementRepo: StockMovementRepository,
+    private readonly stockReturnRepo: StockReturnRepository,
   ) {}
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("StockAllocationService transactions require a TypeOrmTransactionContext");
-    }
-    return context.manager;
-  }
 
   async recommendedAllocations(
     companyId: number,
@@ -327,75 +317,66 @@ export class StockAllocationService {
     staffMemberId: number | null,
     allocatedByName: string | null,
   ): Promise<StockAllocation[]> {
-    const allocations = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const jobCard = await manager.findOne(JobCard, {
-        where: { id: jobCardId, companyId },
-      });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
 
-      if (!jobCard) {
-        throw new NotFoundException(`Job card ${jobCardId} not found`);
-      }
+    if (!jobCard) {
+      throw new NotFoundException(`Job card ${jobCardId} not found`);
+    }
 
-      return items.reduce(
-        async (accPromise, item) => {
-          const acc = await accPromise;
+    const allocations = await items.reduce(
+      async (accPromise, item) => {
+        const acc = await accPromise;
 
-          const stockItem = await manager.findOne(StockItem, {
-            where: { id: item.stockItemId, companyId },
-            lock: { mode: "pessimistic_write" },
-          });
+        const stockItem = await this.stockItemRepo.findOneForCompany(item.stockItemId, companyId);
 
-          if (!stockItem) {
-            throw new NotFoundException(`Stock item ${item.stockItemId} not found`);
-          }
+        if (!stockItem) {
+          throw new NotFoundException(`Stock item ${item.stockItemId} not found`);
+        }
 
-          const litresPerPack = stockItem.packSizeLitres
-            ? Number(stockItem.packSizeLitres)
-            : Number(stockItem.quantity);
-          const totalLitres = item.packCount * litresPerPack;
+        const litresPerPack = stockItem.packSizeLitres
+          ? Number(stockItem.packSizeLitres)
+          : Number(stockItem.quantity);
+        const totalLitres = item.packCount * litresPerPack;
 
-          if (Number(stockItem.quantity) < totalLitres) {
-            throw new BadRequestException(
-              `Insufficient stock for ${stockItem.name}. Available: ${stockItem.quantity}, Requested: ${totalLitres}`,
-            );
-          }
+        if (Number(stockItem.quantity) < totalLitres) {
+          throw new BadRequestException(
+            `Insufficient stock for ${stockItem.name}. Available: ${stockItem.quantity}, Requested: ${totalLitres}`,
+          );
+        }
 
-          stockItem.quantity = Number(stockItem.quantity) - totalLitres;
-          await manager.save(StockItem, stockItem);
+        stockItem.quantity = Number(stockItem.quantity) - totalLitres;
+        await this.stockItemRepo.save(stockItem);
 
-          const allocation = manager.create(StockAllocation, {
-            stockItemId: stockItem.id,
-            jobCardId,
-            companyId,
-            quantityUsed: totalLitres,
-            packCount: item.packCount,
-            litresPerPack,
-            totalLitres,
-            allocationType: "allocation",
-            allocatedBy: allocatedByName,
-            staffMemberId,
-            sourceLeftoverItemId: item.sourceLeftoverItemId || null,
-            pendingApproval: false,
-          });
-          const saved = await manager.save(StockAllocation, allocation);
+        const saved = await this.allocationRepo.create({
+          stockItemId: stockItem.id,
+          jobCardId,
+          companyId,
+          quantityUsed: totalLitres,
+          packCount: item.packCount,
+          litresPerPack,
+          totalLitres,
+          allocationType: "allocation",
+          allocatedBy: allocatedByName,
+          staffMemberId,
+          sourceLeftoverItemId: item.sourceLeftoverItemId || null,
+          pendingApproval: false,
+          undone: false,
+        });
 
-          const movement = manager.create(StockMovement, {
-            stockItem,
-            movementType: MovementType.OUT,
-            quantity: totalLitres,
-            referenceType: ReferenceType.ALLOCATION,
-            referenceId: saved.id,
-            createdBy: allocatedByName,
-            companyId,
-          });
-          await manager.save(StockMovement, movement);
+        await this.movementRepo.create({
+          stockItemId: stockItem.id,
+          movementType: MovementType.OUT,
+          quantity: totalLitres,
+          referenceType: ReferenceType.ALLOCATION,
+          referenceId: saved.id,
+          createdBy: allocatedByName,
+          companyId,
+        });
 
-          return [...acc, saved];
-        },
-        Promise.resolve([] as StockAllocation[]),
-      );
-    });
+        return [...acc, saved];
+      },
+      Promise.resolve([] as StockAllocation[]),
+    );
 
     this.logger.log(
       `Allocated ${allocations.length} items for JC ${jobCardId} by ${allocatedByName}`,
@@ -410,48 +391,43 @@ export class StockAllocationService {
     allocationId: number,
     userName: string | null,
   ): Promise<StockAllocation> {
-    return this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const allocation = await manager.findOne(StockAllocation, {
-        where: { id: allocationId, jobCardId, companyId, undone: false, issuedAt: IsNull() },
+    const allocation = await this.allocationRepo.findActiveUnissuedByIdForJobCard(
+      allocationId,
+      jobCardId,
+      companyId,
+    );
+
+    if (!allocation) {
+      throw new NotFoundException("Allocation not found or already issued/undone");
+    }
+
+    const stockItem = await this.stockItemRepo.findOneForCompany(allocation.stockItemId, companyId);
+
+    if (stockItem) {
+      stockItem.quantity =
+        Number(stockItem.quantity) + Number(allocation.totalLitres || allocation.quantityUsed);
+      await this.stockItemRepo.save(stockItem);
+    }
+
+    allocation.undone = true;
+    allocation.undoneAt = now().toJSDate();
+    allocation.undoneByName = userName;
+    const saved = await this.allocationRepo.save(allocation);
+
+    if (stockItem) {
+      await this.movementRepo.create({
+        stockItemId: stockItem.id,
+        movementType: MovementType.IN,
+        quantity: Number(allocation.totalLitres || allocation.quantityUsed),
+        referenceType: ReferenceType.ALLOCATION,
+        referenceId: allocation.id,
+        notes: "Deallocated",
+        createdBy: userName,
+        companyId,
       });
+    }
 
-      if (!allocation) {
-        throw new NotFoundException("Allocation not found or already issued/undone");
-      }
-
-      const stockItem = await manager.findOne(StockItem, {
-        where: { id: allocation.stockItemId, companyId },
-        lock: { mode: "pessimistic_write" },
-      });
-
-      if (stockItem) {
-        stockItem.quantity =
-          Number(stockItem.quantity) + Number(allocation.totalLitres || allocation.quantityUsed);
-        await manager.save(StockItem, stockItem);
-      }
-
-      allocation.undone = true;
-      allocation.undoneAt = now().toJSDate();
-      allocation.undoneByName = userName;
-      const saved = await manager.save(StockAllocation, allocation);
-
-      if (stockItem) {
-        const movement = manager.create(StockMovement, {
-          stockItem,
-          movementType: MovementType.IN,
-          quantity: Number(allocation.totalLitres || allocation.quantityUsed),
-          referenceType: ReferenceType.ALLOCATION,
-          referenceId: allocation.id,
-          notes: "Deallocated",
-          createdBy: userName,
-          companyId,
-        });
-        await manager.save(StockMovement, movement);
-      }
-
-      return saved;
-    });
+    return saved;
   }
 
   async confirmIssuance(
@@ -511,26 +487,28 @@ export class StockAllocationService {
       );
     }
 
-    return this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const originalItem = allocation.stockItem;
-      const costPerLitre = originalItem.packSizeLitres
-        ? Number(originalItem.costPerUnit) / Number(originalItem.packSizeLitres)
-        : Number(originalItem.costPerUnit) > 0
-          ? Number(originalItem.costPerUnit)
-          : 0;
-      const costReduction = Math.round(litresReturned * costPerLitre * 100) / 100;
+    const originalItem = allocation.stockItem;
+    const costPerLitre = originalItem.packSizeLitres
+      ? Number(originalItem.costPerUnit) / Number(originalItem.packSizeLitres)
+      : Number(originalItem.costPerUnit) > 0
+        ? Number(originalItem.costPerUnit)
+        : 0;
+    const costReduction = Math.round(litresReturned * costPerLitre * 100) / 100;
 
-      const leftoverName = `${originalItem.name} (Leftover)`;
-      let leftoverItem = await manager.findOne(StockItem, {
-        where: { companyId, name: leftoverName, isLeftover: true },
-      });
+    const leftoverName = `${originalItem.name} (Leftover)`;
+    const existingLeftover = await this.stockItemRepo.findOneWhere({
+      companyId,
+      name: leftoverName,
+      isLeftover: true,
+    });
 
-      if (leftoverItem) {
-        leftoverItem.quantity = Number(leftoverItem.quantity) + litresReturned;
-        leftoverItem = await manager.save(StockItem, leftoverItem);
-      } else {
-        leftoverItem = manager.create(StockItem, {
+    if (existingLeftover) {
+      existingLeftover.quantity = Number(existingLeftover.quantity) + litresReturned;
+    }
+
+    const leftoverItem = existingLeftover
+      ? await this.stockItemRepo.save(existingLeftover)
+      : await this.stockItemRepo.create({
           sku: `${originalItem.sku}-LO`,
           name: leftoverName,
           description: `Leftover from ${originalItem.name}`,
@@ -548,42 +526,38 @@ export class StockAllocationService {
           componentGroup: originalItem.componentGroup,
           componentRole: originalItem.componentRole,
           mixRatio: originalItem.mixRatio,
+          needsQrPrint: false,
         });
-        leftoverItem = await manager.save(StockItem, leftoverItem);
-      }
 
-      const movement = manager.create(StockMovement, {
-        stockItem: leftoverItem,
-        movementType: MovementType.IN,
-        quantity: litresReturned,
-        referenceType: ReferenceType.RETURN,
-        referenceId: allocationId,
-        notes: `Returned from JC ${jobCardId}`,
-        createdBy: returnedByName,
-        companyId,
-      });
-      await manager.save(StockMovement, movement);
-
-      const stockReturn = manager.create(StockReturn, {
-        companyId,
-        jobCardId,
-        allocationId,
-        originalStockItemId: originalItem.id,
-        leftoverStockItemId: leftoverItem.id,
-        litresReturned,
-        costReduction,
-        returnedByName,
-        returnedByStaffId: staffMemberId,
-        notes,
-      });
-      const savedReturn = await manager.save(StockReturn, stockReturn);
-
-      this.logger.log(
-        `Returned ${litresReturned}L from allocation ${allocationId}, cost reduction: R${costReduction}`,
-      );
-
-      return { stockReturn: savedReturn, costReduction };
+    await this.movementRepo.create({
+      stockItemId: leftoverItem.id,
+      movementType: MovementType.IN,
+      quantity: litresReturned,
+      referenceType: ReferenceType.RETURN,
+      referenceId: allocationId,
+      notes: `Returned from JC ${jobCardId}`,
+      createdBy: returnedByName,
+      companyId,
     });
+
+    const stockReturn = await this.stockReturnRepo.create({
+      companyId,
+      jobCardId,
+      allocationId,
+      originalStockItemId: originalItem.id,
+      leftoverStockItemId: leftoverItem.id,
+      litresReturned,
+      costReduction,
+      returnedByName,
+      returnedByStaffId: staffMemberId,
+      notes,
+    });
+
+    this.logger.log(
+      `Returned ${litresReturned}L from allocation ${allocationId}, cost reduction: R${costReduction}`,
+    );
+
+    return { stockReturn, costReduction };
   }
 
   async leftoverItems(companyId: number): Promise<StockItem[]> {

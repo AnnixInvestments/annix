@@ -12,8 +12,7 @@ import * as bcrypt from "bcrypt";
 import { DataSource } from "typeorm";
 import { EmailService } from "../../email/email.service";
 import { now } from "../../lib/datetime";
-import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import { AppRepository, UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { PasswordService } from "../../shared/auth/password.service";
 import { S3StorageService } from "../../storage/s3-storage.service";
 import { UserRepository } from "../../user/user.repository";
@@ -27,6 +26,9 @@ import { StockControlCompanyRepository } from "../repositories/stock-control-com
 import { StockControlInvitationRepository } from "../repositories/stock-control-invitation.repository";
 import { StockControlProfileRepository } from "../repositories/stock-control-profile.repository";
 import { StockControlUserRepository } from "../repositories/stock-control-user.repository";
+import { UserLocationAssignmentRepository } from "../repositories/user-location-assignment.repository";
+import { WorkflowNotificationRepository } from "../repositories/workflow-notification.repository";
+import { WorkflowStepAssignmentRepository } from "../repositories/workflow-step-assignment.repository";
 import { StockControlAuthService } from "./auth.service";
 import { CompanyRoleService } from "./company-role.service";
 import { PublicBrandingService } from "./public-branding.service";
@@ -172,15 +174,28 @@ describe("StockControlAuthService", () => {
     query: jest.fn().mockResolvedValue([{ unified_company_id: 1 }]),
   };
 
-  const mockManager = {
-    query: jest.fn().mockResolvedValue([]),
-    delete: jest.fn().mockResolvedValue({ affected: 1 }),
+  const mockAppRepo = {
+    findByCode: jest.fn().mockResolvedValue(null),
   };
 
-  const mockTxRunner = {
-    run: jest
-      .fn()
-      .mockImplementation((cb: any) => cb(new TypeOrmTransactionContext(mockManager as never))),
+  const mockUserAppAccessRepo = {
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    remove: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockUserLocationAssignmentRepo = {
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    remove: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockWorkflowStepAssignmentRepo = {
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    remove: jest.fn().mockResolvedValue(undefined),
+  };
+
+  const mockWorkflowNotificationRepo = {
+    findManyWhere: jest.fn().mockResolvedValue([]),
+    remove: jest.fn().mockResolvedValue(undefined),
   };
 
   const baseUnifiedUser = {
@@ -323,7 +338,11 @@ describe("StockControlAuthService", () => {
         { provide: UserRepository, useValue: mockUnifiedUserRepo },
         { provide: StockControlProfileRepository, useValue: mockProfileRepo },
         { provide: DataSource, useValue: mockDataSource },
-        { provide: TransactionRunner, useValue: mockTxRunner },
+        { provide: AppRepository, useValue: mockAppRepo },
+        { provide: UserAppAccessRepository, useValue: mockUserAppAccessRepo },
+        { provide: UserLocationAssignmentRepository, useValue: mockUserLocationAssignmentRepo },
+        { provide: WorkflowStepAssignmentRepository, useValue: mockWorkflowStepAssignmentRepo },
+        { provide: WorkflowNotificationRepository, useValue: mockWorkflowNotificationRepo },
         { provide: JwtService, useValue: mockJwtService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: S3StorageService, useValue: mockS3StorageService },

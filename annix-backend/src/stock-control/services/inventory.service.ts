@@ -7,23 +7,18 @@ import {
   NotFoundException,
   Optional,
 } from "@nestjs/common";
-import { DataSource, In } from "typeorm";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
+import { DataSource } from "typeorm";
+import type { DeepPartial } from "../../lib/persistence/crud-repository";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { LearningSource, LearningType } from "../../nix/entities/nix-learning.entity";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
-import { StockAllocation } from "../entities/stock-allocation.entity";
-import { StockIssuance } from "../entities/stock-issuance.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
 import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockIssuanceRepository } from "../repositories/stock-issuance.repository";
 import { StockItemRepository } from "../repositories/stock-item.repository";
 import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { DeliverySupplierService } from "./delivery-supplier.service";
@@ -56,12 +51,12 @@ export class InventoryService {
     private readonly movementRepo: StockMovementRepository,
     private readonly deliveryNoteItemRepo: DeliveryNoteItemRepository,
     private readonly allocationRepo: StockAllocationRepository,
+    private readonly issuanceRepo: StockIssuanceRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
     @Optional() private readonly dataSource: DataSource,
-    private readonly txRunner: TransactionRunner,
     private readonly aiChatService: AiChatService,
     private readonly supplierService: DeliverySupplierService,
   ) {}
@@ -387,118 +382,114 @@ export class InventoryService {
       throw new BadRequestException("At least one source item is required");
     }
 
-    const result = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
+    const targetItem = await this.stockItemRepo.findOneForCompany(targetItemId, companyId);
 
-      const targetItem = await manager.findOne(StockItem, {
-        where: { id: targetItemId, companyId },
-        lock: { mode: "pessimistic_write" },
+    if (!targetItem) {
+      throw new NotFoundException("Target stock item not found");
+    }
+
+    const sourceItems = await this.stockItemRepo.findByIdsForCompanyOrderedByName(
+      sourceItemIds,
+      companyId,
+    );
+
+    if (sourceItems.length !== sourceItemIds.length) {
+      const foundIds = new Set(sourceItems.map((s) => s.id));
+      const missing = sourceItemIds.filter((id) => !foundIds.has(id));
+      throw new NotFoundException(`Source stock items not found: ${missing.join(", ")}`);
+    }
+
+    let quantityAdded = 0;
+    let movementsTransferred = 0;
+
+    for (const source of sourceItems) {
+      quantityAdded += Number(source.quantity);
+
+      const movements = await this.movementRepo.findManyWhere({
+        stockItemId: source.id,
+        companyId,
       });
+      await Promise.all(
+        movements.map((movement) =>
+          this.movementRepo.save({ ...movement, stockItemId: targetItemId }),
+        ),
+      );
+      movementsTransferred += movements.length;
 
-      if (!targetItem) {
-        throw new NotFoundException("Target stock item not found");
-      }
-
-      const sourceItems = await manager.find(StockItem, {
-        where: { id: In(sourceItemIds), companyId },
-        lock: { mode: "pessimistic_write" },
-      });
-
-      if (sourceItems.length !== sourceItemIds.length) {
-        const foundIds = new Set(sourceItems.map((s) => s.id));
-        const missing = sourceItemIds.filter((id) => !foundIds.has(id));
-        throw new NotFoundException(`Source stock items not found: ${missing.join(", ")}`);
-      }
-
-      let quantityAdded = 0;
-      let movementsTransferred = 0;
-
-      for (const source of sourceItems) {
-        quantityAdded += Number(source.quantity);
-
-        const movedMovements = await manager.update(
-          StockMovement,
-          { stockItem: { id: source.id }, companyId },
-          { stockItem: { id: targetItemId } as any },
-        );
-        movementsTransferred += movedMovements.affected || 0;
-
-        await manager.update(
-          DeliveryNoteItem,
-          { stockItem: { id: source.id }, companyId },
-          { stockItem: { id: targetItemId } as any },
-        );
-
-        await manager.update(
-          StockAllocation,
-          { stockItem: { id: source.id }, companyId },
-          { stockItem: { id: targetItemId } as any },
-        );
-
-        await manager.update(
-          StockIssuance,
-          { stockItemId: source.id, companyId },
-          { stockItemId: targetItemId },
-        );
-
-        const mergeMovement = manager.create(StockMovement, {
-          stockItem: { id: targetItemId } as StockItem,
-          movementType: MovementType.IN,
-          quantity: Number(source.quantity),
-          referenceType: ReferenceType.MANUAL,
-          referenceId: source.id,
-          notes: `Merged from "${source.name}" (SKU: ${source.sku}) — duplicate consolidation`,
-          createdBy: mergedBy,
-          companyId,
-        });
-        await manager.save(StockMovement, mergeMovement);
-
-        await manager.remove(StockItem, source);
-
-        this.logger.log(
-          `Merged stock item "${source.name}" (id=${source.id}, qty=${source.quantity}) into "${targetItem.name}" (id=${targetItemId})`,
-        );
-      }
-
-      targetItem.quantity = Number(targetItem.quantity) + quantityAdded;
-      const saved = await manager.save(StockItem, targetItem);
-
-      this.logger.log(
-        `Merge complete: ${sourceItems.length} items into "${targetItem.name}", total qty now ${saved.quantity}`,
+      const deliveryItems = await this.deliveryNoteItemRepo.findManyWhere({
+        stockItemId: source.id,
+        companyId,
+      } as DeepPartial<DeliveryNoteItem>);
+      await Promise.all(
+        deliveryItems.map((deliveryItem) =>
+          this.deliveryNoteItemRepo.save({
+            ...deliveryItem,
+            stockItemId: targetItemId,
+          } as DeliveryNoteItem),
+        ),
       );
 
-      return {
-        targetItem: saved,
-        mergedCount: sourceItems.length,
-        quantityAdded,
-        movementsTransferred,
-      };
-    });
+      const allocations = await this.allocationRepo.findManyWhere({
+        stockItemId: source.id,
+        companyId,
+      });
+      await Promise.all(
+        allocations.map((allocation) =>
+          this.allocationRepo.save({ ...allocation, stockItemId: targetItemId }),
+        ),
+      );
 
-    return result;
-  }
+      const issuances = await this.issuanceRepo.findManyWhere({
+        stockItemId: source.id,
+        companyId,
+      });
+      await Promise.all(
+        issuances.map((issuance) =>
+          this.issuanceRepo.save({ ...issuance, stockItemId: targetItemId }),
+        ),
+      );
 
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("InventoryService transactions require a TypeOrmTransactionContext");
+      await this.movementRepo.create({
+        stockItemId: targetItemId,
+        movementType: MovementType.IN,
+        quantity: Number(source.quantity),
+        referenceType: ReferenceType.MANUAL,
+        referenceId: source.id,
+        notes: `Merged from "${source.name}" (SKU: ${source.sku}) — duplicate consolidation`,
+        createdBy: mergedBy,
+        companyId,
+      });
+
+      await this.stockItemRepo.remove(source);
+
+      this.logger.log(
+        `Merged stock item "${source.name}" (id=${source.id}, qty=${source.quantity}) into "${targetItem.name}" (id=${targetItemId})`,
+      );
     }
-    return context.manager;
+
+    targetItem.quantity = Number(targetItem.quantity) + quantityAdded;
+    const saved = await this.stockItemRepo.save(targetItem);
+
+    this.logger.log(
+      `Merge complete: ${sourceItems.length} items into "${targetItem.name}", total qty now ${saved.quantity}`,
+    );
+
+    return {
+      targetItem: saved,
+      mergedCount: sourceItems.length,
+      quantityAdded,
+      movementsTransferred,
+    };
   }
 
   async adjustQuantity(companyId: number, id: number, delta: number): Promise<StockItem> {
-    const saved = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const item = await manager.findOne(StockItem, {
-        where: { id, companyId },
-        lock: { mode: "pessimistic_write" },
-      });
-      if (!item) {
-        throw new NotFoundException("Stock item not found");
-      }
+    const item = await this.stockItemRepo.findOneForCompany(id, companyId);
+    if (!item) {
+      throw new NotFoundException("Stock item not found");
+    }
 
-      item.quantity = Math.max(0, item.quantity + delta);
-      return manager.save(StockItem, item);
-    });
+    item.quantity = Math.max(0, item.quantity + delta);
+    const saved = await this.stockItemRepo.save(item);
 
     if (delta < 0 && saved.minStockLevel > 0 && saved.quantity < saved.minStockLevel) {
       this.requisitionService

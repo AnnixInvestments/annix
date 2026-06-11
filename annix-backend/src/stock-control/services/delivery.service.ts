@@ -8,21 +8,17 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { fromISO, now, nowMillis } from "../../lib/datetime";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../../storage/storage.interface";
 import { DeliveryNote, SdnStatus } from "../entities/delivery-note.entity";
-import { DeliveryNoteItem } from "../entities/delivery-note-item.entity";
-import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { SupplierInvoice } from "../entities/supplier-invoice.entity";
 import { DeliveryNoteRepository } from "../repositories/delivery-note.repository";
 import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
 import { DnExtractionCorrectionRepository } from "../repositories/dn-extraction-correction.repository";
+import { InvoiceClarificationRepository } from "../repositories/invoice-clarification.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { SupplierInvoiceRepository } from "../repositories/supplier-invoice.repository";
 import { SupplierInvoiceItemRepository } from "../repositories/supplier-invoice-item.repository";
 import { CpoService } from "./cpo.service";
@@ -42,13 +38,15 @@ export class DeliveryService {
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => CpoService))
     private readonly cpoService: CpoService,
-    private readonly txRunner: TransactionRunner,
     private readonly supplierService: DeliverySupplierService,
     private readonly extractionService: DeliveryExtractionService,
     private readonly invoiceService: DeliveryInvoiceService,
     private readonly fifoBridgeService: SupplierInvoiceFifoBridgeService,
     private readonly supplierInvoiceRepo: SupplierInvoiceRepository,
     private readonly supplierInvoiceItemRepo: SupplierInvoiceItemRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly stockMovementRepo: StockMovementRepository,
+    private readonly invoiceClarificationRepo: InvoiceClarificationRepository,
   ) {}
 
   private async bridgeDeliveryReceiptToStockManagement(
@@ -129,13 +127,6 @@ export class DeliveryService {
     );
   }
 
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("DeliveryService transactions require a TypeOrmTransactionContext");
-    }
-    return context.manager;
-  }
-
   async updateDeliveryNumber(
     companyId: number,
     id: number,
@@ -184,57 +175,45 @@ export class DeliveryService {
       throw new ConflictException(`Delivery note ${data.deliveryNumber} has already been uploaded`);
     }
 
-    const savedNote = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const deliveryNoteTxRepo = this.deliveryNoteRepo.withTransaction(ctx);
-      const deliveryNoteItemTxRepo = this.deliveryNoteItemRepo.withTransaction(ctx);
+    const savedNote = await this.deliveryNoteRepo.create({
+      deliveryNumber: data.deliveryNumber,
+      supplierName: data.supplierName,
+      receivedDate: data.receivedDate || now().toJSDate(),
+      notes: data.notes || null,
+      photoUrl: data.photoUrl || null,
+      receivedBy: data.receivedBy || null,
+      companyId,
+    });
 
-      const note = await deliveryNoteTxRepo.create({
-        deliveryNumber: data.deliveryNumber,
-        supplierName: data.supplierName,
-        receivedDate: data.receivedDate || now().toJSDate(),
-        notes: data.notes || null,
-        photoUrl: data.photoUrl || null,
-        receivedBy: data.receivedBy || null,
+    await data.items.reduce(async (prev, itemData) => {
+      await prev;
+      const stockItem = await this.stockItemRepo.findOneForCompany(itemData.stockItemId, companyId);
+      if (!stockItem) {
+        throw new NotFoundException(`Stock item ${itemData.stockItemId} not found`);
+      }
+
+      await this.deliveryNoteItemRepo.create({
+        deliveryNote: savedNote,
+        stockItem,
+        quantityReceived: itemData.quantityReceived,
+        photoUrl: itemData.photoUrl || null,
         companyId,
       });
 
-      await data.items.reduce(async (prev, itemData) => {
-        await prev;
-        const stockItem = await manager.findOne(StockItem, {
-          where: { id: itemData.stockItemId, companyId },
-          lock: { mode: "pessimistic_write" },
-        });
-        if (!stockItem) {
-          throw new NotFoundException(`Stock item ${itemData.stockItemId} not found`);
-        }
+      stockItem.quantity = stockItem.quantity + itemData.quantityReceived;
+      await this.stockItemRepo.save(stockItem);
 
-        await deliveryNoteItemTxRepo.create({
-          deliveryNote: note,
-          stockItem,
-          quantityReceived: itemData.quantityReceived,
-          photoUrl: itemData.photoUrl || null,
-          companyId,
-        });
-
-        stockItem.quantity = stockItem.quantity + itemData.quantityReceived;
-        await manager.save(StockItem, stockItem);
-
-        const movement = manager.create(StockMovement, {
-          stockItem,
-          movementType: MovementType.IN,
-          quantity: itemData.quantityReceived,
-          referenceType: ReferenceType.DELIVERY,
-          referenceId: note.id,
-          notes: `Received via delivery ${data.deliveryNumber}`,
-          createdBy: data.receivedBy || null,
-          companyId,
-        });
-        await manager.save(StockMovement, movement);
-      }, Promise.resolve());
-
-      return note;
-    });
+      await this.stockMovementRepo.create({
+        stockItemId: stockItem.id,
+        movementType: MovementType.IN,
+        quantity: itemData.quantityReceived,
+        referenceType: ReferenceType.DELIVERY,
+        referenceId: savedNote.id,
+        notes: `Received via delivery ${data.deliveryNumber}`,
+        createdBy: data.receivedBy || null,
+        companyId,
+      });
+    }, Promise.resolve());
 
     this.cpoService
       .linkDeliveryToCalloffs(companyId, data.supplierName, savedNote.id)
@@ -305,52 +284,66 @@ export class DeliveryService {
   async remove(companyId: number, id: number): Promise<void> {
     const note = await this.findById(companyId, id);
 
-    const movementCount = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-
-      const movements = await manager.find(StockMovement, {
-        where: {
-          referenceType: ReferenceType.DELIVERY,
-          referenceId: id,
-          companyId,
-        },
-        relations: ["stockItem"],
-      });
-
-      await movements.reduce(async (prev, movement) => {
-        await prev;
-        if (movement.stockItem) {
-          const stockItem = await manager.findOne(StockItem, {
-            where: { id: movement.stockItem.id, companyId },
-            lock: { mode: "pessimistic_write" },
-          });
-          if (stockItem) {
-            stockItem.quantity = stockItem.quantity - movement.quantity;
-            await manager.save(StockItem, stockItem);
-            this.logger.log(`Reversed stock movement: ${stockItem.sku} -${movement.quantity}`);
-          }
-        }
-        await manager.remove(StockMovement, movement);
-      }, Promise.resolve());
-
-      const linkedInvoices = await manager.find(SupplierInvoice, {
-        where: { deliveryNoteId: id, companyId },
-      });
-      if (linkedInvoices.length > 0) {
-        await manager.remove(SupplierInvoice, linkedInvoices);
-        this.logger.warn(
-          `Deleted ${linkedInvoices.length} supplier invoice(s) linked to delivery ${id}`,
-        );
-      }
-
-      if (note.items && note.items.length > 0) {
-        await manager.remove(DeliveryNoteItem, note.items);
-      }
-
-      await manager.remove(DeliveryNote, note);
-
-      return movements.length;
+    const movements = await this.stockMovementRepo.findManyWhere({
+      referenceType: ReferenceType.DELIVERY,
+      referenceId: id,
+      companyId,
     });
+
+    await movements.reduce(async (prev, movement) => {
+      await prev;
+      if (movement.stockItemId) {
+        const stockItem = await this.stockItemRepo.findOneForCompany(
+          movement.stockItemId,
+          companyId,
+        );
+        if (stockItem) {
+          stockItem.quantity = stockItem.quantity - movement.quantity;
+          await this.stockItemRepo.save(stockItem);
+          this.logger.log(`Reversed stock movement: ${stockItem.sku} -${movement.quantity}`);
+        }
+      }
+      await this.stockMovementRepo.remove(movement);
+    }, Promise.resolve());
+
+    const invoicesByNumericKey = await this.supplierInvoiceRepo.findManyWhere({
+      deliveryNoteId: id,
+      companyId,
+    });
+    const invoicesByStringKey = await this.supplierInvoiceRepo.findManyWhere({
+      deliveryNoteId: String(id) as unknown as number,
+      companyId,
+    });
+    const linkedInvoices = Array.from(
+      new Map(
+        [...invoicesByNumericKey, ...invoicesByStringKey].map((invoice) => [
+          String(invoice.id),
+          invoice,
+        ]),
+      ).values(),
+    );
+    if (linkedInvoices.length > 0) {
+      await linkedInvoices.reduce(async (prev, invoice) => {
+        await prev;
+        await this.supplierInvoiceItemRepo.deleteByInvoice(invoice.id);
+        await this.invoiceClarificationRepo.deleteForInvoice(invoice.id);
+        await this.supplierInvoiceRepo.remove(invoice);
+      }, Promise.resolve());
+      this.logger.warn(
+        `Deleted ${linkedInvoices.length} supplier invoice(s) linked to delivery ${id}`,
+      );
+    }
+
+    if (note.items && note.items.length > 0) {
+      await note.items.reduce(async (prev, item) => {
+        await prev;
+        await this.deliveryNoteItemRepo.remove(item);
+      }, Promise.resolve());
+    }
+
+    await this.deliveryNoteRepo.remove(note);
+
+    const movementCount = movements.length;
 
     try {
       await this.fifoBridgeService.voidDeliveryBatches(companyId, id);

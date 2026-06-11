@@ -195,6 +195,37 @@ export class MongoRubberDeliveryNoteRepository
     return this.toDomainList(docs);
   }
 
+  async findOverdueWithoutCoc(
+    supplierCompanyIds: number[],
+    cutoff: Date,
+  ): Promise<RubberDeliveryNote[]> {
+    if (supplierCompanyIds.length === 0) {
+      return [];
+    }
+    const docs = await this.documents
+      .find({
+        supplierCompanyId: { $in: supplierCompanyIds },
+        linkedCocId: null,
+        cocOverdueWarnedAt: null,
+        status: { $ne: DeliveryNoteStatus.FAILED },
+        versionStatus: DocumentVersionStatus.ACTIVE,
+        createdAt: { $lte: cutoff },
+      })
+      .sort({ createdAt: 1 })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async markCocOverdueWarned(ids: number[], warnedAt: Date): Promise<void> {
+    if (ids.length === 0) {
+      return;
+    }
+    await this.documents
+      .updateMany({ _id: { $in: ids } }, { $set: { cocOverdueWarnedAt: warnedAt } })
+      .exec();
+  }
+
   async findLinkedSupplierDeliveryNotes(): Promise<RubberDeliveryNote[]> {
     const docs = await this.documents
       .find({ status: DeliveryNoteStatus.LINKED, linkedCocId: { $ne: null } })

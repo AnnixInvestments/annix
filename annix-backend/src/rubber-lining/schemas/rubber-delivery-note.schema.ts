@@ -55,6 +55,9 @@ export class RubberDeliveryNote {
   @Prop({ type: String, required: true })
   versionStatus: string;
 
+  @Prop({ type: Date, required: false })
+  cocOverdueWarnedAt: Date;
+
   @Prop({ type: String, required: false })
   stockCategory: string;
 

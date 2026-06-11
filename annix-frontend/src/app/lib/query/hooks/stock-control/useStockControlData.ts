@@ -1220,6 +1220,24 @@ export const useLinkInvoiceToDeliveryNote = createMutationHook(
   [stockControlKeys.invoices.all, stockControlKeys.deliveries.all],
 );
 
+export const useInvoiceClarifications = createArrayQueryHook<
+  import("@/app/lib/api/stockControlApi").InvoiceClarification,
+  [number]
+>(
+  (invoiceId) => stockControlKeys.invoices.clarifications(invoiceId),
+  (invoiceId) => stockControlApiClient.invoiceClarifications(invoiceId),
+  { enabled: (invoiceId) => !!invoiceId },
+);
+
+export const useInvoicePriceSummary = createQueryHook<
+  import("@/app/lib/api/stockControlApi").PriceChangeSummary,
+  [number]
+>(
+  (invoiceId) => stockControlKeys.invoices.priceSummary(invoiceId),
+  (invoiceId) => stockControlApiClient.invoicePriceSummary(invoiceId),
+  { enabled: (invoiceId) => !!invoiceId },
+);
+
 export const useSubmitInvoiceClarification = createMutationHook(
   (params: { invoiceId: number; clarificationId: number; response: Record<string, unknown> }) =>
     stockControlApiClient.submitInvoiceClarification(

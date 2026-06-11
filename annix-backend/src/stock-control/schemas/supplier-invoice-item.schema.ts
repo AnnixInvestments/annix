@@ -46,8 +46,8 @@ export class SupplierInvoiceItem {
   @Prop({ type: Number, required: false })
   matchConfidence: number;
 
-  @Prop({ type: String, required: false })
-  stockItemId: string;
+  @Prop({ type: Number, required: false })
+  stockItemId: number;
 
   @Prop({ type: Boolean, required: true })
   isPartA: boolean;
@@ -55,8 +55,8 @@ export class SupplierInvoiceItem {
   @Prop({ type: Boolean, required: true })
   isPartB: boolean;
 
-  @Prop({ type: String, required: false })
-  linkedItemId: string;
+  @Prop({ type: Number, required: false })
+  linkedItemId: number;
 
   @Prop({ type: Boolean, required: true })
   priceUpdated: boolean;

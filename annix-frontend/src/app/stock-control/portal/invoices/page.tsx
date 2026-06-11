@@ -3,10 +3,13 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import { toastError } from "@/app/lib/api/apiError";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type { SupplierInvoice } from "@/app/lib/api/stockControlApi";
 import { formatDateZA } from "@/app/lib/datetime";
+import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
   useAcceptAnalyzedInvoice,
@@ -16,7 +19,6 @@ import {
   useDeliveryNotes,
   useInvalidateInvoices,
   useInvoices,
-  useReExtractAllFailed,
   useReExtractInvoice,
 } from "@/app/lib/query/hooks";
 import { useViewAs } from "@/app/stock-control/context/ViewAsContext";
@@ -40,6 +42,9 @@ const STATUS_LABELS: Record<string, string> = {
   completed: "Completed",
   failed: "Failed",
 };
+
+const ANALYZE_FALLBACK_MS = 120000;
+const RE_EXTRACT_FALLBACK_MS = 90000;
 
 const statusLabel = (invoice: SupplierInvoice): string => {
   if (invoice.extractionStatus === "pending" && invoice.scanUrl) {
@@ -70,14 +75,14 @@ export default function InvoicesPage() {
   const analyzePhotoMutation = useAnalyzeDeliveryNotePhoto();
   const acceptInvoiceMutation = useAcceptAnalyzedInvoice();
   const reExtractMutation = useReExtractInvoice();
-  const reExtractAllMutation = useReExtractAllFailed();
   const autoLinkMutation = useAutoLinkInvoices();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
+  const { runBulk } = useAdaptiveExtractionProgress();
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<SupplierInvoice | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAutoLinking, setIsAutoLinking] = useState(false);
   const [isReExtractingAll, setIsReExtractingAll] = useState(false);
 
@@ -109,8 +114,17 @@ export default function InvoicesPage() {
       }
 
       try {
-        setIsAnalyzing(true);
-        showToast("Analyzing document...", "info");
+        const stats = await metricsApi
+          .extractionStats("stock-control-deliveries", "analyze")
+          .catch(() => null);
+        const learnedMs = stats == null ? null : stats.averageMs;
+        const estimatedDurationMs =
+          learnedMs == null || learnedMs <= 0 ? ANALYZE_FALLBACK_MS : learnedMs;
+        showExtraction({
+          brand: "stock-control",
+          label: "Analyzing document…",
+          estimatedDurationMs,
+        });
         const result = await analyzePhotoMutation.mutateAsync(file);
         const invoice = await acceptInvoiceMutation.mutateAsync({
           file,
@@ -123,10 +137,10 @@ export default function InvoicesPage() {
       } catch (err) {
         toastError(showToast, err, "Failed to analyze document");
       } finally {
-        setIsAnalyzing(false);
+        hideExtraction();
       }
     },
-    [showToast, invalidateInvoices],
+    [showToast, invalidateInvoices, showExtraction, hideExtraction],
   );
 
   const handleInvoiceCreated = () => {
@@ -136,34 +150,68 @@ export default function InvoicesPage() {
 
   const handleReExtract = async (invoiceId: number) => {
     try {
-      showToast("Re-extracting invoice...", "info");
+      const stats = await metricsApi
+        .extractionStats("stock-control-invoices", "extract")
+        .catch(() => null);
+      const learnedMs = stats == null ? null : stats.averageMs;
+      const estimatedDurationMs =
+        learnedMs == null || learnedMs <= 0 ? RE_EXTRACT_FALLBACK_MS : learnedMs;
+      showExtraction({
+        brand: "stock-control",
+        label: "Re-extracting invoice…",
+        estimatedDurationMs,
+      });
       await reExtractMutation.mutateAsync(invoiceId);
       showToast("Extraction triggered successfully", "success");
       invalidateInvoices();
     } catch (err) {
       toastError(showToast, err, "Failed to re-extract");
+    } finally {
+      hideExtraction();
     }
   };
 
   const handleReExtractAllFailed = async () => {
+    const failedInvoices = invoices.filter(
+      (inv) => inv.extractionStatus === "failed" && inv.scanUrl,
+    );
+    if (failedInvoices.length === 0) {
+      showToast("No failed invoices with scans to re-extract", "info");
+      return;
+    }
+    setIsReExtractingAll(true);
     try {
-      setIsReExtractingAll(true);
-      showToast("Re-extracting all failed invoices...", "info");
-      const result = await reExtractAllMutation.mutateAsync(undefined);
-      if (result.triggered > 0) {
+      const result = await runBulk({
+        brand: "stock-control",
+        metricCategory: "stock-control-invoices",
+        metricOperation: "extract",
+        items: failedInvoices,
+        itemId: (inv) => inv.id,
+        itemLabel: (inv, i, t) => {
+          const invNum = inv.invoiceNumber;
+          const display = invNum ? invNum : `#${inv.id}`;
+          return `Re-extracting invoice ${i + 1} of ${t}: ${display}…`;
+        },
+        fallbackPerItemMs: RE_EXTRACT_FALLBACK_MS,
+        run: async (inv) => {
+          await reExtractMutation.mutateAsync(inv.id);
+        },
+      });
+      if (result.succeeded.length > 0) {
         alert({
-          message: `Re-extracted ${result.triggered} invoice(s) successfully`,
+          message: `Re-extracted ${result.succeeded.length} invoice(s) successfully`,
           variant: "success",
         });
-      } else {
-        showToast("No failed invoices with scans to re-extract", "info");
       }
       if (result.failed.length > 0) {
+        result.failed.slice(0, 3).forEach(({ item, error: failError }) => {
+          const invNum = item.invoiceNumber;
+          const display = invNum ? invNum : `#${item.id}`;
+          toastError(showToast, failError, `Failed to re-extract ${display}`);
+        });
         alert({ message: `${result.failed.length} invoice(s) failed again`, variant: "error" });
       }
       invalidateInvoices();
-    } catch (err) {
-      toastError(showToast, err, "Bulk re-extract failed");
     } finally {
       setIsReExtractingAll(false);
     }
@@ -229,38 +277,26 @@ export default function InvoicesPage() {
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
-      {(isDragOver || isAnalyzing) && (
+      {isDragOver && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-teal-600/20 backdrop-blur-sm">
           <div className="bg-white rounded-xl shadow-2xl p-8 text-center max-w-md mx-4">
-            {isAnalyzing ? (
-              <>
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-600 mx-auto" />
-                <p className="mt-4 text-lg font-medium text-gray-900">Analyzing document...</p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Nix is extracting invoice information from your document
-                </p>
-              </>
-            ) : (
-              <>
-                <svg
-                  className="mx-auto h-12 w-12 text-teal-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-                <p className="mt-4 text-lg font-medium text-gray-900">Drop invoice to analyze</p>
-                <p className="mt-1 text-sm text-gray-500">
-                  Nix will automatically extract invoice information
-                </p>
-              </>
-            )}
+            <svg
+              className="mx-auto h-12 w-12 text-teal-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+              />
+            </svg>
+            <p className="mt-4 text-lg font-medium text-gray-900">Drop invoice to analyze</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Nix will automatically extract invoice information
+            </p>
           </div>
         </div>
       )}

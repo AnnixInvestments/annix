@@ -1,11 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { nowMillis } from "../../lib/datetime";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
-import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
 
 export const DEFAULT_ACTION_PERMISSIONS: Record<string, string[]> = {
@@ -75,17 +69,7 @@ export class ActionPermissionService {
   private readonly logger = new Logger(ActionPermissionService.name);
   private cache = new Map<number, { data: Record<string, string[]>; expiresAt: number }>();
 
-  constructor(
-    private readonly repo: StockControlActionPermissionRepository,
-    private readonly txRunner: TransactionRunner,
-  ) {}
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("ActionPermissionService transactions require a TypeOrmTransactionContext");
-    }
-    return context.manager;
-  }
+  constructor(private readonly repo: StockControlActionPermissionRepository) {}
 
   async permissionsForCompany(companyId: number): Promise<Record<string, string[]>> {
     const cached = this.cache.get(companyId);
@@ -142,18 +126,13 @@ export class ActionPermissionService {
       }
     });
 
-    await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      await manager.delete(StockControlActionPermission, { companyId });
+    const existingRows = await this.repo.findManyWhere({ companyId });
+    await Promise.all(existingRows.map((row) => this.repo.remove(row)));
 
-      const entities = Object.entries(mergedConfig).flatMap(([actionKey, roles]) =>
-        roles.map((role) =>
-          manager.create(StockControlActionPermission, { companyId, actionKey, role }),
-        ),
-      );
-
-      await manager.save(entities);
-    });
+    const newRows = Object.entries(mergedConfig).flatMap(([actionKey, roles]) =>
+      roles.map((role) => ({ companyId, actionKey, role })),
+    );
+    await Promise.all(newRows.map((row) => this.repo.create(row)));
 
     this.cache.delete(companyId);
     this.logger.log(`Updated action permissions for company ${companyId}`);

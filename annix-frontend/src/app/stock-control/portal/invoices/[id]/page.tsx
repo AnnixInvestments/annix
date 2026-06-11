@@ -12,7 +12,9 @@ import {
   useApproveInvoice,
   useDeleteInvoiceItem,
   useDeliveryNotes,
+  useInvoiceClarifications,
   useInvoiceDetail,
+  useInvoicePriceSummary,
   useLinkInvoiceToDeliveryNote,
   useManualMatchInvoiceItem,
   useReExtractInvoice,
@@ -91,8 +93,13 @@ export default function InvoiceDetailPage() {
   const stockItemsData = stockItemsQuery.data;
   const stockItems = stockItemsData ? stockItemsData : [];
 
-  const [clarifications, setClarifications] = useState<InvoiceClarification[]>([]);
-  const [priceSummary, setPriceSummary] = useState<PriceChangeSummary | null>(null);
+  const clarificationsQuery = useInvoiceClarifications(invoiceId);
+  const clarificationsData = clarificationsQuery.data;
+  const clarifications: InvoiceClarification[] = clarificationsData ? clarificationsData : [];
+  const priceSummaryQuery = useInvoicePriceSummary(invoiceId);
+  const priceSummaryData = priceSummaryQuery.data;
+  const priceSummary: PriceChangeSummary | null = priceSummaryData ? priceSummaryData : null;
+  const [clarificationsDismissed, setClarificationsDismissed] = useState(false);
   const [selectedDeliveryNoteId, setSelectedDeliveryNoteId] = useState<number | null>(null);
   const [isLinking, setIsLinking] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
@@ -159,10 +166,6 @@ export default function InvoiceDetailPage() {
         response: response as Record<string, unknown>,
       });
       await invoiceQuery.refetch();
-
-      if (currentClarificationIndex < clarifications.length - 1) {
-        setCurrentClarificationIndex((prev) => prev + 1);
-      }
     } catch (err) {
       console.error("Failed to submit clarification:", err);
     }
@@ -172,10 +175,6 @@ export default function InvoiceDetailPage() {
     try {
       await skipClarificationMutation.mutateAsync({ invoiceId, clarificationId });
       await invoiceQuery.refetch();
-
-      if (currentClarificationIndex < clarifications.length - 1) {
-        setCurrentClarificationIndex((prev) => prev + 1);
-      }
     } catch (err) {
       console.error("Failed to skip clarification:", err);
     }
@@ -335,7 +334,11 @@ export default function InvoiceDetailPage() {
     );
   }
 
-  const currentClarification = clarifications[currentClarificationIndex];
+  const clampedClarificationIndex = Math.min(
+    currentClarificationIndex,
+    Math.max(0, clarifications.length - 1),
+  );
+  const currentClarification = clarifications[clampedClarificationIndex];
 
   const rawInvoiceItems = invoice.items;
   const invoiceItems = rawInvoiceItems ? rawInvoiceItems : [];
@@ -1019,15 +1022,15 @@ export default function InvoiceDetailPage() {
         </div>
       </div>
 
-      {currentClarification && (
+      {currentClarification && canEdit && !clarificationsDismissed && (
         <InvoiceClarificationPopup
           clarification={currentClarification}
           totalClarifications={clarifications.length}
-          currentIndex={currentClarificationIndex}
+          currentIndex={clampedClarificationIndex}
           stockItems={stockItems}
           onSubmit={handleClarificationSubmit}
           onSkip={handleClarificationSkip}
-          onClose={() => {}}
+          onClose={() => setClarificationsDismissed(true)}
         />
       )}
 

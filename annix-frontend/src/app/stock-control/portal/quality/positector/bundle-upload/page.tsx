@@ -4,7 +4,11 @@ import { toPairs as entries } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { useAnalyzeBundlePdf, useImportBundlePdf } from "@/app/lib/query/hooks";
+
+const POSITECTOR_ANALYZE_FALLBACK_MS = 90000;
 
 type ViewMode = "drop" | "analyzing" | "review" | "importing" | "done";
 
@@ -62,6 +66,7 @@ export default function BundleUploadPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const analyzeMutation = useAnalyzeBundlePdf();
   const importMutation = useImportBundlePdf();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const handleAnalyze = useCallback(
     async (selectedFile: File) => {
@@ -70,6 +75,17 @@ export default function BundleUploadPage() {
       setError(null);
 
       try {
+        const stats = await metricsApi
+          .extractionStats("stock-control-quality", "positector-analyze")
+          .catch(() => null);
+        const learnedMs = stats == null ? null : stats.averageMs;
+        const estimatedDurationMs =
+          learnedMs == null || learnedMs <= 0 ? POSITECTOR_ANALYZE_FALLBACK_MS : learnedMs;
+        showExtraction({
+          brand: "stock-control",
+          label: "Analyzing PDF bundle…",
+          estimatedDurationMs,
+        });
         const result = await analyzeMutation.mutateAsync(selectedFile);
         setTotalPages(result.totalPages);
         setSummaryPageCount(result.summaryPageCount);
@@ -78,9 +94,11 @@ export default function BundleUploadPage() {
       } catch (err) {
         setError(err instanceof Error ? err.message : "Analysis failed");
         setViewMode("drop");
+      } finally {
+        hideExtraction();
       }
     },
-    [analyzeMutation],
+    [analyzeMutation, showExtraction, hideExtraction],
   );
 
   const handleImport = useCallback(async () => {

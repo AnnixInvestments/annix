@@ -2,8 +2,10 @@
 
 import { toPairs as entries, keys } from "es-toolkit/compat";
 import { useCallback, useRef, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { PdfPreviewModal, usePdfPreview } from "@/app/components/PdfPreviewModal";
 import { DateInput } from "@/app/components/ui/DateInput";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import type {
   IssuanceBatchRecord,
   StockControlSupplierDto,
@@ -49,6 +51,8 @@ interface AnalysisResult {
 
 type ViewMode = "list" | "analyzing" | "review";
 type QualityTab = "certificates" | "calibration" | "data-books" | "batch-lookup";
+
+const CERT_ANALYZE_FALLBACK_MS = 90000;
 
 const QUALITY_TABS: { key: QualityTab; label: string }[] = [
   { key: "certificates", label: "Supplier Certificates" },
@@ -129,6 +133,7 @@ function CertificatesTab() {
   );
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const pdfPreview = usePdfPreview();
+  const { showExtraction, hideExtraction } = useExtractionProgress();
 
   const toggleSort = (col: "type" | "batch" | "supplier" | "product" | "uploaded") => {
     if (sortCol === col) {
@@ -193,43 +198,64 @@ function CertificatesTab() {
     }
   }, []);
 
-  const handleAnalyzeFiles = useCallback(async (files: File[]) => {
-    setViewMode("analyzing");
-    setAnalysisFiles(files);
-    setAnalysisError(null);
-    setAnalysisResult(null);
-    setSavedCerts(new Set());
+  const handleAnalyzeFiles = useCallback(
+    async (files: File[]) => {
+      setViewMode("analyzing");
+      setAnalysisFiles(files);
+      setAnalysisError(null);
+      setAnalysisResult(null);
+      setSavedCerts(new Set());
 
-    try {
-      const {
-        certificates: allCertificates,
-        totalPages,
-        totalTime,
-      } = await files.reduce(
-        async (accPromise, file, fileIdx) => {
-          const acc = await accPromise;
-          const result = await analyzeMutation.mutateAsync(file);
-          const tagged = result.certificates.map((c) => ({ ...c, sourceFileIndex: fileIdx }));
-          return {
-            certificates: [...acc.certificates, ...tagged],
-            totalPages: acc.totalPages + result.totalPages,
-            totalTime: acc.totalTime + result.processingTimeMs,
-          };
-        },
-        Promise.resolve({
-          certificates: [] as IdentifiedCertificate[],
-          totalPages: 0,
-          totalTime: 0,
-        }),
-      );
+      try {
+        const stats = await metricsApi
+          .extractionStats("stock-control-quality", "certificate-analyze")
+          .catch(() => null);
+        const learnedMs = stats == null ? null : stats.averageMs;
+        const perFileMs =
+          learnedMs == null || learnedMs <= 0 ? CERT_ANALYZE_FALLBACK_MS : learnedMs;
+        showExtraction({
+          brand: "stock-control",
+          label: "Analyzing certificate…",
+          estimatedDurationMs: perFileMs * files.length,
+          itemCount: files.length,
+        });
+        const {
+          certificates: allCertificates,
+          totalPages,
+          totalTime,
+        } = await files.reduce(
+          async (accPromise, file, fileIdx) => {
+            const acc = await accPromise;
+            const result = await analyzeMutation.mutateAsync(file);
+            const tagged = result.certificates.map((c) => ({ ...c, sourceFileIndex: fileIdx }));
+            return {
+              certificates: [...acc.certificates, ...tagged],
+              totalPages: acc.totalPages + result.totalPages,
+              totalTime: acc.totalTime + result.processingTimeMs,
+            };
+          },
+          Promise.resolve({
+            certificates: [] as IdentifiedCertificate[],
+            totalPages: 0,
+            totalTime: 0,
+          }),
+        );
 
-      setAnalysisResult({ certificates: allCertificates, totalPages, processingTimeMs: totalTime });
-      setViewMode("review");
-    } catch (err) {
-      setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
-      setViewMode("list");
-    }
-  }, []);
+        setAnalysisResult({
+          certificates: allCertificates,
+          totalPages,
+          processingTimeMs: totalTime,
+        });
+        setViewMode("review");
+      } catch (err) {
+        setAnalysisError(err instanceof Error ? err.message : "Analysis failed");
+        setViewMode("list");
+      } finally {
+        hideExtraction();
+      }
+    },
+    [showExtraction, hideExtraction],
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {

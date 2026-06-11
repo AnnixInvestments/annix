@@ -16,6 +16,7 @@ import {
   useSupplierDocumentsList,
   useUploadSupplierDocument,
 } from "@/app/lib/query/hooks";
+import { useConfirm } from "@/app/stock-control/hooks/useConfirm";
 
 const DOC_TYPE_OPTIONS: { value: SupplierDocumentType; label: string }[] = [
   { value: "bee_certificate", label: "BEE Certificate" },
@@ -62,6 +63,7 @@ function formatDate(iso: string | null): string {
 }
 
 export default function SupplierDocumentsPage() {
+  const { confirm, ConfirmDialog } = useConfirm();
   const [filterSupplier, setFilterSupplier] = useState<string>("");
   const [filterDocType, setFilterDocType] = useState<string>("");
   const [filterExpiry, setFilterExpiry] = useState<string>("");
@@ -153,8 +155,13 @@ export default function SupplierDocumentsPage() {
       }
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to generate download link";
-      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
-      alert(msg);
+      await confirm({
+        title: "Download failed",
+        message: msg,
+        confirmLabel: "OK",
+        hideCancel: true,
+        variant: "warning",
+      });
     }
   };
 
@@ -162,14 +169,24 @@ export default function SupplierDocumentsPage() {
     const mappedName = supplierMap[doc.supplierId];
     const supplierName = mappedName ? mappedName : `Supplier ${doc.supplierId}`;
     const docLabel = DOC_TYPE_LABELS[doc.docType];
-    const confirmed = window.confirm(`Delete ${docLabel} for ${supplierName}?`);
+    const confirmed = await confirm({
+      title: "Delete document?",
+      message: `Delete ${docLabel} for ${supplierName}? This action cannot be undone.`,
+      confirmLabel: "Delete",
+      variant: "danger",
+    });
     if (!confirmed) return;
     try {
       await deleteDocMutation.mutateAsync(doc.id);
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Failed to delete document";
-      // eslint-disable-next-line no-restricted-globals -- legacy sync alert pending modal migration (issue #175)
-      alert(msg);
+      await confirm({
+        title: "Delete failed",
+        message: msg,
+        confirmLabel: "OK",
+        hideCancel: true,
+        variant: "danger",
+      });
     }
   };
 
@@ -514,6 +531,7 @@ export default function SupplierDocumentsPage() {
           </div>
         </div>
       )}
+      {ConfirmDialog}
     </div>
   );
 }
