@@ -23,25 +23,47 @@ describe("rowPasses", () => {
   });
 
   it("matches province exactly (not by substring)", () => {
-    expect(rowPasses(row({ canonicalProvince: "Gauteng" }), { province: "Gauteng" })).toBe(true);
-    expect(rowPasses(row({ canonicalProvince: "Western Cape" }), { province: "Gauteng" })).toBe(
+    expect(rowPasses(row({ canonicalProvince: "Gauteng" }), { provinces: ["Gauteng"] })).toBe(true);
+    expect(rowPasses(row({ canonicalProvince: "Western Cape" }), { provinces: ["Gauteng"] })).toBe(
       false,
     );
+  });
+
+  it("matches ANY of multiple selected provinces", () => {
+    const filter = { provinces: ["Gauteng", "Mpumalanga"] };
+    expect(rowPasses(row({ canonicalProvince: "Gauteng" }), filter)).toBe(true);
+    expect(rowPasses(row({ canonicalProvince: "Mpumalanga" }), filter)).toBe(true);
+    expect(rowPasses(row({ canonicalProvince: "Western Cape" }), filter)).toBe(false);
+  });
+
+  it("treats an empty selection as no filter", () => {
+    expect(rowPasses(row({ canonicalProvince: "Western Cape" }), { provinces: [] })).toBe(true);
+    expect(rowPasses(row({ canonicalCity: "Sandton" }), { cities: [] })).toBe(true);
   });
 
   it("disambiguates same-named towns by canonical province", () => {
     const mpMiddelburg = row({ canonicalProvince: "Mpumalanga", canonicalCity: "Middelburg" });
     const ecMiddelburg = row({ canonicalProvince: "Eastern Cape", canonicalCity: "Middelburg" });
-    expect(rowPasses(mpMiddelburg, { province: "Mpumalanga", city: "Middelburg" })).toBe(true);
-    expect(rowPasses(ecMiddelburg, { province: "Mpumalanga", city: "Middelburg" })).toBe(false);
+    expect(rowPasses(mpMiddelburg, { provinces: ["Mpumalanga"], cities: ["Middelburg"] })).toBe(
+      true,
+    );
+    expect(rowPasses(ecMiddelburg, { provinces: ["Mpumalanga"], cities: ["Middelburg"] })).toBe(
+      false,
+    );
   });
 
   it("matches city and category exactly", () => {
-    expect(rowPasses(row({ canonicalCity: "Benoni" }), { city: "Benoni" })).toBe(true);
-    expect(rowPasses(row({ canonicalCity: "Sandton" }), { city: "Benoni" })).toBe(false);
+    expect(rowPasses(row({ canonicalCity: "Benoni" }), { cities: ["Benoni"] })).toBe(true);
+    expect(rowPasses(row({ canonicalCity: "Sandton" }), { cities: ["Benoni"] })).toBe(false);
     expect(
       rowPasses(row({ canonicalCategory: "finance-accounting" }), { category: "it-software" }),
     ).toBe(false);
+  });
+
+  it("matches ANY of multiple selected cities", () => {
+    const filter = { cities: ["Witbank", "Ermelo", "Johannesburg", "Pretoria"] };
+    expect(rowPasses(row({ canonicalCity: "Ermelo" }), filter)).toBe(true);
+    expect(rowPasses(row({ canonicalCity: "Benoni" }), filter)).toBe(false);
   });
 
   it("matches sourceIds membership", () => {
@@ -68,8 +90,8 @@ describe("rowPasses", () => {
 
   it("ignores a skipped dimension", () => {
     const r = row({ canonicalProvince: "Western Cape" });
-    expect(rowPasses(r, { province: "Gauteng" }, new Set(["province"]))).toBe(true);
-    expect(rowPasses(r, { province: "Gauteng" })).toBe(false);
+    expect(rowPasses(r, { provinces: ["Gauteng"] }, new Set(["province"]))).toBe(true);
+    expect(rowPasses(r, { provinces: ["Gauteng"] })).toBe(false);
   });
 
   it("enforces the target-country gate (UK jobs hidden from ZA-only seekers)", () => {
@@ -103,9 +125,10 @@ describe("countMatchingRows", () => {
 
   it("counts rows passing all filters", () => {
     expect(countMatchingRows(rows, {})).toBe(3);
-    expect(countMatchingRows(rows, { province: "Gauteng" })).toBe(2);
-    expect(countMatchingRows(rows, { province: "Gauteng", city: "Benoni" })).toBe(1);
-    expect(countMatchingRows(rows, { province: "Free State" })).toBe(0);
+    expect(countMatchingRows(rows, { provinces: ["Gauteng"] })).toBe(2);
+    expect(countMatchingRows(rows, { provinces: ["Gauteng"], cities: ["Benoni"] })).toBe(1);
+    expect(countMatchingRows(rows, { provinces: ["Free State"] })).toBe(0);
+    expect(countMatchingRows(rows, { provinces: ["Gauteng", "Western Cape"] })).toBe(3);
   });
 });
 
@@ -119,7 +142,7 @@ describe("distinctPassing", () => {
   it("returns distinct provinces ignoring the province/city dimensions", () => {
     const provinces = distinctPassing(
       rows,
-      { province: "Gauteng" },
+      { provinces: ["Gauteng"] },
       new Set(["province", "city"]),
       (r) => r.canonicalProvince,
     );
@@ -127,14 +150,24 @@ describe("distinctPassing", () => {
     expect([...provinces].sort()).toEqual(["Gauteng", "Western Cape"]);
   });
 
-  it("returns only cities within the selected province (city dimension skipped)", () => {
+  it("returns only cities within the selected provinces (city dimension skipped)", () => {
     const cities = distinctPassing(
       rows,
-      { province: "Gauteng", city: "Benoni" },
+      { provinces: ["Gauteng"], cities: ["Benoni"] },
       new Set(["city"]),
       (r) => r.canonicalCity,
     );
     expect([...cities].sort()).toEqual(["Benoni", "Sandton"]);
+  });
+
+  it("unions cities across multiple selected provinces", () => {
+    const cities = distinctPassing(
+      rows,
+      { provinces: ["Gauteng", "Western Cape"] },
+      new Set(["city"]),
+      (r) => r.canonicalCity,
+    );
+    expect([...cities].sort()).toEqual(["Benoni", "Cape Town", "Sandton"]);
   });
 
   it("omits null/empty selector values", () => {

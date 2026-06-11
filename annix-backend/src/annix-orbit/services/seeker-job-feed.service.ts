@@ -583,10 +583,14 @@ export class SeekerJobFeedService {
     );
     const provinces = SA_PROVINCES.filter((p) => provinceValues.has(p));
 
-    const cityValues = rf.province
-      ? distinctPassing(rows, ff, new Set(["city"]), (r) => r.canonicalCity)
-      : new Set<string>();
-    const orderedCities = citiesForProvince(rf.province ?? null);
+    const selectedProvinces = rf.provinces ?? [];
+    const cityValues =
+      selectedProvinces.length > 0
+        ? distinctPassing(rows, ff, new Set(["city"]), (r) => r.canonicalCity)
+        : new Set<string>();
+    // Union of each selected province's curated city order, then any remaining
+    // matched cities alphabetically.
+    const orderedCities = [...new Set(selectedProvinces.flatMap((p) => citiesForProvince(p)))];
     const cities = [
       ...orderedCities.filter((c) => cityValues.has(c)),
       ...[...cityValues].filter((c) => !orderedCities.includes(c)).sort(),
@@ -825,16 +829,18 @@ export class SeekerJobFeedService {
     return { candidatesAffected: candidateIds.length };
   }
 
-  // Translate a provider-name filter into the source ids that back it, so the
-  // count and the list filter on the same job field (sourceId).
+  // Translate the provider-name filter into the union of source ids that back
+  // the selected providers, so the count and the list filter on the same job
+  // field (sourceId).
   private async resolveRepoFilters(
     filters: RecommendedJobFilters | null,
   ): Promise<RecommendedJobFilters | null> {
-    if (!filters?.provider) return filters;
+    if (!filters?.providers || filters.providers.length === 0) return filters;
     const sources = await this.sourceRepo.findManyWhere({
       companyId: null,
     } as Partial<JobMarketSource>);
-    const ids = sources.filter((s) => s.provider === filters.provider).map((s) => s.id);
+    const wanted = new Set(filters.providers);
+    const ids = sources.filter((s) => wanted.has(s.provider)).map((s) => s.id);
     return { ...filters, sourceIds: ids.length > 0 ? ids : [-1] };
   }
 

@@ -55,6 +55,7 @@ export interface IndividualProfileStatus {
   certificatesCount: number;
   cvUploadedAt: Date | null;
   cvOriginalFilename: string | null;
+  cvExtractionStatus: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
   eeDisclosed: boolean;
@@ -376,6 +377,7 @@ export class IndividualProfileService {
       certificatesCount,
       cvUploadedAt: profile.cvUploadedAt,
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
+      cvExtractionStatus: profile.cvExtractionStatus ?? null,
       photoCredentialCapture,
       dismissWarningAcknowledged: profile.dismissWarningAcknowledgedAt != null,
       eeDisclosed: profile.eeDisclosure != null,
@@ -624,7 +626,7 @@ export class IndividualProfileService {
     });
 
     if (kind === IndividualDocumentKind.CV) {
-      await this.refreshCvExtraction(profile, stored.path);
+      await this.markCvProcessing(profile, stored.path);
     }
 
     // A clear (non-photo) qualification/certificate upload resolves any pending
@@ -782,32 +784,59 @@ export class IndividualProfileService {
     }
   }
 
-  private async refreshCvExtraction(profile: AnnixOrbitProfile, cvFilePath: string): Promise<void> {
+  // Mark the CV as processing and kick extraction off in the background. The
+  // text extraction can involve LibreOffice conversion, vision OCR and an AI
+  // structured-extraction call - tens of seconds the seeker should not spend
+  // staring at an upload spinner (test feedback #11, issue #344). The seeker
+  // UI polls profile status for the outcome.
+  private async markCvProcessing(profile: AnnixOrbitProfile, cvFilePath: string): Promise<void> {
     profile.cvFilePath = cvFilePath;
     profile.cvUploadedAt = now().toJSDate();
+    profile.rawCvText = null;
+    profile.extractedCvData = null;
+    profile.cvExtractionStatus = "processing";
+    await this.profileRepo.save(profile);
+
+    void this.runCvExtraction(profile.id, cvFilePath).catch((err) => {
+      this.logger.warn(
+        `Background CV extraction crashed for profile ${profile.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+  }
+
+  private async runCvExtraction(profileId: number, cvFilePath: string): Promise<void> {
+    const profile = await this.profileRepo.findById(profileId);
+    if (!profile || profile.cvFilePath !== cvFilePath) {
+      // The CV was replaced or the profile vanished while we were queued -
+      // the newer upload's run owns the status now.
+      return;
+    }
 
     try {
       const { text, data } = await this.cvExtractionService.processCV(cvFilePath);
       profile.rawCvText = text;
       profile.extractedCvData = data;
+      const readable = text != null && text.trim().length > 0;
+      profile.cvExtractionStatus = readable ? "completed" : "unreadable";
+      await this.profileRepo.save(profile);
+      if (!readable) {
+        return;
+      }
     } catch (err) {
       this.logger.warn(
         `CV extraction failed for profile ${profile.id} (file ${cvFilePath}). Stored without extraction. Reason: ${err}`,
       );
       profile.rawCvText = null;
       profile.extractedCvData = null;
-    }
-
-    await this.profileRepo.save(profile);
-
-    if (!profile.rawCvText || profile.rawCvText.trim().length === 0) {
-      throw new BadRequestException(
-        "We couldn't read any text from your CV, even after trying automatic conversion and OCR. It may be password-protected, corrupted, or contain only images we couldn't read. Please re-upload a text-based PDF or Word document, or a clearer scan.",
-      );
+      profile.cvExtractionStatus = "failed";
+      await this.profileRepo.save(profile);
+      return;
     }
 
     // Make the seeker matchable: sync a posting-less Candidate from the freshly
-    // extracted CV and embed it. Fire-and-forget so the upload response is fast.
+    // extracted CV and embed it.
     void this.syncCandidateFromProfile(profile).catch((err) => {
       this.logger.warn(
         `Background candidate sync failed for profile ${profile.id}: ${

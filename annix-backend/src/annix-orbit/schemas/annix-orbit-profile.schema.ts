@@ -45,6 +45,9 @@ export class AnnixOrbitProfile {
   @Prop({ type: String, required: false })
   rawCvText: string;
 
+  @Prop({ type: String, required: false })
+  cvExtractionStatus: string;
+
   @Prop({ type: Object, required: false })
   extractedCvData: Record<string, unknown>;
 

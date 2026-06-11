@@ -104,6 +104,11 @@ export class AnnixOrbitProfile {
   @Column({ name: "raw_cv_text", type: "text", nullable: true })
   rawCvText: string | null;
 
+  // CV text extraction runs in the background after upload so the response is
+  // fast: "processing" -> "completed" | "unreadable" (no text found) | "failed".
+  @Column({ name: "cv_extraction_status", type: "varchar", length: 16, nullable: true })
+  cvExtractionStatus: string | null;
+
   @Column({ name: "extracted_cv_data", type: "jsonb", nullable: true })
   extractedCvData: ExtractedCvData | null;
 

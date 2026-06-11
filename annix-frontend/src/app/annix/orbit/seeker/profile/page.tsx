@@ -30,7 +30,7 @@ import { ProfilePhotoAvatar } from "../components/ProfilePhotoAvatar";
 export default function SeekerProfilePage() {
   const router = useRouter();
   const { user } = useAnnixOrbitAuth();
-  const statusQuery = useOrbitMyProfileStatus();
+  const statusQuery = useOrbitMyProfileStatus(true, { pollWhileCvProcessing: true });
   const documentsQuery = useOrbitMyDocuments();
   const workProfileQuery = useOrbitSeekerWorkProfile();
   const deleteMutation = useOrbitDeleteMyDocument();
@@ -73,6 +73,7 @@ export default function SeekerProfilePage() {
   const qualificationsCount = status ? status.qualificationsCount : 0;
   const certificatesCount = status ? status.certificatesCount : 0;
   const cvUploadedAt = status ? status.cvUploadedAt : null;
+  const cvExtractionStatus = status ? status.cvExtractionStatus : null;
   const photoAllowed = status ? status.photoCredentialCapture : false;
 
   const docsSignature = `${qualificationsCount}:${certificatesCount}`;
@@ -82,6 +83,16 @@ export default function SeekerProfilePage() {
   const handleNixRan = useCallback(() => {
     setNixRanSignature(docsSignatureRef.current);
   }, []);
+  // CV text extraction now finishes in the background after upload - only kick
+  // the Nix auto-run once it lands, otherwise it would assess an empty CV.
+  const prevExtractionStatusRef = useRef<string | null>(null);
+  useEffect(() => {
+    const prev = prevExtractionStatusRef.current;
+    prevExtractionStatusRef.current = cvExtractionStatus;
+    if (prev === "processing" && cvExtractionStatus === "completed") {
+      setNixAutoRunKey((k) => k + 1);
+    }
+  }, [cvExtractionStatus]);
   const userName = user ? user.name : null;
   const firstName = userName ? userName.split(" ")[0] : "";
   const qualsHighlight = hasCv && qualificationsCount === 0;
@@ -291,6 +302,22 @@ export default function SeekerProfilePage() {
           }
           description="Required. We extract your skills, experience, and education from this file."
         >
+          {cvExtractionStatus === "processing" ? (
+            <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-b-2 border-blue-600" />
+              <span>
+                Nix is reading your CV — your skills and experience will be extracted shortly. You
+                can keep working in the meantime.
+              </span>
+            </div>
+          ) : null}
+          {cvExtractionStatus === "unreadable" || cvExtractionStatus === "failed" ? (
+            <div className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              We couldn't read any text from your CV, even after trying automatic conversion and
+              OCR. It may be password-protected, corrupted, or contain only images we couldn't read.
+              Please re-upload a text-based PDF or Word document, or a clearer scan.
+            </div>
+          ) : null}
           {cvDoc ? (
             <CurrentCvCard
               doc={cvDoc}
@@ -303,7 +330,6 @@ export default function SeekerProfilePage() {
             kind="cv"
             ctaLabel="Replace CV"
             helperText="PDF works best. Word, Excel, or PowerPoint also accepted (10 MB max). Replacing your CV will overwrite the old version."
-            onUploaded={() => setNixAutoRunKey((k) => k + 1)}
           />
         </SectionCard>
       ) : (
@@ -328,7 +354,6 @@ export default function SeekerProfilePage() {
               kind="cv"
               ctaLabel="Upload CV"
               helperText="PDF works best. Word, Excel, or PowerPoint also accepted (10 MB max)."
-              onUploaded={() => setNixAutoRunKey((k) => k + 1)}
             />
           </div>
         </div>

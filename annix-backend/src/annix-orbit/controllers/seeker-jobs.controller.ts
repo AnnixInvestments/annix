@@ -77,6 +77,41 @@ interface SeekerAuthRequest {
   user: { id: number; email: string; userType: string };
 }
 
+// Multi-select query params arrive as a single string ("a"), a repeated key
+// (["a","b"]) or a comma-joined string ("a,b") — normalize all three to a list.
+function toList(value?: string | string[]): string[] {
+  if (value == null) return [];
+  const parts = Array.isArray(value) ? value : [value];
+  return parts
+    .flatMap((part) => part.split(","))
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+}
+
+function parseSeekerJobFilters(query: {
+  region?: string;
+  province?: string | string[];
+  city?: string | string[];
+  category?: string;
+  minSalary?: string;
+  search?: string;
+  provider?: string | string[];
+}) {
+  const parsedMinSalary = query.minSalary ? Number.parseFloat(query.minSalary) : null;
+  const provinces = toList(query.province);
+  const cities = toList(query.city);
+  const providers = toList(query.provider).filter((p) => p !== "all");
+  return {
+    region: query.region || null,
+    provinces: provinces.length > 0 ? provinces : null,
+    cities: cities.length > 0 ? cities : null,
+    category: query.category || null,
+    minSalary: parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
+    search: query.search || null,
+    providers: providers.length > 0 ? providers : null,
+  };
+}
+
 @Controller("annix-orbit/seeker/jobs")
 @UseGuards(AnnixOrbitAuthGuard)
 export class SeekerJobsController {
@@ -115,24 +150,22 @@ export class SeekerJobsController {
   async facets(
     @Request() req: SeekerAuthRequest,
     @Query("region") region?: string,
-    @Query("province") province?: string,
-    @Query("city") city?: string,
+    @Query("province") province?: string | string[],
+    @Query("city") city?: string | string[],
     @Query("category") category?: string,
     @Query("minSalary") minSalary?: string,
     @Query("search") search?: string,
-    @Query("provider") provider?: string,
+    @Query("provider") provider?: string | string[],
   ) {
-    const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
-    const filters = {
-      region: region || null,
-      province: province || null,
-      city: city || null,
-      category: category || null,
-      minSalary:
-        parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
-      search: search || null,
-      provider: provider && provider !== "all" ? provider : null,
-    };
+    const filters = parseSeekerJobFilters({
+      region,
+      province,
+      city,
+      category,
+      minSalary,
+      search,
+      provider,
+    });
     return this.feedService.recommendedFacetsForSeeker(req.user.email, { filters });
   }
 
@@ -140,24 +173,22 @@ export class SeekerJobsController {
   async recommended(
     @Request() req: SeekerAuthRequest,
     @Query("region") region?: string,
-    @Query("province") province?: string,
-    @Query("city") city?: string,
+    @Query("province") province?: string | string[],
+    @Query("city") city?: string | string[],
     @Query("category") category?: string,
     @Query("minSalary") minSalary?: string,
     @Query("search") search?: string,
-    @Query("provider") provider?: string,
+    @Query("provider") provider?: string | string[],
   ) {
-    const parsedMinSalary = minSalary ? Number.parseFloat(minSalary) : null;
-    const filters = {
-      region: region || null,
-      province: province || null,
-      city: city || null,
-      category: category || null,
-      minSalary:
-        parsedMinSalary != null && Number.isFinite(parsedMinSalary) ? parsedMinSalary : null,
-      search: search || null,
-      provider: provider && provider !== "all" ? provider : null,
-    };
+    const filters = parseSeekerJobFilters({
+      region,
+      province,
+      city,
+      category,
+      minSalary,
+      search,
+      provider,
+    });
     const result = await this.feedService.recommendedForSeeker(req.user.email, { filters });
     return {
       matches: result.matches,

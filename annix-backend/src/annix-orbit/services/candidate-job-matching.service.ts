@@ -90,12 +90,13 @@ export const STRETCH_SCORE_BAND_MAX = 0.79;
 const RECOMMENDED_FETCH_WINDOW = 200;
 
 export interface RecommendedJobFilters {
-  province?: string | null;
-  city?: string | null;
+  // Multi-select: empty/absent arrays mean "no filter"; otherwise match ANY value.
+  provinces?: string[] | null;
+  cities?: string[] | null;
   category?: string | null;
   minSalary?: number | null;
   search?: string | null;
-  provider?: string | null;
+  providers?: string[] | null;
   sourceIds?: number[] | null;
   // The seeker's target countries (hard gate, never user-removable) and an
   // optional single-country narrowing from the Region dropdown.
