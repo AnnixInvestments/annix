@@ -10,6 +10,7 @@ import {
   SessionExpiredError,
 } from "@/app/lib/api/client";
 import { nowISO } from "@/app/lib/datetime";
+import { toNumericDraftId } from "./draft-id";
 import type { PipeItem } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import { nixApi } from "@/app/lib/nix";
@@ -495,8 +496,12 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
     // is going, not the page they just left.
     const stepToSave = stepOverride ?? currentStep;
 
+    // Never send a non-numeric draftId — the backend validator 400s
+    // and bricks saving until storage is cleared (issue #357).
+    const numericDraftId = toNumericDraftId(currentDraftId);
+
     const saveData = {
-      draftId: currentDraftId || undefined,
+      draftId: numericDraftId ? numericDraftId : undefined,
       projectName: rfqData.projectName,
       currentStep: stepToSave,
       formData: {
@@ -596,8 +601,10 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
         ? await adminApiClient.saveDraft(saveData)
         : await draftsApi.save(saveData);
 
-      // Update draft info
-      setCurrentDraftId(result.id);
+      // Update draft info. Coerce the id — Mongoose's `id` virtual
+      // returns a string, and a string here 400s every later save.
+      const resultDraftId = toNumericDraftId(result.id);
+      setCurrentDraftId(resultDraftId);
       setDraftNumber(result.draftNumber);
 
       // Also save to localStorage as backup. Use the server's
@@ -608,7 +615,7 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
         "annix_rfq_draft",
         JSON.stringify({
           ...saveData,
-          draftId: result.id,
+          draftId: resultDraftId,
           draftNumber: result.draftNumber,
           savedAt: nowISO(),
         }),

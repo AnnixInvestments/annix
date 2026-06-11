@@ -627,9 +627,28 @@ export class RfqCalculationService {
     tangentWeight: number;
     totalWeight: number;
   } {
-    const bendBodyWeight = (dto.nominalBoreMm / 25) ** 2 * 2;
+    // Real geometry, replacing the original NB-only placeholder
+    // ((NB/25)^2 * 2) that priced a 300NB 90deg bend at 288 kg vs the
+    // ~48 kg a 610mm-radius arc of 300NB x 6mm actually weighs.
+    const nbLookup = this.referenceDataCache.nbNpsLookupByNb(dto.nominalBoreMm);
+    const rawOdMm = nbLookup?.outside_diameter_mm;
+    const outsideDiameterMm = rawOdMm || dto.nominalBoreMm * 1.05;
+    const wallThicknessMm = this.wallThicknessFromSchedule(dto.scheduleNumber);
+    // Standard mass formula: ((OD - WT) * WT) * 0.02466 = kg/m
+    const kgPerMeter = (outsideDiameterMm - wallThicknessMm) * wallThicknessMm * 0.02466;
+
+    // Centerline arc = bend radius x angle; radius from the bend type
+    // multiplier ("2D" -> 2 x nominal diameter), matching centerToFace().
+    const multiplier = dto.bendType
+      ? Number.parseFloat(dto.bendType.replace("D", "")) || 1.5
+      : 1.5;
+    const radiusMm = dto.nominalBoreMm * multiplier;
+    const bendDegrees = dto.bendDegrees || 90;
+    const arcLengthM = (radiusMm * ((bendDegrees * Math.PI) / 180)) / 1000;
+    const bendBodyWeight = kgPerMeter * arcLengthM;
+
     const tangentWeight = dto.tangentLengths.reduce((total, length) => {
-      return total + (length / 1000) * (dto.nominalBoreMm / 25) * STEEL_DENSITY_KG_DM3;
+      return total + (length / 1000) * kgPerMeter;
     }, 0);
     return { bendBodyWeight, tangentWeight, totalWeight: bendBodyWeight + tangentWeight };
   }
@@ -642,6 +661,11 @@ export class RfqCalculationService {
   }
 
   private wallThicknessFromSchedule(scheduleNumber: string): number {
+    // SABS 719 style schedules carry the wall thickness directly
+    // ("WT6", "WT4.5 (4.5mm)") — parse it rather than falling through
+    // to the Sch40 default.
+    const wtMatch = scheduleNumber?.match(/^WT(\d+(?:\.\d+)?)/i);
+    if (wtMatch) return Number.parseFloat(wtMatch[1]);
     const scheduleMap: { [key: string]: number } = {
       Sch10: 2.77,
       Sch20: 3.91,

@@ -1141,6 +1141,7 @@ export {
   flangeTypesForStandardCode,
   flangeWeight,
   gasketWeightLookup,
+  hasFlangeWeightRecord,
   nbToOd,
   outerDiameterFromNB,
   retainingRingWeightLookup,

@@ -20,8 +20,12 @@ import {
   WORKING_PRESSURE_BAR,
   WORKING_TEMPERATURE_CELSIUS,
 } from "@/app/lib/config/rfq";
+import { fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import { calculateMinWallThickness } from "@/app/lib/utils/pipeCalculations";
-import { scheduleToFittingClass } from "@/app/lib/utils/rfqFlangeCalculations";
+import {
+  combineClassWithFlangeType,
+  scheduleToFittingClass,
+} from "@/app/lib/utils/rfqFlangeCalculations";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 import { PipeEndConfigSection } from "../sections/PipeEndConfigSection";
 import { PipeSteelSpecSelect } from "../sections/PipeSteelSpecSelect";
@@ -600,14 +604,13 @@ const StraightPipeFormFieldsInner = ({ logic }: { logic: StraightPipeFormLogic }
               value={rawPipeType || "plain"}
               onChange={(value) => {
                 const newPipeType = value;
-                const rawPipeEndConfiguration3 = specs.pipeEndConfiguration;
-                const currentEndConfig = rawPipeEndConfiguration3 || "PE";
-                const isPuddleEndConfig = currentEndConfig === "FOE" || currentEndConfig === "FBE";
                 const updatedSpecs: any = {
                   ...entry.specs,
                   pipeType: newPipeType,
                 };
-                if (newPipeType === "puddle" && !isPuddleEndConfig) {
+                // A puddle pipe is always FOE: one end flange (pipe-sized)
+                // plus a puddle flange along the barrel — never FBE.
+                if (newPipeType === "puddle") {
                   updatedSpecs.pipeEndConfiguration = "FOE";
                 }
                 if (newPipeType === "spigot") {
@@ -831,7 +834,102 @@ const StraightPipeFormFieldsInner = ({ logic }: { logic: StraightPipeFormLogic }
             {specs.pipeType === "puddle" && (
               <div className="mt-2 pt-2 border-t border-amber-300">
                 <h5 className="text-xs font-semibold text-amber-700 mb-1">Puddle Flange Dims</h5>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-7 gap-2">
+                  {/* Size (NB) quick-fill — looks up the flange table for the
+                      item's standard/class and fills the dim fields; fields
+                      stay editable for custom plates. */}
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-900 mb-1">
+                      Size (NB)
+                    </label>
+                    <Select
+                      id={`puddle-nb-${entry.id}`}
+                      value={specs.puddleFlangeNbMm ? String(specs.puddleFlangeNbMm) : ""}
+                      onChange={async (value) => {
+                        const nb = parseInt(value, 10);
+                        if (!nb) {
+                          onUpdateEntry(entry.id, {
+                            specs: { ...entry.specs, puddleFlangeNbMm: null },
+                          });
+                          return;
+                        }
+                        const rawSpecsStdId = specs.flangeStandardId;
+                        const gsStdId = globalSpecs?.flangeStandardId;
+                        const stdId = rawSpecsStdId || gsStdId;
+                        const rawSpecsPcId = specs.flangePressureClassId;
+                        const gsPcId = globalSpecs?.flangePressureClassId;
+                        const pcId = rawSpecsPcId || gsPcId;
+                        const rawSpecsTypeCode = specs.flangeTypeCode;
+                        const gsTypeCode = globalSpecs?.flangeTypeCode;
+                        const typeCode = rawSpecsTypeCode || gsTypeCode;
+                        const stored = masterData.pressureClasses?.find(
+                          (p: PressureClassItem) => p.id === pcId,
+                        );
+                        const std = masterData.flangeStandards?.find((s: any) => s.id === stdId);
+                        const storedDesignation = stored?.designation;
+                        const stdCode = std?.code;
+                        const combined = combineClassWithFlangeType(
+                          storedDesignation ? storedDesignation : "",
+                          typeCode,
+                          stdCode,
+                        );
+                        const normalizedPc =
+                          combined && combined !== storedDesignation
+                            ? masterData.pressureClasses?.find(
+                                (p: PressureClassItem) => p.designation === combined,
+                              )
+                            : null;
+                        const normalizedPcId = normalizedPc?.id;
+                        const lookupPcId = normalizedPcId ? normalizedPcId : pcId;
+                        const flangeType = masterData.flangeTypes?.find(
+                          (ft: any) => ft.code === typeCode,
+                        );
+                        const dims =
+                          stdId && lookupPcId
+                            ? await fetchFlangeSpecsStatic(nb, stdId, lookupPcId, flangeType?.id)
+                            : null;
+                        const updatedSpecs: any = {
+                          ...entry.specs,
+                          puddleFlangeNbMm: nb,
+                        };
+                        // Only auto-fill from a sane row — some master-data
+                        // rows are corrupt (PCD >= OD), and quoting those
+                        // would be worse than leaving the fields manual.
+                        const dimsOdMm = dims?.flangeOdMm;
+                        const dimsPcdMm = dims?.flangePcdMm;
+                        const dimsAreSane =
+                          !!dims && !!dimsOdMm && !!dimsPcdMm && dimsPcdMm < dimsOdMm;
+                        if (dims && dimsAreSane) {
+                          updatedSpecs.puddleFlangeOdMm = Math.round(dims.flangeOdMm);
+                          updatedSpecs.puddleFlangePcdMm = Math.round(dims.flangePcdMm);
+                          updatedSpecs.puddleFlangeHoleCount = dims.flangeNumHoles;
+                          updatedSpecs.puddleFlangeHoleIdMm = Math.round(
+                            dims.flangeBoltHoleDiameterMm,
+                          );
+                          updatedSpecs.puddleFlangeThicknessMm = Math.round(dims.flangeThicknessMm);
+                        }
+                        onUpdateEntry(entry.id, { specs: updatedSpecs });
+                      }}
+                      options={[
+                        { value: "", label: "Custom..." },
+                        // A puddle flange is never smaller than the pipe's
+                        // own flange — offer the pipe NB and up only.
+                        ...nominalBores
+                          .filter((nb: number) => !nominalBoreMm || nb >= nominalBoreMm)
+                          .map((nb: number) => ({
+                            value: String(nb),
+                            label: `${nb} NB`,
+                          })),
+                      ]}
+                      className="w-full px-2 py-1.5 border border-amber-300 rounded text-xs"
+                    />
+                    {!!specs.puddleFlangeNbMm && !rawPuddleFlangeOdMm && (
+                      <p className="text-[10px] text-amber-700 mt-0.5">
+                        No table data for this size — enter dims manually
+                      </p>
+                    )}
+                  </div>
+
                   {/* Flange OD */}
                   <div>
                     <label className="block text-xs font-semibold text-gray-900 mb-1">

@@ -1,16 +1,20 @@
 import { FLANGE_OD } from "@annix/product-data/pipe";
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
 import React, { memo } from "react";
 import {
   boltSetCountPerBend as getBoltSetCountPerBend,
   boltSetCountPerFitting as getBoltSetCountPerFitting,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
+  closureWeight as getClosureWeight,
   flangesPerPipe as getFlangesPerPipe,
+  tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
+  tackWeldWeight as getTackWeldWeight,
 } from "@/app/lib/config/rfq";
 import {
   blankFlangeSurfaceArea,
-  blankFlangeWeight,
   bnwSetInfo,
   gasketWeightLookup,
+  sansBlankFlangeWeight,
   useAllBnwSetWeights,
   useAllFlangeTypeWeights,
   useAllGasketWeights,
@@ -40,6 +44,41 @@ const ProjectSummaryTableInner = () => {
     return `${weight.toFixed(2)} kg`;
   };
 
+  // Closures, tack welds and puddle plates aren't part of
+  // calculation.totalSystemWeight (pipe + flanges); derive them from specs
+  // the same way the form's weight breakdown does so both surfaces report
+  // the same line weight.
+  const pipeExtrasWeight = (entry: any, qty: number) => {
+    const nb = entry.specs?.nominalBoreMm;
+    if (!nb || qty <= 0) return 0;
+    const endConfig = entry.specs?.pipeEndConfiguration || "PE";
+    const tackEnds = getTackWeldEndsPerPipe(endConfig);
+    const tackWeight = tackEnds > 0 ? getTackWeldWeight(nb, tackEnds) * qty : 0;
+    const closureLengthMm = entry.specs?.closureLengthMm || 0;
+    const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 0;
+    const closureTotal =
+      closureLengthMm > 0 && wallThickness > 0
+        ? getClosureWeight(nb, closureLengthMm, wallThickness, nbToOdMap) * qty
+        : 0;
+    const isPuddle = entry.specs?.pipeType === "puddle";
+    const rawPuddleOdMm = entry.specs?.puddleFlangeOdMm;
+    const puddleOdMm = rawPuddleOdMm || 0;
+    const rawPuddleThkMm = entry.specs?.puddleFlangeThicknessMm;
+    const puddleThkMm = rawPuddleThkMm || 0;
+    const rawCalcOdMm = entry.calculation?.outsideDiameterMm;
+    const rawMapOdMm = nbToOdMap[nb];
+    const pipeOdMm = rawCalcOdMm || rawMapOdMm || 0;
+    const puddleWeight =
+      isPuddle && puddleOdMm > 0 && puddleThkMm > 0 && pipeOdMm > 0
+        ? Math.PI *
+          ((puddleOdMm / 2000) ** 2 - (pipeOdMm / 2000) ** 2) *
+          (puddleThkMm / 1000) *
+          STEEL_DENSITY_KG_M3 *
+          qty
+        : 0;
+    return tackWeight + closureTotal + puddleWeight;
+  };
+
   const getTotalWeight = () => {
     // Check if BNW should be included
     const showBnw = requiredProducts.includes("fasteners_gaskets");
@@ -65,8 +104,9 @@ const ProjectSummaryTableInner = () => {
         entryTotal = rawTotalWeight || 0;
       } else {
         const rawTotalSystemWeight = entry.calculation?.totalSystemWeight;
-        // Straight pipes - totalSystemWeight is already total
-        entryTotal = rawTotalSystemWeight || 0;
+        // Straight pipes - totalSystemWeight (pipe + flanges) plus
+        // spec-derived closures and tack welds, matching the line items.
+        entryTotal = (rawTotalSystemWeight || 0) + pipeExtrasWeight(entry, qty);
       }
 
       // Add BNW and gasket weights if applicable
@@ -130,7 +170,29 @@ const ProjectSummaryTableInner = () => {
         }
       }
 
-      return total + entryTotal + bnwWeight + gasketWeight + stubBnwWeight + stubGasketWeight;
+      // Blank flanges render as their own BKF line items, so they must
+      // count toward the total regardless of the fasteners selection.
+      let blankWeight = 0;
+      if (entry.specs?.addBlankFlange && qty > 0) {
+        const rawBlankPressureClassId = entry.specs?.flangePressureClassId;
+        const blankPressureClassId = rawBlankPressureClassId || globalSpecs?.flangePressureClassId;
+        const blankPressureClass = blankPressureClassId
+          ? masterData.pressureClasses?.find((p: any) => p.id === blankPressureClassId)?.designation
+          : "PN16";
+        const rawBlankNominalDiameterMm = entry.specs?.nominalDiameterMm;
+        const rawBlankNominalBoreMm = entry.specs?.nominalBoreMm;
+        const blankNb =
+          entry.itemType === "fitting"
+            ? rawBlankNominalDiameterMm || rawBlankNominalBoreMm || 100
+            : rawBlankNominalBoreMm || 100;
+        const blankCount = (entry.specs?.blankFlangeCount || 1) * qty;
+        blankWeight =
+          sansBlankFlangeWeight(allWeights, blankNb, blankPressureClass || "PN16") * blankCount;
+      }
+
+      return (
+        total + entryTotal + bnwWeight + gasketWeight + stubBnwWeight + stubGasketWeight + blankWeight
+      );
     }, 0);
   };
 
@@ -213,7 +275,9 @@ const ProjectSummaryTableInner = () => {
               } else {
                 const rawTotalSystemWeight2 = entry.calculation?.totalSystemWeight;
                 // For straight pipes, totalSystemWeight is already total
-                totalWeight = rawTotalSystemWeight2 || 0;
+                // (pipe + flanges); closures and tack welds are computed from
+                // specs so the line matches the form's weight breakdown.
+                totalWeight = (rawTotalSystemWeight2 || 0) + pipeExtrasWeight(entry, qty);
                 weightPerItem = qty > 0 ? totalWeight / qty : 0;
               }
 
@@ -672,7 +736,7 @@ const ProjectSummaryTableInner = () => {
                           : rawNominalBoreMm8 || 100;
                       const rawBlankFlangeCount = entry.specs?.blankFlangeCount;
                       const blankFlangeCount = rawBlankFlangeCount || 1;
-                      const blankFlangeWeightKg = blankFlangeWeight(
+                      const blankFlangeWeightKg = sansBlankFlangeWeight(
                         allWeights,
                         blankNb,
                         pressureClass || "PN16",

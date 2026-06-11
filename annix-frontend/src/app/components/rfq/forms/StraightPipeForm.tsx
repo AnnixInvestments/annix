@@ -234,6 +234,7 @@ function StraightPipeFormComponent(props: StraightPipeFormProps) {
                     }
                     nominalBoreMm={entry.specs.nominalBoreMm}
                     pressureClass={rawPressureClassDesignation || "PN16"}
+                    closureLengthMm={rawClosureLengthMm}
                     addBlankFlange={specs.addBlankFlange}
                     blankFlangePositions={specs.blankFlangePositions}
                     savedCameraPosition={specs.savedCameraPosition}

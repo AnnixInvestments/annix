@@ -19,12 +19,14 @@ import type { StraightPipeEntry } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
 import {
   flangeWeight as flangeWeightLookup,
+  hasFlangeWeightRecord,
   useAllBnwSetWeights,
   useAllFlangeTypeWeights,
   useAllGasketWeights,
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { toNumericDraftId } from "./draft-id";
 import { calculateLocalPipeResult, getPressureClassWithFlangeType } from "./local-pipe-calc";
 import { useOrchestratorActions } from "./useOrchestratorActions";
 import { usePressureClassSelection } from "./usePressureClassSelection";
@@ -259,7 +261,8 @@ export function useOrchestratorLogic(props: Props) {
     });
     // Rehydrate server attachment so the restored draft keeps
     // updating its existing row.
-    if (pendingLocalDraft.draftId) setCurrentDraftId(pendingLocalDraft.draftId);
+    const pendingDraftId = toNumericDraftId(pendingLocalDraft.draftId);
+    if (pendingDraftId) setCurrentDraftId(pendingDraftId);
     if (pendingLocalDraft.draftNumber) setDraftNumber(pendingLocalDraft.draftNumber);
 
     setShowDraftRestorePrompt(false);
@@ -468,7 +471,7 @@ export function useOrchestratorLogic(props: Props) {
           currentStep: draft.currentStep,
         });
 
-        setCurrentDraftId(draft.id);
+        setCurrentDraftId(toNumericDraftId(draft.id));
         setDraftNumber(draft.draftNumber);
 
         log.debug(`✅ Loaded RFQ ${draft.draftNumber} for editing`);
@@ -515,7 +518,7 @@ export function useOrchestratorLogic(props: Props) {
           currentStep: draft.currentStep,
         });
 
-        setCurrentDraftId(draft.id);
+        setCurrentDraftId(toNumericDraftId(draft.id));
         setDraftNumber(draft.draftNumber);
         // Capture the converted RFQ id so the BOQ step can offer a
         // "Re-send BOQ to Suppliers" recovery action for drafts that
@@ -608,7 +611,10 @@ export function useOrchestratorLogic(props: Props) {
             straightPipeEntries: localDraft.entries,
             currentStep: localDraft.currentStep,
           });
-          if (localDraft.draftId) setCurrentDraftId(localDraft.draftId);
+          {
+            const restoredDraftId = toNumericDraftId(localDraft.draftId);
+            if (restoredDraftId) setCurrentDraftId(restoredDraftId);
+          }
           if (localDraft.draftNumber) setDraftNumber(localDraft.draftNumber);
         }
 
@@ -626,7 +632,10 @@ export function useOrchestratorLogic(props: Props) {
             straightPipeEntries: localDraft.entries,
             currentStep: localDraft.currentStep,
           });
-          if (localDraft.draftId) setCurrentDraftId(localDraft.draftId);
+          {
+            const restoredDraftId = toNumericDraftId(localDraft.draftId);
+            if (restoredDraftId) setCurrentDraftId(restoredDraftId);
+          }
           if (localDraft.draftNumber) setDraftNumber(localDraft.draftNumber);
           setHasCheckedLocalDraft(true);
           showToast("Draft restored from local storage (recovery link expired)", "warning");
@@ -684,6 +693,12 @@ export function useOrchestratorLogic(props: Props) {
     if (startFresh) {
       clearLocalDraft();
       setHasCheckedLocalDraft(true);
+      // The fresh start has been honoured — strip ?new=1 so a browser
+      // refresh auto-restores the in-progress draft instead of wiping
+      // it again on every reload.
+      const url = new URL(window.location.href);
+      url.searchParams.delete("new");
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
       return;
     }
 
@@ -708,7 +723,10 @@ export function useOrchestratorLogic(props: Props) {
       });
       // Rehydrate the server attachment so subsequent saves
       // update the existing row instead of spawning new drafts.
-      if (draft.draftId) setCurrentDraftId(draft.draftId);
+      {
+        const autoRestoredDraftId = toNumericDraftId(draft.draftId);
+        if (autoRestoredDraftId) setCurrentDraftId(autoRestoredDraftId);
+      }
       if (draft.draftNumber) setDraftNumber(draft.draftNumber);
       log.info(`Auto-restored draft from localStorage at step ${draft.currentStep}`);
       return;
@@ -804,8 +822,9 @@ export function useOrchestratorLogic(props: Props) {
       entries: rfqData.items,
       customerEmail: rfqData.customerEmail,
       // Carry the server attachment forward on every autosave so
-      // the debounced flush doesn't drop it.
-      draftId: currentDraftId || undefined,
+      // the debounced flush doesn't drop it. Coerced — a non-numeric
+      // id would 400 every subsequent server save (issue #357).
+      draftId: toNumericDraftId(currentDraftId) || undefined,
       draftNumber: draftNumber || undefined,
     });
   }, [
@@ -1029,7 +1048,12 @@ export function useOrchestratorLogic(props: Props) {
           rawCalculatedPipeCount ||
           Math.ceil((rawQuantityValue || 1) / (rawIndividualPipeLength || DEFAULT_PIPE_LENGTH_M));
         const rawNumberOfFlanges = result?.numberOfFlanges;
-        const numberOfFlanges = rawNumberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
+        // Puddle plates are priced from their dims, not as end flanges —
+        // see useOrchestratorCalculations for rationale.
+        const numberOfFlanges =
+          (entry.specs as any).pipeType === "puddle"
+            ? physicalFlangesPerPipe * calculatedPipeCount
+            : rawNumberOfFlanges || physicalFlangesPerPipe * calculatedPipeCount;
 
         if (result && numberOfFlanges > 0) {
           let flangeWeightPerUnit = flangeWeightLookup(
@@ -1051,7 +1075,16 @@ export function useOrchestratorLogic(props: Props) {
               flangePressureClassId,
               flangeTypeId,
             );
-            if (flangeSpecData) {
+            // Type-agnostic dimension mass only as fallback — see
+            // useOrchestratorCalculations for rationale.
+            if (
+              flangeSpecData &&
+              !hasFlangeWeightRecord(
+                allWeights,
+                entry.specs.nominalBoreMm!,
+                pressureClassDesignation,
+              )
+            ) {
               flangeWeightPerUnit = flangeSpecData.flangeMassKg;
               log.debug(`🔧 Using dynamic flange specs: ${flangeWeightPerUnit}kg/flange`);
             }

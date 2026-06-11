@@ -42,7 +42,10 @@ export const SimpleFlange = ({
   actualHoleCount?: number;
   actualHoleIdMm?: number;
 }) => {
-  const flangeOD = actualFlangeOdMm ? actualFlangeOdMm / 1000 : outerDiameter * 1.6;
+  // Fallback ratio approximates a PN10/T1000 flange (e.g. DN450: 615/457
+  // = 1.35) so flanges without spec data render to scale alongside
+  // dimensioned ones (a 1.6 fallback dwarfed true-scale puddle flanges).
+  const flangeOD = actualFlangeOdMm ? actualFlangeOdMm / 1000 : outerDiameter * 1.35;
   const flangeRadius = flangeOD / 2;
   const boreRadius = outerDiameter / 2;
 

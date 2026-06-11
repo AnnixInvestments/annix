@@ -20,6 +20,7 @@ import {
   flangeWeightOr,
   scheduleToFittingClass,
 } from "@/app/lib/utils/rfqFlangeCalculations";
+import { saddleWeldLengthMm } from "@/app/lib/utils/rfq/saddleWeld";
 import { getGussetSection } from "@/app/lib/utils/sabs719TeeData";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
 import type { FlangeStandardItem, PressureClassItem, SteelSpecItem } from "../shared";
@@ -173,11 +174,10 @@ function ReducerCalcResults(props: FittingCalcResultsProps) {
   const largeCircMm = Math.PI * largeOD;
   const smallCircMm = Math.PI * smallOD;
   const stubCircMm = hasStub ? Math.PI * stubOD : 0;
-  const STEINMETZ_FACTOR = 2.7;
 
   const largeEndWeldMm = hasLargeFlange ? 2 * largeCircMm : largeCircMm;
   const smallEndWeldMm = hasSmallFlange ? 2 * smallCircMm : smallCircMm;
-  const stubJunctionWeldMm = hasStub ? STEINMETZ_FACTOR * stubOD : 0;
+  const stubJunctionWeldMm = hasStub ? saddleWeldLengthMm(stubOD, largeOD) : 0;
   const stubFlangeWeldMm = hasStub ? 2 * stubCircMm : 0;
   const totalWeldMm = largeEndWeldMm + smallEndWeldMm + stubJunctionWeldMm + stubFlangeWeldMm;
 
@@ -621,8 +621,7 @@ function TeeFittingCalcResults(props: FittingCalcResultsProps) {
         ? calculateBlankFlangeWeight(allWeights, sNB, pressureClassDesignation, flangeStandardCode)
         : 0;
     const sCircMm = Math.PI * sOdMm;
-    const STEINMETZ_FACTOR = 2.7;
-    const sToMainWeldMm = STEINMETZ_FACTOR * sOdMm;
+    const sToMainWeldMm = saddleWeldLengthMm(sOdMm, mainOdMm);
     const sFlangeWeldMm = sHasFlange ? 2 * sCircMm : 0;
     const rawHasBlankFlange = stub.hasBlankFlange;
     return {
@@ -856,9 +855,15 @@ function TeeFittingCalcResults(props: FittingCalcResultsProps) {
         );
       })()}
       {(() => {
-        const STEINMETZ_FACTOR = 2.7;
         const mainCircMm = Math.PI * mainOdMm;
-        const totalFlangeWeldMm = numFlanges * 2 * mainCircMm;
+        // The branch flange welds at the BRANCH circumference, not the
+        // run's — on a 400x200 reducing tee that's 688mm per pass, not
+        // 1277mm.
+        const branchCircMm = branchOdMm > 0 ? Math.PI * branchOdMm : 0;
+        const branchFlangeCount = !isGussetTee && branchOdMm > 0 && numFlanges >= 3 ? 1 : 0;
+        const runFlangeCount = numFlanges - branchFlangeCount;
+        const totalFlangeWeldMm =
+          runFlangeCount * 2 * mainCircMm + branchFlangeCount * 2 * branchCircMm;
         const rawCalcGussetSection = entry.calculation?.gussetSectionMm;
         const effectiveGussetSection = getGussetSection(nominalBore) || rawCalcGussetSection || 0;
         const calculatedGussetWeldLengthMm =
@@ -870,7 +875,7 @@ function TeeFittingCalcResults(props: FittingCalcResultsProps) {
           ? rawGussetWeldLengthMm || calculatedGussetWeldLengthMm
           : 0;
         const teeJunctionWeldMm =
-          !isGussetTee && branchOdMm > 0 ? STEINMETZ_FACTOR * branchOdMm : 0;
+          !isGussetTee && branchOdMm > 0 ? saddleWeldLengthMm(branchOdMm, mainOdMm) : 0;
         const totalWeldLinearMm =
           teeJunctionWeldMm +
           totalFlangeWeldMm +
@@ -907,10 +912,16 @@ function TeeFittingCalcResults(props: FittingCalcResultsProps) {
                 mm @ {fittingWeldThickness?.toFixed(1)}mm
               </p>
             )}
-            {numFlanges > 0 && (
+            {runFlangeCount > 0 && (
               <p>
-                {numFlanges} × Flange (2×{mainCircMm.toFixed(0)}mm) @{" "}
+                {runFlangeCount} × Flange (2×{mainCircMm.toFixed(0)}mm) @{" "}
                 {fittingWeldThickness?.toFixed(1)}mm
+              </p>
+            )}
+            {branchFlangeCount > 0 && (
+              <p>
+                {branchFlangeCount} × Branch Flange (2×{branchCircMm.toFixed(0)}mm) @{" "}
+                {branchWeldThickness?.toFixed(1)}mm
               </p>
             )}
             {totalStubToMainWeldMm > 0 && (

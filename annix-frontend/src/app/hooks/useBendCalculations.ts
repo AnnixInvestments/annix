@@ -21,9 +21,9 @@ import {
   useNbToOdMap,
 } from "@/app/lib/query/hooks";
 import { calculateBendWeldVolume } from "@/app/lib/utils/pipeCalculations";
+import { combineClassWithFlangeType } from "@/app/lib/utils/rfqFlangeCalculations";
+import { saddleWeldLengthMm } from "@/app/lib/utils/rfq/saddleWeld";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
-
-const STEINMETZ_FACTOR = 2.7;
 
 export interface BendEntry {
   id: string;
@@ -253,13 +253,15 @@ export function useBendCalculations(
       return rawCode || "";
     })();
     const pressureClass = masterData.pressureClasses?.find((p) => p.id === flangePressureClassId);
-    const pressureClassDesignation = (() => {
-      const rawDesignation = pressureClass?.designation;
-      return rawDesignation || "";
-    })();
     const flangeTypeCode = (() => {
       const rawFlangeTypeCode = specs?.flangeTypeCode;
       return rawFlangeTypeCode || globalSpecs?.flangeTypeCode;
+    })();
+    // Recombine class + selected type so weight lookups match the chosen
+    // flange type, not whichever (class,type) row id happens to be stored.
+    const pressureClassDesignation = (() => {
+      const rawDesignation = pressureClass?.designation;
+      return combineClassWithFlangeType(rawDesignation || "", flangeTypeCode, flangeStandardCode);
     })();
 
     const mainFlangeWeightPerUnit =
@@ -412,7 +414,6 @@ export function useBendCalculations(
     const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
     const mitreWeldLinear = mitreWeldCount * mainCircumference;
 
-    const mainFlangeWeldLinear = bendFlangeWeldCount * 2 * mainCircumference;
     const stub1Circ = stub1OD > 0 ? Math.PI * stub1OD : 0;
     const stub2Circ = stub2OD > 0 ? Math.PI * stub2OD : 0;
     const stub1FlangeWeldLinear = stub1FlangeCount * 2 * stub1Circ;
@@ -424,10 +425,19 @@ export function useBendCalculations(
       branchFlangeConfig?.hasBranch && branchFlangeConfig?.branchType !== "loose";
     const branchFlangeWeldCount = branchHasWeldableFlange ? 1 : 0;
     const branchFlangeWeldLinear = branchFlangeWeldCount * 2 * mainCircumference;
+    // The fitting config's flangeWeldCount (e.g. FAE = 3) covers ALL
+    // flanged ends including the branch; the branch weld is itemised
+    // separately above, so count only the run ends here or the branch
+    // flange weld gets double-counted.
+    const runFlangeWeldCount =
+      isSweepTee && branchFlangeWeldCount > 0
+        ? Math.max(bendFlangeWeldCount - branchFlangeWeldCount, 0)
+        : bendFlangeWeldCount;
+    const mainFlangeWeldLinear = runFlangeWeldCount * 2 * mainCircumference;
     const totalFlangeWeldLinear =
       mainFlangeWeldLinear + stub1FlangeWeldLinear + stub2FlangeWeldLinear + branchFlangeWeldLinear;
     const totalFlangeWeldCount =
-      bendFlangeWeldCount + stub1FlangeCount + stub2FlangeCount + branchFlangeWeldCount;
+      runFlangeWeldCount + stub1FlangeCount + stub2FlangeCount + branchFlangeWeldCount;
 
     const tangent1HasLength = tangent1 > 0;
     const tangent2HasLength = tangent2 > 0;
@@ -436,7 +446,10 @@ export function useBendCalculations(
       : 0;
     const buttWeldLinear = buttWeldCount * mainCircumference;
 
-    const saddleWeldLinear = isSweepTee && mainOdMm > 0 ? STEINMETZ_FACTOR * mainOdMm : 0;
+    // Sweep tee: the bend lands full-bore on Pipe A (same NB), so the
+    // saddle is the equal-bore intersection curve (≈3.82 × OD).
+    const saddleWeldLinear =
+      isSweepTee && mainOdMm > 0 ? saddleWeldLengthMm(mainOdMm, mainOdMm) : 0;
 
     const teeStub1Circ = stub1NB ? Math.PI * stub1OD : 0;
     const teeStub2Circ = stub2NB ? Math.PI * stub2OD : 0;

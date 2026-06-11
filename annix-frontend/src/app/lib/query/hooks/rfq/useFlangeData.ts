@@ -261,6 +261,16 @@ export function flangeWeight(
           : 150;
 }
 
+export function hasFlangeWeightRecord(
+  allWeights: FlangeTypeWeightRecord[],
+  nominalBoreMm: number,
+  pressureClass: string,
+): boolean {
+  return allWeights.some(
+    (w) => w.nominal_bore_mm === nominalBoreMm && w.pressure_class === pressureClass,
+  );
+}
+
 export function blankFlangeWeight(
   allWeights: FlangeTypeWeightRecord[],
   nominalBoreMm: number,
@@ -314,8 +324,25 @@ export function bnwSetInfo(
   nominalBoreMm: number,
   pressureClass: string,
 ): BnwSetResult {
+  // BNW rows are keyed by PN/Class designations only; map SANS 1123
+  // table designations (e.g. "1000/3") to their PN equivalent first.
+  const sansMatch = pressureClass.match(/^(\d+)\s*\//);
+  const lookupClass = sansMatch
+    ? `PN${
+        parseInt(sansMatch[1], 10) <= 600
+          ? 6
+          : parseInt(sansMatch[1], 10) <= 1000
+            ? 10
+            : parseInt(sansMatch[1], 10) <= 1600
+              ? 16
+              : parseInt(sansMatch[1], 10) <= 2500
+                ? 25
+                : 40
+      }`
+    : pressureClass;
+
   const match = allBnw.find(
-    (b) => b.nominal_bore_mm === nominalBoreMm && b.pressure_class === pressureClass,
+    (b) => b.nominal_bore_mm === nominalBoreMm && b.pressure_class === lookupClass,
   );
 
   if (match) {

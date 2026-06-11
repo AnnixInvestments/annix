@@ -155,6 +155,10 @@ export function PipeEndConfigSection(props: PipeEndConfigSectionProps) {
             <div className="px-2 py-1.5 bg-teal-100 border border-teal-300 rounded text-xs text-teal-800 font-medium">
               FBE - Flanged Both Ends
             </div>
+          ) : props.specs.pipeType === "puddle" ? (
+            <div className="px-2 py-1.5 bg-teal-100 border border-teal-300 rounded text-xs text-teal-800 font-medium">
+              FOE - Flanged One End + Puddle Flange
+            </div>
           ) : (
             <Select
               id={`pipe-config-${props.entryId}`}

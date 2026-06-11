@@ -1,3 +1,5 @@
+import { combineClassWithFlangeType } from "../rfqFlangeCalculations";
+
 interface MasterData {
   steelSpecs: Array<{ id: number; steelSpecName: string }>;
   flangeStandards?: Array<{ id: number; code: string }>;
@@ -8,6 +10,7 @@ interface GlobalSpecs {
   steelSpecificationId?: number;
   flangeStandardId?: number;
   flangePressureClassId?: number;
+  flangeTypeCode?: string;
   workingPressureBar?: number;
 }
 
@@ -45,7 +48,17 @@ function resolveFlangeSpecs(
   const pressureClass = flangePressureClassId
     ? masterData.pressureClasses?.find((p: any) => p.id === flangePressureClassId)?.designation
     : "";
-  return { flangeStandard: flangeStandard || "", pressureClass: pressureClass || "" };
+  // The stored row's designation may carry a different type suffix than
+  // the selected Type dropdown (class and type are chosen separately) —
+  // recombine so descriptions read e.g. "1000/3", not the stored "1000/1".
+  const rawFlangeTypeCode = entry.specs?.flangeTypeCode;
+  const flangeTypeCode = rawFlangeTypeCode || globalSpecs?.flangeTypeCode;
+  const normalizedClass = combineClassWithFlangeType(
+    pressureClass || "",
+    flangeTypeCode,
+    flangeStandard || "",
+  );
+  return { flangeStandard: flangeStandard || "", pressureClass: normalizedClass || "" };
 }
 
 function resolveSteelSpec(steelSpecId: number | null, masterData: MasterData): string | undefined {

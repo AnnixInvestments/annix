@@ -19,6 +19,7 @@ import {
   calculateMinWallThickness,
   findRecommendedSchedule,
 } from "@/app/lib/utils/pipeCalculations";
+import { combineClassWithFlangeType } from "@/app/lib/utils/rfqFlangeCalculations";
 import { useFlangeResolution } from "../hooks/useFlangeResolution";
 import { useMaterialSelector } from "../hooks/useMaterialSelector";
 import type { StraightPipeFormProps } from "../StraightPipeForm";
@@ -392,10 +393,31 @@ export function useStraightPipeFormLogic(props: StraightPipeFormProps) {
       const flangeTypeId = flangeType?.id;
       log.debug("StraightPipeForm: fetching with flangeTypeId", flangeTypeId);
 
+      // Dimension rows are keyed per (class,type) pressure-class row; the
+      // stored id may carry a different type suffix than the selected Type
+      // dropdown. Normalize to the row matching class + selected type so
+      // the 3D card shows the chosen flange's dimensions.
+      const storedPc = masterData?.pressureClasses?.find(
+        (p: PressureClassItem) => p.id === flangePressureClassId,
+      );
+      const flangeStd = masterData?.flangeStandards?.find((s: any) => s.id === flangeStandardId);
+      const combinedDesignation = combineClassWithFlangeType(
+        storedPc?.designation || "",
+        flangeTypeCode,
+        flangeStd?.code,
+      );
+      const combinedPc =
+        combinedDesignation && combinedDesignation !== storedPc?.designation
+          ? masterData?.pressureClasses?.find(
+              (p: PressureClassItem) => p.designation === combinedDesignation,
+            )
+          : null;
+      const lookupPressureClassId = combinedPc?.id || flangePressureClassId;
+
       const specs = await fetchFlangeSpecsStatic(
         nominalBoreMm,
         flangeStandardId,
-        flangePressureClassId,
+        lookupPressureClassId,
         flangeTypeId,
       );
       log.debug("StraightPipeForm: received specs", specs);
@@ -412,6 +434,17 @@ export function useStraightPipeFormLogic(props: StraightPipeFormProps) {
     flangeTypesLength,
     masterData?.flangeTypes,
   ]);
+
+  // A puddle pipe is always FOE (one pipe-sized end flange + a puddle
+  // flange along the barrel). Heal entries saved before this was enforced
+  // (e.g. switched to puddle while the config was FBE).
+  useEffect(() => {
+    if (specs.pipeType === "puddle" && pipeEndConfiguration !== "FOE") {
+      onUpdateEntry(entry.id, {
+        specs: { ...entry.specs, pipeEndConfiguration: "FOE" },
+      });
+    }
+  }, [specs.pipeType, pipeEndConfiguration, entry.id, entry.specs, onUpdateEntry]);
 
   const rawQuantityValue = specs.quantityValue;
   const rawQuantityValue2 = specs.quantityValue;

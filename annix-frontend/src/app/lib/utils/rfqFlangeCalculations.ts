@@ -51,7 +51,11 @@ export function resolveFlangeConfig(
 
   const pressureClass = masterData.pressureClasses?.find((p) => p.id === flangePressureClassId);
   const rawDesignation = pressureClass?.designation;
-  const pressureClassDesignation = rawDesignation || "";
+  const pressureClassDesignation = combineClassWithFlangeType(
+    rawDesignation || "",
+    flangeTypeCode,
+    flangeStandardCode,
+  );
 
   return {
     flangeStandardId,
@@ -60,6 +64,33 @@ export function resolveFlangeConfig(
     pressureClassDesignation,
     flangeTypeCode,
   };
+}
+
+/**
+ * SABS 1123 / BS 4504 pressure-class rows embed a flange-type suffix
+ * ("1000/1", "1000/3", ...), but the UI selects class and type separately
+ * (the class dropdown strips the suffix for display). Whichever (class, type)
+ * row id happens to be stored, the designation used for weight/dimension
+ * lookups must reflect the SELECTED type — so recombine: numeric class +
+ * selected type code. Non-SANS standards pass through unchanged.
+ */
+export function combineClassWithFlangeType(
+  pressureClassDesignation: string,
+  flangeTypeCode: string | undefined,
+  flangeStandardCode: string | undefined,
+): string {
+  const isSabsOrBs4504 =
+    !!flangeStandardCode &&
+    (flangeStandardCode.includes("SABS 1123") || flangeStandardCode.includes("BS 4504"));
+  if (!isSabsOrBs4504 || !flangeTypeCode) return pressureClassDesignation;
+
+  const withSuffix = pressureClassDesignation.match(/^(\d+)\/\d+$/);
+  if (withSuffix) return `${withSuffix[1]}${flangeTypeCode}`;
+
+  const numericOnly = pressureClassDesignation.match(/^(\d+)$/);
+  if (numericOnly) return `${numericOnly[1]}${flangeTypeCode}`;
+
+  return pressureClassDesignation;
 }
 
 /**

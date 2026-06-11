@@ -149,6 +149,16 @@ const HollowPipeScene = ({
   const halfLen = safeLength / 2;
   const offsetDist = outerRadius + 0.3;
 
+  // Blank flange x-position per end. On a loose-flange closure end the
+  // blank bolts to the outboard face of the L/F (beyond closure + gap);
+  // on a fixed flange it sits just outboard of the pipe-end flange.
+  const leftBlankX = hasLooseLeftFlange
+    ? -halfLen - closureLength - gapLength - flangeThickness
+    : -halfLen - flangeThickness - 0.1;
+  const rightBlankX = hasLooseRightFlange
+    ? halfLen + closureLength + gapLength + flangeThickness
+    : halfLen + flangeThickness + 0.1;
+
   return (
     <group>
       {/* Hollow pipe - outer cylinder + inner bore + end caps */}
@@ -256,26 +266,7 @@ const HollowPipeScene = ({
               anchorX="center"
               anchorY="top"
             >
-              {`L/F ${closureLengthMm}mm`}
-            </Text>
-            {/* 100mm gap indicator */}
-            <Line
-              points={[
-                [-halfLen - closureLength, -outerRadius - 0.25, 0],
-                [-halfLen - closureLength - gapLength, -outerRadius - 0.25, 0],
-              ]}
-              color="#9333ea"
-              lineWidth={1}
-              dashed
-            />
-            <Text
-              position={[-halfLen - closureLength - gapLength / 2, -outerRadius - 0.35, 0]}
-              fontSize={0.1}
-              color="#9333ea"
-              anchorX="center"
-              anchorY="top"
-            >
-              100mm gap
+              {`L/F ${Math.round(closureLength * 1000)}mm`}
             </Text>
           </>
         ) : hasRotatingLeftFlange ? (
@@ -418,26 +409,7 @@ const HollowPipeScene = ({
               anchorX="center"
               anchorY="top"
             >
-              {`L/F ${closureLengthMm}mm`}
-            </Text>
-            {/* 100mm gap indicator */}
-            <Line
-              points={[
-                [halfLen + closureLength, -outerRadius - 0.25, 0],
-                [halfLen + closureLength + gapLength, -outerRadius - 0.25, 0],
-              ]}
-              color="#9333ea"
-              lineWidth={1}
-              dashed
-            />
-            <Text
-              position={[halfLen + closureLength + gapLength / 2, -outerRadius - 0.35, 0]}
-              fontSize={0.1}
-              color="#9333ea"
-              anchorX="center"
-              anchorY="top"
-            >
-              100mm gap
+              {`L/F ${Math.round(closureLength * 1000)}mm`}
             </Text>
           </>
         ) : hasRotatingRightFlange ? (
@@ -519,12 +491,12 @@ const HollowPipeScene = ({
       {addBlankFlange && blankFlangePositions.includes("inlet") && hasLeftFlange && (
         <>
           <BlankFlange
-            position={[-halfLen - flangeThickness - 0.1, 0, 0]}
+            position={[leftBlankX, 0, 0]}
             outerDiameter={odSceneUnits}
             thickness={flangeThickness}
           />
           <Text
-            position={[-halfLen - flangeThickness - 0.05, -outerRadius - 0.15, 0]}
+            position={[leftBlankX + 0.05, -outerRadius - 0.15, 0]}
             fontSize={0.1}
             color="#cc3300"
             anchorX="center"
@@ -537,12 +509,12 @@ const HollowPipeScene = ({
       {addBlankFlange && blankFlangePositions.includes("outlet") && hasRightFlange && (
         <>
           <BlankFlange
-            position={[halfLen + flangeThickness + 0.1, 0, 0]}
+            position={[rightBlankX, 0, 0]}
             outerDiameter={odSceneUnits}
             thickness={flangeThickness}
           />
           <Text
-            position={[halfLen + flangeThickness + 0.15, -outerRadius - 0.15, 0]}
+            position={[rightBlankX + 0.05, -outerRadius - 0.15, 0]}
             fontSize={0.1}
             color="#cc3300"
             anchorX="center"
@@ -822,18 +794,39 @@ export default function Pipe3DPreview(props: Pipe3DPreviewProps) {
   const autoCameraDistance = Math.max(safeLen * 1.0, 2.5);
   const autoCameraHeight = autoCameraDistance * 0.4;
 
+  // End views use a telephoto setup (narrow FOV from far away ≈
+  // orthographic) so concentric rings at different depths — e.g. a
+  // 700mm puddle flange behind a 615mm end flange — keep their true
+  // relative sizes instead of the nearer ring occluding the larger one.
+  const endViewFovDeg = 10;
+  const rawOuterDiameterMm = debouncedProps.outerDiameter;
+  const rawEndFlangeOdMm = debouncedProps.flangeSpecs?.flangeOdMm;
+  const rawPuddleOdMm =
+    debouncedProps.pipeType === "puddle" ? debouncedProps.puddleFlangeOdMm : 0;
+  const maxDiameterM =
+    Math.max(
+      ((rawOuterDiameterMm || 200) / 1000) * 1.35,
+      (rawEndFlangeOdMm || 0) / 1000,
+      (rawPuddleOdMm || 0) / 1000,
+    ) || 0.3;
+  const endViewDistance =
+    (maxDiameterM * 0.7) / Math.tan(((endViewFovDeg / 2) * Math.PI) / 180);
+
   const cameraTargets = {
     iso: {
       pos: [0, autoCameraHeight, autoCameraDistance],
       lookAt: [0, 0, 0],
+      fov: 45,
     },
     inlet: {
-      pos: [-halfLen - safeLen * 0.3, 0, 0],
+      pos: [-halfLen - endViewDistance, 0, 0],
       lookAt: [-halfLen, 0, 0],
+      fov: endViewFovDeg,
     },
     outlet: {
-      pos: [halfLen + safeLen * 0.3, 0, 0],
+      pos: [halfLen + endViewDistance, 0, 0],
       lookAt: [halfLen, 0, 0],
+      fov: endViewFovDeg,
     },
   };
 

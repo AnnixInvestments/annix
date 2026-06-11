@@ -22,6 +22,10 @@ export const getFlangeSpecs = (
   if (apiSpecs) {
     const rawBoltDiameterMm = apiSpecs.boltDiameterMm;
     const rawBoltLengthMm = apiSpecs.boltLengthMm;
+    const rawHoleId = apiSpecs.flangeBoltHoleDiameterMm;
+    // Without bolt data, derive the bolt from the hole — bolts run 2mm
+    // under the hole diameter (Ø22 hole → M20) — rather than a fixed M16.
+    const derivedBoltSize = rawHoleId ? rawHoleId - 2 : 16;
     return {
       specs: {
         flangeOD: apiSpecs.flangeOdMm,
@@ -29,7 +33,7 @@ export const getFlangeSpecs = (
         boltHoles: apiSpecs.flangeNumHoles,
         holeID: apiSpecs.flangeBoltHoleDiameterMm,
         thickness: apiSpecs.flangeThicknessMm,
-        boltSize: rawBoltDiameterMm || 16,
+        boltSize: rawBoltDiameterMm || derivedBoltSize,
         boltLength: rawBoltLengthMm || 70,
       },
       isFromApi: true,

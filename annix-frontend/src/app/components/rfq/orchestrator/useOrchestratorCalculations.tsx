@@ -10,7 +10,7 @@ import {
 import { FlangeSpecData, fetchFlangeSpecsStatic } from "@/app/lib/hooks/useFlangeSpecs";
 import type { BendEntry, FittingEntry } from "@/app/lib/hooks/useRfqForm";
 import { log } from "@/app/lib/logger";
-import { flangeWeight as flangeWeightLookup } from "@/app/lib/query/hooks";
+import { flangeWeight as flangeWeightLookup, hasFlangeWeightRecord } from "@/app/lib/query/hooks";
 import type { RfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import {
   calculateLocalPipeResult,
@@ -116,8 +116,14 @@ export function useOrchestratorCalculations(deps: OrchestratorCalculationsDeps) 
               (rawQuantityValue2 || 1) / (rawIndividualPipeLength2 || DEFAULT_PIPE_LENGTH_M),
             );
           const rawNumberOfFlanges2 = result?.numberOfFlanges;
+          // Puddle pipes: the backend counts the puddle plate as a generic
+          // flange; its weight is priced separately from its dims, so use
+          // the end-config count only or the plate gets double-charged at
+          // the end-flange weight.
           const numberOfFlanges =
-            rawNumberOfFlanges2 || physicalFlangesPerPipe * calculatedPipeCount;
+            entry.specs.pipeType === "puddle"
+              ? physicalFlangesPerPipe * calculatedPipeCount
+              : rawNumberOfFlanges2 || physicalFlangesPerPipe * calculatedPipeCount;
 
           if (result && numberOfFlanges > 0) {
             let flangeWeightPerUnit = flangeWeightLookup(
@@ -139,7 +145,17 @@ export function useOrchestratorCalculations(deps: OrchestratorCalculationsDeps) 
                 flangePressureClassId,
                 flangeTypeId,
               );
-              if (flangeSpecData) {
+              // The dimension table's mass_kg is type-agnostic; only use it
+              // when the type-specific flange-weight table has no row, else
+              // it overrides a correct /1-/8 weight with the wrong type's mass.
+              if (
+                flangeSpecData &&
+                !hasFlangeWeightRecord(
+                  allWeights,
+                  entry.specs.nominalBoreMm!,
+                  pressureClassDesignation,
+                )
+              ) {
                 flangeWeightPerUnit = flangeSpecData.flangeMassKg;
                 log.debug(
                   `🔧 Manual calc using dynamic flange specs: ${flangeWeightPerUnit}kg/flange`,

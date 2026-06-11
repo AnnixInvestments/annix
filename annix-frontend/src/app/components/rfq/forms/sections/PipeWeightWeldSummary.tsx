@@ -20,7 +20,11 @@ import {
   calculateInsideDiameter,
   calculateTotalSurfaceArea,
 } from "@/app/lib/utils/pipeCalculations";
-import { calculateBlankFlangeWeight, flangeWeightOr } from "@/app/lib/utils/rfqFlangeCalculations";
+import {
+  calculateBlankFlangeWeight,
+  combineClassWithFlangeType,
+  flangeWeightOr,
+} from "@/app/lib/utils/rfqFlangeCalculations";
 import type { FlangeStandardItem, PressureClassItem } from "../shared";
 import { SurfaceAreaDisplay } from "../shared";
 
@@ -234,12 +238,18 @@ function WeightBreakdownCard(props: {
     (p: PressureClassItem) => p.id === spigotPressureClassId,
   );
   const rawDesignation = spigotPressureClass?.designation;
-  const spigotPressureClassDesignation = rawDesignation || "";
   const rawSpigotFlangeTypeCode = specs.spigotFlangeTypeCode;
   const specsFlangeTypeCode = specs.flangeTypeCode;
   const gsFlangeTypeCode = globalSpecs?.flangeTypeCode;
   const spigotFlangeTypeCodeVal =
     rawSpigotFlangeTypeCode || specsFlangeTypeCode || gsFlangeTypeCode;
+  // Recombine class + selected type so the lookup matches the chosen
+  // flange type, not whichever (class,type) row id happens to be stored.
+  const spigotPressureClassDesignation = combineClassWithFlangeType(
+    rawDesignation || "",
+    spigotFlangeTypeCodeVal,
+    spigotFlangeStdCode,
+  );
 
   const singleSpigotFlangeWeight =
     hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
@@ -443,12 +453,18 @@ function FlangeCountCard(props: {
     (p: PressureClassItem) => p.id === spigotPressureClassId,
   );
   const rawDesignation = spigotPressureClass?.designation;
-  const spigotPressureClassDesignation = rawDesignation || "";
   const rawSpigotFlangeTypeCode = specs.spigotFlangeTypeCode;
   const specsFlangeTypeCode = specs.flangeTypeCode;
   const gsFlangeTypeCode = globalSpecs?.flangeTypeCode;
   const spigotFlangeTypeCodeVal =
     rawSpigotFlangeTypeCode || specsFlangeTypeCode || gsFlangeTypeCode;
+  // Recombine class + selected type so the lookup matches the chosen
+  // flange type, not whichever (class,type) row id happens to be stored.
+  const spigotPressureClassDesignation = combineClassWithFlangeType(
+    rawDesignation || "",
+    spigotFlangeTypeCodeVal,
+    spigotFlangeStdCode,
+  );
   const spigotFlangeWeightPerUnit =
     hasSpigotFlanges && spigotNb && spigotPressureClassDesignation
       ? flangeWeight(

@@ -274,9 +274,16 @@ export const PuddleFlange = ({
   const holeId = holeIdMm / 1000;
   const thickness = thicknessMm / 1000;
 
-  const flangeOuterRadius = flangeOd / 2;
-  const pcdRadius = flangePcd / 2;
+  // Keep the drawn geometry physically plausible even with bad input:
+  // the plate must clear the pipe, and the bolt circle must sit in the
+  // annulus between the pipe surface and the plate edge (a PCD smaller
+  // than the pipe OD would bury every hole inside the pipe wall).
   const holeRadius = holeId / 2;
+  const flangeOuterRadius = Math.max(flangeOd / 2, pipeOuterRadius * 1.15);
+  const pcdRadius = Math.min(
+    Math.max(flangePcd / 2, pipeOuterRadius + holeRadius + 0.005),
+    flangeOuterRadius - holeRadius - 0.005,
+  );
 
   const boltHoles = useMemo(() => {
     return Array.from({ length: holeCount }, (_, i) => {
