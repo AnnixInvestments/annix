@@ -4,8 +4,6 @@ import {
   Controller,
   Delete,
   Get,
-  HttpException,
-  HttpStatus,
   NotFoundException,
   Param,
   ParseIntPipe,
@@ -325,21 +323,13 @@ export class SeekerJobsController {
   @Post("rematch")
   async rematch(@Request() req: SeekerAuthRequest) {
     const result = await this.feedService.rematchForSeeker(req.user.email, req.user.id);
-    if (!result.triggered) {
-      if (result.reason === "no-candidate") {
-        throw new BadRequestException("Upload a CV before requesting a rematch");
-      }
-      if (result.reason === "rate-limited") {
-        throw new HttpException(
-          {
-            statusCode: HttpStatus.TOO_MANY_REQUESTS,
-            message: `Rematch already triggered recently. Try again in ${result.retryAfterSeconds}s.`,
-            retryAfterSeconds: result.retryAfterSeconds,
-          },
-          HttpStatus.TOO_MANY_REQUESTS,
-        );
-      }
+    if (!result.triggered && result.reason === "no-candidate") {
+      throw new BadRequestException("Upload a CV before requesting a rematch");
     }
+    // rate-limited and quota-exceeded return as 200 bodies — the seeker UI
+    // shows its friendly cooldown/upgrade messaging off result.reason. The
+    // old 429 throw made the client's cooldown branch unreachable and every
+    // repeat press surfaced as "Nix couldn't search" (issue #344 testing).
     return result;
   }
 }
