@@ -59,6 +59,7 @@ export class SupplierInvoiceFifoBridgeService {
       isLegacyBatch: false,
       notes: `Created from supplier invoice ${line.supplierInvoiceId ?? "?"} on ${formatJsDate(receivedAt)}`,
     });
+    await this.issuableProductService.adjustQuantity(companyId, product.id, line.quantity);
     this.logger.log(
       `Created FIFO batch ${batch.id} for product ${product.id} (legacy_stock_item_id=${line.legacyStockItemId})`,
     );

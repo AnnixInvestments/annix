@@ -4,6 +4,7 @@ import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
 import { fromISO, fromJSDate, now } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import {
   ClarificationStatus,
   ClarificationType,
@@ -225,6 +226,7 @@ export class InvoiceExtractionService {
     private readonly aiUsageService: AiUsageService,
     private readonly aiChatService: AiChatService,
     private readonly extractionMetricService: ExtractionMetricService,
+    private readonly fifoBridgeService: SupplierInvoiceFifoBridgeService,
   ) {}
 
   async extractFromImage(
@@ -1008,67 +1010,103 @@ export class InvoiceExtractionService {
     );
     const items = await this.getInvoiceItemsForApproval(invoice);
 
-    await items
-      .filter(
-        (item) =>
-          this.toPositiveNumberId(item.stockItemId) !== null &&
-          item.unitPrice !== null &&
-          item.unitPrice !== undefined &&
-          Number(item.quantity) > 0 &&
-          !item.priceUpdated &&
-          !skippedItemIds.has(item.id),
-      )
-      .reduce(async (prev, item) => {
-        await prev;
-        const stockItemId = this.toPositiveNumberId(item.stockItemId);
-        if (stockItemId === null) {
-          return;
-        }
-        const stockItem = await this.stockItemRepo.findById(stockItemId);
+    const eligibleItems = items.filter(
+      (item) =>
+        this.toPositiveNumberId(item.stockItemId) !== null &&
+        item.unitPrice !== null &&
+        item.unitPrice !== undefined &&
+        Number(item.quantity) > 0 &&
+        !item.priceUpdated &&
+        !skippedItemIds.has(item.id),
+    );
 
-        if (stockItem) {
-          const oldPrice = Number(stockItem.costPerUnit) || null;
-          const newPrice = Number(item.unitPrice);
+    await eligibleItems.reduce(async (prev, item) => {
+      await prev;
+      const stockItemId = this.toPositiveNumberId(item.stockItemId);
+      if (stockItemId === null) {
+        return;
+      }
+      const stockItem = await this.stockItemRepo.findById(stockItemId);
 
-          await this.priceHistoryRepo.create({
-            stockItemId,
-            companyId: invoice.companyId,
-            oldPrice,
-            newPrice,
-            changeReason: PriceChangeReason.INVOICE,
-            referenceType: "supplier_invoice",
-            referenceId: invoice.id,
-            supplierName: invoice.supplierName,
-            changedBy: approvedBy,
-          });
+      if (stockItem) {
+        const oldPrice = Number(stockItem.costPerUnit) || null;
+        const newPrice = Number(item.unitPrice);
 
-          stockItem.costPerUnit = newPrice;
+        await this.priceHistoryRepo.create({
+          stockItemId,
+          companyId: invoice.companyId,
+          oldPrice,
+          newPrice,
+          changeReason: PriceChangeReason.INVOICE,
+          referenceType: "supplier_invoice",
+          referenceId: invoice.id,
+          supplierName: invoice.supplierName,
+          changedBy: approvedBy,
+        });
 
-          if (stockItem.packSizeLitres == null) {
-            const extractedVolume = this.extractVolumeFromDescription(
-              item.extractedDescription || "",
-            );
-            if (extractedVolume != null) {
-              stockItem.packSizeLitres = extractedVolume;
-            }
+        stockItem.costPerUnit = newPrice;
+
+        if (stockItem.packSizeLitres == null) {
+          const extractedVolume = this.extractVolumeFromDescription(
+            item.extractedDescription || "",
+          );
+          if (extractedVolume != null) {
+            stockItem.packSizeLitres = extractedVolume;
           }
-
-          if (stockItem.componentRole == null && (item.isPartA || item.isPartB)) {
-            stockItem.componentRole = item.isPartA ? "base" : "hardener";
-          }
-
-          await this.stockItemRepo.save(stockItem);
-
-          item.priceUpdated = true;
-          await this.invoiceItemRepo.save(item);
         }
-      }, Promise.resolve());
+
+        if (stockItem.componentRole == null && (item.isPartA || item.isPartB)) {
+          stockItem.componentRole = item.isPartA ? "base" : "hardener";
+        }
+
+        await this.stockItemRepo.save(stockItem);
+
+        item.priceUpdated = true;
+        await this.invoiceItemRepo.save(item);
+      }
+    }, Promise.resolve());
+
+    await this.createFifoBatchesForApprovedItems(invoice, eligibleItems);
 
     invoice.extractionStatus = InvoiceExtractionStatus.COMPLETED;
     invoice.approvedBy = approvedBy;
     invoice.approvedAt = now().toJSDate();
 
     return this.invoiceRepo.save(invoice);
+  }
+
+  private async createFifoBatchesForApprovedItems(
+    invoice: SupplierInvoice,
+    items: SupplierInvoiceItem[],
+  ): Promise<void> {
+    const lines = items
+      .map((item) => ({
+        legacyStockItemId: this.toPositiveNumberId(item.stockItemId),
+        supplierName: invoice.supplierName || null,
+        supplierBatchRef: null,
+        quantity: Number(item.quantity),
+        unitCost: Number(item.unitPrice) || 0,
+        receivedAt: invoice.invoiceDate ? invoice.invoiceDate : null,
+        supplierInvoiceId: invoice.id,
+      }))
+      .filter((line) => line.legacyStockItemId !== null && line.quantity > 0);
+
+    if (lines.length === 0) {
+      return;
+    }
+
+    try {
+      const result = await this.fifoBridgeService.createBatchesFromInvoice(
+        invoice.companyId,
+        lines,
+      );
+      const errorSuffix = result.errors.length > 0 ? ` (${result.errors.join("; ")})` : "";
+      this.logger.log(
+        `FIFO bridge for invoice ${invoice.id}: ${result.created} batch(es) created, ${result.skipped} skipped${errorSuffix}`,
+      );
+    } catch (error) {
+      this.logger.error(`FIFO bridge failed for invoice ${invoice.id}: ${error.message}`);
+    }
   }
 
   async pendingClarifications(invoiceId: number): Promise<InvoiceClarification[]> {

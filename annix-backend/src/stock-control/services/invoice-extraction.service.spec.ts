@@ -3,6 +3,7 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { SupplierInvoiceFifoBridgeService } from "../../stock-management/services/supplier-invoice-fifo-bridge.service";
 import { ClarificationStatus, ClarificationType } from "../entities/invoice-clarification.entity";
 import { InvoiceExtractionStatus } from "../entities/supplier-invoice.entity";
 import { InvoiceItemMatchStatus } from "../entities/supplier-invoice-item.entity";
@@ -103,6 +104,10 @@ describe("InvoiceExtractionService", () => {
     time: jest.fn((_category: string, _operation: string, fn: () => unknown) => fn()),
   };
 
+  const mockFifoBridgeService = {
+    createBatchesFromInvoice: jest.fn().mockResolvedValue({ created: 0, skipped: 0, errors: [] }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -117,6 +122,7 @@ describe("InvoiceExtractionService", () => {
         { provide: AiUsageService, useValue: mockAiUsageService },
         { provide: AiChatService, useValue: mockAiChatService },
         { provide: ExtractionMetricService, useValue: mockExtractionMetricService },
+        { provide: SupplierInvoiceFifoBridgeService, useValue: mockFifoBridgeService },
       ],
     }).compile();
 
