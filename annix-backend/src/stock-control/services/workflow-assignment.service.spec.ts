@@ -1,6 +1,4 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { StockControlRole, StockControlUser } from "../entities/stock-control-user.entity";
 import { UserLocationAssignment } from "../entities/user-location-assignment.entity";
 import { WorkflowNotificationRecipient } from "../entities/workflow-notification-recipient.entity";
@@ -63,18 +61,6 @@ const createLocationAssignment = (
 describe("WorkflowAssignmentService", () => {
   let service: WorkflowAssignmentService;
 
-  const mockManager = {
-    delete: jest.fn(),
-    create: jest.fn().mockImplementation((_entity, data) => data),
-    save: jest.fn(),
-  };
-
-  const mockTxRunner = {
-    run: jest
-      .fn()
-      .mockImplementation((cb) => cb(new TypeOrmTransactionContext(mockManager as never))),
-  };
-
   const mockAssignmentRepo = {
     findForCompanyWithUser: jest.fn(),
     findForStepWithUser: jest.fn(),
@@ -82,6 +68,10 @@ describe("WorkflowAssignmentService", () => {
     findUserIdsForStep: jest.fn(),
     findForStepWithUserRelation: jest.fn(),
     countForStep: jest.fn(),
+    findManyWhere: jest.fn(),
+    remove: jest.fn(),
+    buildMany: jest.fn().mockImplementation((rows) => rows),
+    saveMany: jest.fn(),
   };
 
   const mockUserRepo = {
@@ -114,12 +104,12 @@ describe("WorkflowAssignmentService", () => {
         { provide: StockControlUserRepository, useValue: mockUserRepo },
         { provide: WorkflowNotificationRecipientRepository, useValue: mockRecipientRepo },
         { provide: UserLocationAssignmentRepository, useValue: mockUserLocationRepo },
-        { provide: TransactionRunner, useValue: mockTxRunner },
       ],
     }).compile();
 
     service = module.get<WorkflowAssignmentService>(WorkflowAssignmentService);
     jest.clearAllMocks();
+    mockAssignmentRepo.findManyWhere.mockResolvedValue([]);
   });
 
   it("should be defined", () => {
@@ -241,77 +231,84 @@ describe("WorkflowAssignmentService", () => {
   describe("updateAssignments", () => {
     it("should delete existing and create new assignments", async () => {
       mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([{ id: 10 }, { id: 20 }]);
-      mockManager.delete.mockResolvedValue({ affected: 1 });
-      mockManager.save.mockResolvedValue([]);
+      const existingAssignment = createAssignment({ id: 5, userId: 30 });
+      mockAssignmentRepo.findManyWhere.mockResolvedValueOnce([existingAssignment]);
+      mockAssignmentRepo.saveMany.mockResolvedValue([]);
 
       await service.updateAssignments(COMPANY_ID, "reception", [10, 20], 10, 20);
 
-      expect(mockManager.delete).toHaveBeenCalledWith(WorkflowStepAssignment, {
+      expect(mockAssignmentRepo.findManyWhere).toHaveBeenCalledWith({
         companyId: COMPANY_ID,
         workflowStep: "reception",
       });
-      expect(mockManager.create).toHaveBeenCalledTimes(2);
-      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-        userId: 10,
-        isPrimary: true,
-        secondaryUserId: 20,
-      });
-      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-        userId: 20,
-        isPrimary: false,
-        secondaryUserId: null,
-      });
-      expect(mockManager.save).toHaveBeenCalledTimes(1);
+      expect(mockAssignmentRepo.remove).toHaveBeenCalledWith(existingAssignment);
+      expect(mockAssignmentRepo.buildMany).toHaveBeenCalledWith([
+        {
+          companyId: COMPANY_ID,
+          workflowStep: "reception",
+          userId: 10,
+          isPrimary: true,
+          secondaryUserId: 20,
+        },
+        {
+          companyId: COMPANY_ID,
+          workflowStep: "reception",
+          userId: 20,
+          isPrimary: false,
+          secondaryUserId: null,
+        },
+      ]);
+      expect(mockAssignmentRepo.saveMany).toHaveBeenCalledTimes(1);
     });
 
     it("should only delete when userIds is empty", async () => {
       mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([]);
-      mockManager.delete.mockResolvedValue({ affected: 1 });
+      const existingAssignment = createAssignment({ id: 5, userId: 30 });
+      mockAssignmentRepo.findManyWhere.mockResolvedValueOnce([existingAssignment]);
 
       await service.updateAssignments(COMPANY_ID, "reception", []);
 
-      expect(mockManager.delete).toHaveBeenCalledWith(WorkflowStepAssignment, {
+      expect(mockAssignmentRepo.findManyWhere).toHaveBeenCalledWith({
         companyId: COMPANY_ID,
         workflowStep: "reception",
       });
-      expect(mockManager.create).not.toHaveBeenCalled();
-      expect(mockManager.save).not.toHaveBeenCalled();
+      expect(mockAssignmentRepo.remove).toHaveBeenCalledWith(existingAssignment);
+      expect(mockAssignmentRepo.buildMany).not.toHaveBeenCalled();
+      expect(mockAssignmentRepo.saveMany).not.toHaveBeenCalled();
     });
 
     it("should set isPrimary false for non-primary users", async () => {
       mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([{ id: 10 }]);
-      mockManager.delete.mockResolvedValue({ affected: 0 });
-      mockManager.save.mockResolvedValue([]);
+      mockAssignmentRepo.saveMany.mockResolvedValue([]);
 
       await service.updateAssignments(COMPANY_ID, "reception", [10], 99);
 
-      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-        userId: 10,
-        isPrimary: false,
-        secondaryUserId: null,
-      });
+      expect(mockAssignmentRepo.buildMany).toHaveBeenCalledWith([
+        {
+          companyId: COMPANY_ID,
+          workflowStep: "reception",
+          userId: 10,
+          isPrimary: false,
+          secondaryUserId: null,
+        },
+      ]);
     });
 
     it("should set secondaryUserId to null when not provided", async () => {
       mockUserRepo.findIdsByIdsForCompany.mockResolvedValue([{ id: 10 }]);
-      mockManager.delete.mockResolvedValue({ affected: 0 });
-      mockManager.save.mockResolvedValue([]);
+      mockAssignmentRepo.saveMany.mockResolvedValue([]);
 
       await service.updateAssignments(COMPANY_ID, "reception", [10], 10);
 
-      expect(mockManager.create).toHaveBeenCalledWith(WorkflowStepAssignment, {
-        companyId: COMPANY_ID,
-        workflowStep: "reception",
-        userId: 10,
-        isPrimary: true,
-        secondaryUserId: null,
-      });
+      expect(mockAssignmentRepo.buildMany).toHaveBeenCalledWith([
+        {
+          companyId: COMPANY_ID,
+          workflowStep: "reception",
+          userId: 10,
+          isPrimary: true,
+          secondaryUserId: null,
+        },
+      ]);
     });
   });
 

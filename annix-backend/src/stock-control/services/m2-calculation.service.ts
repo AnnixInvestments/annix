@@ -56,7 +56,7 @@ const SMALL_OD_PATTERN = /(\d{2,4})\s*O\s*\/?\s*D\b/i;
 // Manual m² entered directly in the description for items that can't be derived from
 // geometry, e.g. "FAN IMPELLER @ 13.7m²" / "TANK @ 42 m2". Takes precedence over the
 // geometric calc. The negative lookahead avoids matching microns like "400µm".
-const EXPLICIT_M2_PATTERN = /(\d+(?:\.\d+)?)\s*m\s*(?:²|2)(?!\d)/i;
+export const EXPLICIT_M2_PATTERN = /(\d+(?:\.\d+)?)\s*m\s*(?:²|2)(?!\d)/i;
 const LG_PATTERN = /(\d+)\s*LG/i;
 const LG_METERS_PATTERN = /(\d+\.\d+)\s*Lg\b/i;
 const MM_PATTERN = /(\d+)\s*mm\b/i;

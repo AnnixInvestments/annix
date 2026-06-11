@@ -23,6 +23,15 @@ import { MongoCompanyRepository } from "../platform/company.repository.mongo";
 import { PostgresCompanyRepository } from "../platform/company.repository.postgres";
 import { Company } from "../platform/entities/company.entity";
 import { CompanySchema } from "../platform/schemas/company.schema";
+import { App, UserAppAccess } from "../rbac/entities";
+import { AppRepository, UserAppAccessRepository } from "../rbac/rbac.repository";
+import { MongoAppRepository, MongoUserAppAccessRepository } from "../rbac/rbac.repository.mongo";
+import {
+  PostgresAppRepository,
+  PostgresUserAppAccessRepository,
+} from "../rbac/rbac.repository.postgres";
+import { AppSchema } from "../rbac/schemas/app.schema";
+import { UserAppAccessSchema } from "../rbac/schemas/user-app-access.schema";
 import { RubberProductCoding } from "../rubber-lining/entities/rubber-product-coding.entity";
 import { RubberRollStock } from "../rubber-lining/entities/rubber-roll-stock.entity";
 import { RubberRollStockRepository } from "../rubber-lining/repositories/rubber-roll-stock.repository";
@@ -651,6 +660,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
             { name: "WorkflowStepConfig", schema: WorkflowStepConfigSchema },
             { name: "Company", schema: CompanySchema },
             { name: "User", schema: UserSchema },
+            { name: "App", schema: AppSchema },
+            { name: "UserAppAccess", schema: UserAppAccessSchema },
             { name: "NixLearning", schema: NixLearningSchema },
             { name: "RubberRollStock", schema: RubberRollStockSchema },
             { name: "CalibrationCertificate", schema: CalibrationCertificateSchema },
@@ -676,6 +687,8 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
             StockControlProfile,
             Company,
             User,
+            App,
+            UserAppAccess,
             StockControlInvitation,
             StockControlDepartment,
             StockControlLocation,
@@ -1231,6 +1244,12 @@ import { WorkflowStepConfigService } from "./services/workflow-step-config.servi
     ),
     repositoryProvider(CompanyRepository, PostgresCompanyRepository, MongoCompanyRepository),
     repositoryProvider(UserRepository, PostgresUserRepository, MongoUserRepository),
+    repositoryProvider(AppRepository, PostgresAppRepository, MongoAppRepository),
+    repositoryProvider(
+      UserAppAccessRepository,
+      PostgresUserAppAccessRepository,
+      MongoUserAppAccessRepository,
+    ),
     repositoryProvider(
       NixLearningRepository,
       PostgresNixLearningRepository,

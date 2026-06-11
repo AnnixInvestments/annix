@@ -109,29 +109,29 @@ export default function SeekerJobsPage() {
 
   const [filters, setFilters] = useState<SeekerFilterState>({
     search: "",
-    provider: "all",
+    providers: [],
     region: "",
-    province: "",
-    city: "",
+    provinces: [],
+    cities: [],
     category: "",
     minSalary: "",
   });
   const filtersActive =
     filters.search !== "" ||
-    filters.provider !== "all" ||
+    filters.providers.length > 0 ||
     filters.region !== "" ||
-    filters.province !== "" ||
-    filters.city !== "" ||
+    filters.provinces.length > 0 ||
+    filters.cities.length > 0 ||
     filters.category !== "" ||
     filters.minSalary !== "";
   const serverFilters = useMemo<SeekerRecommendedFilters>(() => {
     const next: SeekerRecommendedFilters = {};
     const search = filters.search.trim();
     if (search) next.search = search;
-    if (filters.provider !== "all") next.provider = filters.provider;
+    if (filters.providers.length > 0) next.providers = filters.providers;
     if (filters.region) next.region = filters.region;
-    if (filters.province) next.province = filters.province;
-    if (filters.city) next.city = filters.city;
+    if (filters.provinces.length > 0) next.provinces = filters.provinces;
+    if (filters.cities.length > 0) next.cities = filters.cities;
     if (filters.category) next.category = filters.category;
     if (filters.minSalary) next.minSalary = filters.minSalary;
     return next;

@@ -23,6 +23,7 @@ import { JobCardLineItemRepository } from "../repositories/job-card-line-item.re
 import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 import { JobCardVersionService } from "./job-card-version.service";
+import { EXPLICIT_M2_PATTERN, M2CalculationService } from "./m2-calculation.service";
 
 export interface LineItemImportRow {
   itemCode?: string;
@@ -535,6 +536,7 @@ export class JobCardImportService {
     @Inject(forwardRef(() => QcMeasurementService))
     private readonly qcMeasurementService: QcMeasurementService,
     private readonly extractionMetricService: ExtractionMetricService,
+    private readonly m2CalculationService: M2CalculationService,
   ) {}
 
   private async correctionHintsForCompany(companyId: number): Promise<string> {
@@ -1334,15 +1336,16 @@ export class JobCardImportService {
     };
   }
 
-  private buildLineItemEntities(
+  private async buildLineItemEntities(
     lineItems: LineItemImportRow[],
     jobCardId: number,
     companyId: number,
-  ): JobCardLineItem[] {
+  ): Promise<JobCardLineItem[]> {
     const merged = mergeNoteRowsIntoItems(lineItems);
     const valid = merged.filter(isValidLineItem);
+    const withM2 = await this.fillMissingM2(valid);
     return this.lineItemRepo.buildMany(
-      valid.map((li, idx) => ({
+      withM2.map((li, idx) => ({
         jobCardId,
         itemCode: li.itemCode || null,
         itemDescription: li.itemDescription || null,
@@ -1356,6 +1359,129 @@ export class JobCardImportService {
         companyId,
       })),
     );
+  }
+
+  private async fillMissingM2(items: LineItemImportRow[]): Promise<LineItemImportRow[]> {
+    const missing = items.filter(
+      (li) =>
+        !(typeof li.m2 === "number" && li.m2 > 0) && (li.itemDescription || "").trim().length > 0,
+    );
+    if (missing.length === 0) {
+      return items;
+    }
+
+    const resolved = new Map<LineItemImportRow, number>();
+
+    try {
+      const results = await this.m2CalculationService.calculateM2ForItems(
+        missing.map((li) => li.itemDescription || ""),
+      );
+      missing.forEach((li, idx) => {
+        const result = results[idx];
+        const external = result ? result.externalM2 : null;
+        if (external && external > 0) {
+          resolved.set(li, Math.round(external * 10000) / 10000);
+        }
+      });
+    } catch (err) {
+      this.logger.warn(
+        `m² auto-fill failed during import: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
+
+    missing
+      .filter((li) => !resolved.has(li))
+      .forEach((li) => {
+        const explicit = (li.notes || "").match(EXPLICIT_M2_PATTERN);
+        if (explicit) {
+          resolved.set(li, parseFloat(explicit[1]));
+        }
+      });
+
+    if (resolved.size === 0) {
+      return items;
+    }
+    return items.map((li) => {
+      const filled = resolved.get(li);
+      return filled !== undefined ? { ...li, m2: filled } : li;
+    });
+  }
+
+  private lineItemSignature(
+    items: Array<{
+      itemCode?: string | null;
+      itemDescription?: string | null;
+      quantity?: number | null;
+      jtNo?: string | null;
+    }>,
+  ): string {
+    const normalize = (value: string | null | undefined): string =>
+      (value || "").replace(/\s+/g, " ").trim().toLowerCase();
+    return items
+      .map((li) =>
+        [
+          normalize(li.itemCode),
+          normalize(li.itemDescription),
+          li.quantity == null || Number.isNaN(li.quantity) ? "" : String(li.quantity),
+          normalize(li.jtNo),
+        ].join("|"),
+      )
+      .sort()
+      .join(";");
+  }
+
+  private async findUnchangedExistingJobCard(
+    companyId: number,
+    row: JobCardImportRow,
+  ): Promise<JobCard | null> {
+    if (!row.jcNumber || !row.jobNumber) {
+      return null;
+    }
+    const candidates = await this.jobCardRepo.findActiveByJobAndJcNumber(
+      companyId,
+      row.jobNumber,
+      row.jcNumber,
+    );
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const rowRef = (row.reference || "").trim().toUpperCase();
+    const merged = mergeNoteRowsIntoItems(row.lineItems || []).filter(isValidLineItem);
+    const rowSignature = this.lineItemSignature(
+      merged.map((li) => ({
+        itemCode: li.itemCode,
+        itemDescription: li.itemDescription,
+        quantity: li.quantity ? parseFloat(li.quantity) : null,
+        jtNo: li.jtNo,
+      })),
+    );
+
+    return candidates.reduce(async (foundPromise, candidate) => {
+      const found = await foundPromise;
+      if (found) {
+        return found;
+      }
+      const candidateRef = (candidate.jtDnNumber || candidate.reference || "").trim().toUpperCase();
+      if (rowRef !== candidateRef && !(rowRef === "" && candidateRef === "")) {
+        return null;
+      }
+      const ownItems = await this.lineItemRepo.findForJobCardOrderedBySort(candidate.id, companyId);
+      const children =
+        !candidate.parentJobCardId && !candidate.jtDnNumber
+          ? await this.jobCardRepo.findDeliveryJobCards(companyId, candidate.id)
+          : [];
+      const childItems = await children.reduce(
+        async (accPromise, child) => {
+          const acc = await accPromise;
+          const items = await this.lineItemRepo.findForJobCardOrderedBySort(child.id, companyId);
+          return [...acc, ...items];
+        },
+        Promise.resolve([] as JobCardLineItem[]),
+      );
+      const candidateSignature = this.lineItemSignature([...ownItems, ...childItems]);
+      return candidateSignature === rowSignature ? candidate : null;
+    }, Promise.resolve<JobCard | null>(null));
   }
 
   private static readonly LINE_ITEMS_FOOTER_PATTERN =
@@ -1464,7 +1590,7 @@ export class JobCardImportService {
 
     await this.lineItemRepo.deleteForJobCard(jobCardId);
 
-    const entities = this.buildLineItemEntities(rawLineItems, jobCardId, companyId);
+    const entities = await this.buildLineItemEntities(rawLineItems, jobCardId, companyId);
 
     const jcNotes = jobCard.notes || null;
     const entitiesWithNotes = entities.map((entity) => {
@@ -1533,7 +1659,7 @@ export class JobCardImportService {
     await this.lineItemRepo.deleteForJobCard(saved.id);
 
     if (row.lineItems && row.lineItems.length > 0) {
-      const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
+      const entities = await this.buildLineItemEntities(row.lineItems, saved.id, companyId);
       await this.lineItemRepo.saveMany(entities);
     }
 
@@ -1585,7 +1711,7 @@ export class JobCardImportService {
     });
 
     if (row.lineItems && row.lineItems.length > 0) {
-      const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
+      const entities = await this.buildLineItemEntities(row.lineItems, saved.id, companyId);
       await this.lineItemRepo.saveMany(entities);
     }
 
@@ -1774,6 +1900,14 @@ export class JobCardImportService {
       }
 
       try {
+        const unchangedExisting = await this.findUnchangedExistingJobCard(companyId, row);
+        if (unchangedExisting) {
+          this.logger.log(
+            `Skipping unchanged re-import of JC ${row.jcNumber} (${row.jobNumber}${row.reference ? ` / ${row.reference}` : ""}) — matches existing job card ${unchangedExisting.id}`,
+          );
+          return { ...acc, skipped: acc.skipped + 1 };
+        }
+
         const customFields =
           row.customFields && Object.keys(row.customFields).length > 0 ? row.customFields : null;
 
@@ -1802,7 +1936,11 @@ export class JobCardImportService {
         if (jtSplitNew && jtSplitNew.size > 1) {
           const noJtLineItems = (row.lineItems || []).filter((li) => !(li.jtNo || "").trim());
           if (noJtLineItems.length > 0) {
-            const parentEntities = this.buildLineItemEntities(noJtLineItems, saved.id, companyId);
+            const parentEntities = await this.buildLineItemEntities(
+              noJtLineItems,
+              saved.id,
+              companyId,
+            );
             await this.lineItemRepo.saveMany(parentEntities);
           }
 
@@ -1849,7 +1987,7 @@ export class JobCardImportService {
         }
 
         if (row.lineItems && row.lineItems.length > 0) {
-          const entities = this.buildLineItemEntities(row.lineItems, saved.id, companyId);
+          const entities = await this.buildLineItemEntities(row.lineItems, saved.id, companyId);
           await this.lineItemRepo.saveMany(entities);
         }
 

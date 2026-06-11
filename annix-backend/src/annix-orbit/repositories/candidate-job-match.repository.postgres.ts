@@ -54,11 +54,11 @@ export class PostgresCandidateJobMatchRepository
     if (filters?.sourceIds && filters.sourceIds.length > 0) {
       qb.andWhere("job.source_id IN (:...sourceIds)", { sourceIds: filters.sourceIds });
     }
-    if (filters?.province) {
-      qb.andWhere("job.canonical_province = :province", { province: filters.province });
+    if (filters?.provinces && filters.provinces.length > 0) {
+      qb.andWhere("job.canonical_province IN (:...provinces)", { provinces: filters.provinces });
     }
-    if (filters?.city) {
-      qb.andWhere("job.canonical_city = :city", { city: filters.city });
+    if (filters?.cities && filters.cities.length > 0) {
+      qb.andWhere("job.canonical_city IN (:...cities)", { cities: filters.cities });
     }
     if (filters?.search) {
       qb.andWhere(
@@ -143,18 +143,25 @@ export class PostgresCandidateJobMatchRepository
     if (filters?.sourceIds && filters.sourceIds.length > 0) {
       qb.andWhere("job.source_id IN (:...sourceIds)", { sourceIds: filters.sourceIds });
     }
-    if (filters?.province) {
-      qb.andWhere(
-        "(LOWER(job.location_area) LIKE :province OR LOWER(job.location_raw) LIKE :province)",
-        {
-          province: `%${filters.province.toLowerCase()}%`,
-        },
+    if (filters?.provinces && filters.provinces.length > 0) {
+      const clauses = filters.provinces.map(
+        (_, i) =>
+          `(LOWER(job.location_area) LIKE :province${i} OR LOWER(job.location_raw) LIKE :province${i})`,
       );
+      const params = Object.fromEntries(
+        filters.provinces.map((p, i) => [`province${i}`, `%${p.toLowerCase()}%`]),
+      );
+      qb.andWhere(`(${clauses.join(" OR ")})`, params);
     }
-    if (filters?.city) {
-      qb.andWhere("(LOWER(job.location_area) LIKE :city OR LOWER(job.location_raw) LIKE :city)", {
-        city: `%${filters.city.toLowerCase()}%`,
-      });
+    if (filters?.cities && filters.cities.length > 0) {
+      const clauses = filters.cities.map(
+        (_, i) =>
+          `(LOWER(job.location_area) LIKE :city${i} OR LOWER(job.location_raw) LIKE :city${i})`,
+      );
+      const params = Object.fromEntries(
+        filters.cities.map((c, i) => [`city${i}`, `%${c.toLowerCase()}%`]),
+      );
+      qb.andWhere(`(${clauses.join(" OR ")})`, params);
     }
     if (filters?.search) {
       qb.andWhere(

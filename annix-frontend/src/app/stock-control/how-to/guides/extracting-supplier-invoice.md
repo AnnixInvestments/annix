@@ -26,6 +26,10 @@ Supplier invoices are extracted using AI so that you don't have to retype line i
 7. Link each line to a delivery note or job card
 8. Click **Save** to post the invoice
 
+## Resolving clarifications
+
+When the AI is unsure about an item match or a big price change, the invoice goes to **Needs Clarification** and a guided popup walks you through each open question — pick the right stock item, create a new one, or confirm/skip the price update. You can close the popup and instead click any line to edit it directly; **Resolve & Approve** clears whatever remains. When an invoice is **Awaiting Approval**, the Price Updates panel shows every cost change the approval will apply.
+
 ## Linked delivery notes
 
 The Invoice Details card lists every delivery note linked to the invoice by its real delivery number. If a linked delivery note carries the wrong number, open it from the link and correct the number with the pencil icon next to **Delivery Number**.

@@ -280,6 +280,7 @@ import { RubberSageInvoicePostService } from "./rubber-sage-invoice-post.service
 import { RubberStatementReconciliationService } from "./rubber-statement-reconciliation.service";
 import { RubberStockService } from "./rubber-stock.service";
 import { RubberStockLocationService } from "./rubber-stock-location.service";
+import { RubberSupplierCocReminderService } from "./rubber-supplier-coc-reminder.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { BlogPostSchema } from "./schemas/blog-post.schema";
 import { RubberAccountSignOffSchema } from "./schemas/rubber-account-sign-off.schema";
@@ -509,6 +510,7 @@ import { WebsitePagesService } from "./website-pages.service";
     PublicAuIndustriesController,
   ],
   providers: [
+    RubberSupplierCocReminderService,
     AuRubberLicensingRegistrar,
     RubberLiningService,
     RubberStockService,

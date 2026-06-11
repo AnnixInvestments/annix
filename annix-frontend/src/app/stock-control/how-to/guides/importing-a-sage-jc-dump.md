@@ -5,7 +5,7 @@ category: Jobs & Workflow
 roles: [storeman, accounts, manager, admin]
 order: 6
 tags: [sage, cpo, job card, dump, jt, pooling]
-lastUpdated: 2026-05-09
+lastUpdated: 2026-06-11
 summary: Upload a Sage JC dump against a CPO to create child job cards per JT, with items on the same JT pooled into a single JC across the whole Sage Job.
 readingMinutes: 4
 relatedPaths: [annix-backend/src/stock-control/services/sage-jc-dump.service.ts, annix-frontend/src/app/stock-control/portal/purchase-orders/[id]/page.tsx, annix-frontend/src/app/stock-control/components/AsteriskAllocationModal.tsx]
@@ -14,6 +14,12 @@ relatedPaths: [annix-backend/src/stock-control/services/sage-jc-dump.service.ts,
 ## What is a Sage JC dump
 
 A Sage JC dump is the Excel export from Sage that lists the items, JT numbers, and delivery sheets for a Sage Job. Uploading it against a CPO creates one child Job Card per JT under that CPO, with the line items pre-populated from the dump.
+
+## m² and duplicate handling
+
+The importer now fills in the paint/lining m² for every line it can compute from the description geometry (NB size, length, flange configuration) — you no longer depend on the preview screen finishing its background calculation before you click Import. For items whose m² cannot be derived (pulleys, cyclones, sampler bodies), add an explicit area such as "@ 12.5m²" to the item description and the importer will pick it up; otherwise the job card shows a "missing m²" warning until someone captures it.
+
+Re-uploading a dump whose job cards already exist unchanged no longer creates duplicates — those rows are reported as skipped. If duplicates exist from older imports, use the Deduplicate action on the Job Cards page; it now keeps the card with line items and the furthest workflow progress.
 
 ## How pooling works
 

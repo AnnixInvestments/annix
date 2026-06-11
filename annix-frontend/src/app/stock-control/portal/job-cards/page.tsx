@@ -781,6 +781,20 @@ export default function JobCardsPage() {
                           Delivery
                         </span>
                       ) : null}
+                      {(() => {
+                        const rawChildCount = job.deliveryJobCardCount;
+                        const childCount = rawChildCount ? rawChildCount : 0;
+                        const parentId = job.parentJobCardId;
+                        if (parentId || childCount === 0) return null;
+                        return (
+                          <span
+                            className="ml-1.5 inline-flex px-1.5 py-0.5 text-[10px] font-medium rounded bg-teal-50 text-teal-700"
+                            title="Line items live on the linked delivery job cards"
+                          >
+                            {childCount} delivery JC{childCount === 1 ? "" : "s"}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="hidden lg:table-cell px-3 py-3 whitespace-nowrap text-sm text-gray-500 truncate">
                       {rawJcNumber || "-"}

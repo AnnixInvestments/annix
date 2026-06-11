@@ -818,6 +818,7 @@ export interface IndividualProfileStatus {
   certificatesCount: number;
   cvUploadedAt: string | null;
   cvOriginalFilename: string | null;
+  cvExtractionStatus: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
   eeDisclosed: boolean;
@@ -2481,31 +2482,30 @@ class AnnixOrbitApiClient {
     });
   }
 
-  async seekerJobFacets(filters: SeekerRecommendedFilters = {}): Promise<SeekerJobFacets> {
+  private seekerJobFilterParams(filters: SeekerRecommendedFilters): string {
     const params = new URLSearchParams();
+    const provinces = filters.provinces ? filters.provinces : [];
+    const cities = filters.cities ? filters.cities : [];
+    const providers = filters.providers ? filters.providers : [];
     if (filters.region) params.set("region", filters.region);
-    if (filters.province) params.set("province", filters.province);
-    if (filters.city) params.set("city", filters.city);
+    provinces.forEach((p) => params.append("province", p));
+    cities.forEach((c) => params.append("city", c));
     if (filters.category) params.set("category", filters.category);
     if (filters.minSalary) params.set("minSalary", filters.minSalary);
     if (filters.search) params.set("search", filters.search);
-    if (filters.provider) params.set("provider", filters.provider);
-    const qs = params.toString();
+    providers.forEach((p) => params.append("provider", p));
+    return params.toString();
+  }
+
+  async seekerJobFacets(filters: SeekerRecommendedFilters = {}): Promise<SeekerJobFacets> {
+    const qs = this.seekerJobFilterParams(filters);
     return this.request(`/annix-orbit/seeker/jobs/facets${qs ? `?${qs}` : ""}`);
   }
 
   async seekerRecommendedJobs(
     filters: SeekerRecommendedFilters = {},
   ): Promise<SeekerRecommendedJobsResponse> {
-    const params = new URLSearchParams();
-    if (filters.region) params.set("region", filters.region);
-    if (filters.province) params.set("province", filters.province);
-    if (filters.city) params.set("city", filters.city);
-    if (filters.category) params.set("category", filters.category);
-    if (filters.minSalary) params.set("minSalary", filters.minSalary);
-    if (filters.search) params.set("search", filters.search);
-    if (filters.provider) params.set("provider", filters.provider);
-    const qs = params.toString();
+    const qs = this.seekerJobFilterParams(filters);
     return this.request(`/annix-orbit/seeker/jobs/recommended${qs ? `?${qs}` : ""}`);
   }
 
@@ -3240,12 +3240,14 @@ export interface SeekerRecommendedJobsResponse {
 
 export interface SeekerRecommendedFilters {
   region?: string;
-  province?: string;
-  city?: string;
+  // Multi-select dimensions — sent as repeated query params; empty arrays mean
+  // "no filter".
+  provinces?: string[];
+  cities?: string[];
   category?: string;
   minSalary?: string;
   search?: string;
-  provider?: string;
+  providers?: string[];
 }
 
 export interface SeekerJobFacets {

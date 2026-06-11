@@ -35,11 +35,11 @@ function buildLiveJobFilter(filters: RecommendedMatchCountFilters | null): Recor
   if (filters?.sourceIds && filters.sourceIds.length > 0) {
     query.sourceId = { $in: filters.sourceIds };
   }
-  if (filters?.province) {
-    query.canonicalProvince = filters.province;
+  if (filters?.provinces && filters.provinces.length > 0) {
+    query.canonicalProvince = { $in: filters.provinces };
   }
-  if (filters?.city) {
-    query.canonicalCity = filters.city;
+  if (filters?.cities && filters.cities.length > 0) {
+    query.canonicalCity = { $in: filters.cities };
   }
   if (filters?.search) {
     const rx = new RegExp(escapeRegex(filters.search.trim()), "i");
@@ -111,8 +111,8 @@ export class MongoCandidateJobMatchRepository
     // regardless of how many jobs exist in total.
     const isNarrow = Boolean(
       filters &&
-        (filters.province ||
-          filters.city ||
+        ((filters.provinces && filters.provinces.length > 0) ||
+          (filters.cities && filters.cities.length > 0) ||
           filters.category ||
           filters.search ||
           (filters.sourceIds && filters.sourceIds.length > 0) ||

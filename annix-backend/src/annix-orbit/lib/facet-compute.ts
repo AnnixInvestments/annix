@@ -23,8 +23,10 @@ export interface FacetFilter {
   targetCountries?: string[] | null;
   // Optional single-country narrowing from the Region dropdown.
   region?: string | null;
-  province?: string | null;
-  city?: string | null;
+  // Multi-select dimensions: an empty/absent array means "no filter"; otherwise
+  // the row must match ANY of the selected values.
+  provinces?: string[] | null;
+  cities?: string[] | null;
   category?: string | null;
   sourceIds?: number[] | null;
   minSalary?: number | null;
@@ -60,10 +62,20 @@ export function rowPasses(
   if (!skip.has("region") && filter.region && row.country !== filter.region) {
     return false;
   }
-  if (!skip.has("province") && filter.province && row.canonicalProvince !== filter.province) {
+  if (
+    !skip.has("province") &&
+    filter.provinces &&
+    filter.provinces.length > 0 &&
+    !filter.provinces.includes(row.canonicalProvince ?? "")
+  ) {
     return false;
   }
-  if (!skip.has("city") && filter.city && row.canonicalCity !== filter.city) {
+  if (
+    !skip.has("city") &&
+    filter.cities &&
+    filter.cities.length > 0 &&
+    !filter.cities.includes(row.canonicalCity ?? "")
+  ) {
     return false;
   }
   if (!skip.has("category") && filter.category && row.canonicalCategory !== filter.category) {

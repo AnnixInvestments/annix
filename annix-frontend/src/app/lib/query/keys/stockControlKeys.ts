@@ -40,6 +40,9 @@ export const stockControlKeys = {
     all: ["stock-control", "invoices"] as const,
     list: (search?: string) => [...stockControlKeys.invoices.all, "list", search ?? ""] as const,
     detail: (id: number) => [...stockControlKeys.invoices.all, "detail", id] as const,
+    clarifications: (id: number) =>
+      [...stockControlKeys.invoices.all, "clarifications", id] as const,
+    priceSummary: (id: number) => [...stockControlKeys.invoices.all, "price-summary", id] as const,
   },
   deliveries: {
     all: ["stock-control", "deliveries"] as const,

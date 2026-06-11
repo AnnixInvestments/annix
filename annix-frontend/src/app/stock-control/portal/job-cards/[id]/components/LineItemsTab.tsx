@@ -291,6 +291,29 @@ export function LineItemsTab(props: LineItemsTabProps) {
         </div>
       </div>
       {showAddForm && renderAddForm()}
+      {(() => {
+        const validItems = jobCard.lineItems.filter(isValidLineItem);
+        const missingM2 = validItems.filter((li) => {
+          const rawCode = li.itemCode;
+          const code = (rawCode || "").trim().toUpperCase();
+          const isAreaItem = code === "PAINT" || /^R\d/.test(code) || /^R\/L/.test(code);
+          const rawM2 = li.m2;
+          const rawLiningM2 = li.liningM2;
+          const hasM2 = (Number(rawM2) || 0) > 0 || (Number(rawLiningM2) || 0) > 0;
+          return isAreaItem && !hasM2;
+        });
+        if (missingM2.length === 0) return null;
+        return (
+          <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-xs text-amber-800">
+            <span className="font-semibold">
+              {missingM2.length} item{missingM2.length === 1 ? "" : "s"} missing m²
+            </span>{" "}
+            — coating and lining quantities for this job card will be understated until the m² is
+            captured. Use Re-extract, or edit the item and enter the m² from the drawing or job card
+            (you can also add e.g. &quot;@ 12.5m²&quot; to the Sage item description).
+          </div>
+        );
+      })()}
       <div className="hidden md:block">
         <table className="w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">

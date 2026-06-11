@@ -4,8 +4,9 @@ import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
 
 export interface RecommendedMatchCountFilters {
-  province?: string | null;
-  city?: string | null;
+  // Multi-select: empty/absent arrays mean "no filter"; otherwise match ANY value.
+  provinces?: string[] | null;
+  cities?: string[] | null;
   category?: string | null;
   minSalary?: number | null;
   search?: string | null;

@@ -6,25 +6,25 @@ import {
   Logger,
   NotFoundException,
 } from "@nestjs/common";
-import { type EntityManager } from "typeorm";
 import { AuditService } from "../../audit/audit.service";
 import { AuditAction } from "../../audit/entities/audit-log.entity";
 import { now } from "../../lib/datetime";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { PaginatedResponse } from "../../shared/dto/api-response.dto";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { JobCard } from "../entities/job-card.entity";
 import { StockAllocation } from "../entities/stock-allocation.entity";
 import { StockItem } from "../entities/stock-item.entity";
-import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { MovementType, ReferenceType } from "../entities/stock-movement.entity";
 import { JobCardCoatingAnalysisRepository } from "../repositories/coating-analysis.repository";
 import { JobCardRepository } from "../repositories/job-card.repository";
 import { JobCardJobFileRepository } from "../repositories/job-card-job-file.repository";
+import { JobCardLineItemRepository } from "../repositories/job-card-line-item.repository";
+import { ReconciliationDocumentRepository } from "../repositories/reconciliation-document.repository";
+import { ReconciliationItemRepository } from "../repositories/reconciliation-item.repository";
 import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockItemRepository } from "../repositories/stock-item.repository";
+import { StockMovementRepository } from "../repositories/stock-movement.repository";
+import { StockReturnRepository } from "../repositories/stock-return.repository";
 import { RequisitionService } from "./requisition.service";
 import { WorkflowNotificationService } from "./workflow-notification.service";
 
@@ -37,22 +37,20 @@ export class JobCardService {
     private readonly allocationRepo: StockAllocationRepository,
     private readonly coatingAnalysisRepo: JobCardCoatingAnalysisRepository,
     private readonly jobFileRepo: JobCardJobFileRepository,
+    private readonly lineItemRepo: JobCardLineItemRepository,
+    private readonly stockItemRepo: StockItemRepository,
+    private readonly stockMovementRepo: StockMovementRepository,
+    private readonly stockReturnRepo: StockReturnRepository,
+    private readonly reconciliationItemRepo: ReconciliationItemRepository,
+    private readonly reconciliationDocumentRepo: ReconciliationDocumentRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
     @Inject(forwardRef(() => WorkflowNotificationService))
     private readonly notificationService: WorkflowNotificationService,
-    private readonly txRunner: TransactionRunner,
     private readonly auditService: AuditService,
   ) {}
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("JobCardService transactions require a TypeOrmTransactionContext");
-    }
-    return context.manager;
-  }
 
   async create(companyId: number, data: Partial<JobCard>): Promise<JobCard> {
     return this.jobCardRepo.create({ ...data, companyId });
@@ -136,29 +134,26 @@ export class JobCardService {
     this.logger.log(
       `Found job card ${jobCard.jobNumber} (id=${numericId}), proceeding with delete`,
     );
-    await this.txRunner.run(async (ctx) => {
-      const em = this.transactionManager(ctx);
-      await em.query("DELETE FROM stock_returns WHERE job_card_id = $1 AND company_id = $2", [
-        numericId,
-        companyId,
-      ]);
-      await em.query("DELETE FROM stock_allocations WHERE job_card_id = $1 AND company_id = $2", [
-        numericId,
-        companyId,
-      ]);
-      await em.query(
-        "DELETE FROM reconciliation_items WHERE job_card_id = $1 AND company_id = $2",
-        [numericId, companyId],
-      );
-      await em.query(
-        "DELETE FROM reconciliation_documents WHERE job_card_id = $1 AND company_id = $2",
-        [numericId, companyId],
-      );
-      await em.query("DELETE FROM job_cards WHERE id = $1 AND company_id = $2", [
-        numericId,
-        companyId,
-      ]);
-    });
+    const removeAllWhere = async (
+      repo: {
+        findManyWhere(criteria: Record<string, unknown>): Promise<{ id: number }[]>;
+        remove(entity: { id: number }): Promise<void>;
+      },
+      criteria: Record<string, unknown>,
+    ) => {
+      const rows = await repo.findManyWhere(criteria);
+      await rows.reduce(async (prev, row) => {
+        await prev;
+        await repo.remove(row);
+      }, Promise.resolve());
+    };
+
+    await removeAllWhere(this.stockReturnRepo, { jobCardId: numericId, companyId });
+    await removeAllWhere(this.allocationRepo, { jobCardId: numericId, companyId });
+    await removeAllWhere(this.reconciliationItemRepo, { jobCardId: numericId, companyId });
+    await removeAllWhere(this.reconciliationDocumentRepo, { jobCardId: numericId, companyId });
+    await this.lineItemRepo.deleteForJobCard(numericId);
+    await this.jobCardRepo.remove(jobCard);
     this.logger.log(`Successfully deleted job card ${numericId}`);
   }
 
@@ -174,10 +169,8 @@ export class JobCardService {
       staffMemberId?: number;
     },
   ): Promise<StockAllocation> {
-    const outcome = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
+    const outcome = await (async () => {
       const { stockItem, jobCard } = await this.validateAllocationEntities(
-        manager,
         companyId,
         data.stockItemId,
         data.jobCardId,
@@ -192,7 +185,7 @@ export class JobCardService {
       );
 
       if (overAllocationCheck.requiresApproval) {
-        const saved = await this.createAllocationRecord(manager, {
+        const saved = await this.createAllocationRecord({
           stockItem,
           jobCard,
           data,
@@ -205,9 +198,9 @@ export class JobCardService {
       }
 
       stockItem.quantity = stockItem.quantity - data.quantityUsed;
-      await manager.save(StockItem, stockItem);
+      await this.stockItemRepo.save(stockItem);
 
-      const saved = await this.createAllocationRecord(manager, {
+      const saved = await this.createAllocationRecord({
         stockItem,
         jobCard,
         data,
@@ -216,8 +209,8 @@ export class JobCardService {
         allowedLitres: overAllocationCheck.allowedLitres,
       });
 
-      const movement = manager.create(StockMovement, {
-        stockItem,
+      await this.stockMovementRepo.create({
+        stockItemId: stockItem.id,
         movementType: MovementType.OUT,
         quantity: data.quantityUsed,
         referenceType: ReferenceType.ALLOCATION,
@@ -226,10 +219,9 @@ export class JobCardService {
         createdBy: data.allocatedBy || null,
         companyId,
       });
-      await manager.save(StockMovement, movement);
 
       return { saved, pendingApproval: false as const, stockItem, overAllocationCheck };
-    });
+    })();
 
     if (outcome.pendingApproval) {
       await this.notificationService.notifyOverAllocationApproval(
@@ -251,23 +243,17 @@ export class JobCardService {
   }
 
   private async validateAllocationEntities(
-    manager: EntityManager,
     companyId: number,
     stockItemId: number,
     jobCardId: number,
     quantityUsed: number,
   ): Promise<{ stockItem: StockItem; jobCard: JobCard }> {
-    const stockItem = await manager.findOne(StockItem, {
-      where: { id: stockItemId, companyId },
-      lock: { mode: "pessimistic_write" },
-    });
+    const stockItem = await this.stockItemRepo.findOneForCompany(stockItemId, companyId);
     if (!stockItem) {
       throw new NotFoundException("Stock item not found");
     }
 
-    const jobCard = await manager.findOne(JobCard, {
-      where: { id: jobCardId, companyId },
-    });
+    const jobCard = await this.jobCardRepo.findOneForCompany(jobCardId, companyId);
     if (!jobCard) {
       throw new NotFoundException("Job card not found");
     }
@@ -281,26 +267,23 @@ export class JobCardService {
     return { stockItem, jobCard };
   }
 
-  private async createAllocationRecord(
-    manager: EntityManager,
-    params: {
-      stockItem: StockItem;
-      jobCard: JobCard;
-      data: {
-        quantityUsed: number;
-        photoUrl?: string;
-        notes?: string;
-        allocatedBy?: string;
-        staffMemberId?: number;
-      };
-      companyId: number;
-      pendingApproval: boolean;
-      allowedLitres: number | null | undefined;
-    },
-  ): Promise<StockAllocation> {
-    const allocation = manager.create(StockAllocation, {
-      stockItem: params.stockItem,
-      jobCard: params.jobCard,
+  private async createAllocationRecord(params: {
+    stockItem: StockItem;
+    jobCard: JobCard;
+    data: {
+      quantityUsed: number;
+      photoUrl?: string;
+      notes?: string;
+      allocatedBy?: string;
+      staffMemberId?: number;
+    };
+    companyId: number;
+    pendingApproval: boolean;
+    allowedLitres: number | null | undefined;
+  }): Promise<StockAllocation> {
+    const saved = await this.allocationRepo.create({
+      stockItemId: params.stockItem.id,
+      jobCardId: params.jobCard.id,
       quantityUsed: params.data.quantityUsed,
       photoUrl: params.data.photoUrl || null,
       notes: params.data.notes || null,
@@ -308,9 +291,11 @@ export class JobCardService {
       staffMemberId: params.data.staffMemberId || null,
       companyId: params.companyId,
       pendingApproval: params.pendingApproval,
-      allowedLitres: params.allowedLitres,
+      allowedLitres: params.allowedLitres ?? null,
     });
-    return manager.save(StockAllocation, allocation);
+    saved.stockItem = params.stockItem;
+    saved.jobCard = params.jobCard;
+    return saved;
   }
 
   private triggerPostAllocationSideEffects(
@@ -407,21 +392,20 @@ export class JobCardService {
     allocationId: number,
     managerId: number,
   ): Promise<StockAllocation> {
-    const { saved, stockItem } = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const allocation = await manager.findOne(StockAllocation, {
-        where: { id: allocationId, companyId, pendingApproval: true },
-        relations: ["stockItem", "jobCard"],
-      });
+    const { saved, stockItem } = await (async () => {
+      const allocation = await this.allocationRepo.findOnePendingForCompany(
+        allocationId,
+        companyId,
+      );
 
       if (!allocation) {
         throw new NotFoundException("Pending allocation not found");
       }
 
-      const stockItem = await manager.findOne(StockItem, {
-        where: { id: allocation.stockItemId, companyId },
-        lock: { mode: "pessimistic_write" },
-      });
+      const stockItem = await this.stockItemRepo.findOneForCompany(
+        Number(allocation.stockItemId),
+        companyId,
+      );
 
       if (!stockItem) {
         throw new NotFoundException("Stock item not found");
@@ -434,27 +418,32 @@ export class JobCardService {
       }
 
       stockItem.quantity = stockItem.quantity - allocation.quantityUsed;
-      await manager.save(StockItem, stockItem);
+      await this.stockItemRepo.save(stockItem);
 
       allocation.pendingApproval = false;
       allocation.approvedByManagerId = managerId;
       allocation.approvedAt = now().toJSDate();
-      const saved = await manager.save(StockAllocation, allocation);
+      const saved = await this.allocationRepo.save(allocation);
 
-      const movement = manager.create(StockMovement, {
-        stockItem,
+      const jobCard = await this.jobCardRepo.findOneForCompany(
+        Number(allocation.jobCardId),
+        companyId,
+      );
+      const jobLabel = jobCard ? jobCard.jobNumber : allocation.jobCardId;
+
+      await this.stockMovementRepo.create({
+        stockItemId: stockItem.id,
         movementType: MovementType.OUT,
         quantity: allocation.quantityUsed,
         referenceType: ReferenceType.ALLOCATION,
         referenceId: saved.id,
-        notes: `Allocated to job ${allocation.jobCard.jobNumber} (manager approved over-allocation)`,
+        notes: `Allocated to job ${jobLabel} (manager approved over-allocation)`,
         createdBy: allocation.allocatedBy || null,
         companyId,
       });
-      await manager.save(StockMovement, movement);
 
       return { saved, stockItem };
-    });
+    })();
 
     if (stockItem.minStockLevel > 0 && stockItem.quantity < stockItem.minStockLevel) {
       this.requisitionService
@@ -550,36 +539,32 @@ export class JobCardService {
       throw new BadRequestException("Cannot undo a pending allocation. Reject it instead.");
     }
 
-    await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
-      const stockItem = await manager.findOne(StockItem, {
-        where: { id: allocation.stockItemId, companyId },
-        lock: { mode: "pessimistic_write" },
-      });
+    const stockItem = await this.stockItemRepo.findOneForCompany(
+      Number(allocation.stockItemId),
+      companyId,
+    );
 
-      if (!stockItem) {
-        throw new NotFoundException("Stock item not found");
-      }
+    if (!stockItem) {
+      throw new NotFoundException("Stock item not found");
+    }
 
-      stockItem.quantity = Number(stockItem.quantity) + Number(allocation.quantityUsed);
-      await manager.save(StockItem, stockItem);
+    stockItem.quantity = Number(stockItem.quantity) + Number(allocation.quantityUsed);
+    await this.stockItemRepo.save(stockItem);
 
-      allocation.undone = true;
-      allocation.undoneAt = now().toJSDate();
-      allocation.undoneByName = user.name;
-      await manager.save(StockAllocation, allocation);
+    allocation.undone = true;
+    allocation.undoneAt = now().toJSDate();
+    allocation.undoneByName = user.name;
+    await this.allocationRepo.save(allocation);
 
-      const reverseMovement = manager.create(StockMovement, {
-        stockItem: { id: stockItem.id },
-        movementType: MovementType.IN,
-        quantity: allocation.quantityUsed,
-        referenceType: ReferenceType.ALLOCATION,
-        referenceId: allocation.id,
-        notes: `Undo allocation #${allocation.id} by ${user.name}`,
-        createdBy: user.name,
-        companyId,
-      });
-      await manager.save(StockMovement, reverseMovement);
+    await this.stockMovementRepo.create({
+      stockItemId: stockItem.id,
+      movementType: MovementType.IN,
+      quantity: allocation.quantityUsed,
+      referenceType: ReferenceType.ALLOCATION,
+      referenceId: allocation.id,
+      notes: `Undo allocation #${allocation.id} by ${user.name}`,
+      createdBy: user.name,
+      companyId,
     });
 
     this.auditService
@@ -625,16 +610,20 @@ export class JobCardService {
 
       if (!pNum || !jcNum) return;
 
+      const refNum = (jc.reference || "").trim().toLowerCase();
+
       let key: string;
       if (jtNum) {
         // Delivery / JT-numbered cards keyed by JT (unchanged).
         key = `${pNum}|${jcNum}|jt:${jtNum}`;
       } else {
         // Plain job cards with no JT (e.g. re-imported the same .xls twice) escaped
-        // dedup before. Key them by page so different pages of one JC aren't merged but
-        // exact re-imports are. Skip CPO parents / delivery children to avoid orphaning.
+        // dedup before. Key them by page AND reference — JT-split imports store the
+        // JT base in `reference` with no jtDnNumber, so without the reference in the
+        // key, distinct JT cards of one JC would merge and hide each other's items.
+        // Skip CPO parents / delivery children to avoid orphaning.
         if (jc.cpoId || jc.parentJobCardId) return;
-        key = `${pNum}|${jcNum}|page:${pageNum}`;
+        key = `${pNum}|${jcNum}|page:${pageNum}|ref:${refNum}`;
       }
 
       const existing = groups.get(key) || [];
@@ -651,9 +640,10 @@ export class JobCardService {
     for (const [_key, cards] of duplicateGroups) {
       groupCount++;
 
-      const winner = cards[0];
+      const ranked = await this.rankDuplicates(cards);
+      const winner = ranked[0];
 
-      const losers = cards.slice(1);
+      const losers = ranked.slice(1);
 
       for (const loser of losers) {
         const versionLabel = `V${loser.versionNumber} - ${loser.jobNumber}`;
@@ -691,5 +681,43 @@ export class JobCardService {
     );
 
     return { merged: mergedCount, groups: groupCount };
+  }
+
+  async deliveryChildCounts(
+    companyId: number,
+    parentJobCardIds: number[],
+  ): Promise<Map<number, number>> {
+    return this.jobCardRepo.countDeliveryChildrenForParents(companyId, parentJobCardIds);
+  }
+
+  // The survivor of a duplicate group must be the most complete card: one with line
+  // items beats an empty one, then the furthest-progressed workflow wins (so an
+  // in-flight approval is never superseded by a fresh re-imported draft), newest last.
+  private async rankDuplicates(cards: JobCard[]): Promise<JobCard[]> {
+    const WORKFLOW_RANK: Record<string, number> = {
+      draft: 0,
+      manager_approval: 1,
+      admin_approval: 2,
+      manager_final: 3,
+      dispatched: 4,
+    };
+
+    const scored = await Promise.all(
+      cards.map(async (card) => ({
+        card,
+        itemCount: await this.lineItemRepo.countForJobCard(card.id),
+        workflowRank: WORKFLOW_RANK[card.workflowStatus] ?? 0,
+      })),
+    );
+
+    return scored
+      .sort((a, b) => {
+        const aHasItems = a.itemCount > 0 ? 1 : 0;
+        const bHasItems = b.itemCount > 0 ? 1 : 0;
+        if (aHasItems !== bHasItems) return bHasItems - aHasItems;
+        if (a.workflowRank !== b.workflowRank) return b.workflowRank - a.workflowRank;
+        return b.card.id - a.card.id;
+      })
+      .map((entry) => entry.card);
   }
 }

@@ -14,12 +14,20 @@ import {
 import { nowISO } from "@/app/lib/datetime";
 import { annixOrbitKeys } from "../../keys";
 
-export function useOrbitMyProfileStatus(enabled = true) {
+export function useOrbitMyProfileStatus(
+  enabled = true,
+  options: { pollWhileCvProcessing?: boolean } = {},
+) {
+  const pollWhileCvProcessing = options.pollWhileCvProcessing === true;
   return useQuery<IndividualProfileStatus>({
     queryKey: annixOrbitKeys.individualProfile.status(),
     queryFn: () => annixOrbitApiClient.myProfileStatus(),
     enabled,
     staleTime: 60 * 1000,
+    // eslint-disable-next-line no-restricted-syntax -- short-lived 5s poll that only runs while a background CV extraction is in flight; self-stops once the status resolves
+    refetchInterval: pollWhileCvProcessing
+      ? (query) => (query.state.data?.cvExtractionStatus === "processing" ? 5000 : false)
+      : false,
   });
 }
 

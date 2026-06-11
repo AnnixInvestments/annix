@@ -1,14 +1,12 @@
 import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { DataSource } from "typeorm";
-import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { NixLearningRepository } from "../../nix/nix-learning.repository";
 import { STORAGE_SERVICE } from "../../storage/storage.interface";
-import { StockItem } from "../entities/stock-item.entity";
 import { DeliveryNoteItemRepository } from "../repositories/delivery-note-item.repository";
 import { StockAllocationRepository } from "../repositories/stock-allocation.repository";
+import { StockIssuanceRepository } from "../repositories/stock-issuance.repository";
 import { StockItemRepository } from "../repositories/stock-item.repository";
 import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { DeliverySupplierService } from "./delivery-supplier.service";
@@ -50,17 +48,6 @@ describe("InventoryService", () => {
     createReorderRequisition: jest.fn().mockResolvedValue(null),
   };
 
-  const mockManager = {
-    findOne: jest.fn(),
-    save: jest.fn().mockImplementation((_entity, data) => Promise.resolve({ id: 1, ...data })),
-  };
-
-  const mockTxRunner = {
-    run: jest
-      .fn()
-      .mockImplementation((fn) => fn(new TypeOrmTransactionContext(mockManager as never))),
-  };
-
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -81,20 +68,38 @@ describe("InventoryService", () => {
         },
         {
           provide: StockMovementRepository,
-          useValue: { build: jest.fn(), save: jest.fn() },
+          useValue: {
+            build: jest.fn(),
+            create: jest.fn(),
+            save: jest.fn(),
+            findManyWhere: jest.fn().mockResolvedValue([]),
+          },
         },
         {
           provide: DeliveryNoteItemRepository,
-          useValue: { create: jest.fn(), createMany: jest.fn() },
+          useValue: {
+            create: jest.fn(),
+            createMany: jest.fn(),
+            save: jest.fn(),
+            findManyWhere: jest.fn().mockResolvedValue([]),
+          },
         },
         {
           provide: StockAllocationRepository,
-          useValue: { find: jest.fn().mockResolvedValue([]), update: jest.fn() },
+          useValue: {
+            find: jest.fn().mockResolvedValue([]),
+            update: jest.fn(),
+            save: jest.fn(),
+            findManyWhere: jest.fn().mockResolvedValue([]),
+          },
+        },
+        {
+          provide: StockIssuanceRepository,
+          useValue: { save: jest.fn(), findManyWhere: jest.fn().mockResolvedValue([]) },
         },
         { provide: STORAGE_SERVICE, useValue: mockStorageService },
         { provide: RequisitionService, useValue: mockRequisitionService },
         { provide: DataSource, useValue: {} },
-        { provide: TransactionRunner, useValue: mockTxRunner },
         { provide: AiChatService, useValue: { chat: jest.fn().mockResolvedValue("") } },
         {
           provide: DeliverySupplierService,
@@ -334,15 +339,17 @@ describe("InventoryService", () => {
   });
 
   describe("adjustQuantity", () => {
+    beforeEach(() => {
+      mockStockItemRepo.save.mockImplementation((entity) => Promise.resolve({ ...entity }));
+    });
+
     it("adds positive delta to quantity", async () => {
       const item = { id: 1, companyId: 1, quantity: 50, minStockLevel: 0, photoUrl: null };
-      mockManager.findOne.mockResolvedValue(item);
-      mockManager.save.mockResolvedValue({ ...item, quantity: 60 });
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
 
       const result = await service.adjustQuantity(1, 1, 10);
 
-      expect(mockManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 60 }),
       );
       expect(result).toBeDefined();
@@ -350,46 +357,39 @@ describe("InventoryService", () => {
 
     it("subtracts negative delta from quantity", async () => {
       const item = { id: 1, companyId: 1, quantity: 50, minStockLevel: 0, photoUrl: null };
-      mockManager.findOne.mockResolvedValue(item);
-      mockManager.save.mockResolvedValue({ ...item, quantity: 40 });
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
 
       await service.adjustQuantity(1, 1, -10);
 
-      expect(mockManager.save).toHaveBeenCalledWith(
-        StockItem,
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(
         expect.objectContaining({ quantity: 40 }),
       );
     });
 
     it("clamps quantity to zero (never negative)", async () => {
       const item = { id: 1, companyId: 1, quantity: 3, minStockLevel: 0, photoUrl: null };
-      mockManager.findOne.mockResolvedValue(item);
-      mockManager.save.mockResolvedValue({ ...item, quantity: 0 });
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
 
       await service.adjustQuantity(1, 1, -20);
 
-      expect(mockManager.save).toHaveBeenCalledWith(
-        StockItem,
-        expect.objectContaining({ quantity: 0 }),
-      );
+      expect(mockStockItemRepo.save).toHaveBeenCalledWith(expect.objectContaining({ quantity: 0 }));
     });
 
     it("throws NotFoundException when item not found", async () => {
-      mockManager.findOne.mockResolvedValue(null);
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(null);
 
       await expect(service.adjustQuantity(1, 999, 5)).rejects.toThrow(NotFoundException);
     });
 
-    it("propagates errors from the transaction", async () => {
-      mockManager.findOne.mockRejectedValue(new Error("DB error"));
+    it("propagates repository errors", async () => {
+      mockStockItemRepo.findOneForCompany.mockRejectedValue(new Error("DB error"));
 
       await expect(service.adjustQuantity(1, 1, 5)).rejects.toThrow("DB error");
     });
 
     it("triggers reorder when negative delta drops below minStockLevel", async () => {
       const item = { id: 1, companyId: 1, quantity: 20, minStockLevel: 15, photoUrl: null };
-      mockManager.findOne.mockResolvedValue(item);
-      mockManager.save.mockResolvedValue({ ...item, quantity: 10 });
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
 
       await service.adjustQuantity(1, 1, -10);
 
@@ -398,8 +398,7 @@ describe("InventoryService", () => {
 
     it("does not trigger reorder for positive delta", async () => {
       const item = { id: 1, companyId: 1, quantity: 5, minStockLevel: 20, photoUrl: null };
-      mockManager.findOne.mockResolvedValue(item);
-      mockManager.save.mockResolvedValue({ ...item, quantity: 15 });
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
 
       await service.adjustQuantity(1, 1, 10);
 
@@ -408,8 +407,7 @@ describe("InventoryService", () => {
 
     it("does not trigger reorder when minStockLevel is zero", async () => {
       const item = { id: 1, companyId: 1, quantity: 5, minStockLevel: 0, photoUrl: null };
-      mockManager.findOne.mockResolvedValue(item);
-      mockManager.save.mockResolvedValue({ ...item, quantity: 0 });
+      mockStockItemRepo.findOneForCompany.mockResolvedValue(item);
 
       await service.adjustQuantity(1, 1, -5);
 

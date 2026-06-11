@@ -13,6 +13,7 @@ export default function GlobalError(props: {
 
   const supportCode = useMemo(() => buildSupportCode(error), [error]);
   const isDev = process.env.NODE_ENV !== "production";
+  const homeHref = useMemo(() => moduleHomeHref(), []);
 
   return (
     <html lang="en">
@@ -90,7 +91,7 @@ export default function GlobalError(props: {
               }}
             >
               <a
-                href="/"
+                href={homeHref}
                 style={{
                   padding: "0.5rem 1rem",
                   backgroundColor: "#374151",
@@ -148,6 +149,26 @@ export default function GlobalError(props: {
       </body>
     </html>
   );
+}
+
+// "Back to home" must stay inside the module the user was in — sending an
+// Orbit seeker (or any module PWA user) to "/" drops them on the platform hub
+// with every other app on display. Longest prefix wins.
+const MODULE_HOMES: ReadonlyArray<readonly [string, string]> = [
+  ["/annix/orbit/seeker", "/annix/orbit/seeker/dashboard"],
+  ["/annix/orbit", "/annix/orbit"],
+  ["/annix-sentinel", "/annix-sentinel"],
+  ["/annix-rep", "/annix-rep"],
+  ["/stock-control", "/stock-control"],
+  ["/au-rubber", "/au-rubber"],
+];
+
+function moduleHomeHref(): string {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; global-error can render server-side
+  if (typeof window === "undefined") return "/";
+  const pathname = window.location.pathname;
+  const match = MODULE_HOMES.find(([prefix]) => pathname.startsWith(prefix));
+  return match ? match[1] : "/";
 }
 
 function buildSupportCode(error: Error & { digest?: string }): string {

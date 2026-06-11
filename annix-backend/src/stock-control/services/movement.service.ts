@@ -1,11 +1,6 @@
 import { forwardRef, Inject, Injectable, Logger, NotFoundException } from "@nestjs/common";
-import {
-  type TransactionContext,
-  TypeOrmTransactionContext,
-} from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
-import { StockItem } from "../entities/stock-item.entity";
 import { MovementType, ReferenceType, StockMovement } from "../entities/stock-movement.entity";
+import { StockItemRepository } from "../repositories/stock-item.repository";
 import { StockMovementRepository } from "../repositories/stock-movement.repository";
 import { RequisitionService } from "./requisition.service";
 
@@ -15,17 +10,10 @@ export class MovementService {
 
   constructor(
     private readonly movementRepo: StockMovementRepository,
+    private readonly stockItemRepo: StockItemRepository,
     @Inject(forwardRef(() => RequisitionService))
     private readonly requisitionService: RequisitionService,
-    private readonly txRunner: TransactionRunner,
   ) {}
-
-  private transactionManager(context: TransactionContext) {
-    if (!(context instanceof TypeOrmTransactionContext)) {
-      throw new Error("MovementService transactions require a TypeOrmTransactionContext");
-    }
-    return context.manager;
-  }
 
   async findAll(
     companyId: number,
@@ -53,41 +41,30 @@ export class MovementService {
       referenceId?: number;
     },
   ): Promise<StockMovement> {
-    const { saved, stockItem } = await this.txRunner.run(async (ctx) => {
-      const manager = this.transactionManager(ctx);
+    const stockItem = await this.stockItemRepo.findOneForCompany(data.stockItemId, companyId);
+    if (!stockItem) {
+      throw new NotFoundException("Stock item not found");
+    }
 
-      const stockItem = await manager.findOne(StockItem, {
-        where: { id: data.stockItemId, companyId },
-        lock: { mode: "pessimistic_write" },
-      });
-      if (!stockItem) {
-        throw new NotFoundException("Stock item not found");
-      }
+    if (data.movementType === MovementType.IN) {
+      stockItem.quantity = stockItem.quantity + data.quantity;
+    } else if (data.movementType === MovementType.OUT) {
+      stockItem.quantity = Math.max(0, stockItem.quantity - data.quantity);
+    } else {
+      stockItem.quantity = data.quantity;
+    }
 
-      if (data.movementType === MovementType.IN) {
-        stockItem.quantity = stockItem.quantity + data.quantity;
-      } else if (data.movementType === MovementType.OUT) {
-        stockItem.quantity = Math.max(0, stockItem.quantity - data.quantity);
-      } else {
-        stockItem.quantity = data.quantity;
-      }
+    await this.stockItemRepo.save(stockItem);
 
-      await manager.save(StockItem, stockItem);
-
-      const movement = manager.create(StockMovement, {
-        stockItem,
-        movementType: data.movementType,
-        quantity: data.quantity,
-        referenceType: data.referenceType ?? ReferenceType.MANUAL,
-        referenceId: data.referenceId ?? null,
-        notes: data.notes || null,
-        createdBy: data.createdBy || null,
-        companyId,
-      });
-
-      const saved = await manager.save(StockMovement, movement);
-
-      return { saved, stockItem };
+    const saved = await this.movementRepo.create({
+      stockItemId: stockItem.id,
+      movementType: data.movementType,
+      quantity: data.quantity,
+      referenceType: data.referenceType ?? ReferenceType.MANUAL,
+      referenceId: data.referenceId ?? null,
+      notes: data.notes || null,
+      createdBy: data.createdBy || null,
+      companyId,
     });
 
     if (

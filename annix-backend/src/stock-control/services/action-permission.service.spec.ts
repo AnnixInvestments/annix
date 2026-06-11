@@ -1,7 +1,4 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
-import { StockControlActionPermission } from "../entities/stock-control-action-permission.entity";
 import { StockControlActionPermissionRepository } from "../repositories/stock-control-action-permission.repository";
 import {
   ACTION_PERMISSION_LABELS,
@@ -12,33 +9,26 @@ import {
 describe("ActionPermissionService", () => {
   let service: ActionPermissionService;
 
-  const mockManager = {
-    delete: jest.fn(),
-    create: jest.fn().mockImplementation((_, data) => data),
-    save: jest.fn(),
-  };
-
   const mockRepo = {
     findForCompany: jest.fn(),
+    findManyWhere: jest.fn(),
+    remove: jest.fn(),
+    create: jest.fn().mockImplementation((data) => Promise.resolve(data)),
   };
 
-  const mockTxRunner = {
-    run: jest
-      .fn()
-      .mockImplementation((fn) => fn(new TypeOrmTransactionContext(mockManager as never))),
-  };
+  const createdRows = () => mockRepo.create.mock.calls.map(([row]) => row);
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ActionPermissionService,
         { provide: StockControlActionPermissionRepository, useValue: mockRepo },
-        { provide: TransactionRunner, useValue: mockTxRunner },
       ],
     }).compile();
 
     service = module.get<ActionPermissionService>(ActionPermissionService);
     jest.clearAllMocks();
+    mockRepo.findManyWhere.mockResolvedValue([]);
   });
 
   it("should be defined", () => {
@@ -221,15 +211,16 @@ describe("ActionPermissionService", () => {
       mockRepo.findForCompany.mockResolvedValue([]);
     });
 
-    it("should delete existing permissions and insert new ones in a transaction", async () => {
+    it("should delete existing permissions and insert new ones", async () => {
+      const existingRow = { id: 7, companyId: 1, actionKey: "job-cards.create", role: "manager" };
+      mockRepo.findManyWhere.mockResolvedValueOnce([existingRow]);
       const config = { "job-cards.create": ["viewer", "admin"] };
 
       await service.updatePermissions(1, config);
 
-      expect(mockManager.delete).toHaveBeenCalledWith(StockControlActionPermission, {
-        companyId: 1,
-      });
-      expect(mockManager.save).toHaveBeenCalled();
+      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 1 });
+      expect(mockRepo.remove).toHaveBeenCalledWith(existingRow);
+      expect(mockRepo.create).toHaveBeenCalled();
     });
 
     it("should always force admin into every action", async () => {
@@ -237,8 +228,7 @@ describe("ActionPermissionService", () => {
 
       await service.updatePermissions(1, config);
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const roles = savedEntities
+      const roles = createdRows()
         .filter((e: any) => e.actionKey === "job-cards.create")
         .map((e: any) => e.role);
 
@@ -251,8 +241,7 @@ describe("ActionPermissionService", () => {
 
       await service.updatePermissions(1, config);
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const adminEntries = savedEntities.filter(
+      const adminEntries = createdRows().filter(
         (e: any) => e.actionKey === "job-cards.create" && e.role === "admin",
       );
 
@@ -262,9 +251,7 @@ describe("ActionPermissionService", () => {
     it("should scope delete to the correct companyId", async () => {
       await service.updatePermissions(99, { "job-cards.create": ["admin"] });
 
-      expect(mockManager.delete).toHaveBeenCalledWith(StockControlActionPermission, {
-        companyId: 99,
-      });
+      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 99 });
     });
 
     it("should allow granting viewer access to specific actions when admin configures it", async () => {
@@ -275,11 +262,10 @@ describe("ActionPermissionService", () => {
 
       await service.updatePermissions(1, config);
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const reportsRoles = savedEntities
+      const reportsRoles = createdRows()
         .filter((e: any) => e.actionKey === "reports.view")
         .map((e: any) => e.role);
-      const jobCardsRoles = savedEntities
+      const jobCardsRoles = createdRows()
         .filter((e: any) => e.actionKey === "job-cards.create")
         .map((e: any) => e.role);
 

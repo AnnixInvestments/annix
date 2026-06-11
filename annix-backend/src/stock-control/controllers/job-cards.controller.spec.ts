@@ -44,6 +44,7 @@ describe("JobCardsController", () => {
       findAll: jest.fn(),
       findById: jest.fn(),
       deliveryJobCards: jest.fn(),
+      deliveryChildCounts: jest.fn().mockResolvedValue(new Map()),
       create: jest.fn(),
       update: jest.fn(),
       remove: jest.fn(),

@@ -14,6 +14,7 @@ import { CpoService } from "./cpo.service";
 import { DrawingExtractionService } from "./drawing-extraction.service";
 import { JobCardImportRow, JobCardImportService } from "./job-card-import.service";
 import { JobCardVersionService } from "./job-card-version.service";
+import { M2CalculationService } from "./m2-calculation.service";
 
 describe("JobCardImportService", () => {
   let service: JobCardImportService;
@@ -26,8 +27,14 @@ describe("JobCardImportService", () => {
     findById: jobCardFindOne,
     find: jobCardFind,
     findChildJobCardsByJobNumber: jobCardFind,
+    findActiveByJobAndJcNumber: jest.fn().mockResolvedValue([]),
+    findDeliveryJobCards: jest.fn().mockResolvedValue([]),
     create: jest.fn().mockImplementation((data) => Promise.resolve({ id: 1, ...data })),
     save: jest.fn().mockImplementation((entity) => Promise.resolve({ id: 1, ...entity })),
+  };
+
+  const mockM2CalculationService = {
+    calculateM2ForItems: jest.fn().mockResolvedValue([]),
   };
 
   const lineItemFind = jest.fn().mockResolvedValue([]);
@@ -111,6 +118,7 @@ describe("JobCardImportService", () => {
           provide: ExtractionMetricService,
           useValue: { time: jest.fn((_c, _o, fn) => fn()) },
         },
+        { provide: M2CalculationService, useValue: mockM2CalculationService },
       ],
     }).compile();
 
@@ -119,6 +127,9 @@ describe("JobCardImportService", () => {
 
     mockJobCardRepo.create.mockImplementation((data) => Promise.resolve({ id: 1, ...data }));
     mockJobCardRepo.save.mockImplementation((entity) => Promise.resolve({ id: 1, ...entity }));
+    mockJobCardRepo.findActiveByJobAndJcNumber.mockResolvedValue([]);
+    mockJobCardRepo.findDeliveryJobCards.mockResolvedValue([]);
+    mockM2CalculationService.calculateM2ForItems.mockResolvedValue([]);
     lineItemFind.mockResolvedValue([]);
     lineItemSave.mockImplementation((entity) => Promise.resolve(entity));
     mockLineItemRepo.buildMany.mockImplementation((rows) => rows.map((r: object) => ({ ...r })));

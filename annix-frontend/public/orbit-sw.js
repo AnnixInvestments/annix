@@ -1,4 +1,4 @@
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2";
 const STATIC_CACHE_NAME = `orbit-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE_NAME = `orbit-dynamic-${CACHE_VERSION}`;
 
@@ -114,37 +114,61 @@ if (self.location.hostname === "localhost" || self.location.hostname === "127.0.
 }
 
 async function handleStaticAsset(request) {
-  try {
-    const response = await fetch(request);
+  const url = new URL(request.url);
+  const cached = await caches.match(request);
+
+  // /_next/static/ files are content-hashed and immutable — once cached they
+  // can never change, so never spend network time on them again. Re-fetching
+  // the whole bundle on every launch is what made the installed app take a
+  // minute to open on mobile data.
+  if (cached && url.pathname.startsWith("/_next/static/")) {
+    return cached;
+  }
+
+  const network = fetch(request).then(async (response) => {
     if (response.ok) {
       const cache = await caches.open(STATIC_CACHE_NAME);
       cache.put(request, response.clone());
     }
     return response;
+  });
+
+  if (cached) {
+    // Non-hashed asset (branding images, icons): serve stale immediately and
+    // refresh the cache in the background for next time.
+    network.catch(() => {});
+    return cached;
+  }
+
+  try {
+    return await network;
   } catch (error) {
-    const cached = await caches.match(request);
-    if (cached) {
-      return cached;
-    }
     console.error("Orbit SW: static asset fetch failed:", error);
     throw error;
   }
 }
 
 async function handleNavigationRequest(request) {
-  try {
-    const response = await fetch(request);
+  // Stale-while-revalidate: paint the cached shell instantly and refresh it in
+  // the background. The shell's hashed chunks stay cached alongside it, and the
+  // app fetches its own data, so a stale shell self-heals on the next launch.
+  const cached = await caches.match(request);
+  const network = fetch(request).then(async (response) => {
     if (response.ok) {
       const cache = await caches.open(DYNAMIC_CACHE_NAME);
       cache.put(request, response.clone());
     }
     return response;
-  } catch (error) {
-    const cached = await caches.match(request);
-    if (cached) {
-      return cached;
-    }
+  });
 
+  if (cached) {
+    network.catch(() => {});
+    return cached;
+  }
+
+  try {
+    return await network;
+  } catch (error) {
     return new Response(
       `<!DOCTYPE html>
       <html>

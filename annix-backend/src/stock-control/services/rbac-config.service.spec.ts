@@ -1,7 +1,4 @@
 import { Test, TestingModule } from "@nestjs/testing";
-import { TypeOrmTransactionContext } from "../../lib/persistence/transaction-context";
-import { TransactionRunner } from "../../lib/persistence/transaction-runner";
-import { StockControlRbacConfig } from "../entities/stock-control-rbac-config.entity";
 import { StockControlRbacConfigRepository } from "../repositories/stock-control-rbac-config.repository";
 import { ActionPermissionService } from "./action-permission.service";
 import { RbacConfigService } from "./rbac-config.service";
@@ -9,28 +6,20 @@ import { RbacConfigService } from "./rbac-config.service";
 describe("RbacConfigService", () => {
   let service: RbacConfigService;
 
-  const mockManager = {
-    delete: jest.fn(),
-    create: jest.fn().mockImplementation((_, data) => data),
-    save: jest.fn(),
-  };
-
   const mockRepo = {
     findForCompany: jest.fn(),
+    findManyWhere: jest.fn(),
+    remove: jest.fn(),
+    create: jest.fn().mockImplementation((data) => Promise.resolve(data)),
   };
 
-  const mockTxRunner = {
-    run: jest
-      .fn()
-      .mockImplementation((fn) => fn(new TypeOrmTransactionContext(mockManager as never))),
-  };
+  const createdRows = () => mockRepo.create.mock.calls.map(([row]) => row);
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         RbacConfigService,
         { provide: StockControlRbacConfigRepository, useValue: mockRepo },
-        { provide: TransactionRunner, useValue: mockTxRunner },
         {
           provide: ActionPermissionService,
           useValue: { permissionsForCompany: jest.fn().mockResolvedValue({}) },
@@ -40,6 +29,7 @@ describe("RbacConfigService", () => {
 
     service = module.get<RbacConfigService>(RbacConfigService);
     jest.clearAllMocks();
+    mockRepo.findManyWhere.mockResolvedValue([]);
   });
 
   it("should be defined", () => {
@@ -113,7 +103,9 @@ describe("RbacConfigService", () => {
       mockRepo.findForCompany.mockResolvedValue([]);
     });
 
-    it("should delete existing config and insert new rows in a transaction", async () => {
+    it("should delete existing config and insert new rows", async () => {
+      const existingRow = { id: 3, companyId: 1, navKey: "dashboard", role: "manager" };
+      mockRepo.findManyWhere.mockResolvedValueOnce([existingRow]);
       const config = {
         dashboard: ["viewer", "admin"],
         inventory: ["admin"],
@@ -121,8 +113,9 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      expect(mockManager.delete).toHaveBeenCalledWith(StockControlRbacConfig, { companyId: 1 });
-      expect(mockManager.save).toHaveBeenCalled();
+      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 1 });
+      expect(mockRepo.remove).toHaveBeenCalledWith(existingRow);
+      expect(mockRepo.create).toHaveBeenCalled();
     });
 
     it("should always include admin role in every nav key", async () => {
@@ -133,11 +126,10 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const dashboardRoles = savedEntities
+      const dashboardRoles = createdRows()
         .filter((e: any) => e.navKey === "dashboard")
         .map((e: any) => e.role);
-      const inventoryRoles = savedEntities
+      const inventoryRoles = createdRows()
         .filter((e: any) => e.navKey === "inventory")
         .map((e: any) => e.role);
 
@@ -153,8 +145,7 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const settingsRoles = savedEntities
+      const settingsRoles = createdRows()
         .filter((e: any) => e.navKey === "settings")
         .map((e: any) => e.role);
 
@@ -168,8 +159,7 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(1, config);
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const dashboardAdmins = savedEntities.filter(
+      const dashboardAdmins = createdRows().filter(
         (e: any) => e.navKey === "dashboard" && e.role === "admin",
       );
 
@@ -189,7 +179,7 @@ describe("RbacConfigService", () => {
     it("should scope delete to the correct companyId", async () => {
       await service.updateNavConfig(99, { dashboard: ["admin"] });
 
-      expect(mockManager.delete).toHaveBeenCalledWith(StockControlRbacConfig, { companyId: 99 });
+      expect(mockRepo.findManyWhere).toHaveBeenCalledWith({ companyId: 99 });
     });
 
     it("should create entities with correct companyId, navKey, and role", async () => {
@@ -199,12 +189,12 @@ describe("RbacConfigService", () => {
 
       await service.updateNavConfig(5, config);
 
-      expect(mockManager.create).toHaveBeenCalledWith(StockControlRbacConfig, {
+      expect(mockRepo.create).toHaveBeenCalledWith({
         companyId: 5,
         navKey: "reports",
         role: "manager",
       });
-      expect(mockManager.create).toHaveBeenCalledWith(StockControlRbacConfig, {
+      expect(mockRepo.create).toHaveBeenCalledWith({
         companyId: 5,
         navKey: "reports",
         role: "admin",
@@ -267,8 +257,7 @@ describe("RbacConfigService", () => {
         dashboard: ["storeman", "accounts", "manager", "admin"],
       });
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const dashboardRoles = savedEntities
+      const dashboardRoles = createdRows()
         .filter((e: any) => e.navKey === "dashboard")
         .map((e: any) => e.role);
 
@@ -283,8 +272,7 @@ describe("RbacConfigService", () => {
         "job-cards": ["manager", "admin"],
       });
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const roles = savedEntities
+      const roles = createdRows()
         .filter((e: any) => e.navKey === "job-cards")
         .map((e: any) => e.role);
 
@@ -298,8 +286,7 @@ describe("RbacConfigService", () => {
         reports: ["viewer", "manager", "admin"],
       });
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const roles = savedEntities
+      const roles = createdRows()
         .filter((e: any) => e.navKey === "reports")
         .map((e: any) => e.role);
 
@@ -313,8 +300,7 @@ describe("RbacConfigService", () => {
         "issue-stock": ["viewer", "storeman", "manager", "admin"],
       });
 
-      const savedEntities = mockManager.save.mock.calls[0][0];
-      const roles = savedEntities
+      const roles = createdRows()
         .filter((e: any) => e.navKey === "issue-stock")
         .map((e: any) => e.role);
 

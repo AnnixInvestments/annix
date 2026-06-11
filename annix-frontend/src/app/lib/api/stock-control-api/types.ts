@@ -374,6 +374,7 @@ export interface JobCard {
   supersededById: number | null;
   workflowCeiling: string | null;
   effectiveWorkflowStatus?: string;
+  deliveryJobCardCount?: number;
   allocations?: StockAllocation[];
   lineItems?: JobCardLineItem[];
 }

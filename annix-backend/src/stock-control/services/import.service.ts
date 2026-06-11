@@ -631,7 +631,7 @@ export class ImportService {
               existing.quantity = finalSoh;
 
               const movement = this.movementRepo.build({
-                stockItem: existing,
+                stockItemId: existing.id,
                 movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
                 quantity: Math.abs(delta),
                 referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
@@ -664,7 +664,7 @@ export class ImportService {
 
         if (row.quantity && row.quantity > 0) {
           const movement = this.movementRepo.build({
-            stockItem: saved,
+            stockItemId: saved.id,
             movementType: MovementType.IN,
             quantity: row.quantity,
             referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
@@ -1059,7 +1059,7 @@ export class ImportService {
               existing.quantity = finalSoh;
 
               const movement = this.movementRepo.build({
-                stockItem: existing,
+                stockItemId: existing.id,
                 movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
                 quantity: Math.abs(delta),
                 referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
@@ -1098,7 +1098,7 @@ export class ImportService {
 
           if (row.quantity && row.quantity > 0) {
             const movement = this.movementRepo.build({
-              stockItem: saved,
+              stockItemId: saved.id,
               movementType: MovementType.IN,
               quantity: row.quantity,
               referenceType: isStockTake ? ReferenceType.STOCK_TAKE : ReferenceType.IMPORT,
@@ -1145,7 +1145,7 @@ export class ImportService {
             const delta = finalSoh - item.quantity;
             item.quantity = finalSoh;
             await this.movementRepo.create({
-              stockItem: item,
+              stockItemId: item.id,
               movementType: delta > 0 ? MovementType.IN : MovementType.OUT,
               quantity: Math.abs(delta),
               referenceType: ReferenceType.STOCK_TAKE,
