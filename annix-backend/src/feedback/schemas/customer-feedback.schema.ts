@@ -97,6 +97,9 @@ export class CustomerFeedback {
   @Prop({ type: String, required: false, default: null })
   testingSeverityOverride: string | null;
 
+  @Prop({ type: String, required: false, default: null })
+  testingStatusOverride: string | null;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 }

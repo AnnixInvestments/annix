@@ -158,6 +158,9 @@ export class CustomerFeedback {
   @Column({ name: "testing_severity_override", type: "varchar", length: 20, nullable: true })
   testingSeverityOverride: string | null;
 
+  @Column({ name: "testing_status_override", type: "varchar", length: 20, nullable: true })
+  testingStatusOverride: string | null;
+
   @OneToMany(
     () => FeedbackAttachment,
     (a) => a.feedback,

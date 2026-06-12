@@ -209,7 +209,7 @@ export class AdminOrbitSeekerTestingController {
       title,
       description: content,
       screenshotUrl: null as string | null,
-      status: item.status === "resolved" ? "resolved" : "open",
+      status: item.testingStatusOverride || (item.status === "resolved" ? "resolved" : "open"),
       submitterEmail: item.submitterEmail ?? null,
       createdAt: item.createdAt,
     };
@@ -243,7 +243,13 @@ export class AdminOrbitSeekerTestingController {
           throw new NotFoundException("Issue not found");
         }
       }
-      return { id, severity: dto.severity };
+      if (dto.status !== undefined) {
+        const updated = await this.feedback.setTestingStatus(feedbackId, dto.status);
+        if (!updated) {
+          throw new NotFoundException("Issue not found");
+        }
+      }
+      return { id, severity: dto.severity, status: dto.status };
     }
     const issue = await this.issues.findById(id);
     if (!issue) {

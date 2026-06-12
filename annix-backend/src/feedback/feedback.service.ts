@@ -164,6 +164,16 @@ export class FeedbackService {
     return true;
   }
 
+  async setTestingStatus(id: number, status: string): Promise<boolean> {
+    const feedback = await this.feedbackRepository.findById(id);
+    if (!feedback) {
+      return false;
+    }
+    feedback.testingStatusOverride = status;
+    await this.feedbackRepository.save(feedback);
+    return true;
+  }
+
   private processGeneralFeedbackAsync(
     feedback: CustomerFeedback,
     submitter: FeedbackSubmitter,
