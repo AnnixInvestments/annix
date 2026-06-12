@@ -52,6 +52,68 @@ function toMongoShape(value: MongoDocument): MongoDocument {
   return { _id: id, ...rest };
 }
 
+// Belongs-to virtuals: relation name -> the scalar FK path on THIS document
+// (e.g. createdBy -> createdById). Services written for TypeORM pass whole
+// relation objects (createdBy: user); mongoose silently DROPS virtuals on
+// save, so without this mapping the document persists with NO foreign key —
+// the root cause of ownerless drafts/RFQs (403s) and orphaned child rows.
+type BelongsToMeta = { localField: string };
+
+const belongsToCache = new WeakMap<Schema, Map<string, BelongsToMeta>>();
+
+function belongsToRelations(schema: Schema): Map<string, BelongsToMeta> {
+  const cached = belongsToCache.get(schema);
+  if (cached) {
+    return cached;
+  }
+  const map = new Map<string, BelongsToMeta>();
+  const virtuals = (
+    schema as unknown as {
+      virtuals: Record<
+        string,
+        {
+          options?: { ref?: string; localField?: string; foreignField?: string; justOne?: boolean };
+        }
+      >;
+    }
+  ).virtuals;
+  Object.entries(virtuals).forEach(([name, virtual]) => {
+    const options = virtual.options;
+    if (
+      options?.ref &&
+      options.justOne === true &&
+      options.localField &&
+      options.localField !== "_id" &&
+      options.foreignField === "_id"
+    ) {
+      map.set(name, { localField: options.localField });
+    }
+  });
+  belongsToCache.set(schema, map);
+  return map;
+}
+
+function mapRelationObjectsToFks(schema: Schema, value: MongoDocument): MongoDocument {
+  const relations = belongsToRelations(schema);
+  if (relations.size === 0) {
+    return value;
+  }
+  let out: MongoDocument | null = null;
+  for (const [name, meta] of relations) {
+    if (!(name in value)) continue;
+    out = out ?? { ...value };
+    const related = out[name] as { id?: unknown; _id?: unknown } | null | undefined;
+    delete out[name];
+    if (related && typeof related === "object" && out[meta.localField] === undefined) {
+      const relatedId = related.id ?? related._id;
+      if (relatedId !== undefined && relatedId !== null) {
+        out[meta.localField] = relatedId;
+      }
+    }
+  }
+  return out ?? value;
+}
+
 export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRepository<Entity> {
   constructor(
     protected readonly model: Model<Entity>,
@@ -198,7 +260,9 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
 
   async create(data: DeepPartial<Entity>): Promise<Entity> {
     const ModelClass = this.documents;
-    const shaped = await this.withGeneratedId(toMongoShape(data as MongoDocument));
+    const shaped = await this.withGeneratedId(
+      toMongoShape(mapRelationObjectsToFks(this.model.schema, data as MongoDocument)),
+    );
     const document = new ModelClass(shaped);
     await document.save(this.sessionOption);
     return this.toDomain(document.toObject()) as Entity;
@@ -243,7 +307,9 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
   }
 
   async save(entity: Entity): Promise<Entity> {
-    const shaped = await this.withGeneratedId(toMongoShape(entity as unknown as MongoDocument));
+    const shaped = await this.withGeneratedId(
+      toMongoShape(mapRelationObjectsToFks(this.model.schema, entity as unknown as MongoDocument)),
+    );
     const saved = await this.documents
       .findByIdAndUpdate(shaped._id, shaped, {
         returnDocument: "after",
