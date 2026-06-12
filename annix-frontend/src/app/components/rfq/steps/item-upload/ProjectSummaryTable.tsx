@@ -6,6 +6,7 @@ import {
   boltSetCountPerFitting as getBoltSetCountPerFitting,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   closureWeight as getClosureWeight,
+  fittingBranchNbMm as getFittingBranchNbMm,
   flangesPerPipe as getFlangesPerPipe,
   tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
   tackWeldWeight as getTackWeldWeight,
@@ -134,17 +135,61 @@ const ProjectSummaryTableInner = () => {
           const rawPipeEndConfiguration = entry.specs?.pipeEndConfiguration;
           const pipeEndConfig = rawPipeEndConfiguration || "PE";
           hasFlanges = pipeEndConfig !== "PE";
+        } else if (entry.itemType === "fitting") {
+          const rawFittingEndConfiguration = entry.specs?.pipeEndConfiguration;
+          const fittingEndConfig = rawFittingEndConfiguration || "PE";
+          hasFlanges = fittingEndConfig !== "PE";
         }
 
         if (hasFlanges && qty > 0) {
-          const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass || "PN16");
-          const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
-          bnwWeight = bnwWeightPerSet * qty;
+          if (entry.itemType === "fitting") {
+            // Fittings allocate per NB: openings-1 on the main run plus one
+            // set per different-size branch/reducing end.
+            const rawMainNb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm;
+            const mainNb = rawMainNb || 100;
+            const branchNb = getFittingBranchNbMm(entry.specs) || mainNb;
+            const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+            const fittingSets = getBoltSetCountPerFitting(fittingEndConfig, mainNb === branchNb);
+            const mainBnwInfo = bnwSetInfo(allBnwSets, mainNb, pressureClass || "PN16");
+            const mainSetWeight = mainBnwInfo.weightPerHole * mainBnwInfo.holesPerFlange;
+            bnwWeight = mainSetWeight * fittingSets.mainBoltSets * qty;
+            if (fittingSets.branchBoltSets > 0) {
+              const branchBnwInfo = bnwSetInfo(allBnwSets, branchNb, pressureClass || "PN16");
+              bnwWeight +=
+                branchBnwInfo.weightPerHole *
+                branchBnwInfo.holesPerFlange *
+                fittingSets.branchBoltSets *
+                qty;
+            }
+            if (globalSpecs?.gasketType) {
+              gasketWeight =
+                gasketWeightLookup(allGaskets, globalSpecs.gasketType, mainNb) *
+                fittingSets.mainBoltSets *
+                qty;
+              if (fittingSets.branchBoltSets > 0) {
+                gasketWeight +=
+                  gasketWeightLookup(allGaskets, globalSpecs.gasketType, branchNb) *
+                  fittingSets.branchBoltSets *
+                  qty;
+              }
+            }
+          } else {
+            const isSweepTeeBend =
+              entry.itemType === "bend" && entry.specs?.bendItemType === "SWEEP_TEE";
+            const setsPerItem = isSweepTeeBend ? 2 : 1;
+            const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass || "PN16");
+            const bnwWeightPerSet = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
+            bnwWeight = bnwWeightPerSet * setsPerItem * qty;
 
-          // Add gasket weight
-          if (globalSpecs?.gasketType) {
-            const singleGasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nbMm);
-            gasketWeight = singleGasketWeight * qty;
+            // Add gasket weight
+            if (globalSpecs?.gasketType) {
+              const singleGasketWeight = gasketWeightLookup(
+                allGaskets,
+                globalSpecs.gasketType,
+                nbMm,
+              );
+              gasketWeight = singleGasketWeight * setsPerItem * qty;
+            }
           }
         }
 
@@ -314,8 +359,13 @@ const ProjectSummaryTableInner = () => {
                 } else if (bendEndConfig === "FOE" || bendEndConfig === "FOE_LF") {
                   flangesPerPipe = 1;
                 }
-                // Bolt sets: 2 same-sized flanged ends = 1 bolt set
+                // Bolt sets: 2 same-sized flanged ends = 1 bolt set. A sweep
+                // tee has a third same-NB opening (the branch), so openings-1
+                // gives one extra set.
                 boltSetsPerItem = getBoltSetCountPerBend(bendEndConfig);
+                if (entry.specs?.bendItemType === "SWEEP_TEE" && boltSetsPerItem > 0) {
+                  boltSetsPerItem += 1;
+                }
                 const rawNumberOfStubs2 = entry.specs?.numberOfStubs;
                 // Add stub flanges (each stub has 1 flange AND 1 bolt set)
                 stubFlangesPerItem = rawNumberOfStubs2 || 0;
@@ -487,10 +537,7 @@ const ProjectSummaryTableInner = () => {
                       const rawNominalDiameterMm2 = entry.specs?.nominalDiameterMm;
                       const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
                       const mainNb = rawNominalDiameterMm2 || rawNominalBoreMm2 || 100;
-                      const rawBranchNominalDiameterMm2 = entry.specs?.branchNominalDiameterMm;
-                      const rawBranchNominalBoreMm2 = entry.specs?.branchNominalBoreMm;
-                      const branchNb =
-                        rawBranchNominalDiameterMm2 || rawBranchNominalBoreMm2 || mainNb;
+                      const branchNb = getFittingBranchNbMm(entry.specs) || mainNb;
                       const isEqualTee = mainNb === branchNb;
                       const rawPipeEndConfiguration8 = entry.specs?.pipeEndConfiguration;
                       const fittingEndConfig = rawPipeEndConfiguration8 || "PE";
@@ -841,13 +888,15 @@ const ProjectSummaryTableInner = () => {
                         const rawBendEndConfiguration5 = entry.specs?.bendEndConfiguration;
                         const bendEndConfig = rawBendEndConfiguration5 || "PE";
                         boltSetCount = getBoltSetCountPerBend(bendEndConfig);
+                        if (entry.specs?.bendItemType === "SWEEP_TEE" && boltSetCount > 0) {
+                          boltSetCount += 1;
+                        }
                       } else if (entry.itemType === "fitting") {
                         const rawPipeEndConfiguration12 = entry.specs?.pipeEndConfiguration;
                         const fittingEndConfig = rawPipeEndConfiguration12 || "PE";
                         const rawNominalDiameterMm4 = entry.specs?.nominalDiameterMm;
                         const mainNb = rawNominalDiameterMm4 || 100;
-                        const rawBranchNominalDiameterMm3 = entry.specs?.branchNominalDiameterMm;
-                        const branchNb = rawBranchNominalDiameterMm3 || mainNb;
+                        const branchNb = getFittingBranchNbMm(entry.specs) || mainNb;
                         const fittingBoltSets = getBoltSetCountPerFitting(
                           fittingEndConfig,
                           mainNb === branchNb,
@@ -869,13 +918,15 @@ const ProjectSummaryTableInner = () => {
                         const rawBendEndConfiguration6 = entry.specs?.bendEndConfiguration;
                         const bendEndConfig = rawBendEndConfiguration6 || "PE";
                         boltSetCount = getBoltSetCountPerBend(bendEndConfig);
+                        if (entry.specs?.bendItemType === "SWEEP_TEE" && boltSetCount > 0) {
+                          boltSetCount += 1;
+                        }
                       } else if (entry.itemType === "fitting") {
                         const rawPipeEndConfiguration14 = entry.specs?.pipeEndConfiguration;
                         const fittingEndConfig = rawPipeEndConfiguration14 || "PE";
                         const rawNominalDiameterMm5 = entry.specs?.nominalDiameterMm;
                         const mainNb = rawNominalDiameterMm5 || 100;
-                        const rawBranchNominalDiameterMm4 = entry.specs?.branchNominalDiameterMm;
-                        const branchNb = rawBranchNominalDiameterMm4 || mainNb;
+                        const branchNb = getFittingBranchNbMm(entry.specs) || mainNb;
                         const fittingBoltSets = getBoltSetCountPerFitting(
                           fittingEndConfig,
                           mainNb === branchNb,

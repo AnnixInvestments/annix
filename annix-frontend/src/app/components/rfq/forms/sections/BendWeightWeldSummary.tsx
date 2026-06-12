@@ -72,6 +72,9 @@ export function BendWeightWeldSummary(props: BendWeightWeldSummaryProps) {
       buttWeldCount,
       buttWeldLinear,
       saddleWeldLinear,
+      sBendConnectionWeldLinear,
+      sBendClosureButtWeldCount,
+      sBendClosureButtWeldLinear,
       weldVolume,
     },
     dimensions: {
@@ -83,6 +86,7 @@ export function BendWeightWeldSummary(props: BendWeightWeldSummaryProps) {
       effectiveWt,
     },
     isSweepTee,
+    isSBend,
     isSABS719,
   } = bendCalcs;
 
@@ -245,7 +249,9 @@ export function BendWeightWeldSummary(props: BendWeightWeldSummaryProps) {
     teeTotalLinear +
     saddleWeldLinear +
     totalDuckfootWeld +
-    tackWeldLinear;
+    tackWeldLinear +
+    sBendConnectionWeldLinear +
+    sBendClosureButtWeldLinear;
 
   const sweepTeePipeALength = specs.sweepTeePipeALengthMm;
 
@@ -260,18 +266,62 @@ export function BendWeightWeldSummary(props: BendWeightWeldSummaryProps) {
     >
       <div className="bg-purple-100 dark:bg-purple-900/40 p-2 rounded text-center">
         <p className="text-xs text-purple-600 dark:text-purple-400 font-medium">Dimensions</p>
-        <p className="text-lg font-bold text-purple-900 dark:text-purple-100">{cfDisplay} C/F</p>
-        {sweepTeePipeALength > 0 && (
-          <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">
-            {sweepTeePipeALength}mm Pipe A
-          </p>
-        )}
-        <p className="text-xs text-purple-500 dark:text-purple-400">
-          Radius: {Number(rawBendRadiusMm || 0).toFixed(0)}mm
-        </p>
-        <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">{mainLengthDisplay}</p>
-        {stubLengthDisplay && (
-          <p className="text-xs text-purple-500 dark:text-purple-400">+ {stubLengthDisplay}</p>
+        {isSBend ? (
+          (() => {
+            const sBendCF = Number(specs.centerToFaceMm) || 0;
+            const sBendRadius = Number(rawBendRadiusMm) || (dn ? dn * 1.5 : 0);
+            const sBendOffset = sBendRadius * 2;
+            const sBendConfig = (specs.bendEndConfiguration || "PE").toUpperCase();
+            const hasLooseInlet = sBendConfig === "FOE_LF" || sBendConfig === "2XLF";
+            const hasLooseOutlet = sBendConfig === "2XLF";
+            const inletClosureLen = hasLooseInlet ? closureLengthMm : 0;
+            const outletClosureLen = hasLooseOutlet ? closureLengthMm : 0;
+            const sBendTotal = inletClosureLen + sBendCF + sBendOffset + sBendCF + outletClosureLen;
+            const mainDims = `${sBendCF.toFixed(0)}×${sBendOffset.toFixed(0)}×${sBendCF.toFixed(0)}`;
+            const closureParts = [
+              inletClosureLen > 0 ? `+${inletClosureLen.toFixed(0)}mm` : null,
+              outletClosureLen > 0 ? `+${outletClosureLen.toFixed(0)}mm` : null,
+            ]
+              .filter(Boolean)
+              .join(" ");
+            return (
+              <>
+                <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+                  {mainDims}
+                  {closureParts ? ` ${closureParts}` : ""}
+                </p>
+                <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                  Total: {sBendTotal.toFixed(0)}mm
+                </p>
+                <p className="text-xs text-purple-500 dark:text-purple-400">
+                  Radius: {sBendRadius.toFixed(0)}mm
+                </p>
+                <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">
+                  2&times;90&deg; {dn}NB bends
+                </p>
+              </>
+            );
+          })()
+        ) : (
+          <>
+            <p className="text-lg font-bold text-purple-900 dark:text-purple-100">
+              {cfDisplay} C/F
+            </p>
+            {sweepTeePipeALength > 0 && (
+              <p className="text-sm font-semibold text-purple-800 dark:text-purple-200">
+                {sweepTeePipeALength}mm Pipe A
+              </p>
+            )}
+            <p className="text-xs text-purple-500 dark:text-purple-400">
+              Radius: {Number(rawBendRadiusMm || 0).toFixed(0)}mm
+            </p>
+            <p className="text-xs text-purple-500 dark:text-purple-400 mt-0.5">
+              {mainLengthDisplay}
+            </p>
+            {stubLengthDisplay && (
+              <p className="text-xs text-purple-500 dark:text-purple-400">+ {stubLengthDisplay}</p>
+            )}
+          </>
         )}
         {closureLengthMm > 0 && (
           <p className="text-xs text-purple-500 dark:text-purple-400">
@@ -335,7 +385,11 @@ export function BendWeightWeldSummary(props: BendWeightWeldSummaryProps) {
           {totalWeight.toFixed(2)}kg
         </p>
         <div className="text-xs text-purple-500 dark:text-purple-400 mt-1">
-          {bendWeightOnly > 0 && <p>Bend: {bendWeightOnly.toFixed(2)}kg</p>}
+          {bendWeightOnly > 0 && (
+            <p>
+              {isSBend ? "2×90° Bend" : "Bend"}: {bendWeightOnly.toFixed(2)}kg
+            </p>
+          )}
           {tangentWeight > 0 && <p>Tangents: {tangentWeight.toFixed(2)}kg</p>}
           {pipeAWeight > 0 && <p>Pipe A: {pipeAWeight.toFixed(2)}kg</p>}
           {numStubs >= 1 && stub1NB && stub1PipeWeight > 0 && (
@@ -368,6 +422,17 @@ export function BendWeightWeldSummary(props: BendWeightWeldSummaryProps) {
           {buttWeldCount > 0 && (
             <p>
               {buttWeldCount}&times;Butt={buttWeldLinear.toFixed(0)}@{wtDisplay}
+            </p>
+          )}
+          {isSBend && sBendConnectionWeldLinear > 0 && (
+            <p>
+              1&times;Butt(S-Bend)={sBendConnectionWeldLinear.toFixed(0)}@{wtDisplay}
+            </p>
+          )}
+          {isSBend && sBendClosureButtWeldCount > 0 && (
+            <p>
+              {sBendClosureButtWeldCount}&times;Butt(Closure)=
+              {sBendClosureButtWeldLinear.toFixed(0)}@{wtDisplay}
             </p>
           )}
           {bendFlangeWeldCount > 0 && (
@@ -457,7 +522,8 @@ export function BendWeightWeldSummary(props: BendWeightWeldSummaryProps) {
             ? entryBendRadiusMm
             : dn * (parseFloat((rawBendType || "1.5D").replace("D", "")) || 1.5);
 
-          const bendArcLengthMm = centerLineBendRadiusMm * bendAngleRad;
+          // An S-bend is two 90° bends — double the arc for surface areas.
+          const bendArcLengthMm = centerLineBendRadiusMm * bendAngleRad * (isSBend ? 2 : 1);
           const bendArcLengthM = bendArcLengthMm / 1000;
           const bendExtM2 = Math.PI * mainOdM * bendArcLengthM;
           const bendIntM2 = Math.PI * mainIdM * bendArcLengthM;

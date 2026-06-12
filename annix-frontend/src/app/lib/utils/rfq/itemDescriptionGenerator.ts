@@ -139,7 +139,9 @@ function describeBend(entry: any, globalSpecs: GlobalSpecs, masterData: MasterDa
 
   const rawNumberOfSegments = entry.specs?.numberOfSegments;
   const numSegments = rawNumberOfSegments || 0;
-  if (numSegments > 1) {
+  if (entry.specs?.bendItemType === "S_BEND") {
+    description += ` S-Bend (2×90° ${bendType})`;
+  } else if (numSegments > 1) {
     description += ` ${bendAngle}° ${bendType} ${numSegments} Seg Bend`;
   } else {
     description += ` ${bendAngle}° ${bendType} Bend`;

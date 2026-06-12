@@ -258,16 +258,18 @@ const BendFormSpecsSectionInner = (props: BendFormSpecsSectionProps) => {
       {/* Duckfoot Steelwork Row - Only shown when Item Type is Duckfoot Bend */}
       <BendDuckfootSteelworkSection logic={props.logic} />
 
-      {/* Tangent Extensions Row - hide for Sweep Tees and Duckfoot Bends */}
-      {specs.bendItemType !== "SWEEP_TEE" && specs.bendItemType !== "DUCKFOOT_BEND" && (
-        <TangentExtensionsSection
-          entryId={entry.id}
-          numberOfTangents={rawNumberOfTangents || 0}
-          tangentLengths={rawTangentLengths2 || []}
-          onTangentCountChange={handleTangentCountChange}
-          onTangentLengthChange={handleTangentLengthChange}
-        />
-      )}
+      {/* Tangent Extensions Row - hide for Sweep Tees, Duckfoot Bends and S-Bends */}
+      {specs.bendItemType !== "SWEEP_TEE" &&
+        specs.bendItemType !== "DUCKFOOT_BEND" &&
+        specs.bendItemType !== "S_BEND" && (
+          <TangentExtensionsSection
+            entryId={entry.id}
+            numberOfTangents={rawNumberOfTangents || 0}
+            tangentLengths={rawTangentLengths2 || []}
+            onTangentCountChange={handleTangentCountChange}
+            onTangentLengthChange={handleTangentLengthChange}
+          />
+        )}
 
       {/* Stub Connections Section - hide for Sweep Tees and Duckfoot Bends */}
       <BendStubConnectionsSection logic={props.logic} />

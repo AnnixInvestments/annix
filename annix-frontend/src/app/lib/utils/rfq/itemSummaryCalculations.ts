@@ -95,7 +95,9 @@ function bendSurfaceArea(entry: any): SurfaceAreaResult {
   const bendAngleDeg = rawBendDegrees || 90;
   const bendAngleRad = (bendAngleDeg * Math.PI) / 180;
 
-  const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+  // An S-bend is two 90° bends butt-welded together — double the arc.
+  const sBendFactor = entry.specs?.bendItemType === "S_BEND" ? 2 : 1;
+  const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad * sBendFactor;
 
   let externalArea = odM * Math.PI * arcLengthM;
   let internalArea = idM * Math.PI * arcLengthM;

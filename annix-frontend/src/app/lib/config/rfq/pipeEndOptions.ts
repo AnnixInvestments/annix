@@ -343,12 +343,56 @@ export const formatEndConfigForDescription = (
   return `${mainLabel} + ${stubDescriptions.join(" + ")}`;
 };
 
+// Branch NB resolution gated by fitting type: only fittings that actually
+// have a branch (tees, laterals, crosses, Y-pieces) read the branch fields;
+// reducers take their different-size end from smallNominalDiameterMm; offset
+// bends have two same-NB ends and no branch — stale branch fields from a
+// previous fitting-type selection must not leak through.
+const REDUCER_FITTING_TYPES = ["CON_REDUCER", "ECCENTRIC_REDUCER"];
+const NO_BRANCH_FITTING_TYPES = [...REDUCER_FITTING_TYPES, "OFFSET_BEND"];
+
+export const fittingBranchNbMm = (specs: {
+  fittingType?: string;
+  branchNominalDiameterMm?: number;
+  branchNominalBoreMm?: number;
+  smallNominalDiameterMm?: number;
+}): number | null => {
+  const rawFittingType = specs?.fittingType;
+  const fittingType = rawFittingType || "";
+  if (REDUCER_FITTING_TYPES.includes(fittingType)) {
+    const rawSmallNominalDiameterMm = specs?.smallNominalDiameterMm;
+    return rawSmallNominalDiameterMm || null;
+  }
+  if (NO_BRANCH_FITTING_TYPES.includes(fittingType)) return null;
+  const rawBranchNominalDiameterMm = specs?.branchNominalDiameterMm;
+  const rawBranchNominalBoreMm = specs?.branchNominalBoreMm;
+  return rawBranchNominalDiameterMm || rawBranchNominalBoreMm || null;
+};
+
 export const boltSetCountPerFitting = (
   fittingEndConfig: string,
   hasEqualBranch: boolean = true,
 ): { mainBoltSets: number; branchBoltSets: number } => {
   const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
-  if (!config) return { mainBoltSets: 0, branchBoltSets: 0 };
+  if (!config) {
+    // Reducers and offset bends store pipe/reducer-style end configs
+    // (FOE, FBE, RF_LF, 2X_LF, ...) that aren't in FITTING_END_OPTIONS.
+    // Treat them like pipes/bends: any flanged item gets openings-1 sets
+    // (minimum 1); a reducer's different-size outlet counts as the
+    // "branch" and always gets its own set at its own NB.
+    const upper = (fittingEndConfig || "PE").toUpperCase();
+    const twoFlangedEnds = ["FBE", "FOE_LF", "FOE_RF", "2X_RF", "2X_LF", "2XLF", "RF_LF"].includes(
+      upper,
+    );
+    const flangedEnds = twoFlangedEnds ? 2 : upper === "FOE" ? 1 : 0;
+    if (flangedEnds === 0) return { mainBoltSets: 0, branchBoltSets: 0 };
+    if (hasEqualBranch) {
+      return { mainBoltSets: flangedEnds > 1 ? flangedEnds - 1 : flangedEnds, branchBoltSets: 0 };
+    }
+    // Different-size end (reducer): one opening per NB on the main run, so
+    // the main allocation is openings-1 = 0 and the reducing end gets 1.
+    return { mainBoltSets: Math.max(flangedEnds - 1 - 1, 0), branchBoltSets: 1 };
+  }
 
   const mainFlangeCount = (config.hasInlet ? 1 : 0) + (config.hasOutlet ? 1 : 0);
   const branchFlangeCount = config.hasBranch ? 1 : 0;

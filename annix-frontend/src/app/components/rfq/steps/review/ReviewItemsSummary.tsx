@@ -5,6 +5,7 @@ import {
   boltSetCountPerBend as getBoltSetCountPerBend,
   boltSetCountPerFitting as getBoltSetCountPerFitting,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
+  fittingBranchNbMm as getFittingBranchNbMm,
   weldCountPerBend as getWeldCountPerBend,
   weldCountPerFitting as getWeldCountPerFitting,
   weldCountPerPipe as getWeldCountPerPipe,
@@ -194,10 +195,12 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                   <div>Standard: {rawFittingStandard || "N/A"}</div>
                   <div>
                     NB: {entry.specs.nominalDiameterMm}mm
-                    {entry.specs.branchNominalDiameterMm &&
-                    entry.specs.branchNominalDiameterMm !== entry.specs.nominalDiameterMm
-                      ? ` x ${entry.specs.branchNominalDiameterMm}mm`
-                      : ""}
+                    {(() => {
+                      const branchNb = getFittingBranchNbMm(entry.specs);
+                      return branchNb && branchNb !== entry.specs.nominalDiameterMm
+                        ? ` x ${branchNb}mm`
+                        : "";
+                    })()}
                   </div>
                   <div>Qty: {rawQuantityValue6 || 1}</div>
                   {entry.specs.pipeLengthAMm && <div>Length A: {entry.specs.pipeLengthAMm}mm</div>}
@@ -212,8 +215,7 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                   {/* Surface areas for fitting - PER ITEM */}
                   {(() => {
                     const nb = entry.specs?.nominalDiameterMm;
-                    const rawBranchNominalDiameterMm2 = entry.specs?.branchNominalDiameterMm;
-                    const branchNb = rawBranchNominalDiameterMm2 || nb;
+                    const branchNb = getFittingBranchNbMm(entry.specs) || nb;
                     const rawWallThicknessMm5 = entry.specs?.wallThicknessMm;
                     const wt = rawWallThicknessMm5 || 10;
                     const rawPipeLengthAMm3 = entry.specs?.pipeLengthAMm;
@@ -257,8 +259,7 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                   {/* Weld info for fitting - PER ITEM */}
                   {(() => {
                     const nb = entry.specs?.nominalDiameterMm;
-                    const rawBranchNominalDiameterMm3 = entry.specs?.branchNominalDiameterMm;
-                    const branchNb = rawBranchNominalDiameterMm3 || nb;
+                    const branchNb = getFittingBranchNbMm(entry.specs) || nb;
                     const rawWallThicknessMm6 = entry.specs?.wallThicknessMm;
                     const wt = rawWallThicknessMm6 || 10;
                     const rawPipeEndConfiguration2 = entry.specs?.pipeEndConfiguration;
@@ -295,8 +296,7 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                   {/* Flange breakdown for fitting */}
                   {(() => {
                     const nb = entry.specs?.nominalDiameterMm;
-                    const rawBranchNominalDiameterMm4 = entry.specs?.branchNominalDiameterMm;
-                    const branchNb = rawBranchNominalDiameterMm4 || nb;
+                    const branchNb = getFittingBranchNbMm(entry.specs) || nb;
                     const rawPipeEndConfiguration3 = entry.specs?.pipeEndConfiguration;
                     const fittingEndConfig = rawPipeEndConfiguration3 || "PE";
                     const rawPressureClassDesignation2 =
@@ -460,8 +460,12 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                     const rawBendEndConfiguration3 = entry.specs?.bendEndConfiguration;
                     const bendEndConfig = rawBendEndConfiguration3 || "PE";
                     hasFlanges = bendEndConfig !== "PE";
-                    // Use bolt set count function - 2 same-sized flanges = 1 bolt set
+                    // Use bolt set count function - 2 same-sized flanges = 1 bolt set.
+                    // Sweep tees have a third same-NB opening: openings-1 = 2 sets.
                     flangeCount = getBoltSetCountPerBend(bendEndConfig);
+                    if (entry.specs?.bendItemType === "SWEEP_TEE" && flangeCount > 0) {
+                      flangeCount += 1;
+                    }
                     const rawNominalBoreMm2 = entry.specs?.nominalBoreMm;
                     nbMm = rawNominalBoreMm2 || 100;
                     // Get stub flanges - each stub of different size needs 1 bolt set
@@ -478,8 +482,7 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                     hasFlanges = fittingEndConfig !== "PE";
                     const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
                     nbMm = rawNominalDiameterMm || 100;
-                    const rawBranchNominalDiameterMm5 = entry.specs?.branchNominalDiameterMm;
-                    branchNbMm = rawBranchNominalDiameterMm5 || nbMm;
+                    branchNbMm = getFittingBranchNbMm(entry.specs) || nbMm;
                     // Use bolt set count function for fittings
                     const isEqualBranch = nbMm === branchNbMm;
                     const fittingBoltSets = getBoltSetCountPerFitting(

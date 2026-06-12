@@ -94,6 +94,15 @@ function BendFormComponent(props: BendFormProps) {
     stub1,
   } = logic;
 
+  // S-bends can't be internally lined unless galvanized — the tight back-to-back
+  // 90° geometry leaves no access for lining application. "Raw Steel" is the
+  // explicit no-lining selection, not a lining.
+  const hasSurfaceProtection = requiredProducts.includes("surface_protection");
+  const isGalvanized = globalSpecs?.externalCoatingType === "Galvanized";
+  const liningType = globalSpecs?.internalLiningType;
+  const hasInternalLining = !!liningType && liningType !== "Raw Steel" && liningType !== "None";
+  const isSBendDisabled = hasSurfaceProtection && !isGalvanized && hasInternalLining;
+
   return (
     <>
       <SplitPaneLayout
@@ -174,6 +183,13 @@ function BendFormComponent(props: BendFormProps) {
                       className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-purple-500 text-gray-900 dark:text-gray-100 dark:bg-gray-800"
                     >
                       <option value="BEND">Bend</option>
+                      <option
+                        value="S_BEND"
+                        data-nix-target="bend-item-type-s-bend"
+                        disabled={isSBendDisabled}
+                      >
+                        S-Bend{isSBendDisabled ? " (not available with internal lining)" : ""}
+                      </option>
                       <option value="DUCKFOOT_BEND" data-nix-target="bend-item-type-duckfoot">
                         Duckfoot Bend
                       </option>

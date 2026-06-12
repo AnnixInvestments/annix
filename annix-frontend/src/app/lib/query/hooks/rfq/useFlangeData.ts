@@ -11,6 +11,7 @@ import {
   masterDataApi,
   type RetainingRingWeightRecord,
 } from "@/app/lib/api/client";
+import { SANS1123_BOLTING } from "@/app/lib/config/rfq/sans1123Bolting";
 import { normaliseScheduleDesignation } from "@/app/lib/nix/components/quote/surfaceAreaForQuoteItem";
 import { flangeWeightKeys } from "../../keys";
 
@@ -324,9 +325,36 @@ export function bnwSetInfo(
   nominalBoreMm: number,
   pressureClass: string,
 ): BnwSetResult {
-  // BNW rows are keyed by PN/Class designations only; map SANS 1123
-  // table designations (e.g. "1000/3") to their PN equivalent first.
+  // SANS 1123 table designations (e.g. "1000/3") use SANS drilling — which
+  // differs from the EN/BS PN drilling the bnw_set_weights rows carry (e.g.
+  // T1000 DN300 is 12 × M24, EN PN10 DN300 is 12 × M20). Resolve bolt size
+  // and hole count from the SANS table, then price the weight from the
+  // closest-length bnw row of the same bolt diameter.
   const sansMatch = pressureClass.match(/^(\d+)\s*\//);
+  if (sansMatch) {
+    const sans = SANS1123_BOLTING[sansMatch[1]]?.[nominalBoreMm];
+    if (sans) {
+      const sameDia = allBnw.filter((b) => {
+        const rawDia = b.bolt_size.match(/^(M\d+)x/);
+        return rawDia?.[1] === sans.bolt;
+      });
+      const targetLen = sans.lengthMm;
+      const weightSource = sameDia.sort((a, b) => {
+        if (targetLen === null) return 0;
+        const lenOf = (r: BnwSetWeightRecord) => {
+          const rawLen = r.bolt_size.match(/x(\d+)$/);
+          return rawLen ? Number(rawLen[1]) : 0;
+        };
+        return Math.abs(lenOf(a) - targetLen) - Math.abs(lenOf(b) - targetLen);
+      })[0];
+      return {
+        boltSize: targetLen ? `${sans.bolt}x${targetLen}` : sans.bolt,
+        weightPerHole: weightSource ? Number(weightSource.weight_per_hole_kg) : 0.18,
+        holesPerFlange: sans.holes,
+      };
+    }
+  }
+
   const lookupClass = sansMatch
     ? `PN${
         parseInt(sansMatch[1], 10) <= 600

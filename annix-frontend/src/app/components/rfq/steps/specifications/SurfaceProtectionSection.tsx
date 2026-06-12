@@ -586,7 +586,7 @@ const SurfaceProtectionSectionInner = (props: SurfaceProtectionSectionProps) => 
                 required
               >
                 <option value="">Select lining...</option>
-                <option value="Raw Steel">Raw Steel (No Lining)</option>
+                <option value="Raw Steel">No Lining (Raw Steel)</option>
                 <option value="Paint">Paint</option>
                 <option value="Rubber Lined">Rubber Lined</option>
                 <option value="Ceramic Lined">Ceramic Lined</option>

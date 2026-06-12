@@ -6,7 +6,7 @@ import {
 } from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
 import { keys } from "es-toolkit/compat";
-import { boltSetCountPerFitting } from "@/app/lib/config/rfq/pipeEndOptions";
+import { boltSetCountPerFitting, fittingBranchNbMm } from "@/app/lib/config/rfq/pipeEndOptions";
 import {
   blankFlangeSurfaceArea,
   bnwSetInfo,
@@ -63,9 +63,9 @@ export function processFittingEntry(
   const rawSpecsNominalBoreMm = entry.specs?.nominalBoreMm;
   // FITTING
   const nb = rawNominalDiameterMm || rawSpecsNominalBoreMm || 100;
-  const rawBranchNominalDiameterMm = entry.specs?.branchNominalDiameterMm;
-  const rawSpecsBranchNominalBoreMm = entry.specs?.branchNominalBoreMm;
-  const branchNb = rawBranchNominalDiameterMm || rawSpecsBranchNominalBoreMm || nb;
+  // Branch NB gated by fitting type — reducers use smallNominalDiameterMm,
+  // offset bends have no branch, stale branch fields don't leak through.
+  const branchNb = fittingBranchNbMm(entry.specs) || nb;
   const rawFittingType = entry.specs?.fittingType;
   const fittingType = rawFittingType || "TEE";
   const rawScheduleNumber2 = entry.specs?.scheduleNumber;

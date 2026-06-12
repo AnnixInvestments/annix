@@ -132,6 +132,9 @@ export interface WeldAnalysisResult {
   buttWeldLinear: number;
   saddleWeldLinear: number;
   teeWeldLinear: number;
+  sBendConnectionWeldLinear: number;
+  sBendClosureButtWeldCount: number;
+  sBendClosureButtWeldLinear: number;
   totalWeldLinearMm: number;
   weldVolume: WeldVolumeData | null;
 }
@@ -153,6 +156,7 @@ export interface UseBendCalculationsResult {
   weldAnalysis: WeldAnalysisResult;
   dimensions: DimensionsResult;
   isSweepTee: boolean;
+  isSBend: boolean;
   isPulledBend: boolean;
   isSABS719: boolean;
 }
@@ -208,7 +212,9 @@ export function useBendCalculations(
     const rawBendEndConfiguration = specs?.bendEndConfiguration;
     const bendEndConfig = rawBendEndConfiguration || "PE";
     const isSweepTee = specs?.bendItemType === "SWEEP_TEE";
-    const isPulledBend = specs?.bendStyle === "pulled" || (!specs?.bendStyle && !isSABS719);
+    const isSBend = specs?.bendItemType === "S_BEND";
+    const isPulledBend =
+      isSBend || specs?.bendStyle === "pulled" || (!specs?.bendStyle && !isSABS719);
 
     const rawStubs = specs?.stubs;
     const stubs = rawStubs || [];
@@ -380,7 +386,8 @@ export function useBendCalculations(
         : 0;
 
     const rawBendWeight = calculation?.bendWeight;
-    const bendWeightFromCalc = rawBendWeight || 0;
+    // S-bend = two 90° bends; the engine calculates a single bend.
+    const bendWeightFromCalc = (rawBendWeight || 0) * (isSBend ? 2 : 1);
     const bendWeightOnly =
       bendWeightFromCalc > tangentWeight ? bendWeightFromCalc - tangentWeight : bendWeightFromCalc;
     const totalWeight =
@@ -411,7 +418,8 @@ export function useBendCalculations(
 
     const rawNumberOfSegments = specs?.numberOfSegments;
     const numSegments = rawNumberOfSegments || 0;
-    const mitreWeldCount = numSegments > 1 ? numSegments - 1 : 0;
+    // S-bends are pulled bends — no mitre welds even if stale segment data lingers.
+    const mitreWeldCount = !isSBend && numSegments > 1 ? numSegments - 1 : 0;
     const mitreWeldLinear = mitreWeldCount * mainCircumference;
 
     const stub1Circ = stub1OD > 0 ? Math.PI * stub1OD : 0;
@@ -456,8 +464,24 @@ export function useBendCalculations(
     const teeWeldLinear =
       (numStubs >= 1 && stub1NB ? teeStub1Circ : 0) + (numStubs >= 2 && stub2NB ? teeStub2Circ : 0);
 
+    // S-bend: one butt weld joins the two 90° bends; loose-flange ends add a
+    // closure butt weld each (FOE_LF = inlet only, 2XLF = both ends).
+    const hasLooseInletFlangeSBend = bendEndConfig === "FOE_LF" || bendEndConfig === "2XLF";
+    const hasLooseOutletFlangeSBend = bendEndConfig === "2XLF";
+    const sBendConnectionWeldLinear = isSBend ? mainCircumference : 0;
+    const sBendClosureButtWeldCount = isSBend
+      ? (hasLooseInletFlangeSBend ? 1 : 0) + (hasLooseOutletFlangeSBend ? 1 : 0)
+      : 0;
+    const sBendClosureButtWeldLinear = sBendClosureButtWeldCount * mainCircumference;
+
     const totalWeldLinearMm =
-      mitreWeldLinear + totalFlangeWeldLinear + buttWeldLinear + saddleWeldLinear + teeWeldLinear;
+      mitreWeldLinear +
+      totalFlangeWeldLinear +
+      buttWeldLinear +
+      saddleWeldLinear +
+      teeWeldLinear +
+      sBendConnectionWeldLinear +
+      sBendClosureButtWeldLinear;
 
     const baseWeldVolume =
       mainOdMm && pipeWallThickness
@@ -465,7 +489,8 @@ export function useBendCalculations(
             mainOdMm,
             mainWallThicknessMm: pipeWallThickness,
             numberOfFlangeWelds: bendFlangeWeldCount,
-            numberOfMitreWelds: mitreWeldCount + buttWeldCount,
+            numberOfMitreWelds:
+              mitreWeldCount + buttWeldCount + (isSBend ? 1 + sBendClosureButtWeldCount : 0),
             hasSweepTeeSaddleWeld: isSweepTee,
             stubs: [
               stub1NB && stub1HasFlange
@@ -519,6 +544,9 @@ export function useBendCalculations(
       buttWeldLinear,
       saddleWeldLinear,
       teeWeldLinear,
+      sBendConnectionWeldLinear,
+      sBendClosureButtWeldCount,
+      sBendClosureButtWeldLinear,
       totalWeldLinearMm,
       weldVolume,
     };
@@ -579,6 +607,7 @@ export function useBendCalculations(
       weldAnalysis,
       dimensions,
       isSweepTee,
+      isSBend,
       isPulledBend,
       isSABS719,
     };

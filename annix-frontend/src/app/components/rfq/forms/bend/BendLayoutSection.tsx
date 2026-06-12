@@ -61,8 +61,12 @@ const BendLayoutSectionInner = (props: { logic: BendFormLogic }) => {
 
   const rawBendStyle2 = specs.bendStyle;
 
-  // Determine effective bend style (explicit selection or default from spec)
-  const effectiveBendStyle = rawBendStyle2 || (isSABS719 ? "segmented" : "pulled");
+  // Determine effective bend style (explicit selection or default from spec).
+  // S-bends are always pulled regardless of steel spec.
+  const effectiveBendStyle =
+    specs.bendItemType === "S_BEND"
+      ? "pulled"
+      : rawBendStyle2 || (isSABS719 ? "segmented" : "pulled");
   const isSegmentedStyle = effectiveBendStyle === "segmented";
 
   // Common Steel Spec dropdown (used in both layouts)
@@ -255,16 +259,19 @@ const BendLayoutSectionInner = (props: { logic: BendFormLogic }) => {
       </label>
       {(() => {
         const selectId = `bend-style-${entry.id}`;
+        const isSBendItemType = specs.bendItemType === "S_BEND";
         const options = [
           {
             value: "segmented",
             label: "Segmented Bend",
-            disabled: !isSegmentedAllowed,
+            disabled: !isSegmentedAllowed || isSBendItemType,
           },
           { value: "pulled", label: "Pulled Bend" },
         ];
         const rawBendStyle3 = specs.bendStyle;
-        const currentStyle = rawBendStyle3 || (isSABS719 ? "segmented" : "pulled");
+        const currentStyle = isSBendItemType
+          ? "pulled"
+          : rawBendStyle3 || (isSABS719 ? "segmented" : "pulled");
 
         return (
           <Select
@@ -376,7 +383,10 @@ const BendLayoutSectionInner = (props: { logic: BendFormLogic }) => {
             value={rawBendType || ""}
             onChange={(bendType) => {
               const isSweepTee = specs.bendItemType === "SWEEP_TEE";
-              const isFixed90 = isSweepTee || specs.bendItemType === "DUCKFOOT_BEND";
+              const isFixed90 =
+                isSweepTee ||
+                specs.bendItemType === "DUCKFOOT_BEND" ||
+                specs.bendItemType === "S_BEND";
               const nb = specs.nominalBoreMm;
               let newCenterToFace: number | undefined;
               let newBendRadius: number | undefined;
@@ -493,7 +503,9 @@ const BendLayoutSectionInner = (props: { logic: BendFormLogic }) => {
       : [];
 
   const isFixedAngle90 =
-    specs.bendItemType === "SWEEP_TEE" || specs.bendItemType === "DUCKFOOT_BEND";
+    specs.bendItemType === "SWEEP_TEE" ||
+    specs.bendItemType === "DUCKFOOT_BEND" ||
+    specs.bendItemType === "S_BEND";
   const isMissingBendAngle = specs.nominalBoreMm && !specs.bendDegrees && !isFixedAngle90;
 
   const AngleDropdown = (
@@ -518,7 +530,7 @@ const BendLayoutSectionInner = (props: { logic: BendFormLogic }) => {
           value="90°"
           disabled
           className="w-full px-2 py-1.5 border border-green-300 rounded text-xs bg-green-50 text-green-900 font-medium cursor-not-allowed"
-          title="Sweep Tees and Duckfoot Bends are always 90°"
+          title="Sweep Tees, Duckfoot Bends and S-Bends are always 90°"
         />
       ) : (
         (() => {

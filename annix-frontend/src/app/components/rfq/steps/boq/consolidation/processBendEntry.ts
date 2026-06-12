@@ -71,19 +71,26 @@ export function processBendEntry(
   // shape when materialType is undefined.
   const rawBendMaterialType = entry.materialType;
   const bendMaterialType = rawBendMaterialType || "steel";
-  const key = `BEND_${bendMaterialType}_${nb}_${angle}_${bendType}_${steelSpec}_${schedule}`;
+  // S-bends are two 90° bends butt-welded together — keep them out of
+  // the plain-bend consolidation buckets.
+  const isSBend = entry.specs?.bendItemType === "S_BEND";
+  const itemKind = isSBend ? "SBEND" : "BEND";
+  const key = `${itemKind}_${bendMaterialType}_${nb}_${angle}_${bendType}_${steelSpec}_${schedule}`;
   const existing = consolidatedBends.get(key);
   const rawTotalWeight = entry.calculation?.totalWeight;
   const rawBendWeight = entry.calculation?.bendWeight;
   const rawTangentWeight = entry.calculation?.tangentWeight;
-  const cachedBendWeight = rawTotalWeight || (rawBendWeight || 0) + (rawTangentWeight || 0);
-  const bendWeight = cachedBendWeight || fallbackBendWeight(entry, nb, globalHdpeSdr);
+  // The engine calculates a single bend; an S-bend is two of them.
+  const sBendFactor = isSBend ? 2 : 1;
+  const cachedBendWeight =
+    rawTotalWeight || (rawBendWeight || 0) * sBendFactor + (rawTangentWeight || 0);
+  const bendWeight = cachedBendWeight || fallbackBendWeight(entry, nb, globalHdpeSdr) * sBendFactor;
 
   const rawNumberOfSegments = entry.specs?.numberOfSegments;
 
-  // Calculate bend weld lengths
+  // Calculate bend weld lengths (S-bends are pulled — no mitre welds)
   const segments = rawNumberOfSegments || 5;
-  const mitreWelds = segments - 1;
+  const mitreWelds = isSBend ? 0 : segments - 1;
   const rawOutsideDiameterMm = entry.calculation?.outsideDiameterMm;
   const rawWallThicknessMm = entry.calculation?.wallThicknessMm;
   const hdpeDims =
@@ -114,7 +121,7 @@ export function processBendEntry(
   if (tangentLengths[0]) tangentLengthM += tangentLengths[0] / 1000;
   if (tangentLengths[1]) tangentLengthM += tangentLengths[1] / 1000;
 
-  const totalBendLengthM = arcLengthM + tangentLengthM;
+  const totalBendLengthM = arcLengthM * sBendFactor + tangentLengthM;
   const odM = od / 1000;
   const idM = (od - 2 * wt) / 1000;
   const extAreaM2 = Math.PI * odM * totalBendLengthM * qty;
@@ -123,6 +130,8 @@ export function processBendEntry(
   // Build welds object
   const welds: Record<string, number> = {};
   if (mitreWeldLength > 0) welds["Mitre Weld"] = mitreWeldLength;
+  // S-bend: one butt weld joins the two 90° bends
+  if (isSBend && od > 0) welds["Butt Weld"] = qty * ((Math.PI * od) / 1000);
 
   const rawBendEndConfiguration = entry.specs?.bendEndConfiguration;
 
@@ -146,6 +155,12 @@ export function processBendEntry(
       existing.welds = {
         ...existing.welds,
         "Mitre Weld": (rawMitreWeld || 0) + mitreWeldLength,
+      };
+    const rawButtWeld = existing.welds?.["Butt Weld"];
+    if (welds["Butt Weld"])
+      existing.welds = {
+        ...existing.welds,
+        "Butt Weld": (rawButtWeld || 0) + welds["Butt Weld"],
       };
     const rawFlangeWeld = existing.welds?.["Flange Weld"];
     if (welds["Flange Weld"])
@@ -186,9 +201,10 @@ export function processBendEntry(
     // open the bend table.
     const bendCfMm = bendCenterToFaceMm(nb, angle, bendType);
     const bendCfSuffix = bendCfMm > 0 ? `, ${bendCfMm}mm C/F` : "";
+    const bendKindLabel = isSBend ? `S-Bend (2×90° ${bendType})` : `${angle}° ${bendType} Bend`;
     consolidatedBends.set(key, {
       description:
-        `${nb}NB ${angle}° ${bendType} Bend ${bendMaterialLabel}${hdpeBendSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${bendFlangeSuffix}${bendCfSuffix}${hdpeBendStubSuffix}`.trim(),
+        `${nb}NB ${bendKindLabel} ${bendMaterialLabel}${hdpeBendSdrLabel} ${schedule ? `Sch${schedule.replace("Sch", "")}` : ""}${bendFlangeSuffix}${bendCfSuffix}${hdpeBendStubSuffix}`.trim(),
       qty: qty,
       unit: "Each",
       weight: bendWeight * qty,
@@ -265,7 +281,10 @@ export function processBendEntry(
     const bnwKey = `BNW_${bnwInfo.boltSize}_x${bnwInfo.holesPerFlange}_${nb}NB_${flangeSpec}`;
     const existingBnw = consolidatedBnwSets.get(bnwKey);
     const bnwWeight = bnwInfo.weightPerHole * bnwInfo.holesPerFlange;
-    const boltSetQty = boltSetCountPerBend(bendEndConfig) * qty;
+    // Sweep tees have a third same-NB opening: openings-1 = 2 sets
+    const sweepTeeExtraSet =
+      entry.specs?.bendItemType === "SWEEP_TEE" && boltSetCountPerBend(bendEndConfig) > 0 ? 1 : 0;
+    const boltSetQty = (boltSetCountPerBend(bendEndConfig) + sweepTeeExtraSet) * qty;
 
     if (existingBnw) {
       existingBnw.qty += boltSetQty;

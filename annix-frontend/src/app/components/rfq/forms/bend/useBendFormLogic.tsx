@@ -298,7 +298,8 @@ export function useBendFormLogic(props: BendFormProps) {
       const newItemType = e.target.value;
       const rawBendItemType = specs.bendItemType;
       const oldItemType = rawBendItemType || "BEND";
-      const isFixed90 = newItemType === "SWEEP_TEE" || newItemType === "DUCKFOOT_BEND";
+      const isSBend = newItemType === "S_BEND";
+      const isFixed90 = newItemType === "SWEEP_TEE" || newItemType === "DUCKFOOT_BEND" || isSBend;
       const switchingToOrFromSweepTee =
         (newItemType === "SWEEP_TEE") !== (oldItemType === "SWEEP_TEE");
       const currentNB = specs.nominalBoreMm;
@@ -307,13 +308,18 @@ export function useBendFormLogic(props: BendFormProps) {
       ];
       const nbInvalidForSweepTee =
         newItemType === "SWEEP_TEE" && currentNB && !sweepTeeValidNBs.includes(currentNB);
-      const hideTangentsAndStubs = newItemType === "SWEEP_TEE" || newItemType === "DUCKFOOT_BEND";
+      const hideTangentsAndStubs =
+        newItemType === "SWEEP_TEE" || newItemType === "DUCKFOOT_BEND" || isSBend;
       const updatedEntry: any = {
         ...entry,
         specs: {
           ...entry.specs,
           bendItemType: newItemType,
           bendDegrees: isFixed90 ? 90 : specs.bendDegrees,
+          // S-bends are always pulled (two smooth 90° bends butt-welded together)
+          bendStyle: isSBend ? "pulled" : specs.bendStyle,
+          bendRadiusType: isSBend ? undefined : specs.bendRadiusType,
+          numberOfSegments: isSBend ? undefined : specs.numberOfSegments,
           bendEndConfiguration: switchingToOrFromSweepTee ? "PE" : specs.bendEndConfiguration,
           nominalBoreMm: nbInvalidForSweepTee ? undefined : specs.nominalBoreMm,
           numberOfTangents: hideTangentsAndStubs ? 0 : specs.numberOfTangents,

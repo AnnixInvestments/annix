@@ -38,7 +38,11 @@ const BendStubConnectionsSectionInner = (props: { logic: BendFormLogic }) => {
   } = props.logic;
   const specsSteelSpecificationId = specs.steelSpecificationId;
   const specsWallThicknessMm = specs.wallThicknessMm;
-  if (specs.bendItemType === "SWEEP_TEE" || specs.bendItemType === "DUCKFOOT_BEND") {
+  if (
+    specs.bendItemType === "SWEEP_TEE" ||
+    specs.bendItemType === "DUCKFOOT_BEND" ||
+    specs.bendItemType === "S_BEND"
+  ) {
     return null;
   }
   return (
