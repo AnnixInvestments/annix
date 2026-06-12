@@ -1,5 +1,6 @@
 "use client";
 
+import { isArray, isNumber } from "es-toolkit/compat";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -43,8 +44,35 @@ export default function SeekerProfilePage() {
   const [skippedSteps, setSkippedSteps] = useState<Set<number>>(new Set());
   const [focusedStep, setFocusedStep] = useState<number | null>(null);
 
+  // Skipped steps survive navigation: restore per-user from localStorage.
+  const skipStorageKey = user ? `orbit-seeker-skipped-steps:${user.email}` : null;
+  useEffect(() => {
+    if (!skipStorageKey) return;
+    try {
+      const raw = window.localStorage.getItem(skipStorageKey);
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        if (isArray(parsed)) {
+          setSkippedSteps(new Set(parsed.filter((v): v is number => isNumber(v))));
+        }
+      }
+    } catch {
+      // Corrupt/blocked storage just means no restored skips.
+    }
+  }, [skipStorageKey]);
+
   const skipStep = (step: number) => {
-    setSkippedSteps((prev) => new Set([...prev, step]));
+    setSkippedSteps((prev) => {
+      const next = new Set([...prev, step]);
+      if (skipStorageKey) {
+        try {
+          window.localStorage.setItem(skipStorageKey, JSON.stringify([...next]));
+        } catch {
+          // Storage unavailable - the skip still applies for this session.
+        }
+      }
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -74,6 +102,8 @@ export default function SeekerProfilePage() {
   const certificatesCount = status ? status.certificatesCount : 0;
   const cvUploadedAt = status ? status.cvUploadedAt : null;
   const cvExtractionStatus = status ? status.cvExtractionStatus : null;
+  const nixAssessedAt = status ? status.careerScoreGeneratedAt : null;
+  const nixCvGeneratedAt = status ? status.nixCvGeneratedAt : null;
   const photoAllowed = status ? status.photoCredentialCapture : false;
 
   const docsSignature = `${qualificationsCount}:${certificatesCount}`;
@@ -97,13 +127,17 @@ export default function SeekerProfilePage() {
   const firstName = userName ? userName.split(" ")[0] : "";
   const qualsHighlight = hasCv && qualificationsCount === 0;
   const certsHighlight = hasCv && certificatesCount === 0;
-  const nixHighlight = hasCv && nixRanSignature !== docsSignature;
+  const nixHighlight =
+    hasCv &&
+    (nixAssessedAt == null || (nixRanSignature != null && nixRanSignature !== docsSignature));
   const cvBuilderFlag = useFeatureFlagEnabled("ANNIX_ORBIT_NIX_CV_BUILDER");
   const cvBuilderEnabled = !cvBuilderFlag.isLoading && cvBuilderFlag.enabled;
 
   const step1Done = hasCv;
-  const step2Done = nixRanSignature === docsSignature;
-  const step3Done = cvBuilt || skippedSteps.has(3);
+  // Persisted server signals (assessment ran / improved CV built) keep these
+  // green across navigation; the in-session signature still tracks fresh runs.
+  const step2Done = nixRanSignature === docsSignature || nixAssessedAt != null;
+  const step3Done = cvBuilt || nixCvGeneratedAt != null || skippedSteps.has(3);
   const step4Done = qualificationsCount > 0 || skippedSteps.has(4);
   const step5Done = certificatesCount > 0 || skippedSteps.has(5);
   const step6Done = !!(workShared?.fields?.length && workShared.primaryRole);

@@ -56,6 +56,10 @@ export interface IndividualProfileStatus {
   cvUploadedAt: Date | null;
   cvOriginalFilename: string | null;
   cvExtractionStatus: string | null;
+  // Persisted "the Nix steps ran" signals so the profile checklist survives
+  // navigation: set when the CV assessment runs / the improved CV is built.
+  careerScoreGeneratedAt: Date | null;
+  nixCvGeneratedAt: Date | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
   eeDisclosed: boolean;
@@ -378,6 +382,8 @@ export class IndividualProfileService {
       cvUploadedAt: profile.cvUploadedAt,
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
       cvExtractionStatus: profile.cvExtractionStatus ?? null,
+      careerScoreGeneratedAt: profile.careerScoreGeneratedAt ?? null,
+      nixCvGeneratedAt: profile.nixGeneratedCvAt ?? null,
       photoCredentialCapture,
       dismissWarningAcknowledged: profile.dismissWarningAcknowledgedAt != null,
       eeDisclosed: profile.eeDisclosure != null,

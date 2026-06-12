@@ -819,6 +819,8 @@ export interface IndividualProfileStatus {
   cvUploadedAt: string | null;
   cvOriginalFilename: string | null;
   cvExtractionStatus: string | null;
+  careerScoreGeneratedAt: string | null;
+  nixCvGeneratedAt: string | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
   eeDisclosed: boolean;
