@@ -573,12 +573,20 @@ export function useOrchestratorCalculations(deps: OrchestratorCalculationsDeps) 
         const rawSteelSpecificationId6 = fittingEntry.specs.steelSpecificationId;
         const rawFlangeStandardId5 = fittingEntry.specs.flangeStandardId;
         const rawFlangePressureClassId6 = fittingEntry.specs.flangePressureClassId;
+        const rawBranchNominalDiameterMm5 = fittingEntry.specs.branchNominalDiameterMm;
+        const rawTeeNominalDiameterMm5 = fittingEntry.specs.teeNominalDiameterMm;
+        const effectiveBranchDiameterMm = rawBranchNominalDiameterMm5 || rawTeeNominalDiameterMm5;
 
         const calculationData = {
           fittingStandard: effectiveFittingStandard,
           fittingType: apiFittingType,
           nominalDiameterMm: fittingEntry.specs.nominalDiameterMm,
           angleRange: fittingEntry.specs.angleRange,
+          branchDiameterMm:
+            effectiveBranchDiameterMm &&
+            effectiveBranchDiameterMm !== fittingEntry.specs.nominalDiameterMm
+              ? effectiveBranchDiameterMm
+              : undefined,
           pipeLengthAMm: fittingEntry.specs.pipeLengthAMm,
           pipeLengthBMm: fittingEntry.specs.pipeLengthBMm,
           quantityValue: rawQuantityValue5 || 1,

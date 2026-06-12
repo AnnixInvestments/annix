@@ -1,3 +1,4 @@
+import { NotFoundException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { BoltMassRepository } from "../bolt-mass/bolt-mass.repository";
 import { FlangeDimensionRepository } from "../flange-dimension/flange-dimension.repository";
@@ -7,6 +8,8 @@ import { PipeDimensionRepository } from "../pipe-dimension/pipe-dimension.reposi
 import { Sabs62FittingDimensionRepository } from "../sabs62-fitting-dimension/sabs62-fitting-dimension.repository";
 import { Sabs719FittingDimensionRepository } from "../sabs719-fitting-dimension/sabs719-fitting-dimension.repository";
 import { SteelSpecificationRepository } from "../steel-specification/steel-specification.repository";
+import type { CalculateFittingDto } from "./dto/calculate-fitting.dto";
+import { FittingStandard, FittingType } from "./dto/get-fitting-dimensions.dto";
 import { FittingService } from "./fitting.service";
 
 describe("FittingService", () => {
@@ -76,5 +79,118 @@ describe("FittingService", () => {
 
   it("should be defined", () => {
     expect(service).toBeDefined();
+  });
+
+  describe("calculateFitting (SABS719)", () => {
+    const pipeRows: Record<number, { mass_kgm: number; wall_thickness_mm: number }> = {
+      400: { mass_kgm: 100, wall_thickness_mm: 10 },
+      200: { mass_kgm: 25, wall_thickness_mm: 6 },
+    };
+
+    const odRows: Record<number, { outside_diameter_mm: number }> = {
+      400: { outside_diameter_mm: 406.4 },
+      200: { outside_diameter_mm: 219.1 },
+    };
+
+    const baseDto = {
+      fittingStandard: FittingStandard.SABS719,
+      fittingType: FittingType.UNEQUAL_SHORT_TEE,
+      nominalDiameterMm: 400,
+      pipeLengthAMm: 1000,
+      pipeLengthBMm: 1000,
+      quantityValue: 1,
+      scheduleNumber: "Sch40",
+    } as CalculateFittingDto;
+
+    const mockTeeDimensions = (dimensionAMm: number) => {
+      mockSabs719Repository.findByTypeAndDiameter.mockResolvedValue({ dimensionAMm });
+    };
+
+    const mockPipeRowsByDiameter = () => {
+      mockPipeDimensionRepository.findByNominalDiameterScheduleAndSteel.mockImplementation(
+        async (nominalDiameterMm: number) => pipeRows[nominalDiameterMm] || null,
+      );
+      mockNbNpsLookupRepository.findByNbMm.mockImplementation(
+        async (nbMm: number) => odRows[nbMm] || null,
+      );
+    };
+
+    it("weighs the branch of a reducing tee at the branch NB rate when branchDiameterMm is provided", async () => {
+      mockTeeDimensions(500);
+      mockPipeRowsByDiameter();
+
+      const result = await service.calculateFitting({ ...baseDto, branchDiameterMm: 200 });
+
+      expect(result.runPipeWeightKg).toBe(200);
+      expect(result.branchPipeWeightKg).toBe(12.5);
+      expect(result.branchPipeWeightPerMeter).toBe(25);
+      expect(result.pipeWeight).toBe(212.5);
+      expect(
+        mockPipeDimensionRepository.findByNominalDiameterScheduleAndSteel,
+      ).toHaveBeenCalledWith(200, "Sch40", undefined);
+    });
+
+    it("falls back to the main NB rate for the branch when no branchDiameterMm is given", async () => {
+      mockTeeDimensions(500);
+      mockPipeRowsByDiameter();
+
+      const result = await service.calculateFitting(baseDto);
+
+      expect(result.runPipeWeightKg).toBe(200);
+      expect(result.branchPipeWeightKg).toBe(50);
+      expect(result.branchPipeWeightPerMeter).toBe(100);
+      expect(result.pipeWeight).toBe(250);
+      expect(
+        mockPipeDimensionRepository.findByNominalDiameterScheduleAndSteel,
+      ).not.toHaveBeenCalledWith(200, expect.anything(), undefined);
+    });
+
+    it("reuses the main pipe resolution when branchDiameterMm equals the main NB", async () => {
+      mockTeeDimensions(500);
+      mockPipeRowsByDiameter();
+
+      const result = await service.calculateFitting({ ...baseDto, branchDiameterMm: 400 });
+
+      expect(result.branchPipeWeightPerMeter).toBe(100);
+      expect(
+        mockPipeDimensionRepository.findByNominalDiameterScheduleAndSteel,
+      ).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      "WT4.5",
+      "WT 4.5",
+      "WT4.5 (4.5mm)",
+      "4.5mm",
+    ])("resolves wall-thickness schedule style %s against a WT4.5 pipe row", async (scheduleNumber) => {
+      mockTeeDimensions(600);
+      mockSteelSpecRepository.findById.mockResolvedValue(null);
+      mockPipeDimensionRepository.findByNominalDiameterScheduleAndSteel.mockImplementation(
+        async (_nominalDiameterMm: number, scheduleDesignation: string) =>
+          scheduleDesignation === "WT4.5" ? { mass_kgm: 44.6, wall_thickness_mm: 4.5 } : null,
+      );
+      mockNbNpsLookupRepository.findByNbMm.mockResolvedValue({ outside_diameter_mm: 406.4 });
+
+      const result = await service.calculateFitting({
+        ...baseDto,
+        fittingType: FittingType.SHORT_TEE,
+        scheduleNumber,
+      });
+
+      expect(result.runPipeWeightKg).toBe(89.2);
+      expect(result.branchPipeWeightKg).toBe(26.76);
+      expect(result.branchPipeWeightPerMeter).toBe(44.6);
+      expect(result.pipeWeight).toBe(115.96);
+    });
+
+    it("throws NotFoundException when no schedule format variant matches a pipe row", async () => {
+      mockTeeDimensions(600);
+      mockPipeDimensionRepository.findByNominalDiameterScheduleAndSteel.mockResolvedValue(null);
+      mockNbNpsLookupRepository.findByNbMm.mockResolvedValue({ outside_diameter_mm: 406.4 });
+
+      await expect(
+        service.calculateFitting({ ...baseDto, scheduleNumber: "WT9.9" }),
+      ).rejects.toThrow(NotFoundException);
+    });
   });
 });

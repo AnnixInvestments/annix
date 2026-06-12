@@ -142,6 +142,7 @@ export interface FittingSpecs extends BasePipeSpecs {
   fittingStandard?: FittingStandard;
   nominalDiameterMm?: number;
   branchNominalDiameterMm?: number;
+  teeNominalDiameterMm?: number;
   pipeEndConfiguration?: FittingEndConfiguration;
   pipeALengthMm?: number;
   pipeBLengthMm?: number;
@@ -190,6 +191,9 @@ export interface BendCalculation extends BaseCalculation {
 export interface FittingCalculation extends BaseCalculation {
   fittingWeight?: number;
   pipeWeight?: number;
+  runPipeWeightKg?: number;
+  branchPipeWeightKg?: number;
+  branchPipeWeightPerMeter?: number;
   flangeWeight?: number;
   boltWeight?: number;
   nutWeight?: number;

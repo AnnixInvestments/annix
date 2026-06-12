@@ -106,6 +106,7 @@ export interface FittingEntry {
     fittingType?: string;
     nominalDiameterMm?: number;
     branchNominalDiameterMm?: number;
+    teeNominalDiameterMm?: number;
     scheduleNumber?: string;
     angleRange?: string;
     pipeLengthAMm?: number;

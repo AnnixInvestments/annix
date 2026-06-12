@@ -38,6 +38,16 @@ export class CalculateFittingDto {
   angleRange?: string;
 
   @ApiProperty({
+    description: "Branch nominal diameter in mm (for reducing/unequal tees and laterals)",
+    example: 200,
+    required: false,
+  })
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  branchDiameterMm?: number;
+
+  @ApiProperty({
     description: "Pipe length A in mm (for SABS719)",
     example: 1000,
     required: false,
@@ -139,6 +149,27 @@ export class FittingCalculationResultDto {
     example: 10.5,
   })
   pipeWeight: number;
+
+  @ApiProperty({
+    description: "Weight of run pipe sections (lengths A + B) in kg",
+    example: 8.5,
+    required: false,
+  })
+  runPipeWeightKg?: number;
+
+  @ApiProperty({
+    description: "Weight of the branch pipe section in kg",
+    example: 2.0,
+    required: false,
+  })
+  branchPipeWeightKg?: number;
+
+  @ApiProperty({
+    description: "Branch pipe weight per meter in kg/m",
+    example: 25.4,
+    required: false,
+  })
+  branchPipeWeightPerMeter?: number;
 
   @ApiProperty({
     description: "Total weight of flanges in kg",

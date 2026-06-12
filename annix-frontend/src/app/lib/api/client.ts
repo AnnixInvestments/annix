@@ -779,6 +779,7 @@ class ApiClient {
     fittingType: string;
     nominalDiameterMm: number;
     angleRange?: string;
+    branchDiameterMm?: number;
     pipeLengthAMm?: number;
     pipeLengthBMm?: number;
     steelSpecificationId?: number;
@@ -792,6 +793,9 @@ class ApiClient {
     totalWeight: number;
     fittingWeight: number;
     pipeWeight: number;
+    runPipeWeightKg?: number;
+    branchPipeWeightKg?: number;
+    branchPipeWeightPerMeter?: number;
     flangeWeight: number;
     boltWeight: number;
     nutWeight: number;

@@ -707,11 +707,17 @@ function TeeFittingCalcResults(props: FittingCalcResultsProps) {
       {(() => {
         const rawPipeWeight2 = entry.calculation.pipeWeight;
         const totalPipeWeight = rawPipeWeight2 || 0;
+        const rawRunPipeWeightKg = entry.calculation.runPipeWeightKg;
+        const rawBranchPipeWeightKg = entry.calculation.branchPipeWeightKg;
+        const runPipeWeightKg = rawRunPipeWeightKg ?? null;
+        const branchPipeWeightKg = rawBranchPipeWeightKg ?? null;
+        const hasPerNbBreakdown = runPipeWeightKg !== null;
+        const splitBase = hasPerNbBreakdown ? runPipeWeightKg : totalPipeWeight;
+        const branchDisplayWeight = hasPerNbBreakdown ? branchPipeWeightKg || 0 : 0;
+        const pipeBDisplayNB = hasPerNbBreakdown ? nominalBore : branchNB;
         const totalPipeLength = pipeALength + pipeBLength;
-        const pipeAWeight =
-          totalPipeLength > 0 ? (totalPipeWeight * pipeALength) / totalPipeLength : 0;
-        const pipeBWeight =
-          totalPipeLength > 0 ? (totalPipeWeight * pipeBLength) / totalPipeLength : 0;
+        const pipeAWeight = totalPipeLength > 0 ? (splitBase * pipeALength) / totalPipeLength : 0;
+        const pipeBWeight = totalPipeLength > 0 ? (splitBase * pipeBLength) / totalPipeLength : 0;
 
         const mainFlangeCountInner =
           (flangeConfig.hasInlet ? 1 : 0) + (flangeConfig.hasOutlet ? 1 : 0);
@@ -739,8 +745,13 @@ function TeeFittingCalcResults(props: FittingCalcResultsProps) {
               )}
               {pipeBWeight > 0 && (
                 <p>
-                  Pipe B {branchNB}NB ({pipeBLength}mm): {pipeBWeight.toFixed(2)}
+                  Pipe B {pipeBDisplayNB}NB ({pipeBLength}mm): {pipeBWeight.toFixed(2)}
                   kg
+                </p>
+              )}
+              {branchDisplayWeight > 0 && (
+                <p>
+                  Branch {branchNB}NB: {branchDisplayWeight.toFixed(2)}kg
                 </p>
               )}
               {allSameNB && numFlanges > 0 && mainFlangeWeightPerUnit > 0 && (

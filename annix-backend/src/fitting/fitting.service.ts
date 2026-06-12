@@ -139,63 +139,22 @@ export class FittingService {
       }
     }
 
-    // Generate possible schedule formats to try (DB stores various formats: Sch20, Sch40, MEDIUM, HEAVY, WT6, etc.)
-    const possibleScheduleFormats = (scheduleNumber: string): string[] => {
-      if (!scheduleNumber) return [scheduleNumber];
-      const formats: string[] = [scheduleNumber];
+    const mainPipe = await this.resolvePerMeterPipeWeight(
+      dto.nominalDiameterMm,
+      dto.scheduleNumber,
+      steelSpec?.id,
+    );
 
-      // Extract number from various formats
-      const schMatch = scheduleNumber.match(/^[Ss]ch\s*(\d+[Ss]?)(?:\/\w+)?$/);
-      const numMatch = scheduleNumber.match(/^(\d+)(?:\/\w+)?$/);
-      const num = schMatch ? schMatch[1] : numMatch ? numMatch[1] : null;
+    const outsideDiameterMm = mainPipe.outsideDiameterMm;
+    const wallThicknessMm = mainPipe.wallThicknessMm;
+    const pipeWeightPerMeter = mainPipe.pipeWeightPerMeter;
 
-      if (num) {
-        formats.push(`Sch${num}`);
-        formats.push(`Sch ${num}`);
-        formats.push(num);
-      }
-
-      return [...new Set(formats)];
-    };
-
-    const scheduleFormats = possibleScheduleFormats(dto.scheduleNumber);
-
-    // Find pipe dimension trying multiple schedule formats
-    let pipeDimension: PipeDimension | null = null;
-    for (const scheduleFormat of scheduleFormats) {
-      pipeDimension = await this.pipeDimensionRepository.findByNominalDiameterScheduleAndSteel(
-        dto.nominalDiameterMm,
-        scheduleFormat,
-        steelSpec?.id,
-      );
-      if (pipeDimension) break;
-    }
-
-    if (!pipeDimension) {
-      throw new NotFoundException(
-        `Pipe dimension not found for ${dto.nominalDiameterMm}NB, schedule ${dto.scheduleNumber}`,
-      );
-    }
-
-    // Get NB-NPS lookup for outside diameter
-    const nbNpsLookup = await this.nbNpsLookupRepository.findByNbMm(dto.nominalDiameterMm);
-
-    if (!nbNpsLookup) {
-      throw new NotFoundException(`NB-NPS lookup not found for ${dto.nominalDiameterMm}NB`);
-    }
-
-    const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
-    const wallThicknessMm = pipeDimension.wall_thickness_mm;
-
-    // Calculate pipe weight for lengths A and B
-    let pipeWeightPerMeter: number;
-    if (pipeDimension.mass_kgm && pipeDimension.mass_kgm > 0) {
-      pipeWeightPerMeter = pipeDimension.mass_kgm;
-    } else {
-      const steelDensity = 7.85; // kg/dm³
-      pipeWeightPerMeter =
-        (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * steelDensity) / 1000;
-    }
+    const branchDiameterMm = dto.branchDiameterMm ?? null;
+    const branchPipe =
+      branchDiameterMm !== null && branchDiameterMm !== dto.nominalDiameterMm
+        ? await this.resolvePerMeterPipeWeight(branchDiameterMm, dto.scheduleNumber, steelSpec?.id)
+        : mainPipe;
+    const branchPipeWeightPerMeter = branchPipe.pipeWeightPerMeter;
 
     // Calculate weights for pipe sections (convert mm to m)
     // Run pipe: user-specified lengths A and B
@@ -224,11 +183,11 @@ export class FittingService {
       const branchHeightMm = isGussetType
         ? fittingDimensions.dimensionBMm || fittingDimensions.dimensionAMm || 0
         : fittingDimensions.dimensionAMm || 0;
-      branchPipeWeight = pipeWeightPerMeter * (branchHeightMm / 1000);
+      branchPipeWeight = branchPipeWeightPerMeter * (branchHeightMm / 1000);
     } else if (isLateralType && fittingDimensions) {
       // For laterals, use dimensionAMm as the branch height
       const branchHeightMm = fittingDimensions.dimensionAMm || 0;
-      branchPipeWeight = pipeWeightPerMeter * (branchHeightMm / 1000);
+      branchPipeWeight = branchPipeWeightPerMeter * (branchHeightMm / 1000);
     }
 
     const totalPipeWeight = (runPipeWeight + branchPipeWeight) * dto.quantityValue;
@@ -357,6 +316,9 @@ export class FittingService {
       totalWeight: Math.round(totalWeight * 100) / 100,
       fittingWeight: Math.round(fittingWeight * 100) / 100,
       pipeWeight: Math.round(totalPipeWeight * 100) / 100,
+      runPipeWeightKg: Math.round(runPipeWeight * dto.quantityValue * 100) / 100,
+      branchPipeWeightKg: Math.round(branchPipeWeight * dto.quantityValue * 100) / 100,
+      branchPipeWeightPerMeter: Math.round(branchPipeWeightPerMeter * 100) / 100,
       flangeWeight: Math.round(totalFlangeWeight * 100) / 100,
       boltWeight: Math.round(totalBoltWeight * 100) / 100,
       nutWeight: Math.round(totalNutWeight * 100) / 100,
@@ -565,6 +527,75 @@ export class FittingService {
       outsideDiameterMm,
       wallThicknessMm,
     };
+  }
+
+  private possibleScheduleFormats(scheduleNumber: string): string[] {
+    if (!scheduleNumber) return [scheduleNumber];
+    const formats: string[] = [scheduleNumber];
+
+    const schMatch = scheduleNumber.match(/^[Ss]ch\s*(\d+[Ss]?)(?:\/\w+)?$/);
+    const numMatch = scheduleNumber.match(/^(\d+)(?:\/\w+)?$/);
+    const num = schMatch ? schMatch[1] : numMatch ? numMatch[1] : null;
+
+    if (num) {
+      formats.push(`Sch${num}`, `Sch ${num}`, num);
+    }
+
+    const wtMatch = scheduleNumber.match(/^[Ww][Tt]\s*(\d+(?:\.\d+)?)(?:\s*\(.*\))?$/);
+    const mmMatch = scheduleNumber.match(/^(\d+(?:\.\d+)?)\s*mm$/i);
+    const wallThickness = wtMatch ? wtMatch[1] : mmMatch ? mmMatch[1] : null;
+
+    if (wallThickness) {
+      formats.push(
+        `WT${wallThickness}`,
+        `WT ${wallThickness}`,
+        `${wallThickness}mm`,
+        wallThickness,
+      );
+    }
+
+    return [...new Set(formats)];
+  }
+
+  private async resolvePerMeterPipeWeight(
+    nominalDiameterMm: number,
+    scheduleNumber: string,
+    steelSpecId?: number,
+  ): Promise<{ pipeWeightPerMeter: number; outsideDiameterMm: number; wallThicknessMm: number }> {
+    const scheduleFormats = this.possibleScheduleFormats(scheduleNumber);
+
+    let pipeDimension: PipeDimension | null = null;
+    for (const scheduleFormat of scheduleFormats) {
+      pipeDimension = await this.pipeDimensionRepository.findByNominalDiameterScheduleAndSteel(
+        nominalDiameterMm,
+        scheduleFormat,
+        steelSpecId,
+      );
+      if (pipeDimension) break;
+    }
+
+    if (!pipeDimension) {
+      throw new NotFoundException(
+        `Pipe dimension not found for ${nominalDiameterMm}NB, schedule ${scheduleNumber}`,
+      );
+    }
+
+    const nbNpsLookup = await this.nbNpsLookupRepository.findByNbMm(nominalDiameterMm);
+
+    if (!nbNpsLookup) {
+      throw new NotFoundException(`NB-NPS lookup not found for ${nominalDiameterMm}NB`);
+    }
+
+    const outsideDiameterMm = nbNpsLookup.outside_diameter_mm;
+    const wallThicknessMm = pipeDimension.wall_thickness_mm;
+    const steelDensityKgDm3 = 7.85;
+    const pipeWeightPerMeter =
+      pipeDimension.mass_kgm && pipeDimension.mass_kgm > 0
+        ? pipeDimension.mass_kgm
+        : (Math.PI * wallThicknessMm * (outsideDiameterMm - wallThicknessMm) * steelDensityKgDm3) /
+          1000;
+
+    return { pipeWeightPerMeter, outsideDiameterMm, wallThicknessMm };
   }
 
   private estimateWallThickness(nominalDiameterMm: number): number {
