@@ -28,7 +28,6 @@ import {
 import { nowMillis } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
-import { useDebouncedValue } from "@/app/lib/hooks/useDebouncedValue";
 import {
   useOrbitAcknowledgeDismissWarning,
   useOrbitDismissSeekerMatch,
@@ -107,7 +106,7 @@ export default function SeekerJobsPage() {
   const consentGranted = consentData ? consentData.consented : false;
   const consentEnabled = consentReady && consentHasCandidate && consentGranted;
 
-  const [filters, setFilters] = useState<SeekerFilterState>({
+  const emptyFilters: SeekerFilterState = {
     search: "",
     providers: [],
     region: "",
@@ -115,35 +114,40 @@ export default function SeekerJobsPage() {
     cities: [],
     category: "",
     minSalary: "",
-  });
+  };
+  // Draft state: what the panel's controls show while the user is still ticking
+  // boxes. Applied state: what the server queries actually filter on — it only
+  // advances when the user presses Search (or Reset), so the job list doesn't
+  // shrink on every tick.
+  const [filters, setFilters] = useState<SeekerFilterState>(emptyFilters);
+  const [appliedFilters, setAppliedFilters] = useState<SeekerFilterState>(emptyFilters);
   const filtersActive =
-    filters.search !== "" ||
-    filters.providers.length > 0 ||
-    filters.region !== "" ||
-    filters.provinces.length > 0 ||
-    filters.cities.length > 0 ||
-    filters.category !== "" ||
-    filters.minSalary !== "";
+    appliedFilters.search !== "" ||
+    appliedFilters.providers.length > 0 ||
+    appliedFilters.region !== "" ||
+    appliedFilters.provinces.length > 0 ||
+    appliedFilters.cities.length > 0 ||
+    appliedFilters.category !== "" ||
+    appliedFilters.minSalary !== "";
   const serverFilters = useMemo<SeekerRecommendedFilters>(() => {
     const next: SeekerRecommendedFilters = {};
-    const search = filters.search.trim();
+    const search = appliedFilters.search.trim();
     if (search) next.search = search;
-    if (filters.providers.length > 0) next.providers = filters.providers;
-    if (filters.region) next.region = filters.region;
-    if (filters.provinces.length > 0) next.provinces = filters.provinces;
-    if (filters.cities.length > 0) next.cities = filters.cities;
-    if (filters.category) next.category = filters.category;
-    if (filters.minSalary) next.minSalary = filters.minSalary;
+    if (appliedFilters.providers.length > 0) next.providers = appliedFilters.providers;
+    if (appliedFilters.region) next.region = appliedFilters.region;
+    if (appliedFilters.provinces.length > 0) next.provinces = appliedFilters.provinces;
+    if (appliedFilters.cities.length > 0) next.cities = appliedFilters.cities;
+    if (appliedFilters.category) next.category = appliedFilters.category;
+    if (appliedFilters.minSalary) next.minSalary = appliedFilters.minSalary;
     return next;
-  }, [filters]);
-  const debouncedServerFilters = useDebouncedValue(serverFilters, 350);
+  }, [appliedFilters]);
 
   const recommendedRefetchInterval: number | false =
     consentEnabled && !filtersActive ? 120_000 : false;
   const recommendedQuery = useOrbitSeekerRecommendedJobs(consentEnabled, {
     // eslint-disable-next-line no-restricted-syntax -- 120s is the project floor; cold-start needs to detect embedding completion
     refetchInterval: recommendedRefetchInterval,
-    filters: debouncedServerFilters,
+    filters: serverFilters,
   });
   const recommendedHasMatches = recommendedQuery.data
     ? recommendedQuery.data.matches.length > 0
@@ -247,10 +251,7 @@ export default function SeekerJobsPage() {
   // actually have a match in the seeker's set, recomputed as filters narrow (each
   // facet excludes its own dimension server-side, so a choice never empties its
   // own dropdown and no zero-result option is ever offered).
-  const facetsQuery = useOrbitSeekerJobFacets(
-    consentEnabled && !nixSearching,
-    debouncedServerFilters,
-  );
+  const facetsQuery = useOrbitSeekerJobFacets(consentEnabled && !nixSearching, serverFilters);
   const facets = facetsQuery.data;
   const providers = facets ? facets.sources : [];
   const provinceOptions = facets ? facets.provinces : [];
@@ -263,10 +264,10 @@ export default function SeekerJobsPage() {
 
   // The server already applies every filter (province/city/category/source/salary
   // on canonical fields, plus search) and returns the ranked page. This only adds
-  // instant client-side narrowing on the search text while the 350ms debounce to
-  // the server is in flight — it must NOT re-apply the dropdown filters, or it
-  // would wrongly drop jobs (e.g. a "Benoni, Ekurhuleni" job has no "Gauteng"
-  // text but is correctly in Gauteng via its canonical province).
+  // instant client-side narrowing on the DRAFT search text before the user presses
+  // Search — it must NOT re-apply the dropdown filters, or it would wrongly drop
+  // jobs (e.g. a "Benoni, Ekurhuleni" job has no "Gauteng" text but is correctly
+  // in Gauteng via its canonical province).
   const filtered = useMemo(() => {
     const term = filters.search.trim().toLowerCase();
     if (term.length === 0) return matches;
@@ -885,7 +886,12 @@ export default function SeekerJobsPage() {
 
       <SeekerJobFilters
         state={filters}
+        applied={appliedFilters}
         onChange={setFilters}
+        onApply={(next) => {
+          setFilters(next);
+          setAppliedFilters(next);
+        }}
         providers={providers}
         regions={regionOptions}
         provinces={provinceOptions}

@@ -1,5 +1,6 @@
 "use client";
 
+import { isEqual } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
 import { providerLabel } from "../provider-labels";
 
@@ -26,7 +27,9 @@ export interface SeekerFilterState {
 
 interface SeekerJobFiltersProps {
   state: SeekerFilterState;
+  applied: SeekerFilterState;
   onChange: (next: SeekerFilterState) => void;
+  onApply: (next: SeekerFilterState) => void;
   providers: string[];
   regions: string[];
   provinces: string[];
@@ -168,6 +171,8 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
     props.onChange({ ...state, ...patch });
   };
 
+  const pendingChanges = !isEqual(state, props.applied);
+
   const filtersActive =
     state.search !== "" ||
     state.providers.length > 0 ||
@@ -196,12 +201,21 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
   ];
 
   return (
-    <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        props.onApply(state);
+      }}
+      className="bg-white rounded-xl border border-gray-200 p-4 space-y-3"
+    >
       {filtersActive && (
         <div className="flex justify-end">
           <button
             type="button"
-            onClick={() => props.onChange(RESET_STATE)}
+            onClick={() => {
+              props.onChange(RESET_STATE);
+              props.onApply(RESET_STATE);
+            }}
             className="text-sm font-medium text-orange-600 hover:text-orange-700"
           >
             Reset all filters
@@ -320,6 +334,20 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
           ))}
         </div>
       ) : null}
-    </div>
+
+      <div className="flex items-center justify-end gap-3">
+        {pendingChanges ? (
+          <span className="text-xs text-gray-500">Filters changed — press Search to apply</span>
+        ) : null}
+        <button
+          type="submit"
+          className={`px-5 py-2 text-sm font-medium rounded-lg text-white bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)] ${
+            pendingChanges ? "ring-2 ring-offset-1 ring-[var(--brand-accent,#f97316)]" : ""
+          }`}
+        >
+          Search
+        </button>
+      </div>
+    </form>
   );
 }
