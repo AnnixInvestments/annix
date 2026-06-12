@@ -324,6 +324,7 @@ When you change any user-facing Stock Control feature (new button, renamed field
 ### Shorthand Commands
 - **`luc`** — list all unpushed commits. Always `git fetch origin main` first so the diff is against the live remote (stale local refs have caused undercounts), then `git log origin/main..HEAD --oneline`. Count the lines actually shown — never approximate.
 - **`push`** — push all changes to main and report pre-push step timings
+- **`push to staging`** — run `node scripts/push-experimental.ts`: push the current HEAD to the `pre-main` scratch branch, which deploys ONLY the staging environment (`annix-app-staging`). Production and test are untouched (test serves real Orbit users — it is NOT scratch space) and the work does not reach `main`. Fails with a clear error if a feedback-widget PR holds the `on-staging` claim. See [docs/single-environment-deploys.md](docs/single-environment-deploys.md). This authorizes exactly one push to `pre-main`, never to `main`.
 - **`luc + push`** — list unpushed commits, then push immediately without confirmation. (These shorthands are themselves the explicit push instruction the Critical Git Rules require — they are the ONLY forms of standing push permission, and each use authorizes exactly one push.)
 
 ## Project Context
