@@ -22,6 +22,13 @@ const navItems: NavItem[] = [
     icon: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
   },
   {
+    // Work Profile lives as a section on the profile page; the page scrolls
+    // to the anchor once its data has loaded.
+    href: "/annix/orbit/seeker/profile#work-profile-section",
+    label: "Work Profile",
+    icon: "M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M15 11h3m-3 4h2",
+  },
+  {
     href: "/annix/orbit/seeker/jobs",
     label: "Browse Jobs",
     icon: "M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z",
