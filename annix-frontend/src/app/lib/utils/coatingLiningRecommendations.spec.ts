@@ -7,6 +7,7 @@ import type {
 import {
   classifyDamageMechanisms,
   classifyExternalDamageMechanisms,
+  deriveMtpDefaultsFromSlurry,
   recommendExternalCoating,
   recommendLining,
 } from "./coatingLiningRecommendations";
@@ -675,6 +676,85 @@ describe("coatingLiningRecommendations", () => {
         expect(damage.corrosion).toBeDefined();
         expect(damage.dominantMechanism).toBeDefined();
       });
+    });
+  });
+
+  describe("deriveMtpDefaultsFromSlurry", () => {
+    it("returns empty when no mine is selected", () => {
+      expect(deriveMtpDefaultsFromSlurry({})).toEqual({});
+      expect(deriveMtpDefaultsFromSlurry({ slurryPHMin: 2 })).toEqual({});
+    });
+
+    it("derives a full abrasive profile for a PGM mine", () => {
+      const defaults = deriveMtpDefaultsFromSlurry({
+        mineSelected: "Amandelbult Mine",
+        mineCommodity: "PGM",
+        slurryPHMin: 8.0,
+        slurryPHMax: 10.0,
+        slurrySolidsMin: 35,
+        slurrySolidsMax: 50,
+        slurryTempMin: 20,
+        slurryTempMax: 55,
+        corrosionRisk: "Medium",
+      });
+      expect(defaults).toEqual({
+        particleSize: "Fine",
+        particleShape: "Angular",
+        hardnessClass: "High",
+        silicaContent: "Moderate",
+        specificGravity: "Heavy",
+        phRange: "Alkaline",
+        chlorides: "Moderate",
+        temperatureRange: "Elevated",
+        solidsPercent: "High",
+        velocity: "Medium",
+      });
+    });
+
+    it("flags acid service for copper/base metals from the pH minimum", () => {
+      const defaults = deriveMtpDefaultsFromSlurry({
+        mineSelected: "Palabora",
+        mineCommodity: "Copper/Base Metals",
+        slurryPHMin: 1.5,
+        slurryPHMax: 4.0,
+        corrosionRisk: "Very High",
+        slurryTempMax: 65,
+        slurrySolidsMin: 25,
+        slurrySolidsMax: 45,
+      });
+      expect(defaults.phRange).toBe("Acidic");
+      expect(defaults.chlorides).toBe("High");
+      expect(defaults.temperatureRange).toBe("Elevated");
+      expect(defaults.solidsPercent).toBe("Medium");
+    });
+
+    it("derives chemistry without material properties for an unknown commodity", () => {
+      const defaults = deriveMtpDefaultsFromSlurry({
+        mineSelected: "Some Mine",
+        mineCommodity: "Vanadium",
+        slurryPHMin: 6.5,
+        slurryPHMax: 8.0,
+        slurryTempMax: 35,
+        corrosionRisk: "Low",
+      });
+      expect(defaults.particleSize).toBeUndefined();
+      expect(defaults.specificGravity).toBeUndefined();
+      expect(defaults.phRange).toBe("Neutral");
+      expect(defaults.temperatureRange).toBe("Ambient");
+      expect(defaults.chlorides).toBe("Low");
+      expect(defaults.velocity).toBe("Medium");
+    });
+
+    it("classes iron ore solids loading as very high", () => {
+      const defaults = deriveMtpDefaultsFromSlurry({
+        mineSelected: "Sishen",
+        mineCommodity: "Iron Ore",
+        slurrySolidsMin: 50,
+        slurrySolidsMax: 70,
+      });
+      expect(defaults.solidsPercent).toBe("VeryHigh");
+      expect(defaults.hardnessClass).toBe("Medium");
+      expect(defaults.specificGravity).toBe("Heavy");
     });
   });
 });

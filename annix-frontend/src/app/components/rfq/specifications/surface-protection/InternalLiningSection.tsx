@@ -1,9 +1,12 @@
 "use client";
 
+import { autoFilledClass } from "@/app/components/rfq/steps/specifications/helpers";
 import {
   classifyDamageMechanisms,
+  deriveMtpDefaultsFromSlurry,
   hasCompleteProfile,
   type MaterialTransferProfile,
+  type MineSlurryIntelligence,
   recommendLining,
 } from "@/app/lib/utils/coatingLiningRecommendations";
 import type { InternalLiningSectionProps } from "./types";
@@ -11,33 +14,6 @@ import type { InternalLiningSectionProps } from "./types";
 export function InternalLiningSection(props: InternalLiningSectionProps) {
   const { globalSpecs, onUpdateGlobalSpecs, isUnregisteredCustomer, showFeatureRestrictionPopup } =
     props;
-  const buildMaterialProfile = (): MaterialTransferProfile => ({
-    material: {
-      particleSize: globalSpecs?.mtpParticleSize as any,
-      particleShape: globalSpecs?.mtpParticleShape as any,
-      specificGravity: globalSpecs?.mtpSpecificGravity as any,
-      hardnessClass: globalSpecs?.mtpHardnessClass as any,
-      silicaContent: globalSpecs?.mtpSilicaContent as any,
-    },
-    chemistry: {
-      phRange: globalSpecs?.mtpPhRange as any,
-      chlorides: globalSpecs?.mtpChlorides as any,
-      temperatureRange: globalSpecs?.mtpTemperatureRange as any,
-    },
-    flow: {
-      solidsPercent: globalSpecs?.mtpSolidsPercent as any,
-      velocity: globalSpecs?.mtpVelocity as any,
-      impactAngle: globalSpecs?.mtpImpactAngle as any,
-    },
-    equipment: {
-      equipmentType: globalSpecs?.mtpEquipmentType as any,
-      impactZones: globalSpecs?.mtpImpactZones,
-    },
-  });
-
-  const profile = buildMaterialProfile();
-  const isProfileComplete = hasCompleteProfile(profile);
-
   const rawMtpParticleSize = globalSpecs?.mtpParticleSize;
   const rawMtpParticleShape = globalSpecs?.mtpParticleShape;
   const rawMtpHardnessClass = globalSpecs?.mtpHardnessClass;
@@ -51,6 +27,76 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
   const rawMtpEquipmentType = globalSpecs?.mtpEquipmentType;
   const rawMtpSolidsPercent = globalSpecs?.mtpSolidsPercent;
   const rawInternalLiningType = globalSpecs?.internalLiningType;
+
+  const mtpSlurryDefaults = deriveMtpDefaultsFromSlurry(
+    (globalSpecs ?? {}) as unknown as MineSlurryIntelligence,
+  );
+  const derivedMtpParticleSize = mtpSlurryDefaults.particleSize;
+  const effectiveMtpParticleSize = rawMtpParticleSize || derivedMtpParticleSize;
+  const isMtpParticleSizeAutoFilled = !rawMtpParticleSize && !!derivedMtpParticleSize;
+  const derivedMtpParticleShape = mtpSlurryDefaults.particleShape;
+  const effectiveMtpParticleShape = rawMtpParticleShape || derivedMtpParticleShape;
+  const isMtpParticleShapeAutoFilled = !rawMtpParticleShape && !!derivedMtpParticleShape;
+  const derivedMtpHardnessClass = mtpSlurryDefaults.hardnessClass;
+  const effectiveMtpHardnessClass = rawMtpHardnessClass || derivedMtpHardnessClass;
+  const isMtpHardnessClassAutoFilled = !rawMtpHardnessClass && !!derivedMtpHardnessClass;
+  const derivedMtpSilicaContent = mtpSlurryDefaults.silicaContent;
+  const effectiveMtpSilicaContent = rawMtpSilicaContent || derivedMtpSilicaContent;
+  const isMtpSilicaContentAutoFilled = !rawMtpSilicaContent && !!derivedMtpSilicaContent;
+  const derivedMtpSpecificGravity = mtpSlurryDefaults.specificGravity;
+  const effectiveMtpSpecificGravity = rawMtpSpecificGravity || derivedMtpSpecificGravity;
+  const isMtpSpecificGravityAutoFilled = !rawMtpSpecificGravity && !!derivedMtpSpecificGravity;
+  const derivedMtpPhRange = mtpSlurryDefaults.phRange;
+  const effectiveMtpPhRange = rawMtpPhRange || derivedMtpPhRange;
+  const isMtpPhRangeAutoFilled = !rawMtpPhRange && !!derivedMtpPhRange;
+  const derivedMtpChlorides = mtpSlurryDefaults.chlorides;
+  const effectiveMtpChlorides = rawMtpChlorides || derivedMtpChlorides;
+  const isMtpChloridesAutoFilled = !rawMtpChlorides && !!derivedMtpChlorides;
+  const derivedMtpTemperatureRange = mtpSlurryDefaults.temperatureRange;
+  const effectiveMtpTemperatureRange = rawMtpTemperatureRange || derivedMtpTemperatureRange;
+  const isMtpTemperatureRangeAutoFilled = !rawMtpTemperatureRange && !!derivedMtpTemperatureRange;
+  const derivedMtpSolidsPercent = mtpSlurryDefaults.solidsPercent;
+  const effectiveMtpSolidsPercent = rawMtpSolidsPercent || derivedMtpSolidsPercent;
+  const isMtpSolidsPercentAutoFilled = !rawMtpSolidsPercent && !!derivedMtpSolidsPercent;
+  const derivedMtpVelocity = mtpSlurryDefaults.velocity;
+  const effectiveMtpVelocity = rawMtpVelocity || derivedMtpVelocity;
+  const isMtpVelocityAutoFilled = !rawMtpVelocity && !!derivedMtpVelocity;
+  const isMtpFlowAutoFilled = isMtpSolidsPercentAutoFilled || isMtpVelocityAutoFilled;
+  const isMtpMaterialAutoFilled =
+    isMtpParticleSizeAutoFilled ||
+    isMtpParticleShapeAutoFilled ||
+    isMtpHardnessClassAutoFilled ||
+    isMtpSilicaContentAutoFilled ||
+    isMtpSpecificGravityAutoFilled;
+  const isMtpChemistryAutoFilled =
+    isMtpPhRangeAutoFilled || isMtpChloridesAutoFilled || isMtpTemperatureRangeAutoFilled;
+
+  const buildMaterialProfile = (): MaterialTransferProfile => ({
+    material: {
+      particleSize: effectiveMtpParticleSize as any,
+      particleShape: effectiveMtpParticleShape as any,
+      specificGravity: effectiveMtpSpecificGravity as any,
+      hardnessClass: effectiveMtpHardnessClass as any,
+      silicaContent: effectiveMtpSilicaContent as any,
+    },
+    chemistry: {
+      phRange: effectiveMtpPhRange as any,
+      chlorides: effectiveMtpChlorides as any,
+      temperatureRange: effectiveMtpTemperatureRange as any,
+    },
+    flow: {
+      solidsPercent: effectiveMtpSolidsPercent as any,
+      velocity: effectiveMtpVelocity as any,
+      impactAngle: rawMtpImpactAngle as any,
+    },
+    equipment: {
+      equipmentType: rawMtpEquipmentType as any,
+      impactZones: globalSpecs?.mtpImpactZones,
+    },
+  });
+
+  const profile = buildMaterialProfile();
+  const isProfileComplete = hasCompleteProfile(profile);
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
@@ -151,14 +197,22 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                         1
                       </span>
                       Material Properties
+                      {isMtpMaterialAutoFilled && (
+                        <span className="ml-2 text-xs font-medium text-emerald-600">
+                          ✓ Auto-filled from Mine Selection
+                        </span>
+                      )}
                     </h5>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Particle Size
+                          {isMtpParticleSizeAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpParticleSize || ""}
+                          value={effectiveMtpParticleSize || ""}
                           onChange={(e) => {
                             const rawValue = e.target.value;
 
@@ -167,7 +221,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpParticleSize: rawValue || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpParticleSizeAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Fine">Fine (&lt;0.5mm D50)</option>
@@ -179,9 +233,12 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Particle Shape
+                          {isMtpParticleShapeAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpParticleShape || ""}
+                          value={effectiveMtpParticleShape || ""}
                           onChange={(e) => {
                             const rawValue2 = e.target.value;
 
@@ -190,7 +247,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpParticleShape: rawValue2 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpParticleShapeAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Rounded">Rounded</option>
@@ -201,9 +258,12 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Material Hardness
+                          {isMtpHardnessClassAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpHardnessClass || ""}
+                          value={effectiveMtpHardnessClass || ""}
                           onChange={(e) => {
                             const rawValue3 = e.target.value;
 
@@ -212,7 +272,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpHardnessClass: rawValue3 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpHardnessClassAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Low">Low (Mohs &lt;4)</option>
@@ -223,9 +283,12 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Silica Content
+                          {isMtpSilicaContentAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpSilicaContent || ""}
+                          value={effectiveMtpSilicaContent || ""}
                           onChange={(e) => {
                             const rawValue4 = e.target.value;
 
@@ -234,7 +297,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpSilicaContent: rawValue4 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpSilicaContentAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Low">Low (&lt;20%)</option>
@@ -245,9 +308,12 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Specific Gravity
+                          {isMtpSpecificGravityAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpSpecificGravity || ""}
+                          value={effectiveMtpSpecificGravity || ""}
                           onChange={(e) => {
                             const rawValue5 = e.target.value;
 
@@ -256,7 +322,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpSpecificGravity: rawValue5 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpSpecificGravityAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Light">Light (&lt;2.0)</option>
@@ -274,14 +340,22 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                         2
                       </span>
                       Chemical Environment
+                      {isMtpChemistryAutoFilled && (
+                        <span className="ml-2 text-xs font-medium text-emerald-600">
+                          ✓ Auto-filled from Mine Selection
+                        </span>
+                      )}
                     </h5>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           pH Range
+                          {isMtpPhRangeAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpPhRange || ""}
+                          value={effectiveMtpPhRange || ""}
                           onChange={(e) => {
                             const rawValue6 = e.target.value;
 
@@ -290,7 +364,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpPhRange: rawValue6 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpPhRangeAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Acidic">Acidic (&lt;5)</option>
@@ -301,9 +375,12 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Chloride Level
+                          {isMtpChloridesAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpChlorides || ""}
+                          value={effectiveMtpChlorides || ""}
                           onChange={(e) => {
                             const rawValue7 = e.target.value;
 
@@ -312,7 +389,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpChlorides: rawValue7 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpChloridesAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Low">Low (&lt;100ppm)</option>
@@ -323,9 +400,12 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Operating Temp
+                          {isMtpTemperatureRangeAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpTemperatureRange || ""}
+                          value={effectiveMtpTemperatureRange || ""}
                           onChange={(e) => {
                             const rawValue8 = e.target.value;
 
@@ -334,7 +414,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpTemperatureRange: rawValue8 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpTemperatureRangeAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Ambient">Ambient (&lt;40C)</option>
@@ -352,14 +432,22 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                         3
                       </span>
                       Flow & Equipment
+                      {isMtpFlowAutoFilled && (
+                        <span className="ml-2 text-xs font-medium text-emerald-600">
+                          ✓ Auto-filled from Mine Selection
+                        </span>
+                      )}
                     </h5>
                     <div className="grid grid-cols-3 gap-2">
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Flow Velocity
+                          {isMtpVelocityAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpVelocity || ""}
+                          value={effectiveMtpVelocity || ""}
                           onChange={(e) => {
                             const rawValue9 = e.target.value;
 
@@ -368,7 +456,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpVelocity: rawValue9 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpVelocityAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Low">Low (&lt;2 m/s)</option>
@@ -425,9 +513,12 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                       <div>
                         <label className="block text-[10px] font-medium text-gray-700 mb-0.5">
                           Solids Conc.
+                          {isMtpSolidsPercentAutoFilled && (
+                            <span className="ml-1 text-emerald-600">(Auto)</span>
+                          )}
                         </label>
                         <select
-                          value={rawMtpSolidsPercent || ""}
+                          value={effectiveMtpSolidsPercent || ""}
                           onChange={(e) => {
                             const rawValue12 = e.target.value;
 
@@ -436,7 +527,7 @@ export function InternalLiningSection(props: InternalLiningSectionProps) {
                               mtpSolidsPercent: rawValue12 || undefined,
                             });
                           }}
-                          className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded focus:ring-1 focus:ring-indigo-500 text-gray-900"
+                          className={`w-full px-2 py-1.5 text-xs rounded focus:ring-1 focus:ring-indigo-500 ${autoFilledClass(isMtpSolidsPercentAutoFilled)}`}
                         >
                           <option value="">Select...</option>
                           <option value="Low">Low (&lt;20%)</option>

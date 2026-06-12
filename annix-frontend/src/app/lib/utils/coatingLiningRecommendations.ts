@@ -1,7 +1,7 @@
 import type { CeramicProduct } from "@annix/product-data/ceramic/ceramicProducts";
 import type { PaintProduct } from "@annix/product-data/paint/paintProducts";
 import type { RubberProduct } from "@annix/product-data/rubber/rubberProducts";
-import { toPairs as entries } from "es-toolkit/compat";
+import { toPairs as entries, isNumber } from "es-toolkit/compat";
 
 export interface MaterialProperties {
   particleSize: "Fine" | "Medium" | "Coarse" | "VeryCoarse";
@@ -556,6 +556,168 @@ export function deriveTemperatureCategory(tempC: number | undefined | null): str
     return "Ambient";
   }
   return "Ambient";
+}
+
+export interface MineSlurryIntelligence {
+  mineSelected?: string | null;
+  mineCommodity?: string | null;
+  slurryPHMin?: number | null;
+  slurryPHMax?: number | null;
+  slurrySolidsMin?: number | null;
+  slurrySolidsMax?: number | null;
+  slurryTempMin?: number | null;
+  slurryTempMax?: number | null;
+  corrosionRisk?: string | null;
+}
+
+export interface MtpSlurryDefaults {
+  particleSize?: MaterialProperties["particleSize"];
+  particleShape?: MaterialProperties["particleShape"];
+  hardnessClass?: MaterialProperties["hardnessClass"];
+  silicaContent?: MaterialProperties["silicaContent"];
+  specificGravity?: MaterialProperties["specificGravity"];
+  phRange?: ChemicalProperties["phRange"];
+  chlorides?: ChemicalProperties["chlorides"];
+  temperatureRange?: ChemicalProperties["temperatureRange"];
+  solidsPercent?: FlowProperties["solidsPercent"];
+  velocity?: FlowProperties["velocity"];
+}
+
+// Typical milled-ore solids characteristics per SA mining commodity. Particle
+// properties describe the SOLIDS in the slurry (ore mineralogy), not the
+// carrier slurry itself — e.g. Witwatersrand gold tailings are quartzitic
+// (Mohs ~7, >50% silica) while coal duff is soft and light.
+const COMMODITY_MATERIAL_DEFAULTS: Record<
+  string,
+  Pick<
+    MtpSlurryDefaults,
+    "particleSize" | "particleShape" | "hardnessClass" | "silicaContent" | "specificGravity"
+  >
+> = {
+  PGM: {
+    particleSize: "Fine",
+    particleShape: "Angular",
+    hardnessClass: "High",
+    silicaContent: "Moderate",
+    specificGravity: "Heavy",
+  },
+  Gold: {
+    particleSize: "Fine",
+    particleShape: "Angular",
+    hardnessClass: "High",
+    silicaContent: "High",
+    specificGravity: "Medium",
+  },
+  "Iron Ore": {
+    particleSize: "Medium",
+    particleShape: "Angular",
+    hardnessClass: "Medium",
+    silicaContent: "Low",
+    specificGravity: "Heavy",
+  },
+  "Copper/Base Metals": {
+    particleSize: "Fine",
+    particleShape: "Angular",
+    hardnessClass: "Medium",
+    silicaContent: "Moderate",
+    specificGravity: "Heavy",
+  },
+  Coal: {
+    particleSize: "Medium",
+    particleShape: "SubAngular",
+    hardnessClass: "Low",
+    silicaContent: "Low",
+    specificGravity: "Light",
+  },
+  Diamonds: {
+    particleSize: "Coarse",
+    particleShape: "SubAngular",
+    hardnessClass: "Medium",
+    silicaContent: "Low",
+    specificGravity: "Medium",
+  },
+};
+
+// Pre-fills the Material Transfer Profile from the mine quick-select's slurry
+// intelligence: commodity mineralogy answers the material properties, the
+// numeric slurry ranges answer chemistry and solids loading (worst-case bias —
+// an acidic minimum beats an alkaline maximum because acid attack governs
+// lining selection), and corrosion risk proxies chloride exposure in SA
+// process water. Flow velocity defaults to the slurry-transport design band
+// (2-4 m/s: above deposition velocity, below the wear limit) - flange/pressure
+// class is NOT used as a velocity signal because it bounds head, not speed
+// (a Class 300 line can be a fast overland main or a slow laminar paste line).
+// Impact angle and equipment type stay manual: they are line-specific, not
+// mine-specific.
+export function deriveMtpDefaultsFromSlurry(slurry: MineSlurryIntelligence): MtpSlurryDefaults {
+  if (!slurry.mineSelected && !slurry.mineCommodity) {
+    return {};
+  }
+
+  const defaults: MtpSlurryDefaults = {};
+
+  const rawCommodity = slurry.mineCommodity;
+  const commodity = (rawCommodity || "").trim();
+  const material = COMMODITY_MATERIAL_DEFAULTS[commodity];
+  if (material) {
+    defaults.particleSize = material.particleSize;
+    defaults.particleShape = material.particleShape;
+    defaults.hardnessClass = material.hardnessClass;
+    defaults.silicaContent = material.silicaContent;
+    defaults.specificGravity = material.specificGravity;
+  }
+
+  const phMin = slurry.slurryPHMin;
+  const phMax = slurry.slurryPHMax;
+  if (isNumber(phMin) || isNumber(phMax)) {
+    if (isNumber(phMin) && phMin < 5) {
+      defaults.phRange = "Acidic";
+    } else if (isNumber(phMax) && phMax > 9) {
+      defaults.phRange = "Alkaline";
+    } else {
+      defaults.phRange = "Neutral";
+    }
+  }
+
+  const rawCorrosionRisk = slurry.corrosionRisk;
+  const corrosion = (rawCorrosionRisk || "").trim().toLowerCase();
+  if (corrosion === "very high" || corrosion === "high") {
+    defaults.chlorides = "High";
+  } else if (corrosion === "medium" || corrosion === "moderate") {
+    defaults.chlorides = "Moderate";
+  } else if (corrosion === "low" || corrosion === "very low") {
+    defaults.chlorides = "Low";
+  }
+
+  const tempMax = slurry.slurryTempMax;
+  if (isNumber(tempMax)) {
+    if (tempMax > 80) {
+      defaults.temperatureRange = "High";
+    } else if (tempMax >= 40) {
+      defaults.temperatureRange = "Elevated";
+    } else {
+      defaults.temperatureRange = "Ambient";
+    }
+  }
+
+  defaults.velocity = "Medium";
+
+  const solidsMin = slurry.slurrySolidsMin;
+  const solidsMax = slurry.slurrySolidsMax;
+  if (isNumber(solidsMin) && isNumber(solidsMax)) {
+    const solidsMid = (solidsMin + solidsMax) / 2;
+    if (solidsMid >= 60) {
+      defaults.solidsPercent = "VeryHigh";
+    } else if (solidsMid >= 40) {
+      defaults.solidsPercent = "High";
+    } else if (solidsMid >= 20) {
+      defaults.solidsPercent = "Medium";
+    } else {
+      defaults.solidsPercent = "Low";
+    }
+  }
+
+  return defaults;
 }
 
 export type {
