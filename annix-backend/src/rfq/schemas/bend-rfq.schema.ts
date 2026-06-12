@@ -202,10 +202,12 @@ export class BendRfq {
   @Prop({ type: String, required: false })
   pvcColor: string;
 
-  @Prop({ type: Date, required: true })
+  // Set by mongoose timestamps — declaring required:true makes validation
+  // reject inserts before the plugin stamps them.
+  @Prop({ type: Date, required: false })
   createdAt: Date;
 
-  @Prop({ type: Date, required: true })
+  @Prop({ type: Date, required: false })
   updatedAt: Date;
 
   @Prop({ type: Number, required: false })

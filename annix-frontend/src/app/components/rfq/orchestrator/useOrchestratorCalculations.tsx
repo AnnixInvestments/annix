@@ -3,7 +3,13 @@ import React, { useCallback } from "react";
 import { rfqApi } from "@/app/lib/api/client";
 import {
   DEFAULT_PIPE_LENGTH_M,
+  closureWeight as getClosureWeight,
+  fittingFlangeCounts as getFittingFlangeCounts,
+  flangeCountPerBend as getFlangeCountPerBend,
+  flangeCountPerFitting as getFlangeCountPerFitting,
   physicalFlangeCount as getPhysicalFlangeCount,
+  tackWeldEndsPerBend as getTackWeldEndsPerBend,
+  tackWeldWeight as getTackWeldWeight,
   STEEL_DENSITY_KG_M3,
   scheduleListForSpec,
 } from "@/app/lib/config/rfq";
@@ -422,9 +428,95 @@ export function useOrchestratorCalculations(deps: OrchestratorCalculationsDeps) 
           }
         }
 
+        // Price the flanges client-side — the engine's response carries no
+        // flange weight, so bend line weights everywhere (summary table,
+        // Review, BOQ) were bend-only while the calc card showed bend +
+        // flanges. Store flangeWeight and fold it into totalWeight.
+        const rawBendEndConfiguration7 = bendEntry.specs?.bendEndConfiguration;
+        const bendEndConfigForFlanges = rawBendEndConfiguration7 || "PE";
+        const isSweepTeeBendCalc = bendEntry.specs?.bendItemType === "SWEEP_TEE";
+        const bendFlangeCount = isSweepTeeBendCalc
+          ? getFlangeCountPerFitting(bendEndConfigForFlanges)
+          : getFlangeCountPerBend(bendEndConfigForFlanges);
+        let bendFlangeWeight = 0;
+        let bendFlangePerUnit = 0;
+        // Only price flanges when the weight table is loaded — an empty
+        // array silently returns per-NB fallbacks (e.g. 80kg). Leaving
+        // flangeWeight undefined marks the calc stale so the form's
+        // mount-trigger re-runs it once data is ready.
+        if (bendFlangeCount > 0 && nominalBoreMm && allWeights.length > 0) {
+          const rawBendClassDesignation = masterData.pressureClasses?.find(
+            (pc: any) => pc.id === flangePressureClassId,
+          )?.designation;
+          const bendClassDesignationBase = rawBendClassDesignation || "PN16";
+          const bendStandardCode = masterData.flangeStandards?.find(
+            (s: any) => s.id === flangeStandardId,
+          )?.code;
+          const rawBendFlangeTypeCode = bendEntry.specs?.flangeTypeCode;
+          const bendFlangeTypeCode = useGlobal
+            ? rawBendFlangeTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode
+            : rawBendFlangeTypeCode;
+          const bendDesignation = getPressureClassWithFlangeType(
+            bendClassDesignationBase,
+            bendFlangeTypeCode,
+            bendStandardCode,
+          );
+          bendFlangePerUnit = flangeWeightLookup(
+            allWeights,
+            nominalBoreMm,
+            bendDesignation,
+            bendStandardCode || null,
+            bendFlangeTypeCode || "",
+          );
+          if (
+            flangeSpecData &&
+            !hasFlangeWeightRecord(allWeights, nominalBoreMm, bendDesignation)
+          ) {
+            bendFlangePerUnit = flangeSpecData.flangeMassKg;
+          }
+          bendFlangeWeight = bendFlangeCount * bendFlangePerUnit;
+        }
+        // Closure pieces and L/F tack welds are spec-driven extras the
+        // engine doesn't price — include them so the stored total matches
+        // the calc card.
+        const rawClosureLengthMm2 = bendEntry.specs?.closureLengthMm;
+        const bendClosureLengthMm = rawClosureLengthMm2 || 0;
+        const rawResultWallThickness = (result as any).wallThicknessMm;
+        const bendClosureWt = rawResultWallThickness || 5;
+        const bendClosureWeight =
+          nominalBoreMm && bendClosureLengthMm > 0
+            ? getClosureWeight(nominalBoreMm, bendClosureLengthMm, bendClosureWt, nbToOdMap)
+            : 0;
+        const bendTackEnds = getTackWeldEndsPerBend(bendEndConfigForFlanges);
+        const bendTackWeight =
+          nominalBoreMm && bendTackEnds > 0 ? getTackWeldWeight(nominalBoreMm, bendTackEnds) : 0;
+
+        const rawResultTotalWeight = (result as any).totalWeight;
+        const rawResultBendWeight = (result as any).bendWeight;
+        const rawResultTangentWeight = (result as any).tangentWeight;
+        const bendTotalWithFlanges =
+          (rawResultTotalWeight || (rawResultBendWeight || 0) + (rawResultTangentWeight || 0)) +
+          bendFlangeWeight +
+          bendClosureWeight +
+          bendTackWeight;
+        // When pricing was skipped (weights not loaded yet), omit the
+        // flange fields entirely — flangeWeight: undefined keeps the calc
+        // marked stale for the mount-trigger to redo with real data.
+        const bendFlangesPriced = bendFlangeCount === 0 || allWeights.length > 0;
+
         updateItem(entryId, {
           calculation: {
             ...result,
+            ...(bendFlangesPriced
+              ? {
+                  flangeWeight: bendFlangeWeight,
+                  flangeWeightPerUnit: bendFlangePerUnit,
+                  numberOfFlanges: bendFlangeCount,
+                  closureWeight: bendClosureWeight,
+                  tackWeldWeight: bendTackWeight,
+                  totalWeight: bendTotalWithFlanges,
+                }
+              : {}),
             flangeSpecs: flangeSpecData,
           },
           calculationError: null,
@@ -522,10 +614,91 @@ export function useOrchestratorCalculations(deps: OrchestratorCalculationsDeps) 
           return;
         }
 
-        // Skip API calculation for offset bends - they're calculated client-side
+        // Offset bends are calculated client-side — but the result must
+        // still be STORED on the entry: the calc-results card only renders
+        // when entry.calculation exists, and the summary/Review/BOQ read
+        // calculation.totalWeight (they showed 0.00kg without this).
         if (fittingEntry.specs.fittingType === "OFFSET_BEND") {
-          log.debug("Fitting calculation skipped: Offset bends are calculated client-side");
-          updateItem(entryId, { calculationError: null });
+          const obSpecs = fittingEntry.specs;
+          const rawObNominalDiameterMm = obSpecs.nominalDiameterMm;
+          const obNb = rawObNominalDiameterMm || (obSpecs as any).nominalBoreMm;
+          if (!obNb) {
+            log.debug("Offset bend calculation skipped: no nominal diameter");
+            return;
+          }
+          // Don't price against an unloaded weight table — the lookup would
+          // silently return per-NB fallbacks (e.g. 80kg/flange). Leaving the
+          // calc unset lets the form's mount-trigger re-run once data lands.
+          if (allWeights.length === 0) {
+            log.debug("Offset bend calculation deferred: flange weights not loaded yet");
+            return;
+          }
+          const rawObOd = nbToOdMap[obNb];
+          const obOd = rawObOd || obNb * 1.05;
+          const rawObSchedule = obSpecs.scheduleNumber;
+          const obWtMatch = (rawObSchedule || "").match(/(\d+(?:\.\d+)?)/);
+          const rawObWallThickness = (obSpecs as any).wallThicknessMm;
+          const obWt = rawObWallThickness || (obWtMatch ? Number(obWtMatch[1]) : 6);
+          const rawLengthA = (obSpecs as any).offsetLengthA;
+          const lengthA = rawLengthA || 0;
+          const rawLengthB = (obSpecs as any).offsetLengthB;
+          const lengthB = rawLengthB || 0;
+          const rawLengthC = (obSpecs as any).offsetLengthC;
+          const lengthC = rawLengthC || 0;
+          const totalLengthM = (lengthA + lengthB + lengthC) / 1000;
+          const kgPerM = (obOd - obWt) * obWt * 0.02466;
+          const obPipeWeight = kgPerM * totalLengthM;
+
+          const rawObClassId = obSpecs.flangePressureClassId;
+          const obClassId = rawObClassId || rfqDataRef.current.globalSpecs?.flangePressureClassId;
+          const rawObStandardId = obSpecs.flangeStandardId;
+          const obStandardId = rawObStandardId || rfqDataRef.current.globalSpecs?.flangeStandardId;
+          const rawObBaseDesignation = masterData.pressureClasses?.find(
+            (pc: any) => pc.id === obClassId,
+          )?.designation;
+          const obBaseDesignation = rawObBaseDesignation || "PN16";
+          const obStandardCode = masterData.flangeStandards?.find(
+            (s: any) => s.id === obStandardId,
+          )?.code;
+          const rawObTypeCode = obSpecs.flangeTypeCode;
+          const obTypeCode = rawObTypeCode || rfqDataRef.current.globalSpecs?.flangeTypeCode;
+          const obDesignation = getPressureClassWithFlangeType(
+            obBaseDesignation,
+            obTypeCode,
+            obStandardCode,
+          );
+          const rawObEndConfig = obSpecs.pipeEndConfiguration;
+          const obEndConfig = rawObEndConfig || "PE";
+          const obFlangeCounts = getFittingFlangeCounts(obEndConfig);
+          const obNumFlanges = obFlangeCounts.main + obFlangeCounts.branch;
+          const obFlangePerUnit =
+            obNumFlanges > 0
+              ? flangeWeightLookup(
+                  allWeights,
+                  obNb,
+                  obDesignation,
+                  obStandardCode || null,
+                  obTypeCode || "",
+                )
+              : 0;
+          const obFlangeWeight = obNumFlanges * obFlangePerUnit;
+          const rawObQty = obSpecs.quantityValue;
+          const obQty = rawObQty || 1;
+          const obTotalWeight = (obPipeWeight + obFlangeWeight) * obQty;
+
+          updateItem(entryId, {
+            calculation: {
+              totalWeight: obTotalWeight,
+              fittingWeight: obPipeWeight,
+              flangeWeight: obFlangeWeight,
+              numberOfFlanges: obNumFlanges,
+              flangeWeightPerUnit: obFlangePerUnit,
+              wallThicknessMm: obWt,
+              outsideDiameterMm: obOd,
+              pressureClassUsed: obDesignation,
+            } as any,
+            calculationError: null,
+          });
           return;
         }
 

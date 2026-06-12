@@ -318,10 +318,10 @@ export const formatEndConfigForDescription = (
   stubs: StubFlangeConfig[],
 ): string => {
   const rawItem0 = BEND_END_OPTIONS.find((o) => o.value === mainEndConfig)?.label?.split(" - ")[0];
-  const mainLabel =
-    rawItem0 ||
-    PIPE_END_OPTIONS.find((o) => o.value === mainEndConfig)?.label?.split(" - ")[0] ||
-    mainEndConfig;
+  const rawPipeLabel = PIPE_END_OPTIONS.find((o) => o.value === mainEndConfig)?.label?.split(
+    " - ",
+  )[0];
+  const mainLabel = rawItem0 || rawPipeLabel || mainEndConfig;
 
   if (!stubs || stubs.length === 0) {
     return mainLabel;
@@ -367,6 +367,24 @@ export const fittingBranchNbMm = (specs: {
   const rawBranchNominalDiameterMm = specs?.branchNominalDiameterMm;
   const rawBranchNominalBoreMm = specs?.branchNominalBoreMm;
   return rawBranchNominalDiameterMm || rawBranchNominalBoreMm || null;
+};
+
+// Physical flange counts for a fitting end config. Handles both real
+// FITTING_END_OPTIONS values (FAE, F2E, 3X_RF...) and the pipe/reducer-style
+// configs stored by offset bends and reducers (FOE, FBE, RF_LF, 2X_LF...).
+export const fittingFlangeCounts = (fittingEndConfig: string): { main: number; branch: number } => {
+  const config = FITTING_END_OPTIONS.find((opt) => opt.value === fittingEndConfig);
+  if (config) {
+    return {
+      main: (config.hasInlet ? 1 : 0) + (config.hasOutlet ? 1 : 0),
+      branch: config.hasBranch ? 1 : 0,
+    };
+  }
+  const upper = (fittingEndConfig || "PE").toUpperCase();
+  const twoFlangedEnds = ["FBE", "FOE_LF", "FOE_RF", "2X_RF", "2X_LF", "2XLF", "RF_LF"].includes(
+    upper,
+  );
+  return { main: twoFlangedEnds ? 2 : upper === "FOE" ? 1 : 0, branch: 0 };
 };
 
 export const boltSetCountPerFitting = (

@@ -7,6 +7,7 @@ import {
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   closureWeight as getClosureWeight,
   fittingBranchNbMm as getFittingBranchNbMm,
+  fittingFlangeCounts as getFittingFlangeCounts,
   flangesPerPipe as getFlangesPerPipe,
   tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
   tackWeldWeight as getTackWeldWeight,
@@ -24,6 +25,7 @@ import {
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
 import {
   perUnitSurfaceAreas,
+  pipeExtrasWeight,
   weldThicknessForEntry,
 } from "@/app/lib/utils/rfq/itemSummaryCalculations";
 
@@ -45,41 +47,6 @@ const ProjectSummaryTableInner = () => {
     return `${weight.toFixed(2)} kg`;
   };
 
-  // Closures, tack welds and puddle plates aren't part of
-  // calculation.totalSystemWeight (pipe + flanges); derive them from specs
-  // the same way the form's weight breakdown does so both surfaces report
-  // the same line weight.
-  const pipeExtrasWeight = (entry: any, qty: number) => {
-    const nb = entry.specs?.nominalBoreMm;
-    if (!nb || qty <= 0) return 0;
-    const endConfig = entry.specs?.pipeEndConfiguration || "PE";
-    const tackEnds = getTackWeldEndsPerPipe(endConfig);
-    const tackWeight = tackEnds > 0 ? getTackWeldWeight(nb, tackEnds) * qty : 0;
-    const closureLengthMm = entry.specs?.closureLengthMm || 0;
-    const wallThickness = entry.specs?.wallThicknessMm || entry.calculation?.wallThicknessMm || 0;
-    const closureTotal =
-      closureLengthMm > 0 && wallThickness > 0
-        ? getClosureWeight(nb, closureLengthMm, wallThickness, nbToOdMap) * qty
-        : 0;
-    const isPuddle = entry.specs?.pipeType === "puddle";
-    const rawPuddleOdMm = entry.specs?.puddleFlangeOdMm;
-    const puddleOdMm = rawPuddleOdMm || 0;
-    const rawPuddleThkMm = entry.specs?.puddleFlangeThicknessMm;
-    const puddleThkMm = rawPuddleThkMm || 0;
-    const rawCalcOdMm = entry.calculation?.outsideDiameterMm;
-    const rawMapOdMm = nbToOdMap[nb];
-    const pipeOdMm = rawCalcOdMm || rawMapOdMm || 0;
-    const puddleWeight =
-      isPuddle && puddleOdMm > 0 && puddleThkMm > 0 && pipeOdMm > 0
-        ? Math.PI *
-          ((puddleOdMm / 2000) ** 2 - (pipeOdMm / 2000) ** 2) *
-          (puddleThkMm / 1000) *
-          STEEL_DENSITY_KG_M3 *
-          qty
-        : 0;
-    return tackWeight + closureTotal + puddleWeight;
-  };
-
   const getTotalWeight = () => {
     // Check if BNW should be included
     const showBnw = requiredProducts.includes("fasteners_gaskets");
@@ -93,13 +60,25 @@ const ProjectSummaryTableInner = () => {
       let entryTotal = 0;
       if (entry.itemType === "bend") {
         const rawBendWeight = entry.calculation?.bendWeight;
-        // For bends, use component weights (per-unit) * qty
-        const bendWeightPerUnit = rawBendWeight || 0;
+        // For bends, use component weights (per-unit) * qty.
+        // S-bend = two 90° bends; the engine calculates a single bend.
+        const sBendWeightFactor = entry.specs?.bendItemType === "S_BEND" ? 2 : 1;
+        const bendWeightPerUnit = (rawBendWeight || 0) * sBendWeightFactor;
         const rawTangentWeight = entry.calculation?.tangentWeight;
         const tangentWeightPerUnit = rawTangentWeight || 0;
         const rawFlangeWeight = entry.calculation?.flangeWeight;
         const flangeWeightPerUnit = rawFlangeWeight || 0;
-        entryTotal = (bendWeightPerUnit + tangentWeightPerUnit + flangeWeightPerUnit) * qty;
+        const rawClosureWeightTotal = entry.calculation?.closureWeight;
+        const closureWeightPerUnit = rawClosureWeightTotal || 0;
+        const rawTackWeightTotal = entry.calculation?.tackWeldWeight;
+        const tackWeightPerUnit = rawTackWeightTotal || 0;
+        entryTotal =
+          (bendWeightPerUnit +
+            tangentWeightPerUnit +
+            flangeWeightPerUnit +
+            closureWeightPerUnit +
+            tackWeightPerUnit) *
+          qty;
       } else if (entry.itemType === "fitting") {
         const rawTotalWeight = entry.calculation?.totalWeight;
         entryTotal = rawTotalWeight || 0;
@@ -107,7 +86,7 @@ const ProjectSummaryTableInner = () => {
         const rawTotalSystemWeight = entry.calculation?.totalSystemWeight;
         // Straight pipes - totalSystemWeight (pipe + flanges) plus
         // spec-derived closures and tack welds, matching the line items.
-        entryTotal = (rawTotalSystemWeight || 0) + pipeExtrasWeight(entry, qty);
+        entryTotal = (rawTotalSystemWeight || 0) + pipeExtrasWeight(entry, qty, nbToOdMap);
       }
 
       // Add BNW and gasket weights if applicable
@@ -145,10 +124,12 @@ const ProjectSummaryTableInner = () => {
           if (entry.itemType === "fitting") {
             // Fittings allocate per NB: openings-1 on the main run plus one
             // set per different-size branch/reducing end.
-            const rawMainNb = entry.specs?.nominalDiameterMm || entry.specs?.nominalBoreMm;
-            const mainNb = rawMainNb || 100;
+            const rawMainNdMm = entry.specs?.nominalDiameterMm;
+            const rawMainNbMm = entry.specs?.nominalBoreMm;
+            const mainNb = rawMainNdMm || rawMainNbMm || 100;
             const branchNb = getFittingBranchNbMm(entry.specs) || mainNb;
-            const fittingEndConfig = entry.specs?.pipeEndConfiguration || "PE";
+            const rawFittingEndConfig = entry.specs?.pipeEndConfiguration;
+            const fittingEndConfig = rawFittingEndConfig || "PE";
             const fittingSets = getBoltSetCountPerFitting(fittingEndConfig, mainNb === branchNb);
             const mainBnwInfo = bnwSetInfo(allBnwSets, mainNb, pressureClass || "PN16");
             const mainSetWeight = mainBnwInfo.weightPerHole * mainBnwInfo.holesPerFlange;
@@ -230,7 +211,8 @@ const ProjectSummaryTableInner = () => {
           entry.itemType === "fitting"
             ? rawBlankNominalDiameterMm || rawBlankNominalBoreMm || 100
             : rawBlankNominalBoreMm || 100;
-        const blankCount = (entry.specs?.blankFlangeCount || 1) * qty;
+        const rawBlankFlangeCount = entry.specs?.blankFlangeCount;
+        const blankCount = (rawBlankFlangeCount || 1) * qty;
         blankWeight =
           sansBlankFlangeWeight(allWeights, blankNb, blankPressureClass || "PN16") * blankCount;
       }
@@ -297,13 +279,24 @@ const ProjectSummaryTableInner = () => {
               if (entry.itemType === "bend") {
                 const rawBendWeight2 = entry.calculation?.bendWeight;
                 // For bends, use component weights (bendWeight + tangentWeight are per-unit)
-                const bendWeightPerUnit = rawBendWeight2 || 0;
+                // S-bend = two 90° bends; the engine calculates a single bend.
+                const sBendWeightFactor = entry.specs?.bendItemType === "S_BEND" ? 2 : 1;
+                const bendWeightPerUnit = (rawBendWeight2 || 0) * sBendWeightFactor;
                 const rawTangentWeight2 = entry.calculation?.tangentWeight;
                 const tangentWeightPerUnit = rawTangentWeight2 || 0;
                 const rawFlangeWeight2 = entry.calculation?.flangeWeight;
                 // Flange weight from calculation (already per-unit in API response)
                 const flangeWeightPerUnit = rawFlangeWeight2 || 0;
-                weightPerItem = bendWeightPerUnit + tangentWeightPerUnit + flangeWeightPerUnit;
+                const rawClosureWeightRow = entry.calculation?.closureWeight;
+                const closureWeightPerUnit = rawClosureWeightRow || 0;
+                const rawTackWeightRow = entry.calculation?.tackWeldWeight;
+                const tackWeightPerUnit = rawTackWeightRow || 0;
+                weightPerItem =
+                  bendWeightPerUnit +
+                  tangentWeightPerUnit +
+                  flangeWeightPerUnit +
+                  closureWeightPerUnit +
+                  tackWeightPerUnit;
                 totalWeight = weightPerItem * qty;
               } else if (entry.itemType === "fitting") {
                 const rawCalculation = entry.calculation;
@@ -328,7 +321,8 @@ const ProjectSummaryTableInner = () => {
                 // For straight pipes, totalSystemWeight is already total
                 // (pipe + flanges); closures and tack welds are computed from
                 // specs so the line matches the form's weight breakdown.
-                totalWeight = (rawTotalSystemWeight2 || 0) + pipeExtrasWeight(entry, qty);
+                totalWeight =
+                  (rawTotalSystemWeight2 || 0) + pipeExtrasWeight(entry, qty, nbToOdMap);
                 weightPerItem = qty > 0 ? totalWeight / qty : 0;
               }
 
@@ -371,14 +365,12 @@ const ProjectSummaryTableInner = () => {
                 stubFlangesPerItem = rawNumberOfStubs2 || 0;
               } else if (entry.itemType === "fitting") {
                 const rawPipeEndConfiguration5 = entry.specs?.pipeEndConfiguration;
-                // Calculate fitting flanges based on pipeEndConfiguration
+                // Calculate fitting flanges based on pipeEndConfiguration —
+                // covers FITTING_END_OPTIONS values and the pipe/reducer-style
+                // configs stored by offset bends and reducers (FBE, RF_LF...).
                 const fittingEndConfig = rawPipeEndConfiguration5 || "PE";
-                if (fittingEndConfig === "F2E") flangesPerPipe = 2;
-                else if (fittingEndConfig === "F2E_LF") flangesPerPipe = 2;
-                else if (fittingEndConfig === "F2E_RF") flangesPerPipe = 2;
-                else if (fittingEndConfig === "3X_RF") flangesPerPipe = 3;
-                else if (fittingEndConfig === "2X_RF_FOE") flangesPerPipe = 3;
-                else if (fittingEndConfig !== "PE") flangesPerPipe = 1;
+                const fittingCounts = getFittingFlangeCounts(fittingEndConfig);
+                flangesPerPipe = fittingCounts.main + fittingCounts.branch;
                 // Bolt sets for fittings handled separately below
               }
 

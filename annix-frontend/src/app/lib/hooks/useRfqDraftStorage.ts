@@ -42,6 +42,10 @@ export interface UseRfqDraftStorageReturn {
   // restore window (default 60 minutes). Caller uses this to decide
   // whether to silently auto-restore vs prompt the user.
   isFreshDraft: boolean;
+  // Synchronous freshness check for a specific timestamp — safe to use
+  // inside consumers' mount effects (isFreshDraft state isn't set yet
+  // in the same commit).
+  isTimestampFresh: (timestamp: string) => boolean;
 }
 
 export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
@@ -261,6 +265,12 @@ export function useRfqDraftStorage(): UseRfqDraftStorageReturn {
     lastSaved,
     draftEmail,
     isFreshDraft,
+    // Synchronous freshness check for a specific timestamp. The
+    // isFreshDraft STATE is set in this hook's mount effect, which runs in
+    // the same commit as consumers' mount effects — they'd read the initial
+    // `false` and mis-route a fresh draft to the restore prompt. Callers
+    // deciding on restore behaviour during mount must use this instead.
+    isTimestampFresh: isFresh,
   };
 }
 

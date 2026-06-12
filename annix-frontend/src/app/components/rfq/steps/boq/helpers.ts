@@ -240,11 +240,35 @@ export const pipeVariantPrefix = (variant: PipeVariant | null): string => {
 //   fixed     — weld-neck flanges
 //   loose     — slip-on / lap / backing flanges
 //   rotating  — rotating raised-face flanges
+const pipeStyleFlangeCount = (config: string): FlangeCountByPhysicalKind => {
+  switch (config) {
+    case "PE":
+      return { fixed: 0, loose: 0, rotating: 0 };
+    case "FOE":
+      return { fixed: 1, loose: 0, rotating: 0 };
+    case "FBE":
+      return { fixed: 2, loose: 0, rotating: 0 };
+    case "FOE_LF":
+      return { fixed: 1, loose: 1, rotating: 0 };
+    case "FOE_RF":
+      return { fixed: 1, loose: 0, rotating: 1 };
+    case "2X_RF":
+      return { fixed: 0, loose: 0, rotating: 2 };
+    case "RF_LF":
+      return { fixed: 0, loose: 1, rotating: 1 };
+    case "2X_LF":
+    case "2xLF":
+      return { fixed: 0, loose: 2, rotating: 0 };
+    default:
+      return { fixed: 0, loose: 0, rotating: 0 };
+  }
+};
+
 export const getPhysicalFlangeCount = (
   config: string,
   itemType: string,
 ): FlangeCountByPhysicalKind => {
-  if (itemType === "bend" || itemType === "straight_pipe" || !itemType) {
+  if (itemType === "bend" || itemType === "straight_pipe" || itemType === "pipe" || !itemType) {
     switch (config) {
       case "PE":
         return { fixed: 0, loose: 0, rotating: 0 };
@@ -290,7 +314,9 @@ export const getPhysicalFlangeCount = (
         // 2 rotating + 1 fixed
         return { fixed: 1, loose: 0, rotating: 2 };
       default:
-        return { fixed: 0, loose: 0, rotating: 0 };
+        // Offset bends and reducers store pipe/reducer-style configs
+        // (FOE, FBE, RF_LF, 2X_LF...) on the fitting item type.
+        return pipeStyleFlangeCount(config);
     }
   }
   return { fixed: 0, loose: 0, rotating: 0 };

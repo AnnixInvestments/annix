@@ -1,6 +1,6 @@
 import { FLANGE_OD } from "@annix/product-data/pipe";
 import { keys } from "es-toolkit/compat";
-import { DEFAULT_PIPE_LENGTH_M } from "@/app/lib/config/rfq";
+import { DEFAULT_PIPE_LENGTH_M, STEEL_DENSITY_KG_M3 } from "@/app/lib/config/rfq";
 import { boltSetCountPerPipe } from "@/app/lib/config/rfq/pipeEndOptions";
 import {
   blankFlangeSurfaceArea,
@@ -289,17 +289,51 @@ export function processStraightPipeEntry(
       const existingGasket = consolidatedGaskets.get(gasketKey);
       const gasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nb);
 
+      // One gasket per bolted joint (= per bolt set), not per flange
       if (existingGasket) {
-        existingGasket.qty += flangeQty;
-        existingGasket.weight += gasketWeight * flangeQty;
+        existingGasket.qty += pipeBoltSetQty;
+        existingGasket.weight += gasketWeight * pipeBoltSetQty;
         existingGasket.entries.push(itemNumber);
         existingGasket.entryIds.push(entry.id);
       } else {
         consolidatedGaskets.set(gasketKey, {
           description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
-          qty: flangeQty,
+          qty: pipeBoltSetQty,
           unit: "Each",
-          weight: gasketWeight * flangeQty,
+          weight: gasketWeight * pipeBoltSetQty,
+          entries: [itemNumber],
+          entryIds: [entry.id],
+        });
+      }
+    }
+  }
+
+  // Puddle flange plate — spec-driven, not part of the end-config counts
+  {
+    const rawPuddleOdMm = entry.specs?.puddleFlangeOdMm;
+    const rawPuddleThkMm = entry.specs?.puddleFlangeThicknessMm;
+    const isPuddle = entry.specs?.pipeType === "puddle";
+    if (isPuddle && rawPuddleOdMm > 0 && rawPuddleThkMm > 0) {
+      const rawCalcOd = entry.calculation?.outsideDiameterMm;
+      const pipeOdMm = rawCalcOd || nb * 1.05;
+      const puddleWeightKg =
+        Math.PI *
+        ((rawPuddleOdMm / 2000) ** 2 - (pipeOdMm / 2000) ** 2) *
+        (rawPuddleThkMm / 1000) *
+        STEEL_DENSITY_KG_M3;
+      const puddleKey = `PUDDLE_FLANGE_${rawPuddleOdMm}x${rawPuddleThkMm}_${nb}`;
+      const existingPuddle = consolidatedFlanges.get(puddleKey);
+      if (existingPuddle) {
+        existingPuddle.qty += pipeQty;
+        existingPuddle.weight += puddleWeightKg * pipeQty;
+        existingPuddle.entries.push(itemNumber);
+        existingPuddle.entryIds.push(entry.id);
+      } else {
+        consolidatedFlanges.set(puddleKey, {
+          description: `Puddle Flange OD${rawPuddleOdMm}×${rawPuddleThkMm}mm (for ${nb}NB pipe)`,
+          qty: pipeQty,
+          unit: "Each",
+          weight: puddleWeightKg * pipeQty,
           entries: [itemNumber],
           entryIds: [entry.id],
         });

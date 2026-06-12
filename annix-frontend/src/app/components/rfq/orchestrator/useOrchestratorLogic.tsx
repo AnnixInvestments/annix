@@ -239,7 +239,7 @@ export function useOrchestratorLogic(props: Props) {
     hasDraft: hasLocalDraft,
     lastSaved: localDraftLastSaved,
     draftEmail: localDraftEmail,
-    isFreshDraft: isLocalDraftFresh,
+    isTimestampFresh: isLocalDraftTimestampFresh,
   } = useRfqDraftStorage();
 
   const { data: nbToOdMap = {} } = useNbToOdMap();
@@ -510,6 +510,35 @@ export function useOrchestratorLogic(props: Props) {
         const draft = await draftsApi.getById(parseInt(draftId, 10));
         log.debug("Loading draft:", draft);
 
+        // Never clobber a NEWER local copy with a stale server draft —
+        // e.g. when server autosaves were failing (the ownerless-draft
+        // bug) the server row is a skeleton from creation time while all
+        // the real work lives in localStorage.
+        const localDraft = loadLocalDraft();
+        const serverUpdated = (draft as any).updatedAt ? fromISO((draft as any).updatedAt) : null;
+        const localSaved = localDraft?.lastSaved ? fromISO(localDraft.lastSaved) : null;
+        const localIsNewer = !!(localSaved && (!serverUpdated || localSaved > serverUpdated));
+
+        if (localIsNewer && localDraft?.rfqData) {
+          log.info("Local draft is newer than server draft — restoring local copy");
+          restoreFromDraft({
+            formData: localDraft.rfqData,
+            globalSpecs: localDraft.globalSpecs,
+            requiredProducts: localDraft.rfqData?.requiredProducts,
+            straightPipeEntries: localDraft.entries,
+            currentStep: localDraft.currentStep,
+          });
+          // Stay attached to the requested server draft so the next save
+          // updates it with the newer local state.
+          setCurrentDraftId(toNumericDraftId(draft.id));
+          setDraftNumber(draft.draftNumber);
+          const rawConvertedRfqIdLocal = draft.convertedRfqId;
+          setConvertedRfqId(rawConvertedRfqIdLocal ?? null);
+          setHasCheckedLocalDraft(true);
+          showToast("Restored your latest local changes (server copy was older)", "success");
+          return;
+        }
+
         restoreFromDraft({
           formData: draft.formData,
           globalSpecs: draft.globalSpecs as any,
@@ -529,7 +558,42 @@ export function useOrchestratorLogic(props: Props) {
         log.debug(`Loaded draft ${draft.draftNumber}`);
       } catch (error) {
         log.error("Failed to load draft:", error);
-        showToast("Failed to load the saved draft. Starting with a new form.", "error");
+        // Server draft is gone (deleted, converted, or another account's) —
+        // fall back to the localStorage draft instead of dumping the user
+        // on step 1 with an empty form. Note the local-draft mount effect
+        // deliberately skips when ?draft= is present, so this is the only
+        // restore path in that case.
+        const deadDraftId = parseInt(draftId, 10);
+        const localDraft = loadLocalDraft();
+        if (localDraft?.rfqData) {
+          restoreFromDraft({
+            formData: localDraft.rfqData,
+            globalSpecs: localDraft.globalSpecs,
+            requiredProducts: localDraft.rfqData?.requiredProducts,
+            straightPipeEntries: localDraft.entries,
+            currentStep: localDraft.currentStep,
+          });
+          // Don't re-attach the dead server id — leaving currentDraftId
+          // unset lets the next save create a fresh server draft.
+          const localId = toNumericDraftId(localDraft.draftId);
+          if (localId && localId !== deadDraftId) setCurrentDraftId(localId);
+          if (localDraft.draftNumber && localId !== deadDraftId) {
+            setDraftNumber(localDraft.draftNumber);
+          }
+          showToast(
+            "Saved draft no longer exists on the server — restored your local copy.",
+            "warning",
+          );
+        } else {
+          showToast("Failed to load the saved draft. Starting with a new form.", "error");
+        }
+        // Strip the dead ?draft= param so a refresh doesn't repeat the 404
+        // and the localStorage auto-restore works again.
+        const url = new URL(window.location.href);
+        url.searchParams.delete("draft");
+        url.searchParams.delete("draftId");
+        window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+        setHasCheckedLocalDraft(true);
       } finally {
         setIsLoadingDraft(false);
       }
@@ -543,6 +607,8 @@ export function useOrchestratorLogic(props: Props) {
     setIsLoadingDraft,
     setCurrentDraftId,
     setDraftNumber,
+    setHasCheckedLocalDraft,
+    loadLocalDraft,
     isAuthenticated,
     isAuthLoading,
     router,
@@ -707,11 +773,17 @@ export function useOrchestratorLogic(props: Props) {
     const draft = loadLocalDraft();
     if (!draft?.rfqData) return;
 
+    // Freshness must be computed from the draft's own timestamp — the
+    // isFreshDraft state from useRfqDraftStorage is set in that hook's
+    // mount effect and still reads `false` when THIS mount effect runs,
+    // which mis-routed fresh drafts to the restore prompt (the
+    // "refresh sends me back to step 1" bug).
+    const draftIsFresh = draft.lastSaved ? isLocalDraftTimestampFresh(draft.lastSaved) : false;
     log.debug("Found localStorage draft:", {
-      fresh: isLocalDraftFresh,
+      fresh: draftIsFresh,
       lastSaved: draft.lastSaved,
     });
-    if (isLocalDraftFresh) {
+    if (draftIsFresh) {
       // Silent auto-restore — no dialog, no Step 1 detour. Drops
       // the user straight back where they were.
       restoreFromDraft({
@@ -740,7 +812,7 @@ export function useOrchestratorLogic(props: Props) {
     searchParams,
     loadLocalDraft,
     hasCheckedLocalDraft,
-    isLocalDraftFresh,
+    isLocalDraftTimestampFresh,
     restoreFromDraft,
     setCurrentDraftId,
     setDraftNumber,
@@ -787,7 +859,13 @@ export function useOrchestratorLogic(props: Props) {
     const existingEntries = existing ? existing.entries : null;
     const existingItemCount = existingEntries ? existingEntries.length : 0;
     const existingStep = existing ? existing.currentStep : 0;
-    const wouldShrink = existing && itemCount < existingItemCount && currentStep < existingStep;
+    // Dropping to ZERO items over a draft that had items is never a
+    // legitimate autosave (intentional clears go through clearDraft /
+    // ?new=1) — it's a restore-gone-wrong overwriting real work, e.g. a
+    // stale server draft clobbering the local copy.
+    const wouldWipeItems = existing && itemCount === 0 && existingItemCount > 0;
+    const wouldShrink =
+      (existing && itemCount < existingItemCount && currentStep < existingStep) || wouldWipeItems;
     if (wouldShrink) {
       log.warn(
         `Autosave skipped — would shrink draft from ${existingItemCount} items / step ${existingStep} to ${itemCount} items / step ${currentStep}`,

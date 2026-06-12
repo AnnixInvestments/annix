@@ -75,7 +75,11 @@ export function processFittingEntry(
   const existing = consolidatedFittings.get(key);
   const rawTotalWeight2 = entry.calculation?.totalWeight;
   const rawCalcFittingWeight = entry.calculation?.fittingWeight;
-  const cachedFittingWeight = rawTotalWeight2 || rawCalcFittingWeight || 0;
+  // Flanges are listed as their own BOQ lines — prefer the body-only
+  // component, else strip the stored flange weight out of the total.
+  const rawCalcFlangeWeight = entry.calculation?.flangeWeight;
+  const cachedFittingWeight =
+    rawCalcFittingWeight || Math.max((rawTotalWeight2 || 0) - (rawCalcFlangeWeight || 0), 0);
   const fittingWeight =
     cachedFittingWeight || fallbackFittingWeight(entry, nb, branchNb, globalHdpeSdr);
 
@@ -126,9 +130,10 @@ export function processFittingEntry(
   const branchOd = rawBranchOutsideDiameterMm || hdpeFittingBranchOd || od;
   const branchWt = rawBranchWallThicknessMm || hdpeFittingBranchWt || wt;
 
-  // Calculate fitting welds (tee weld + flange welds)
-  // One tee weld per fitting
-  const teeWeldLength = qty * ((Math.PI * od) / 1000);
+  // Calculate fitting welds (tee weld + flange welds).
+  // Offset bends have 2 mitre welds instead of a tee weld.
+  const isOffsetBendFitting = entry.specs?.fittingType === "OFFSET_BEND";
+  const teeWeldLength = (isOffsetBendFitting ? 2 : 1) * qty * ((Math.PI * od) / 1000);
   let flangeWeldLength = 0;
   if (fittingFlangeCount.main > 0) {
     flangeWeldLength = fittingFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2;
@@ -188,7 +193,7 @@ export function processFittingEntry(
 
   // Build welds object
   const welds: Record<string, number> = {};
-  if (teeWeldLength > 0) welds[weldTypeName] = teeWeldLength;
+  if (teeWeldLength > 0) welds[isOffsetBendFitting ? "Mitre Weld" : weldTypeName] = teeWeldLength;
   if (flangeWeldLength > 0) welds["Flange Weld"] = flangeWeldLength;
 
   if (existing) {
@@ -435,17 +440,19 @@ export function processFittingEntry(
       const existingGasket = consolidatedGaskets.get(gasketKey);
       const gasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nb);
 
+      // One gasket per bolted joint (= per bolt set), not per flange
+      const mainGasketQty = fittingBoltSets.mainBoltSets * qty;
       if (existingGasket) {
-        existingGasket.qty += flangeQty;
-        existingGasket.weight += gasketWeight * flangeQty;
+        existingGasket.qty += mainGasketQty;
+        existingGasket.weight += gasketWeight * mainGasketQty;
         existingGasket.entries.push(itemNumber);
         existingGasket.entryIds.push(entry.id);
       } else {
         consolidatedGaskets.set(gasketKey, {
           description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
-          qty: flangeQty,
+          qty: mainGasketQty,
           unit: "Each",
-          weight: gasketWeight * flangeQty,
+          weight: gasketWeight * mainGasketQty,
           entries: [itemNumber],
           entryIds: [entry.id],
         });
@@ -533,17 +540,19 @@ export function processFittingEntry(
       const existingBranchGasket = consolidatedGaskets.get(branchGasketKey);
       const branchGasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, branchNb);
 
+      // One gasket per bolted joint on the branch
+      const branchGasketQty = fittingBoltSets.branchBoltSets * qty;
       if (existingBranchGasket) {
-        existingBranchGasket.qty += branchFlangeQty;
-        existingBranchGasket.weight += branchGasketWeight * branchFlangeQty;
+        existingBranchGasket.qty += branchGasketQty;
+        existingBranchGasket.weight += branchGasketWeight * branchGasketQty;
         existingBranchGasket.entries.push(itemNumber);
         existingBranchGasket.entryIds.push(entry.id);
       } else {
         consolidatedGaskets.set(branchGasketKey, {
           description: `${globalSpecs.gasketType} Gasket ${branchNb}NB ${flangeSpec}`,
-          qty: branchFlangeQty,
+          qty: branchGasketQty,
           unit: "Each",
-          weight: branchGasketWeight * branchFlangeQty,
+          weight: branchGasketWeight * branchGasketQty,
           entries: [itemNumber],
           entryIds: [entry.id],
         });

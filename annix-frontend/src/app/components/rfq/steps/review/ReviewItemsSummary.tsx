@@ -6,21 +6,36 @@ import {
   boltSetCountPerFitting as getBoltSetCountPerFitting,
   boltSetCountPerPipe as getBoltSetCountPerPipe,
   fittingBranchNbMm as getFittingBranchNbMm,
+  fittingFlangeCounts as getFittingFlangeCounts,
   weldCountPerBend as getWeldCountPerBend,
   weldCountPerFitting as getWeldCountPerFitting,
   weldCountPerPipe as getWeldCountPerPipe,
 } from "@/app/lib/config/rfq";
 import { bnwSetInfo } from "@/app/lib/query/hooks";
+import { pipeExtrasWeight } from "@/app/lib/utils/rfq/itemSummaryCalculations";
 
 interface ReviewItemsSummaryProps {
   allItems: any[];
   rfqData: any;
   nbToOdMap: Record<number, number>;
   allBnwSets: any[];
+  masterData?: any;
 }
 
 const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
-  const { allItems, rfqData, nbToOdMap, allBnwSets } = props;
+  const { allItems, rfqData, nbToOdMap, allBnwSets, masterData } = props;
+
+  // Per-entry pressure class designation (e.g. "1000/3") — the old
+  // globalSpecs.pressureClassDesignation fallback made everything "PN16".
+  const entryPressureClass = (entry: any): string => {
+    const rawDesignation = rfqData.globalSpecs?.pressureClassDesignation;
+    const rawEntryClassId = entry.specs?.flangePressureClassId;
+    const classId = rawEntryClassId || rfqData.globalSpecs?.flangePressureClassId;
+    const designation = classId
+      ? masterData?.pressureClasses?.find((p: any) => p.id === classId)?.designation
+      : null;
+    return designation || rawDesignation || "PN16";
+  };
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-4">
       <h3 className="text-lg font-semibold text-gray-800 mb-4">Item Requirements</h3>
@@ -67,8 +82,25 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                 <span className="text-sm text-gray-600">
                   {entry.calculation
                     ? entry.itemType === "bend" || entry.itemType === "fitting"
-                      ? `${entry.calculation.totalWeight?.toFixed(2) || 0} kg`
-                      : `${entry.calculation.totalSystemWeight?.toFixed(2) || 0} kg`
+                      ? (() => {
+                          // S-bend = two 90° bends; the engine's totalWeight
+                          // covers one, so add the second bend's weight.
+                          const rawCalcTotal = entry.calculation.totalWeight;
+                          const rawHeaderBendWeight = entry.calculation.bendWeight;
+                          const sBendExtra =
+                            entry.specs?.bendItemType === "S_BEND" ? rawHeaderBendWeight || 0 : 0;
+                          return `${((rawCalcTotal || 0) + sBendExtra).toFixed(2)} kg`;
+                        })()
+                      : (() => {
+                          // Pipes: add closures, tack welds and puddle plate
+                          // (not part of totalSystemWeight).
+                          const rawSystemWeight = entry.calculation.totalSystemWeight;
+                          const rawCalcPipeCount = entry.calculation?.calculatedPipeCount;
+                          const rawPipeQtyValue = entry.specs?.quantityValue;
+                          const pipeQty = rawCalcPipeCount || rawPipeQtyValue || 1;
+                          const extras = pipeExtrasWeight(entry, pipeQty, nbToOdMap);
+                          return `${((rawSystemWeight || 0) + extras).toFixed(2)} kg`;
+                        })()
                     : "Not calculated"}
                 </span>
               </div>
@@ -89,7 +121,10 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                   <div>
                     Weight/item: {(() => {
                       const rawTotalWeight2 = entry.calculation?.totalWeight;
-                      const totalWt = rawTotalWeight2 || 0;
+                      const rawRowBendWeight = entry.calculation?.bendWeight;
+                      const sBendExtra =
+                        entry.specs?.bendItemType === "S_BEND" ? rawRowBendWeight || 0 : 0;
+                      const totalWt = (rawTotalWeight2 || 0) + sBendExtra;
                       const rawQuantityValue5 = entry.specs?.quantityValue;
                       const qty = rawQuantityValue5 || 1;
                       return (totalWt / qty).toFixed(2);
@@ -110,7 +145,9 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                     const bendRadiusMm = nb * radiusFactor;
                     const rawBendDegrees3 = entry.specs?.bendDegrees;
                     const bendAngleRad = ((rawBendDegrees3 || 90) * Math.PI) / 180;
-                    const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+                    // S-bends are two 90° arcs
+                    const sBendFactor = entry.specs?.bendItemType === "S_BEND" ? 2 : 1;
+                    const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad * sBendFactor;
                     let extArea = (od / 1000) * Math.PI * arcLengthM;
                     let intArea = (id / 1000) * Math.PI * arcLengthM;
                     const rawTangentLengths3 = entry.specs?.tangentLengths;
@@ -153,11 +190,21 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                     const circumferenceMm = Math.PI * od;
                     // x2 because each flanged connection requires 2 welds (inside + outside)
                     const weldsPerConnection = 2;
-                    const totalWelds = flangeConnections * weldsPerConnection;
+                    // S-bend: one butt joins the two 90° bends, plus a closure
+                    // butt per loose-flange end (FOE_LF = 1, 2xLF = 2)
+                    const isSBendItem = entry.specs?.bendItemType === "S_BEND";
+                    const configUpper = bendEndConfig.toUpperCase();
+                    const sBendButts = isSBendItem
+                      ? 1 +
+                        (configUpper === "FOE_LF" || configUpper === "2XLF" ? 1 : 0) +
+                        (configUpper === "2XLF" ? 1 : 0)
+                      : 0;
+                    const totalWelds = flangeConnections * weldsPerConnection + sBendButts;
                     const linearWeldMm = totalWelds * circumferenceMm;
                     return (
                       <div className="text-purple-700 col-span-2 font-medium">
-                        Welds/item: {totalWelds} ({flangeConnections} flange × 2) @{" "}
+                        Welds/item: {totalWelds} ({flangeConnections} flange × 2
+                        {sBendButts > 0 ? ` + ${sBendButts} butt` : ""}) @{" "}
                         {circumferenceMm.toFixed(0)}mm circ = {(linearWeldMm / 1000).toFixed(2)}m (
                         {wt.toFixed(1)}mm WT)
                       </div>
@@ -168,9 +215,7 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                     const nb = entry.specs?.nominalBoreMm;
                     const rawBendEndConfiguration2 = entry.specs?.bendEndConfiguration;
                     const bendEndConfig = rawBendEndConfiguration2 || "PE";
-                    const rawPressureClassDesignation =
-                      rfqData.globalSpecs?.pressureClassDesignation;
-                    const pressureClass = rawPressureClassDesignation || "PN16";
+                    const pressureClass = entryPressureClass(entry);
                     if (bendEndConfig === "PE") return null;
                     const flangeCount =
                       bendEndConfig === "FBE"
@@ -299,18 +344,10 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                     const branchNb = getFittingBranchNbMm(entry.specs) || nb;
                     const rawPipeEndConfiguration3 = entry.specs?.pipeEndConfiguration;
                     const fittingEndConfig = rawPipeEndConfiguration3 || "PE";
-                    const rawPressureClassDesignation2 =
-                      rfqData.globalSpecs?.pressureClassDesignation;
-                    const pressureClass = rawPressureClassDesignation2 || "PN16";
+                    const pressureClass = entryPressureClass(entry);
                     if (fittingEndConfig === "PE") return null;
-                    // Parse fitting config for flanges
-                    const config = fittingEndConfig.split("");
-                    let mainFlanges = 0;
-                    let branchFlanges = 0;
-                    // Inlet (pos 0), Outlet (pos 1), Branch (pos 2)
-                    if (config[0] === "F") mainFlanges++;
-                    if (config[1] === "F") mainFlanges++;
-                    if (config[2] === "F") branchFlanges++;
+                    const { main: mainFlanges, branch: branchFlanges } =
+                      getFittingFlangeCounts(fittingEndConfig);
                     const flangeText = [];
                     if (mainFlanges > 0)
                       flangeText.push(`${mainFlanges}x ${nb}NB ${pressureClass}`);
@@ -420,9 +457,7 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
                     const nb = entry.specs?.nominalBoreMm;
                     const rawPipeEndConfiguration5 = entry.specs?.pipeEndConfiguration;
                     const pipeEndConfig = rawPipeEndConfiguration5 || "PE";
-                    const rawPressureClassDesignation3 =
-                      rfqData.globalSpecs?.pressureClassDesignation;
-                    const pressureClass = rawPressureClassDesignation3 || "PN16";
+                    const pressureClass = entryPressureClass(entry);
                     if (pipeEndConfig === "PE") return null;
                     const flangeCount =
                       pipeEndConfig === "FBE"
@@ -503,10 +538,7 @@ const ReviewItemsSummaryInner = (props: ReviewItemsSummaryProps) => {
 
                   if (!hasFlanges && stubFlanges.length === 0) return null;
 
-                  const rawPressureClassDesignation4 =
-                    rfqData.globalSpecs?.pressureClassDesignation;
-
-                  const pressureClass = rawPressureClassDesignation4 || "PN16";
+                  const pressureClass = entryPressureClass(entry);
                   const bnwInfo = bnwSetInfo(allBnwSets, nbMm, pressureClass);
                   const branchBnwInfo =
                     branchFlangeCount > 0

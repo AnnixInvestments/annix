@@ -23,9 +23,27 @@ export const getFlangeSpecs = (
     const rawBoltDiameterMm = apiSpecs.boltDiameterMm;
     const rawBoltLengthMm = apiSpecs.boltLengthMm;
     const rawHoleId = apiSpecs.flangeBoltHoleDiameterMm;
-    // Without bolt data, derive the bolt from the hole — bolts run 2mm
-    // under the hole diameter (Ø22 hole → M20) — rather than a fixed M16.
-    const derivedBoltSize = rawHoleId ? rawHoleId - 2 : 16;
+    // Without bolt data, derive the bolt from the hole. Clearance is 2mm up
+    // to M24 (Ø26) and 3mm from M27 (Ø30) — metric flange bolts only come in
+    // standard sizes, so map the hole to the matching bolt.
+    const HOLE_TO_BOLT: Record<number, number> = {
+      11: 10,
+      14: 12,
+      18: 16,
+      22: 20,
+      26: 24,
+      30: 27,
+      33: 30,
+      36: 33,
+      39: 36,
+      42: 39,
+      48: 45,
+      52: 48,
+      56: 52,
+      62: 56,
+    };
+    const mappedBolt = rawHoleId ? HOLE_TO_BOLT[rawHoleId] : undefined;
+    const derivedBoltSize = rawHoleId ? mappedBolt || rawHoleId - 3 : 16;
     return {
       specs: {
         flangeOD: apiSpecs.flangeOdMm,

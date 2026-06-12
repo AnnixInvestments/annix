@@ -1,9 +1,58 @@
 import { FITTING_CLASS_WALL_THICKNESS } from "@annix/product-data/pipe";
+import { STEEL_DENSITY_KG_M3 } from "@annix/product-data/steel";
+import {
+  closureWeight as getClosureWeight,
+  tackWeldEndsPerPipe as getTackWeldEndsPerPipe,
+  tackWeldWeight as getTackWeldWeight,
+} from "@/app/lib/config/rfq";
 import {
   calculateInsideDiameter,
   calculateTotalSurfaceArea,
 } from "@/app/lib/utils/pipeCalculations";
 import { roundToWeldIncrement } from "@/app/lib/utils/weldThicknessLookup";
+
+// Closures, tack welds and puddle plates aren't part of
+// calculation.totalSystemWeight (pipe + flanges); derive them from specs so
+// every summary surface (Items table, Review page, totals) reports the same
+// line weight as the form's weight breakdown.
+export function pipeExtrasWeight(
+  entry: any,
+  qty: number,
+  nbToOdMap: Record<number, number>,
+): number {
+  const nb = entry.specs?.nominalBoreMm;
+  if (!nb || qty <= 0) return 0;
+  const rawEndConfig = entry.specs?.pipeEndConfiguration;
+  const endConfig = rawEndConfig || "PE";
+  const tackEnds = getTackWeldEndsPerPipe(endConfig);
+  const tackWeight = tackEnds > 0 ? getTackWeldWeight(nb, tackEnds) * qty : 0;
+  const rawClosureLengthMm = entry.specs?.closureLengthMm;
+  const closureLengthMm = rawClosureLengthMm || 0;
+  const rawSpecWall = entry.specs?.wallThicknessMm;
+  const rawCalcWall = entry.calculation?.wallThicknessMm;
+  const wallThickness = rawSpecWall || rawCalcWall || 0;
+  const closureTotal =
+    closureLengthMm > 0 && wallThickness > 0
+      ? getClosureWeight(nb, closureLengthMm, wallThickness, nbToOdMap) * qty
+      : 0;
+  const isPuddle = entry.specs?.pipeType === "puddle";
+  const rawPuddleOdMm = entry.specs?.puddleFlangeOdMm;
+  const puddleOdMm = rawPuddleOdMm || 0;
+  const rawPuddleThkMm = entry.specs?.puddleFlangeThicknessMm;
+  const puddleThkMm = rawPuddleThkMm || 0;
+  const rawCalcOdMm = entry.calculation?.outsideDiameterMm;
+  const rawMapOdMm = nbToOdMap[nb];
+  const pipeOdMm = rawCalcOdMm || rawMapOdMm || 0;
+  const puddleWeight =
+    isPuddle && puddleOdMm > 0 && puddleThkMm > 0 && pipeOdMm > 0
+      ? Math.PI *
+        ((puddleOdMm / 2000) ** 2 - (pipeOdMm / 2000) ** 2) *
+        (puddleThkMm / 1000) *
+        STEEL_DENSITY_KG_M3 *
+        qty
+      : 0;
+  return tackWeight + closureTotal + puddleWeight;
+}
 
 interface WeldThicknessResult {
   thickness: number | null;

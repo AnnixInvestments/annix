@@ -202,6 +202,36 @@ export function useFittingFormLogic(props: FittingFormProps) {
     }, 100);
   }, [entry.id, onCalculateFitting]);
 
+  // Calculation only fires on field changes — an entry restored from a
+  // draft (or whose calc predates an engine fix) mounts with specs but no
+  // calculation, leaving the calc-results card missing and the summary at
+  // 0.00kg until the user happens to edit something. Trigger once on mount
+  // when the minimum inputs exist.
+  const hasTriggeredInitialCalcRef = useRef(false);
+  useEffect(() => {
+    if (hasTriggeredInitialCalcRef.current) return;
+    // Wait for the flange weight table — calculating against an empty
+    // array silently stores per-NB fallback weights (e.g. 80kg/flange).
+    if (allWeights.length === 0) return;
+    const rawFittingType = entry.specs?.fittingType;
+    const rawNominalDiameterMm = entry.specs?.nominalDiameterMm;
+    const rawNominalBoreMm = entry.specs?.nominalBoreMm;
+    if (!rawFittingType || !(rawNominalDiameterMm || rawNominalBoreMm)) return;
+    if (entry.calculation) {
+      hasTriggeredInitialCalcRef.current = true;
+      return;
+    }
+    hasTriggeredInitialCalcRef.current = true;
+    debouncedCalculate();
+  }, [
+    allWeights.length,
+    entry.specs?.fittingType,
+    entry.specs?.nominalDiameterMm,
+    entry.specs?.nominalBoreMm,
+    entry.calculation,
+    debouncedCalculate,
+  ]);
+
   const handleWorkingPressureChange = useCallback(
     (value: number | undefined) => {
       onUpdateEntry(entry.id, { specs: { ...entry.specs, workingPressureBar: value } });

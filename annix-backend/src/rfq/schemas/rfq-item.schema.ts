@@ -22,7 +22,9 @@ export class RfqItem {
   @Prop({ type: String, required: true })
   itemType: string;
 
-  @Prop({ type: String, required: true })
+  // Frontend convention: steel items carry no materialType (only hdpe/pvc
+  // set it explicitly) — default rather than reject the whole submission.
+  @Prop({ type: String, required: true, default: "steel" })
   materialType: string;
 
   @Prop({ type: Number, required: true })

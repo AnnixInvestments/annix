@@ -90,6 +90,11 @@ export class RfqDraft {
   @JoinColumn({ name: "created_by_user_id" })
   createdBy: User;
 
+  // Scalar FK shape used by the Mongo schema (where createdBy is only a
+  // populate virtual that mongoose drops on save). Undecorated on purpose —
+  // TypeORM ignores it; the relation above is the relational source of truth.
+  createdById?: number;
+
   @ApiProperty({
     description: "ID of the converted RFQ (if submitted)",
     required: false,

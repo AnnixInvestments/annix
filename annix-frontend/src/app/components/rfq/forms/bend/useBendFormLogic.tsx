@@ -191,6 +191,37 @@ export function useBendFormLogic(props: BendFormProps) {
     }, 100);
   }, [entry.id, onCalculateBend]);
 
+  // Re-run the calc once on mount when it's missing, or when it predates
+  // the client-side flange pricing (flanged config but no flangeWeight
+  // stored) — drafts otherwise keep showing stale engine-only weights
+  // until the user happens to edit a field.
+  const hasTriggeredInitialCalcRef = useRef(false);
+  useEffect(() => {
+    if (hasTriggeredInitialCalcRef.current) return;
+    // Wait for the flange weight table — calculating against an empty
+    // array silently stores per-NB fallback weights (e.g. 80kg/flange).
+    if (allWeights.length === 0) return;
+    const nb = specs.nominalBoreMm;
+    const schedule = specs.scheduleNumber;
+    if (!nb || !schedule) return;
+    const rawBendEndConfig = specs.bendEndConfiguration;
+    const isFlanged = (rawBendEndConfig || "PE") !== "PE";
+    // A flanged bend never legitimately has zero flange weight — 0 means
+    // the calc ran before the weight table loaded (or predates pricing).
+    const existingCalc = entry.calculation;
+    const storedFlangeWeight = existingCalc ? (existingCalc as any).flangeWeight : undefined;
+    const calcIsStale = !existingCalc || (isFlanged && !storedFlangeWeight);
+    hasTriggeredInitialCalcRef.current = true;
+    if (calcIsStale) debouncedCalculate();
+  }, [
+    allWeights.length,
+    specs.nominalBoreMm,
+    specs.scheduleNumber,
+    specs.bendEndConfiguration,
+    entry.calculation,
+    debouncedCalculate,
+  ]);
+
   const handleSteelSpecChange = useCallback(
     (value: string) => {
       const newSpecId = value ? Number(value) : undefined;

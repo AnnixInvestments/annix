@@ -90,7 +90,13 @@ export class RfqDraftService {
     } else {
       savedDraft = await this.rfqDraftRepository.create({
         draftNumber: await this.generateDraftNumber(),
+        // Both ownership shapes: TypeORM persists the createdBy relation;
+        // the Mongo schema stores createdById and treats createdBy as a
+        // virtual, which mongoose silently DROPS on save — drafts were
+        // created ownerless and every findByIdForUser then 404'd
+        // ("not found or access denied") on reload and autosave.
         createdBy: user,
+        createdById: user.id,
         ...draftFields,
       });
     }

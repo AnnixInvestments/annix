@@ -1,7 +1,7 @@
 import { sans1123StubAssemblyDescription } from "@annix/product-data/hdpe";
 import { FLANGE_OD } from "@annix/product-data/pipe";
 import { keys } from "es-toolkit/compat";
-import { boltSetCountPerBend } from "@/app/lib/config/rfq/pipeEndOptions";
+import { boltSetCountPerBend, flangeWeldCountPerBend } from "@/app/lib/config/rfq/pipeEndOptions";
 import {
   blankFlangeSurfaceArea,
   bnwSetInfo,
@@ -81,9 +81,20 @@ export function processBendEntry(
   const rawBendWeight = entry.calculation?.bendWeight;
   const rawTangentWeight = entry.calculation?.tangentWeight;
   // The engine calculates a single bend; an S-bend is two of them.
+  // Prefer the bend+tangent components — calculation.totalWeight now also
+  // carries flange weight, and BOQ lists flanges as their own lines, so
+  // using it here would double-count them.
   const sBendFactor = isSBend ? 2 : 1;
+  const rawFlangeWeight = entry.calculation?.flangeWeight;
+  const rawClosureWeight = entry.calculation?.closureWeight;
+  const rawTackWeldWeight = entry.calculation?.tackWeldWeight;
+  const componentWeight =
+    (rawBendWeight || 0) * sBendFactor +
+    (rawTangentWeight || 0) +
+    (rawClosureWeight || 0) +
+    (rawTackWeldWeight || 0);
   const cachedBendWeight =
-    rawTotalWeight || (rawBendWeight || 0) * sBendFactor + (rawTangentWeight || 0);
+    componentWeight || Math.max((rawTotalWeight || 0) - (rawFlangeWeight || 0), 0);
   const bendWeight = cachedBendWeight || fallbackBendWeight(entry, nb, globalHdpeSdr) * sBendFactor;
 
   const rawNumberOfSegments = entry.specs?.numberOfSegments;
@@ -130,17 +141,27 @@ export function processBendEntry(
   // Build welds object
   const welds: Record<string, number> = {};
   if (mitreWeldLength > 0) welds["Mitre Weld"] = mitreWeldLength;
-  // S-bend: one butt weld joins the two 90° bends
-  if (isSBend && od > 0) welds["Butt Weld"] = qty * ((Math.PI * od) / 1000);
+  // S-bend: one butt joins the two 90° bends, plus a closure butt per
+  // loose-flange end (FOE_LF = 1, 2xLF = 2)
+  if (isSBend && od > 0) {
+    const rawSBendEndConfig = entry.specs?.bendEndConfiguration;
+    const sBendConfigUpper = (rawSBendEndConfig || "PE").toUpperCase();
+    const closureButts =
+      (sBendConfigUpper === "FOE_LF" || sBendConfigUpper === "2XLF" ? 1 : 0) +
+      (sBendConfigUpper === "2XLF" ? 1 : 0);
+    welds["Butt Weld"] = (1 + closureButts) * qty * ((Math.PI * od) / 1000);
+  }
 
   const rawBendEndConfiguration = entry.specs?.bendEndConfiguration;
 
   // Flange welds for bends
   const bendEndConfig = rawBendEndConfiguration || "PE";
   const bendFlangeCount = getFlangeCountFromConfig(bendEndConfig, "bend");
-  if (bendFlangeCount.main > 0) {
-    // x2 for inside + outside
-    const flangeWeldLength = bendFlangeCount.main * qty * ((Math.PI * od) / 1000) * 2;
+  // Only WELDED flanges get flange welds (loose/rotating are tack-only);
+  // x2 for inside + outside passes.
+  const bendFlangeWeldCount = flangeWeldCountPerBend(bendEndConfig);
+  if (bendFlangeWeldCount > 0) {
+    const flangeWeldLength = bendFlangeWeldCount * qty * ((Math.PI * od) / 1000) * 2;
     if (flangeWeldLength > 0) welds["Flange Weld"] = flangeWeldLength;
   }
 
@@ -199,7 +220,9 @@ export function processBendEntry(
     // Centre-to-face dimension on the bend description — gives
     // the supplier the take-off geometry without needing to
     // open the bend table.
-    const bendCfMm = bendCenterToFaceMm(nb, angle, bendType);
+    const rawCenterToFaceMm = Number(entry.specs?.centerToFaceMm);
+    const bendCfMm =
+      rawCenterToFaceMm > 0 ? rawCenterToFaceMm : bendCenterToFaceMm(nb, angle, bendType);
     const bendCfSuffix = bendCfMm > 0 ? `, ${bendCfMm}mm C/F` : "";
     const bendKindLabel = isSBend ? `S-Bend (2×90° ${bendType})` : `${angle}° ${bendType} Bend`;
     consolidatedBends.set(key, {
@@ -308,17 +331,18 @@ export function processBendEntry(
       const existingGasket = consolidatedGaskets.get(gasketKey);
       const gasketWeight = gasketWeightLookup(allGaskets, globalSpecs.gasketType, nb);
 
+      // One gasket per bolted joint (= per bolt set), not per flange
       if (existingGasket) {
-        existingGasket.qty += flangeQty;
-        existingGasket.weight += gasketWeight * flangeQty;
+        existingGasket.qty += boltSetQty;
+        existingGasket.weight += gasketWeight * boltSetQty;
         existingGasket.entries.push(itemNumber);
         existingGasket.entryIds.push(entry.id);
       } else {
         consolidatedGaskets.set(gasketKey, {
           description: `${globalSpecs.gasketType} Gasket ${nb}NB ${flangeSpec}`,
-          qty: flangeQty,
+          qty: boltSetQty,
           unit: "Each",
-          weight: gasketWeight * flangeQty,
+          weight: gasketWeight * boltSetQty,
           entries: [itemNumber],
           entryIds: [entry.id],
         });

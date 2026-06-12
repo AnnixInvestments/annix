@@ -21,6 +21,7 @@ export function buildBoqConsolidation(deps: {
   const flangeSpecLookup = {
     globalFlangeStandardId: globalSpecs?.flangeStandardId,
     globalFlangePressureClassId: globalSpecs?.flangePressureClassId,
+    globalFlangeTypeCode: globalSpecs?.flangeTypeCode,
     flangeStandards: masterData?.flangeStandards,
     pressureClasses: masterData?.pressureClasses,
   };

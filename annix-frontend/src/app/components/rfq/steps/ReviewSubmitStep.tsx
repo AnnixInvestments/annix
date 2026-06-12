@@ -2,12 +2,15 @@
 
 import { toPairs as entries, keys, values } from "es-toolkit/compat";
 import {
+  fittingBranchNbMm as getFittingBranchNbMm,
+  fittingFlangeCounts as getFittingFlangeCounts,
   weldCountPerBend as getWeldCountPerBend,
   weldCountPerFitting as getWeldCountPerFitting,
   weldCountPerPipe as getWeldCountPerPipe,
 } from "@/app/lib/config/rfq";
 import { useAllBnwSetWeights, useNbToOdMap } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { pipeExtrasWeight } from "@/app/lib/utils/rfq/itemSummaryCalculations";
 import { ReviewItemsSummary } from "./review/ReviewItemsSummary";
 
 export default function ReviewSubmitStep(props: {
@@ -16,8 +19,27 @@ export default function ReviewSubmitStep(props: {
 }) {
   const { onNextStep, onPrevStep } = props;
   const rfqData = useRfqWizardStore((s) => s.rfqData) as any;
+  const masterData = useRfqWizardStore((s) => s.masterData) as any;
   const errors = useRfqWizardStore((s) => s.validationErrors);
   const loading = useRfqWizardStore((s) => s.isSubmitting);
+
+  // Resolve the flange spec label (e.g. "SABS 1123 1000/3") from the global
+  // flange selections instead of the unset pressureClassDesignation field —
+  // the old fallback made everything read "PN16".
+  const resolvedFlangeSpec = (() => {
+    const rawDesignation = rfqData.globalSpecs?.pressureClassDesignation;
+    if (rawDesignation) return rawDesignation;
+    const classId = rfqData.globalSpecs?.flangePressureClassId;
+    const designation = classId
+      ? masterData?.pressureClasses?.find((p: any) => p.id === classId)?.designation
+      : null;
+    if (!designation) return "PN16";
+    const standardId = rfqData.globalSpecs?.flangeStandardId;
+    const standardCode = standardId
+      ? masterData?.flangeStandards?.find((s: any) => s.id === standardId)?.code
+      : null;
+    return standardCode ? `${standardCode} ${designation}` : designation;
+  })();
   const { data: nbToOdMap = {} } = useNbToOdMap();
   const { data: allBnwSets = [] } = useAllBnwSetWeights();
 
@@ -29,11 +51,20 @@ export default function ReviewSubmitStep(props: {
     return allItems.reduce((total: number, entry: any) => {
       const rawTotalWeight = entry.calculation?.totalWeight;
       const rawTotalSystemWeight = entry.calculation?.totalSystemWeight;
-      // Bends and fittings use totalWeight, straight pipes use totalSystemWeight
+      // Bends and fittings use totalWeight, straight pipes use totalSystemWeight.
+      // S-bends are two 90° bends — the engine's figures cover one, so add
+      // the second bend's weight on top.
+      const rawSBendBendWeight = entry.calculation?.bendWeight;
+      const sBendExtra = entry.specs?.bendItemType === "S_BEND" ? rawSBendBendWeight || 0 : 0;
+      // Pipes: totalSystemWeight covers pipe + flanges; closures, tack welds
+      // and puddle plates come from specs via pipeExtrasWeight.
+      const rawCalculatedPipeCount = entry.calculation?.calculatedPipeCount;
+      const rawQuantityValuePipe = entry.specs?.quantityValue;
+      const pipeQty = rawCalculatedPipeCount || rawQuantityValuePipe || 1;
       const weight =
         entry.itemType === "bend" || entry.itemType === "fitting"
-          ? rawTotalWeight || 0
-          : rawTotalSystemWeight || 0;
+          ? (rawTotalWeight || 0) + sBendExtra
+          : (rawTotalSystemWeight || 0) + pipeExtrasWeight(entry, pipeQty, nbToOdMap);
       return total + weight;
     }, 0);
   };
@@ -53,7 +84,9 @@ export default function ReviewSubmitStep(props: {
         const bendRadiusMm = nb * radiusFactor;
         const rawBendDegrees = entry.specs?.bendDegrees;
         const bendAngleRad = ((rawBendDegrees || 90) * Math.PI) / 180;
-        const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad;
+        // S-bends are two 90° arcs
+        const sBendFactor = entry.specs?.bendItemType === "S_BEND" ? 2 : 1;
+        const arcLengthM = (bendRadiusMm / 1000) * bendAngleRad * sBendFactor;
 
         const rawTangentLengths = entry.specs?.tangentLengths;
 
@@ -258,6 +291,7 @@ export default function ReviewSubmitStep(props: {
           rfqData={rfqData}
           nbToOdMap={nbToOdMap}
           allBnwSets={allBnwSets}
+          masterData={masterData}
         />
         {/* Total Summary */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
@@ -306,10 +340,22 @@ export default function ReviewSubmitStep(props: {
                       ((flangeConnections * weldsPerFlange * Math.PI * od) / 1000) * itemQty;
                     totalWeldCount += flangeConnections * weldsPerFlange * itemQty;
                   }
+                  // S-bend: one butt joins the two 90° bends, plus a closure
+                  // butt per loose-flange end (FOE_LF = 1, 2xLF = 2)
+                  if (nb && entry.specs?.bendItemType === "S_BEND") {
+                    const rawNbSb = nbToOdMap[nb];
+                    const odSb = rawNbSb || nb * 1.05;
+                    const configUpper = bendEndConfig.toUpperCase();
+                    const closureButts =
+                      (configUpper === "FOE_LF" || configUpper === "2XLF" ? 1 : 0) +
+                      (configUpper === "2XLF" ? 1 : 0);
+                    const sBendButts = 1 + closureButts;
+                    totalWeldLengthM += ((sBendButts * Math.PI * odSb) / 1000) * itemQty;
+                    totalWeldCount += sBendButts * itemQty;
+                  }
                 } else if (entry.itemType === "fitting") {
                   const nb = entry.specs?.nominalDiameterMm;
-                  const rawBranchNominalDiameterMm6 = entry.specs?.branchNominalDiameterMm;
-                  const branchNb = rawBranchNominalDiameterMm6 || nb;
+                  const branchNb = getFittingBranchNbMm(entry.specs) || nb;
                   const rawPipeEndConfiguration8 = entry.specs?.pipeEndConfiguration;
                   const fittingEndConfig = rawPipeEndConfiguration8 || "PE";
                   const flangeConnections = getWeldCountPerFitting(fittingEndConfig);
@@ -390,17 +436,12 @@ export default function ReviewSubmitStep(props: {
                   }
                 } else if (entry.itemType === "fitting") {
                   const nb = entry.specs?.nominalDiameterMm;
-                  const rawBranchNominalDiameterMm7 = entry.specs?.branchNominalDiameterMm;
-                  const branchNb = rawBranchNominalDiameterMm7 || nb;
+                  const branchNb = getFittingBranchNbMm(entry.specs) || nb;
                   const rawPipeEndConfiguration10 = entry.specs?.pipeEndConfiguration;
                   const fittingEndConfig = rawPipeEndConfiguration10 || "PE";
                   if (fittingEndConfig !== "PE") {
-                    const config = fittingEndConfig.split("");
-                    let mainFlanges = 0,
-                      branchFlanges = 0;
-                    if (config[0] === "F") mainFlanges++;
-                    if (config[1] === "F") mainFlanges++;
-                    if (config[2] === "F") branchFlanges++;
+                    const { main: mainFlanges, branch: branchFlanges } =
+                      getFittingFlangeCounts(fittingEndConfig);
                     if (mainFlanges > 0) {
                       const key = `${nb}NB`;
                       const rawKey2 = flangesBySize[key];
@@ -434,13 +475,11 @@ export default function ReviewSubmitStep(props: {
               });
               const totalFlanges = values(flangesBySize).reduce((sum, count) => sum + count, 0);
               if (totalFlanges === 0) return null;
-              const rawPressureClassDesignation5 = rfqData.globalSpecs?.pressureClassDesignation;
-              const pressureClass = rawPressureClassDesignation5 || "PN16";
               return (
                 <div className="text-center">
                   <p className="text-sm font-medium text-blue-700">Total Flanges</p>
                   <p className="text-2xl font-bold text-blue-900">{totalFlanges}</p>
-                  <p className="text-xs text-blue-600">{pressureClass}</p>
+                  <p className="text-xs text-blue-600">{resolvedFlangeSpec}</p>
                 </div>
               );
             })()}
