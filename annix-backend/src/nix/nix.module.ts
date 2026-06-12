@@ -27,6 +27,7 @@ import { CustomerProfileSchema } from "../customer/schemas/customer-profile.sche
 import { EmailModule } from "../email/email.module";
 import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
+import { MetricsModule } from "../metrics/metrics.module";
 import { SaMine } from "../mines/entities/sa-mine.entity";
 import { MinesModule } from "../mines/mines.module";
 import { SaMineRepository } from "../mines/sa-mine.repository";
@@ -68,7 +69,12 @@ import { PostgresSupplierProfileRepository } from "../supplier/supplier-profile.
 import { UserSchema } from "../user/schemas/user.schema";
 import { AiChatService } from "./ai-providers/ai-chat.service";
 import { AiExtractionService } from "./ai-providers/ai-extraction.service";
-import { NixCapabilityRegistry, NixGuideLoader, WalkthroughEngine } from "./capabilities";
+import {
+  NixAppRouterService,
+  NixCapabilityRegistry,
+  NixGuideLoader,
+  WalkthroughEngine,
+} from "./capabilities";
 import { NixCapabilitiesController } from "./controllers/nix-capabilities.controller";
 import { NixChatController } from "./controllers/nix-chat.controller";
 import { NixWalkthroughController } from "./controllers/nix-walkthrough.controller";
@@ -145,6 +151,7 @@ import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
 import { QuoteToJobCardService } from "./services/quote-to-job-card.service";
 import { RegistrationDocumentVerifierService } from "./services/registration-document-verifier.service";
+import { RoleClassifierService } from "./services/role-classifier.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
 @Module({
@@ -223,6 +230,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     StorageModule,
     EmailModule,
     AuditModule,
+    MetricsModule,
     forwardRef(() => RfqModule),
   ],
   controllers: [
@@ -238,6 +246,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     CustomFieldService,
     NixExtractionProfileRegistry,
     NixCapabilityRegistry,
+    NixAppRouterService,
     NixGuideLoader,
     WalkthroughEngine,
     RfqPipingProfileHandler,
@@ -255,6 +264,7 @@ import { WordExtractorService } from "./services/word-extractor.service";
     PdfExtractorService,
     QuotePdfService,
     QuoteToJobCardService,
+    RoleClassifierService,
     CompanyEmailService,
     WordExtractorService,
     AiChatService,
@@ -352,8 +362,10 @@ import { WordExtractorService } from "./services/word-extractor.service";
     repositoryProvider(CompanyRepository, PostgresCompanyRepository, MongoCompanyRepository),
   ],
   exports: [
+    NixAppRouterService,
     NixService,
     NixExtractionSessionService,
+    RoleClassifierService,
     NixChatService,
     NixItemParserService,
     NixValidationService,

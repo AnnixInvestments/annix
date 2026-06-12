@@ -17,6 +17,7 @@ import {
   type ValidationIssue,
 } from "@/app/lib/query/hooks";
 import { useRfqWizardStore } from "@/app/lib/store/rfqWizardStore";
+import { NixWalkthroughBar } from "./NixWalkthroughBar";
 
 const NIX_SESSION_STORAGE_KEY = "nix-chat-session-id";
 
@@ -1061,6 +1062,8 @@ export function NixChatPanel(props: NixChatPanelProps) {
           <p className="text-xs text-yellow-700 dark:text-yellow-400">Ask Nix about these issues</p>
         </div>
       ) : null}
+
+      <NixWalkthroughBar sessionId={sessionId} refreshKey={messages.length} />
 
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 min-h-0">
         {initError ? (

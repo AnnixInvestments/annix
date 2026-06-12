@@ -51,6 +51,7 @@ export interface StraightPipeEntry {
   availableUpgrades?: PipeDimension[];
   hasFlangeOverride?: boolean;
   flangeOverrideConfirmed?: boolean;
+  userEdited?: boolean;
 }
 
 export interface BendStub {
@@ -384,7 +385,12 @@ export interface FastenerEntry {
   notes?: string;
 }
 
-export type PipeItem =
+// userEdited is stamped by the orchestrator's handleUpdateEntry choke
+// point (user-driven edits only — automatic recalculations bypass it).
+// The Nix re-extraction dedup in rfqWizardStore keeps a userEdited row
+// over a freshly re-extracted copy of the same source sheet+row, so
+// manual corrections survive a re-run of extraction (issue #293).
+export type PipeItem = (
   | StraightPipeEntry
   | BendEntry
   | FittingEntry
@@ -394,7 +400,8 @@ export type PipeItem =
   | InstrumentEntry
   | PumpEntry
   | TankChuteEntry
-  | FastenerEntry;
+  | FastenerEntry
+) & { userEdited?: boolean };
 
 export interface GlobalSpecs {
   workingPressureBar?: number;

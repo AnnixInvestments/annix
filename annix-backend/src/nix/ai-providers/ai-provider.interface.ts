@@ -167,6 +167,20 @@ diameter is INCOMPLETE — emit it with secondaryDiameter: null and a
 clear note in the description field indicating the reduction pair is
 missing, so the quoter sees the gap.
 
+NESTED SUB-ITEMS — a row's OWN description always beats inherited
+context. BOQ paragraphs often nest sub-items under a parent line,
+e.g. line 52 "DN 450 rubber-lined mild steel pipes with two DN 100
+spigot offtakes" followed by line 53 "DN 100 flexible spigot pipes
+(rubber slurry hose)". When a sub-item's own description names an
+explicit size (DN 100, 100NB, 100 mm diameter), that size MUST be
+used as the sub-item's diameter — NEVER carry the parent paragraph's
+or section heading's diameter onto a sub-item that states its own.
+The same rule applies to material: a sub-item described as "rubber
+slurry hose" is a hose, not the parent's steel — set its material
+(and lining, if any) from its own description, not the parent's.
+Getting this wrong massively inflates quoted weight: a DN 100 hose
+priced as 15 km of DN 450 steel pipe once added 1,370 t to an RFQ.
+
 For fabricated assemblies (itemType = "tank_chute" — tanks, chutes, hoppers, underpans, pulleys, drums, launders, custom), also extract:
 - assemblyType: one of tank, chute, hopper, underpan, pulley, drum, launder, custom — pick the closest fit
 - drawingReference: drawing number / revision

@@ -1324,6 +1324,7 @@ export function useOrchestratorLogic(props: Props) {
     getFilteredPressureClasses,
     masterData,
     nixClarifications,
+    nixExtractedItems,
     nixExtractionId,
     nixItemsPageReady,
     pendingDocuments,

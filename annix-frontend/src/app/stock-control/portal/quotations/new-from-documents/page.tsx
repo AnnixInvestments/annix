@@ -6,12 +6,17 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
-import { DocumentBucket, type PendingDocument } from "@/app/components/uploads";
 import { useStockControlAuth } from "@/app/context/StockControlAuthContext";
 import { useAdaptiveExtractionProgress } from "@/app/lib/hooks/useAdaptiveExtractionProgress";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { type NixDocumentRole, nixApi } from "@/app/lib/nix";
 import { DocNumberAutocomplete } from "@/app/lib/nix/components/library";
+import {
+  extractionPassesOf,
+  SmartDropzone,
+  type SmartPendingDocument,
+  useSmartDocuments,
+} from "@/app/lib/nix/components/upload";
 import { isEmlFile, parseEmail } from "@/app/lib/nix/emlAttachmentExtractor";
 import {
   type NixExtractionSessionDto,
@@ -24,18 +29,6 @@ const NIX_QUOTE_FROM_DOCS_FLAG = "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS";
 
 const ASCA_PROFILE_KEY = "asca-quote-documents";
 const ASCA_SOURCE_MODULE = "asca";
-
-interface BucketState {
-  documents: PendingDocument[];
-  confirmed: boolean;
-  processing: boolean;
-}
-
-const emptyBucket: BucketState = {
-  documents: [],
-  confirmed: false,
-  processing: false,
-};
 
 export default function QuoteFromDocumentsPage() {
   const router = useRouter();
@@ -52,8 +45,9 @@ export default function QuoteFromDocumentsPage() {
     ? parsedExistingSessionId
     : null;
 
-  const [drawings, setDrawings] = useState<BucketState>(emptyBucket);
-  const [specs, setSpecs] = useState<BucketState>(emptyBucket);
+  const smartDocs = useSmartDocuments();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processedCount, setProcessedCount] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [session, setSession] = useState<NixExtractionSessionDto | null>(null);
   const [docNumberQuery, setDocNumberQuery] = useState("");
@@ -81,8 +75,8 @@ export default function QuoteFromDocumentsPage() {
     return created;
   }, [session, createSessionMutation]);
 
-  const addDocumentTo = useCallback(
-    (set: typeof setDrawings) => (file: File) => {
+  const addDocument = useCallback(
+    (file: File) => {
       // .eml drops: parse the email in-browser, route its PDF / XLSX
       // attachments into the same bucket the .eml landed in. Inline
       // images (signatures) are skipped. The email body is surfaced as
@@ -103,12 +97,7 @@ export default function QuoteFromDocumentsPage() {
             let attachmentsAdded = 0;
             for (const attachment of parsed.attachments) {
               if (attachment.kind === "image") continue;
-              const att = attachment.file;
-              const id = `eml-${att.name}-${att.size}-${Math.random().toString(36).slice(2, 8)}`;
-              set((prev) => ({
-                ...prev,
-                documents: [...prev.documents, { file: att, id }],
-              }));
+              smartDocs.addFile(attachment.file);
               attachmentsAdded += 1;
             }
             const subjectRaw = parsed.metadata.subject;
@@ -131,29 +120,17 @@ export default function QuoteFromDocumentsPage() {
           });
         return;
       }
-      set((prev) => ({
-        ...prev,
-        documents: [
-          ...prev.documents,
-          { file, id: `${file.name}-${file.size}-${file.lastModified}` },
-        ],
-      }));
+      smartDocs.addFile(file);
     },
-    [showToast, alert],
+    [showToast, alert, smartDocs],
   );
 
-  const removeDocumentFrom = useCallback(
-    (set: typeof setDrawings) => (id: string) => {
-      set((prev) => ({
-        ...prev,
-        documents: prev.documents.filter((doc) => doc.id !== id),
-      }));
-    },
-    [],
-  );
-
-  const processBucket = useCallback(
-    async (bucket: BucketState, role: NixDocumentRole, label: string): Promise<void> => {
+  const processPass = useCallback(
+    async (
+      role: NixDocumentRole,
+      documents: SmartPendingDocument[],
+      label: string,
+    ): Promise<void> => {
       const activeSession = await ensureSession();
       const verdicts: Array<{
         filename: string;
@@ -165,16 +142,16 @@ export default function QuoteFromDocumentsPage() {
         brand: "stock-control",
         metricCategory: "asca-quote-extract",
         metricOperation: role,
-        items: bucket.documents,
+        items: documents,
         itemId: (doc) => doc.id,
         itemLabel: (doc, i, t) =>
-          `Reading ${role === "drawing" ? "drawing" : "specification"} ${i + 1} of ${t}: ${doc.file.name}`,
+          `Reading ${label.toLowerCase()} ${i + 1} of ${t}: ${doc.file.name}`,
         run: async (doc) => {
           const response = await nixApi.uploadAndProcess(doc.file, {
             userId,
             sourceModule: ASCA_SOURCE_MODULE,
             extractionProfile: ASCA_PROFILE_KEY,
-            documentRole: role,
+            documentRole: doc.role,
             sessionId: activeSession.id,
           });
           if (response.revisionVerdict) {
@@ -198,39 +175,44 @@ export default function QuoteFromDocumentsPage() {
     [userId, showToast, ensureSession, runBulk, showExtraction, hideExtraction],
   );
 
-  const handleConfirmDrawings = useCallback(async () => {
-    setErrorMessage(null);
-    setDrawings((prev) => ({ ...prev, confirmed: true, processing: true }));
-    try {
-      await processBucket(drawings, "drawing", "Drawings");
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Drawing upload failed");
-      setDrawings((prev) => ({ ...prev, confirmed: false }));
-    } finally {
-      setDrawings((prev) => ({ ...prev, processing: false }));
+  // One button, two-pass orchestration (issue #266): even from a
+  // single dropzone, drawings extract before specifications so the
+  // spec prompt's cross-linking block still receives the drawings'
+  // referencedCodes as session context. 'Other' goes last - no
+  // cross-link dependency.
+  const handleProcessAll = useCallback(async () => {
+    if (smartDocs.documents.length === 0) {
+      setErrorMessage("Add at least one document before sending to Nix.");
+      return;
     }
-  }, [drawings, processBucket]);
-
-  const handleConfirmSpecs = useCallback(async () => {
-    setErrorMessage(null);
-    setSpecs((prev) => ({ ...prev, confirmed: true, processing: true }));
-    try {
-      await processBucket(specs, "specification", "Specifications");
-    } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : "Specification upload failed");
-      setSpecs((prev) => ({ ...prev, confirmed: false }));
-    } finally {
-      setSpecs((prev) => ({ ...prev, processing: false }));
+    if (smartDocs.documents.some((doc) => doc.classifying)) {
+      setErrorMessage("Still classifying a document - give it a second, or set its role manually.");
+      return;
     }
-  }, [specs, processBucket]);
+    setErrorMessage(null);
+    setIsProcessing(true);
+    try {
+      const passes = extractionPassesOf(smartDocs.documents);
+      const passLabels: Record<NixDocumentRole, string> = {
+        drawing: "Drawings",
+        specification: "Specifications",
+        other: "Other documents",
+      };
+      await passes.reduce(
+        (chain, pass) =>
+          chain.then(() => processPass(pass.role, pass.documents, passLabels[pass.role])),
+        Promise.resolve(),
+      );
+      setProcessedCount(smartDocs.documents.length);
+      smartDocs.reset();
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Document upload failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [smartDocs, processPass]);
 
-  const handleEmptyConfirm = useCallback(() => {
-    setErrorMessage("Add at least one document before confirming.");
-  }, []);
-
-  const drawingsConfirmed = drawings.confirmed;
-  const specsConfirmed = specs.confirmed;
-  const reviewReady = session !== null && (drawingsConfirmed || specsConfirmed);
+  const reviewReady = session !== null && processedCount > 0;
 
   // Gate: this whole flow is the 'Nix quote from documents' add-on. When
   // the feature flag is off (base-tier deployment), redirect users back
@@ -264,9 +246,9 @@ export default function QuoteFromDocumentsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">New quote from documents</h1>
           <p className="text-sm text-gray-600 mt-1">
-            Drop customer drawings and specifications separately. Drawings extract first;
-            specifications extract second with the drawings' items as Nix's context, so paint codes
-            / material classes get cross-linked to the spec clauses that define them.
+            Drop the whole customer pack in one place - Nix tags each file as a drawing,
+            specification or other document. Drawings still extract first so paint codes / material
+            classes cross-link to the spec clauses that define them.
           </p>
         </div>
         <Link
@@ -307,40 +289,17 @@ export default function QuoteFromDocumentsPage() {
         />
       </div>
 
-      <DocumentBucket
-        id="asca-drawings"
-        title="Drawings"
-        subtitle="Workshop sheets, BOQ, isometrics — extracted first"
-        tone="blue"
-        documents={drawings.documents}
-        onAddDocument={addDocumentTo(setDrawings)}
-        onRemoveDocument={removeDocumentFrom(setDrawings)}
-        isConfirmed={drawings.confirmed}
-        onConfirm={handleConfirmDrawings}
-        onUnconfirm={() =>
-          setDrawings((prev) => ({ ...prev, confirmed: false, processing: false }))
-        }
-        onConfirmEmpty={handleEmptyConfirm}
-        isProcessing={drawings.processing}
-        processingLabel="Nix is reading drawings..."
-        confirmLabel="Send drawings to Nix"
-      />
-
-      <DocumentBucket
-        id="asca-specs"
-        title="Specifications"
-        subtitle="Painting, rubber lining, fabrication, scope — cross-linked to drawing items"
-        tone="purple"
-        documents={specs.documents}
-        onAddDocument={addDocumentTo(setSpecs)}
-        onRemoveDocument={removeDocumentFrom(setSpecs)}
-        isConfirmed={specs.confirmed}
-        onConfirm={handleConfirmSpecs}
-        onUnconfirm={() => setSpecs((prev) => ({ ...prev, confirmed: false, processing: false }))}
-        onConfirmEmpty={handleEmptyConfirm}
-        isProcessing={specs.processing}
-        processingLabel="Nix is reading specs..."
-        confirmLabel="Send specs to Nix"
+      <SmartDropzone
+        title="Customer documents"
+        subtitle="Drawings, BOQ spreadsheets, painting / lining specs, scope docs - drop them all here"
+        documents={smartDocs.documents}
+        onAddDocument={addDocument}
+        onRemoveDocument={smartDocs.removeDocument}
+        onReclassify={smartDocs.reclassify}
+        onProcess={handleProcessAll}
+        isProcessing={isProcessing}
+        processingLabel="Nix is reading documents..."
+        processLabel="Send all to Nix"
       />
 
       {reviewReady && session && (

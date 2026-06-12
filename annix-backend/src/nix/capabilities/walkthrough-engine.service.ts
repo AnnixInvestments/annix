@@ -1,5 +1,6 @@
-import { Injectable, Logger, NotFoundException } from "@nestjs/common";
-import { nowISO } from "../../lib/datetime";
+import { Inject, Injectable, Logger, NotFoundException, Optional } from "@nestjs/common";
+import { fromISO, now, nowISO } from "../../lib/datetime";
+import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import {
   NixChatSession,
   type WalkthroughEndReason,
@@ -42,6 +43,9 @@ export class WalkthroughEngine {
     private readonly sessionRepo: NixChatSessionRepository,
     private readonly registry: NixCapabilityRegistry,
     private readonly guideLoader: NixGuideLoader,
+    @Optional()
+    @Inject(ExtractionMetricService)
+    private readonly metricService: ExtractionMetricService | null = null,
   ) {}
 
   async start(sessionId: number, capabilityKey: string): Promise<WalkthroughStepView> {
@@ -97,6 +101,24 @@ export class WalkthroughEngine {
     session.walkthroughState = state;
     await this.sessionRepo.save(session);
     this.logger.log(`Walkthrough ${reason}: session=${sessionId}`);
+    await this.recordTelemetry(state, reason);
+  }
+
+  // Counter-style telemetry on the existing extraction-metric
+  // infrastructure (no new collection): one row per finished
+  // walkthrough, keyed nix-walkthrough/<endReason>, durationMs =
+  // wall time from start to stop. Stats surface via
+  // GET /metrics/extraction-stats?category=nix-walkthrough.
+  private async recordTelemetry(state: WalkthroughState, reason: WalkthroughEndReason) {
+    if (!this.metricService) return;
+    const startedAt = fromISO(state.startedAt);
+    const durationMs = Math.max(0, now().toMillis() - startedAt.toMillis());
+    await this.metricService.record({
+      category: "nix-walkthrough",
+      operation: reason,
+      durationMs,
+      succeeded: reason === "completed",
+    });
   }
 
   async state(sessionId: number): Promise<WalkthroughState | null> {

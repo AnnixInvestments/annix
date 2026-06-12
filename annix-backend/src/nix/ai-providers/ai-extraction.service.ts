@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
 import { AiUsageService } from "../../ai-usage/ai-usage.service";
 import { AiApp, AiProvider as AiProviderEnum } from "../../ai-usage/entities/ai-usage-log.entity";
 import { ExtractedItem, SpecificationCellData } from "../services/excel-extractor.service";
+import { enforceExplicitDescriptionSpecs } from "../services/explicit-size-guard";
 import { AiExtractedItem, AiExtractionRequest, AiProvider } from "./ai-provider.interface";
 import { ClaudeProvider } from "./claude.provider";
 import { GeminiProvider } from "./gemini.provider";
@@ -183,7 +184,26 @@ export class AiExtractionService implements OnModuleInit {
   }
 
   private convertToExtractedItems(aiItems: AiExtractedItem[]): ExtractedItem[] {
-    return aiItems.map((item, index) => ({
+    return aiItems.map((item, index) => this.guardedItem(this.rawExtractedItem(item, index)));
+  }
+
+  // Issue #294: sub-items nested under a parent BOQ paragraph came
+  // back carrying the parent's nominal bore / material (a "DN 100
+  // rubber slurry hose" sub-line persisted as DN 450 steel). The
+  // row's own description always wins, so re-assert it
+  // deterministically after the AI pass.
+  private guardedItem(item: ExtractedItem): ExtractedItem {
+    const { item: guarded, corrections } = enforceExplicitDescriptionSpecs(item);
+    if (corrections.length > 0) {
+      this.logger.warn(
+        `Explicit-size guard corrected row ${item.rowNumber} ("${item.description.substring(0, 80)}"): ${corrections.join("; ")}`,
+      );
+    }
+    return guarded;
+  }
+
+  private rawExtractedItem(item: AiExtractedItem, index: number): ExtractedItem {
+    return {
       rowNumber: index + 1,
       itemNumber: item.itemNumber || `AI-${index + 1}`,
       description: item.description,
@@ -226,7 +246,7 @@ export class AiExtractionService implements OnModuleInit {
             plateBom: item.plateBom,
           }
         : {}),
-    }));
+    };
   }
 
   private itemNeedsClarification(item: AiExtractedItem): boolean {

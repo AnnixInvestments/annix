@@ -13,6 +13,13 @@ export interface DocumentDropzoneProps {
   onRemoveDocument: (id: string) => void;
   maxDocuments?: number;
   maxFileSizeMB?: number;
+  /**
+   * Extra per-document content rendered between the file size and the
+   * remove button — e.g. SmartDropzone's role chip + reclassify
+   * dropdown (issue #266). Keeps one dropzone implementation instead
+   * of a parallel list renderer.
+   */
+  renderDocumentExtra?: (doc: PendingDocument) => React.ReactNode;
 }
 
 // FileSystemEntry / FileSystemFileEntry / FileSystemDirectoryEntry
@@ -125,6 +132,7 @@ export function DocumentDropzone(props: DocumentDropzoneProps) {
     onRemoveDocument,
     maxDocuments = 10,
     maxFileSizeMB = 50,
+    renderDocumentExtra,
   } = props;
   const [isDragOver, setIsDragOver] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -290,6 +298,7 @@ export function DocumentDropzone(props: DocumentDropzoneProps) {
                 {doc.file.name}
               </span>
               <span className="text-xs text-gray-400">{formatFileSize(doc.file.size)}</span>
+              {renderDocumentExtra?.(doc)}
               <button
                 type="button"
                 onClick={() => onRemoveDocument(doc.id)}

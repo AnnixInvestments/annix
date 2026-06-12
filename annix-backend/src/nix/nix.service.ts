@@ -37,6 +37,11 @@ import {
   ExtractionResult,
   SpecificationCellData,
 } from "./services/excel-extractor.service";
+import {
+  feedbackLearningRow,
+  feedbackPatternKey,
+  type NixFeedbackPayload,
+} from "./services/learning-feedback.util";
 import { PdfExtractorService } from "./services/pdf-extractor.service";
 import { WordExtractorService } from "./services/word-extractor.service";
 
@@ -1920,6 +1925,33 @@ export class NixService {
     }
 
     return { success: true };
+  }
+
+  // Issue #263: batch feedback posted at RFQ submit time — the diff
+  // between what Nix extracted and what the customer ended up with at
+  // Step 3 (field corrections, deleted rows, manually added rows).
+  // One NixLearning row per correction; re-submitting the same diff
+  // confirms the existing row instead of duplicating it.
+  async recordFeedbackBatch(
+    payload: NixFeedbackPayload,
+  ): Promise<{ success: boolean; recorded: number }> {
+    const results = await Promise.all(
+      (payload.corrections ?? []).map(async (correction) => {
+        const patternKey = feedbackPatternKey(payload.extractionId, correction);
+        const existing = await this.learningRepo.findCorrectionByPatternKey(patternKey);
+        if (existing) {
+          existing.confirmationCount += 1;
+          existing.confidence = 1;
+          await this.learningRepo.save(existing);
+          return existing;
+        }
+        return this.learningRepo.create(feedbackLearningRow(payload, correction));
+      }),
+    );
+    this.logger.log(
+      `Recorded ${results.length} Step 3 feedback correction(s) for extraction ${payload.extractionId ?? "n/a"}`,
+    );
+    return { success: true, recorded: results.length };
   }
 
   async processAndSaveToSecureDocuments(

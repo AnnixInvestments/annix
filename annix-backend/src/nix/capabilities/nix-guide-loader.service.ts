@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { Injectable, Logger } from "@nestjs/common";
 
@@ -35,7 +35,7 @@ export interface ParsedGuide {
 @Injectable()
 export class NixGuideLoader {
   private readonly logger = new Logger(NixGuideLoader.name);
-  private readonly cache = new Map<string, ParsedGuide>();
+  private readonly cache = new Map<string, { guide: ParsedGuide; mtimeMs: number }>();
   private readonly guidesRoot: string;
 
   constructor() {
@@ -53,17 +53,22 @@ export class NixGuideLoader {
 
   load(appCode: string, slug: string): ParsedGuide | null {
     const cacheKey = `${appCode}/${slug}`;
-    const cached = this.cache.get(cacheKey);
-    if (cached) return cached;
-
     const guidePath = join(this.guidesRoot, appCode, "how-to", "guides", `${slug}.md`);
     if (!existsSync(guidePath)) {
       return null;
     }
 
+    // mtime-based invalidation (issue #262 Phase 6): an edited guide
+    // is re-parsed on next load instead of serving a stale copy for
+    // the life of the process. One stat() per load vs a full
+    // read+parse - the cache still pays for itself on every hit.
+    const mtimeMs = statSync(guidePath).mtimeMs;
+    const cached = this.cache.get(cacheKey);
+    if (cached && cached.mtimeMs === mtimeMs) return cached.guide;
+
     const raw = readFileSync(guidePath, "utf8");
     const parsed = this.parseGuide(appCode, slug, raw);
-    this.cache.set(cacheKey, parsed);
+    this.cache.set(cacheKey, { guide: parsed, mtimeMs });
     return parsed;
   }
 

@@ -51,6 +51,7 @@ type OrchestratorActionsDeps = Pick<
   | "draftSaveAndSendRecoveryEmail"
   | "masterData"
   | "nixClarifications"
+  | "nixExtractedItems"
   | "nixExtractionId"
   | "nixItemsPageReady"
   | "pendingDocuments"
@@ -115,6 +116,7 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
     getFilteredPressureClasses,
     masterData,
     nixClarifications,
+    nixExtractedItems,
     nixExtractionId,
     nixItemsPageReady,
     pendingDocuments,
@@ -452,10 +454,14 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
         });
       }
 
+      // userEdited marks the row as hand-corrected so a Nix
+      // re-extraction won't clobber it (issue #293). Only this
+      // user-driven choke point stamps it — automatic recalculations
+      // call updateItem / updateStraightPipeEntry directly.
       if (entry?.itemType === "bend" || entry?.itemType === "fitting") {
-        updateItem(id, updates);
+        updateItem(id, { ...updates, userEdited: true });
       } else {
-        updateStraightPipeEntry(id, updates);
+        updateStraightPipeEntry(id, { ...updates, userEdited: true });
       }
     },
     [updateItem, updateStraightPipeEntry],
@@ -750,6 +756,28 @@ export function useOrchestratorActions(deps: OrchestratorActionsDeps) {
       log.debug("Submitting unified RFQ payload:", unifiedPayload);
       const result = await unifiedRfqApi.create(unifiedPayload);
       log.debug("Unified RFQ created:", result);
+
+      // Issue #263: capture the diff between what Nix extracted and
+      // what the customer actually submitted as learning feedback.
+      // Fire-and-forget — a feedback failure must never block the
+      // submission the customer just made.
+      if (nixExtractedItems.length > 0) {
+        const { buildNixFeedbackCorrections } = await import("@/app/lib/nix/feedback");
+        const corrections = buildNixFeedbackCorrections(nixExtractedItems, allItems as never[]);
+        if (corrections.length > 0) {
+          void nixApi
+            .submitLearningFeedback({
+              extractionId: nixExtractionId || undefined,
+              corrections,
+            })
+            .then((feedbackResult) =>
+              log.debug(`🤖 Nix learning feedback recorded: ${feedbackResult.recorded} row(s)`),
+            )
+            .catch((feedbackError) =>
+              log.warn("🤖 Failed to record Nix learning feedback:", feedbackError),
+            );
+        }
+      }
 
       if ((pendingDocuments.length > 0 || pendingTenderDocuments.length > 0) && result.rfq?.id) {
         const rfqId = result.rfq.id;

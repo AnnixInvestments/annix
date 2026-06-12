@@ -466,6 +466,44 @@ export const nixApi = {
     return response.json();
   },
 
+  classifyRole: async (
+    filename: string,
+  ): Promise<{
+    role: NixDocumentRole;
+    confidence: number;
+    source: "filename" | "ai" | "fallback";
+    reason: string;
+  }> => {
+    const baseUrl = browserBaseUrl();
+    const response = await fetch(`${baseUrl}/nix/classify-role`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...resolveNixAuthHeaders() },
+      body: JSON.stringify({ filename }),
+    });
+    if (!response.ok) await failNixResponse(response, "classify document role");
+    return response.json();
+  },
+
+  classifyRoleContent: async (
+    file: File,
+  ): Promise<{
+    role: NixDocumentRole;
+    confidence: number;
+    source: "filename" | "ai" | "fallback";
+    reason: string;
+  }> => {
+    const baseUrl = browserBaseUrl();
+    const formData = new FormData();
+    formData.append("file", file, file.name);
+    const response = await fetch(`${baseUrl}/nix/classify-role/content`, {
+      method: "POST",
+      headers: resolveNixAuthHeaders(),
+      body: formData,
+    });
+    if (!response.ok) await failNixResponse(response, "classify document role");
+    return response.json();
+  },
+
   extractionDocumentUrl: async (
     extractionId: number,
   ): Promise<{ url: string | null; expiresInSeconds: number }> => {
@@ -604,6 +642,37 @@ export const nixApi = {
     if (!response.ok) {
       const errorText = await response.text();
       throw new Error(`Failed to skip clarification: ${errorText}`);
+    }
+
+    return response.json();
+  },
+
+  submitLearningFeedback: async (payload: {
+    extractionId?: number;
+    corrections: Array<{
+      originalRowNumber: number | null;
+      sheetName?: string | null;
+      correctionType: string;
+      originalItem: unknown | null;
+      correctedItem: unknown | null;
+      changedFields?: string[];
+    }>;
+  }): Promise<{ success: boolean; recorded: number }> => {
+    const baseUrl = browserBaseUrl();
+    // eslint-disable-next-line no-restricted-syntax -- SSR guard
+    const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+    const response = await fetch(`${baseUrl}/nix/learning/feedback`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      log.warn("[Nix] Failed to submit learning feedback:", await response.text());
+      return { success: false, recorded: 0 };
     }
 
     return response.json();

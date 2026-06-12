@@ -828,7 +828,7 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
         if (allItems.length > 0) {
           log.debug(`Converting ${allItems.length} Nix items to RFQ items`);
           const rawItems = rfqData.items;
-          const merged = [...(rawItems || []), ...allItems];
+          const existingItems = rawItems || [];
           // Dedup by source sheet+row so a re-extraction (or a
           // retried / double-fired extraction) REPLACES rather than
           // duplicates. Issue #293: this used to blindly append, so
@@ -857,6 +857,41 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
             const rawId = it.id;
             return `ID:${rawId}`;
           };
+          // Snapshot the raw extracted items that actually became
+          // wizard entries, accumulated across documents and keyed by
+          // source sheet+row. This is the "original" side of the
+          // Step 3 learning-feedback diff (issue #263) — items the
+          // converter dropped (e.g. no diameter) are excluded so they
+          // can't read as user deletions at submit time.
+          const rawKeyOf = (it: NixExtractedItem) => {
+            const rawSheet = it.sheetName;
+            return `${rawSheet || ""}#${it.rowNumber}`;
+          };
+          const convertedKeys = new Set(allItems.map(dedupKey));
+          const snapshotItems = nixItems.filter((it) => convertedKeys.has(`SRC:${rawKeyOf(it)}`));
+          set(
+            (state) => {
+              const incomingKeys = new Set(snapshotItems.map(rawKeyOf));
+              return {
+                nixExtractedItems: [
+                  ...state.nixExtractedItems.filter((it) => !incomingKeys.has(rawKeyOf(it))),
+                  ...snapshotItems,
+                ],
+              };
+            },
+            false,
+            "nixSnapshotOriginalItems",
+          );
+          // Rows the user hand-corrected (userEdited, stamped by the
+          // orchestrator's handleUpdateEntry) are locked: a fresh
+          // re-extraction of the same source row must not clobber
+          // the manual edit, so those incoming copies are dropped
+          // before the merge (issue #293 acceptance criterion).
+          const lockedKeys = new Set(
+            existingItems.filter((it) => it.userEdited === true).map(dedupKey),
+          );
+          const incoming = allItems.filter((it) => !lockedKeys.has(dedupKey(it)));
+          const merged = [...existingItems, ...incoming];
           // Keep the LAST occurrence of each key — a re-extraction
           // appends fresh items after the stale ones, so last-wins
           // means the freshly-extracted data survives. Reverse →
@@ -2079,7 +2114,6 @@ export const useRfqWizardStore = create<RfqWizardStore>()(
               );
 
               if (result.items && result.items.length > 0) {
-                set({ nixExtractedItems: result.items }, false, "nixProcessDocuments/items");
                 log.debug(`Extracted ${result.items.length} items`);
 
                 set(

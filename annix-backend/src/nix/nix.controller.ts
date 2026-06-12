@@ -67,6 +67,7 @@ import { NixLearning } from "./entities/nix-learning.entity";
 import { NixService } from "./nix.service";
 import { CustomFieldService } from "./services/custom-field.service";
 import { DocumentAnnotationService } from "./services/document-annotation.service";
+import type { NixFeedbackPayload } from "./services/learning-feedback.util";
 import { NixExtractionSessionService } from "./services/nix-extraction-session.service";
 import { QuotePdfService } from "./services/quote-pdf.service";
 import { QuoteToJobCardService } from "./services/quote-to-job-card.service";
@@ -75,6 +76,7 @@ import {
   RegistrationDocumentType,
   RegistrationDocumentVerifierService,
 } from "./services/registration-document-verifier.service";
+import { type RoleClassification, RoleClassifierService } from "./services/role-classifier.service";
 
 @ApiTags("Nix AI Assistant")
 @Controller("nix")
@@ -90,6 +92,7 @@ export class NixController {
     private readonly customerDocumentRepo: CustomerDocumentRepository,
     private readonly supplierDocumentRepo: SupplierDocumentRepository,
     private readonly quotePdfService: QuotePdfService,
+    private readonly roleClassifier: RoleClassifierService,
     private readonly quoteToJobCardService: QuoteToJobCardService,
     private readonly companyEmailService: CompanyEmailService,
     private readonly companyRepo: CompanyRepository,
@@ -807,6 +810,52 @@ export class NixController {
     },
   ): Promise<{ success: boolean }> {
     return this.nixService.recordCorrection(body);
+  }
+
+  @Post("classify-role")
+  @ApiOperation({
+    summary:
+      "Classify a document's role (drawing / specification / other) from its filename alone — cheap heuristics, no AI",
+  })
+  @ApiResponse({ status: 201, description: "Role classification" })
+  classifyRoleByFilename(@Body() body: { filename: string }): RoleClassification {
+    return this.roleClassifier.classifyByFilename(body.filename || "");
+  }
+
+  @Post("classify-role/content")
+  @UseInterceptors(FileInterceptor("file"))
+  @ApiConsumes("multipart/form-data")
+  @ApiOperation({
+    summary:
+      "Classify a document's role with a content glance — filename heuristics first, one-shot Gemini look at ambiguous PDFs",
+  })
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: { file: { type: "string", format: "binary" } },
+      required: ["file"],
+    },
+  })
+  @ApiResponse({ status: 201, description: "Role classification" })
+  async classifyRoleByContent(
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<RoleClassification> {
+    if (!file) {
+      throw new BadRequestException("No file uploaded");
+    }
+    return this.roleClassifier.classify(file);
+  }
+
+  @Post("learning/feedback")
+  @ApiOperation({
+    summary:
+      "Submit a batch of Step 3 line-item corrections (diff between the Nix extraction and the customer's final items) for learning",
+  })
+  @ApiResponse({ status: 201, description: "Feedback corrections recorded for learning" })
+  async submitLearningFeedback(
+    @Body() body: NixFeedbackPayload,
+  ): Promise<{ success: boolean; recorded: number }> {
+    return this.nixService.recordFeedbackBatch(body);
   }
 
   @Post("verify-registration-document")
