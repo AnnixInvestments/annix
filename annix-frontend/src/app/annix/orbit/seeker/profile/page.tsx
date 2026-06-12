@@ -10,6 +10,7 @@ import {
   type IndividualDocumentKind,
   SEEKER_AGE_GROUP_OPTIONS,
 } from "@/app/lib/api/annixOrbitApi";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { formatDateZA } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -19,6 +20,7 @@ import {
   useOrbitMyProfileStatus,
   useOrbitSeekerWorkProfile,
   useOrbitUpdateSeekerPreferences,
+  useOrbitUploadIdentityDocument,
 } from "@/app/lib/query/hooks";
 import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { CredentialFieldsEditor } from "../components/CredentialFieldsEditor";
@@ -104,6 +106,10 @@ export default function SeekerProfilePage() {
   const cvExtractionStatus = status ? status.cvExtractionStatus : null;
   const nixAssessedAt = status ? status.careerScoreGeneratedAt : null;
   const nixCvGeneratedAt = status ? status.nixCvGeneratedAt : null;
+  const careerScore = status ? status.careerScore : null;
+  const identity = status ? status.identityVerification : null;
+  const identityStatus = identity ? identity.status : null;
+  const identityDone = identityStatus === "ai-checked" || identityStatus === "verified-dha";
   const photoAllowed = status ? status.photoCredentialCapture : false;
 
   const docsSignature = `${qualificationsCount}:${certificatesCount}`;
@@ -134,9 +140,10 @@ export default function SeekerProfilePage() {
   const cvBuilderEnabled = !cvBuilderFlag.isLoading && cvBuilderFlag.enabled;
 
   const step1Done = hasCv;
-  // Persisted server signals (assessment ran / improved CV built) keep these
-  // green across navigation; the in-session signature still tracks fresh runs.
-  const step2Done = nixRanSignature === docsSignature || nixAssessedAt != null;
+  // Step 2 is identity verification (issue #359); the Nix assessment is folded
+  // into step 1 and runs automatically after upload. Persisted server signals
+  // keep the improve-CV step green across navigation.
+  const step2Done = identityDone;
   const step3Done = cvBuilt || nixCvGeneratedAt != null || skippedSteps.has(3);
   const step4Done = qualificationsCount > 0 || skippedSteps.has(4);
   const step5Done = certificatesCount > 0 || skippedSteps.has(5);
@@ -173,7 +180,7 @@ export default function SeekerProfilePage() {
       }
       const targetIdByStep: Record<number, string> = {
         1: "cv-section",
-        2: "nix-section",
+        2: "identity-section",
         3: "nix-section",
         4: "qualifications",
         5: "certificates",
@@ -278,7 +285,7 @@ export default function SeekerProfilePage() {
           />
           <StepPill
             num={2}
-            label="Nix Wizard"
+            label="Verify Identity"
             done={step2Done}
             active={activeStep === 2 || focusedStep === 2}
             onClick={() => scrollToStep(2)}
@@ -332,9 +339,14 @@ export default function SeekerProfilePage() {
           title={
             <>
               <StepVisited num={1} done={step1Done} /> Your CV
+              {careerScore != null ? (
+                <span className="ml-2 inline-flex items-center rounded-full bg-[var(--brand-navbar,#323288)]/10 px-2.5 py-0.5 text-xs font-semibold text-[var(--brand-navbar,#323288)]">
+                  Nix score: {careerScore}/100
+                </span>
+              ) : null}
             </>
           }
-          description="Required. We extract your skills, experience, and education from this file."
+          description="Required. We extract your skills, experience, and education from this file — Nix rates it automatically once it's read."
         >
           {cvExtractionStatus === "processing" ? (
             <div className="mb-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
@@ -393,16 +405,21 @@ export default function SeekerProfilePage() {
         </div>
       )}
 
+      <IdentityVerifySection
+        identity={identity}
+        active={activeStep === 2 || focusedStep === 2}
+        stepDone={step2Done}
+      />
+
       <div
         id="nix-section"
         className={`space-y-3 scroll-mt-24 rounded-xl ${
-          focusedStep === 2 || focusedStep === 3
+          focusedStep === 3
             ? "ring-2 ring-[var(--brand-accent,#FF8A00)] ring-offset-2 ring-offset-transparent"
             : ""
         }`}
       >
         <div className="flex items-center gap-4 flex-wrap">
-          <StepVisited num={2} done={step2Done} />
           <StepVisited num={3} done={step3Done} />
           {!step3Done && activeStep >= 3 && !cvBuilderEnabled && (
             <button
@@ -603,6 +620,175 @@ function AgeGroupCard(props: { ageGroup: string | null; loaded: boolean }) {
         </div>
       </div>
     </div>
+  );
+}
+
+type IdentityStatusSummary = {
+  status: string;
+  verdict: string | null;
+  reasoning: string | null;
+  documentType: string | null;
+  checkedAt: string | null;
+} | null;
+
+const IDENTITY_DOC_LABELS: Record<string, string> = {
+  "sa-id-card": "SA smart ID card",
+  "sa-id-book": "SA ID book",
+  passport: "passport",
+  other: "identity document",
+};
+
+// Seeker identity verification (issue #359 phase 1): upload an ID/passport
+// photo with explicit POPIA consent; Nix reads it and cross-checks the names
+// against the registration and CV. Never auto-blocks - doubtful cases go to
+// an admin review queue.
+function IdentityVerifySection(props: {
+  identity: IdentityStatusSummary;
+  active: boolean;
+  stepDone: boolean;
+}) {
+  const identity = props.identity;
+  const status = identity ? identity.status : null;
+  const stepDone = props.stepDone;
+  const [consented, setConsented] = useState(false);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+  const uploadMutation = useOrbitUploadIdentityDocument();
+  const isUploading = uploadMutation.isPending;
+  const processing = status === "processing";
+
+  const handleFile = (file: File) => {
+    setError(null);
+    setProgress(0);
+    uploadMutation.mutate(
+      { file, onProgress: (fraction) => setProgress(fraction) },
+      {
+        onSuccess: () => {
+          setProgress(null);
+          if (inputRef.current) inputRef.current.value = "";
+        },
+        onError: (err) => {
+          setProgress(null);
+          setError(extractErrorMessage(err, "Upload failed — please try a clearer photo."));
+        },
+      },
+    );
+  };
+
+  const docLabelKey = identity ? identity.documentType : null;
+  const docLabelLookup = docLabelKey ? IDENTITY_DOC_LABELS[docLabelKey] : null;
+  const docLabel = docLabelLookup ? docLabelLookup : "identity document";
+  const showUploader = !processing && status !== "review";
+
+  return (
+    <SectionCard
+      id="identity-section"
+      title={
+        <>
+          <StepVisited num={2} done={props.stepDone} /> Verify your identity
+        </>
+      }
+      description="Upload a photo of your ID or passport. Nix checks that the name on your CV is really yours — verified profiles stand out to employers."
+      badge={props.stepDone ? "Verified" : undefined}
+      done={props.stepDone}
+      active={props.active}
+    >
+      {props.stepDone ? (
+        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+          Your identity is verified — the name on your {docLabel} matches your profile and CV.
+        </div>
+      ) : null}
+      {processing ? (
+        <div className="flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          <div className="h-4 w-4 shrink-0 animate-spin rounded-full border-b-2 border-blue-600" />
+          <span>
+            Nix is reading your document and checking the names — this takes under a minute.
+          </span>
+        </div>
+      ) : null}
+      {status === "review" ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Thanks — your document is in. The names need a quick look from the Annix team, and your
+          profile keeps working as normal in the meantime.
+        </div>
+      ) : null}
+      {status === "mismatch" ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          The name on the document doesn't appear to match this profile, so it has gone to the Annix
+          team to review. If you uploaded the wrong document, simply upload the correct one below.
+        </div>
+      ) : null}
+      {status === "failed" ? (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          We couldn't read the document — please upload a clearer, well-lit photo of your ID or
+          passport.
+        </div>
+      ) : null}
+
+      {showUploader ? (
+        <div className="space-y-3">
+          {!props.stepDone ? (
+            <label className="flex items-start gap-2 text-xs text-gray-600">
+              <input
+                type="checkbox"
+                checked={consented}
+                onChange={(e) => setConsented(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span>
+                I consent to Annix processing my identity document to verify my identity (POPIA).
+                Only the document's name, number and date fields are kept — the image itself is
+                deleted once verification completes.
+              </span>
+            </label>
+          ) : null}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            capture="environment"
+            disabled={isUploading || (!props.stepDone && !consented)}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFile(file);
+            }}
+            className="hidden"
+            id="identity-doc-input"
+          />
+          <label
+            htmlFor="identity-doc-input"
+            className={`inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+              isUploading || (!props.stepDone && !consented)
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : "bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)] cursor-pointer"
+            }`}
+          >
+            {isUploading
+              ? "Uploading…"
+              : stepDone || status
+                ? "Upload a different document"
+                : "Upload ID or passport photo"}
+          </label>
+          {isUploading && progress !== null ? (
+            <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[var(--brand-navbar,#323288)] transition-all"
+                style={{ width: `${Math.round(progress * 100)}%` }}
+              />
+            </div>
+          ) : null}
+          {error ? (
+            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-2 rounded-lg text-sm">
+              {error}
+            </div>
+          ) : null}
+          <p className="text-xs text-gray-400">
+            JPEG or PNG, up to 10 MB. A flat, well-lit photo of the photo page works best.
+          </p>
+        </div>
+      ) : null}
+    </SectionCard>
   );
 }
 

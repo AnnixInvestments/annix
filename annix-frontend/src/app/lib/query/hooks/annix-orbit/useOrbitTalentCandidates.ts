@@ -6,6 +6,12 @@ import {
 } from "@/app/lib/api/annixOrbitApi";
 import { annixOrbitKeys } from "../../keys";
 
+export function useOrbitExtractCandidateCv() {
+  return useMutation({
+    mutationFn: (file: File) => annixOrbitApiClient.extractCandidateCv(file),
+  });
+}
+
 export function useOrbitTalentCandidates() {
   return useQuery<OrbitTalentCandidate[]>({
     queryKey: annixOrbitKeys.talentCandidates.list(),

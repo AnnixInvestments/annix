@@ -34,10 +34,14 @@ export class AnnixOrbitSubmissionController {
 
   @Post()
   create(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { companyId: number; id: number; name: string } },
     @Body() dto: CreateAnnixOrbitSubmissionDto,
   ) {
-    return this.submissionService.create(req.user.companyId, dto);
+    return this.submissionService.create(
+      req.user.companyId,
+      { id: req.user.id, name: req.user.name },
+      dto,
+    );
   }
 
   @Put(":id")

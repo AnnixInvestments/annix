@@ -24,10 +24,26 @@ export function useOrbitMyProfileStatus(
     queryFn: () => annixOrbitApiClient.myProfileStatus(),
     enabled,
     staleTime: 60 * 1000,
-    // eslint-disable-next-line no-restricted-syntax -- short-lived 5s poll that only runs while a background CV extraction is in flight; self-stops once the status resolves
+    // eslint-disable-next-line no-restricted-syntax -- short-lived 5s poll that only runs while a background CV extraction or identity check is in flight; self-stops once the status resolves
     refetchInterval: pollWhileCvProcessing
-      ? (query) => (query.state.data?.cvExtractionStatus === "processing" ? 5000 : false)
+      ? (query) => {
+          const data = query.state.data;
+          const cvProcessing = data?.cvExtractionStatus === "processing";
+          const identityProcessing = data?.identityVerification?.status === "processing";
+          return cvProcessing || identityProcessing ? 5000 : false;
+        }
       : false,
+  });
+}
+
+export function useOrbitUploadIdentityDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { file: File; onProgress?: (fraction: number) => void }) =>
+      annixOrbitApiClient.uploadIdentityDocument(input.file, input.onProgress),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: annixOrbitKeys.individualProfile.status() });
+    },
   });
 }
 

@@ -10,12 +10,14 @@ import {
 } from "../entities/annix-orbit-submission.entity";
 import { AnnixOrbitSubmissionRepository } from "../repositories/annix-orbit-submission.repository";
 import { AnnixOrbitTalentCandidateRepository } from "../repositories/annix-orbit-talent-candidate.repository";
+import { type AnnixOrbitAuditActor, AnnixOrbitAuditService } from "./annix-orbit-audit.service";
 
 @Injectable()
 export class AnnixOrbitSubmissionService {
   constructor(
     private readonly submissionRepo: AnnixOrbitSubmissionRepository,
     private readonly candidateRepo: AnnixOrbitTalentCandidateRepository,
+    private readonly auditService: AnnixOrbitAuditService,
   ) {}
 
   findForCompany(companyId: number): Promise<AnnixOrbitSubmission[]> {
@@ -32,6 +34,7 @@ export class AnnixOrbitSubmissionService {
 
   async create(
     companyId: number,
+    actor: AnnixOrbitAuditActor,
     dto: CreateAnnixOrbitSubmissionDto,
   ): Promise<AnnixOrbitSubmission> {
     const candidate = await this.candidateRepo.findByIdForCompany(dto.candidateId, companyId);
@@ -44,7 +47,7 @@ export class AnnixOrbitSubmissionService {
       );
     }
 
-    return this.submissionRepo.create({
+    const submission = await this.submissionRepo.create({
       companyId,
       candidateId: dto.candidateId,
       clientId: dto.clientId ?? null,
@@ -54,6 +57,16 @@ export class AnnixOrbitSubmissionService {
       feedback: dto.feedback ?? null,
       notes: dto.notes ?? null,
     });
+
+    await this.auditService.record(companyId, actor, {
+      action: "candidate_submitted",
+      candidateId: dto.candidateId,
+      submissionId: submission.id,
+      clientId: dto.clientId ?? null,
+      detail: `Submitted ${candidate.fullName} for "${dto.jobTitle}"`,
+    });
+
+    return submission;
   }
 
   async update(

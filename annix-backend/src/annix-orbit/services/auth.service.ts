@@ -41,6 +41,7 @@ import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-orbit-ee-consent-text-version.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
+import { AnnixOrbitTeamInviteRepository } from "../repositories/annix-orbit-team-invite.repository";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
@@ -143,7 +144,73 @@ export class AnnixOrbitAuthService {
     private readonly passwordService: PasswordService,
     private readonly authConfigService: AuthConfigService,
     private readonly eeConsentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
+    private readonly teamInviteRepo: AnnixOrbitTeamInviteRepository,
   ) {}
+
+  private isInviteExpired(expiresAt: string | null): boolean {
+    if (!expiresAt) return false;
+    const nowIso = now().toISO();
+    return nowIso ? expiresAt < nowIso : false;
+  }
+
+  async teamInviteInfo(token: string) {
+    const invite = await this.teamInviteRepo.findByToken(token);
+    if (!invite || invite.status !== "pending") {
+      return { valid: false as const };
+    }
+    if (this.isInviteExpired(invite.expiresAt)) {
+      return { valid: false as const };
+    }
+    const agency = await this.cvCompanyRepo.findById(invite.companyId);
+    return {
+      valid: true as const,
+      email: invite.email,
+      recruiterRole: invite.recruiterRole,
+      agencyName: agency?.name ?? "the agency",
+    };
+  }
+
+  async acceptTeamInvite(token: string, name: string, password: string) {
+    const invite = await this.teamInviteRepo.findByToken(token);
+    if (!invite || invite.status !== "pending") {
+      throw new BadRequestException("This invite is invalid or has already been used.");
+    }
+    if (this.isInviteExpired(invite.expiresAt)) {
+      throw new BadRequestException("This invite has expired. Ask for a new one.");
+    }
+    if (password.length < 8) {
+      throw new BadRequestException("Password must be at least 8 characters.");
+    }
+    const existing = await this.userRepo.findOneByEmail(invite.email);
+    if (existing) {
+      throw new ConflictException("An account with this email already exists.");
+    }
+
+    const passwordHash = await this.passwordService.hashSimple(password);
+    const savedUser = await this.userRepo.create({
+      email: invite.email,
+      username: invite.email,
+      passwordHash,
+      firstName: name.split(" ")[0],
+      lastName: name.includes(" ") ? name.substring(name.indexOf(" ") + 1) : undefined,
+      status: "active",
+      emailVerified: true,
+    } as Partial<User>);
+
+    await this.profileRepo.create({
+      userId: savedUser.id,
+      companyId: invite.companyId,
+      userType: AnnixOrbitUserType.RECRUITER,
+      recruiterRole: invite.recruiterRole,
+    } as Partial<AnnixOrbitProfile>);
+
+    await this.bridgeToRbac(savedUser.id, "recruiter");
+
+    invite.status = "accepted";
+    await this.teamInviteRepo.save(invite);
+
+    return { message: "Account created. You can now sign in." };
+  }
 
   private async buildRegistrationDisclosure(
     ee: RegisterEeDisclosureDto,
@@ -347,7 +414,8 @@ export class AnnixOrbitAuthService {
       userId: savedUser.id,
       companyId: savedCompany.id,
       userType: AnnixOrbitUserType.RECRUITER,
-    });
+      recruiterRole: "owner",
+    } as Partial<AnnixOrbitProfile>);
 
     await this.bridgeToRbac(savedUser.id, "admin");
 
@@ -732,6 +800,7 @@ export class AnnixOrbitAuthService {
       name: userName,
       role,
       userType: profile?.userType ?? this.fallbackUserType(user),
+      recruiterRole: profile?.recruiterRole ?? null,
       companyId: profile?.companyId ?? null,
       companyName: profile?.company?.name ?? null,
       createdAt: user.createdAt,
@@ -899,6 +968,7 @@ export class AnnixOrbitAuthService {
         role,
         userType,
         companyId: profile?.companyId ?? null,
+        recruiterRole: profile?.recruiterRole ?? null,
         type: "annix-orbit",
       },
       { secret, expiresIn: "8h" },

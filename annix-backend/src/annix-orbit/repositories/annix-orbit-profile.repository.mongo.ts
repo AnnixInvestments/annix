@@ -118,6 +118,17 @@ export class MongoAnnixOrbitProfileRepository
     return this.toDomainList(docs);
   }
 
+  async findByIdentityStatuses(statuses: string[]): Promise<AnnixOrbitProfile[]> {
+    if (statuses.length === 0) {
+      return [];
+    }
+    const docs = await this.documents
+      .find({ "identityVerification.status": { $in: statuses } })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
   async adminPage(params: {
     userType: AnnixOrbitUserType | null;
     skip: number;

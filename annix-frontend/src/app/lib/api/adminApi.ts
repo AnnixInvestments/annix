@@ -1555,6 +1555,20 @@ class AdminApiClient {
     return this.request(`/admin/annix-orbit/delist-reports/${id}/reject`, { method: "POST" });
   }
 
+  async orbitIdentityReviews(): Promise<OrbitIdentityReview[]> {
+    return this.request("/admin/annix-orbit/seekers/identity-reviews");
+  }
+
+  async resolveOrbitIdentityReview(
+    profileId: number,
+    action: "approve" | "reject",
+  ): Promise<{ status: string }> {
+    return this.request(`/admin/annix-orbit/seekers/${profileId}/identity-resolution`, {
+      method: "POST",
+      body: JSON.stringify({ action }),
+    });
+  }
+
   // WhatsApp inbox (platform-wide global number)
   async whatsAppStatus(): Promise<WhatsAppStatus> {
     return this.request("/admin/whatsapp/status");
@@ -1927,6 +1941,28 @@ export interface OrbitDelistReport {
   sourceProvider: string | null;
   delistReportedAt: string | null;
   delistReportedBy: string | null;
+}
+
+export interface OrbitIdentityReview {
+  profileId: number;
+  userId: number;
+  registrationName: string | null;
+  email: string | null;
+  cvName: string | null;
+  identity: {
+    status: string;
+    verdict: string | null;
+    confidence: number | null;
+    reasoning: string | null;
+    documentType: string | null;
+    surname: string | null;
+    givenNames: string[];
+    idNumber: string | null;
+    dateOfBirth: string | null;
+    documentExpiry: string | null;
+    checkedAt: string | null;
+  };
+  documentUrl: string | null;
 }
 
 export interface CreateOrbitDismissReasonInput {

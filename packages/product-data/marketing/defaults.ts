@@ -616,6 +616,9 @@ Depending on how you interact with the Services, we may collect:
 
 We only process special personal information (as defined in POPIA) where permitted by POPIA and for a lawful, specified purpose.
 
+## Identity verification documents
+Where you choose to verify your identity on a Service (for example as a job seeker on Annix Orbit), we ask for a photo of your identity document or passport and your explicit consent before processing it. We use it solely to confirm that the identity on your profile and CV is your own. Only the extracted details (names, document number, date of birth and document type) and a digital fingerprint of the file are retained — the document image itself is deleted as soon as verification completes, or within 30 days at the latest. Access to a retained image is restricted to authorised Annix staff resolving a verification query, and every access is logged.
+
 ## Voluntary or mandatory information
 Where we request information, we will indicate whether it is required or optional. Some information is required to provide the Services, complete a transaction or comply with the law. If you do not provide required information, we may be unable to create your account, deliver a requested service, process a payment, or respond to your request. Optional information helps us improve your experience but is not required.
 

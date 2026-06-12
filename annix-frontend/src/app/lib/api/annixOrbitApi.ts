@@ -41,6 +41,7 @@ export interface AnnixOrbitUser {
   name: string;
   role: string;
   userType: AnnixOrbitUserType;
+  recruiterRole?: string | null;
 }
 
 export interface AnnixOrbitLoginResponse {
@@ -55,6 +56,7 @@ export interface AnnixOrbitUserProfile {
   name: string;
   role: string;
   userType: AnnixOrbitUserType;
+  recruiterRole: string | null;
   companyId: number | null;
   companyName: string | null;
   createdAt: string;
@@ -167,6 +169,8 @@ export interface OrbitTalentCandidateInput {
   consentToShare?: boolean;
   consentGivenAt?: string | null;
   consentSource?: string | null;
+  cvText?: string | null;
+  cvFilePath?: string | null;
 }
 
 export interface OrbitSubmission {
@@ -198,6 +202,204 @@ export interface OrbitSubmissionUpdateInput {
   status?: string;
   feedback?: string | null;
   notes?: string | null;
+}
+
+export interface OrbitTalentPool {
+  id: number;
+  companyId: number;
+  name: string;
+  description: string | null;
+  candidateIds: number[] | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitTalentPoolInput {
+  name: string;
+  description?: string | null;
+  candidateIds?: number[];
+}
+
+export interface OrbitShortlist {
+  id: number;
+  companyId: number;
+  name: string;
+  jobTitle: string | null;
+  clientId: number | null;
+  candidateIds: number[] | null;
+  status: string;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitShortlistInput {
+  name: string;
+  jobTitle?: string | null;
+  clientId?: number | null;
+  candidateIds?: number[];
+  status?: string;
+  notes?: string | null;
+}
+
+export interface OrbitJobMatchResult {
+  candidateId: number;
+  fullName: string;
+  currentRole: string | null;
+  province: string | null;
+  city: string | null;
+  yearsExperience: number | null;
+  consentToShare: boolean;
+  score: number;
+  similarity: number | null;
+  matchedSkills: string[];
+  missingSkills: string[];
+  concerns: string[];
+  explanation: string;
+}
+
+export interface OrbitJob {
+  id: number;
+  companyId: number;
+  clientId: number | null;
+  title: string;
+  description: string | null;
+  province: string | null;
+  city: string | null;
+  employmentType: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  requiredSkills: string[] | null;
+  openings: number;
+  status: string;
+  closingDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitJobInput {
+  clientId?: number | null;
+  title: string;
+  description?: string | null;
+  province?: string | null;
+  city?: string | null;
+  employmentType?: string | null;
+  salaryMin?: number | null;
+  salaryMax?: number | null;
+  requiredSkills?: string[];
+  openings?: number;
+  status?: string;
+  closingDate?: string | null;
+  notes?: string | null;
+}
+
+export interface OrbitRecruiterInterview {
+  id: number;
+  companyId: number;
+  candidateId: number | null;
+  clientId: number | null;
+  candidateName: string;
+  jobTitle: string | null;
+  scheduledAt: string | null;
+  interviewType: string;
+  status: string;
+  feedback: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitRecruiterInterviewInput {
+  candidateId?: number | null;
+  clientId?: number | null;
+  candidateName: string;
+  jobTitle?: string | null;
+  scheduledAt?: string | null;
+  interviewType?: string;
+  status?: string;
+  feedback?: string | null;
+  notes?: string | null;
+}
+
+export interface OrbitAuditEvent {
+  id: number;
+  companyId: number;
+  actorUserId: number;
+  actorName: string;
+  action: string;
+  candidateId: number | null;
+  submissionId: number | null;
+  shortlistId: number | null;
+  clientId: number | null;
+  detail: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitComplianceItem {
+  id: number;
+  companyId: number;
+  candidateId: number;
+  documentType: string;
+  status: string;
+  expiryDate: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitComplianceItemCreateInput {
+  candidateId: number;
+  documentType: string;
+  status?: string;
+  expiryDate?: string | null;
+  notes?: string | null;
+}
+
+export interface OrbitComplianceItemUpdateInput {
+  documentType: string;
+  status?: string;
+  expiryDate?: string | null;
+  notes?: string | null;
+}
+
+export interface OrbitTeamMember {
+  userId: number;
+  name: string;
+  email: string;
+  recruiterRole: string | null;
+}
+
+export interface OrbitTeamInvite {
+  id: number;
+  email: string;
+  recruiterRole: string;
+  createdAt: string;
+}
+
+export interface OrbitTeamList {
+  members: OrbitTeamMember[];
+  invites: OrbitTeamInvite[];
+}
+
+export interface OrbitTeamInviteInfo {
+  valid: boolean;
+  email?: string;
+  recruiterRole?: string;
+  agencyName?: string;
+}
+
+export interface OrbitCvAutofill {
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+  skills: string[];
+  yearsExperience: number | null;
+  city: string | null;
+  summary: string | null;
+  cvFilePath: string | null;
+  cvText: string | null;
 }
 
 export type EmploymentType =
@@ -819,8 +1021,16 @@ export interface IndividualProfileStatus {
   cvUploadedAt: string | null;
   cvOriginalFilename: string | null;
   cvExtractionStatus: string | null;
+  careerScore: number | null;
   careerScoreGeneratedAt: string | null;
   nixCvGeneratedAt: string | null;
+  identityVerification: {
+    status: string;
+    verdict: string | null;
+    reasoning: string | null;
+    documentType: string | null;
+    checkedAt: string | null;
+  } | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
   eeDisclosed: boolean;
@@ -1457,6 +1667,62 @@ class AnnixOrbitApiClient {
     return this.request(`/annix-orbit/talent-candidates/${id}`, { method: "DELETE" });
   }
 
+  async recruiterExtractEstimates(): Promise<{ cvExtractMs: number; messageDraftMs: number }> {
+    return this.request("/annix-orbit/talent-candidates/extract-estimate");
+  }
+
+  async extractCandidateCv(file: File): Promise<OrbitCvAutofill> {
+    return apiClient.uploadFile<OrbitCvAutofill>(
+      "/annix-orbit/talent-candidates/extract-cv",
+      file,
+      {},
+    );
+  }
+
+  async team(): Promise<OrbitTeamList> {
+    return this.request("/annix-orbit/team");
+  }
+
+  async createTeamInvite(dto: {
+    email: string;
+    recruiterRole: string;
+  }): Promise<{ success: boolean }> {
+    return this.request("/annix-orbit/team/invites", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async updateMemberRole(userId: number, recruiterRole: string): Promise<{ success: boolean }> {
+    return this.request(`/annix-orbit/team/members/${userId}/role`, {
+      method: "PUT",
+      body: JSON.stringify({ recruiterRole }),
+    });
+  }
+
+  async removeTeamMember(userId: number): Promise<{ success: boolean }> {
+    return this.request(`/annix-orbit/team/members/${userId}`, { method: "DELETE" });
+  }
+
+  async cancelTeamInvite(id: number): Promise<{ success: boolean }> {
+    return this.request(`/annix-orbit/team/invites/${id}`, { method: "DELETE" });
+  }
+
+  async teamInviteInfo(token: string): Promise<OrbitTeamInviteInfo> {
+    return this.request(`/annix-orbit/auth/team-invite?token=${encodeURIComponent(token)}`);
+  }
+
+  async acceptTeamInvite(dto: {
+    token: string;
+    name: string;
+    password: string;
+  }): Promise<{ message: string }> {
+    return this.request("/annix-orbit/auth/accept-team-invite", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
   async submissions(): Promise<OrbitSubmission[]> {
     return this.request("/annix-orbit/submissions");
   }
@@ -1477,6 +1743,178 @@ class AnnixOrbitApiClient {
 
   async deleteSubmission(id: number): Promise<void> {
     return this.request(`/annix-orbit/submissions/${id}`, { method: "DELETE" });
+  }
+
+  async talentPools(): Promise<OrbitTalentPool[]> {
+    return this.request("/annix-orbit/talent-pools");
+  }
+
+  async createTalentPool(data: OrbitTalentPoolInput): Promise<OrbitTalentPool> {
+    return this.request("/annix-orbit/talent-pools", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTalentPool(id: number, data: OrbitTalentPoolInput): Promise<OrbitTalentPool> {
+    return this.request(`/annix-orbit/talent-pools/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTalentPool(id: number): Promise<void> {
+    return this.request(`/annix-orbit/talent-pools/${id}`, { method: "DELETE" });
+  }
+
+  async shortlists(): Promise<OrbitShortlist[]> {
+    return this.request("/annix-orbit/shortlists");
+  }
+
+  async createShortlist(data: OrbitShortlistInput): Promise<OrbitShortlist> {
+    return this.request("/annix-orbit/shortlists", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateShortlist(id: number, data: OrbitShortlistInput): Promise<OrbitShortlist> {
+    return this.request(`/annix-orbit/shortlists/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteShortlist(id: number): Promise<void> {
+    return this.request(`/annix-orbit/shortlists/${id}`, { method: "DELETE" });
+  }
+
+  async downloadShortlistPdf(id: number, name: string): Promise<void> {
+    return apiClient.downloadBlob(`/annix-orbit/shortlists/${id}/pdf`, `${name}.pdf`);
+  }
+
+  async emailShortlist(
+    id: number,
+    email: string,
+    message: string | null,
+  ): Promise<{ sent: boolean }> {
+    return this.request(`/annix-orbit/shortlists/${id}/email`, {
+      method: "POST",
+      body: JSON.stringify({ email, message }),
+    });
+  }
+
+  async createShortlistShareLink(id: number): Promise<{ token: string }> {
+    return this.request(`/annix-orbit/shortlists/${id}/share`, { method: "POST" });
+  }
+
+  async revokeShortlistShareLink(id: number): Promise<{ revoked: boolean }> {
+    return this.request(`/annix-orbit/shortlists/${id}/share`, { method: "DELETE" });
+  }
+
+  async recruiterJobs(): Promise<OrbitJob[]> {
+    return this.request("/annix-orbit/recruiter-jobs");
+  }
+
+  async recruiterJobMatches(jobId: number): Promise<OrbitJobMatchResult[]> {
+    return this.request(`/annix-orbit/recruiter-jobs/${jobId}/matches`);
+  }
+
+  async createRecruiterJob(data: OrbitJobInput): Promise<OrbitJob> {
+    return this.request("/annix-orbit/recruiter-jobs", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRecruiterJob(id: number, data: OrbitJobInput): Promise<OrbitJob> {
+    return this.request(`/annix-orbit/recruiter-jobs/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRecruiterJob(id: number): Promise<void> {
+    return this.request(`/annix-orbit/recruiter-jobs/${id}`, { method: "DELETE" });
+  }
+
+  async recruiterInterviews(): Promise<OrbitRecruiterInterview[]> {
+    return this.request("/annix-orbit/recruiter-interviews");
+  }
+
+  async createRecruiterInterview(
+    data: OrbitRecruiterInterviewInput,
+  ): Promise<OrbitRecruiterInterview> {
+    return this.request("/annix-orbit/recruiter-interviews", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateRecruiterInterview(
+    id: number,
+    data: OrbitRecruiterInterviewInput,
+  ): Promise<OrbitRecruiterInterview> {
+    return this.request(`/annix-orbit/recruiter-interviews/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteRecruiterInterview(id: number): Promise<void> {
+    return this.request(`/annix-orbit/recruiter-interviews/${id}`, { method: "DELETE" });
+  }
+
+  async candidateAuditEvents(candidateId: number): Promise<OrbitAuditEvent[]> {
+    return this.request(`/annix-orbit/audit-events?candidateId=${candidateId}`);
+  }
+
+  async complianceItems(): Promise<OrbitComplianceItem[]> {
+    return this.request("/annix-orbit/compliance-items");
+  }
+
+  async createComplianceItem(data: OrbitComplianceItemCreateInput): Promise<OrbitComplianceItem> {
+    return this.request("/annix-orbit/compliance-items", {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateComplianceItem(
+    id: number,
+    data: OrbitComplianceItemUpdateInput,
+  ): Promise<OrbitComplianceItem> {
+    return this.request(`/annix-orbit/compliance-items/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteComplianceItem(id: number): Promise<void> {
+    return this.request(`/annix-orbit/compliance-items/${id}`, { method: "DELETE" });
+  }
+
+  async draftMessage(dto: {
+    templateKey: string;
+    candidateName?: string | null;
+    role?: string | null;
+    notes?: string | null;
+  }): Promise<{ body: string }> {
+    return this.request("/annix-orbit/messages/draft", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
+  }
+
+  async sendMessage(dto: {
+    to: string;
+    subject: string;
+    body: string;
+  }): Promise<{ sent: boolean; simulated: boolean }> {
+    return this.request("/annix-orbit/messages/send", {
+      method: "POST",
+      body: JSON.stringify(dto),
+    });
   }
 
   async registerIndividual(dto: {
@@ -2247,6 +2685,18 @@ class AnnixOrbitApiClient {
   ): Promise<{ photoUrl: string }> {
     return apiClient.uploadFile<{ photoUrl: string }>(
       "/annix-orbit/me/profile/photo",
+      file,
+      {},
+      onProgress,
+    );
+  }
+
+  async uploadIdentityDocument(
+    file: File,
+    onProgress?: (fraction: number) => void,
+  ): Promise<{ status: string }> {
+    return apiClient.uploadFile<{ status: string }>(
+      "/annix-orbit/me/profile/identity-document",
       file,
       {},
       onProgress,

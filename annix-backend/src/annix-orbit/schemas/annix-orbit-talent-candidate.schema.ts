@@ -68,6 +68,15 @@ export class AnnixOrbitTalentCandidate {
   @Prop({ type: String, required: false })
   notes: string;
 
+  @Prop({ type: String, required: false })
+  cvText: string;
+
+  @Prop({ type: String, required: false })
+  cvFilePath: string;
+
+  @Prop({ type: [Number], required: false })
+  embedding: number[];
+
   @Prop({ type: Boolean, required: false, default: false })
   consentToShare: boolean;
 

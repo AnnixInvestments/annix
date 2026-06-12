@@ -69,10 +69,18 @@ import { AdminOrbitSeekerTestingController } from "./controllers/admin-orbit-see
 import { AdminOrbitTierCapabilitiesController } from "./controllers/admin-orbit-tier-capabilities.controller";
 import { AdminOrbitUsersController } from "./controllers/admin-orbit-users.controller";
 import { AnalyticsController } from "./controllers/analytics.controller";
+import { AnnixOrbitAuditController } from "./controllers/annix-orbit-audit.controller";
 import { AnnixOrbitClientController } from "./controllers/annix-orbit-client.controller";
+import { AnnixOrbitComplianceItemController } from "./controllers/annix-orbit-compliance-item.controller";
+import { AnnixOrbitJobController } from "./controllers/annix-orbit-job.controller";
+import { AnnixOrbitMessageController } from "./controllers/annix-orbit-message.controller";
 import { AnnixOrbitPlacementController } from "./controllers/annix-orbit-placement.controller";
+import { AnnixOrbitRecruiterInterviewController } from "./controllers/annix-orbit-recruiter-interview.controller";
+import { AnnixOrbitShortlistController } from "./controllers/annix-orbit-shortlist.controller";
 import { AnnixOrbitSubmissionController } from "./controllers/annix-orbit-submission.controller";
 import { AnnixOrbitTalentCandidateController } from "./controllers/annix-orbit-talent-candidate.controller";
+import { AnnixOrbitTalentPoolController } from "./controllers/annix-orbit-talent-pool.controller";
+import { AnnixOrbitTeamController } from "./controllers/annix-orbit-team.controller";
 import { AnnixOrbitAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
 import { ComplianceController } from "./controllers/compliance.controller";
@@ -91,6 +99,7 @@ import { PublicEeDisclosureController } from "./controllers/public-ee-disclosure
 import { PublicInterviewBookingController } from "./controllers/public-interview-booking.controller";
 import { PublicJobMarketController } from "./controllers/public-job-market.controller";
 import { PublicJobPostingController } from "./controllers/public-job-posting.controller";
+import { PublicOrbitShortlistController } from "./controllers/public-orbit-shortlist.controller";
 import { PublicSeekerCalendarController } from "./controllers/public-seeker-calendar.controller";
 import { PublicTierPlansController } from "./controllers/public-tier-plans.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
@@ -103,18 +112,25 @@ import { SeekerJobsController } from "./controllers/seeker-jobs.controller";
 import { SeekerReminderPreferencesController } from "./controllers/seeker-reminder-preferences.controller";
 import { SettingsController } from "./controllers/settings.controller";
 import { WorkProfileController } from "./controllers/work-profile.controller";
+import { AnnixOrbitAuditEvent } from "./entities/annix-orbit-audit-event.entity";
 import { AnnixOrbitCandidateEeAttributes } from "./entities/annix-orbit-candidate-ee-attributes.entity";
 import { AnnixOrbitClient } from "./entities/annix-orbit-client.entity";
 import { AnnixOrbitCompany } from "./entities/annix-orbit-company.entity";
+import { AnnixOrbitComplianceItem } from "./entities/annix-orbit-compliance-item.entity";
 import { AnnixOrbitEeConsentTextVersion } from "./entities/annix-orbit-ee-consent-text-version.entity";
 import { AnnixOrbitEeDisclosureInvite } from "./entities/annix-orbit-ee-disclosure-invite.entity";
 import { AnnixOrbitEeSectoralTarget } from "./entities/annix-orbit-ee-sectoral-target.entity";
 import { AnnixOrbitEmailTemplate } from "./entities/annix-orbit-email-template.entity";
 import { AnnixOrbitIndividualDocument } from "./entities/annix-orbit-individual-document.entity";
+import { AnnixOrbitJob } from "./entities/annix-orbit-job.entity";
 import { AnnixOrbitPlacement } from "./entities/annix-orbit-placement.entity";
 import { AnnixOrbitProfile } from "./entities/annix-orbit-profile.entity";
+import { AnnixOrbitRecruiterInterview } from "./entities/annix-orbit-recruiter-interview.entity";
+import { AnnixOrbitShortlist } from "./entities/annix-orbit-shortlist.entity";
 import { AnnixOrbitSubmission } from "./entities/annix-orbit-submission.entity";
 import { AnnixOrbitTalentCandidate } from "./entities/annix-orbit-talent-candidate.entity";
+import { AnnixOrbitTalentPool } from "./entities/annix-orbit-talent-pool.entity";
+import { AnnixOrbitTeamInvite } from "./entities/annix-orbit-team-invite.entity";
 import { AnnixOrbitUser } from "./entities/annix-orbit-user.entity";
 import { Candidate } from "./entities/candidate.entity";
 import { CandidateJobMatch } from "./entities/candidate-job-match.entity";
@@ -156,6 +172,9 @@ import { SeekerWorkflowStep } from "./entities/seeker-workflow-step.entity";
 import { SourceRespectRank } from "./entities/source-respect-rank.entity";
 import { AnnixOrbitAuthGuard } from "./guards/annix-orbit-auth.guard";
 import { AnnixOrbitRoleGuard } from "./guards/annix-orbit-role.guard";
+import { AnnixOrbitAuditEventRepository } from "./repositories/annix-orbit-audit-event.repository";
+import { MongoAnnixOrbitAuditEventRepository } from "./repositories/annix-orbit-audit-event.repository.mongo";
+import { PostgresAnnixOrbitAuditEventRepository } from "./repositories/annix-orbit-audit-event.repository.postgres";
 import { AnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository";
 import { MongoAnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository.mongo";
 import { PostgresAnnixOrbitCandidateEeAttributesRepository } from "./repositories/annix-orbit-candidate-ee-attributes.repository.postgres";
@@ -165,6 +184,9 @@ import { PostgresAnnixOrbitClientRepository } from "./repositories/annix-orbit-c
 import { AnnixOrbitCompanyRepository } from "./repositories/annix-orbit-company.repository";
 import { MongoAnnixOrbitCompanyRepository } from "./repositories/annix-orbit-company.repository.mongo";
 import { PostgresAnnixOrbitCompanyRepository } from "./repositories/annix-orbit-company.repository.postgres";
+import { AnnixOrbitComplianceItemRepository } from "./repositories/annix-orbit-compliance-item.repository";
+import { MongoAnnixOrbitComplianceItemRepository } from "./repositories/annix-orbit-compliance-item.repository.mongo";
+import { PostgresAnnixOrbitComplianceItemRepository } from "./repositories/annix-orbit-compliance-item.repository.postgres";
 import { AnnixOrbitEeConsentTextVersionRepository } from "./repositories/annix-orbit-ee-consent-text-version.repository";
 import { MongoAnnixOrbitEeConsentTextVersionRepository } from "./repositories/annix-orbit-ee-consent-text-version.repository.mongo";
 import { PostgresAnnixOrbitEeConsentTextVersionRepository } from "./repositories/annix-orbit-ee-consent-text-version.repository.postgres";
@@ -180,18 +202,33 @@ import { PostgresAnnixOrbitEmailTemplateRepository } from "./repositories/annix-
 import { AnnixOrbitIndividualDocumentRepository } from "./repositories/annix-orbit-individual-document.repository";
 import { MongoAnnixOrbitIndividualDocumentRepository } from "./repositories/annix-orbit-individual-document.repository.mongo";
 import { PostgresAnnixOrbitIndividualDocumentRepository } from "./repositories/annix-orbit-individual-document.repository.postgres";
+import { AnnixOrbitJobRepository } from "./repositories/annix-orbit-job.repository";
+import { MongoAnnixOrbitJobRepository } from "./repositories/annix-orbit-job.repository.mongo";
+import { PostgresAnnixOrbitJobRepository } from "./repositories/annix-orbit-job.repository.postgres";
 import { AnnixOrbitPlacementRepository } from "./repositories/annix-orbit-placement.repository";
 import { MongoAnnixOrbitPlacementRepository } from "./repositories/annix-orbit-placement.repository.mongo";
 import { PostgresAnnixOrbitPlacementRepository } from "./repositories/annix-orbit-placement.repository.postgres";
 import { AnnixOrbitProfileRepository } from "./repositories/annix-orbit-profile.repository";
 import { MongoAnnixOrbitProfileRepository } from "./repositories/annix-orbit-profile.repository.mongo";
 import { PostgresAnnixOrbitProfileRepository } from "./repositories/annix-orbit-profile.repository.postgres";
+import { AnnixOrbitRecruiterInterviewRepository } from "./repositories/annix-orbit-recruiter-interview.repository";
+import { MongoAnnixOrbitRecruiterInterviewRepository } from "./repositories/annix-orbit-recruiter-interview.repository.mongo";
+import { PostgresAnnixOrbitRecruiterInterviewRepository } from "./repositories/annix-orbit-recruiter-interview.repository.postgres";
+import { AnnixOrbitShortlistRepository } from "./repositories/annix-orbit-shortlist.repository";
+import { MongoAnnixOrbitShortlistRepository } from "./repositories/annix-orbit-shortlist.repository.mongo";
+import { PostgresAnnixOrbitShortlistRepository } from "./repositories/annix-orbit-shortlist.repository.postgres";
 import { AnnixOrbitSubmissionRepository } from "./repositories/annix-orbit-submission.repository";
 import { MongoAnnixOrbitSubmissionRepository } from "./repositories/annix-orbit-submission.repository.mongo";
 import { PostgresAnnixOrbitSubmissionRepository } from "./repositories/annix-orbit-submission.repository.postgres";
 import { AnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository";
 import { MongoAnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository.mongo";
 import { PostgresAnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository.postgres";
+import { AnnixOrbitTalentPoolRepository } from "./repositories/annix-orbit-talent-pool.repository";
+import { MongoAnnixOrbitTalentPoolRepository } from "./repositories/annix-orbit-talent-pool.repository.mongo";
+import { PostgresAnnixOrbitTalentPoolRepository } from "./repositories/annix-orbit-talent-pool.repository.postgres";
+import { AnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository";
+import { MongoAnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository.mongo";
+import { PostgresAnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository.postgres";
 import { AnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository";
 import { MongoAnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository.mongo";
 import { PostgresAnnixOrbitUserRepository } from "./repositories/annix-orbit-user.repository.postgres";
@@ -309,18 +346,25 @@ import { PostgresSeekerWorkflowStepRepository } from "./repositories/seeker-work
 import { SourceRespectRankRepository } from "./repositories/source-respect-rank.repository";
 import { MongoSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.mongo";
 import { PostgresSourceRespectRankRepository } from "./repositories/source-respect-rank.repository.postgres";
+import { AnnixOrbitAuditEventSchema } from "./schemas/annix-orbit-audit-event.schema";
 import { AnnixOrbitCandidateEeAttributesSchema } from "./schemas/annix-orbit-candidate-ee-attributes.schema";
 import { AnnixOrbitClientSchema } from "./schemas/annix-orbit-client.schema";
 import { AnnixOrbitCompanySchema } from "./schemas/annix-orbit-company.schema";
+import { AnnixOrbitComplianceItemSchema } from "./schemas/annix-orbit-compliance-item.schema";
 import { AnnixOrbitEeConsentTextVersionSchema } from "./schemas/annix-orbit-ee-consent-text-version.schema";
 import { AnnixOrbitEeDisclosureInviteSchema } from "./schemas/annix-orbit-ee-disclosure-invite.schema";
 import { AnnixOrbitEeSectoralTargetSchema } from "./schemas/annix-orbit-ee-sectoral-target.schema";
 import { AnnixOrbitEmailTemplateSchema } from "./schemas/annix-orbit-email-template.schema";
 import { AnnixOrbitIndividualDocumentSchema } from "./schemas/annix-orbit-individual-document.schema";
+import { AnnixOrbitJobSchema } from "./schemas/annix-orbit-job.schema";
 import { AnnixOrbitPlacementSchema } from "./schemas/annix-orbit-placement.schema";
 import { AnnixOrbitProfileSchema } from "./schemas/annix-orbit-profile.schema";
+import { AnnixOrbitRecruiterInterviewSchema } from "./schemas/annix-orbit-recruiter-interview.schema";
+import { AnnixOrbitShortlistSchema } from "./schemas/annix-orbit-shortlist.schema";
 import { AnnixOrbitSubmissionSchema } from "./schemas/annix-orbit-submission.schema";
 import { AnnixOrbitTalentCandidateSchema } from "./schemas/annix-orbit-talent-candidate.schema";
+import { AnnixOrbitTalentPoolSchema } from "./schemas/annix-orbit-talent-pool.schema";
+import { AnnixOrbitTeamInviteSchema } from "./schemas/annix-orbit-team-invite.schema";
 import { AnnixOrbitUserSchema } from "./schemas/annix-orbit-user.schema";
 import { CandidateSchema } from "./schemas/candidate.schema";
 import { CandidateJobMatchSchema } from "./schemas/candidate-job-match.schema";
@@ -368,10 +412,19 @@ import { LinkedInPortalAdapter } from "./services/adapters/linkedin-portal-adapt
 import { AdminOrbitUserService } from "./services/admin-orbit-user.service";
 import { AdzunaService } from "./services/adzuna.service";
 import { AnalyticsService } from "./services/analytics.service";
+import { AnnixOrbitAuditService } from "./services/annix-orbit-audit.service";
 import { AnnixOrbitClientService } from "./services/annix-orbit-client.service";
+import { AnnixOrbitComplianceItemService } from "./services/annix-orbit-compliance-item.service";
+import { AnnixOrbitJobService } from "./services/annix-orbit-job.service";
+import { AnnixOrbitMessageService } from "./services/annix-orbit-message.service";
 import { AnnixOrbitPlacementService } from "./services/annix-orbit-placement.service";
+import { AnnixOrbitRecruiterInterviewService } from "./services/annix-orbit-recruiter-interview.service";
+import { AnnixOrbitShortlistService } from "./services/annix-orbit-shortlist.service";
+import { AnnixOrbitShortlistDeliveryService } from "./services/annix-orbit-shortlist-delivery.service";
 import { AnnixOrbitSubmissionService } from "./services/annix-orbit-submission.service";
 import { AnnixOrbitTalentCandidateService } from "./services/annix-orbit-talent-candidate.service";
+import { AnnixOrbitTalentPoolService } from "./services/annix-orbit-talent-pool.service";
+import { AnnixOrbitTeamService } from "./services/annix-orbit-team.service";
 import { AnnixOrbitAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
 import { CandidateJobMatchingService } from "./services/candidate-job-matching.service";
@@ -515,6 +568,69 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             ORBIT_CONNECTION,
           ),
           MongooseModule.forFeature([
+            { name: "JobPosting", schema: JobPostingSchema },
+            { name: "Candidate", schema: CandidateSchema },
+            { name: "CandidateReference", schema: CandidateReferenceSchema },
+            { name: "AnnixOrbitClient", schema: AnnixOrbitClientSchema },
+            { name: "AnnixOrbitPlacement", schema: AnnixOrbitPlacementSchema },
+            { name: "AnnixOrbitTalentCandidate", schema: AnnixOrbitTalentCandidateSchema },
+            { name: "AnnixOrbitSubmission", schema: AnnixOrbitSubmissionSchema },
+            { name: "AnnixOrbitTalentPool", schema: AnnixOrbitTalentPoolSchema },
+            { name: "AnnixOrbitShortlist", schema: AnnixOrbitShortlistSchema },
+            { name: "AnnixOrbitJob", schema: AnnixOrbitJobSchema },
+            { name: "AnnixOrbitRecruiterInterview", schema: AnnixOrbitRecruiterInterviewSchema },
+            { name: "AnnixOrbitAuditEvent", schema: AnnixOrbitAuditEventSchema },
+            { name: "AnnixOrbitComplianceItem", schema: AnnixOrbitComplianceItemSchema },
+            { name: "AnnixOrbitTeamInvite", schema: AnnixOrbitTeamInviteSchema },
+            { name: "JobMarketSource", schema: JobMarketSourceSchema },
+            { name: "ExternalJob", schema: ExternalJobSchema },
+            { name: "ExternalJobAlternate", schema: ExternalJobAlternateSchema },
+            { name: "CandidateJobMatch", schema: CandidateJobMatchSchema },
+            { name: "CvPushSubscription", schema: CvPushSubscriptionSchema },
+            { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
+            {
+              name: "AnnixOrbitIndividualDocument",
+              schema: AnnixOrbitIndividualDocumentSchema,
+            },
+            { name: "AnnixOrbitCompany", schema: AnnixOrbitCompanySchema },
+            {
+              name: "AnnixOrbitCandidateEeAttributes",
+              schema: AnnixOrbitCandidateEeAttributesSchema,
+            },
+            {
+              name: "AnnixOrbitEeConsentTextVersion",
+              schema: AnnixOrbitEeConsentTextVersionSchema,
+            },
+            {
+              name: "AnnixOrbitEeDisclosureInvite",
+              schema: AnnixOrbitEeDisclosureInviteSchema,
+            },
+            {
+              name: "AnnixOrbitEeSectoralTarget",
+              schema: AnnixOrbitEeSectoralTargetSchema,
+            },
+            { name: "AnnixOrbitEmailTemplate", schema: AnnixOrbitEmailTemplateSchema },
+            { name: "InterviewSlot", schema: InterviewSlotSchema },
+            { name: "InterviewBooking", schema: InterviewBookingSchema },
+            { name: "InterviewInvite", schema: InterviewInviteSchema },
+            {
+              name: "JobPostingPortalPosting",
+              schema: JobPostingPortalPostingSchema,
+            },
+            { name: "JobSkill", schema: JobSkillSchema },
+            { name: "JobSuccessMetric", schema: JobSuccessMetricSchema },
+            { name: "JobScreeningQuestion", schema: JobScreeningQuestionSchema },
+            { name: "SalaryBenchmark", schema: SalaryBenchmarkSchema },
+            { name: "SeekerApplyClick", schema: SeekerApplyClickSchema },
+            { name: "SeekerMute", schema: SeekerMuteSchema },
+            { name: "SourceRespectRank", schema: SourceRespectRankSchema },
+            { name: "CvCredential", schema: CvCredentialSchema },
+            { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
+            { name: "OrbitTierCapability", schema: OrbitTierCapabilitySchema },
+            { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
+            { name: "CvEscoSkill", schema: CvEscoSkillSchema },
+            { name: "CvGeocodeCache", schema: CvGeocodeCacheSchema },
+            { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
             { name: "User", schema: UserSchema },
             { name: "Company", schema: CompanySchema },
             { name: "App", schema: AppSchema },
@@ -546,6 +662,13 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             AnnixOrbitPlacement,
             AnnixOrbitTalentCandidate,
             AnnixOrbitSubmission,
+            AnnixOrbitTalentPool,
+            AnnixOrbitShortlist,
+            AnnixOrbitJob,
+            AnnixOrbitRecruiterInterview,
+            AnnixOrbitAuditEvent,
+            AnnixOrbitComplianceItem,
+            AnnixOrbitTeamInvite,
             JobMarketSource,
             ExternalJob,
             ExternalJobAlternate,
@@ -629,11 +752,20 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitPlacementController,
     AnnixOrbitTalentCandidateController,
     AnnixOrbitSubmissionController,
+    AnnixOrbitTalentPoolController,
+    AnnixOrbitShortlistController,
+    AnnixOrbitJobController,
+    AnnixOrbitRecruiterInterviewController,
+    AnnixOrbitAuditController,
+    AnnixOrbitComplianceItemController,
+    AnnixOrbitTeamController,
+    AnnixOrbitMessageController,
     JobMarketController,
     AnalyticsController,
     NotificationController,
     IndividualProfileController,
     PortalAdaptersController,
+    PublicOrbitShortlistController,
     PublicJobMarketController,
     PublicJobPostingController,
     PublicAccountController,
@@ -680,6 +812,15 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitPlacementService,
     AnnixOrbitTalentCandidateService,
     AnnixOrbitSubmissionService,
+    AnnixOrbitTalentPoolService,
+    AnnixOrbitShortlistService,
+    AnnixOrbitShortlistDeliveryService,
+    AnnixOrbitJobService,
+    AnnixOrbitRecruiterInterviewService,
+    AnnixOrbitAuditService,
+    AnnixOrbitComplianceItemService,
+    AnnixOrbitTeamService,
+    AnnixOrbitMessageService,
     CvEmailAdapterService,
     CvScreeningService,
     EeDisclosureService,
@@ -830,6 +971,41 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       AnnixOrbitSubmissionRepository,
       PostgresAnnixOrbitSubmissionRepository,
       MongoAnnixOrbitSubmissionRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitTalentPoolRepository,
+      PostgresAnnixOrbitTalentPoolRepository,
+      MongoAnnixOrbitTalentPoolRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitShortlistRepository,
+      PostgresAnnixOrbitShortlistRepository,
+      MongoAnnixOrbitShortlistRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitJobRepository,
+      PostgresAnnixOrbitJobRepository,
+      MongoAnnixOrbitJobRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitRecruiterInterviewRepository,
+      PostgresAnnixOrbitRecruiterInterviewRepository,
+      MongoAnnixOrbitRecruiterInterviewRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitAuditEventRepository,
+      PostgresAnnixOrbitAuditEventRepository,
+      MongoAnnixOrbitAuditEventRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitComplianceItemRepository,
+      PostgresAnnixOrbitComplianceItemRepository,
+      MongoAnnixOrbitComplianceItemRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitTeamInviteRepository,
+      PostgresAnnixOrbitTeamInviteRepository,
+      MongoAnnixOrbitTeamInviteRepository,
     ),
     repositoryProvider(
       ExternalJobRepository,

@@ -60,6 +60,7 @@ export function AnnixOrbitAuthProvider(props: { children: ReactNode }) {
           name: profile.name,
           role: profile.role,
           userType: profile.userType,
+          recruiterRole: profile.recruiterRole,
         },
         profile,
       });
@@ -112,7 +113,7 @@ export function AnnixOrbitAuthProvider(props: { children: ReactNode }) {
       setState({
         isAuthenticated: true,
         isLoading: false,
-        user: response.user,
+        user: { ...response.user, recruiterRole: profile.recruiterRole },
         profile,
       });
 
@@ -152,6 +153,7 @@ export function AnnixOrbitAuthProvider(props: { children: ReactNode }) {
               name: profile.name,
               role: profile.role,
               userType: profile.userType,
+              recruiterRole: profile.recruiterRole,
             }
           : null,
       }));

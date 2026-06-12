@@ -1,16 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import {
+  useExtractionProgress,
+  withExtractionProgress,
+} from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitTalentCandidate, OrbitTalentCandidateInput } from "@/app/lib/api/annixOrbitApi";
+import { annixOrbitApiClient } from "@/app/lib/api/annixOrbitApi";
 import { SOUTH_AFRICAN_PROVINCES } from "@/app/lib/config/registration/constants";
 import { nowISO } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import {
+  useOrbitCandidateAudit,
   useOrbitCreateTalentCandidate,
+  useOrbitExtractCandidateCv,
   useOrbitUpdateTalentCandidate,
 } from "@/app/lib/query/hooks";
+
+function auditActionLabel(action: string): string {
+  if (action === "candidate_submitted") return "Submitted to client";
+  if (action === "shortlist_sent") return "Shortlist sent";
+  if (action === "consent_given") return "Consent captured";
+  if (action === "consent_withdrawn") return "Consent withdrawn";
+  return action;
+}
 
 const VISIBILITY_OPTIONS: { value: string; label: string }[] = [
   { value: "private", label: "Private to me" },
@@ -39,6 +54,23 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
   const isCreating = createMutation.isPending;
   const isUpdating = updateMutation.isPending;
   const isSaving = isCreating || isUpdating;
+
+  const auditCandidateId = candidate ? candidate.id : 0;
+  const { data: auditEvents = [] } = useOrbitCandidateAudit(auditCandidateId);
+  const extractCvMutation = useOrbitExtractCandidateCv();
+  const isExtracting = extractCvMutation.isPending;
+  const extractionProgress = useExtractionProgress();
+  const [cvExtractEstimateMs, setCvExtractEstimateMs] = useState(25_000);
+  const [cvText, setCvText] = useState<string | null>(null);
+  const [cvFilePath, setCvFilePath] = useState<string | null>(null);
+  useEffect(() => {
+    annixOrbitApiClient
+      .recruiterExtractEstimates()
+      .then((result) => {
+        if (result.cvExtractMs > 0) setCvExtractEstimateMs(result.cvExtractMs);
+      })
+      .catch(() => {});
+  }, []);
 
   const [fullName, setFullName] = useState(candidate ? candidate.fullName : "");
   const [visibility, setVisibility] = useState(candidate ? candidate.visibility : "agency");
@@ -85,6 +117,39 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
     return Number.isNaN(value) ? null : value;
   };
 
+  const onCvSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    const file = files ? files.item(0) : null;
+    if (!file) return;
+    try {
+      // Branded progress popup with a learned time estimate - the extract is a
+      // long-running AI call (issue #337).
+      const data = await withExtractionProgress(
+        extractionProgress,
+        {
+          brand: "annix-orbit",
+          label: "Nix is reading the CV and pre-filling the form…",
+          estimatedDurationMs: cvExtractEstimateMs,
+        },
+        () => extractCvMutation.mutateAsync(file),
+      );
+      setCvText(data.cvText);
+      setCvFilePath(data.cvFilePath);
+      if (data.fullName) setFullName(data.fullName);
+      if (data.email) setEmail(data.email);
+      if (data.phone) setPhone(data.phone);
+      if (data.skills && data.skills.length > 0) setSkillsText(data.skills.join(", "));
+      if (data.yearsExperience !== null) setYearsExperience(String(data.yearsExperience));
+      if (data.city) setCity(data.city);
+      if (data.summary) setNotes(data.summary);
+      showToast("CV parsed — review the pre-filled fields before saving.", "success");
+    } catch {
+      showToast("Could not read that CV. Please fill the fields in manually.", "error");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = fullName.trim();
@@ -119,6 +184,8 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
       consentToShare,
       consentGivenAt: consentTimestamp,
       consentSource: consentToShare ? consentSource.trim() || null : null,
+      cvText,
+      cvFilePath,
     };
 
     try {
@@ -156,6 +223,25 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
           </div>
 
           <div className="px-6 py-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="sm:col-span-2 rounded-xl border border-dashed border-[#c0c0eb] bg-[#f0f0fc]/40 p-4">
+              <label htmlFor="cd-cv" className="block text-sm font-medium text-gray-700 mb-1">
+                Upload a CV to auto-fill
+              </label>
+              <input
+                id="cd-cv"
+                type="file"
+                accept=".pdf,.doc,.docx,.xls,.xlsx"
+                onChange={onCvSelected}
+                disabled={isExtracting}
+                className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-[#323288] file:px-3 file:py-2 file:text-white file:font-medium disabled:opacity-50"
+              />
+              <p className="mt-1 text-xs text-gray-400">
+                {isExtracting
+                  ? "Reading the CV with AI…"
+                  : "PDF or Word. We'll extract name, contact, skills and experience for you to review."}
+              </p>
+            </div>
+
             <div>
               <label htmlFor="cd-name" className="block text-sm font-medium text-gray-700 mb-1">
                 Full name
@@ -410,6 +496,38 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
                 placeholder="Strong B2B background; best suited to account management roles."
               />
             </div>
+
+            {candidate ? (
+              <div className="sm:col-span-2">
+                <p className="block text-sm font-medium text-gray-700 mb-1">Activity (POPIA)</p>
+                {auditEvents.length === 0 ? (
+                  <p className="text-sm text-gray-400">
+                    No shares or consent changes recorded yet.
+                  </p>
+                ) : (
+                  <ul className="rounded-lg border border-gray-200 divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                    {auditEvents.map((event) => {
+                      const when = event.createdAt
+                        ? event.createdAt.replace("T", " ").slice(0, 16)
+                        : "";
+                      const detail = event.detail ? event.detail : auditActionLabel(event.action);
+                      return (
+                        <li key={event.id} className="px-3 py-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-[#323288]">
+                              {auditActionLabel(event.action)}
+                            </span>
+                            <span className="text-xs text-gray-400">{when}</span>
+                          </div>
+                          <p className="text-sm text-gray-700">{detail}</p>
+                          <p className="text-xs text-gray-400">by {event.actorName}</p>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </div>
 
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">

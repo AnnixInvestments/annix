@@ -23,6 +23,9 @@ export class AnnixOrbitProfile {
   @Prop({ type: String, required: true, default: "company" })
   userType: string;
 
+  @Prop({ type: String, required: false })
+  recruiterRole: string;
+
   @Prop({ type: Number, required: true, default: 80 })
   matchAlertThreshold: number;
 
@@ -47,6 +50,9 @@ export class AnnixOrbitProfile {
 
   @Prop({ type: String, required: false })
   cvExtractionStatus: string;
+
+  @Prop({ type: Object, required: false })
+  identityVerification: Record<string, unknown>;
 
   @Prop({ type: Object, required: false })
   extractedCvData: Record<string, unknown>;

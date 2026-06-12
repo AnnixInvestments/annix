@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  Request,
+  UseGuards,
+} from "@nestjs/common";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
 import {
   InviteSeekerTrialDto,
@@ -6,6 +17,7 @@ import {
   SetSeekerMatchTierDto,
 } from "../dto/seeker-match-tier.dto";
 import { AdminOrbitUserService } from "../services/admin-orbit-user.service";
+import { IndividualProfileService } from "../services/individual-profile.service";
 import { SeekerJobFeedService } from "../services/seeker-job-feed.service";
 
 @Controller("admin/annix-orbit/seekers")
@@ -14,7 +26,31 @@ export class AdminOrbitSeekerController {
   constructor(
     private readonly feedService: SeekerJobFeedService,
     private readonly userService: AdminOrbitUserService,
+    private readonly individualProfileService: IndividualProfileService,
   ) {}
+
+  @Get("identity-reviews")
+  identityReviews(@Request() req: { user?: { email?: string } }) {
+    return this.individualProfileService.identityReviewQueue(req.user?.email ?? null);
+  }
+
+  @Post(":id/identity-resolution")
+  resolveIdentity(
+    @Param("id") id: string,
+    @Body() body: { action?: string },
+    @Request() req: { user?: { email?: string } },
+  ) {
+    const action =
+      body.action === "approve" ? "approve" : body.action === "reject" ? "reject" : null;
+    if (!action) {
+      throw new BadRequestException("action must be 'approve' or 'reject'");
+    }
+    return this.individualProfileService.resolveIdentityReview(
+      Number(id),
+      action,
+      req.user?.email ?? null,
+    );
+  }
 
   @Get()
   async list(

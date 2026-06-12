@@ -55,6 +55,44 @@ export const annixOrbitKeys = {
     list: () => ["annix-orbit", "submissions", "list"] as const,
   },
 
+  talentPools: {
+    all: ["annix-orbit", "talent-pools"] as const,
+    list: () => ["annix-orbit", "talent-pools", "list"] as const,
+  },
+
+  shortlists: {
+    all: ["annix-orbit", "shortlists"] as const,
+    list: () => ["annix-orbit", "shortlists", "list"] as const,
+  },
+
+  recruiterJobs: {
+    all: ["annix-orbit", "recruiter-jobs"] as const,
+    list: () => ["annix-orbit", "recruiter-jobs", "list"] as const,
+    matches: (jobId: number | null) =>
+      [...annixOrbitKeys.recruiterJobs.all, "matches", jobId] as const,
+  },
+
+  recruiterInterviews: {
+    all: ["annix-orbit", "recruiter-interviews"] as const,
+    list: () => ["annix-orbit", "recruiter-interviews", "list"] as const,
+  },
+
+  auditEvents: {
+    all: ["annix-orbit", "audit-events"] as const,
+    forCandidate: (candidateId: number) =>
+      ["annix-orbit", "audit-events", "candidate", candidateId] as const,
+  },
+
+  complianceItems: {
+    all: ["annix-orbit", "compliance-items"] as const,
+    list: () => ["annix-orbit", "compliance-items", "list"] as const,
+  },
+
+  team: {
+    all: ["annix-orbit", "team"] as const,
+    list: () => ["annix-orbit", "team", "list"] as const,
+  },
+
   jobPostings: {
     all: ["annix-orbit", "job-postings"] as const,
     list: (status?: string) => ["annix-orbit", "job-postings", "list", status ?? "all"] as const,

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { isMatchTier } from "@annix/product-data/sa-market";
 import {
   BadRequestException,
@@ -28,6 +29,7 @@ import {
 import {
   AnnixOrbitProfile,
   AnnixOrbitUserType,
+  type IdentityVerification,
   isSeekerAgeGroup,
 } from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
@@ -58,8 +60,16 @@ export interface IndividualProfileStatus {
   cvExtractionStatus: string | null;
   // Persisted "the Nix steps ran" signals so the profile checklist survives
   // navigation: set when the CV assessment runs / the improved CV is built.
+  careerScore: number | null;
   careerScoreGeneratedAt: Date | null;
   nixCvGeneratedAt: Date | null;
+  identityVerification: {
+    status: string;
+    verdict: string | null;
+    reasoning: string | null;
+    documentType: string | null;
+    checkedAt: string | null;
+  } | null;
   photoCredentialCapture: boolean;
   dismissWarningAcknowledged: boolean;
   eeDisclosed: boolean;
@@ -382,8 +392,18 @@ export class IndividualProfileService {
       cvUploadedAt: profile.cvUploadedAt,
       cvOriginalFilename: cvDoc?.originalFilename ?? null,
       cvExtractionStatus: profile.cvExtractionStatus ?? null,
+      careerScore: profile.careerScore ?? null,
       careerScoreGeneratedAt: profile.careerScoreGeneratedAt ?? null,
       nixCvGeneratedAt: profile.nixGeneratedCvAt ?? null,
+      identityVerification: profile.identityVerification
+        ? {
+            status: profile.identityVerification.status,
+            verdict: profile.identityVerification.verdict,
+            reasoning: profile.identityVerification.reasoning,
+            documentType: profile.identityVerification.documentType,
+            checkedAt: profile.identityVerification.checkedAt,
+          }
+        : null,
       photoCredentialCapture,
       dismissWarningAcknowledged: profile.dismissWarningAcknowledgedAt != null,
       eeDisclosed: profile.eeDisclosure != null,
@@ -790,6 +810,262 @@ export class IndividualProfileService {
     }
   }
 
+  // Seeker identity verification (issue #359 phase 1): store the ID/passport
+  // photo, then in the background extract its fields and cross-check the three
+  // name sources. The raw image is deleted as soon as the verdict is
+  // "verified" (POPIA minimisation); review/mismatch keep it for the admin
+  // queue, where resolution or the retention sweep removes it.
+  async uploadIdentityDocument(
+    userId: number,
+    file: Express.Multer.File,
+  ): Promise<{ status: string }> {
+    if (!file) {
+      throw new BadRequestException("File is required");
+    }
+    if (!isImageMime(file.mimetype)) {
+      throw new BadRequestException(
+        "Please upload a clear photo of your ID or passport (JPEG or PNG).",
+      );
+    }
+    const profile = await this.profileForUser(userId);
+
+    const previous = profile.identityVerification;
+    if (previous?.documentFilePath) {
+      try {
+        await this.storageService.delete(previous.documentFilePath);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to delete previous identity document for profile ${profile.id}: ${err}`,
+        );
+      }
+    }
+
+    const subPath = `${StorageArea.ANNIX_ORBIT}/identity/${profile.userId}`;
+    const stored = await this.storageService.upload(file, subPath);
+    const documentHash = createHash("sha256").update(file.buffer).digest("hex");
+
+    profile.identityVerification = {
+      status: "processing",
+      verdict: null,
+      confidence: null,
+      reasoning: null,
+      documentType: null,
+      surname: null,
+      givenNames: [],
+      idNumber: null,
+      dateOfBirth: null,
+      documentExpiry: null,
+      documentFilePath: stored.path,
+      documentHash,
+      checkedAt: null,
+      provider: null,
+    };
+    await this.profileRepo.save(profile);
+
+    void this.runIdentityCheck(profile.id, file.buffer, file.mimetype, stored.path).catch((err) => {
+      this.logger.warn(
+        `Background identity check crashed for profile ${profile.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+
+    return { status: "processing" };
+  }
+
+  private async runIdentityCheck(
+    profileId: number,
+    buffer: Buffer,
+    mimeType: string,
+    filePath: string,
+  ): Promise<void> {
+    const profile = await this.profileRepo.findById(profileId);
+    const pending = profile?.identityVerification;
+    if (!profile || !pending || pending.documentFilePath !== filePath) {
+      // A newer upload owns the status now.
+      return;
+    }
+
+    const doc = await this.nixSeekerAssistService.analyzeIdentityDocument(buffer, mimeType);
+    if (!doc.readable) {
+      profile.identityVerification = {
+        ...pending,
+        status: "failed",
+        reasoning:
+          "We couldn't read the document - please upload a clearer, well-lit photo of your ID or passport.",
+        checkedAt: now().toISO(),
+        provider: "nix-ai",
+      };
+      await this.profileRepo.save(profile);
+      return;
+    }
+
+    const user = await this.userRepo.findById(profile.userId);
+    const registrationName = user
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
+      : null;
+    const verdict = await this.nixSeekerAssistService.identityVerdict({
+      registrationName,
+      cvName: profile.extractedCvData?.candidateName ?? null,
+      idSurname: doc.surname,
+      idGivenNames: doc.givenNames,
+    });
+
+    // POPIA minimisation: a verified seeker's raw document image is deleted
+    // immediately - the extracted fields plus the content hash are enough for
+    // phase 2. Review/mismatch keep it so an admin can look at the actual
+    // document; the retention sweep removes it if never resolved.
+    let documentFilePath: string | null = filePath;
+    if (verdict.verdict === "verified") {
+      try {
+        await this.storageService.delete(filePath);
+        documentFilePath = null;
+      } catch (err) {
+        this.logger.warn(
+          `Failed to delete verified identity document for profile ${profile.id}: ${err}`,
+        );
+      }
+    }
+
+    profile.identityVerification = {
+      status: verdict.verdict === "verified" ? "ai-checked" : verdict.verdict,
+      verdict: verdict.verdict,
+      confidence: verdict.confidence,
+      reasoning: verdict.reasoning,
+      documentType: doc.documentType,
+      surname: doc.surname,
+      givenNames: doc.givenNames,
+      idNumber: doc.idNumber,
+      dateOfBirth: doc.dateOfBirth,
+      documentExpiry: doc.expiry,
+      documentFilePath,
+      documentHash: pending.documentHash,
+      checkedAt: now().toISO(),
+      provider: "nix-ai",
+    };
+    await this.profileRepo.save(profile);
+  }
+
+  // A replaced CV can carry a different name - re-judge the identity verdict
+  // against the fresh extraction so the verification can't go stale.
+  private async reverifyIdentityAgainstCv(profile: AnnixOrbitProfile): Promise<void> {
+    const iv = profile.identityVerification;
+    if (!iv) return;
+    if (iv.status === "processing" || iv.status === "failed" || iv.status === "verified-dha") {
+      return;
+    }
+    const user = await this.userRepo.findById(profile.userId);
+    const registrationName = user
+      ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
+      : null;
+    const verdict = await this.nixSeekerAssistService.identityVerdict({
+      registrationName,
+      cvName: profile.extractedCvData?.candidateName ?? null,
+      idSurname: iv.surname,
+      idGivenNames: iv.givenNames,
+    });
+    profile.identityVerification = {
+      ...iv,
+      status: verdict.verdict === "verified" ? "ai-checked" : verdict.verdict,
+      verdict: verdict.verdict,
+      confidence: verdict.confidence,
+      reasoning: verdict.reasoning,
+      checkedAt: now().toISO(),
+      provider: "nix-ai",
+    };
+    await this.profileRepo.save(profile);
+  }
+
+  // Admin review queue (issue #359): every identity check that landed on
+  // "review" or "mismatch" waits here for a human decision.
+  async identityReviewQueue(actorEmail: string | null = null): Promise<
+    Array<{
+      profileId: number;
+      userId: number;
+      registrationName: string | null;
+      email: string | null;
+      cvName: string | null;
+      identity: IdentityVerification;
+      documentUrl: string | null;
+    }>
+  > {
+    const profiles = await this.profileRepo.findByIdentityStatuses(["review", "mismatch"]);
+    const rows: Array<{
+      profileId: number;
+      userId: number;
+      registrationName: string | null;
+      email: string | null;
+      cvName: string | null;
+      identity: IdentityVerification;
+      documentUrl: string | null;
+    }> = [];
+    for (const profile of profiles) {
+      const iv = profile.identityVerification;
+      if (!iv) continue;
+      const user = await this.userRepo.findById(profile.userId);
+      const registrationName = user
+        ? [user.firstName, user.lastName].filter(Boolean).join(" ").trim() || null
+        : null;
+      // Identity documents are sensitive: presign for minutes, not hours, and
+      // audit every access.
+      let documentUrl: string | null = null;
+      if (iv.documentFilePath) {
+        documentUrl = await this.storageService.presignedUrl(iv.documentFilePath, 300);
+        await this.cvAuditService.logIdentityDocumentAccess(profile.id, actorEmail);
+      }
+      rows.push({
+        profileId: profile.id,
+        userId: profile.userId,
+        registrationName,
+        email: user?.email ?? null,
+        cvName: profile.extractedCvData?.candidateName ?? null,
+        identity: iv,
+        documentUrl,
+      });
+    }
+    return rows;
+  }
+
+  async resolveIdentityReview(
+    profileId: number,
+    action: "approve" | "reject",
+    adminEmail: string | null,
+  ): Promise<{ status: string }> {
+    const profile = await this.profileRepo.findById(profileId);
+    const iv = profile?.identityVerification;
+    if (!profile || !iv) {
+      throw new NotFoundException("No identity verification on this profile");
+    }
+    if (iv.status !== "review" && iv.status !== "mismatch") {
+      throw new BadRequestException("This identity verification is not awaiting review");
+    }
+
+    // Either way the raw document has served its purpose - delete it (POPIA
+    // minimisation); the extracted fields and hash remain.
+    if (iv.documentFilePath) {
+      try {
+        await this.storageService.delete(iv.documentFilePath);
+      } catch (err) {
+        this.logger.warn(
+          `Failed to delete identity document for profile ${profile.id} on resolution: ${err}`,
+        );
+      }
+    }
+
+    const resolvedNote = `${action === "approve" ? "Approved" : "Rejected"} by ${adminEmail ?? "admin"} on ${now().toISO()}`;
+    profile.identityVerification = {
+      ...iv,
+      status: action === "approve" ? "ai-checked" : "mismatch",
+      verdict: action === "approve" ? "verified" : "mismatch",
+      reasoning: iv.reasoning ? `${iv.reasoning} — ${resolvedNote}` : resolvedNote,
+      documentFilePath: null,
+      checkedAt: now().toISO(),
+    };
+    await this.profileRepo.save(profile);
+    await this.cvAuditService.logIdentityResolution(profile.id, action, adminEmail);
+    return { status: profile.identityVerification.status };
+  }
+
   // Mark the CV as processing and kick extraction off in the background. The
   // text extraction can involve LibreOffice conversion, vision OCR and an AI
   // structured-extraction call - tens of seconds the seeker should not spend
@@ -846,6 +1122,16 @@ export class IndividualProfileService {
     void this.syncCandidateFromProfile(profile).catch((err) => {
       this.logger.warn(
         `Background candidate sync failed for profile ${profile.id}: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    });
+
+    // The new CV may carry a different candidate name - keep the identity
+    // verdict honest against it.
+    void this.reverifyIdentityAgainstCv(profile).catch((err) => {
+      this.logger.warn(
+        `Identity re-verdict after CV replacement failed for profile ${profile.id}: ${
           err instanceof Error ? err.message : String(err)
         }`,
       );

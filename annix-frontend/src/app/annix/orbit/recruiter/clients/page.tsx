@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { OrbitClient } from "@/app/lib/api/annixOrbitApi";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -27,6 +28,9 @@ export default function RecruiterClientsPage() {
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
+  const { user } = useAnnixOrbitAuth();
+  const myRole = user ? user.recruiterRole : null;
+  const canManage = myRole === "owner" || myRole === "manager";
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrbitClient | null>(null);
@@ -156,17 +160,19 @@ export default function RecruiterClientsPage() {
                         </span>
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(client);
-                          }}
-                          disabled={deleteMutation.isPending}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
+                        {canManage ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(client);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   );

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,14 +9,19 @@ import {
   Post,
   Put,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from "@nestjs/common";
+import { FileInterceptor } from "@nestjs/platform-express";
 import {
   CreateAnnixOrbitTalentCandidateDto,
   UpdateAnnixOrbitTalentCandidateDto,
 } from "../dto/annix-orbit-talent-candidate.dto";
 import { AnnixOrbitAuthGuard } from "../guards/annix-orbit-auth.guard";
 import { AnnixOrbitTalentCandidateService } from "../services/annix-orbit-talent-candidate.service";
+
+const CV_MAX_BYTES = 10 * 1024 * 1024;
 
 @Controller("annix-orbit/talent-candidates")
 @UseGuards(AnnixOrbitAuthGuard)
@@ -32,6 +38,23 @@ export class AnnixOrbitTalentCandidateController {
     return this.candidateService.findByIdForCompany(id, req.user.companyId);
   }
 
+  @Get("extract-estimate")
+  async extractEstimate() {
+    return this.candidateService.extractEstimates();
+  }
+
+  @Post("extract-cv")
+  @UseInterceptors(FileInterceptor("file", { limits: { fileSize: CV_MAX_BYTES } }))
+  async extractCv(
+    @Request() req: { user: { companyId: number } },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException("No CV file was uploaded");
+    }
+    return this.candidateService.extractCvAutofill(req.user.companyId, file);
+  }
+
   @Post()
   create(
     @Request() req: { user: { companyId: number; id: number } },
@@ -42,11 +65,16 @@ export class AnnixOrbitTalentCandidateController {
 
   @Put(":id")
   update(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { companyId: number; id: number; name: string } },
     @Param("id", ParseIntPipe) id: number,
     @Body() dto: UpdateAnnixOrbitTalentCandidateDto,
   ) {
-    return this.candidateService.update(id, req.user.companyId, dto);
+    return this.candidateService.update(
+      id,
+      req.user.companyId,
+      { id: req.user.id, name: req.user.name },
+      dto,
+    );
   }
 
   @Delete(":id")

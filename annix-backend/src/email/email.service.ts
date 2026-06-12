@@ -1887,6 +1887,49 @@ This is an automated notification from the Annix test site.
     });
   }
 
+  async sendAnnixOrbitTeamInviteEmail(
+    email: string,
+    token: string,
+    agencyName: string,
+  ): Promise<boolean> {
+    const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
+    const acceptLink = `${frontendUrl}/annix/orbit/accept-invite?token=${token}`;
+
+    const html = emailLayout({
+      title: "You've been invited - Annix Orbit Recruiter",
+      heading: "Join your team on Annix Orbit",
+      headingColor: "#8B5CF6",
+      bodyHtml: `
+          <p>${agencyName} has invited you to join their recruitment team on Annix Orbit. Accept the invite to set your password and get started.</p>`,
+      cta: {
+        href: acceptLink,
+        label: "Accept invitation",
+        color: "#8B5CF6",
+        expiryNote: "This invite will expire in 7 days.",
+      },
+      footerText: "If you weren't expecting this invitation, please ignore this email.",
+    });
+
+    const text = `
+      Join your team on Annix Orbit
+
+      ${agencyName} has invited you to join their recruitment team on Annix Orbit.
+
+      Accept here: ${acceptLink}
+
+      This invite will expire in 7 days.
+
+      If you weren't expecting this invitation, please ignore this email.
+    `;
+
+    return this.sendEmail({
+      to: email,
+      subject: `${agencyName} invited you to Annix Orbit Recruiter`,
+      html,
+      text,
+    });
+  }
+
   async sendAnnixOrbitPasswordResetEmail(email: string, resetToken: string): Promise<boolean> {
     const frontendUrl = this.configService.get<string>("FRONTEND_URL") || "http://localhost:3000";
     const resetLink = `${frontendUrl}/annix/orbit/reset-password?token=${resetToken}`;

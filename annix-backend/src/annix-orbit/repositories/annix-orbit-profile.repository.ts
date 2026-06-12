@@ -13,6 +13,7 @@ export abstract class AnnixOrbitProfileRepository extends CrudRepository<AnnixOr
   abstract setPushEnabledForUser(userId: number, enabled: boolean): Promise<void>;
   abstract setSelectedTier(userId: number, tier: string): Promise<void>;
   abstract findByUserIds(userIds: number[]): Promise<AnnixOrbitProfile[]>;
+  abstract findByIdentityStatuses(statuses: string[]): Promise<AnnixOrbitProfile[]>;
   abstract adminPage(params: {
     userType: AnnixOrbitUserType | null;
     skip: number;

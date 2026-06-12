@@ -764,6 +764,77 @@ Rules:
   };
 }
 
+export interface NixIdentityDocumentResult {
+  documentType: "sa-id-card" | "sa-id-book" | "passport" | "other" | null;
+  surname: string | null;
+  givenNames: string[];
+  idNumber: string | null;
+  dateOfBirth: string | null;
+  expiry: string | null;
+  readable: boolean;
+}
+
+export function identityDocumentPrompt(): { system: string; user: string } {
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `You are reading a photo or scan of an identity document a job seeker uploaded to verify who they are. It is most likely a South African smart ID card, a green barcoded ID book, or a passport (South African or foreign). The image may be slightly blurry or angled - do your best, and set "readable" to false if you genuinely cannot make out the document.
+
+Return JSON with this exact shape:
+{
+  "documentType": "sa-id-card" | "sa-id-book" | "passport" | "other" | null,
+  "surname": "<the surname exactly as printed>" | null,
+  "givenNames": ["<every given/forename exactly as printed, in order>"],
+  "idNumber": "<the 13-digit SA ID number, or the passport number>" | null,
+  "dateOfBirth": "<as printed, e.g. '82-03-14' or '14 MAR 1982'>" | null,
+  "expiry": "<expiry date if the document shows one>" | null,
+  "readable": <true|false>
+}
+
+Rules:
+- Use null / empty array for anything you cannot read; never invent details.
+- Transcribe names EXACTLY as printed, including all middle names.
+- Do not transcribe anything else from the document - only these fields.
+- No markdown, no commentary, JSON only.`,
+  };
+}
+
+export interface NixIdentityVerdictResult {
+  verdict: "verified" | "review" | "mismatch";
+  confidence: number;
+  reasoning: string;
+}
+
+export function identityVerdictPrompt(input: {
+  registrationName: string | null;
+  cvName: string | null;
+  idSurname: string | null;
+  idGivenNames: string[];
+}): { system: string; user: string } {
+  const idName = [...input.idGivenNames, input.idSurname ?? ""].join(" ").trim();
+  return {
+    system: SA_SYSTEM_PREAMBLE,
+    user: `A job seeker has three name records on file. Decide whether they all plausibly belong to the SAME person. This is a South African platform: people commonly register with shortened names, use a middle name as their everyday first name (common across SA language conventions), anglicise names, use initials, or carry maiden/married surname differences. OCR noise in one or two characters is also possible.
+
+Name on their identity document (authoritative): ${idName || "(unreadable)"}
+Name they registered with: ${input.registrationName ?? "(none)"}
+Name on their CV: ${input.cvName ?? "(none on CV)"}
+
+Return JSON with this exact shape:
+{
+  "verdict": "verified" | "review" | "mismatch",
+  "confidence": <0-100>,
+  "reasoning": "<one or two short sentences a support agent can read>"
+}
+
+Decision guide:
+- "verified": the names clearly belong to the same person (surname matches allowing OCR noise/maiden-name patterns, and at least one given name or its common short form / initial corresponds - including a middle name used as the everyday first name).
+- "review": plausibly the same person but you are not sure (e.g. surname matches but no given-name overlap, or the CV has no clear candidate name). A human will look at it - this is the safe middle ground.
+- "mismatch": these are clearly different people (different surname AND no given-name correspondence).
+- Never use "mismatch" when a maiden/married surname change plus a matching given name could explain the difference - use "review".
+- No markdown, no commentary, JSON only.`,
+  };
+}
+
 /**
  * Helper: extract Gemini's JSON content even if the model wrapped it in
  * a code fence or added stray narrative. Throws if no parseable JSON

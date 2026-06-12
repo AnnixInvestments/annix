@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
+import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import type { OrbitPlacement } from "@/app/lib/api/annixOrbitApi";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -39,6 +40,9 @@ export default function RecruiterPlacementsPage() {
   const { confirm, ConfirmDialog } = useConfirm();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
+  const { user } = useAnnixOrbitAuth();
+  const myRole = user ? user.recruiterRole : null;
+  const canManage = myRole === "owner" || myRole === "manager";
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrbitPlacement | null>(null);
@@ -101,7 +105,7 @@ export default function RecruiterPlacementsPage() {
         </button>
       </div>
 
-      {!isLoading && !isError && placements.length > 0 ? (
+      {canManage && !isLoading && !isError && placements.length > 0 ? (
         <div className="mb-6 inline-flex items-center gap-3 rounded-2xl border border-gray-200 dark:border-white/10 bg-white dark:bg-white/5 px-5 py-4">
           <span className="text-sm font-medium text-gray-500 dark:text-[#c0c0eb]">
             Fees in pipeline
@@ -180,7 +184,7 @@ export default function RecruiterPlacementsPage() {
                         {clientName(placement.clientId)}
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                        {formatRand(placement.placementFee)}
+                        {canManage ? formatRand(placement.placementFee) : "—"}
                       </td>
                       <td className="px-6 py-4">
                         <span
@@ -196,17 +200,19 @@ export default function RecruiterPlacementsPage() {
                         {invoiceLabel(placement.invoiceStatus)}
                       </td>
                       <td className="px-6 py-4 text-right whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(placement);
-                          }}
-                          disabled={deleteMutation.isPending}
-                          className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
-                        >
-                          Delete
-                        </button>
+                        {canManage ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(placement);
+                            }}
+                            disabled={deleteMutation.isPending}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                   );

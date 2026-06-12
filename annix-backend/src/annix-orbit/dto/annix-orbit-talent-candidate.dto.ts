@@ -66,6 +66,12 @@ export class CreateAnnixOrbitTalentCandidateDto {
 
   @OptionalString({ maxLength: 100 })
   consentSource?: string | null;
+
+  @OptionalString()
+  cvText?: string | null;
+
+  @OptionalString({ maxLength: 500 })
+  cvFilePath?: string | null;
 }
 
 export class UpdateAnnixOrbitTalentCandidateDto extends CreateAnnixOrbitTalentCandidateDto {}

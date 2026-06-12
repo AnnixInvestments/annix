@@ -70,6 +70,18 @@ export class AnnixOrbitTalentCandidate {
   @Column({ type: "text", nullable: true })
   notes: string | null;
 
+  // Raw CV text + stored file (issue #337: CV upload used to parse-and-discard).
+  @Column({ name: "cv_text", type: "text", nullable: true })
+  cvText: string | null;
+
+  @Column({ name: "cv_file_path", type: "varchar", length: 500, nullable: true })
+  cvFilePath: string | null;
+
+  // Gemini embedding over the candidate's profile + CV text, refreshed in the
+  // background whenever the profile changes (issue #337 embedding matching).
+  @Column({ type: "jsonb", nullable: true })
+  embedding: number[] | null;
+
   @Column({ name: "consent_to_share", type: "boolean", default: false })
   consentToShare: boolean;
 

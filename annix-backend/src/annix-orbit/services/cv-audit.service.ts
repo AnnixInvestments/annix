@@ -92,6 +92,30 @@ export class CvAuditService {
     });
   }
 
+  // Identity documents are POPIA special personal information - every admin
+  // view of a retained document and every resolution is audit-logged.
+  async logIdentityDocumentAccess(profileId: number, actorEmail: string | null): Promise<void> {
+    await this.safeLog({
+      subAction: "identity_document_access",
+      entityId: profileId,
+      userId: null,
+      details: { actorEmail },
+    });
+  }
+
+  async logIdentityResolution(
+    profileId: number,
+    action: "approve" | "reject",
+    actorEmail: string | null,
+  ): Promise<void> {
+    await this.safeLog({
+      subAction: `identity_resolution_${action}`,
+      entityId: profileId,
+      userId: null,
+      details: { actorEmail },
+    });
+  }
+
   async logDataExport(candidateId: number | null, actorId: number | null): Promise<void> {
     await this.safeLog({
       subAction: "data_export",

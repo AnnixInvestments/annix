@@ -106,6 +106,32 @@ export class CvExtractionService {
     return this.ocrViaVision(buffer, "application/pdf");
   }
 
+  async extractTextFromBuffer(buffer: Buffer, filename: string): Promise<string> {
+    const format = detectCvFormat(filename);
+    if (format === "unsupported") {
+      throw new Error(
+        "Unsupported CV file format. Please upload a PDF, Word (.docx), or Excel (.xlsx) file.",
+      );
+    }
+    if (format === "docx") return extractTextFromWord(buffer);
+    if (format === "xlsx") return extractTextFromExcel(buffer);
+    const pdfText = await extractTextFromPdf(buffer);
+    if (pdfText.trim().length > 0) {
+      return pdfText;
+    }
+    this.logger.warn("No text layer in uploaded CV PDF — falling back to Gemini vision OCR.");
+    return this.ocrViaVision(buffer, "application/pdf");
+  }
+
+  async processBuffer(
+    buffer: Buffer,
+    filename: string,
+  ): Promise<{ text: string; data: ExtractedCvData }> {
+    const text = await this.extractTextFromBuffer(buffer, filename);
+    const data = await this.extractDataFromCv(text);
+    return { text, data };
+  }
+
   private async ocrViaVision(buffer: Buffer, mediaType: VisionMediaType): Promise<string> {
     try {
       const { content, providerUsed, tokensUsed } = await this.aiChatService.chatWithImage(

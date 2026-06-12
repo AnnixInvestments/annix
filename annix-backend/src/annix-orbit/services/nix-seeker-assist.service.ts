@@ -4,6 +4,7 @@ import {
   Logger,
   ServiceUnavailableException,
 } from "@nestjs/common";
+import { isNumber } from "es-toolkit/compat";
 import { now, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -22,10 +23,14 @@ import { CandidateRepository } from "../repositories/candidate.repository";
 import {
   calendarAdvisoryPrompt,
   credentialPhotoPrompt,
+  identityDocumentPrompt,
+  identityVerdictPrompt,
   type NixCalendarAdvisoryConflict,
   type NixCalendarAdvisoryResponse,
   type NixCredentialPhotoResult,
   type NixGeneratedCv,
+  type NixIdentityDocumentResult,
+  type NixIdentityVerdictResult,
   type NixSeekerCvAssessmentResponse,
   parseNixJson,
   seekerCvGenerationPrompt,
@@ -256,7 +261,7 @@ export class NixSeekerAssistService {
         return parseNixJson<NixSeekerCvAssessmentResponse>(aiResult.content);
       });
 
-      if (typeof result.overallScore === "number") {
+      if (isNumber(result.overallScore)) {
         try {
           profile.careerScore = result.overallScore;
           profile.careerScoreGeneratedAt = now().toJSDate();
@@ -451,6 +456,69 @@ export class NixSeekerAssistService {
       this.logger.warn(`Credential photo analysis failed: ${message}`);
       return { fields: EMPTY_CREDENTIAL_FIELDS, label: null, readable: false };
     }
+  }
+
+  // Reads an uploaded ID/passport image and extracts the identity fields
+  // (issue #359 phase 1). Same vision pipeline as credential photos.
+  async analyzeIdentityDocument(
+    buffer: Buffer,
+    mimeType: string,
+  ): Promise<NixIdentityDocumentResult> {
+    const unreadable: NixIdentityDocumentResult = {
+      documentType: null,
+      surname: null,
+      givenNames: [],
+      idNumber: null,
+      dateOfBirth: null,
+      expiry: null,
+      readable: false,
+    };
+    const mediaType = credentialPhotoMediaType(mimeType);
+    if (!mediaType) {
+      return unreadable;
+    }
+    const base64 = buffer.toString("base64");
+    try {
+      return await this.metrics.time(METRIC_CATEGORY, "identity-document", async () => {
+        const prompt = identityDocumentPrompt();
+        const ai = await this.aiChatService.chatWithImage(
+          base64,
+          mediaType,
+          prompt.user,
+          prompt.system,
+          {
+            responseFormat: "json",
+          },
+        );
+        return parseNixJson<NixIdentityDocumentResult>(ai.content);
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Identity document analysis failed: ${message}`);
+      return unreadable;
+    }
+  }
+
+  // Judges whether the registration name, CV name and ID names belong to the
+  // same person. Returns "review" on any doubt - a human resolves those.
+  async identityVerdict(input: {
+    registrationName: string | null;
+    cvName: string | null;
+    idSurname: string | null;
+    idGivenNames: string[];
+  }): Promise<NixIdentityVerdictResult> {
+    const prompt = identityVerdictPrompt(input);
+    const result = await this.metrics.time(METRIC_CATEGORY, "identity-verdict", async () => {
+      const ai = await this.callAi(prompt);
+      return parseNixJson<NixIdentityVerdictResult>(ai.content);
+    });
+    const verdict =
+      result.verdict === "verified" || result.verdict === "mismatch" ? result.verdict : "review";
+    const confidence =
+      isNumber(result.confidence) && Number.isFinite(result.confidence)
+        ? Math.max(0, Math.min(100, Math.round(result.confidence)))
+        : 0;
+    return { verdict, confidence, reasoning: result.reasoning ?? "" };
   }
 
   private async callAi(prompt: { system: string; user: string }) {

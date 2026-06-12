@@ -78,6 +78,16 @@ export class PostgresAnnixOrbitProfileRepository
     return this.repository.find({ where: { userId: In(userIds) } });
   }
 
+  findByIdentityStatuses(statuses: string[]): Promise<AnnixOrbitProfile[]> {
+    if (statuses.length === 0) {
+      return Promise.resolve([]);
+    }
+    return this.repository
+      .createQueryBuilder("profile")
+      .where("profile.identity_verification ->> 'status' IN (:...statuses)", { statuses })
+      .getMany();
+  }
+
   adminPage(params: {
     userType: AnnixOrbitUserType | null;
     skip: number;

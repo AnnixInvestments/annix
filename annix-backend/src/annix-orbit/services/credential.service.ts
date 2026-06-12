@@ -46,7 +46,7 @@ export class CredentialService {
       return true;
     }
     const match = await this.credentialTypeRepo.findByCode(code);
-    return match?.active ?? false;
+    return match?.active === true;
   }
 
   async extractFromDocument(

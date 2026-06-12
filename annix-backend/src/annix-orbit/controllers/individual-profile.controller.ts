@@ -146,6 +146,29 @@ export class IndividualProfileController {
     return this.individualProfileService.uploadProfilePhoto(req.user.id, file);
   }
 
+  @Post("profile/identity-document")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      fileFilter: (_req, file, cb) => {
+        if (file.mimetype.startsWith("image/")) {
+          cb(null, true);
+        } else {
+          cb(
+            new BadRequestException("Please upload a photo of your ID or passport (JPEG or PNG)"),
+            false,
+          );
+        }
+      },
+      limits: { fileSize: 10 * 1024 * 1024 },
+    }),
+  )
+  uploadIdentityDocument(
+    @Request() req: { user: { id: number } },
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.individualProfileService.uploadIdentityDocument(req.user.id, file);
+  }
+
   @Delete("profile/photo")
   async deleteProfilePhoto(@Request() req: { user: { id: number } }) {
     await this.individualProfileService.removeProfilePhoto(req.user.id);

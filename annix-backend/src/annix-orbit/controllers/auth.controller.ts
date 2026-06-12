@@ -1,4 +1,5 @@
 import { Body, Controller, Get, Post, Query, Request, UseGuards } from "@nestjs/common";
+import { AcceptAnnixOrbitTeamInviteDto } from "../dto/annix-orbit-team.dto";
 import {
   ForgotPasswordDto,
   LoginDto,
@@ -57,6 +58,16 @@ export class AnnixOrbitAuthController {
   @Post("register/student")
   async registerStudent(@Body() dto: RegisterStudentDto) {
     return this.authService.registerStudent(dto.email, dto.password, dto.name, dto.eeDisclosure);
+  }
+
+  @Get("team-invite")
+  async teamInviteInfo(@Query("token") token: string) {
+    return this.authService.teamInviteInfo(token);
+  }
+
+  @Post("accept-team-invite")
+  async acceptTeamInvite(@Body() dto: AcceptAnnixOrbitTeamInviteDto) {
+    return this.authService.acceptTeamInvite(dto.token, dto.name, dto.password);
   }
 
   @Post("login")

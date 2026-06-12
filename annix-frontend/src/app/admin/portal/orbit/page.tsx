@@ -219,6 +219,15 @@ const orbitAdminCards: AppHubCard[] = [
     hoverColor: "hover:border-rose-400 group-hover:bg-rose-600 group-hover:text-white",
   },
   {
+    href: "/admin/portal/orbit/identity-reviews",
+    title: "Identity reviews",
+    description:
+      "Seeker ID checks Nix wasn't sure about — compare the document, registration and CV names, then approve or confirm the mismatch.",
+    icon: <CredentialsIcon />,
+    color: "bg-violet-100 text-violet-600",
+    hoverColor: "hover:border-violet-400 group-hover:bg-violet-600 group-hover:text-white",
+  },
+  {
     href: "/admin/portal/orbit/delist-reports",
     title: "Delist reports",
     description:

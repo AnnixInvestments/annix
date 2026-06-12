@@ -16,6 +16,7 @@ import { AnnixOrbitEeConsentTextVersion } from "../entities/annix-orbit-ee-conse
 import { Candidate } from "../entities/candidate.entity";
 import { AnnixOrbitCandidateEeAttributesRepository } from "../repositories/annix-orbit-candidate-ee-attributes.repository";
 import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-orbit-ee-consent-text-version.repository";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateReferenceRepository } from "../repositories/candidate-reference.repository";
 import { CvAuditService, ErasureReason } from "./cv-audit.service";
@@ -81,7 +82,48 @@ export class PopiaService {
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
     private readonly cvAuditService: CvAuditService,
+    private readonly profileRepo: AnnixOrbitProfileRepository,
   ) {}
+
+  // Raw ID/passport images are only retained while a review/mismatch waits for
+  // an admin. Anything unresolved after the retention window is deleted - the
+  // extracted fields and document hash remain (issue #359, POPIA minimisation).
+  private static readonly IDENTITY_DOC_RETENTION_DAYS = 30;
+
+  @Cron(CronExpression.EVERY_DAY_AT_3AM, { name: "annix-orbit:identity-doc-retention" })
+  async purgeRetainedIdentityDocuments(): Promise<{ purged: number }> {
+    if (!isAnnixOrbitCronEnabled()) return { purged: 0 };
+    const cutoff = DateTime.now().minus({ days: PopiaService.IDENTITY_DOC_RETENTION_DAYS });
+    const profiles = await this.profileRepo.findByIdentityStatuses([
+      "review",
+      "mismatch",
+      "failed",
+      "ai-checked",
+    ]);
+    let purged = 0;
+    for (const profile of profiles) {
+      const iv = profile.identityVerification;
+      if (!iv?.documentFilePath || !iv.checkedAt) continue;
+      const checkedAt = DateTime.fromISO(iv.checkedAt);
+      if (!checkedAt.isValid || checkedAt > cutoff) continue;
+      try {
+        await this.storageService.delete(iv.documentFilePath);
+        profile.identityVerification = { ...iv, documentFilePath: null };
+        await this.profileRepo.save(profile);
+        purged += 1;
+      } catch (error) {
+        this.logger.warn(
+          `Could not purge identity document for profile ${profile.id}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }
+    if (purged > 0) {
+      this.logger.log(`POPIA retention: purged ${purged} retained identity document(s)`);
+    }
+    return { purged };
+  }
 
   @Cron(CronExpression.EVERY_DAY_AT_2AM, { name: "annix-orbit:purge-inactive" })
   async purgeInactiveCandidates(): Promise<{ purged: number }> {

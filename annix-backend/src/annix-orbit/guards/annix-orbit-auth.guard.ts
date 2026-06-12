@@ -6,6 +6,7 @@ import { UserAppAccessRepository } from "../../rbac/rbac.repository";
 import { UserRepository } from "../../user/user.repository";
 import { ANNIX_ORBIT_JWT_SECRET_DEFAULT } from "../annix-orbit.constants";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
+import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { CandidateRepository } from "../repositories/candidate.repository";
 
 const LAST_ACTIVE_THROTTLE_MS = 60_000;
@@ -18,6 +19,7 @@ export class AnnixOrbitAuthGuard implements CanActivate {
     private readonly userRepo: UserRepository,
     private readonly userAppAccessRepo: UserAppAccessRepository,
     private readonly candidateRepo: CandidateRepository,
+    private readonly profileRepo: AnnixOrbitProfileRepository,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -52,6 +54,15 @@ export class AnnixOrbitAuthGuard implements CanActivate {
           ? AnnixOrbitRole.INDIVIDUAL
           : await this.resolveRole(user.id, payload.role);
 
+      // recruiterRole is resolved against the profile at guard time, not from
+      // the JWT claim, so an owner's role change takes effect on the
+      // teammate's NEXT REQUEST instead of their next login (issue #337).
+      let recruiterRole = payload.recruiterRole ?? null;
+      if (userType !== "individual") {
+        const profile = await this.profileRepo.findByUserId(user.id);
+        recruiterRole = profile?.recruiterRole ?? null;
+      }
+
       request.user = {
         id: user.id,
         email: user.email,
@@ -59,6 +70,7 @@ export class AnnixOrbitAuthGuard implements CanActivate {
         role,
         userType,
         companyId: payload.companyId ?? null,
+        recruiterRole,
       };
 
       if (userType === "individual" && user.email) {

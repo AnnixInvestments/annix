@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   ParseIntPipe,
@@ -10,6 +11,13 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
+
+function assertCanManage(recruiterRole: string | null | undefined): void {
+  if (recruiterRole !== "owner" && recruiterRole !== "manager") {
+    throw new ForbiddenException("Only an agency owner or manager can do this.");
+  }
+}
+
 import {
   CreateAnnixOrbitPlacementDto,
   UpdateAnnixOrbitPlacementDto,
@@ -51,9 +59,10 @@ export class AnnixOrbitPlacementController {
 
   @Delete(":id")
   async remove(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { companyId: number; recruiterRole?: string | null } },
     @Param("id", ParseIntPipe) id: number,
   ) {
+    assertCanManage(req.user.recruiterRole);
     await this.placementService.remove(id, req.user.companyId);
     return { success: true };
   }

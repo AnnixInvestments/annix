@@ -21,6 +21,8 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   private readonly logger = new Logger(S3StorageService.name);
   private readonly s3Client: S3Client;
   private readonly bucketName: string;
+  private readonly serverSideEncryption: "aws:kms" | "AES256" | null;
+  private readonly kmsKeyId: string | null;
   private readonly regionName: string;
   private readonly presignedUrlExpiration: number;
   private initialized = false;
@@ -28,7 +30,11 @@ export class S3StorageService implements IStorageService, OnModuleInit {
   constructor(private configService: ConfigService) {
     this.regionName = this.configService.get<string>("AWS_REGION") || "af-south-1";
     this.bucketName = this.configService.get<string>("AWS_S3_BUCKET") || "annix-sync-files";
-    this.presignedUrlExpiration = this.configService.get<number>("AWS_S3_URL_EXPIRATION") || 3600; // 1 hour default
+    const sse = this.configService.get<string>("AWS_S3_SSE");
+    this.serverSideEncryption = sse === "aws:kms" || sse === "AES256" ? sse : null;
+    this.kmsKeyId = this.configService.get<string>("AWS_S3_KMS_KEY_ID") || null;
+    // 1 hour default
+    this.presignedUrlExpiration = this.configService.get<number>("AWS_S3_URL_EXPIRATION") || 3600;
 
     this.s3Client = new S3Client({
       region: this.regionName,
@@ -173,6 +179,15 @@ export class S3StorageService implements IStorageService, OnModuleInit {
           originalFilename: encodeURIComponent(file.originalname),
           uploadedAt: nowISO(),
         },
+        // Server-side encryption is opt-in via env so environments without a
+        // KMS key keep working: AWS_S3_SSE = "aws:kms" | "AES256", with an
+        // optional AWS_S3_KMS_KEY_ID for a customer-managed key.
+        ...(this.serverSideEncryption
+          ? {
+              ServerSideEncryption: this.serverSideEncryption,
+              ...(this.kmsKeyId ? { SSEKMSKeyId: this.kmsKeyId } : {}),
+            }
+          : {}),
       });
 
       await this.s3Client.send(command);
