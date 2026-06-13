@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { Injectable, Logger } from "@nestjs/common";
+import { isNumber } from "es-toolkit/compat";
 import { DateTime } from "../../lib/datetime";
 import { stripHtmlToText } from "../../lib/html-text";
 import { IngestedJobResult } from "./ingested-job.types";
@@ -25,7 +26,11 @@ const CAREERJET_LOCALE = "en_ZA";
 const CAREERJET_PAGE_SIZE = 100;
 const CAREERJET_MAX_PAGES = 5;
 const CAREERJET_TARGET = 200;
-const CAREERJET_USER_IP = "196.10.52.1";
+// Careerjet validates the calling IP - claiming a fake user_ip while calling
+// from a different address gets rejected with 403 "Unauthorized access from
+// IP x.x.x.x" (seen on test, 2026-06-12). Send the machine's real egress IP,
+// discovered once at runtime, with CAREERJET_USER_IP as an env override.
+const CAREERJET_EGRESS_IP_PROBE = "https://api.ipify.org";
 const CAREERJET_USER_AGENT = "AnnixOrbitJobBot/1.0 (+https://annix.co.za)";
 const CAREERJET_REFERER = "https://annix.co.za";
 const CAREERJET_SWEEP_PAGES = 2;
@@ -58,6 +63,31 @@ const CAREERJET_SWEEP_KEYWORDS = [
 
 @Injectable()
 export class CareerjetService {
+  private cachedEgressIp: string | null = null;
+
+  private async resolveUserIp(): Promise<string | null> {
+    const configured = process.env.CAREERJET_USER_IP;
+    if (configured) return configured;
+    if (this.cachedEgressIp) return this.cachedEgressIp;
+    try {
+      const response = await fetch(CAREERJET_EGRESS_IP_PROBE, {
+        signal: AbortSignal.timeout(5000),
+      });
+      const ip = (await response.text()).trim();
+      if (/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) {
+        this.cachedEgressIp = ip;
+        return ip;
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Could not discover egress IP for Careerjet user_ip: ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
+    return null;
+  }
+
   private readonly logger = new Logger(CareerjetService.name);
 
   async searchJobs(
@@ -132,53 +162,59 @@ export class CareerjetService {
     target: number,
   ): Promise<{ jobs: IngestedJobResult[]; requests: number }> {
     const authHeader = `Basic ${Buffer.from(`${affiliateId}:`).toString("base64")}`;
-    const collected: IngestedJobResult[] = [];
-    let requests = 0;
+    const userIp = await this.resolveUserIp();
 
-    for (let page = 1; page <= maxPages; page += 1) {
-      if (collected.length >= target) break;
+    const pages = Array.from({ length: maxPages }, (_, index) => index + 1);
+    const outcome = await pages.reduce(
+      async (accPromise, page) => {
+        const acc = await accPromise;
+        if (acc.stop || acc.jobs.length >= target) return acc;
 
-      const params = new URLSearchParams({
-        locale_code: CAREERJET_LOCALE,
-        sort: "date",
-        page: String(page),
-        page_size: String(CAREERJET_PAGE_SIZE),
-        user_ip: CAREERJET_USER_IP,
-        user_agent: CAREERJET_USER_AGENT,
-      });
-      if (keywords) params.set("keywords", keywords);
+        const params = new URLSearchParams({
+          locale_code: CAREERJET_LOCALE,
+          sort: "date",
+          page: String(page),
+          page_size: String(CAREERJET_PAGE_SIZE),
+          user_agent: CAREERJET_USER_AGENT,
+        });
+        if (userIp) params.set("user_ip", userIp);
+        if (keywords) params.set("keywords", keywords);
 
-      requests += 1;
-      const response = await fetch(`${CAREERJET_BASE_URL}?${params.toString()}`, {
-        headers: {
-          Authorization: authHeader,
-          Accept: "application/json",
-          Referer: CAREERJET_REFERER,
-        },
-      });
+        const response = await fetch(`${CAREERJET_BASE_URL}?${params.toString()}`, {
+          headers: {
+            Authorization: authHeader,
+            Accept: "application/json",
+            Referer: CAREERJET_REFERER,
+          },
+        });
+        const requests = acc.requests + 1;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        this.logger.error(`Careerjet API error ${response.status} on page ${page}: ${errorText}`);
-        throw new Error(`Careerjet API returned ${response.status}: ${errorText}`);
-      }
+        if (!response.ok) {
+          const errorText = await response.text();
+          this.logger.error(`Careerjet API error ${response.status} on page ${page}: ${errorText}`);
+          throw new Error(`Careerjet API returned ${response.status}: ${errorText}`);
+        }
 
-      const data: CareerjetApiResponse = await response.json();
-      if (data.type && data.type !== "JOBS") {
-        this.logger.warn(
-          `Careerjet returned type=${data.type} (no jobs) on page ${page} — check locale/location scoping`,
-        );
-        break;
-      }
-      const rawJobs = data.jobs ?? [];
-      if (rawJobs.length === 0) break;
+        const data: CareerjetApiResponse = await response.json();
+        if (data.type && data.type !== "JOBS") {
+          this.logger.warn(
+            `Careerjet returned type=${data.type} (no jobs) on page ${page} — check locale/location scoping`,
+          );
+          return { ...acc, requests, stop: true };
+        }
+        const rawJobs = data.jobs ?? [];
+        if (rawJobs.length === 0) return { ...acc, requests, stop: true };
 
-      collected.push(...rawJobs.map((job) => this.mapResult(job)));
+        return {
+          jobs: [...acc.jobs, ...rawJobs.map((job) => this.mapResult(job))],
+          requests,
+          stop: rawJobs.length < CAREERJET_PAGE_SIZE,
+        };
+      },
+      Promise.resolve({ jobs: [] as IngestedJobResult[], requests: 0, stop: false }),
+    );
 
-      if (rawJobs.length < CAREERJET_PAGE_SIZE) break;
-    }
-
-    return { jobs: collected.slice(0, target), requests };
+    return { jobs: outcome.jobs.slice(0, target), requests: outcome.requests };
   }
 
   private mapResult(result: NonNullable<CareerjetApiResponse["jobs"]>[number]): IngestedJobResult {
@@ -198,8 +234,8 @@ export class CareerjetService {
       description: stripHtmlToText(result.description ?? null),
       locationDisplayName: location,
       locationArea: location,
-      salaryMin: typeof result.salary_min === "number" ? result.salary_min : null,
-      salaryMax: typeof result.salary_max === "number" ? result.salary_max : null,
+      salaryMin: isNumber(result.salary_min) ? result.salary_min : null,
+      salaryMax: isNumber(result.salary_max) ? result.salary_max : null,
       category: null,
       redirectUrl: url,
       created,

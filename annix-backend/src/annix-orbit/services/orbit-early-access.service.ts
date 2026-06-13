@@ -192,7 +192,8 @@ export class OrbitEarlyAccessService {
   }
 
   private referralLink(code: string): string {
-    const base = process.env.ORBIT_PUBLIC_URL || "https://annix.co.za";
+    const base =
+      process.env.ORBIT_PUBLIC_URL || process.env.FRONTEND_URL || "http://localhost:3000";
     return `${base}/annix/orbit/seeker/register-interest?ref=${code}`;
   }
 

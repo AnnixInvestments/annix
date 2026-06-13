@@ -23,6 +23,8 @@ interface AdzunaApiResponse {
 
 const ADZUNA_BASE_URL = "https://api.adzuna.com/v1/api/jobs";
 const ADZUNA_OUTAGE_MS = 30 * 60 * 1000;
+const ADZUNA_TRANSIENT_RETRIES = 3;
+const ADZUNA_RETRY_DELAY_MS = 2_000;
 const ADZUNA_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
 
 @Injectable()
@@ -69,7 +71,7 @@ export class AdzunaService {
 
     this.assertAvailable();
 
-    const response = await fetch(url);
+    const response = await this.fetchWithRetry(url);
 
     if (!response.ok) {
       const message = await this.describeError(response);
@@ -113,36 +115,39 @@ export class AdzunaService {
   }> {
     const maxPages = options.maxPages ?? 2;
     const maxDaysOld = options.maxDaysOld ?? 60;
-    const collected: number[] = [];
+    const pages = Array.from({ length: maxPages }, (_, index) => index + 1);
+    const collected = await pages.reduce(
+      async (accPromise, page) => {
+        const acc = await accPromise;
+        if (acc.stop) return acc;
+        const { jobs } = await this.searchJobs(appId, appKey, country, {
+          keywords: options.title,
+          locationArea: options.province ?? undefined,
+          page,
+          resultsPerPage: 50,
+          maxDaysOld,
+        });
+        const midpoints = jobs
+          .map((job) => {
+            const min = job.salaryMin;
+            const max = job.salaryMax;
+            if (min != null && max != null) return (min + max) / 2;
+            if (min != null) return min;
+            if (max != null) return max;
+            return null;
+          })
+          .filter((value): value is number => value != null);
+        return { samples: [...acc.samples, ...midpoints], stop: jobs.length < 50 };
+      },
+      Promise.resolve({ samples: [] as number[], stop: false }),
+    );
+    const samples = collected.samples;
 
-    for (let page = 1; page <= maxPages; page++) {
-      const { jobs } = await this.searchJobs(appId, appKey, country, {
-        keywords: options.title,
-        locationArea: options.province ?? undefined,
-        page,
-        resultsPerPage: 50,
-        maxDaysOld,
-      });
-      if (jobs.length === 0) break;
-      for (const job of jobs) {
-        const min = job.salaryMin;
-        const max = job.salaryMax;
-        if (min != null && max != null) {
-          collected.push((min + max) / 2);
-        } else if (min != null) {
-          collected.push(min);
-        } else if (max != null) {
-          collected.push(max);
-        }
-      }
-      if (jobs.length < 50) break;
+    if (samples.length < 5) {
+      return { p25: null, p50: null, p75: null, sampleSize: samples.length };
     }
 
-    if (collected.length < 5) {
-      return { p25: null, p50: null, p75: null, sampleSize: collected.length };
-    }
-
-    const sorted = [...collected].sort((a, b) => a - b);
+    const sorted = [...samples].sort((a, b) => a - b);
     const quantile = (q: number): number => {
       const pos = (sorted.length - 1) * q;
       const lo = Math.floor(pos);
@@ -219,6 +224,24 @@ export class AdzunaService {
       return null;
     }
     return posted.plus({ days: 30 }).toJSDate();
+  }
+
+  // Adzuna intermittently throws single 503s even when the API is healthy
+  // (verified: the same query succeeds seconds later). Without retries one
+  // blip aborted the whole run AND tripped the 30-minute cool-down, so every
+  // scheduled run looked dead (issue seen on test, 2026-06-12). Retry the
+  // transient statuses with a short backoff before treating it as an outage.
+  private async fetchWithRetry(url: string, attempt = 1): Promise<Response> {
+    const response = await fetch(url);
+    const retryable = !response.ok && ADZUNA_RETRYABLE_STATUSES.has(response.status);
+    if (!retryable || attempt >= ADZUNA_TRANSIENT_RETRIES) {
+      return response;
+    }
+    this.logger.warn(
+      `Adzuna transient HTTP ${response.status} (attempt ${attempt}/${ADZUNA_TRANSIENT_RETRIES}) — retrying`,
+    );
+    await new Promise((resolve) => setTimeout(resolve, ADZUNA_RETRY_DELAY_MS * attempt));
+    return this.fetchWithRetry(url, attempt + 1);
   }
 
   private assertAvailable(): void {

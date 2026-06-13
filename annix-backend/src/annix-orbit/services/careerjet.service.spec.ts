@@ -5,6 +5,16 @@ describe("CareerjetService", () => {
   let service: CareerjetService;
   const originalFetch = global.fetch;
 
+  // Pin the env override so the service never probes for its egress IP in
+  // tests (that probe is an extra fetch the mocks don't expect).
+  beforeAll(() => {
+    process.env.CAREERJET_USER_IP = "196.10.52.1";
+  });
+
+  afterAll(() => {
+    delete process.env.CAREERJET_USER_IP;
+  });
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [CareerjetService],
