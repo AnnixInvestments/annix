@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { nowMillis } from "@/app/lib/datetime";
 
@@ -25,8 +26,17 @@ interface ServiceWorkerState {
 
 const DISMISS_KEY = "orbit-pwa-dismissed";
 
+// Public early-access landing pages must not register the service worker or
+// offer install — early-access registrants should not be able to install the
+// app until they're granted access.
+const PWA_SUPPRESSED_PREFIXES = ["/annix/orbit/seeker/register-interest"];
+
 export function OrbitPwaProvider(props: { children: React.ReactNode }) {
   const { children } = props;
+  const pathname = usePathname();
+  const pwaSuppressed = pathname
+    ? PWA_SUPPRESSED_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    : false;
   const [swState, setSwState] = useState<ServiceWorkerState>({
     isUpdateAvailable: false,
     registration: null,
@@ -40,6 +50,10 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
   useEffect(() => {
     // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
     if (typeof window === "undefined" || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    if (pwaSuppressed) {
       return;
     }
 
@@ -147,7 +161,7 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
       window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
     };
-  }, []);
+  }, [pwaSuppressed]);
 
   const handleUpdate = () => {
     if (swState.registration?.waiting) {
@@ -179,7 +193,7 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
     <>
       {children}
 
-      {showUpdatePrompt && (
+      {showUpdatePrompt && !pwaSuppressed && (
         <div className="fixed top-4 left-4 right-4 z-[9999] md:left-auto md:right-4 md:max-w-sm">
           <div
             className="text-white rounded-xl shadow-xl p-4"
@@ -228,7 +242,7 @@ export function OrbitPwaProvider(props: { children: React.ReactNode }) {
         </div>
       )}
 
-      {showInstallPrompt && !isStandalone && (
+      {showInstallPrompt && !isStandalone && !pwaSuppressed && (
         <div className="fixed bottom-4 left-4 right-4 z-[9999] md:left-auto md:right-4 md:max-w-sm animate-orbit-slide-up">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-4">
             <div className="flex items-start gap-4">

@@ -32,11 +32,25 @@ function ResourceDetail(props: { resource: MarketingResource; onBack: () => void
           {resource.title}
         </h1>
         {imageUrl ? (
-          <img
-            src={imageUrl}
-            alt={resource.title}
-            className="mt-8 w-full rounded-2xl border border-white/10"
-          />
+          ctaUrl ? (
+            // The pre-launch creatives have the "Register your interest" button
+            // baked into the artwork, so make the whole image link to the CTA
+            // (e.g. the seeker early-access page) — clicking the painted button
+            // now actually navigates.
+            <a href={ctaUrl} aria-label={ctaLabel} className="mt-8 block">
+              <img
+                src={imageUrl}
+                alt={resource.title}
+                className="w-full rounded-2xl border border-white/10 transition hover:border-white/30"
+              />
+            </a>
+          ) : (
+            <img
+              src={imageUrl}
+              alt={resource.title}
+              className="mt-8 w-full rounded-2xl border border-white/10"
+            />
+          )
         ) : null}
         <div className="mt-8 space-y-5">
           {paragraphs.map((paragraph, index) => (

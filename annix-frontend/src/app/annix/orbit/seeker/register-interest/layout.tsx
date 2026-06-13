@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   title: TITLE,
   description: DESCRIPTION,
   alternates: { canonical: PAGE_URL },
+  // Drop the PWA manifest the parent Orbit layout sets, so the browser offers
+  // no install affordance on the public early-access page — early-access
+  // registrants must not be able to install the app until granted access.
+  manifest: null,
   openGraph: {
     type: "website",
     url: PAGE_URL,
