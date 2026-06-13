@@ -1,5 +1,6 @@
 "use client";
 
+import { sourceNameFromUrl } from "@/app/lib/annix-orbit/provider-labels";
 import type { PublicJob } from "@/app/lib/api/annixOrbitApi";
 import { formatDateZA } from "@/app/lib/datetime";
 
@@ -31,6 +32,9 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
   const skills = job.extractedSkills;
   const visibleSkills = skills.slice(0, 6);
   const extraSkillCount = skills.length - visibleSkills.length;
+
+  const isAnnixJob = job.kind === "annix";
+  const applyLabel = isAnnixJob ? "View & apply" : `Apply on ${sourceNameFromUrl(sourceUrl)}`;
 
   const handleApply = () => {
     props.onApply(job);
@@ -90,7 +94,7 @@ export function SeekerBrowseJobCard(props: SeekerBrowseJobCardProps) {
             onClick={handleApply}
             className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
           >
-            View &amp; apply
+            {applyLabel}
           </a>
         ) : (
           <span className="text-sm text-gray-400">No apply link</span>

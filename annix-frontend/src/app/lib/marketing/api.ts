@@ -42,6 +42,20 @@ export function mergeMarketingDefaults(
       partner.url = "";
     }
   });
+  // Arrays are replaced wholesale by saved content (see the customizer above), so
+  // resources saved before ctaUrl existed lose their CTA on merge — which leaves
+  // the pre-launch creative images unclickable. Backfill ctaUrl/ctaLabel from the
+  // matching default resource by slug, same as the imageUrl backfills above.
+  merged.resources.items.forEach((item) => {
+    if (item.ctaUrl) {
+      return;
+    }
+    const def = defaults.resources.items.find((entry) => entry.slug === item.slug);
+    if (def?.ctaUrl) {
+      item.ctaUrl = def.ctaUrl;
+      item.ctaLabel = item.ctaLabel ? item.ctaLabel : def.ctaLabel;
+    }
+  });
   return merged;
 }
 

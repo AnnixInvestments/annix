@@ -3,6 +3,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { isMongoDriver } from "../../lib/persistence/database-driver";
 import { repositoryProvider } from "../../lib/persistence/repository-provider";
+import { RbacBridgeModule } from "../../rbac/rbac-bridge.module";
 import { User } from "../../user/entities/user.entity";
 import { UserSchema } from "../../user/schemas/user.schema";
 import { UserRepository } from "../../user/user.repository";
@@ -50,6 +51,7 @@ import { AnnixRepSessionSchema } from "./schemas/annix-rep-session.schema";
     ...(isMongoDriver()
       ? []
       : [TypeOrmModule.forFeature([AnnixRepSession, User, UserRole, RepProfile, TeamMember])]),
+    RbacBridgeModule,
   ],
   controllers: [AnnixRepAuthController],
   providers: [

@@ -1,14 +1,23 @@
 import { ConflictException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
+import { RbacBridgeService } from "../../rbac/rbac-bridge.service";
 import { AUTH_CONSTANTS } from "../../shared/auth/auth.constants";
 import { PasswordService } from "../../shared/auth/password.service";
+import { UserRepository } from "../../user/user.repository";
 import { TeacherAssistantUser } from "../entities/teacher-assistant-user.entity";
 import { TeacherAssistantUserRepository } from "../teacher-assistant-user.repository";
 
 const TOKEN_TTL_SECONDS = AUTH_CONSTANTS.SESSION_EXPIRY_HOURS * 60 * 60;
 const TOKEN_TYPE = "teacher-assistant";
 const REFRESH_TOKEN_TYPE = "refresh";
+// Identity scope for the core-User anchor (issue #311 step 4.1). A
+// `teacher-assistant`-scoped row never collides with a customer/orbit
+// account on the same email — Mongo permits one account per scope —
+// so anchoring never merges identities.
+const TA_APP_SCOPE = "teacher-assistant";
+const TA_APP_CODE = "teacher-assistant";
+const TA_ANCHOR_ROLE = "viewer";
 
 export interface TeacherAssistantAuthUser {
   id: number;
@@ -39,6 +48,8 @@ export class TeacherAssistantAuthService {
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly coreUserRepo: UserRepository,
+    private readonly rbacBridge: RbacBridgeService,
   ) {}
 
   async register(input: {
@@ -53,14 +64,54 @@ export class TeacherAssistantAuthService {
       throw new ConflictException("An account with that email already exists.");
     }
     const passwordHash = await this.passwordService.hashSimple(input.password);
+    const trimmedName = input.name.trim();
+    // Step 4.1 (#311): anchor to a core User first, then stamp its id
+    // onto the standalone row. Additive — login (below) still verifies
+    // against this table's passwordHash, not the core user.
+    const anchorUserId = await this.ensureCoreAnchor(email, trimmedName);
     const saved = await this.userRepo.create({
       email,
       passwordHash,
-      name: input.name.trim(),
+      name: trimmedName,
       schoolName: input.schoolName?.trim() || null,
+      userId: anchorUserId,
     });
+    if (anchorUserId !== null) {
+      await this.rbacBridge.ensureAppAccess(anchorUserId, TA_APP_CODE, TA_ANCHOR_ROLE);
+    }
     this.logger.log(`Registered new teacher: ${saved.email} (id=${saved.id})`);
     return this.tokenFor(saved);
+  }
+
+  // Find-or-create the `teacher-assistant`-scoped core User anchor for
+  // this email. Never throws into registration — a failed anchor just
+  // leaves userId null for the backfill migration to pick up later.
+  private async ensureCoreAnchor(email: string, name: string): Promise<number | null> {
+    try {
+      const existing = await this.coreUserRepo.findOneByEmailAndScope(email, TA_APP_SCOPE);
+      if (existing) {
+        return existing.id;
+      }
+      const parts = name.split(/\s+/).filter((part) => part.length > 0);
+      const firstName = parts[0] ?? name;
+      const lastName = parts.length > 1 ? parts.slice(1).join(" ") : undefined;
+      const created = await this.coreUserRepo.create({
+        email,
+        firstName,
+        lastName,
+        appScope: TA_APP_SCOPE,
+        emailVerified: false,
+        status: "active",
+      });
+      return created.id;
+    } catch (error) {
+      this.logger.warn(
+        `Failed to anchor Teacher Assistant '${email}' to core user: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return null;
+    }
   }
 
   async login(email: string, password: string): Promise<TeacherAssistantAuthResult> {

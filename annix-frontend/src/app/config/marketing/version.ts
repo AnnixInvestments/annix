@@ -1,1 +1,1 @@
-export const MARKETING_VERSION = "1.6.11";
+export const MARKETING_VERSION = "1.6.12";

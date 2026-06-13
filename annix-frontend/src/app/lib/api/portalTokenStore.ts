@@ -114,6 +114,14 @@ export class PortalTokenStore {
     return this.rememberMeValue;
   }
 
+  // Set the persistence preference BEFORE login stores tokens, so setTokens
+  // (which reads rememberMe()) writes them to localStorage (survives browser
+  // close) rather than sessionStorage. Without this, a ticked "Remember me"
+  // box was silently ignored and every returning visit forced a re-login.
+  setRememberMe(remember: boolean) {
+    this.rememberMeValue = remember;
+  }
+
   isAuthenticated(): boolean {
     return this.accessToken() !== null;
   }

@@ -67,6 +67,18 @@ export function AuIndustriesFooter(props: FooterProps) {
                 Products & Services
               </Link>
               <Link
+                href="/rubber-lined-mining-pipework"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Mining Pipework
+              </Link>
+              <Link
+                href="/industrial-wear-lining"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Industrial Wear Lining
+              </Link>
+              <Link
                 href="/projects"
                 className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
               >
@@ -114,6 +126,18 @@ export function AuIndustriesFooter(props: FooterProps) {
                 className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
               >
                 Rubber Lining Witbank
+              </Link>
+              <Link
+                href="/rubber-lining-benoni"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Lining Benoni
+              </Link>
+              <Link
+                href="/rubber-lining-germiston"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Lining Germiston
               </Link>
             </div>
           </div>

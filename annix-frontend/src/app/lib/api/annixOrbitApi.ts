@@ -1526,8 +1526,10 @@ export interface SeekerEntitlements {
 }
 
 class AnnixOrbitApiClient {
-  setRememberMe(_remember: boolean) {
-    // PortalTokenStore tracks rememberMe via setTokens; this no-op preserves the public API
+  setRememberMe(remember: boolean) {
+    // Record the choice on the token store so the subsequent login setTokens
+    // call persists to localStorage when ticked (survives browser close).
+    annixOrbitTokenStore.setRememberMe(remember);
   }
 
   private setTokens(accessToken: string, refreshToken: string) {

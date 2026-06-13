@@ -131,10 +131,10 @@ function RegisterInterestContent() {
     mutation.mutate(payload);
   };
 
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+  const isBrowser = typeof window !== "undefined";
   const referralLink =
-    referralCode && typeof window !== "undefined"
-      ? `${window.location.origin}${PAGE_PATH}?ref=${referralCode}`
-      : "";
+    referralCode && isBrowser ? `${window.location.origin}${PAGE_PATH}?ref=${referralCode}` : "";
 
   const handleCopy = () => {
     if (!referralLink) {
@@ -178,12 +178,27 @@ function RegisterInterestContent() {
     </>
   );
 
+  // Preload the above-the-fold brand imagery so the browser fetches it during
+  // HTML parse instead of after CSS — the logo/wordmark stream from the backend
+  // asset endpoint, which is the slow path. React hoists these into <head>.
+  const preloadLinks = (
+    <>
+      {logoIcon ? <link rel="preload" as="image" href={logoIcon} fetchPriority="high" /> : null}
+      {orbitLockupUrl ? (
+        <link rel="preload" as="image" href={orbitLockupUrl} fetchPriority="high" />
+      ) : null}
+      {heroTopUrl ? <link rel="preload" as="image" href={heroTopUrl} fetchPriority="high" /> : null}
+      {heroBottomUrl ? <link rel="preload" as="image" href={heroBottomUrl} /> : null}
+    </>
+  );
+
   if (referralCode) {
     return (
       <div
         className="relative overflow-hidden min-h-screen px-4 py-16 flex items-center justify-center"
         style={{ backgroundColor: NAVY }}
       >
+        {preloadLinks}
         {heroLayers}
         <div
           className="relative z-10 max-w-lg w-full rounded-2xl p-8 text-center"
@@ -249,15 +264,13 @@ function RegisterInterestContent() {
             <div
               role="img"
               aria-label="Annix Orbit"
-              className="bg-cover bg-center bg-no-repeat"
+              className="bg-contain bg-center bg-no-repeat"
               style={{
                 height: "6.5rem",
                 width: "400px",
                 maxWidth: "55vw",
                 borderRadius: "1.25rem",
                 backgroundImage: `url('${orbitLockupUrl}')`,
-                maskImage: EDGE_FADE,
-                WebkitMaskImage: EDGE_FADE,
               }}
             />
           </div>

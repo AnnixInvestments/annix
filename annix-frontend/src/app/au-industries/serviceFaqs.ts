@@ -25,6 +25,31 @@ export const SERVICE_FAQS: Record<string, ServiceFaq[]> = {
       answer:
         "All surfaces are grit blasted up to SA 3 standard before lining. Adhesion failure is the most common cause of premature lining failure, and SA 3 preparation ensures the bonding agent makes a clean mechanical and chemical bond with the substrate.",
     },
+    {
+      question: "What is rubber lining and how does it protect equipment?",
+      answer:
+        "Rubber lining is a bonded layer of abrasion- or chemical-resistant rubber applied to the inside of steel equipment — pipes, tanks, chutes, pumps, and valves. It moves wear and corrosion off the steel and into a replaceable rubber layer, so the equipment lasts far longer and the lining is renewed rather than the whole component. It's the standard way to protect plant in mining slurry, minerals processing, and chemical service.",
+    },
+    {
+      question: "What thickness of rubber lining do I need?",
+      answer:
+        "Lining thickness is matched to the wear duty — typically 6mm for general slurry abrasion, stepping up to 10–12mm or more in high-wear zones such as pipe bends, reducers, cyclone feeds, and chute impact points where flow changes direction. We can increase thickness locally rather than over-lining the whole component, and confirm the specification against your particle size, velocity, and chemistry during the site assessment.",
+    },
+    {
+      question: "Can you rubber line both new and existing equipment?",
+      answer:
+        "Yes. We line newly fabricated pipework, tanks, and fittings before they go into service, and we re-line worn equipment that has reached the end of its previous lining life. Existing items are stripped, grit blasted to SA 3 standard, and re-lined — often more cost-effective than replacing the steelwork.",
+    },
+    {
+      question: "Which industries use AU Industries rubber lining?",
+      answer:
+        "Mining and minerals processing (gold, platinum, coal, copper, uranium, titanium), chemical processing, water and wastewater treatment, and general heavy industry. Any operation moving abrasive slurry, corrosive liquids, or handling bulk material through steel equipment benefits from rubber lining.",
+    },
+    {
+      question: "Where is AU Industries based for rubber lining work?",
+      answer:
+        "Our fabrication and lining facility is in Anderbolt, Boksburg, on the East Rand of Gauteng. We line in our workshop and on-site, with fast collection and delivery across Gauteng (Boksburg, Benoni, Germiston, Johannesburg) and project coverage throughout South Africa and into Mozambique, Namibia, Zambia, Botswana, and Zimbabwe.",
+    },
   ],
 
   "rubber-sheeting": [

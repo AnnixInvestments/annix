@@ -22,6 +22,10 @@ function postLoginPath(userType: string | undefined, returnUrl: string | null): 
 
 const ORBIT_LOGIN_TYPES = new Set(["individual", "company", "recruiter", "student"]);
 
+// Last email a user signed in with, prefilled on return when "Remember me"
+// was ticked. Email only — never the password.
+const LAST_LOGIN_EMAIL_KEY = "annix-orbit-last-login-email";
+
 function orbitUserTypeLabel(userType: string): string {
   if (userType === "individual") return "job seeker";
   if (userType === "company") return "company";
@@ -62,6 +66,19 @@ function AnnixOrbitLoginContent() {
   useEffect(() => {
     if (prefilledEmail) {
       passwordRef.current?.focus();
+      return;
+    }
+    // Prefill the last email this seeker signed in with (remember-me), so a
+    // returning user only re-enters their password. Read in an effect to keep
+    // SSR clean.
+    try {
+      const remembered = window.localStorage.getItem(LAST_LOGIN_EMAIL_KEY);
+      if (remembered) {
+        setEmail(remembered);
+        passwordRef.current?.focus();
+      }
+    } catch {
+      // Storage blocked — just start with an empty field.
     }
   }, [prefilledEmail]);
 
@@ -81,6 +98,16 @@ function AnnixOrbitLoginContent() {
         await logout().catch(() => {});
         setError(mismatch);
         return;
+      }
+      // Remember (or forget) the email for next time, matching the checkbox.
+      try {
+        if (rememberMe) {
+          window.localStorage.setItem(LAST_LOGIN_EMAIL_KEY, submitEmail);
+        } else {
+          window.localStorage.removeItem(LAST_LOGIN_EMAIL_KEY);
+        }
+      } catch {
+        // Storage blocked — non-fatal.
       }
       if (isJobSeeker && phoneType) {
         annixOrbitApiClient.updateSeekerPreferences({ phoneType }).catch(() => {});

@@ -1,6 +1,7 @@
 import { ConflictException, Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import { v4 as uuidv4 } from "uuid";
 import { now } from "../../lib/datetime";
+import { RbacBridgeService } from "../../rbac/rbac-bridge.service";
 import { AUTH_CONSTANTS, PasswordService, TokenService } from "../../shared/auth";
 import { SessionInvalidationReason } from "../../shared/enums";
 import { User } from "../../user/entities/user.entity";
@@ -38,7 +39,11 @@ export class AnnixRepAuthService {
     private readonly passwordService: PasswordService,
     private readonly tokenService: TokenService,
     private readonly oauthProvider: OAuthLoginProvider,
+    private readonly rbacBridge: RbacBridgeService,
   ) {}
+
+  private static readonly APP_CODE = "annix-rep";
+  private static readonly ANCHOR_ROLE = "viewer";
 
   async register(
     dto: AnnixRepRegisterDto,
@@ -64,6 +69,16 @@ export class AnnixRepAuthService {
       lastName: dto.lastName,
       roles: [annixRepRole],
     });
+
+    // Step 4.1 (#311): anchor the rep into universal RBAC so the
+    // unified guard can resolve their access later. Additive + inert —
+    // Annix Pulse login still gates on the legacy `annixRep` User role
+    // above; this grant is consulted by nothing until step 4.3.
+    await this.rbacBridge.ensureAppAccess(
+      savedUser.id,
+      AnnixRepAuthService.APP_CODE,
+      AnnixRepAuthService.ANCHOR_ROLE,
+    );
 
     const sessionToken = uuidv4();
     const expiresAt = now().plus({ hours: AUTH_CONSTANTS.SESSION_EXPIRY_HOURS }).toJSDate();
@@ -389,6 +404,14 @@ export class AnnixRepAuthService {
         return existingOAuthUser;
       }
     })();
+
+    // Step 4.1 (#311): anchor OAuth-registered reps into universal RBAC
+    // too — same additive, inert grant as the password register path.
+    await this.rbacBridge.ensureAppAccess(
+      user.id,
+      AnnixRepAuthService.APP_CODE,
+      AnnixRepAuthService.ANCHOR_ROLE,
+    );
 
     await this.invalidateAllUserSessions(user.id, SessionInvalidationReason.NEW_LOGIN);
 

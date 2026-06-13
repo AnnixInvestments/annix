@@ -6,8 +6,14 @@ import { isMongoDriver } from "../lib/persistence/database-driver";
 import { repositoryProvider } from "../lib/persistence/repository-provider";
 import { MetricsModule } from "../metrics/metrics.module";
 import { NixModule } from "../nix/nix.module";
+import { RbacBridgeModule } from "../rbac/rbac-bridge.module";
 import { SharedModule } from "../shared/shared.module";
 import { StorageModule } from "../storage/storage.module";
+import { User } from "../user/entities/user.entity";
+import { UserSchema } from "../user/schemas/user.schema";
+import { UserRepository } from "../user/user.repository";
+import { MongoUserRepository } from "../user/user.repository.mongo";
+import { PostgresUserRepository } from "../user/user.repository.postgres";
 import { TeacherAssistantCapabilities } from "./capabilities/teacher-assistant.capabilities";
 import { TeacherAssistantUser } from "./entities/teacher-assistant-user.entity";
 import { TeacherAssistantAuthGuard } from "./guards/teacher-assistant-auth.guard";
@@ -31,13 +37,15 @@ import { PostgresTeacherAssistantUserRepository } from "./teacher-assistant-user
       ? [
           MongooseModule.forFeature([
             { name: "TeacherAssistantUser", schema: TeacherAssistantUserSchema },
+            { name: "User", schema: UserSchema },
           ]),
         ]
       : []),
-    ...(isMongoDriver() ? [] : [TypeOrmModule.forFeature([TeacherAssistantUser])]),
+    ...(isMongoDriver() ? [] : [TypeOrmModule.forFeature([TeacherAssistantUser, User])]),
     forwardRef(() => AdminModule),
     forwardRef(() => NixModule),
     MetricsModule,
+    RbacBridgeModule,
     SharedModule,
     StorageModule,
   ],
@@ -57,6 +65,7 @@ import { PostgresTeacherAssistantUserRepository } from "./teacher-assistant-user
       PostgresTeacherAssistantUserRepository,
       MongoTeacherAssistantUserRepository,
     ),
+    repositoryProvider(UserRepository, PostgresUserRepository, MongoUserRepository),
   ],
   exports: [
     AssignmentGeneratorService,

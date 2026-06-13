@@ -25,6 +25,9 @@ export class TeacherAssistantUser {
   @Prop({ type: String, required: false })
   schoolName: string;
 
+  @Prop({ type: Number, required: false })
+  userId: number | null;
+
   @Prop({ type: Date, required: false })
   createdAt: Date;
 

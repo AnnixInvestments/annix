@@ -1,7 +1,9 @@
 "use client";
 
+import { isArray, isBoolean, isNumber, isString } from "es-toolkit/compat";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { PhoneInput } from "@/app/components/PhoneInput";
 import { CurrencySelect, DEFAULT_CURRENCY } from "@/app/components/ui/CurrencySelect";
 import { useSupplierAuth } from "@/app/context/SupplierAuthContext";
 import { type SupplierCompanyDto, supplierPortalApi } from "@/app/lib/api/supplierApi";
@@ -37,6 +39,101 @@ const initialCompanyData: SupplierCompanyDto = {
   industryType: "",
   companySize: undefined,
 };
+
+// The exact fields SupplierCompanyDto accepts. The profile query seeds
+// companyData with the FULL supplier entity (id, name, addressJsonb, smtp/
+// branding config, loss-factor pcts, ownerUserId, …); posting those back trips
+// the DTO's forbidNonWhitelisted guard ("property X should not exist"). Build
+// the save payload from this allow-list only.
+const COMPANY_DTO_KEYS: (keyof SupplierCompanyDto)[] = [
+  "legalName",
+  "tradingName",
+  "registrationNumber",
+  "taxNumber",
+  "vatNumber",
+  "streetAddress",
+  "addressLine2",
+  "city",
+  "provinceState",
+  "postalCode",
+  "country",
+  "currencyCode",
+  "primaryContactName",
+  "primaryContactEmail",
+  "primaryContactPhone",
+  "primaryPhone",
+  "faxNumber",
+  "generalEmail",
+  "website",
+  "operationalRegions",
+  "industryType",
+  "companySize",
+  "beeLevel",
+  "beeCertificateExpiry",
+  "beeVerificationAgency",
+  "isExemptMicroEnterprise",
+];
+
+// Pick only DTO keys and drop empty optionals — an empty-string generalEmail/
+// website/etc. fails the @IsEmail / format validators ("generalEmail must be
+// an email"); required fields the user left blank still surface their own
+// validation error from the backend.
+function buildCompanyPayload(data: SupplierCompanyDto): Partial<SupplierCompanyDto> {
+  const out: Record<string, unknown> = {};
+  const source = data as unknown as Record<string, unknown>;
+  for (const key of COMPANY_DTO_KEYS) {
+    const value = source[key];
+    if (value === undefined || value === null) continue;
+    if (isString(value) && value.trim() === "") continue;
+    if (isArray(value) && value.length === 0) continue;
+    out[key] = value;
+  }
+  return out as Partial<SupplierCompanyDto>;
+}
+
+// The profile query returns the raw Company entity, whose field names differ
+// from the DTO (province→provinceState, contactPerson→primaryContactName,
+// email→primaryContactEmail, phone→primaryContactPhone, websiteUrl→website,
+// industry→industryType, name↔legalName). Map them so a returning supplier's
+// form pre-fills instead of showing blanks.
+function mapCompanyToFormData(company: Record<string, unknown>): SupplierCompanyDto {
+  const s = (v: unknown): string | undefined => (isString(v) && v ? v : undefined);
+  const pick = (...vals: unknown[]): string =>
+    (vals.map(s).find((v) => v !== undefined) as string | undefined) ?? "";
+  return {
+    ...initialCompanyData,
+    legalName: pick(company.legalName, company.name),
+    tradingName: pick(company.tradingName),
+    registrationNumber: pick(company.registrationNumber),
+    taxNumber: pick(company.taxNumber),
+    vatNumber: pick(company.vatNumber),
+    streetAddress: pick(company.streetAddress),
+    addressLine2: pick(company.addressLine2),
+    city: pick(company.city),
+    provinceState: pick(company.provinceState, company.province),
+    postalCode: pick(company.postalCode),
+    country: pick(company.country) || "South Africa",
+    currencyCode: pick(company.currencyCode) || DEFAULT_CURRENCY,
+    primaryContactName: pick(company.primaryContactName, company.contactPerson),
+    primaryContactEmail: pick(company.primaryContactEmail, company.email),
+    primaryContactPhone: pick(company.primaryContactPhone, company.phone),
+    primaryPhone: pick(company.primaryPhone),
+    faxNumber: pick(company.faxNumber),
+    generalEmail: pick(company.generalEmail),
+    website: pick(company.website, company.websiteUrl),
+    operationalRegions: isArray(company.operationalRegions)
+      ? (company.operationalRegions as string[])
+      : [],
+    industryType: pick(company.industryType, company.industry),
+    companySize: s(company.companySize) as SupplierCompanyDto["companySize"],
+    beeLevel: isNumber(company.beeLevel) ? company.beeLevel : undefined,
+    beeCertificateExpiry: s(company.beeCertificateExpiry),
+    beeVerificationAgency: s(company.beeVerificationAgency),
+    isExemptMicroEnterprise: isBoolean(company.isExemptMicroEnterprise)
+      ? company.isExemptMicroEnterprise
+      : undefined,
+  };
+}
 
 const regions = [
   "Gauteng",
@@ -91,10 +188,7 @@ export default function SupplierOnboardingPage() {
 
   useEffect(() => {
     if (profileQuery.data?.company) {
-      setCompanyData({
-        ...initialCompanyData,
-        ...profileQuery.data.company,
-      });
+      setCompanyData(mapCompanyToFormData(profileQuery.data.company));
     }
   }, [profileQuery.data]);
 
@@ -147,11 +241,12 @@ export default function SupplierOnboardingPage() {
     setSuccess(null);
 
     try {
-      // Strip out database-only fields before sending
-      const { id, createdAt, updatedAt, ...companyDataToSave } = companyData as any;
+      // Send only the DTO allow-list (not the full supplier entity the profile
+      // query seeded into state) and drop empty optionals.
+      const companyDataToSave = buildCompanyPayload(companyData);
 
       // Save company details
-      await supplierPortalApi.saveCompanyDetails(companyDataToSave);
+      await supplierPortalApi.saveCompanyDetails(companyDataToSave as SupplierCompanyDto);
 
       // Save capabilities if on step 5 or if any are selected
       if (selectedCapabilities.length > 0) {
@@ -166,7 +261,18 @@ export default function SupplierOnboardingPage() {
         setTimeout(() => router.push("/supplier/portal/documents"), 1000);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save details");
+      const message = err instanceof Error ? err.message : "Failed to save details";
+      setError(message);
+      // Jump to the step that owns the failing field so the error shows on the
+      // relevant page, not whichever step the user happens to be on.
+      const lower = message.toLowerCase();
+      if (/phone|contact|email|website/.test(lower)) {
+        setStep(3);
+      } else if (/address|city|province|postal|country/.test(lower)) {
+        setStep(2);
+      } else if (/name|registration|vat|tax/.test(lower)) {
+        setStep(1);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -537,29 +643,28 @@ export default function SupplierOnboardingPage() {
                 <label className="block text-sm font-medium text-gray-700">
                   Contact Phone <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="tel"
-                  name="primaryContactPhone"
-                  value={companyData.primaryContactPhone}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                  required
-                />
+                <div className="mt-1">
+                  <PhoneInput
+                    id="primaryContactPhone"
+                    value={companyData.primaryContactPhone}
+                    onChange={(v) =>
+                      setCompanyData((prev) => ({ ...prev, primaryContactPhone: v }))
+                    }
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">Office Phone</label>
-                <input
-                  type="tel"
-                  name="primaryPhone"
-                  value={(() => {
-                    const rawPrimaryPhone = companyData.primaryPhone;
-                    return rawPrimaryPhone || "";
-                  })()}
-                  onChange={handleChange}
-                  disabled={isReadOnly}
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
-                />
+                <div className="mt-1">
+                  <PhoneInput
+                    id="primaryPhone"
+                    value={(() => {
+                      const rawPrimaryPhone = companyData.primaryPhone;
+                      return rawPrimaryPhone || "";
+                    })()}
+                    onChange={(v) => setCompanyData((prev) => ({ ...prev, primaryPhone: v }))}
+                  />
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">General Email</label>

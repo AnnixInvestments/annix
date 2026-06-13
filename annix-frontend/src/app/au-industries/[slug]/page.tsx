@@ -1,73 +1,99 @@
-"use client";
-
-import dynamic from "next/dynamic";
+import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import { useAuIndustriesPage, useUpdateAuIndustriesPage } from "@/app/lib/query/hooks";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { type CaseStudy, caseStudiesForService } from "../caseStudies";
-import { useEditMode } from "../context/EditModeContext";
 import { SERVICE_FAQS } from "../serviceFaqs";
+import { ServicePageBody } from "./ServicePageBody";
 
-const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
-const MarkdownPreview = dynamic(
-  () => import("@uiw/react-md-editor").then((mod) => mod.default.Markdown),
-  { ssr: false },
-);
+interface ServicePageDto {
+  id: string;
+  slug: string;
+  title: string;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  content: string;
+  heroImageUrl: string | null;
+}
 
-export default function AuIndustriesSlugPage() {
-  const params = useParams();
-  const slug = params.slug as string;
-  const { editMode } = useEditMode();
+interface RelatedSolution {
+  href: string;
+  title: string;
+  description: string;
+}
 
-  const { data: page, isLoading: loading, isError: notFound } = useAuIndustriesPage(slug);
-  const { mutateAsync: updatePage, isPending: saving } = useUpdateAuIndustriesPage();
-  const [editContent, setEditContent] = useState("");
-  const [saveMessage, setSaveMessage] = useState<string | null>(null);
+const RELATED_SOLUTIONS: Record<string, RelatedSolution[]> = {
+  "rubber-lining": [
+    {
+      href: "/rubber-lined-mining-pipework",
+      title: "Rubber Lined Mining Pipework",
+      description: "Abrasion-resistant rubber lined pipe, bends, and fittings for slurry duty.",
+    },
+    {
+      href: "/industrial-wear-lining",
+      title: "Industrial Wear Lining",
+      description: "Rubber and ceramic-backed wear lining for mining and heavy industry.",
+    },
+  ],
+  "mining-solutions": [
+    {
+      href: "/rubber-lined-mining-pipework",
+      title: "Rubber Lined Mining Pipework",
+      description: "Fabricated and lined slurry pipework, bends, and fittings from Boksburg.",
+    },
+    {
+      href: "/industrial-wear-lining",
+      title: "Industrial Wear Lining",
+      description: "Wear lining matched to the abrasion, impact, or corrosion mechanism.",
+    },
+  ],
+  "rubber-sheeting": [
+    {
+      href: "/industrial-wear-lining",
+      title: "Industrial Wear Lining",
+      description: "Rubber and ceramic-backed wear lining for plant and equipment.",
+    },
+  ],
+  "conveyor-components": [
+    {
+      href: "/industrial-wear-lining",
+      title: "Industrial Wear Lining",
+      description: "Wear lining and pulley lagging for conveyor and transfer-point service.",
+    },
+  ],
+};
 
-  useEffect(() => {
-    if (!page) {
-      return;
-    }
-    setEditContent(page.content);
-    const rawMetaTitle = page.metaTitle;
-    const pageTitle = rawMetaTitle || page.title;
-    document.title = pageTitle.includes("AU Industries")
-      ? pageTitle
-      : `${pageTitle} | AU Industries`;
-    const metaDesc = document.querySelector('meta[name="description"]');
-    if (metaDesc && page.metaDescription) {
-      metaDesc.setAttribute("content", page.metaDescription);
-    }
-  }, [page]);
-
-  const handleSave = async () => {
-    if (!page) {
-      return;
-    }
-    setSaveMessage(null);
-    try {
-      await updatePage({ id: page.id, content: editContent });
-      setSaveMessage("Saved");
-      setTimeout(() => setSaveMessage(null), 2000);
-    } catch {
-      setSaveMessage("Failed to save");
-      setTimeout(() => setSaveMessage(null), 3000);
-    }
-  };
-
-  const hasChanges = page ? editContent !== page.content : false;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8860B]" />
-      </div>
-    );
+async function fetchPage(slug: string): Promise<ServicePageDto | null> {
+  const headersList = await headers();
+  const host = (headersList.get("host") ?? "").toLowerCase().split(":")[0];
+  if (host.length === 0) {
+    return null;
   }
+  const protocol = headersList.get("x-forwarded-proto") ?? "https";
+  const apiBase = `${protocol}://${host}/api`;
+  try {
+    const res = await fetch(`${apiBase}/public/au-industries/pages/${slug}`, {
+      next: { revalidate: 60 },
+    });
+    if (!res.ok) {
+      return null;
+    }
+    return res.json();
+  } catch {
+    return null;
+  }
+}
 
-  if (notFound || !page) {
+interface PageProps {
+  params: Promise<{ slug: string }>;
+}
+
+export default async function AuIndustriesSlugPage(props: PageProps) {
+  const { slug } = await props.params;
+  const page = await fetchPage(slug);
+
+  if (!page) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-20 text-center">
         <h1 className="text-3xl font-bold text-gray-900 mb-4">Page Not Found</h1>
@@ -76,12 +102,14 @@ export default function AuIndustriesSlugPage() {
     );
   }
 
+  const heroImageUrl = page.heroImageUrl;
+
   return (
     <div>
-      {page.heroImageUrl && (
+      {heroImageUrl && (
         <div className="relative h-64 md:h-80">
           <Image
-            src={page.heroImageUrl}
+            src={heroImageUrl}
             alt={page.title}
             fill
             priority
@@ -99,45 +127,13 @@ export default function AuIndustriesSlugPage() {
 
       <section className="bg-white py-16">
         <div className="max-w-4xl mx-auto px-4">
-          {!page.heroImageUrl && (
+          {!heroImageUrl && (
             <h1 className="text-3xl font-bold text-[#B8860B] uppercase tracking-wide mb-8 pb-4 border-b-2 border-[#B8860B]">
               {page.title}
             </h1>
           )}
 
-          {editMode ? (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-gray-500">
-                  Editing markdown content — changes are saved directly to the live site
-                </p>
-                <div className="flex items-center gap-3">
-                  {saveMessage && (
-                    <span
-                      className={`text-sm font-medium ${saveMessage === "Saved" ? "text-green-600" : "text-red-600"}`}
-                    >
-                      {saveMessage}
-                    </span>
-                  )}
-                  <button
-                    onClick={handleSave}
-                    disabled={saving || !hasChanges}
-                    className="px-5 py-2 text-sm font-semibold text-white bg-[#8A6608] rounded hover:bg-[#6E5106] disabled:opacity-50 transition-colors"
-                  >
-                    {saving ? "Saving..." : "Save"}
-                  </button>
-                </div>
-              </div>
-              <div data-color-mode="light">
-                <MDEditor
-                  value={editContent}
-                  onChange={(val) => setEditContent(val || "")}
-                  height={600}
-                  preview="live"
-                />
-              </div>
-            </div>
-          ) : (
+          <ServicePageBody pageId={page.id} initialContent={page.content}>
             <div
               data-color-mode="light"
               className="au-industries-content prose prose-lg max-w-none prose-headings:text-[#B8860B] prose-headings:uppercase prose-headings:tracking-wide prose-strong:text-gray-900"
@@ -158,11 +154,13 @@ export default function AuIndustriesSlugPage() {
                   background-color: #6E5106;
                 }
               `}</style>
-              <MarkdownPreview source={page.content} style={{ backgroundColor: "transparent" }} />
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{page.content}</ReactMarkdown>
             </div>
-          )}
+          </ServicePageBody>
         </div>
       </section>
+
+      <RelatedSolutions slug={slug} />
 
       <ServiceCaseStudies slug={slug} />
 
@@ -198,6 +196,41 @@ export default function AuIndustriesSlugPage() {
         </section>
       )}
     </div>
+  );
+}
+
+function RelatedSolutions(props: { slug: string }) {
+  const solutions = RELATED_SOLUTIONS[props.slug];
+  if (!solutions || solutions.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="bg-[#fdf8e8] py-16 border-t border-[#B8860B]/20">
+      <div className="max-w-5xl mx-auto px-4">
+        <h2 className="text-2xl md:text-3xl font-bold text-[#B8860B] uppercase tracking-wide mb-2">
+          Related Solutions
+        </h2>
+        <div className="w-20 h-[3px] bg-[#B8860B] mb-8" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {solutions.map((solution) => (
+            <Link
+              key={solution.href}
+              href={solution.href}
+              className="group block bg-white rounded-lg border-2 border-[#B8860B]/20 shadow-sm hover:shadow-lg transition-shadow p-6"
+            >
+              <div className="font-bold text-gray-900 text-lg leading-tight mb-2 group-hover:text-[#B8860B] transition-colors">
+                {solution.title}
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed">{solution.description}</p>
+              <span className="inline-block mt-3 text-sm font-semibold uppercase tracking-wider text-[#8A6608]">
+                Learn more →
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

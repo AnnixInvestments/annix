@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { providerBadgeLabel } from "@/app/lib/annix-orbit/provider-labels";
+import { providerBadgeLabel, sourceNameFromUrl } from "@/app/lib/annix-orbit/provider-labels";
 import type { SeekerRecommendedJob } from "@/app/lib/api/annixOrbitApi";
 
 export interface DismissReasonOption {
@@ -47,6 +47,9 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
   const salaryLabel = formatSalary(job.salaryMin, job.salaryMax, job.salaryCurrency);
   const sourceUrl = job.sourceUrl;
   const sourceHref = sourceUrl || "#";
+  const applyLabel = sourceUrl
+    ? `Apply on ${sourceNameFromUrl(sourceUrl, provider)}`
+    : "View & apply";
   const reportDelisted = props.onReportDelisted;
 
   const handleApply = () => {
@@ -167,7 +170,7 @@ export function SeekerJobCard(props: SeekerJobCardProps) {
           onClick={handleApply}
           className="px-4 py-2 text-sm font-medium rounded-lg bg-[var(--brand-navbar,#323288)] text-white hover:bg-[var(--brand-navbar-active,#252560)]"
         >
-          View &amp; apply
+          {applyLabel}
         </a>
       </div>
 

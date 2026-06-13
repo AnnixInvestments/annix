@@ -19,6 +19,7 @@ import {
   type SeekerFilterState,
   SeekerJobFilters,
 } from "@/app/lib/annix-orbit/components/SeekerJobFilters";
+import { sourceNameFromUrl } from "@/app/lib/annix-orbit/provider-labels";
 import {
   annixOrbitApiClient,
   type PublicJob,
@@ -51,6 +52,9 @@ import { useOrbitPushNotifications } from "../../hooks/useOrbitPushNotifications
 
 const NIX_SEARCH_PENDING_KEY = "orbit-nix-search-pending";
 const NIX_SEARCH_PENDING_TTL_MS = 12 * 60 * 1000;
+// Show the "opening on <source>, you may need one more click" hint once per
+// session, so it sets expectations without nagging on every apply.
+const APPLY_HINT_SHOWN_KEY = "orbit-apply-destination-hint-shown";
 
 interface NixPendingSearch {
   startCount: number;
@@ -279,12 +283,32 @@ export default function SeekerJobsPage() {
     });
   }, [matches, filters]);
 
+  // The apply buttons are real anchors (target="_blank"), so the browser opens
+  // the listing in a new tab natively — these handlers only record the click
+  // and, once per session, set expectations about the aggregator hop so the
+  // redirect to the job board doesn't feel like a run-around (test feedback).
+  const noteApplyDestination = (sourceUrl: string) => {
+    const source = sourceNameFromUrl(sourceUrl);
+    if (source === "the job site") return;
+    try {
+      if (window.sessionStorage.getItem(APPLY_HINT_SHOWN_KEY) === "true") return;
+      window.sessionStorage.setItem(APPLY_HINT_SHOWN_KEY, "true");
+    } catch {
+      // Storage blocked — show the hint anyway.
+    }
+    showToast(
+      `Opening this job on ${source} in a new tab — you may need one more click on their site to apply.`,
+      "info",
+    );
+  };
+
   const handleApply = (match: SeekerRecommendedJob) => {
     const sourceUrl = match.job.sourceUrl;
     if (!sourceUrl) {
       showToast("No apply link available for this job", "error");
       return;
     }
+    noteApplyDestination(sourceUrl);
     annixOrbitApiClient
       .recordSeekerApplyClick({
         matchId: match.matchId,
@@ -302,6 +326,7 @@ export default function SeekerJobsPage() {
       showToast("No apply link available for this job", "error");
       return;
     }
+    noteApplyDestination(sourceUrl);
     const externalJobId = job.kind === "external" ? job.id : null;
     annixOrbitApiClient
       .recordSeekerApplyClick({

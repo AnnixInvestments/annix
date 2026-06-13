@@ -1,6 +1,7 @@
 import { ConflictException, UnauthorizedException } from "@nestjs/common";
 import { Test, TestingModule } from "@nestjs/testing";
 import { fromISO } from "../../lib/datetime";
+import { RbacBridgeService } from "../../rbac/rbac-bridge.service";
 import { PasswordService, TokenService } from "../../shared/auth";
 import { SessionInvalidationReason } from "../../shared/enums";
 import { User } from "../../user/entities/user.entity";
@@ -107,6 +108,10 @@ describe("AnnixRepAuthService", () => {
       exchangeCode: jest.fn(),
     };
 
+    const mockRbacBridge = {
+      ensureAppAccess: jest.fn().mockResolvedValue(undefined),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnnixRepAuthService,
@@ -117,6 +122,7 @@ describe("AnnixRepAuthService", () => {
         { provide: PasswordService, useValue: mockPasswordService },
         { provide: TokenService, useValue: mockTokenService },
         { provide: OAuthLoginProvider, useValue: mockOAuthProvider },
+        { provide: RbacBridgeService, useValue: mockRbacBridge },
       ],
     }).compile();
 
