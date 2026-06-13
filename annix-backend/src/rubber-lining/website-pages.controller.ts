@@ -8,6 +8,8 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Put,
+  Req,
   UploadedFile,
   UseGuards,
   UseInterceptors,
@@ -33,6 +35,10 @@ import {
   UpdateWebsitePageDto,
   WebsitePagesService,
 } from "./website-pages.service";
+
+interface AuthenticatedRequest {
+  user?: { email?: string };
+}
 
 @ApiTags("AU Rubber Website Pages")
 @Controller("rubber-lining/website-pages")
@@ -95,6 +101,37 @@ export class WebsitePagesController {
     @Body() body: { sortOrder: number },
   ): Promise<WebsitePage> {
     return this.websitePagesService.reorderPage(id, body.sortOrder);
+  }
+
+  @Put(":id/blocks/draft")
+  @ApiOperation({ summary: "Save the block draft for a page" })
+  @ApiParam({ name: "id", type: "string" })
+  @ApiResponse({ status: 200, type: WebsitePage })
+  async saveDraftBlocks(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: { blocks: Record<string, unknown>[] },
+  ): Promise<WebsitePage> {
+    return this.websitePagesService.saveDraftBlocks(id, body.blocks ?? []);
+  }
+
+  @Post(":id/blocks/publish")
+  @ApiOperation({ summary: "Publish the block draft to the live page" })
+  @ApiParam({ name: "id", type: "string" })
+  @ApiResponse({ status: 200, type: WebsitePage })
+  async publishBlocks(
+    @Param("id", ParseUUIDPipe) id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<WebsitePage> {
+    const publishedBy = req.user?.email ?? null;
+    return this.websitePagesService.publishBlocks(id, publishedBy);
+  }
+
+  @Post(":id/blocks/discard")
+  @ApiOperation({ summary: "Discard the block draft, reverting to the published blocks" })
+  @ApiParam({ name: "id", type: "string" })
+  @ApiResponse({ status: 200, type: WebsitePage })
+  async discardDraftBlocks(@Param("id", ParseUUIDPipe) id: string): Promise<WebsitePage> {
+    return this.websitePagesService.discardDraftBlocks(id);
   }
 
   @Post("upload-image")

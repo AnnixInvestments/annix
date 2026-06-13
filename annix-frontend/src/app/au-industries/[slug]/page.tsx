@@ -1,8 +1,12 @@
+import type { CaseStudyStripBlock, CmsBlock } from "@annix/product-data/cms";
+import { isArray } from "es-toolkit/compat";
 import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { BlockRenderer } from "@/app/lib/cms/render/BlockRenderer";
+import { faqJsonLdFromBlocks } from "@/app/lib/cms/render/jsonLd";
 import { type CaseStudy, caseStudiesForService } from "../caseStudies";
 import { SERVICE_FAQS } from "../serviceFaqs";
 import { ServicePageBody } from "./ServicePageBody";
@@ -15,6 +19,8 @@ interface ServicePageDto {
   metaDescription: string | null;
   content: string;
   heroImageUrl: string | null;
+  useBlocks?: boolean;
+  publishedBlocks?: CmsBlock[] | null;
 }
 
 interface RelatedSolution {
@@ -103,6 +109,50 @@ export default async function AuIndustriesSlugPage(props: PageProps) {
   }
 
   const heroImageUrl = page.heroImageUrl;
+  const publishedBlocks = page.publishedBlocks;
+  const blocksMode =
+    page.useBlocks === true && isArray(publishedBlocks) && publishedBlocks.length > 0;
+
+  if (blocksMode && publishedBlocks) {
+    const faqJsonLd = faqJsonLdFromBlocks(publishedBlocks);
+    return (
+      <div>
+        {faqJsonLd && (
+          <script
+            type="application/ld+json"
+            // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD must be inline JSON for Google to parse
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+          />
+        )}
+        {heroImageUrl && (
+          <div className="relative h-64 md:h-80">
+            <Image
+              src={heroImageUrl}
+              alt={page.title}
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover"
+            />
+            <div className="absolute inset-0 bg-black/50" />
+            <div className="relative max-w-4xl mx-auto px-4 h-full flex items-center justify-center">
+              <h1 className="text-3xl md:text-5xl font-bold text-white uppercase tracking-wider text-center">
+                {page.title}
+              </h1>
+            </div>
+          </div>
+        )}
+        <BlockRenderer
+          blocks={publishedBlocks}
+          customRenderers={{
+            caseStudyStrip: (block) => (
+              <CaseStudyStripView block={block as CaseStudyStripBlock} fallbackSlug={slug} />
+            ),
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -294,5 +344,43 @@ function ServiceCaseStudyCard(props: { study: CaseStudy }) {
         <div className="font-bold text-gray-900 leading-tight text-sm">{props.study.title}</div>
       </div>
     </Link>
+  );
+}
+
+function CaseStudyStripView(props: { block: CaseStudyStripBlock; fallbackSlug: string }) {
+  const configuredSlug = props.block.serviceSlug;
+  const serviceSlug = configuredSlug || props.fallbackSlug;
+  const limit = props.block.limit > 0 ? props.block.limit : 3;
+  const studies = caseStudiesForService(serviceSlug)
+    .slice()
+    .sort((a, b) => b.dateISO.localeCompare(a.dateISO))
+    .slice(0, limit);
+
+  if (studies.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="bg-white py-16 border-t border-[#B8860B]/20">
+      <div className="max-w-5xl mx-auto px-4">
+        <div className="flex items-end justify-between flex-wrap gap-4 mb-2">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#B8860B] uppercase tracking-wide">
+            {props.block.heading}
+          </h2>
+          <Link
+            href="/projects"
+            className="text-sm font-semibold uppercase tracking-wider text-[#8A6608] hover:text-[#9A7209]"
+          >
+            All projects →
+          </Link>
+        </div>
+        <div className="w-20 h-[3px] bg-[#B8860B] mb-8" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {studies.map((study) => (
+            <ServiceCaseStudyCard key={study.slug} study={study} />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }

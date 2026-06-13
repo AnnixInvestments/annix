@@ -1,3 +1,4 @@
+import type { CmsBlock } from "@annix/product-data/cms";
 import { toPairs as entries } from "es-toolkit/compat";
 import {
   type ApiClient,
@@ -2709,6 +2710,23 @@ class AuRubberApiClient {
     return this.requestWithFiles("/rubber-lining/website-pages/upload-image", [file], {}, "file");
   }
 
+  saveWebsiteDraftBlocks = createEndpoint<[id: string, blocks: CmsBlock[]], WebsitePageDto>(
+    apiClient,
+    "PUT",
+    {
+      path: (id, _blocks) => `/rubber-lining/website-pages/${id}/blocks/draft`,
+      body: (_id, blocks) => ({ blocks }),
+    },
+  );
+
+  publishWebsiteBlocks = createEndpoint<[id: string], WebsitePageDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/website-pages/${id}/blocks/publish`,
+  });
+
+  discardWebsiteBlocks = createEndpoint<[id: string], WebsitePageDto>(apiClient, "POST", {
+    path: (id) => `/rubber-lining/website-pages/${id}/blocks/discard`,
+  });
+
   testimonials = createEndpoint<[], TestimonialDto[]>(apiClient, "GET", {
     path: "/rubber-lining/testimonials",
   });
@@ -2782,6 +2800,11 @@ export interface WebsitePageDto {
   isPublished: boolean;
   isHomePage: boolean;
   showInNav: boolean;
+  useBlocks?: boolean;
+  draftBlocks?: CmsBlock[] | null;
+  publishedBlocks?: CmsBlock[] | null;
+  lastPublishedAt?: string | null;
+  draftUpdatedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -2810,6 +2833,7 @@ export interface UpdateWebsitePageDto {
   isPublished?: boolean;
   isHomePage?: boolean;
   showInNav?: boolean;
+  useBlocks?: boolean;
 }
 
 export type TestimonialSource = "google" | "manual" | "email" | "whatsapp";

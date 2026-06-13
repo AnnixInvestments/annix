@@ -31,6 +31,24 @@ export class WebsitePage {
   @Prop({ type: String, required: false })
   heroImageUrl: string;
 
+  @Prop({ type: [Object], required: false, default: undefined })
+  draftBlocks?: Record<string, unknown>[];
+
+  @Prop({ type: [Object], required: false, default: undefined })
+  publishedBlocks?: Record<string, unknown>[];
+
+  @Prop({ type: Boolean, required: false, default: false })
+  useBlocks?: boolean;
+
+  @Prop({ type: String, required: false })
+  draftUpdatedAt?: string;
+
+  @Prop({ type: String, required: false })
+  lastPublishedAt?: string;
+
+  @Prop({ type: String, required: false })
+  lastPublishedBy?: string;
+
   @Prop({ type: Number, required: true })
   sortOrder: number;
 

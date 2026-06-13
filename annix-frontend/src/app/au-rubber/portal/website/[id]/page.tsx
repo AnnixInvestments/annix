@@ -16,6 +16,7 @@ import { rubberKeys } from "@/app/lib/query/keys/rubberKeys";
 import { Breadcrumb } from "../../../components/Breadcrumb";
 import { RequirePermission } from "../../../components/RequirePermission";
 import { PAGE_PERMISSIONS } from "../../../config/pagePermissions";
+import { BlockEditor } from "./BlockEditor";
 import { HeroImagePicker } from "./HeroImagePicker";
 
 const MDEditor = dynamic(() => import("@uiw/react-md-editor"), { ssr: false });
@@ -49,6 +50,7 @@ export default function WebsitePageEditorPage() {
   const [isPublished, setIsPublished] = useState(false);
   const [isHomePage, setIsHomePage] = useState(false);
   const [showInNav, setShowInNav] = useState(true);
+  const [useBlocks, setUseBlocks] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -73,6 +75,7 @@ export default function WebsitePageEditorPage() {
       setIsPublished(p.isPublished);
       setIsHomePage(p.isHomePage);
       setShowInNav(p.showInNav !== false);
+      setUseBlocks(p.useBlocks === true);
       setLoaded(true);
     }
   }, [pageQuery.data, loaded]);
@@ -127,6 +130,7 @@ export default function WebsitePageEditorPage() {
         isPublished,
         isHomePage,
         showInNav,
+        useBlocks,
       };
 
       if (isNew) {
@@ -147,6 +151,11 @@ export default function WebsitePageEditorPage() {
       setSaving(false);
     }
   };
+
+  const loadedPage = pageQuery.data;
+  const loadedDraftBlocks = loadedPage ? loadedPage.draftBlocks : null;
+  const loadedPublishedBlocks = loadedPage ? loadedPage.publishedBlocks : null;
+  const initialBlocks = loadedDraftBlocks ?? loadedPublishedBlocks ?? [];
 
   if (!isNew && pageQuery.isLoading) {
     return (
@@ -343,7 +352,7 @@ export default function WebsitePageEditorPage() {
           </div>
 
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Content</h2>
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Content (markdown)</h2>
             <div data-color-mode="light">
               <MDEditor
                 value={content}
@@ -353,6 +362,31 @@ export default function WebsitePageEditorPage() {
               />
             </div>
           </div>
+
+          {!isNew && (
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Page Blocks</h2>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={useBlocks}
+                    onChange={(e) => setUseBlocks(e.target.checked)}
+                    className="w-4 h-4 text-yellow-500 border-gray-300 rounded focus:ring-yellow-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">
+                    Use blocks for the live page
+                  </span>
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mb-4">
+                When ticked (and after the blocks are published), the live page renders these blocks
+                instead of the markdown content above. Remember to press Save at the top to store
+                the "Use blocks" setting.
+              </p>
+              <BlockEditor pageId={id} initialBlocks={initialBlocks} />
+            </div>
+          )}
         </div>
       </div>
     </RequirePermission>

@@ -29,6 +29,24 @@ export class WebsitePage {
   @Column({ name: "hero_image_url", type: "varchar", length: 500, nullable: true })
   heroImageUrl: string | null;
 
+  @Column({ name: "draft_blocks", type: "jsonb", nullable: true })
+  draftBlocks?: Record<string, unknown>[] | null;
+
+  @Column({ name: "published_blocks", type: "jsonb", nullable: true })
+  publishedBlocks?: Record<string, unknown>[] | null;
+
+  @Column({ name: "use_blocks", type: "boolean", default: false })
+  useBlocks?: boolean;
+
+  @Column({ name: "draft_updated_at", type: "varchar", length: 40, nullable: true })
+  draftUpdatedAt?: string | null;
+
+  @Column({ name: "last_published_at", type: "varchar", length: 40, nullable: true })
+  lastPublishedAt?: string | null;
+
+  @Column({ name: "last_published_by", type: "varchar", length: 200, nullable: true })
+  lastPublishedBy?: string | null;
+
   @Column({ name: "sort_order", type: "int", default: 0 })
   sortOrder: number;
 

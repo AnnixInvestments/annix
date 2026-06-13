@@ -158,6 +158,16 @@
       "types": "./marketing/*.ts",
       "browser": "./marketing/*.ts",
       "default": "./dist/marketing/*.js"
+    },
+    "./cms": {
+      "types": "./cms/index.ts",
+      "browser": "./cms/index.ts",
+      "default": "./dist/cms/index.js"
+    },
+    "./cms/*": {
+      "types": "./cms/*.ts",
+      "browser": "./cms/*.ts",
+      "default": "./dist/cms/*.js"
     }
   }
 }

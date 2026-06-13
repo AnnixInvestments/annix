@@ -1,4 +1,5 @@
 import { BadRequestException, Injectable, Logger, NotFoundException } from "@nestjs/common";
+import { nowISO } from "../lib/datetime";
 import { WebsitePage } from "./entities/website-page.entity";
 import { WebsitePageRepository } from "./repositories/website-page.repository";
 
@@ -26,6 +27,7 @@ export interface UpdateWebsitePageDto {
   isPublished?: boolean;
   isHomePage?: boolean;
   showInNav?: boolean;
+  useBlocks?: boolean;
 }
 
 @Injectable()
@@ -119,6 +121,37 @@ export class WebsitePagesService {
     const page = await this.pageById(id);
     page.sortOrder = sortOrder;
     return this.pageRepository.save(page);
+  }
+
+  async saveDraftBlocks(id: string, blocks: Record<string, unknown>[]): Promise<WebsitePage> {
+    const page = await this.pageById(id);
+    page.draftBlocks = blocks;
+    page.draftUpdatedAt = nowISO();
+    const saved = await this.pageRepository.save(page);
+    this.logger.log(`Saved draft blocks for page: ${saved.slug} (${blocks.length} blocks)`);
+    return saved;
+  }
+
+  async publishBlocks(id: string, publishedBy: string | null): Promise<WebsitePage> {
+    const page = await this.pageById(id);
+    const draft = page.draftBlocks ?? page.publishedBlocks ?? [];
+    page.publishedBlocks = draft;
+    page.draftBlocks = draft;
+    page.lastPublishedAt = nowISO();
+    page.lastPublishedBy = publishedBy;
+    page.draftUpdatedAt = nowISO();
+    const saved = await this.pageRepository.save(page);
+    this.logger.log(`Published blocks for page: ${saved.slug} by ${publishedBy ?? "unknown"}`);
+    return saved;
+  }
+
+  async discardDraftBlocks(id: string): Promise<WebsitePage> {
+    const page = await this.pageById(id);
+    page.draftBlocks = page.publishedBlocks ?? [];
+    page.draftUpdatedAt = nowISO();
+    const saved = await this.pageRepository.save(page);
+    this.logger.log(`Discarded draft blocks for page: ${saved.slug}`);
+    return saved;
   }
 
   private async clearHomePage(): Promise<void> {
