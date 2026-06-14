@@ -148,7 +148,7 @@ function AnnixOrbitLoginContent() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-8">
       <div className="max-w-md w-full">
-        <BackToHubLink />
+        {isJobSeeker ? null : <BackToHubLink />}
         <div className="bg-white rounded-2xl shadow-2xl p-8">
           <div className="text-center mb-8">
             <p className="text-gray-600">

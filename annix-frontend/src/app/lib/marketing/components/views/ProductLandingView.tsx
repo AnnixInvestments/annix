@@ -10,6 +10,7 @@ import {
   Briefcase,
   Building2,
   Calculator,
+  CheckCircle2,
   CircleDot,
   ClipboardList,
   Clock,
@@ -42,7 +43,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
-import type { ProductLandingConfig } from "./productLandingData";
+import { DEFAULT_PRODUCT_HERO_IMAGE, type ProductLandingConfig } from "./productLandingData";
 
 const ICONS: Record<string, LucideIcon> = {
   filePlus: FilePlus,
@@ -86,6 +87,13 @@ const ICONS: Record<string, LucideIcon> = {
   eye: Eye,
 };
 
+const CARD_ACCENTS = [
+  { ring: "bg-indigo-500/15 text-indigo-300", check: "text-indigo-300" },
+  { ring: "bg-orange-500/15 text-orange-300", check: "text-orange-300" },
+  { ring: "bg-emerald-500/15 text-emerald-300", check: "text-emerald-300" },
+  { ring: "bg-violet-500/15 text-violet-300", check: "text-violet-300" },
+];
+
 function resolveIcon(key: string): LucideIcon {
   if (key in ICONS) {
     return ICONS[key];
@@ -99,200 +107,195 @@ export function ProductLandingView(props: {
   bottomImageUrl: string | null;
 }) {
   const config = props.config;
-  const heroImageUrl = props.heroImageUrl ? props.heroImageUrl : "";
+  const cfgHero = config.heroImage;
+  const propHero = props.heroImageUrl;
+  const heroImage = cfgHero ? cfgHero : propHero ? propHero : DEFAULT_PRODUCT_HERO_IMAGE;
   const bottomImageUrl = props.bottomImageUrl ? props.bottomImageUrl : "";
   return (
     <div className="relative overflow-hidden bg-[#0a1733]">
-      {heroImageUrl ? (
-        <>
-          <div className="absolute inset-x-0 top-0 h-[28rem]">
-            <img src={heroImageUrl} alt="" className="h-full w-full object-cover object-top" />
-          </div>
-          <div
-            className="absolute inset-x-0 top-0 h-[28rem]"
-            style={{
-              backgroundImage: "linear-gradient(180deg, rgba(10,23,51,0.45) 0%, #0a1733 92%)",
-            }}
-          />
-        </>
-      ) : null}
       {bottomImageUrl ? (
         <>
-          <div className="absolute inset-x-0 bottom-0 h-[22rem]">
+          <div className="absolute inset-x-0 bottom-0 h-[24rem]">
             <img src={bottomImageUrl} alt="" className="h-full w-full object-cover object-bottom" />
           </div>
           <div
-            className="absolute inset-x-0 bottom-0 h-[22rem]"
+            className="absolute inset-x-0 bottom-0 h-[24rem]"
             style={{ backgroundImage: "linear-gradient(0deg, transparent 0%, #0a1733 78%)" }}
           />
         </>
       ) : null}
       <div className="relative">
-        <Hero config={config} />
-        <FeatureRow config={config} />
-        <Grid config={config} />
-        <Strip config={config} />
-        <TrustedBy />
+        <Hero config={config} heroImage={heroImage} />
+        <ModuleCards config={config} />
+        <StatsBand config={config} />
+        <WhySection config={config} />
         <CtaBand config={config} />
       </div>
     </div>
   );
 }
 
-function Hero(props: { config: ProductLandingConfig }) {
+function Hero(props: { config: ProductLandingConfig; heroImage: string }) {
   const config = props.config;
+  const heroImage = props.heroImage;
+  const primaryHref = config.primaryCtaHref ? config.primaryCtaHref : "/contact";
+  const secondaryHref = config.secondaryCtaHref ? config.secondaryCtaHref : "/contact";
   return (
-    <section className="px-4 pb-16 pt-28 sm:px-6 lg:px-8 lg:pt-32">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2">
-        <div>
+    <section className="relative overflow-hidden px-4 pb-16 pt-24 sm:px-6 lg:px-8 lg:pt-32">
+      {heroImage ? (
+        <>
+          <div className="absolute inset-0">
+            <img
+              src={heroImage}
+              alt=""
+              fetchPriority="high"
+              className="h-full w-full object-cover object-right"
+            />
+          </div>
+          <div
+            className="absolute inset-0"
+            style={{
+              backgroundImage:
+                "linear-gradient(90deg, #0a1733 0%, color-mix(in srgb, #0a1733 55%, transparent) 42%, transparent 78%)",
+            }}
+          />
+          <div
+            className="absolute inset-x-0 bottom-0 h-24"
+            style={{ backgroundImage: "linear-gradient(180deg, transparent, #0a1733)" }}
+          />
+        </>
+      ) : null}
+
+      <div className="relative mx-auto max-w-7xl">
+        <div className="max-w-xl">
           <p
-            className="text-sm font-semibold uppercase tracking-[0.2em]"
+            className="text-xs font-semibold uppercase tracking-[0.25em]"
             style={{ color: "var(--brand-accent)" }}
           >
             {config.eyebrow}
           </p>
-          <h1 className="mt-5 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl">
+          <h1 className="mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl">
             {config.headlineLead}{" "}
             <span style={{ color: "var(--brand-accent)" }}>{config.headlineEmphasis}</span>
           </h1>
-          <p className="mt-6 max-w-xl text-base text-white/70 sm:text-lg">{config.subheading}</p>
+          <p className="mt-6 max-w-md text-base text-white/70 sm:text-lg">{config.subheading}</p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
-              href="/contact"
+              href={primaryHref}
               className="inline-flex items-center justify-center gap-2 rounded-lg px-6 py-3 text-sm font-semibold text-slate-900 shadow-lg transition hover:opacity-90"
               style={{ backgroundColor: "var(--brand-accent)" }}
             >
               {config.primaryCta} <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
-              href="/contact"
+              href={secondaryHref}
               className="inline-flex items-center justify-center rounded-lg border border-white/20 px-6 py-3 text-sm font-semibold text-white transition hover:bg-white/10"
             >
               {config.secondaryCta}
             </Link>
           </div>
         </div>
-
-        <div className="relative rounded-2xl border border-white/10 bg-slate-900/80 p-5 shadow-2xl">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-semibold text-white">Annix {config.wordmark}</span>
-            <span className="text-xs text-white/40">Dashboard</span>
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-3">
-            {config.heroStats.map((stat) => (
-              <div key={stat.label} className="rounded-xl border border-white/10 bg-white/5 p-3">
-                <div className="text-[11px] uppercase tracking-wide text-white/40">
-                  {stat.label}
-                </div>
-                <div className="mt-1 text-xl font-bold text-white">{stat.value}</div>
-                <div className="text-[11px]" style={{ color: "#3ec97a" }}>
-                  {stat.delta}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
     </section>
   );
 }
 
-function FeatureRow(props: { config: ProductLandingConfig }) {
+function ModuleCards(props: { config: ProductLandingConfig }) {
   const config = props.config;
+  const portals = config.portals;
+  const hasPortals = portals.length > 0;
+  if (portals.length === 0 && config.cards.length === 0) {
+    return null;
+  }
+  const eyebrow = config.modulesEyebrow ? config.modulesEyebrow : config.gridTitle;
+  const lead = config.modulesHeadlineLead ? config.modulesHeadlineLead : "Built for";
+  const emphasis = config.modulesHeadlineEmphasis ? config.modulesHeadlineEmphasis : "every need";
+  const portalCols =
+    portals.length === 2
+      ? "lg:grid-cols-2"
+      : portals.length === 3
+        ? "lg:grid-cols-3"
+        : "lg:grid-cols-4";
   return (
-    <section className="border-y border-white/10 px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-7xl flex-wrap gap-x-8 gap-y-8">
-        {config.features.map((feature) => {
-          const Icon = resolveIcon(feature.iconKey);
-          return (
-            <div key={feature.title} className="flex min-w-[150px] flex-1 flex-col gap-2">
-              <span style={{ color: "var(--brand-accent)" }}>
-                <Icon className="h-6 w-6" />
-              </span>
-              <span className="text-sm font-semibold text-white">{feature.title}</span>
-              <span className="text-xs text-white/50">{feature.blurb}</span>
-            </div>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
-
-function Grid(props: { config: ProductLandingConfig }) {
-  const config = props.config;
-  const isPortals = config.gridKind === "portals";
-  return (
-    <section className="px-4 py-14 sm:px-6 lg:px-8">
+    <section className="px-4 py-16 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <p
           className="text-center text-xs font-semibold uppercase tracking-[0.25em]"
           style={{ color: "var(--brand-accent)" }}
         >
-          {config.gridTitle}
+          {eyebrow}
         </p>
-        {isPortals ? (
-          <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {config.portals.map((portal) => {
+        <h2
+          className="mt-3 text-center text-2xl font-bold text-white sm:text-4xl"
+          style={{ fontFamily: "var(--brand-font-display)" }}
+        >
+          {lead} <span className="text-violet-300">{emphasis}</span>
+        </h2>
+
+        {hasPortals ? (
+          <div className={`mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 ${portalCols}`}>
+            {portals.map((portal, index) => {
               const Icon = resolveIcon(portal.iconKey);
+              const accent = CARD_ACCENTS[index % CARD_ACCENTS.length];
+              const features = portal.features ? portal.features : [];
+              const tagline = portal.tagline ? portal.tagline : portal.badge;
               return (
                 <div
                   key={portal.name}
-                  className="flex flex-col rounded-2xl border border-white/10 bg-white/5 p-5"
+                  className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span
-                      className="flex h-11 w-11 items-center justify-center rounded-xl"
-                      style={{
-                        backgroundColor: "color-mix(in srgb, var(--brand-accent) 18%, transparent)",
-                        color: "var(--brand-accent)",
-                      }}
-                    >
-                      <Icon className="h-5 w-5" />
-                    </span>
-                    <span
-                      className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
-                      style={{
-                        backgroundColor: "color-mix(in srgb, var(--brand-accent) 14%, transparent)",
-                        color: "var(--brand-accent)",
-                      }}
-                    >
-                      {portal.badge}
-                    </span>
-                  </div>
-                  <span className="mt-3 text-base font-semibold text-white">{portal.name}</span>
-                  <span className="mt-2 flex-1 text-sm text-white/55">{portal.blurb}</span>
+                  <span
+                    className={`flex h-12 w-12 items-center justify-center rounded-full ${accent.ring}`}
+                  >
+                    <Icon className="h-6 w-6" />
+                  </span>
+                  <h3 className="mt-4 text-xl font-bold text-white">{portal.name}</h3>
+                  <p className="mt-2 text-sm font-medium text-white/80">{tagline}</p>
+                  <p className="mt-3 text-sm text-white/55">{portal.blurb}</p>
+                  {features.length > 0 ? (
+                    <ul className="mt-4 space-y-2">
+                      {features.map((feature) => (
+                        <li key={feature} className="flex items-start gap-2 text-sm text-white/70">
+                          <CheckCircle2 className={`mt-0.5 h-4 w-4 shrink-0 ${accent.check}`} />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   <Link
                     href="/contact"
-                    className="mt-4 inline-flex items-center gap-1 text-xs font-semibold transition hover:gap-2"
+                    className="mt-5 inline-flex items-center gap-1 text-sm font-semibold transition hover:gap-2"
                     style={{ color: "var(--brand-accent)" }}
                   >
-                    Explore <ArrowRight className="h-3 w-3" />
+                    Learn more <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               );
             })}
           </div>
         ) : (
-          <div className="mt-7 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {config.cards.map((card) => {
+          <div className="mt-10 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+            {config.cards.map((card, index) => {
               const Icon = resolveIcon(card.iconKey);
+              const accent = CARD_ACCENTS[index % CARD_ACCENTS.length];
               return (
                 <div
                   key={card.title}
-                  className="flex flex-col rounded-2xl border border-white/10 bg-white/5 p-5"
+                  className="flex flex-col rounded-2xl border border-white/10 bg-white/[0.04] p-6"
                 >
-                  <span style={{ color: "var(--brand-accent)" }}>
+                  <span
+                    className={`flex h-12 w-12 items-center justify-center rounded-full ${accent.ring}`}
+                  >
                     <Icon className="h-6 w-6" />
                   </span>
-                  <span className="mt-3 text-sm font-semibold text-white">{card.title}</span>
-                  <span className="mt-2 flex-1 text-xs text-white/55">{card.blurb}</span>
+                  <h3 className="mt-4 text-lg font-semibold text-white">{card.title}</h3>
+                  <p className="mt-2 flex-1 text-sm text-white/55">{card.blurb}</p>
                   <Link
                     href="/contact"
-                    className="mt-4 inline-flex items-center gap-1 text-xs font-semibold transition hover:gap-2"
+                    className="mt-4 inline-flex items-center gap-1 text-sm font-semibold transition hover:gap-2"
                     style={{ color: "var(--brand-accent)" }}
                   >
-                    Learn more <ArrowRight className="h-3 w-3" />
+                    Learn more <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
               );
@@ -304,61 +307,89 @@ function Grid(props: { config: ProductLandingConfig }) {
   );
 }
 
-function Strip(props: { config: ProductLandingConfig }) {
+function StatsBand(props: { config: ProductLandingConfig }) {
   const config = props.config;
+  if (config.heroStats.length === 0) {
+    return null;
+  }
   return (
-    <section className="border-t border-white/10 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <p
-          className="text-center text-xs font-semibold uppercase tracking-[0.25em]"
-          style={{ color: "var(--brand-accent)" }}
-        >
-          {config.stripTitle}
-        </p>
-        <div className="mt-7 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
-          {config.strip.map((item) => {
-            const Icon = resolveIcon(item.iconKey);
-            return (
-              <div key={`${item.title}-${item.subtitle}`} className="flex items-start gap-3">
-                <span
-                  className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-white/70"
-                  style={{ color: "var(--brand-accent)" }}
-                >
-                  <Icon className="h-4 w-4" />
-                </span>
-                <span className="leading-tight">
-                  <span className="block text-sm font-semibold text-white">{item.title}</span>
-                  <span className="block text-xs text-white/50">{item.subtitle}</span>
-                </span>
-              </div>
-            );
-          })}
-        </div>
+    <section className="px-4 pb-4 sm:px-6 lg:px-8">
+      <div className="mx-auto grid max-w-7xl grid-cols-2 gap-4 rounded-2xl border border-white/10 bg-white/[0.04] p-8 lg:grid-cols-4">
+        {config.heroStats.map((stat) => {
+          const iconKey = stat.iconKey ? stat.iconKey : "chart";
+          const Icon = resolveIcon(iconKey);
+          return (
+            <div key={stat.label} className="flex items-center gap-3">
+              <span style={{ color: "var(--brand-accent)" }}>
+                <Icon className="h-7 w-7" />
+              </span>
+              <span>
+                <span className="block text-2xl font-bold text-white">{stat.value}</span>
+                <span className="block text-xs text-white/55">{stat.label}</span>
+              </span>
+            </div>
+          );
+        })}
       </div>
     </section>
   );
 }
 
-function TrustedBy() {
+function WhySection(props: { config: ProductLandingConfig }) {
+  const config = props.config;
+  const eyebrow = config.whyEyebrow ? config.whyEyebrow : `Why Annix ${config.wordmark}?`;
+  const lead = config.whyHeadlineLead ? config.whyHeadlineLead : "AI-Powered. Human Focused.";
+  const emphasis = config.whyHeadlineEmphasis ? config.whyHeadlineEmphasis : "Results Driven.";
+  const body = config.whyBody ? config.whyBody : config.subheading;
+  const ctaLabel = config.whyCta ? config.whyCta : "Explore Platform";
+  const ctaHref = config.whyCtaHref ? config.whyCtaHref : "/contact";
+  const whyFeatures = config.whyFeatures ? config.whyFeatures : [];
+  const feats = whyFeatures.length > 0 ? whyFeatures : config.features;
   return (
-    <section className="border-t border-white/10 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <p className="text-xs font-semibold uppercase tracking-[0.25em] text-white/40">
-          Trusted by industry leaders
-        </p>
-        <div className="mt-6 grid grid-cols-3 items-center gap-6 sm:grid-cols-5 lg:grid-cols-6">
-          {Array.from({ length: 6 }, (_, index) => index).map((index) => (
-            <div
-              key={`logo-${index}`}
-              className="flex h-10 items-center justify-center rounded-lg border border-dashed border-white/10 text-[10px] text-white/25"
+    <section className="px-4 py-16 sm:px-6 lg:px-8">
+      <div className="relative mx-auto max-w-7xl overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] p-8 lg:p-12">
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-1/2"
+          style={{
+            backgroundImage:
+              "radial-gradient(120% 120% at 100% 50%, rgba(124,58,237,0.28), transparent 60%)",
+          }}
+        />
+        <div className="relative grid grid-cols-1 gap-10 lg:grid-cols-2">
+          <div>
+            <p className="text-sm font-medium text-white/50">{eyebrow}</p>
+            <h2
+              className="mt-3 text-3xl font-bold leading-tight text-white sm:text-4xl"
+              style={{ fontFamily: "var(--brand-font-display)" }}
             >
-              Logo
-            </div>
-          ))}
+              {lead} <span style={{ color: "var(--brand-accent)" }}>{emphasis}</span>
+            </h2>
+            <p className="mt-5 max-w-md text-sm text-white/70">{body}</p>
+            <Link
+              href={ctaHref}
+              className="mt-7 inline-flex items-center gap-2 rounded-lg bg-violet-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-500"
+            >
+              {ctaLabel} <ArrowRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-5 sm:grid-cols-2">
+            {feats.map((feature) => {
+              const Icon = resolveIcon(feature.iconKey);
+              return (
+                <div key={feature.title} className="flex items-start gap-3">
+                  <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/70">
+                    <Icon className="h-4 w-4" />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-semibold text-white">{feature.title}</span>
+                    <span className="block text-xs text-white/55">{feature.blurb}</span>
+                  </span>
+                </div>
+              );
+            })}
+          </div>
         </div>
-        <p className="mt-3 text-[11px] text-white/30">
-          Add customer logos in the CMS — only those you have permission to display.
-        </p>
       </div>
     </section>
   );
@@ -366,8 +397,9 @@ function TrustedBy() {
 
 function CtaBand(props: { config: ProductLandingConfig }) {
   const config = props.config;
+  const primaryHref = config.primaryCtaHref ? config.primaryCtaHref : "/contact";
   return (
-    <section className="px-4 pb-20 pt-6 sm:px-6 lg:px-8">
+    <section className="px-4 pb-20 pt-2 sm:px-6 lg:px-8">
       <div
         className="mx-auto flex max-w-7xl flex-col items-start justify-between gap-6 rounded-2xl border border-white/10 p-8 sm:flex-row sm:items-center"
         style={{
@@ -386,7 +418,7 @@ function CtaBand(props: { config: ProductLandingConfig }) {
         </div>
         <div className="flex shrink-0 items-center gap-4">
           <Link
-            href="/contact"
+            href={primaryHref}
             className="inline-flex items-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold text-slate-900 transition hover:opacity-90"
             style={{ backgroundColor: "var(--brand-accent)" }}
           >

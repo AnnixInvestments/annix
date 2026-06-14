@@ -1,14 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { orbitModuleManifest } from "@/app/annix/orbit/config/pwaModules";
+import { ORBIT_MODULE_MANIFESTS, orbitModuleManifest } from "@/app/annix/orbit/config/pwaModules";
 import { generateManifest } from "@/app/lib/branding";
 import { type Branding, brandingFallback } from "@/app/lib/branding/branding";
 import { API_BASE_URL, ipv4LocalhostUrl } from "@/lib/api-config";
-
-const DEFAULT_SHORTCUTS = [
-  { name: "My applications", url: "/annix/orbit/seeker/applications" },
-  { name: "Interviews", url: "/annix/orbit/seeker/calendar" },
-  { name: "Browse jobs", url: "/annix/orbit/seeker/jobs" },
-];
 
 async function orbitBranding(): Promise<Branding> {
   try {
@@ -27,13 +21,17 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const themeColor = navbarColor || "#323288";
 
   const moduleParam = request.nextUrl.searchParams.get("module");
-  const moduleManifest = orbitModuleManifest(moduleParam);
+  // Default to the Seeker module when no module is specified: the installed app
+  // must cold-start into the seeker flow (which routes a logged-out user to the
+  // seeker login), never the /annix/orbit hub selector with every login option.
+  const resolvedModule = orbitModuleManifest(moduleParam);
+  const moduleManifest = resolvedModule ? resolvedModule : ORBIT_MODULE_MANIFESTS.seeker;
 
-  const name = moduleManifest ? moduleManifest.name : "Annix Orbit";
-  const shortName = moduleManifest ? moduleManifest.name : "Orbit";
-  const startUrl = moduleManifest ? moduleManifest.startUrl : "/annix/orbit";
-  const scope = moduleManifest ? moduleManifest.scope : "/annix/orbit";
-  const shortcuts = moduleManifest ? moduleManifest.shortcuts : DEFAULT_SHORTCUTS;
+  const name = moduleManifest.name;
+  const shortName = moduleManifest.name;
+  const startUrl = moduleManifest.startUrl;
+  const scope = moduleManifest.scope;
+  const shortcuts = moduleManifest.shortcuts;
 
   const manifest = generateManifest({
     name,

@@ -9,12 +9,15 @@ export interface LandingPortal {
   name: string;
   badge: string;
   blurb: string;
+  tagline?: string;
+  features?: string[];
 }
 
 export interface LandingStat {
   label: string;
   value: string;
   delta: string;
+  iconKey?: string;
 }
 
 export interface LandingStripItem {
@@ -43,7 +46,22 @@ export interface ProductLandingConfig {
   ctaBody: string;
   ctaPrimary: string;
   ctaSecondary: string;
+  heroImage?: string;
+  primaryCtaHref?: string;
+  secondaryCtaHref?: string;
+  modulesEyebrow?: string;
+  modulesHeadlineLead?: string;
+  modulesHeadlineEmphasis?: string;
+  whyEyebrow?: string;
+  whyHeadlineLead?: string;
+  whyHeadlineEmphasis?: string;
+  whyBody?: string;
+  whyCta?: string;
+  whyCtaHref?: string;
+  whyFeatures?: LandingItem[];
 }
+
+export const DEFAULT_PRODUCT_HERO_IMAGE = "/branding/annix-investments-hero-top.webp";
 
 const FORGE: ProductLandingConfig = {
   wordmark: "Forge",
@@ -96,7 +114,7 @@ const FORGE: ProductLandingConfig = {
       blurb: "Real-time insights, pipeline tracking, reports and performance dashboards.",
     },
   ],
-  gridTitle: "Three portals. One powerful platform.",
+  gridTitle: "Two portals. One powerful platform.",
   gridKind: "portals",
   cards: [],
   portals: [
@@ -112,13 +130,6 @@ const FORGE: ProductLandingConfig = {
       name: "Supplier Portal",
       badge: "Price & Quote BOQs",
       blurb: "View BOQs, perform weld-aware pricing, submit quotes and manage your pipeline.",
-    },
-    {
-      iconKey: "shieldCheck",
-      name: "Admin RFQ Portal",
-      badge: "Monitor & Control",
-      blurb:
-        "Monitor RFQ-to-BOQ-to-Quote pipeline, manage users, suppliers and system configuration.",
     },
   ],
   stripTitle: "Engineered for accuracy. Built on global standards.",
@@ -261,18 +272,61 @@ const SENTINEL: ProductLandingConfig = {
 
 const ORBIT: ProductLandingConfig = {
   wordmark: "Orbit",
-  eyebrow: "Hiring · Talent · Compliance",
-  headlineLead: "The intelligent workforce ecosystem that",
-  headlineEmphasis: "connects opportunity.",
+  eyebrow: "Our Products",
+  headlineLead: "One Platform. Every",
+  headlineEmphasis: "Opportunity.",
   subheading:
-    "A live job market connecting seekers, recruiters and employers with AI that helps everyone move forward.",
-  primaryCta: "Find Jobs",
-  secondaryCta: "Post a Job",
+    "Annix Orbit is an intelligent workforce ecosystem that connects seekers, recruiters, companies and students to real opportunities.",
+  primaryCta: "Get Started",
+  secondaryCta: "Book a Demo",
+  primaryCtaHref: "/annix/orbit/seeker/register-interest",
+  heroImage: DEFAULT_PRODUCT_HERO_IMAGE,
+  modulesEyebrow: "Four powerful modules. One seamless platform.",
+  modulesHeadlineLead: "Built for",
+  modulesHeadlineEmphasis: "every player",
+  whyEyebrow: "Why Annix Orbit?",
+  whyHeadlineLead: "AI-Powered. Human Focused.",
+  whyHeadlineEmphasis: "Results Driven.",
+  whyBody:
+    "We combine artificial intelligence with human insight to create meaningful connections that drive real results.",
+  whyCta: "Explore Platform",
+  whyFeatures: [
+    {
+      iconKey: "brain",
+      title: "AI-Powered Matching",
+      blurb: "Advanced algorithms match the right talent with the right opportunities.",
+    },
+    {
+      iconKey: "shieldCheck",
+      title: "Secure & Compliant",
+      blurb: "Enterprise-grade security with built-in compliance.",
+    },
+    {
+      iconKey: "route",
+      title: "End-to-End Workflow",
+      blurb: "From discovery to placement, manage everything in one place.",
+    },
+    {
+      iconKey: "layers",
+      title: "Scalable for Growth",
+      blurb: "Built to scale with your team, your company and your goals.",
+    },
+    {
+      iconKey: "chart",
+      title: "Data-Driven Insights",
+      blurb: "Real-time analytics to make smarter hiring decisions.",
+    },
+    {
+      iconKey: "users",
+      title: "Support that Cares",
+      blurb: "Real people. Real support. Real results.",
+    },
+  ],
   heroStats: [
-    { label: "Active Jobs", value: "250K+", delta: "Updated daily" },
-    { label: "Job Seekers", value: "210K+", delta: "Across SA" },
-    { label: "Employers", value: "12K+", delta: "Hiring now" },
-    { label: "AI Match Accuracy", value: "95%", delta: "POPIA compliant" },
+    { iconKey: "users", label: "Active Users", value: "10K+", delta: "" },
+    { iconKey: "briefcase", label: "Jobs Posted", value: "5K+", delta: "" },
+    { iconKey: "building", label: "Companies", value: "1K+", delta: "" },
+    { iconKey: "star", label: "Match Accuracy", value: "95%", delta: "" },
   ],
   features: [
     {
@@ -313,27 +367,65 @@ const ORBIT: ProductLandingConfig = {
   portals: [
     {
       iconKey: "user",
-      name: "Job Seeker Portal",
+      name: "Seeker",
       badge: "Find Your Next Opportunity",
-      blurb: "Build your profile, upload your CV, discover jobs and get matched.",
-    },
-    {
-      iconKey: "briefcase",
-      name: "Employer Portal",
-      badge: "Hire Top Talent",
-      blurb: "Post jobs, manage candidates, schedule interviews and track hiring.",
+      tagline: "Find the right job. Build your future.",
+      blurb: "AI-powered tools to help you stand out, match smart and advance your career.",
+      features: [
+        "AI CV Review & Improvement",
+        "Career Score",
+        "Smart Job Matching",
+        "Interview Coach",
+        "Application Tracking",
+        "Skills & Career Guidance",
+      ],
     },
     {
       iconKey: "users",
-      name: "Recruiter Portal",
+      name: "Recruiter",
       badge: "Staffing Made Easy",
-      blurb: "Manage talent pools, client submissions, placements and compliance.",
+      tagline: "Find the right talent. Faster.",
+      blurb:
+        "Intelligent recruitment tools to source, match and manage top candidates efficiently.",
+      features: [
+        "Candidate Search & Match",
+        "Talent Pools",
+        "Shortlists & Submissions",
+        "Interview Management",
+        "Placement Tracking",
+        "Client & Job Management",
+      ],
+    },
+    {
+      iconKey: "briefcase",
+      name: "Company",
+      badge: "Hire Top Talent",
+      tagline: "Hire smarter. Grow faster.",
+      blurb: "Streamlined hiring solutions to attract, engage and hire the best talent.",
+      features: [
+        "Job Posting & Management",
+        "AI Candidate Matching",
+        "Candidate Ranking",
+        "Interview Management",
+        "Talent Pipeline",
+        "Analytics & Insights",
+      ],
     },
     {
       iconKey: "graduation",
-      name: "Student Portal",
+      name: "Student",
       badge: "Plan Your Future",
-      blurb: "Plan subjects, explore careers, find scholarships and track applications.",
+      tagline: "Learn. Grow. Get career ready.",
+      blurb:
+        "Everything students need to build skills, discover opportunities and launch their careers.",
+      features: [
+        "Career Guidance",
+        "Skills Development",
+        "Internships & Jobs",
+        "AI Career Coach",
+        "CV Builder",
+        "University Finder",
+      ],
     },
   ],
   stripTitle: "Powered by AI & real-time data",
@@ -512,12 +604,7 @@ const CORE: ProductLandingConfig = {
     "Source, produce, track, and deliver with confidence. Annix Core unifies shop-floor operations across inventory, quality, traceability and documents.",
   primaryCta: "Explore Annix Core",
   secondaryCta: "Learn More",
-  heroStats: [
-    { label: "Operations Apps", value: "2", delta: "One platform" },
-    { label: "Stock Control", value: "v3.24.0", delta: "ASCA" },
-    { label: "AU Rubber", value: "v2.18.0", delta: "AU Industries" },
-    { label: "Data Model", value: "Shared", delta: "Complete traceability" },
-  ],
+  heroStats: [],
   features: [
     {
       iconKey: "refresh",
@@ -549,22 +636,7 @@ const CORE: ProductLandingConfig = {
   gridTitle: "One platform. Two powerful operations apps.",
   gridKind: "portals",
   cards: [],
-  portals: [
-    {
-      iconKey: "boxes",
-      name: "Annix Stock Control",
-      badge: "Operations App",
-      blurb:
-        "The general inventory and operations platform for industrial businesses — inventory, jobs, deliveries, quality and reports.",
-    },
-    {
-      iconKey: "layers",
-      name: "AU Rubber",
-      badge: "Operations App",
-      blurb:
-        "The rubber-lining business platform with CoCs, roll issuing and costing intelligence, plus the AU Industries website CMS.",
-    },
-  ],
+  portals: [],
   stripTitle: "Powered by the Annix platform",
   strip: [
     { iconKey: "shield", title: "Branding & Theming", subtitle: "Per-app brand system" },
