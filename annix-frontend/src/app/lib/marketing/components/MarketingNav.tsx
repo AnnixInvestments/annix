@@ -170,14 +170,6 @@ export function MarketingNav(props: {
               </div>
             ) : null}
           </div>
-
-          <Link
-            href="/contact"
-            className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg transition hover:opacity-90"
-            style={{ backgroundColor: "var(--brand-accent)" }}
-          >
-            Book a Demo
-          </Link>
         </div>
 
         <button
@@ -250,14 +242,6 @@ export function MarketingNav(props: {
               </Link>
             ))}
           </div>
-          <Link
-            href="/contact"
-            className="mt-3 block rounded-lg px-4 py-2 text-center text-sm font-semibold text-slate-900"
-            style={{ backgroundColor: "var(--brand-accent)" }}
-            onClick={() => setMobileOpen(false)}
-          >
-            Book a Demo
-          </Link>
         </div>
       ) : null}
     </header>

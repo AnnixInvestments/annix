@@ -87,6 +87,9 @@ export class MarketingSiteContentService {
     record.published = cloneDeep(record.draft);
     record.lastPublishedAt = nowISO();
     record.lastPublishedBy = publishedBy;
+    // Draft now equals published — clear the dirty flag so the CMS stops
+    // showing "unpublished draft changes" after a successful publish.
+    record.draftUpdatedAt = null;
     const saved = await this.repository.save(record);
     this.logger.log(`Published marketing site (by ${publishedBy ?? "unknown"})`);
     return saved.published;

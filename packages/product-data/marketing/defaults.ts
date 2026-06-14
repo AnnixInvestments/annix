@@ -301,6 +301,18 @@ const PRODUCT_PAGES: MarketingProductPage[] = [
 
 const RESOURCES: MarketingResource[] = [
   {
+    slug: "annix-website-launched",
+    category: "Announcements",
+    title: "The Annix website is live",
+    excerpt: "Intelligent software for industries that move the world — explore the platform.",
+    body: "We're live. The new Annix website brings the whole ecosystem together in one place — one brand, many products, built for the industries that build everything else.\n\nExplore intelligent platforms for operations, recruitment, compliance, monitoring and more — all on one shared foundation, built in South Africa for industries worldwide.\n\nVisit annix.co.za to explore the platform.",
+    imageUrl: "/marketing/website-launched.png",
+    productSlug: "",
+    published: true,
+    ctaLabel: "Visit annix.co.za",
+    ctaUrl: "https://annix.co.za",
+  },
+  {
     slug: "operations-traceability-guide",
     category: "Guides & Playbooks",
     title: "Digitising stock, quality and CoCs on the fabrication floor",

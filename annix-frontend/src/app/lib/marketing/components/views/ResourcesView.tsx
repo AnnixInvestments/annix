@@ -10,6 +10,11 @@ function ResourceDetail(props: { resource: MarketingResource; onBack: () => void
   const ctaUrl = resource.ctaUrl ? resource.ctaUrl : "";
   const ctaLabelRaw = resource.ctaLabel;
   const ctaLabel = ctaLabelRaw ? ctaLabelRaw : "Register your interest";
+  // External CTAs (e.g. a "Website launched → annix.co.za" post) open the site
+  // in a new tab; internal app links navigate in place.
+  const isExternalCta = ctaUrl.startsWith("http");
+  const ctaTarget = isExternalCta ? "_blank" : undefined;
+  const ctaRel = isExternalCta ? "noopener noreferrer" : undefined;
   const paragraphs = resource.body.split("\n\n");
   return (
     <section className="px-4 py-24 sm:px-6 lg:px-8">
@@ -37,7 +42,13 @@ function ResourceDetail(props: { resource: MarketingResource; onBack: () => void
             // baked into the artwork, so make the whole image link to the CTA
             // (e.g. the seeker early-access page) — clicking the painted button
             // now actually navigates.
-            <a href={ctaUrl} aria-label={ctaLabel} className="mt-8 block">
+            <a
+              href={ctaUrl}
+              target={ctaTarget}
+              rel={ctaRel}
+              aria-label={ctaLabel}
+              className="mt-8 block"
+            >
               <img
                 src={imageUrl}
                 alt={resource.title}
@@ -62,6 +73,8 @@ function ResourceDetail(props: { resource: MarketingResource; onBack: () => void
         {ctaUrl ? (
           <a
             href={ctaUrl}
+            target={ctaTarget}
+            rel={ctaRel}
             className="mt-10 inline-flex items-center gap-2 rounded-full bg-[var(--brand-accent)] px-6 py-3 text-sm font-semibold text-white transition hover:opacity-90"
           >
             {ctaLabel}
