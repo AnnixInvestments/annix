@@ -5,7 +5,7 @@ FROM node:22-slim AS deps
 WORKDIR /app
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ ./patches/
-COPY scripts/ ./scripts/
+COPY scripts/check-hooks-installed.ts ./scripts/check-hooks-installed.ts
 COPY packages/product-data/package.json ./packages/product-data/
 COPY packages/feedback-sdk/package.json ./packages/feedback-sdk/
 COPY packages/feedback-web/package.json ./packages/feedback-web/
@@ -87,7 +87,7 @@ WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY patches/ ./patches/
-COPY scripts/ ./scripts/
+COPY scripts/check-hooks-installed.ts ./scripts/check-hooks-installed.ts
 COPY packages/product-data/package.json ./packages/product-data/
 COPY packages/feedback-sdk/package.json ./packages/feedback-sdk/
 COPY packages/feedback-web/package.json ./packages/feedback-web/
