@@ -3,6 +3,7 @@ import { isArray } from "es-toolkit/compat";
 import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { BlockRenderer } from "@/app/lib/cms/render/BlockRenderer";
@@ -78,17 +79,16 @@ async function fetchPage(slug: string): Promise<ServicePageDto | null> {
   }
   const protocol = headersList.get("x-forwarded-proto") ?? "https";
   const apiBase = `${protocol}://${host}/api`;
-  try {
-    const res = await fetch(`${apiBase}/public/au-industries/pages/${slug}`, {
-      next: { revalidate: 60 },
-    });
-    if (!res.ok) {
-      return null;
-    }
-    return res.json();
-  } catch {
+  const res = await fetch(`${apiBase}/public/au-industries/pages/${slug}`, {
+    next: { revalidate: 60 },
+  });
+  if (res.status === 404) {
     return null;
   }
+  if (!res.ok) {
+    throw new Error(`Failed to load AU Industries page "${slug}": ${res.status}`);
+  }
+  return res.json();
 }
 
 interface PageProps {
@@ -100,12 +100,7 @@ export default async function AuIndustriesSlugPage(props: PageProps) {
   const page = await fetchPage(slug);
 
   if (!page) {
-    return (
-      <div className="max-w-4xl mx-auto px-4 py-20 text-center">
-        <h1 className="text-3xl font-bold text-gray-900 mb-4">Page Not Found</h1>
-        <p className="text-gray-500">The page you are looking for does not exist.</p>
-      </div>
-    );
+    notFound();
   }
 
   const heroImageUrl = page.heroImageUrl;

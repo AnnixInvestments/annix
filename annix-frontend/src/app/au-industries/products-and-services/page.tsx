@@ -1,6 +1,49 @@
 import Image from "next/image";
 import Link from "next/link";
 
+const PRODUCT_LINKS = [
+  {
+    href: "/rubber-lining",
+    title: "Rubber Lining",
+    description: "Abrasion-resistant rubber lining for pipes, tanks, chutes and fittings.",
+  },
+  {
+    href: "/rubber-sheeting",
+    title: "Rubber Sheeting",
+    description: "Natural, bromobutyl and nitrile sheeting across 40–60 shore grades.",
+  },
+  {
+    href: "/rubber-compound",
+    title: "Rubber Compound",
+    description: "Custom AU rubber formulations tailored to each processing plant.",
+  },
+  {
+    href: "/hdpe-piping",
+    title: "HDPE Piping",
+    description: "HDPE pipe supply and fabrication for slurry and water duties.",
+  },
+  {
+    href: "/mining-solutions",
+    title: "Mining Solutions",
+    description: "Wear products, ceramic-embedded pads and moulded components.",
+  },
+  {
+    href: "/conveyor-components",
+    title: "Conveyor Components",
+    description: "Conveyor and pulley lagging for transfer-point service.",
+  },
+  {
+    href: "/site-maintenance",
+    title: "Site Maintenance",
+    description: "On-site rubber lining and installation across South Africa and Africa.",
+  },
+  {
+    href: "/rubber-rolls",
+    title: "Rubber Rolls",
+    description: "Industrial rubber rolls and roller recovering services.",
+  },
+];
+
 export default function AuIndustriesProductsPage() {
   return (
     <div>
@@ -42,7 +85,7 @@ export default function AuIndustriesProductsPage() {
                 rubber is applied to.
               </p>
               <Link
-                href="/au-industries/contact"
+                href="/contact"
                 className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Enquire Here
@@ -83,7 +126,7 @@ export default function AuIndustriesProductsPage() {
                 product that is required and pride ourselves in our delivery times on orders placed.
               </p>
               <Link
-                href="/au-industries/contact"
+                href="/contact"
                 className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors mb-8"
               >
                 Enquire Here
@@ -136,7 +179,7 @@ export default function AuIndustriesProductsPage() {
                 push the boundaries of what&apos;s possible in mining technology.
               </p>
               <Link
-                href="/au-industries/contact"
+                href="/contact"
                 className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Enquire Here
@@ -167,7 +210,7 @@ export default function AuIndustriesProductsPage() {
                 difference Services to its clients.
               </p>
               <Link
-                href="/au-industries/quote"
+                href="/quote"
                 className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Request a Quote
@@ -213,12 +256,38 @@ export default function AuIndustriesProductsPage() {
                 site and project work into Africa.
               </p>
               <Link
-                href="/au-industries/contact"
+                href="/contact"
                 className="inline-block px-10 py-3 bg-[#8A6608] text-white font-semibold uppercase tracking-wider hover:bg-[#6E5106] transition-colors"
               >
                 Request More Information
               </Link>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-20 border-t border-gray-100">
+        <div className="max-w-6xl mx-auto px-4 md:px-8">
+          <h2 className="text-2xl md:text-3xl font-bold text-[#B8860B] uppercase tracking-wider mb-2 text-center">
+            Explore Our Products &amp; Services
+          </h2>
+          <div className="w-24 h-[3px] bg-[#B8860B] mx-auto mt-3 mb-12" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {PRODUCT_LINKS.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group block p-6 border border-gray-200 rounded hover:border-[#B8860B] hover:shadow-md transition-all"
+              >
+                <h3 className="text-lg font-bold text-gray-900 uppercase tracking-wide mb-2 group-hover:text-[#B8860B] transition-colors">
+                  {item.title}
+                </h3>
+                <p className="text-gray-600 text-sm leading-relaxed">{item.description}</p>
+                <span className="mt-4 inline-block text-[#8A6608] font-semibold text-sm uppercase tracking-wider">
+                  Learn more &rarr;
+                </span>
+              </Link>
+            ))}
           </div>
         </div>
       </section>

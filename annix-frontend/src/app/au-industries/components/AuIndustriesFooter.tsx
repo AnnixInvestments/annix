@@ -15,7 +15,7 @@ export function AuIndustriesFooter(props: FooterProps) {
   return (
     <footer className="bg-white text-gray-900 border-t-4 border-[#B8860B]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-8">
           <div>
             <Image
               src="/au-industries/logo.jpg"
@@ -47,6 +47,61 @@ export function AuIndustriesFooter(props: FooterProps) {
                   {props.email}
                 </a>
               </p>
+            </div>
+          </div>
+          <div>
+            <h3 className="text-gray-900 text-lg font-semibold mb-4 uppercase tracking-wide">
+              Products
+            </h3>
+            <div className="space-y-2 text-sm">
+              <Link
+                href="/rubber-lining"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Lining
+              </Link>
+              <Link
+                href="/rubber-sheeting"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Sheeting
+              </Link>
+              <Link
+                href="/rubber-compound"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Compound
+              </Link>
+              <Link
+                href="/hdpe-piping"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                HDPE Piping
+              </Link>
+              <Link
+                href="/mining-solutions"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Mining Solutions
+              </Link>
+              <Link
+                href="/conveyor-components"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Conveyor Components
+              </Link>
+              <Link
+                href="/site-maintenance"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Site Maintenance
+              </Link>
+              <Link
+                href="/rubber-rolls"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Rubber Rolls
+              </Link>
             </div>
           </div>
           <div>
