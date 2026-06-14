@@ -50,6 +50,28 @@ export const annixOrbitKeys = {
     detail: (id: number) => ["annix-orbit", "talent-candidates", "detail", id] as const,
   },
 
+  tasks: {
+    all: ["annix-orbit", "tasks"] as const,
+    list: () => ["annix-orbit", "tasks", "list"] as const,
+  },
+
+  recruiterDashboard: {
+    all: ["annix-orbit", "recruiter-dashboard"] as const,
+    range: (from: string, to: string) => ["annix-orbit", "recruiter-dashboard", from, to] as const,
+  },
+
+  talentCredentials: {
+    all: ["annix-orbit", "talent-credentials"] as const,
+    forCandidate: (candidateId: number) =>
+      ["annix-orbit", "talent-credentials", "candidate", candidateId] as const,
+    types: () => ["annix-orbit", "talent-credentials", "types"] as const,
+    expiring: (withinDays: number) =>
+      ["annix-orbit", "talent-credentials", "expiring", withinDays] as const,
+    siteReady: (candidateId: number) =>
+      ["annix-orbit", "talent-credentials", "site-ready", candidateId] as const,
+    siteReadyScores: () => ["annix-orbit", "talent-credentials", "site-ready-scores"] as const,
+  },
+
   submissions: {
     all: ["annix-orbit", "submissions"] as const,
     list: () => ["annix-orbit", "submissions", "list"] as const,

@@ -423,6 +423,11 @@ export {
   useOrbitUpdatePlacement,
 } from "./annix-orbit/useOrbitPlacements";
 export {
+  useOrbitCandidateComplianceGap,
+  useOrbitRecruiterFindCandidates,
+} from "./annix-orbit/useOrbitRecruiterAssistant";
+export { useOrbitRecruiterDashboard } from "./annix-orbit/useOrbitRecruiterDashboard";
+export {
   useOrbitCreateRecruiterInterview,
   useOrbitDeleteRecruiterInterview,
   useOrbitRecruiterInterviews,
@@ -504,11 +509,27 @@ export {
   useOrbitUpdateTalentCandidate,
 } from "./annix-orbit/useOrbitTalentCandidates";
 export {
+  useOrbitCandidateSiteReady,
+  useOrbitCreateTalentCredential,
+  useOrbitDeleteTalentCredential,
+  useOrbitSiteReadyScores,
+  useOrbitTalentCredentials,
+  useOrbitTalentCredentialsExpiring,
+  useOrbitTalentCredentialTypes,
+  useOrbitUpdateTalentCredential,
+} from "./annix-orbit/useOrbitTalentCredentials";
+export {
   useOrbitCreateTalentPool,
   useOrbitDeleteTalentPool,
   useOrbitTalentPools,
   useOrbitUpdateTalentPool,
 } from "./annix-orbit/useOrbitTalentPools";
+export {
+  useOrbitCreateTask,
+  useOrbitDeleteTask,
+  useOrbitTasks,
+  useOrbitUpdateTask,
+} from "./annix-orbit/useOrbitTasks";
 export {
   useOrbitCancelTeamInvite,
   useOrbitCreateTeamInvite,

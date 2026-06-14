@@ -21,6 +21,9 @@ export class AnnixOrbitPlacement {
   companyId: number;
 
   @Prop({ type: Number, required: false })
+  consultantUserId: number | null;
+
+  @Prop({ type: Number, required: false })
   clientId: number;
 
   @Prop({ type: String, required: true })

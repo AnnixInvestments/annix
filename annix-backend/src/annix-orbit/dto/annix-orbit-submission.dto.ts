@@ -20,6 +20,9 @@ export class CreateAnnixOrbitSubmissionDto {
   @OptionalIn(ORBIT_SUBMISSION_STATUSES)
   status?: string;
 
+  @OptionalString({ maxLength: 30 })
+  interviewAt?: string | null;
+
   @OptionalString()
   feedback?: string | null;
 
@@ -36,6 +39,9 @@ export class UpdateAnnixOrbitSubmissionDto {
 
   @OptionalIn(ORBIT_SUBMISSION_STATUSES)
   status?: string;
+
+  @OptionalString({ maxLength: 30 })
+  interviewAt?: string | null;
 
   @OptionalString()
   feedback?: string | null;

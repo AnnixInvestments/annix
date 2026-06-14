@@ -1,5 +1,15 @@
-import { BadRequestException, Injectable, NotFoundException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from "@nestjs/common";
 import { now } from "../../lib/datetime";
+import { LicensingService } from "../../licensing/licensing.service";
+import {
+  ANNIX_ORBIT_RECRUITER_FEATURES,
+  ANNIX_ORBIT_RECRUITER_MODULE_KEY,
+} from "../config/annix-orbit-recruiter-licensing";
 import {
   CreateAnnixOrbitSubmissionDto,
   UpdateAnnixOrbitSubmissionDto,
@@ -18,6 +28,7 @@ export class AnnixOrbitSubmissionService {
     private readonly submissionRepo: AnnixOrbitSubmissionRepository,
     private readonly candidateRepo: AnnixOrbitTalentCandidateRepository,
     private readonly auditService: AnnixOrbitAuditService,
+    private readonly licensing: LicensingService,
   ) {}
 
   findForCompany(companyId: number): Promise<AnnixOrbitSubmission[]> {
@@ -37,6 +48,16 @@ export class AnnixOrbitSubmissionService {
     actor: AnnixOrbitAuditActor,
     dto: CreateAnnixOrbitSubmissionDto,
   ): Promise<AnnixOrbitSubmission> {
+    const allowed = await this.licensing.isFeatureEnabled(
+      companyId,
+      ANNIX_ORBIT_RECRUITER_MODULE_KEY,
+      ANNIX_ORBIT_RECRUITER_FEATURES.SUBMISSIONS,
+    );
+    if (!allowed) {
+      throw new ForbiddenException(
+        "Submitting candidates to clients is part of the Recruit plan. Upgrade to start submitting.",
+      );
+    }
     const candidate = await this.candidateRepo.findByIdForCompany(dto.candidateId, companyId);
     if (!candidate) {
       throw new NotFoundException("Candidate not found");
@@ -49,11 +70,13 @@ export class AnnixOrbitSubmissionService {
 
     const submission = await this.submissionRepo.create({
       companyId,
+      consultantUserId: actor.id,
       candidateId: dto.candidateId,
       clientId: dto.clientId ?? null,
       jobTitle: dto.jobTitle,
       status: (dto.status ?? "submitted") as AnnixOrbitSubmissionStatus,
       submittedAt: now().toISO(),
+      interviewAt: dto.interviewAt ?? null,
       feedback: dto.feedback ?? null,
       notes: dto.notes ?? null,
     });
@@ -78,6 +101,7 @@ export class AnnixOrbitSubmissionService {
     submission.clientId = dto.clientId ?? null;
     submission.jobTitle = dto.jobTitle;
     submission.status = (dto.status ?? submission.status) as AnnixOrbitSubmissionStatus;
+    if (dto.interviewAt !== undefined) submission.interviewAt = dto.interviewAt;
     submission.feedback = dto.feedback ?? null;
     submission.notes = dto.notes ?? null;
     return this.submissionRepo.save(submission);

@@ -65,6 +65,12 @@ export class AnnixOrbitTalentCandidate {
   @Prop({ type: String, required: false, default: "active" })
   status: AnnixOrbitTalentCandidateStatus;
 
+  @Prop({ type: String, required: false, default: "identified" })
+  pipelineStage: string;
+
+  @Prop({ type: String, required: false, default: "database" })
+  source: string;
+
   @Prop({ type: String, required: false })
   notes: string;
 

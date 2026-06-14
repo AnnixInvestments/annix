@@ -42,10 +42,10 @@ export class AnnixOrbitPlacementController {
 
   @Post()
   create(
-    @Request() req: { user: { companyId: number } },
+    @Request() req: { user: { companyId: number; id: number } },
     @Body() dto: CreateAnnixOrbitPlacementDto,
   ) {
-    return this.placementService.create(req.user.companyId, dto);
+    return this.placementService.create(req.user.companyId, req.user.id, dto);
   }
 
   @Put(":id")

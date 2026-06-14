@@ -28,6 +28,12 @@ export class AnnixOrbitSubmission {
   @Column({ name: "company_id" })
   companyId: number;
 
+  // Consultant who owns this submission — drives the dashboard
+  // Top-Consultants leaderboard (issue #362). Stamped to the creating
+  // user; null on rows created before attribution existed.
+  @Column({ name: "consultant_user_id", type: "int", nullable: true })
+  consultantUserId: number | null;
+
   @Column({ name: "candidate_id" })
   candidateId: number;
 
@@ -42,6 +48,12 @@ export class AnnixOrbitSubmission {
 
   @Column({ name: "submitted_at", type: "varchar", length: 30, nullable: true })
   submittedAt: string | null;
+
+  // Scheduled interview date/time (ISO) — set when the submission
+  // reaches the interview stage; powers the dashboard Upcoming
+  // Interviews widget (issue #362 phase 6).
+  @Column({ name: "interview_at", type: "varchar", length: 30, nullable: true })
+  interviewAt: string | null;
 
   @Column({ type: "text", nullable: true })
   feedback: string | null;

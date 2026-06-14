@@ -8,8 +8,10 @@ import {
   RequiredString,
 } from "../../lib/dto/validation-decorators";
 import {
+  ORBIT_CANDIDATE_SOURCES,
   ORBIT_CANDIDATE_STATUSES,
   ORBIT_CANDIDATE_VISIBILITIES,
+  ORBIT_PIPELINE_STAGES,
 } from "../entities/annix-orbit-talent-candidate.entity";
 
 export class CreateAnnixOrbitTalentCandidateDto {
@@ -54,6 +56,12 @@ export class CreateAnnixOrbitTalentCandidateDto {
 
   @OptionalIn(ORBIT_CANDIDATE_STATUSES)
   status?: string;
+
+  @OptionalIn(ORBIT_PIPELINE_STAGES)
+  pipelineStage?: string;
+
+  @OptionalIn(ORBIT_CANDIDATE_SOURCES)
+  source?: string;
 
   @OptionalString()
   notes?: string | null;

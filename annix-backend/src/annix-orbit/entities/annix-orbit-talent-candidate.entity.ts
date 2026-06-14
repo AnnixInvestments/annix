@@ -13,6 +13,32 @@ export type AnnixOrbitCandidateVisibility = (typeof ORBIT_CANDIDATE_VISIBILITIES
 export const ORBIT_CANDIDATE_STATUSES = ["active", "placed", "do_not_contact", "archived"] as const;
 export type AnnixOrbitTalentCandidateStatus = (typeof ORBIT_CANDIDATE_STATUSES)[number];
 
+// Canonical recruiter pipeline stage the candidate sits at (issue #362).
+// Only identified/screened/shortlisted are set manually; submitted+ are
+// derived from submissions/placements (see recruiter-pipeline.ts).
+export const ORBIT_PIPELINE_STAGES = [
+  "identified",
+  "screened",
+  "shortlisted",
+  "submitted",
+  "interview",
+  "offer",
+  "placed",
+] as const;
+export type OrbitPipelineStage = (typeof ORBIT_PIPELINE_STAGES)[number];
+
+// Where the candidate came into the pool — powers the dashboard source
+// breakdown donut.
+export const ORBIT_CANDIDATE_SOURCES = [
+  "database",
+  "referral",
+  "website",
+  "social",
+  "job_board",
+  "other",
+] as const;
+export type AnnixOrbitCandidateSource = (typeof ORBIT_CANDIDATE_SOURCES)[number];
+
 @Entity("orbit_talent_candidates")
 @Index(["companyId"])
 export class AnnixOrbitTalentCandidate {
@@ -66,6 +92,12 @@ export class AnnixOrbitTalentCandidate {
 
   @Column({ type: "varchar", length: 20, default: "active" })
   status: AnnixOrbitTalentCandidateStatus;
+
+  @Column({ name: "pipeline_stage", type: "varchar", length: 20, default: "identified" })
+  pipelineStage: OrbitPipelineStage;
+
+  @Column({ type: "varchar", length: 20, default: "database" })
+  source: AnnixOrbitCandidateSource;
 
   @Column({ type: "text", nullable: true })
   notes: string | null;

@@ -18,6 +18,7 @@ import {
   useOrbitExtractCandidateCv,
   useOrbitUpdateTalentCandidate,
 } from "@/app/lib/query/hooks";
+import { CandidatePassportPanel } from "./CandidatePassportPanel";
 
 function auditActionLabel(action: string): string {
   if (action === "candidate_submitted") return "Submitted to client";
@@ -529,6 +530,12 @@ export function CandidateFormModal(props: CandidateFormModalProps) {
               </div>
             ) : null}
           </div>
+
+          {candidate ? (
+            <div className="px-6 pb-2">
+              <CandidatePassportPanel candidateId={candidate.id} />
+            </div>
+          ) : null}
 
           <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
             <button

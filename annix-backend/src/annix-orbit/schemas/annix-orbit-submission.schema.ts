@@ -17,6 +17,9 @@ export class AnnixOrbitSubmission {
   @Prop({ type: Number, required: true })
   companyId: number;
 
+  @Prop({ type: Number, required: false })
+  consultantUserId: number | null;
+
   @Prop({ type: Number, required: true })
   candidateId: number;
 
@@ -31,6 +34,9 @@ export class AnnixOrbitSubmission {
 
   @Prop({ type: String, required: false })
   submittedAt: string;
+
+  @Prop({ type: String, required: false })
+  interviewAt: string | null;
 
   @Prop({ type: String, required: false })
   feedback: string;

@@ -6,9 +6,11 @@ import {
   UpdateAnnixOrbitTalentCandidateDto,
 } from "../dto/annix-orbit-talent-candidate.dto";
 import {
+  type AnnixOrbitCandidateSource,
   type AnnixOrbitCandidateVisibility,
   type AnnixOrbitTalentCandidate,
   type AnnixOrbitTalentCandidateStatus,
+  type OrbitPipelineStage,
 } from "../entities/annix-orbit-talent-candidate.entity";
 import { AnnixOrbitTalentCandidateRepository } from "../repositories/annix-orbit-talent-candidate.repository";
 import { type AnnixOrbitAuditActor, AnnixOrbitAuditService } from "./annix-orbit-audit.service";
@@ -154,6 +156,8 @@ export class AnnixOrbitTalentCandidateService {
       noticePeriod: dto.noticePeriod ?? null,
       willingToRelocate: dto.willingToRelocate ?? false,
       status: (dto.status ?? "active") as AnnixOrbitTalentCandidateStatus,
+      pipelineStage: (dto.pipelineStage ?? "identified") as OrbitPipelineStage,
+      source: (dto.source ?? "database") as AnnixOrbitCandidateSource,
       notes: dto.notes ?? null,
       consentToShare: dto.consentToShare ?? false,
       consentGivenAt: dto.consentGivenAt ?? null,
@@ -188,6 +192,8 @@ export class AnnixOrbitTalentCandidateService {
     candidate.noticePeriod = dto.noticePeriod ?? null;
     candidate.willingToRelocate = dto.willingToRelocate ?? false;
     candidate.status = (dto.status ?? "active") as AnnixOrbitTalentCandidateStatus;
+    candidate.pipelineStage = (dto.pipelineStage ?? candidate.pipelineStage) as OrbitPipelineStage;
+    candidate.source = (dto.source ?? candidate.source) as AnnixOrbitCandidateSource;
     candidate.notes = dto.notes ?? null;
     candidate.consentToShare = dto.consentToShare ?? false;
     candidate.consentGivenAt = dto.consentGivenAt ?? null;

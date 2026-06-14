@@ -2,11 +2,19 @@
 
 import { useState } from "react";
 import { useToast } from "@/app/components/Toast";
-import type { OrbitTalentCandidate } from "@/app/lib/api/annixOrbitApi";
+import type { OrbitSiteReadyStatus, OrbitTalentCandidate } from "@/app/lib/api/annixOrbitApi";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
-import { useOrbitDeleteTalentCandidate, useOrbitTalentCandidates } from "@/app/lib/query/hooks";
+import {
+  useOrbitDeleteTalentCandidate,
+  useOrbitSiteReadyScores,
+  useOrbitTalentCandidates,
+} from "@/app/lib/query/hooks";
 import { CandidateFormModal } from "./components/CandidateFormModal";
+import { RecruiterAssistantSearch } from "./components/RecruiterAssistantSearch";
+import { SITE_READY_FACETS, siteReadyMeta } from "./components/siteReadyMeta";
+
+type SiteReadyFacet = "all" | OrbitSiteReadyStatus;
 
 function visibilityMeta(visibility: string): { label: string; classes: string } {
   if (visibility === "private") return { label: "Private", classes: "bg-gray-100 text-gray-600" };
@@ -23,6 +31,20 @@ export default function RecruiterCandidatesPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<OrbitTalentCandidate | null>(null);
+  const [facet, setFacet] = useState<SiteReadyFacet>("all");
+
+  const scoresQuery = useOrbitSiteReadyScores();
+  const rawScoreRows = scoresQuery.data;
+  const scoreRows = rawScoreRows ?? [];
+  const scoreByCandidate = new Map(scoreRows.map((row) => [row.candidateId, row]));
+  const statusForCandidate = (candidateId: number): OrbitSiteReadyStatus => {
+    const row = scoreByCandidate.get(candidateId);
+    return row ? row.status : "no_passport";
+  };
+  const visibleCandidates =
+    facet === "all"
+      ? candidates
+      : candidates.filter((candidate) => statusForCandidate(candidate.id) === facet);
 
   const openCreate = () => {
     setEditing(null);
@@ -71,6 +93,33 @@ export default function RecruiterCandidatesPage() {
         </button>
       </div>
 
+      {!isLoading && !isError ? <RecruiterAssistantSearch /> : null}
+
+      {!isLoading && !isError && candidates.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs font-medium text-gray-500 dark:text-[#c0c0eb] mr-1">
+            Site-readiness:
+          </span>
+          {SITE_READY_FACETS.map((option) => {
+            const active = facet === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setFacet(option.value)}
+                className={`px-3 py-1 rounded-full text-xs font-medium border transition-colors ${
+                  active
+                    ? "bg-[#323288] text-white border-[#323288]"
+                    : "bg-white dark:bg-white/5 text-gray-600 dark:text-[#c0c0eb] border-gray-300 dark:border-white/10 hover:bg-gray-50"
+                }`}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+
       {isLoading ? (
         <div className="flex items-center justify-center h-48">
           <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#323288]" />
@@ -109,6 +158,9 @@ export default function RecruiterCandidatesPage() {
                     Experience
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Site-ready
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Visibility
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -120,7 +172,14 @@ export default function RecruiterCandidatesPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200 dark:divide-white/10">
-                {candidates.map((candidate) => {
+                {visibleCandidates.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                      No candidates match this filter.
+                    </td>
+                  </tr>
+                ) : null}
+                {visibleCandidates.map((candidate) => {
                   const role = candidate.currentRole ? candidate.currentRole : "—";
                   const locationParts = [candidate.city, candidate.province]
                     .filter(Boolean)
@@ -129,6 +188,9 @@ export default function RecruiterCandidatesPage() {
                   const years = candidate.yearsExperience;
                   const experience = years === null ? "—" : `${years} yr`;
                   const meta = visibilityMeta(candidate.visibility);
+                  const scoreRow = scoreByCandidate.get(candidate.id);
+                  const readyStatus = scoreRow ? scoreRow.status : "no_passport";
+                  const readyMeta = siteReadyMeta(readyStatus);
                   return (
                     <tr
                       key={candidate.id}
@@ -146,6 +208,14 @@ export default function RecruiterCandidatesPage() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-600 dark:text-[#c0c0eb]">
                         {experience}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span
+                          className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${readyMeta.chipClasses}`}
+                        >
+                          {readyMeta.label}
+                          {scoreRow && scoreRow.total > 0 ? <span>· {scoreRow.score}%</span> : null}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span

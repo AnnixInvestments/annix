@@ -28,6 +28,12 @@ export class AnnixOrbitPlacement {
   @Column({ name: "company_id" })
   companyId: number;
 
+  // Consultant credited with this placement — drives the dashboard
+  // Top-Consultants leaderboard + revenue attribution (issue #362).
+  // Stamped to the creating user; null on pre-attribution rows.
+  @Column({ name: "consultant_user_id", type: "int", nullable: true })
+  consultantUserId: number | null;
+
   @Column({ name: "client_id", type: "int", nullable: true })
   clientId: number | null;
 

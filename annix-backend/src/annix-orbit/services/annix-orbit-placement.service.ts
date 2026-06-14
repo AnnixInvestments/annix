@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ForbiddenException, Injectable, NotFoundException } from "@nestjs/common";
+import { LicensingService } from "../../licensing/licensing.service";
+import {
+  ANNIX_ORBIT_RECRUITER_FEATURES,
+  ANNIX_ORBIT_RECRUITER_MODULE_KEY,
+} from "../config/annix-orbit-recruiter-licensing";
 import {
   CreateAnnixOrbitPlacementDto,
   UpdateAnnixOrbitPlacementDto,
@@ -12,7 +17,10 @@ import { AnnixOrbitPlacementRepository } from "../repositories/annix-orbit-place
 
 @Injectable()
 export class AnnixOrbitPlacementService {
-  constructor(private readonly placementRepo: AnnixOrbitPlacementRepository) {}
+  constructor(
+    private readonly placementRepo: AnnixOrbitPlacementRepository,
+    private readonly licensing: LicensingService,
+  ) {}
 
   findForCompany(companyId: number): Promise<AnnixOrbitPlacement[]> {
     return this.placementRepo.findByCompany(companyId);
@@ -26,9 +34,24 @@ export class AnnixOrbitPlacementService {
     return placement;
   }
 
-  create(companyId: number, dto: CreateAnnixOrbitPlacementDto): Promise<AnnixOrbitPlacement> {
+  async create(
+    companyId: number,
+    userId: number,
+    dto: CreateAnnixOrbitPlacementDto,
+  ): Promise<AnnixOrbitPlacement> {
+    const allowed = await this.licensing.isFeatureEnabled(
+      companyId,
+      ANNIX_ORBIT_RECRUITER_MODULE_KEY,
+      ANNIX_ORBIT_RECRUITER_FEATURES.PLACEMENTS,
+    );
+    if (!allowed) {
+      throw new ForbiddenException(
+        "Placement tracking is part of the Recruit plan. Upgrade to record placements.",
+      );
+    }
     return this.placementRepo.create({
       companyId,
+      consultantUserId: userId,
       clientId: dto.clientId ?? null,
       candidateName: dto.candidateName,
       jobTitle: dto.jobTitle,

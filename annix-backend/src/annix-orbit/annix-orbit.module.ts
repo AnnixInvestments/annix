@@ -75,11 +75,14 @@ import { AnnixOrbitComplianceItemController } from "./controllers/annix-orbit-co
 import { AnnixOrbitJobController } from "./controllers/annix-orbit-job.controller";
 import { AnnixOrbitMessageController } from "./controllers/annix-orbit-message.controller";
 import { AnnixOrbitPlacementController } from "./controllers/annix-orbit-placement.controller";
+import { AnnixOrbitRecruiterAssistantController } from "./controllers/annix-orbit-recruiter-assistant.controller";
 import { AnnixOrbitRecruiterInterviewController } from "./controllers/annix-orbit-recruiter-interview.controller";
 import { AnnixOrbitShortlistController } from "./controllers/annix-orbit-shortlist.controller";
 import { AnnixOrbitSubmissionController } from "./controllers/annix-orbit-submission.controller";
 import { AnnixOrbitTalentCandidateController } from "./controllers/annix-orbit-talent-candidate.controller";
+import { AnnixOrbitTalentCredentialController } from "./controllers/annix-orbit-talent-credential.controller";
 import { AnnixOrbitTalentPoolController } from "./controllers/annix-orbit-talent-pool.controller";
+import { AnnixOrbitTaskController } from "./controllers/annix-orbit-task.controller";
 import { AnnixOrbitTeamController } from "./controllers/annix-orbit-team.controller";
 import { AnnixOrbitAuthController } from "./controllers/auth.controller";
 import { CandidateController } from "./controllers/candidate.controller";
@@ -102,6 +105,7 @@ import { PublicJobPostingController } from "./controllers/public-job-posting.con
 import { PublicOrbitShortlistController } from "./controllers/public-orbit-shortlist.controller";
 import { PublicSeekerCalendarController } from "./controllers/public-seeker-calendar.controller";
 import { PublicTierPlansController } from "./controllers/public-tier-plans.controller";
+import { RecruiterDashboardController } from "./controllers/recruiter-dashboard.controller";
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
@@ -129,7 +133,9 @@ import { AnnixOrbitRecruiterInterview } from "./entities/annix-orbit-recruiter-i
 import { AnnixOrbitShortlist } from "./entities/annix-orbit-shortlist.entity";
 import { AnnixOrbitSubmission } from "./entities/annix-orbit-submission.entity";
 import { AnnixOrbitTalentCandidate } from "./entities/annix-orbit-talent-candidate.entity";
+import { AnnixOrbitTalentCredential } from "./entities/annix-orbit-talent-credential.entity";
 import { AnnixOrbitTalentPool } from "./entities/annix-orbit-talent-pool.entity";
+import { AnnixOrbitTask } from "./entities/annix-orbit-task.entity";
 import { AnnixOrbitTeamInvite } from "./entities/annix-orbit-team-invite.entity";
 import { AnnixOrbitUser } from "./entities/annix-orbit-user.entity";
 import { Candidate } from "./entities/candidate.entity";
@@ -223,9 +229,15 @@ import { PostgresAnnixOrbitSubmissionRepository } from "./repositories/annix-orb
 import { AnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository";
 import { MongoAnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository.mongo";
 import { PostgresAnnixOrbitTalentCandidateRepository } from "./repositories/annix-orbit-talent-candidate.repository.postgres";
+import { AnnixOrbitTalentCredentialRepository } from "./repositories/annix-orbit-talent-credential.repository";
+import { MongoAnnixOrbitTalentCredentialRepository } from "./repositories/annix-orbit-talent-credential.repository.mongo";
+import { PostgresAnnixOrbitTalentCredentialRepository } from "./repositories/annix-orbit-talent-credential.repository.postgres";
 import { AnnixOrbitTalentPoolRepository } from "./repositories/annix-orbit-talent-pool.repository";
 import { MongoAnnixOrbitTalentPoolRepository } from "./repositories/annix-orbit-talent-pool.repository.mongo";
 import { PostgresAnnixOrbitTalentPoolRepository } from "./repositories/annix-orbit-talent-pool.repository.postgres";
+import { AnnixOrbitTaskRepository } from "./repositories/annix-orbit-task.repository";
+import { MongoAnnixOrbitTaskRepository } from "./repositories/annix-orbit-task.repository.mongo";
+import { PostgresAnnixOrbitTaskRepository } from "./repositories/annix-orbit-task.repository.postgres";
 import { AnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository";
 import { MongoAnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository.mongo";
 import { PostgresAnnixOrbitTeamInviteRepository } from "./repositories/annix-orbit-team-invite.repository.postgres";
@@ -363,7 +375,9 @@ import { AnnixOrbitRecruiterInterviewSchema } from "./schemas/annix-orbit-recrui
 import { AnnixOrbitShortlistSchema } from "./schemas/annix-orbit-shortlist.schema";
 import { AnnixOrbitSubmissionSchema } from "./schemas/annix-orbit-submission.schema";
 import { AnnixOrbitTalentCandidateSchema } from "./schemas/annix-orbit-talent-candidate.schema";
+import { AnnixOrbitTalentCredentialSchema } from "./schemas/annix-orbit-talent-credential.schema";
 import { AnnixOrbitTalentPoolSchema } from "./schemas/annix-orbit-talent-pool.schema";
+import { AnnixOrbitTaskSchema } from "./schemas/annix-orbit-task.schema";
 import { AnnixOrbitTeamInviteSchema } from "./schemas/annix-orbit-team-invite.schema";
 import { AnnixOrbitUserSchema } from "./schemas/annix-orbit-user.schema";
 import { CandidateSchema } from "./schemas/candidate.schema";
@@ -418,12 +432,15 @@ import { AnnixOrbitComplianceItemService } from "./services/annix-orbit-complian
 import { AnnixOrbitJobService } from "./services/annix-orbit-job.service";
 import { AnnixOrbitMessageService } from "./services/annix-orbit-message.service";
 import { AnnixOrbitPlacementService } from "./services/annix-orbit-placement.service";
+import { AnnixOrbitRecruiterAssistantService } from "./services/annix-orbit-recruiter-assistant.service";
 import { AnnixOrbitRecruiterInterviewService } from "./services/annix-orbit-recruiter-interview.service";
 import { AnnixOrbitShortlistService } from "./services/annix-orbit-shortlist.service";
 import { AnnixOrbitShortlistDeliveryService } from "./services/annix-orbit-shortlist-delivery.service";
 import { AnnixOrbitSubmissionService } from "./services/annix-orbit-submission.service";
 import { AnnixOrbitTalentCandidateService } from "./services/annix-orbit-talent-candidate.service";
+import { AnnixOrbitTalentCredentialService } from "./services/annix-orbit-talent-credential.service";
 import { AnnixOrbitTalentPoolService } from "./services/annix-orbit-talent-pool.service";
+import { AnnixOrbitTaskService } from "./services/annix-orbit-task.service";
 import { AnnixOrbitTeamService } from "./services/annix-orbit-team.service";
 import { AnnixOrbitAuthService } from "./services/auth.service";
 import { CandidateService } from "./services/candidate.service";
@@ -468,6 +485,7 @@ import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
 import { PortalPostingOrchestrator } from "./services/portal-posting-orchestrator.service";
 import { PortalPostingRetryService } from "./services/portal-posting-retry.service";
+import { RecruiterDashboardService } from "./services/recruiter-dashboard.service";
 import { ReferenceService } from "./services/reference.service";
 import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
@@ -552,6 +570,11 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "AnnixOrbitClient", schema: AnnixOrbitClientSchema },
               { name: "AnnixOrbitPlacement", schema: AnnixOrbitPlacementSchema },
               { name: "AnnixOrbitTalentCandidate", schema: AnnixOrbitTalentCandidateSchema },
+              {
+                name: "AnnixOrbitTalentCredential",
+                schema: AnnixOrbitTalentCredentialSchema,
+              },
+              { name: "AnnixOrbitTask", schema: AnnixOrbitTaskSchema },
               { name: "AnnixOrbitSubmission", schema: AnnixOrbitSubmissionSchema },
               { name: "SeekerTestPhase", schema: SeekerTestPhaseSchema },
               { name: "SeekerTestParticipant", schema: SeekerTestParticipantSchema },
@@ -661,6 +684,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             AnnixOrbitClient,
             AnnixOrbitPlacement,
             AnnixOrbitTalentCandidate,
+            AnnixOrbitTalentCredential,
+            AnnixOrbitTask,
             AnnixOrbitSubmission,
             AnnixOrbitTalentPool,
             AnnixOrbitShortlist,
@@ -751,6 +776,10 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitClientController,
     AnnixOrbitPlacementController,
     AnnixOrbitTalentCandidateController,
+    AnnixOrbitTalentCredentialController,
+    AnnixOrbitRecruiterAssistantController,
+    RecruiterDashboardController,
+    AnnixOrbitTaskController,
     AnnixOrbitSubmissionController,
     AnnixOrbitTalentPoolController,
     AnnixOrbitShortlistController,
@@ -811,6 +840,10 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitClientService,
     AnnixOrbitPlacementService,
     AnnixOrbitTalentCandidateService,
+    AnnixOrbitTalentCredentialService,
+    AnnixOrbitRecruiterAssistantService,
+    RecruiterDashboardService,
+    AnnixOrbitTaskService,
     AnnixOrbitSubmissionService,
     AnnixOrbitTalentPoolService,
     AnnixOrbitShortlistService,
@@ -966,6 +999,16 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       AnnixOrbitTalentCandidateRepository,
       PostgresAnnixOrbitTalentCandidateRepository,
       MongoAnnixOrbitTalentCandidateRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitTalentCredentialRepository,
+      PostgresAnnixOrbitTalentCredentialRepository,
+      MongoAnnixOrbitTalentCredentialRepository,
+    ),
+    repositoryProvider(
+      AnnixOrbitTaskRepository,
+      PostgresAnnixOrbitTaskRepository,
+      MongoAnnixOrbitTaskRepository,
     ),
     repositoryProvider(
       AnnixOrbitSubmissionRepository,

@@ -173,6 +173,207 @@ export interface OrbitTalentCandidateInput {
   cvFilePath?: string | null;
 }
 
+export type OrbitCredentialExpiryStatus = "none" | "valid" | "expiring" | "expired";
+
+export interface OrbitTalentCredential {
+  id: number;
+  companyId: number;
+  candidateId: number;
+  credentialType: string;
+  issuedAt: string | null;
+  expiresAt: string | null;
+  issuingAuthority: string | null;
+  documentPath: string | null;
+  verified: boolean;
+  notes: string | null;
+  status: OrbitCredentialExpiryStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitTalentCredentialInput {
+  credentialType: string;
+  issuedAt?: string | null;
+  expiresAt?: string | null;
+  issuingAuthority?: string | null;
+  documentPath?: string | null;
+  verified?: boolean;
+  notes?: string | null;
+}
+
+export interface OrbitCredentialTypeOption {
+  id: number;
+  code: string;
+  label: string;
+  description: string | null;
+}
+
+export interface OrbitExpiringSummary {
+  withinDays: number;
+  candidateCount: number;
+  credentialCount: number;
+  expiredCount: number;
+  expiringCount: number;
+  items: Array<{
+    credentialId: number;
+    candidateId: number;
+    credentialType: string;
+    expiresAt: string | null;
+    status: OrbitCredentialExpiryStatus;
+  }>;
+}
+
+export type OrbitSiteReadyStatus = "ready" | "nearly" | "not_ready" | "no_passport";
+
+export interface OrbitSiteReadyGap {
+  credentialType: string;
+  status: "expired" | "expiring";
+  expiresAt: string | null;
+}
+
+export interface OrbitSiteReadyResult {
+  score: number;
+  status: OrbitSiteReadyStatus;
+  total: number;
+  validCount: number;
+  expiringCount: number;
+  expiredCount: number;
+  verifiedCount: number;
+  gaps: OrbitSiteReadyGap[];
+}
+
+export interface OrbitSiteReadyScoreRow extends OrbitSiteReadyResult {
+  candidateId: number;
+}
+
+export interface OrbitComplianceGapResult {
+  candidateId: number;
+  score: number;
+  status: OrbitSiteReadyStatus;
+  gaps: Array<{ credential: string; status: "expired" | "expiring"; expiresAt: string | null }>;
+  summary: string;
+  suggestions: string[];
+}
+
+export interface OrbitRecruiterSearchCandidate {
+  candidateId: number;
+  fullName: string;
+  currentRole: string | null;
+  location: string | null;
+  availability: string | null;
+  siteReadyScore: number;
+  siteReadyStatus: OrbitSiteReadyStatus;
+  matchReason: string;
+}
+
+export interface OrbitRecruiterSearchCriteria {
+  roleKeywords: string[];
+  skillKeywords: string[];
+  province: string | null;
+  city: string | null;
+  availabilityNote: string | null;
+  requireSiteReady: boolean;
+  limit: number;
+}
+
+export interface OrbitRecruiterSearchResult {
+  interpretation: string;
+  criteria: OrbitRecruiterSearchCriteria;
+  summary: string;
+  candidates: OrbitRecruiterSearchCandidate[];
+}
+
+export interface OrbitTask {
+  id: number;
+  companyId: number;
+  ownerUserId: number;
+  title: string;
+  dueDate: string | null;
+  done: boolean;
+  relatedCandidateId: number | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface OrbitTaskInput {
+  title: string;
+  dueDate?: string | null;
+  done?: boolean;
+  relatedCandidateId?: number | null;
+  notes?: string | null;
+}
+
+export interface OrbitKpiValue {
+  value: number;
+  deltaPct: number | null;
+}
+
+export interface OrbitRevenuePoint {
+  date: string;
+  amount: number;
+}
+
+export interface OrbitTopConsultant {
+  userId: number | null;
+  name: string;
+  placements: number;
+  revenue: number;
+  deltaPct: number | null;
+}
+
+export interface OrbitDashboardRecentPlacement {
+  id: number;
+  candidateName: string;
+  jobTitle: string;
+  clientName: string | null;
+  fee: number | null;
+  date: string | null;
+}
+
+export interface OrbitSourceBreakdownItem {
+  source: string;
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export interface OrbitDashboardUpcomingInterview {
+  submissionId: number;
+  candidateName: string;
+  jobTitle: string;
+  clientName: string | null;
+  interviewAt: string | null;
+}
+
+export interface OrbitPipelineStageRow {
+  key: string;
+  label: string;
+  count: number;
+  pct: number;
+}
+
+export interface OrbitRecruiterDashboard {
+  range: { from: string; to: string };
+  kpis: {
+    totalCandidates: OrbitKpiValue;
+    activeClients: OrbitKpiValue;
+    activeJobs: OrbitKpiValue;
+    submissions: OrbitKpiValue;
+    placements: OrbitKpiValue;
+    revenue: OrbitKpiValue;
+  };
+  pipeline: { stages: OrbitPipelineStageRow[]; conversionRate: number };
+  revenueSeries: OrbitRevenuePoint[];
+  revenueTotal: number;
+  topConsultants: { gated: boolean; items: OrbitTopConsultant[] };
+  recentPlacements: OrbitDashboardRecentPlacement[];
+  sourceBreakdown: { total: number; items: OrbitSourceBreakdownItem[] };
+  upcomingInterviews: OrbitDashboardUpcomingInterview[];
+  complianceAlerts: { candidateCount: number; credentialCount: number };
+  tasksDue: number;
+}
+
 export interface OrbitSubmission {
   id: number;
   companyId: number;
@@ -1723,6 +1924,92 @@ class AnnixOrbitApiClient {
       method: "POST",
       body: JSON.stringify(dto),
     });
+  }
+
+  async talentCredentialTypes(): Promise<OrbitCredentialTypeOption[]> {
+    const res = await this.request<{ types: OrbitCredentialTypeOption[] }>(
+      "/annix-orbit/talent-credentials/types",
+    );
+    return res.types;
+  }
+
+  async talentCredentialsExpiring(withinDays?: number): Promise<OrbitExpiringSummary> {
+    const query = withinDays ? `?withinDays=${withinDays}` : "";
+    return this.request(`/annix-orbit/talent-credentials/expiring${query}`);
+  }
+
+  async talentCredentials(candidateId: number): Promise<OrbitTalentCredential[]> {
+    return this.request(`/annix-orbit/talent-candidates/${candidateId}/credentials`);
+  }
+
+  async createTalentCredential(
+    candidateId: number,
+    data: OrbitTalentCredentialInput,
+  ): Promise<OrbitTalentCredential> {
+    return this.request(`/annix-orbit/talent-candidates/${candidateId}/credentials`, {
+      method: "POST",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async updateTalentCredential(
+    candidateId: number,
+    id: number,
+    data: OrbitTalentCredentialInput,
+  ): Promise<OrbitTalentCredential> {
+    return this.request(`/annix-orbit/talent-candidates/${candidateId}/credentials/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(data),
+    });
+  }
+
+  async deleteTalentCredential(candidateId: number, id: number): Promise<void> {
+    return this.request(`/annix-orbit/talent-candidates/${candidateId}/credentials/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async talentCandidateSiteReady(candidateId: number): Promise<OrbitSiteReadyResult> {
+    return this.request(`/annix-orbit/talent-candidates/${candidateId}/site-ready`);
+  }
+
+  async talentSiteReadyScores(): Promise<OrbitSiteReadyScoreRow[]> {
+    return this.request("/annix-orbit/talent-credentials/site-ready-scores");
+  }
+
+  async candidateComplianceGap(candidateId: number): Promise<OrbitComplianceGapResult> {
+    return this.request(`/annix-orbit/talent-candidates/${candidateId}/compliance-gap`);
+  }
+
+  async recruiterFindCandidates(query: string): Promise<OrbitRecruiterSearchResult> {
+    return this.request("/annix-orbit/recruiter-assistant/find-candidates", {
+      method: "POST",
+      body: JSON.stringify({ query }),
+    });
+  }
+
+  async orbitTasks(): Promise<OrbitTask[]> {
+    return this.request("/annix-orbit/tasks");
+  }
+
+  async createOrbitTask(data: OrbitTaskInput): Promise<OrbitTask> {
+    return this.request("/annix-orbit/tasks", { method: "POST", body: JSON.stringify(data) });
+  }
+
+  async updateOrbitTask(id: number, data: OrbitTaskInput): Promise<OrbitTask> {
+    return this.request(`/annix-orbit/tasks/${id}`, { method: "PUT", body: JSON.stringify(data) });
+  }
+
+  async deleteOrbitTask(id: number): Promise<void> {
+    return this.request(`/annix-orbit/tasks/${id}`, { method: "DELETE" });
+  }
+
+  async recruiterDashboard(from?: string, to?: string): Promise<OrbitRecruiterDashboard> {
+    const params = new URLSearchParams();
+    if (from) params.set("from", from);
+    if (to) params.set("to", to);
+    const query = params.toString();
+    return this.request(`/annix-orbit/recruiter/dashboard${query ? `?${query}` : ""}`);
   }
 
   async submissions(): Promise<OrbitSubmission[]> {
