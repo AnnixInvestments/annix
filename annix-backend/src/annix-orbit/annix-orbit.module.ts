@@ -110,6 +110,7 @@ import { RecruiterDashboardController } from "./controllers/recruiter-dashboard.
 import { ReferenceFeedbackController } from "./controllers/reference-feedback.controller";
 import { ReferencesController } from "./controllers/references.controller";
 import { SeekerApplicationsController } from "./controllers/seeker-applications.controller";
+import { SeekerAssistantController } from "./controllers/seeker-assistant.controller";
 import { SeekerCalendarController } from "./controllers/seeker-calendar.controller";
 import { SeekerEmploymentController } from "./controllers/seeker-employment.controller";
 import { SeekerInterviewEventsController } from "./controllers/seeker-interview-events.controller";
@@ -502,6 +503,7 @@ import { ReferenceService } from "./services/reference.service";
 import { RemotiveService } from "./services/remotive.service";
 import { SalaryBenchmarkService } from "./services/salary-benchmark.service";
 import { SeekerApplicationsService } from "./services/seeker-applications.service";
+import { SeekerAssistantService } from "./services/seeker-assistant.service";
 import { SeekerCalendarService } from "./services/seeker-calendar.service";
 import { SeekerCompanyResearchService } from "./services/seeker-company-research.service";
 import { SeekerEmploymentService } from "./services/seeker-employment.service";
@@ -794,6 +796,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitTalentCandidateController,
     AnnixOrbitTalentCredentialController,
     AnnixOrbitRecruiterAssistantController,
+    SeekerAssistantController,
     RecruiterDashboardController,
     AnnixOrbitTaskController,
     AnnixOrbitSubmissionController,
@@ -859,6 +862,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AnnixOrbitTalentCandidateService,
     AnnixOrbitTalentCredentialService,
     AnnixOrbitRecruiterAssistantService,
+    SeekerAssistantService,
     RecruiterDashboardService,
     AnnixOrbitTaskService,
     AnnixOrbitSubmissionService,

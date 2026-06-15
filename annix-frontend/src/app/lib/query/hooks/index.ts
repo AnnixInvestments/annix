@@ -455,6 +455,7 @@ export {
   useOrbitReminderPreferences,
   useOrbitUpdateReminderPreferences,
 } from "./annix-orbit/useOrbitReminderPreferences";
+export { useOrbitSeekerAssistantChat } from "./annix-orbit/useOrbitSeekerAssistant";
 export {
   useOrbitCreateSeekerEmployment,
   useOrbitReactivateJobSearch,

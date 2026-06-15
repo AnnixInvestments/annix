@@ -78,6 +78,7 @@ export const FEATURE_FLAGS = {
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS: "STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS",
   ANNIX_ORBIT_EE_COMPLIANCE_ENABLED: "ANNIX_ORBIT_EE_COMPLIANCE_ENABLED",
   ANNIX_ORBIT_NIX_CV_BUILDER: "ANNIX_ORBIT_NIX_CV_BUILDER",
+  ANNIX_ORBIT_SEEKER_ASSISTANT: "ANNIX_ORBIT_SEEKER_ASSISTANT",
 } as const;
 
 export type FeatureFlagKey = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS];
@@ -169,6 +170,8 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
     "Annix Orbit — EE Act 55/1998 compliance (disclosure flow, fairness monitoring, EEA2/EEA4 reports). Default off; per-customer activation requires is_designated_employer + signed DPIA.",
   ANNIX_ORBIT_NIX_CV_BUILDER:
     "Annix Orbit — paid 'Get Nix to build my CV' feature: Nix generates a rewritten, improved CV for individual job seekers with a downloadable PDF.",
+  ANNIX_ORBIT_SEEKER_ASSISTANT:
+    "Annix Orbit — in-app Nix helper for job seekers: a scoped chat that answers questions about the Seeker area and (later) guides the user around the screen. Default off while in development.",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -251,6 +254,7 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS: true,
   ANNIX_ORBIT_EE_COMPLIANCE_ENABLED: false,
   ANNIX_ORBIT_NIX_CV_BUILDER: true,
+  ANNIX_ORBIT_SEEKER_ASSISTANT: false,
 };
 
 export type FeatureFlagCategory =
@@ -343,4 +347,5 @@ export const FEATURE_FLAG_CATEGORIES: Record<FeatureFlagKey, FeatureFlagCategory
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS: "addons",
   ANNIX_ORBIT_EE_COMPLIANCE_ENABLED: "addons",
   ANNIX_ORBIT_NIX_CV_BUILDER: "addons",
+  ANNIX_ORBIT_SEEKER_ASSISTANT: "addons",
 };

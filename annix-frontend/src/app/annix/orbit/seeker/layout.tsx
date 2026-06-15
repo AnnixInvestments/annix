@@ -7,8 +7,10 @@ import PortalToolbar, { type NavItem } from "@/app/components/PortalToolbar";
 import { useAnnixOrbitAuth } from "@/app/context/AnnixOrbitAuthContext";
 import { BrandedLoader } from "@/app/lib/branding/components/BrandedLoader";
 import { useOrbitMyProfileStatus } from "@/app/lib/query/hooks";
+import { useFeatureFlagEnabled } from "@/app/lib/query/hooks/useFeatureFlagEnabled";
 import { OrbitModulePwaMeta } from "../components/OrbitModulePwaMeta";
 import { ANNIX_ORBIT_VERSION } from "../config/version";
+import { SeekerAssistant } from "./components/SeekerAssistant";
 import { SeekerScrollCue } from "./components/SeekerScrollCue";
 
 const navItems: NavItem[] = [
@@ -65,6 +67,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
   const hasIndividualProfile = profile !== null && profile.companyId === null;
   const isIndividual = userType === "individual" || hasIndividualProfile;
   const profileStatusQuery = useOrbitMyProfileStatus(isAuthenticated && isIndividual);
+  const seekerAssistantFlag = useFeatureFlagEnabled("ANNIX_ORBIT_SEEKER_ASSISTANT");
   const profileStatus = profileStatusQuery.data;
   const hasCv = profileStatus ? profileStatus.hasCv : null;
   const onboardingComplete = profileStatus ? profileStatus.onboardingComplete : null;
@@ -202,6 +205,7 @@ function SeekerContent({ children }: { children: React.ReactNode }) {
 
       <main className="relative z-10 max-w-7xl mx-auto px-1 sm:px-6 lg:px-8 py-8">{children}</main>
       <FeedbackWidget authContext="annix-orbit" />
+      {seekerAssistantFlag.enabled ? <SeekerAssistant /> : null}
       <SeekerScrollCue />
     </div>
   );

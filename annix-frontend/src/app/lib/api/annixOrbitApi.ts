@@ -284,6 +284,32 @@ export interface OrbitRecruiterSearchResult {
   candidates: OrbitRecruiterSearchCandidate[];
 }
 
+export interface SeekerAssistantChatTurn {
+  role: "user" | "assistant";
+  content: string;
+}
+
+export interface SeekerAssistantContext {
+  currentPage?: string;
+  hasCv?: boolean;
+  onboardingComplete?: boolean;
+  qualificationsCount?: number;
+  certificatesCount?: number;
+  workProfileComplete?: boolean;
+  applicationCount?: number;
+  openInterviewInvites?: number;
+}
+
+export interface SeekerAssistantChatPayload {
+  message: string;
+  history?: SeekerAssistantChatTurn[];
+  context?: SeekerAssistantContext;
+}
+
+export interface SeekerAssistantReply {
+  reply: string;
+}
+
 export interface OrbitTask {
   id: number;
   companyId: number;
@@ -1986,6 +2012,13 @@ class AnnixOrbitApiClient {
     return this.request("/annix-orbit/recruiter-assistant/find-candidates", {
       method: "POST",
       body: JSON.stringify({ query }),
+    });
+  }
+
+  async seekerAssistantChat(payload: SeekerAssistantChatPayload): Promise<SeekerAssistantReply> {
+    return this.request("/annix-orbit/me/seeker-assistant/chat", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   }
 
