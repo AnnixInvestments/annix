@@ -20,6 +20,8 @@ export interface NavItem {
   icon: string;
   roles?: string[];
   featureFlag?: string;
+  // Stable anchor an in-app assistant can point at (rendered as data-nix-target).
+  navTarget?: string;
 }
 
 export interface UserInfo {
@@ -283,6 +285,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                   <Tooltip key={item.href} text={getNavTooltip(item.label)} position="bottom">
                     <Link
                       href={item.href}
+                      data-nix-target={item.navTarget}
                       className="inline-flex items-center px-3 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap"
                       style={{
                         color: navForeground,
@@ -621,6 +624,7 @@ export default function PortalToolbar(props: PortalToolbarProps) {
                   <Link
                     key={href}
                     href={href}
+                    data-nix-target={item.navTarget}
                     onClick={() => setIsMobileNavOpen(false)}
                     className="flex items-center gap-3 px-3 py-2.5 rounded-md transition-colors"
                     style={{

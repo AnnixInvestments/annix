@@ -306,8 +306,16 @@ export interface SeekerAssistantChatPayload {
   context?: SeekerAssistantContext;
 }
 
+export interface SeekerAssistantAction {
+  type: "navigate" | "highlight" | "navigate-and-highlight";
+  route?: string;
+  target?: string;
+  label?: string;
+}
+
 export interface SeekerAssistantReply {
   reply: string;
+  action?: SeekerAssistantAction;
 }
 
 export interface OrbitTask {

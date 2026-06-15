@@ -9,13 +9,35 @@ import {
 const METRIC_CATEGORY = "orbit-seeker-assist";
 const MAX_HISTORY = 12;
 
+const ACTION_TYPES = new Set(["navigate", "highlight", "navigate-and-highlight"]);
+
+// Only on-screen anchors that actually exist may be pointed at.
+const KNOWN_TARGETS = new Set([
+  "nav-dashboard",
+  "nav-profile",
+  "nav-work-profile",
+  "nav-jobs",
+  "nav-applications",
+  "nav-interviews",
+  "nav-plans",
+  "nav-help",
+]);
+
 interface ChatTurn {
   role: "user" | "assistant";
   content: string;
 }
 
+export interface SeekerAssistantAction {
+  type: "navigate" | "highlight" | "navigate-and-highlight";
+  route?: string;
+  target?: string;
+  label?: string;
+}
+
 export interface SeekerAssistantReply {
   reply: string;
+  action?: SeekerAssistantAction;
 }
 
 export interface SeekerAssistantChatInput {
@@ -47,7 +69,55 @@ export class SeekerAssistantService {
     );
 
     this.logger.log(`Seeker assistant replied to seeker ${seekerId}`);
+    return this.parseOutput(content);
+  }
+
+  private parseOutput(content: string): SeekerAssistantReply {
+    const fenced = content.replace(/```(?:json)?/gi, "").trim();
+    const start = fenced.indexOf("{");
+    const end = fenced.lastIndexOf("}");
+    if (start !== -1 && end > start) {
+      try {
+        const parsed = JSON.parse(fenced.slice(start, end + 1)) as {
+          reply?: unknown;
+          action?: unknown;
+        };
+        const reply = typeof parsed.reply === "string" ? parsed.reply.trim() : "";
+        if (reply !== "") {
+          const action = this.sanitiseAction(parsed.action);
+          return action ? { reply, action } : { reply };
+        }
+      } catch {
+        // Not valid JSON — fall back to the raw text below.
+      }
+    }
     return { reply: content.trim() };
+  }
+
+  private sanitiseAction(raw: unknown): SeekerAssistantAction | undefined {
+    if (!raw || typeof raw !== "object") {
+      return undefined;
+    }
+    const candidate = raw as Record<string, unknown>;
+    const type = candidate.type;
+    if (typeof type !== "string" || !ACTION_TYPES.has(type)) {
+      return undefined;
+    }
+    const action: SeekerAssistantAction = { type: type as SeekerAssistantAction["type"] };
+    if (typeof candidate.route === "string" && candidate.route.startsWith("/annix/orbit/seeker")) {
+      action.route = candidate.route;
+    }
+    if (typeof candidate.target === "string" && KNOWN_TARGETS.has(candidate.target)) {
+      action.target = candidate.target;
+    }
+    if (typeof candidate.label === "string" && candidate.label.trim() !== "") {
+      action.label = candidate.label.trim().slice(0, 160);
+    }
+    // Drop actions that have nothing actionable left after validation.
+    if (!action.route && !action.target) {
+      return undefined;
+    }
+    return action;
   }
 
   private normaliseHistory(history?: Array<{ role?: string; content?: string }>): ChatTurn[] {
