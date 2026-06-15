@@ -577,15 +577,18 @@ export class OrbitOutreachService {
   }
 
   private environmentBase(environment: OutreachEnvironment): string {
+    // Test must NEVER fall back to ORBIT_PUBLIC_URL — on prod that env var is the
+    // prod URL, which would silently send "test" recipients to production.
+    if (environment === "test") {
+      const test =
+        this.configService.get<string>("ORBIT_TEST_URL") || "https://annix-app-test.fly.dev";
+      return test.replace(/\/$/, "");
+    }
     const prod =
       this.configService.get<string>("ORBIT_PROD_URL") ||
       this.configService.get<string>("ORBIT_PUBLIC_URL") ||
-      "https://orbit.annix.co.za";
-    const test =
-      this.configService.get<string>("ORBIT_TEST_URL") ||
-      this.configService.get<string>("ORBIT_PUBLIC_URL") ||
-      "https://annix-app-test.fly.dev";
-    return (environment === "test" ? test : prod).replace(/\/$/, "");
+      "https://annix-app.fly.dev";
+    return prod.replace(/\/$/, "");
   }
 
   private environmentLink(environment: OutreachEnvironment): string {
