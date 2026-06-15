@@ -9,6 +9,7 @@ export interface EmailAttachment {
   filename: string;
   content: Buffer;
   contentType?: string;
+  cid?: string;
 }
 
 export interface EmailOptions {
@@ -121,6 +122,7 @@ export class EmailService {
           filename: a.filename,
           content: a.content,
           contentType: a.contentType,
+          ...(a.cid ? { cid: a.cid } : {}),
         })),
       });
       this.logger.log(`Email sent successfully to ${options.to}`);

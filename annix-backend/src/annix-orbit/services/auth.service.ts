@@ -542,6 +542,23 @@ export class AnnixOrbitAuthService {
     companyName?: string | null;
     tier?: string | null;
   }): Promise<{ userId: number; email: string }> {
+    const provisioned = await this.provisionInvitedUser(input);
+    await this.emailService.sendAnnixOrbitAdminInviteEmail(
+      provisioned.email,
+      provisioned.inviteToken,
+      provisioned.userTypeLabel,
+    );
+    return { userId: provisioned.userId, email: provisioned.email };
+  }
+
+  async provisionInvitedUser(input: {
+    email: string;
+    firstName: string;
+    lastName?: string | null;
+    userType: AnnixOrbitUserType;
+    companyName?: string | null;
+    tier?: string | null;
+  }): Promise<{ userId: number; email: string; inviteToken: string; userTypeLabel: string }> {
     const { email, userType } = input;
     await this.assertOrbitAccountAvailable(email, userType);
 
@@ -598,13 +615,12 @@ export class AnnixOrbitAuthService {
       await this.assignOrbitRbacRole(savedUser.id, "student");
     }
 
-    await this.emailService.sendAnnixOrbitAdminInviteEmail(
-      email,
+    return {
+      userId: savedUser.id,
+      email: savedUser.email,
       inviteToken,
-      ORBIT_USER_TYPE_LABELS[userType],
-    );
-
-    return { userId: savedUser.id, email: savedUser.email };
+      userTypeLabel: ORBIT_USER_TYPE_LABELS[userType],
+    };
   }
 
   async adminResendInvite(userId: number): Promise<void> {

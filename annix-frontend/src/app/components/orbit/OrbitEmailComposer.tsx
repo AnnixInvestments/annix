@@ -11,6 +11,8 @@ import {
   useAdminOrbitOutreachSchedules,
   useCancelOrbitOutreachSchedule,
   useDeleteOrbitOutreachAsset,
+  useOrbitTierPlans,
+  useRunDueOrbitOutreach,
   useScheduleOrbitOutreach,
   useUploadOrbitOutreachAsset,
 } from "@/app/lib/query/hooks";
@@ -75,11 +77,14 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
   const scheduleMutation = useScheduleOrbitOutreach();
   const schedulesQuery = useAdminOrbitOutreachSchedules();
   const cancelSchedule = useCancelOrbitOutreachSchedule();
+  const runDue = useRunDueOrbitOutreach();
+  const tierPlansQuery = useOrbitTierPlans();
 
   const assets = assetsQuery.data ? assetsQuery.data : [];
   const extras = assets.filter((a) => a.slot === "extra");
   const schedules = schedulesQuery.data ? schedulesQuery.data : [];
   const pendingSchedules = schedules.filter((s) => s.status === "pending");
+  const tierPlans = tierPlansQuery.data ? tierPlansQuery.data : [];
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(
     () => new Set(recipients.map((r) => r.id)),
@@ -99,6 +104,8 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
   const [scheduleTime, setScheduleTime] = useState("09:00");
   const [scheduling, setScheduling] = useState(false);
   const [scheduleConfirmed, setScheduleConfirmed] = useState(false);
+  const [provisionAccount, setProvisionAccount] = useState(false);
+  const [provisionTier, setProvisionTier] = useState("");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingSlotRef = useRef<string | null>(null);
 
@@ -184,6 +191,10 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
       showToast("Add a subject.", "error");
       return;
     }
+    if (provisionAccount && !provisionTier) {
+      showToast("Pick an Orbit Seeker tier.", "error");
+      return;
+    }
     setSending(true);
     setResult(null);
     setProgress({ done: 0, total: selectedRecipients.length });
@@ -204,6 +215,7 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
           includeFbwGuide,
           extraAssetIds: selectedExtraIds,
           trackEarlyAccess: props.trackEarlyAccess,
+          provisionTier: provisionAccount && provisionTier ? provisionTier : null,
         });
         sent += res.sent;
         failures.push(...res.failures);
@@ -235,6 +247,10 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
       showToast("Pick a date and time.", "error");
       return;
     }
+    if (provisionAccount && !provisionTier) {
+      showToast("Pick an Orbit Seeker tier.", "error");
+      return;
+    }
     const scheduledAt = fromISO(`${scheduleDate}T${scheduleTime}`);
     const isValidSchedule = scheduledAt.isValid;
     const scheduledMillis = scheduledAt.toMillis();
@@ -257,6 +273,7 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
         includeFbwGuide,
         extraAssetIds: selectedExtraIds,
         trackEarlyAccess: props.trackEarlyAccess,
+        provisionTier: provisionAccount && provisionTier ? provisionTier : null,
         scheduledAt: scheduledAt.toISO() ?? "",
       });
       setScheduleConfirmed(true);
@@ -272,6 +289,22 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
       await cancelSchedule.mutateAsync(id);
     } catch {
       showToast("Could not cancel that scheduled send.", "error");
+    }
+  };
+
+  const handleRunDue = async () => {
+    try {
+      const res = await runDue.mutateAsync();
+      if (res.processed === 0) {
+        showToast("No scheduled sends are due yet.", "info");
+      } else {
+        showToast(
+          `Dispatched ${res.processed}: ${res.sent} sent, ${res.failed} failed.`,
+          res.failed > 0 ? "error" : "success",
+        );
+      }
+    } catch {
+      showToast("Could not run due sends.", "error");
     }
   };
 
@@ -554,6 +587,40 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
               </div>
             </div>
 
+            <div className="rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-2">
+              <span className={sectionTitle}>Orbit Seeker access</span>
+              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                <input
+                  type="checkbox"
+                  checked={provisionAccount}
+                  onChange={(e) => setProvisionAccount(e.target.checked)}
+                />
+                Create an Annix Orbit Seeker account for each recipient at this tier
+              </label>
+              {provisionAccount ? (
+                <div className="space-y-1">
+                  <select
+                    className={inputClass}
+                    value={provisionTier}
+                    onChange={(e) => setProvisionTier(e.target.value)}
+                    aria-label="Orbit Seeker tier"
+                  >
+                    <option value="">Select a tier…</option>
+                    {tierPlans.map((plan) => (
+                      <option key={plan.tier} value={plan.tier}>
+                        {plan.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400">
+                    Module: Annix Orbit Seeker. The "Open Annix Orbit" button becomes each
+                    recipient's account set-up link (set a password, then straight into Orbit).
+                    Skips anyone who already has an Orbit account.
+                  </p>
+                </div>
+              ) : null}
+            </div>
+
             <div className="space-y-2">
               <span className={sectionTitle}>When</span>
               <div className="flex gap-4">
@@ -598,7 +665,18 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
 
             {pendingSchedules.length > 0 ? (
               <div className="rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-2">
-                <span className={sectionTitle}>Scheduled sends</span>
+                <div className="flex items-center justify-between">
+                  <span className={sectionTitle}>Scheduled sends</span>
+                  <button
+                    type="button"
+                    onClick={handleRunDue}
+                    disabled={runDue.isPending}
+                    className="rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 disabled:opacity-50"
+                    title="Send any scheduled emails whose time has passed (for testing without waiting for the cron)"
+                  >
+                    {runDue.isPending ? "Running…" : "Run due now"}
+                  </button>
+                </div>
                 {pendingSchedules.map((schedule) => (
                   <div
                     key={schedule.id}

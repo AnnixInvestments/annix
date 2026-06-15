@@ -202,6 +202,32 @@ export class AdminOrbitUserService {
     });
   }
 
+  async provision(input: {
+    email: string;
+    firstName: string;
+    lastName?: string | null;
+    userType: string;
+    tier?: string | null;
+  }): Promise<{ userId: number; email: string; inviteToken: string }> {
+    const userType = parseUserType(input.userType);
+    if (!userType) {
+      throw new NotFoundException(`Unknown user type '${input.userType}'`);
+    }
+    const provisioned = await this.authService.provisionInvitedUser({
+      email: input.email,
+      firstName: input.firstName,
+      lastName: input.lastName ?? null,
+      userType,
+      companyName: null,
+      tier: input.tier ?? null,
+    });
+    return {
+      userId: provisioned.userId,
+      email: provisioned.email,
+      inviteToken: provisioned.inviteToken,
+    };
+  }
+
   async resendInvite(userId: number): Promise<void> {
     return this.authService.adminResendInvite(userId);
   }

@@ -84,6 +84,11 @@ class SendOutreachDto {
   @IsOptional()
   @IsBoolean()
   trackEarlyAccess?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(60)
+  provisionTier?: string;
 }
 
 class ScheduleOutreachDto extends SendOutreachDto {
@@ -110,6 +115,7 @@ export class AdminOrbitOutreachController {
       includeFbwGuide: dto.includeFbwGuide,
       extraAssetIds: dto.extraAssetIds ?? [],
       trackEarlyAccess: dto.trackEarlyAccess ?? false,
+      provisionTier: dto.provisionTier ?? null,
     };
   }
 
@@ -149,5 +155,10 @@ export class AdminOrbitOutreachController {
   async cancelSchedule(@Param("id") id: string) {
     await this.service.cancelSchedule(id);
     return { ok: true };
+  }
+
+  @Post("dispatch-now")
+  dispatchNow() {
+    return this.service.runDueSchedulesNow();
   }
 }

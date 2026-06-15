@@ -76,3 +76,14 @@ export function useCancelOrbitOutreachSchedule() {
     },
   });
 }
+
+export function useRunDueOrbitOutreach() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => adminApiClient.runDueOrbitOutreach(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitOutreach.schedules() });
+      queryClient.invalidateQueries({ queryKey: adminKeys.orbitEarlyAccess.list() });
+    },
+  });
+}

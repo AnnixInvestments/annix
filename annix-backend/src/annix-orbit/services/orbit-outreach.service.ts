@@ -9,6 +9,7 @@ import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-access-signup.repository";
 import { OrbitOutreachAssetRepository } from "../repositories/orbit-outreach-asset.repository";
 import { OrbitOutreachScheduleRepository } from "../repositories/orbit-outreach-schedule.repository";
+import { AdminOrbitUserService } from "./admin-orbit-user.service";
 
 export const OUTREACH_GUIDE_SLOTS = {
   iphone: "iphone-guide",
@@ -55,6 +56,7 @@ export interface SendOutreachInput {
   includeFbwGuide: boolean;
   extraAssetIds: string[];
   trackEarlyAccess: boolean;
+  provisionTier?: string | null;
 }
 
 export interface SendOutreachResult {
@@ -95,6 +97,7 @@ export class OrbitOutreachService {
     private readonly assetRepo: OrbitOutreachAssetRepository,
     private readonly scheduleRepo: OrbitOutreachScheduleRepository,
     private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
+    private readonly orbitUserService: AdminOrbitUserService,
     private readonly emailService: EmailService,
     private readonly configService: ConfigService,
     @Inject(STORAGE_SERVICE) private readonly storage: IStorageService,
@@ -174,6 +177,9 @@ export class OrbitOutreachService {
     }
 
     const link = this.environmentLink(input.environment);
+    const envBase = this.environmentBase(input.environment);
+    const provisionTier =
+      input.provisionTier && input.provisionTier.trim() !== "" ? input.provisionTier.trim() : null;
 
     const iphoneGuide = input.includeDeviceGuide
       ? await this.assetRepo.findBySlot(OUTREACH_GUIDE_SLOTS.iphone)
@@ -198,6 +204,7 @@ export class OrbitOutreachService {
     const sharedAttachments = await this.attachmentsFor(sharedAssets);
     const iphoneAttachment = iphoneGuide ? await this.attachmentsFor([iphoneGuide]) : [];
     const androidAttachment = androidGuide ? await this.attachmentsFor([androidGuide]) : [];
+    const signature = await this.buildSignature();
 
     const failures: string[] = [];
     let sent = 0;
@@ -216,12 +223,17 @@ export class OrbitOutreachService {
           ? await this.unknownDeviceGuideLinks(iphoneGuide, androidGuide)
           : "";
 
+      const recipientLink = provisionTier
+        ? await this.provisionAccountLink(recipient, provisionTier, envBase, link)
+        : link;
+
       const html = this.composeHtml(
         input.subject,
         input.body,
         recipient.firstName,
-        link,
+        recipientLink,
         guideLinksHtml,
+        signature.html,
       );
 
       const ok = await this.emailService.sendEmail({
@@ -231,7 +243,7 @@ export class OrbitOutreachService {
         isTransactional: false,
         fromName: "Annix Orbit",
         replyTo: this.replyTo(),
-        attachments: [...deviceAttachments, ...sharedAttachments],
+        attachments: [...deviceAttachments, ...sharedAttachments, ...signature.attachments],
       });
 
       if (ok) {
@@ -273,6 +285,7 @@ export class OrbitOutreachService {
       includeFbwGuide: input.includeFbwGuide,
       extraAssetIds: input.extraAssetIds,
       trackEarlyAccess: input.trackEarlyAccess,
+      provisionTier: input.provisionTier ?? null,
       scheduledAt: scheduledAt.toJSDate(),
       status: "pending",
       sentCount: 0,
@@ -305,7 +318,21 @@ export class OrbitOutreachService {
     if (!isAnnixOrbitCronEnabled()) {
       return;
     }
+    await this.dispatchDuePending();
+  }
+
+  async runDueSchedulesNow(): Promise<{ processed: number; sent: number; failed: number }> {
+    return this.dispatchDuePending();
+  }
+
+  private async dispatchDuePending(): Promise<{
+    processed: number;
+    sent: number;
+    failed: number;
+  }> {
     const due = await this.scheduleRepo.listDuePending(now().toJSDate());
+    let sent = 0;
+    let failed = 0;
     for (const schedule of due) {
       try {
         const result = await this.send({
@@ -317,6 +344,7 @@ export class OrbitOutreachService {
           includeFbwGuide: schedule.includeFbwGuide,
           extraAssetIds: schedule.extraAssetIds,
           trackEarlyAccess: schedule.trackEarlyAccess,
+          provisionTier: schedule.provisionTier,
         });
         schedule.status = result.failed > 0 && result.sent === 0 ? "failed" : "sent";
         schedule.sentCount = result.sent;
@@ -324,12 +352,16 @@ export class OrbitOutreachService {
         schedule.failures = result.failures;
         schedule.sentAt = now().toJSDate();
         await this.scheduleRepo.save(schedule);
+        sent += result.sent;
+        failed += result.failed;
       } catch (error) {
         this.logger.error(`Scheduled outreach ${schedule.id} failed: ${String(error)}`);
         schedule.status = "failed";
         await this.scheduleRepo.save(schedule);
+        failed += 1;
       }
     }
+    return { processed: due.length, sent, failed };
   }
 
   private scheduleView(schedule: {
@@ -361,10 +393,11 @@ export class OrbitOutreachService {
     firstName: string | null | undefined,
     link: string,
     guideLinksHtml: string,
+    signatureHtml: string,
   ): string {
     const greeting =
       firstName && firstName.trim() !== "" ? `<p>Hi ${escapeHtml(firstName)},</p>` : "";
-    const bodyHtml = `${greeting}<p>${bodyToHtml(body)}</p>${guideLinksHtml}${this.signatureHtml()}`;
+    const bodyHtml = `${greeting}<p>${bodyToHtml(body)}</p>${guideLinksHtml}${signatureHtml}`;
     return emailLayout({
       title: subject,
       heading: subject,
@@ -376,11 +409,7 @@ export class OrbitOutreachService {
   }
 
   private replyTo(): string {
-    return (
-      this.configService.get<string>("ORBIT_OUTREACH_REPLY_TO") ||
-      this.configService.get<string>("SUPPORT_EMAIL") ||
-      DEFAULT_REPLY_TO
-    );
+    return this.configService.get<string>("ORBIT_OUTREACH_REPLY_TO") || DEFAULT_REPLY_TO;
   }
 
   private brandAssetBase(): string {
@@ -391,19 +420,32 @@ export class OrbitOutreachService {
     );
   }
 
-  private signatureHtml(): string {
+  private async buildSignature(): Promise<{ html: string; attachments: EmailAttachment[] }> {
     const base = this.brandAssetBase().replace(/\/$/, "");
-    const logoUrl = `${base}/branding/annix-orbit-logo.png`;
-    const wordmarkUrl = `${base}/branding/annix-orbit-wordmark.png`;
     const replyTo = this.replyTo();
-    return `
+    const logo = await this.fetchImageAttachment(
+      `${base}/branding/annix-orbit-logo.png`,
+      "orbit-logo",
+    );
+    const wordmark = await this.fetchImageAttachment(
+      `${base}/branding/annix-orbit-wordmark.png`,
+      "orbit-wordmark",
+    );
+    const attachments = [logo, wordmark].filter((a): a is EmailAttachment => a !== null);
+
+    const logoCell = logo
+      ? `<td style="vertical-align:middle;padding-right:14px;"><img src="cid:orbit-logo" alt="Annix Orbit" height="44" style="display:block;height:44px;width:auto;" /></td>`
+      : "";
+    const wordmarkHtml = wordmark
+      ? `<img src="cid:orbit-wordmark" alt="Annix Orbit" height="22" style="display:block;height:22px;width:auto;margin-bottom:4px;" />`
+      : `<div style="font-family:Arial,sans-serif;font-size:18px;font-weight:700;color:${BRAND_NAVY};margin-bottom:4px;">Annix Orbit</div>`;
+
+    const html = `
       <table role="presentation" cellpadding="0" cellspacing="0" style="margin-top:32px;border-top:1px solid #eee;padding-top:16px;">
         <tr>
-          <td style="vertical-align:middle;padding-right:14px;">
-            <img src="${logoUrl}" alt="Annix Orbit" height="44" style="display:block;height:44px;width:auto;" />
-          </td>
+          ${logoCell}
           <td style="vertical-align:middle;">
-            <img src="${wordmarkUrl}" alt="Annix Orbit" height="22" style="display:block;height:22px;width:auto;margin-bottom:4px;" />
+            ${wordmarkHtml}
             <div style="font-family:Arial,sans-serif;font-size:13px;color:${BRAND_NAVY};">
               Questions? Reply to this email or contact
               <a href="mailto:${replyTo}" style="color:${BRAND_ACCENT};text-decoration:none;">${replyTo}</a>.
@@ -411,6 +453,22 @@ export class OrbitOutreachService {
           </td>
         </tr>
       </table>`;
+    return { html, attachments };
+  }
+
+  private async fetchImageAttachment(url: string, cid: string): Promise<EmailAttachment | null> {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        return null;
+      }
+      const content = Buffer.from(await response.arrayBuffer());
+      const contentType = response.headers.get("content-type") ?? "image/png";
+      return { filename: `${cid}.png`, content, contentType, cid };
+    } catch (error) {
+      this.logger.warn(`Signature image fetch failed (${url}): ${String(error)}`);
+      return null;
+    }
   }
 
   private async unknownDeviceGuideLinks(
@@ -452,6 +510,33 @@ export class OrbitOutreachService {
     );
   }
 
+  private async provisionAccountLink(
+    recipient: OutreachRecipient,
+    tier: string,
+    envBase: string,
+    fallbackLink: string,
+  ): Promise<string> {
+    try {
+      const provisioned = await this.orbitUserService.provision({
+        email: recipient.email,
+        firstName: recipient.firstName ?? "",
+        userType: "individual",
+        tier,
+      });
+      const params = new URLSearchParams({
+        token: provisioned.inviteToken,
+        email: recipient.email,
+        type: "individual",
+      });
+      return `${envBase}/annix/orbit/reset-password?${params.toString()}`;
+    } catch (error) {
+      this.logger.warn(
+        `Could not provision Orbit account for ${recipient.email} (using plain link): ${String(error)}`,
+      );
+      return fallbackLink;
+    }
+  }
+
   private async markEarlyAccessSent(email: string): Promise<void> {
     try {
       const signup = await this.earlyAccessRepo.findByEmailNormalized(email.trim().toLowerCase());
@@ -464,7 +549,7 @@ export class OrbitOutreachService {
     }
   }
 
-  private environmentLink(environment: OutreachEnvironment): string {
+  private environmentBase(environment: OutreachEnvironment): string {
     const prod =
       this.configService.get<string>("ORBIT_PROD_URL") ||
       this.configService.get<string>("ORBIT_PUBLIC_URL") ||
@@ -473,7 +558,11 @@ export class OrbitOutreachService {
       this.configService.get<string>("ORBIT_TEST_URL") ||
       this.configService.get<string>("ORBIT_PUBLIC_URL") ||
       "https://annix-app-test.fly.dev";
-    return environment === "test" ? test : prod;
+    return (environment === "test" ? test : prod).replace(/\/$/, "");
+  }
+
+  private environmentLink(environment: OutreachEnvironment): string {
+    return `${this.environmentBase(environment)}/annix/orbit/register/individual`;
   }
 
   private viewFor(

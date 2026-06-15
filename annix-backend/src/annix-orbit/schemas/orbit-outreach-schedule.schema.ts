@@ -37,6 +37,9 @@ export class OrbitOutreachSchedule {
   @Prop({ type: Boolean, default: false })
   trackEarlyAccess: boolean;
 
+  @Prop({ type: String, required: false, default: null })
+  provisionTier: string | null;
+
   @Prop({ type: Date, required: true })
   scheduledAt: Date;
 

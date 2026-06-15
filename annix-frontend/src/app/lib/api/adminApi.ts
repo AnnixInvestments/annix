@@ -1269,6 +1269,10 @@ class AdminApiClient {
     return this.request(`/admin/annix-orbit/outreach/schedules/${id}`, { method: "DELETE" });
   }
 
+  async runDueOrbitOutreach(): Promise<{ processed: number; sent: number; failed: number }> {
+    return this.request("/admin/annix-orbit/outreach/dispatch-now", { method: "POST" });
+  }
+
   async orbitJobMarketDuplicates(limit?: number): Promise<DuplicateJobPair[]> {
     const query = limit ? `?limit=${limit}` : "";
     return this.request(`/admin/annix-orbit/job-market/duplicates${query}`);
@@ -1730,6 +1734,7 @@ export interface OrbitOutreachSendPayload {
   includeFbwGuide: boolean;
   extraAssetIds: string[];
   trackEarlyAccess: boolean;
+  provisionTier?: string | null;
 }
 
 export interface OrbitOutreachSendResult {

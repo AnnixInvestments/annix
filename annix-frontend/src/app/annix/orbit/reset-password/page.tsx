@@ -9,6 +9,11 @@ function ResetPasswordContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
+  const emailParam = searchParams.get("email");
+  const typeParam = searchParams.get("type");
+  const email = emailParam || "";
+  const isSeeker = typeParam === "individual";
+  const loginHref = isSeeker ? "/annix/orbit/login?type=individual" : "/annix/orbit/login";
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,7 +37,7 @@ function ResetPasswordContent() {
     try {
       await annixOrbitApiClient.resetPassword(token, password);
       setSuccess(true);
-      setTimeout(() => router.push("/annix/orbit/login"), 2500);
+      setTimeout(() => router.push(loginHref), 2500);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Reset failed");
     } finally {
@@ -60,12 +65,14 @@ function ResetPasswordContent() {
                 />
               </svg>
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Password reset</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              {isSeeker ? "You're all set" : "Password reset"}
+            </h2>
             <p className="text-gray-600 mb-6">
-              Your password has been updated. Redirecting you to sign in...
+              Your password has been set. Redirecting you to sign in...
             </p>
             <Link
-              href="/annix/orbit/login"
+              href={loginHref}
               className="inline-block bg-[#323288] text-white py-3 px-6 rounded-lg font-medium hover:bg-[#252560] transition-colors"
             >
               Sign in now
@@ -96,8 +103,14 @@ function ResetPasswordContent() {
                 />
               </svg>
             </div>
-            <h1 className="text-2xl font-bold text-gray-900">Choose a new password</h1>
-            <p className="text-gray-600 mt-2">Enter and confirm your new password below.</p>
+            <h1 className="text-2xl font-bold text-gray-900">
+              {isSeeker ? "Set your Annix Orbit Seeker password" : "Choose a new password"}
+            </h1>
+            <p className="text-gray-600 mt-2">
+              {isSeeker
+                ? "You're invited to Annix Orbit Seeker — just create a password to finish setting up your account."
+                : "Enter and confirm your new password below."}
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -107,13 +120,41 @@ function ResetPasswordContent() {
               </div>
             )}
 
+            <input
+              type="email"
+              name="username"
+              autoComplete="username"
+              value={email}
+              readOnly
+              hidden
+            />
+
+            {email ? (
+              <div>
+                <label
+                  htmlFor="account-email"
+                  className="block text-sm font-medium text-gray-700 mb-1"
+                >
+                  Your email
+                </label>
+                <input
+                  id="account-email"
+                  type="email"
+                  value={email}
+                  readOnly
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-100 text-gray-600"
+                />
+              </div>
+            ) : null}
+
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
-                New password
+                {isSeeker ? "Create a password" : "New password"}
               </label>
               <input
                 id="password"
                 type="password"
+                autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -133,6 +174,7 @@ function ResetPasswordContent() {
               <input
                 id="confirmPassword"
                 type="password"
+                autoComplete="new-password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -147,13 +189,13 @@ function ResetPasswordContent() {
               disabled={isLoading || !token}
               className="w-full bg-[#323288] text-white py-3 px-4 rounded-lg font-medium hover:bg-[#252560] focus:outline-none focus:ring-2 focus:ring-[#f0f0fc]0 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {isLoading ? "Updating..." : "Update password"}
+              {isLoading ? "Saving…" : isSeeker ? "Create my account" : "Update password"}
             </button>
           </form>
 
           <div className="mt-6 text-center">
             <Link
-              href="/annix/orbit/login"
+              href={loginHref}
               className="text-[#323288] hover:text-[#252560] text-sm font-medium"
             >
               Back to sign in

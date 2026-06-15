@@ -43,6 +43,9 @@ export class OrbitOutreachSchedule {
   @Column({ name: "track_early_access", type: "boolean", default: false })
   trackEarlyAccess: boolean;
 
+  @Column({ name: "provision_tier", type: "varchar", length: 60, nullable: true })
+  provisionTier: string | null;
+
   @Column({ name: "scheduled_at", type: "timestamptz" })
   scheduledAt: Date;
 
