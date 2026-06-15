@@ -7,6 +7,17 @@ import { CASE_STUDIES } from "./au-industries/caseStudies";
 const AU_INDUSTRIES_HOSTS = new Set(["auind.co.za", "www.auind.co.za"]);
 const AUIND_SITE_URL = "https://auind.co.za";
 
+const CORE_PRODUCT_SLUGS = [
+  "rubber-lining",
+  "rubber-sheeting",
+  "rubber-compound",
+  "hdpe-piping",
+  "mining-solutions",
+  "conveyor-components",
+  "site-maintenance",
+  "rubber-rolls",
+];
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const headersList = await headers();
   const host = (headersList.get("host") ?? "").toLowerCase().split(":")[0];
@@ -29,6 +40,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: "monthly",
       priority: 0.9,
     },
+    ...CORE_PRODUCT_SLUGS.map((slug) => ({
+      url: `${AUIND_SITE_URL}/${slug}`,
+      lastModified: currentDate,
+      changeFrequency: "monthly" as const,
+      priority: 0.9,
+    })),
     {
       url: `${AUIND_SITE_URL}/gallery`,
       lastModified: currentDate,
@@ -122,6 +139,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const hardcodedSlugs = new Set([
+    ...CORE_PRODUCT_SLUGS,
     "products-and-services",
     "gallery",
     "projects",

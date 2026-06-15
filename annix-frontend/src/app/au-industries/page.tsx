@@ -2,8 +2,13 @@ import { isString } from "es-toolkit/compat";
 import { headers } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
+import { type CaseStudy, projectCaseStudies } from "./caseStudies";
 
 const DEFAULT_HERO_IMAGE = "/au-industries/gallery/gallery29.jpg";
+
+function recentProjects(): CaseStudy[] {
+  return [...projectCaseStudies()].sort((a, b) => b.dateISO.localeCompare(a.dateISO)).slice(0, 4);
+}
 
 // Fetched server-side so the real CMS hero is in the initial HTML with
 // fetchpriority=high. A client-side fetch left the LCP image undiscoverable
@@ -271,42 +276,33 @@ export default async function AuIndustriesHomePage(): Promise<React.JSX.Element>
           <p className="text-gray-300 text-lg mb-10">Some of our projects</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
-              <Image
-                src="/au-industries/projects-01.jpg"
-                alt="Rubber lining installation"
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
-                className="object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
-              <Image
-                src="/au-industries/projects-02.jpg"
-                alt="Blue rubber lined pipes"
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
-                className="object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
-              <Image
-                src="/au-industries/projects-03.jpg"
-                alt="Ceramic embedded rubber products"
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
-                className="object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
-            <div className="relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white">
-              <Image
-                src="/au-industries/projects-04.jpg"
-                alt="Pipe fabrication and delivery"
-                fill
-                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
-                className="object-cover hover:scale-105 transition-transform duration-300"
-              />
-            </div>
+            {recentProjects().map((study) => {
+              const heroPhoto = study.photos[0];
+              return (
+                <Link
+                  key={study.slug}
+                  href={`/projects/${study.slug}`}
+                  className="group relative h-64 overflow-hidden rounded-xl shadow-md border-2 border-white block"
+                >
+                  <Image
+                    src={`/au-industries/gallery/${heroPhoto.src}`}
+                    alt={heroPhoto.alt}
+                    fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 290px"
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-4 text-left">
+                    <span className="block text-xs uppercase tracking-widest text-[#efcc54] font-semibold mb-1">
+                      {study.dateLabel}
+                    </span>
+                    <span className="block text-sm font-bold text-white leading-snug line-clamp-2">
+                      {study.title}
+                    </span>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
 
           <Link
