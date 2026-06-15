@@ -41,7 +41,7 @@ const isRfqRoute = (pathname: string): boolean => {
 };
 
 const isHomePage = (pathname: string): boolean => {
-  return pathname === "/";
+  return pathname === "/" || pathname === "/portals";
 };
 
 export default function Navigation() {
