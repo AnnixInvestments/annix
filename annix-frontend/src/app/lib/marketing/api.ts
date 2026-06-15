@@ -91,10 +91,12 @@ export interface SocialSharePayload {
 
 export async function fetchPublishedMarketingContent(
   locale: MarketingLocale = DEFAULT_MARKETING_LOCALE,
+  baseOverride?: string | null,
 ): Promise<MarketingSiteContent> {
   // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   const isServer = typeof window === "undefined";
-  const base = isServer ? ipv4LocalhostUrl(API_BASE_URL) : API_BASE_URL;
+  const fallbackBase = isServer ? ipv4LocalhostUrl(API_BASE_URL) : API_BASE_URL;
+  const base = baseOverride && baseOverride.length > 0 ? baseOverride : fallbackBase;
   const query = locale === DEFAULT_MARKETING_LOCALE ? "" : `?locale=${locale}`;
   try {
     const res = await fetch(`${base}/public/marketing/content${query}`, {
