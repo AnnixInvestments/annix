@@ -98,7 +98,7 @@ export async function fetchPublishedMarketingContent(
   const query = locale === DEFAULT_MARKETING_LOCALE ? "" : `?locale=${locale}`;
   try {
     const res = await fetch(`${base}/public/marketing/content${query}`, {
-      next: { revalidate: 60 },
+      cache: "no-store",
     });
     if (!res.ok) {
       return defaultMarketingContent();
@@ -115,7 +115,7 @@ export async function fetchPublishedMarketingLocales(): Promise<MarketingLocale[
   const base = isServer ? ipv4LocalhostUrl(API_BASE_URL) : API_BASE_URL;
   try {
     const res = await fetch(`${base}/public/marketing/locales`, {
-      next: { revalidate: 300 },
+      cache: "no-store",
     });
     if (!res.ok) {
       return [DEFAULT_MARKETING_LOCALE];
