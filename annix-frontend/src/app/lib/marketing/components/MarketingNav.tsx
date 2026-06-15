@@ -5,7 +5,7 @@ import type {
   MarketingProduct,
   MarketingSite,
 } from "@annix/product-data/marketing";
-import { ChevronDown, LogIn, Menu, X } from "lucide-react";
+import { ChevronDown, LogIn, Menu, Shield, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
@@ -173,6 +173,14 @@ export function MarketingNav(props: {
             ) : null}
           </div>
 
+          <Link
+            href="/admin/login"
+            className="flex items-center gap-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
+          >
+            <Shield className="h-4 w-4" />
+            Admin
+          </Link>
+
           {SHOW_BOOK_A_DEMO ? (
             <Link
               href="/contact"
@@ -253,6 +261,14 @@ export function MarketingNav(props: {
                 {portal.label}
               </Link>
             ))}
+            <Link
+              href="/admin/login"
+              className="mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/5"
+              onClick={() => setMobileOpen(false)}
+            >
+              <Shield className="h-4 w-4" />
+              Admin login
+            </Link>
           </div>
           {SHOW_BOOK_A_DEMO ? (
             <Link
