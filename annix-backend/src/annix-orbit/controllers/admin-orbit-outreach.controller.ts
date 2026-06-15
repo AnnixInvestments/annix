@@ -49,6 +49,21 @@ class OutreachRecipientDto {
   firstName?: string;
 
   @IsOptional()
+  @IsString()
+  @MaxLength(120)
+  lastName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(40)
+  mobile?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  ageRange?: string;
+
+  @IsOptional()
   @IsIn(["iphone", "android"])
   device?: string;
 }
@@ -109,6 +124,9 @@ export class AdminOrbitOutreachController {
       recipients: dto.recipients.map((r) => ({
         email: r.email,
         firstName: r.firstName ?? null,
+        lastName: r.lastName ?? null,
+        mobile: r.mobile ?? null,
+        ageRange: r.ageRange ?? null,
         device: r.device ?? null,
       })),
       includeDeviceGuide: dto.includeDeviceGuide,

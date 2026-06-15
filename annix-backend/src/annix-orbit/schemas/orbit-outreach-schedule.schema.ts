@@ -23,7 +23,14 @@ export class OrbitOutreachSchedule {
   environment: string;
 
   @Prop({ type: [Object], default: [] })
-  recipients: Array<{ email: string; firstName: string | null; device: string | null }>;
+  recipients: Array<{
+    email: string;
+    firstName: string | null;
+    lastName: string | null;
+    mobile: string | null;
+    ageRange: string | null;
+    device: string | null;
+  }>;
 
   @Prop({ type: Boolean, default: true })
   includeDeviceGuide: boolean;

@@ -21,6 +21,9 @@ export interface OrbitEmailComposerRecipient {
   id: string;
   email: string;
   firstName?: string | null;
+  lastName?: string | null;
+  mobile?: string | null;
+  ageRange?: string | null;
   device?: string | null;
 }
 
@@ -209,7 +212,14 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
           body,
           environment,
           recipients: [
-            { email: recipient.email, firstName: recipient.firstName, device: recipient.device },
+            {
+              email: recipient.email,
+              firstName: recipient.firstName,
+              lastName: recipient.lastName,
+              mobile: recipient.mobile,
+              ageRange: recipient.ageRange,
+              device: recipient.device,
+            },
           ],
           includeDeviceGuide,
           includeFbwGuide,
@@ -267,6 +277,9 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
         recipients: selectedRecipients.map((r) => ({
           email: r.email,
           firstName: r.firstName,
+          lastName: r.lastName,
+          mobile: r.mobile,
+          ageRange: r.ageRange,
           device: r.device,
         })),
         includeDeviceGuide,

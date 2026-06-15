@@ -95,6 +95,8 @@ export default function OrbitUsersPage() {
         id: String(row.userId),
         email: row.email,
         firstName: row.firstName,
+        lastName: row.lastName,
+        mobile: null,
         device: null,
       })),
     [rows],

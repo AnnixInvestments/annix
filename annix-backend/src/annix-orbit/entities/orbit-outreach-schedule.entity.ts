@@ -10,6 +10,9 @@ import {
 export interface OutreachScheduleRecipient {
   email: string;
   firstName: string | null;
+  lastName: string | null;
+  mobile: string | null;
+  ageRange: string | null;
   device: string | null;
 }
 

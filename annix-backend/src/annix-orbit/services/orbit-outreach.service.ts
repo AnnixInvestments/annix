@@ -34,6 +34,9 @@ export type OutreachEnvironment = "prod" | "test";
 export interface OutreachRecipient {
   email: string;
   firstName?: string | null;
+  lastName?: string | null;
+  mobile?: string | null;
+  ageRange?: string | null;
   device?: string | null;
 }
 
@@ -225,7 +228,7 @@ export class OrbitOutreachService {
 
       const recipientLink = provisionTier
         ? await this.provisionAccountLink(recipient, provisionTier, envBase, link)
-        : link;
+        : this.registerLink(recipient, envBase);
 
       const html = this.composeHtml(
         input.subject,
@@ -279,6 +282,9 @@ export class OrbitOutreachService {
       recipients: recipients.map((r) => ({
         email: r.email,
         firstName: r.firstName ?? null,
+        lastName: r.lastName ?? null,
+        mobile: r.mobile ?? null,
+        ageRange: r.ageRange ?? null,
         device: r.device ?? null,
       })),
       includeDeviceGuide: input.includeDeviceGuide,
@@ -508,6 +514,27 @@ export class OrbitOutreachService {
         contentType: asset.contentType,
       })),
     );
+  }
+
+  private registerLink(recipient: OutreachRecipient, envBase: string): string {
+    const fullName = [recipient.firstName, recipient.lastName]
+      .filter((part) => part && part.trim() !== "")
+      .join(" ")
+      .trim();
+    const params = new URLSearchParams();
+    if (fullName) {
+      params.set("name", fullName);
+    }
+    if (recipient.email) {
+      params.set("email", recipient.email);
+    }
+    if (recipient.mobile && recipient.mobile.trim() !== "") {
+      params.set("mobile", recipient.mobile.trim());
+    }
+    if (recipient.ageRange && recipient.ageRange.trim() !== "") {
+      params.set("age", recipient.ageRange.trim());
+    }
+    return `${envBase}/annix/orbit/register/individual?${params.toString()}`;
   }
 
   private async provisionAccountLink(

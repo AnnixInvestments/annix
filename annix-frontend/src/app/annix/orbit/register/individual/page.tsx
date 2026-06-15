@@ -2,8 +2,8 @@
 
 import { Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { BackToHubLink } from "@/app/annix/orbit/components/BackToHubLink";
 import { EeRegistrationStep } from "@/app/annix/orbit/components/EeRegistrationStep";
 import { parseRegistrationError } from "@/app/annix/orbit/config/registration-errors";
@@ -16,15 +16,23 @@ import {
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import { useIsTestEnv } from "@/app/lib/hooks/useIsTestEnv";
 
-export default function AnnixOrbitRegisterIndividualPage() {
+function RegisterIndividualContent() {
   const isTestEnv = useIsTestEnv();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const nameParam = searchParams.get("name");
+  const emailParam = searchParams.get("email");
+  const mobileParam = searchParams.get("mobile");
+  const ageParam = searchParams.get("age");
+  const prefillAge = SEEKER_AGE_GROUP_OPTIONS.some((option) => option.value === ageParam)
+    ? (ageParam ?? "")
+    : "";
   const { confirm, ConfirmDialog } = useConfirm();
   const [step, setStep] = useState<"account" | "ee">("account");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [ageGroup, setAgeGroup] = useState("");
+  const [name, setName] = useState(nameParam || "");
+  const [email, setEmail] = useState(emailParam || "");
+  const [phone, setPhone] = useState(mobileParam || "");
+  const [ageGroup, setAgeGroup] = useState(prefillAge);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [popiaConsent, setPopiaConsent] = useState(false);
@@ -295,5 +303,19 @@ export default function AnnixOrbitRegisterIndividualPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function AnnixOrbitRegisterIndividualPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#7373c2]" />
+        </div>
+      }
+    >
+      <RegisterIndividualContent />
+    </Suspense>
   );
 }
