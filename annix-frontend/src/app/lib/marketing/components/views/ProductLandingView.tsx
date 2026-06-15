@@ -43,6 +43,7 @@ import {
   Users,
 } from "lucide-react";
 import Link from "next/link";
+import { SeekerEarlyAccessModal } from "../SeekerEarlyAccessModal";
 import { DEFAULT_PRODUCT_HERO_IMAGE, type ProductLandingConfig } from "./productLandingData";
 
 const ICONS: Record<string, LucideIcon> = {
@@ -262,13 +263,22 @@ function ModuleCards(props: { config: ProductLandingConfig }) {
                       ))}
                     </ul>
                   ) : null}
-                  <Link
-                    href="/contact"
-                    className="mt-5 inline-flex items-center gap-1 text-sm font-semibold transition hover:gap-2"
-                    style={{ color: "var(--brand-accent)" }}
-                  >
-                    Learn more <ArrowRight className="h-4 w-4" />
-                  </Link>
+                  {portal.earlyAccessCta ? (
+                    <div
+                      className="mt-5 inline-flex items-center gap-1 text-sm font-semibold transition hover:gap-2"
+                      style={{ color: "var(--brand-accent)" }}
+                    >
+                      <SeekerEarlyAccessModal triggerClassName="inline-flex items-center gap-1" />
+                    </div>
+                  ) : (
+                    <Link
+                      href="/contact"
+                      className="mt-5 inline-flex items-center gap-1 text-sm font-semibold transition hover:gap-2"
+                      style={{ color: "var(--brand-accent)" }}
+                    >
+                      Learn more <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  )}
                 </div>
               );
             })}

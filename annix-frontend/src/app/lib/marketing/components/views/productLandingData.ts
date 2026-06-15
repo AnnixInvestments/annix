@@ -11,6 +11,7 @@ export interface LandingPortal {
   blurb: string;
   tagline?: string;
   features?: string[];
+  earlyAccessCta?: boolean;
 }
 
 export interface LandingStat {
@@ -370,6 +371,7 @@ const ORBIT: ProductLandingConfig = {
       name: "Seeker",
       badge: "Find Your Next Opportunity",
       tagline: "Find the right job. Build your future.",
+      earlyAccessCta: true,
       blurb: "AI-powered tools to help you stand out, match smart and advance your career.",
       features: [
         "AI CV Review & Improvement",

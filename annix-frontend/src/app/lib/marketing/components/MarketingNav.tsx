@@ -5,7 +5,7 @@ import type {
   MarketingProduct,
   MarketingSite,
 } from "@annix/product-data/marketing";
-import { ChevronDown, Globe, LogIn, Menu, X } from "lucide-react";
+import { ChevronDown, LogIn, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
@@ -139,10 +139,6 @@ export function MarketingNav(props: {
         </div>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <span className="flex items-center gap-1 text-sm text-white/70">
-            <Globe className="h-4 w-4" />
-            EN
-          </span>
           <div
             className="relative"
             onMouseEnter={() => setLoginOpen(true)}

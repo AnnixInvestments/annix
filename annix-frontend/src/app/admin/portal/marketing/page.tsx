@@ -638,6 +638,27 @@ function ResourceRow(props: {
         />
       </div>
 
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Text
+          label="CTA button label (optional)"
+          value={resource.ctaLabel ? resource.ctaLabel : ""}
+          onChange={(v) =>
+            props.patch((r) => {
+              r.ctaLabel = v;
+            })
+          }
+        />
+        <Text
+          label="CTA link (optional — /internal-path or https://external)"
+          value={resource.ctaUrl ? resource.ctaUrl : ""}
+          onChange={(v) =>
+            props.patch((r) => {
+              r.ctaUrl = v;
+            })
+          }
+        />
+      </div>
+
       <div className="mt-3 flex items-center justify-between">
         <label className="flex items-center gap-2 text-sm text-gray-700">
           <input
