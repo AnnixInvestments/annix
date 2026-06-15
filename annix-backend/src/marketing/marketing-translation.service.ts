@@ -124,6 +124,13 @@ function parseJsonRecord(content: string): Record<string, string> {
 export class MarketingTranslationService {
   private readonly logger = new Logger(MarketingTranslationService.name);
   private readonly batchSize = 40;
+  // Long markdown bodies (legal policies, full resource articles) don't survive a
+  // shared JSON map cleanly, so anything above this is translated on its own as
+  // plain text. Short strings are still batched.
+  private readonly largeFieldThreshold = 1000;
+  // How many Gemini calls run at once. AiChatService already retries on transient
+  // rate limits, so a small pool is safe and cuts wall-clock several-fold.
+  private readonly concurrency = 4;
 
   constructor(
     private readonly marketingService: MarketingSiteContentService,
@@ -146,27 +153,73 @@ export class MarketingTranslationService {
       const slots: StringSlot[] = [];
       collectSlots(tree, slots);
 
-      const batches = chunk(slots, this.batchSize);
-      // Sequential so a long tree doesn't fire dozens of concurrent Gemini calls.
-      await batches.reduce(async (previous, batch, batchIndex) => {
-        await previous;
-        const translations = await this.translateBatch(batch, languageName);
-        batch.forEach((slot, index) => {
-          const translated = translations[String(index)];
+      const smallSlots = slots.filter((slot) => slot.text.length <= this.largeFieldThreshold);
+      const largeSlots = slots.filter((slot) => slot.text.length > this.largeFieldThreshold);
+
+      const tasks: Array<() => Promise<void>> = [
+        ...chunk(smallSlots, this.batchSize).map((batch) => async () => {
+          const translations = await this.translateSmallBatch(batch, languageName);
+          batch.forEach((slot, index) => {
+            const translated = translations[String(index)];
+            if (translated && translated.trim() !== "") {
+              slot.container[slot.key] = translated;
+            }
+          });
+        }),
+        ...largeSlots.map((slot) => async () => {
+          const translated = await this.translateLargeText(slot.text, languageName);
           if (translated && translated.trim() !== "") {
             slot.container[slot.key] = translated;
           }
-        });
-        this.logger.log(
-          `Translated batch ${batchIndex + 1}/${batches.length} into ${target} (${batch.length} strings)`,
-        );
-      }, Promise.resolve());
+        }),
+      ];
+
+      await this.runTasks(tasks, this.concurrency);
+      this.logger.log(
+        `Translated ${smallSlots.length} short + ${largeSlots.length} long strings into ${target}`,
+      );
 
       return this.marketingService.saveDraft(tree, target);
     });
   }
 
-  private async translateBatch(
+  private async runTasks(tasks: Array<() => Promise<void>>, concurrency: number): Promise<void> {
+    // Run in waves of `concurrency` — simpler than a worker pool and avoids
+    // firing every Gemini call at once.
+    await chunk(tasks, concurrency).reduce(async (previous, wave) => {
+      await previous;
+      await Promise.all(wave.map((task) => task()));
+    }, Promise.resolve());
+  }
+
+  private async translateLargeText(text: string, languageName: string): Promise<string | null> {
+    const systemPrompt = [
+      "You are a professional translator for Annix, an industrial software brand.",
+      `Translate the supplied marketing copy from English into ${languageName}.`,
+      "Rules:",
+      "- Preserve meaning, tone and ALL markdown / headings / line breaks exactly.",
+      `- Do NOT translate brand or product names (anything containing "Annix"), proper nouns, URLs, email addresses, or code.`,
+      "- Return ONLY the translated text — no quotes, no JSON, no commentary.",
+    ].join("\n");
+    try {
+      const { content } = await this.aiChatService.chat(
+        [{ role: "user" as const, content: text }],
+        systemPrompt,
+        "gemini",
+      );
+      const cleaned = content.trim();
+      return cleaned === "" ? null : cleaned;
+    } catch (error) {
+      this.logger.warn(
+        `Long-field translation failed (${text.length} chars) — keeping English: ${
+          error instanceof Error ? error.message : "unknown"
+        }`,
+      );
+      return null;
+    }
+  }
+
+  private async translateSmallBatch(
     batch: StringSlot[],
     languageName: string,
   ): Promise<Record<string, string>> {
