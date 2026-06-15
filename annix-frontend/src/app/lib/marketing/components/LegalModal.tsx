@@ -3,9 +3,11 @@
 import type { MarketingLegalDoc } from "@annix/product-data/marketing";
 import { X } from "lucide-react";
 import { createPortal } from "react-dom";
+import { useMarketingTranslations } from "@/app/lib/marketing/i18n";
 import { LegalDocBody } from "./views/LegalView";
 
 export function LegalModal(props: { doc: MarketingLegalDoc | null; onClose: () => void }) {
+  const t = useMarketingTranslations("legal");
   const doc = props.doc;
   if (!doc) {
     return null;
@@ -28,14 +30,16 @@ export function LegalModal(props: { doc: MarketingLegalDoc | null; onClose: () =
               {doc.heading}
             </h2>
             {doc.lastUpdated ? (
-              <p className="mt-1 text-xs text-white/40">Last updated: {doc.lastUpdated}</p>
+              <p className="mt-1 text-xs text-white/40">
+                {t("lastUpdated")} {doc.lastUpdated}
+              </p>
             ) : null}
           </div>
           <button
             type="button"
             onClick={props.onClose}
             className="rounded-lg p-1.5 text-white/60 transition hover:bg-white/10 hover:text-white"
-            aria-label="Close"
+            aria-label={t("close")}
           >
             <X className="h-5 w-5" />
           </button>

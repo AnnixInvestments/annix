@@ -1,6 +1,6 @@
 "use client";
 
-import type { MarketingSiteContent } from "@annix/product-data/marketing";
+import type { MarketingLocale, MarketingSiteContent } from "@annix/product-data/marketing";
 import { type MouseEvent as ReactMouseEvent, useState } from "react";
 import { MarketingShell } from "./MarketingShell";
 import { AboutView } from "./views/AboutView";
@@ -37,7 +37,11 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "cookies", label: "Cookies" },
 ];
 
-export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
+export function MarketingSitePreview(props: {
+  content: MarketingSiteContent;
+  locale?: MarketingLocale;
+  onLocaleChange?: (locale: MarketingLocale) => void;
+}) {
   const content = props.content;
   const [tab, setTab] = useState<Tab>("home");
   const [productSlug, setProductSlug] = useState<string>("");
@@ -185,7 +189,11 @@ export function MarketingSitePreview(props: { content: MarketingSiteContent }) {
       </div>
 
       <div onClickCapture={handlePreviewNavClick}>
-        <MarketingShell content={content}>
+        <MarketingShell
+          content={content}
+          locale={props.locale}
+          onLocaleChange={props.onLocaleChange}
+        >
           {tab === "home" ? <HomeView content={content} /> : null}
           {tab === "products" ? (
             isPulseProduct ? (

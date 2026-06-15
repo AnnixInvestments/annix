@@ -1,7 +1,10 @@
 "use client";
 
 import {
+  DEFAULT_MARKETING_LOCALE,
   defaultMarketingContent,
+  MARKETING_LOCALE_META,
+  type MarketingLocale,
   type MarketingProduct,
   type MarketingResource,
   type MarketingSiteContent,
@@ -9,7 +12,9 @@ import {
 } from "@annix/product-data/marketing";
 import { cloneDeep } from "es-toolkit/compat";
 import { useEffect, useState } from "react";
+import { useExtractionProgress } from "@/app/components/ExtractionProgressModal";
 import { useToast } from "@/app/components/Toast";
+import { metricsApi } from "@/app/lib/api/metricsApi";
 import { formatDateLongZA } from "@/app/lib/datetime";
 import { useAlert } from "@/app/lib/hooks/useAlert";
 import { useConfirm } from "@/app/lib/hooks/useConfirm";
@@ -22,6 +27,7 @@ import {
   useMarketingStatus,
   usePublishMarketing,
   useSaveMarketingDraft,
+  useTranslateMarketing,
 } from "@/app/lib/query/hooks";
 
 type Mutator = (draft: MarketingSiteContent) => void;
@@ -694,17 +700,21 @@ function ResourceRow(props: {
 }
 
 export default function MarketingCmsPage() {
-  const draftQuery = useMarketingDraft();
+  const [locale, setLocale] = useState<MarketingLocale>(DEFAULT_MARKETING_LOCALE);
+  const draftQuery = useMarketingDraft(locale);
   const statusQuery = useMarketingStatus();
-  const saveDraft = useSaveMarketingDraft();
+  const saveDraft = useSaveMarketingDraft(locale);
   const publish = usePublishMarketing();
   const discard = useDiscardMarketingDraft();
+  const translate = useTranslateMarketing(locale);
+  const { showExtraction, hideExtraction } = useExtractionProgress();
   const { showToast } = useToast();
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
 
   const [content, setContent] = useState<MarketingSiteContent | null>(null);
   const [mode, setMode] = useState<"edit" | "preview">("edit");
+  const [translating, setTranslating] = useState(false);
   const [socialOpen, setSocialOpen] = useState(false);
   const [socialResource, setSocialResource] = useState<MarketingResource | null>(null);
 
@@ -735,6 +745,45 @@ export default function MarketingCmsPage() {
       showToast("Draft saved", "success");
     } catch {
       alert({ message: "Could not save the draft. Please try again.", variant: "error" });
+    }
+  }
+
+  async function handleTranslate() {
+    const meta = MARKETING_LOCALE_META.find((entry) => entry.code === locale);
+    const language = meta ? meta.label : locale;
+    const confirmed = await confirm({
+      title: `Auto-translate into ${language}?`,
+      message: `This uses AI to translate the English draft into ${language} and replaces the current ${language} draft. Machine translation — review it before you Publish.`,
+      confirmLabel: "Translate",
+      variant: "warning",
+    });
+    if (!confirmed) return;
+    const stats = await metricsApi
+      .extractionStats("marketing", "translate-content")
+      .catch(() => null);
+    const averageMs = stats ? stats.averageMs : null;
+    const estimate = averageMs && averageMs > 0 ? averageMs : 45000;
+    setTranslating(true);
+    showExtraction({
+      brand: "insights",
+      label: `Translating the site into ${language}…`,
+      estimatedDurationMs: estimate,
+      backgroundSafe: true,
+      brandingOverride: {
+        title: "Marketing translation",
+        navbarColor: "#323288",
+        accentColor: "#FF8A00",
+      },
+    });
+    try {
+      const translated = await translate.mutateAsync();
+      setContent(mergeMarketingDefaults(translated));
+      showToast(`Translated into ${language} — review, then Publish when ready.`, "success");
+    } catch {
+      alert({ message: "Could not auto-translate. Please try again.", variant: "error" });
+    } finally {
+      hideExtraction();
+      setTranslating(false);
     }
   }
 
@@ -804,6 +853,8 @@ export default function MarketingCmsPage() {
   const footer = content.footer;
   const resources = content.resources;
   const legal = content.legal;
+  const activeLocaleMeta = MARKETING_LOCALE_META.find((entry) => entry.code === locale);
+  const activeLocaleLabel = activeLocaleMeta ? activeLocaleMeta.label : locale;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6 p-6">
@@ -818,6 +869,30 @@ export default function MarketingCmsPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium">Language</span>
+            <select
+              value={locale}
+              onChange={(event) => setLocale(event.target.value as MarketingLocale)}
+              className="rounded-lg border border-gray-300 px-2 py-1.5 text-sm focus:border-[#323288] focus:outline-none"
+            >
+              {MARKETING_LOCALE_META.map((entry) => (
+                <option key={entry.code} value={entry.code}>
+                  {entry.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          {locale !== DEFAULT_MARKETING_LOCALE ? (
+            <button
+              type="button"
+              onClick={handleTranslate}
+              disabled={translating || translate.isPending}
+              className="rounded-lg border border-[#323288] px-3 py-2 text-sm font-medium text-[#323288] hover:bg-[#323288]/5 disabled:opacity-50"
+            >
+              {translating ? "Translating…" : "Auto-translate from English"}
+            </button>
+          ) : null}
           <div className="flex rounded-lg border border-gray-300 p-0.5">
             <button
               type="button"
@@ -876,9 +951,17 @@ export default function MarketingCmsPage() {
         </div>
       </div>
 
+      {locale !== DEFAULT_MARKETING_LOCALE ? (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          Editing the <strong>{activeLocaleLabel}</strong> translation. Fields you leave unchanged
+          fall back to the English copy on the live site. Save and Publish to push every language
+          live.
+        </div>
+      ) : null}
+
       {mode === "preview" ? (
         <div className="relative left-1/2 right-1/2 -mx-[50vw] w-screen">
-          <MarketingSitePreview content={content} />
+          <MarketingSitePreview content={content} locale={locale} onLocaleChange={setLocale} />
         </div>
       ) : (
         <>

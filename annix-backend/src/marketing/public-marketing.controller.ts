@@ -1,4 +1,7 @@
-import type { MarketingSiteContent as MarketingSiteContentTree } from "@annix/product-data/marketing";
+import type {
+  MarketingLocale,
+  MarketingSiteContent as MarketingSiteContentTree,
+} from "@annix/product-data/marketing";
 import {
   BadRequestException,
   Body,
@@ -76,8 +79,16 @@ export class PublicMarketingController {
   @Header("Cache-Control", "public, max-age=60")
   @ApiOperation({ summary: "Get the published marketing site content" })
   @ApiResponse({ status: 200 })
-  async content(): Promise<MarketingSiteContentTree> {
-    return this.marketingService.publishedContent();
+  async content(@Query("locale") locale?: string): Promise<MarketingSiteContentTree> {
+    return this.marketingService.publishedContent(locale);
+  }
+
+  @Get("locales")
+  @Header("Cache-Control", "public, max-age=300")
+  @ApiOperation({ summary: "List locales that have published marketing content" })
+  @ApiResponse({ status: 200 })
+  async locales(): Promise<MarketingLocale[]> {
+    return this.marketingService.publishedLocales();
   }
 
   @Post("contact")

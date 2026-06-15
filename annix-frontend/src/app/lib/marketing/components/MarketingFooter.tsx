@@ -14,6 +14,7 @@ import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
 import { now } from "@/app/lib/datetime";
 import { openCookieSettings } from "@/app/lib/marketing/cookieConsent";
+import { useMarketingTranslations } from "@/app/lib/marketing/i18n";
 import { externalHref } from "../url";
 import { LegalModal } from "./LegalModal";
 
@@ -86,6 +87,7 @@ export function MarketingFooter(props: {
   const footer = props.footer;
   const site = props.site;
   const legal = props.legal;
+  const t = useMarketingTranslations("footer");
   const year = now().year;
   const [legalDoc, setLegalDoc] = useState<MarketingLegalDoc | null>(null);
   const legalDocForLabel = (label: string): MarketingLegalDoc | null => {
@@ -139,7 +141,7 @@ export function MarketingFooter(props: {
             <div className="mt-3 flex items-center gap-2">
               <input
                 type="email"
-                placeholder="Enter your email"
+                placeholder={t("emailPlaceholder")}
                 className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
               />
               <span
@@ -150,15 +152,15 @@ export function MarketingFooter(props: {
               </span>
             </div>
             <p className="mt-2 text-xs text-white/40">
-              By subscribing you agree to receive marketing emails and accept our{" "}
+              {t("newsletterConsentPrefix")}{" "}
               <button
                 type="button"
                 onClick={() => setLegalDoc(legal.privacy)}
                 className="underline-offset-2 hover:text-white/70 hover:underline"
               >
-                Privacy Policy
+                {t("privacyPolicy")}
               </button>
-              . You can unsubscribe at any time.
+              {t("newsletterConsentSuffix")}
             </p>
             <div className="mt-4 flex gap-3">
               {footer.socialLinks.map((social, index) => {
@@ -191,13 +193,17 @@ export function MarketingFooter(props: {
           <div className="mt-10 flex flex-wrap items-center justify-center gap-x-10 gap-y-4 border-t border-white/10 pt-6">
             {designedByLogoUrl ? (
               <FooterCredit
-                label="Designed by"
+                label={t("designedBy")}
                 logoUrl={designedByLogoUrl}
                 href={footer.designedByUrl}
               />
             ) : null}
             {hostedByLogoUrl ? (
-              <FooterCredit label="Hosted by" logoUrl={hostedByLogoUrl} href={footer.hostedByUrl} />
+              <FooterCredit
+                label={t("hostedBy")}
+                logoUrl={hostedByLogoUrl}
+                href={footer.hostedByUrl}
+              />
             ) : null}
           </div>
         ) : null}
@@ -232,7 +238,7 @@ export function MarketingFooter(props: {
               onClick={openCookieSettings}
               className="transition hover:text-white"
             >
-              Cookie settings
+              {t("cookieSettings")}
             </button>
             <span>v{MARKETING_VERSION}</span>
           </div>

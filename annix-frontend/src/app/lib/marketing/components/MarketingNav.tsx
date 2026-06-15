@@ -10,13 +10,17 @@ import Link from "next/link";
 import { useState } from "react";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
 import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding";
+import { MarketingLanguageSwitcher, useMarketingTranslations } from "@/app/lib/marketing/i18n";
 import { loginPortalsForProducts } from "@/app/lib/marketing/links";
 
 const PRIMARY_LINKS = [
-  { label: "Resources", href: "/resources" },
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
+  { key: "resources" as const, href: "/resources" },
+  { key: "about" as const, href: "/about" },
+  { key: "contact" as const, href: "/contact" },
 ];
+
+// Temporarily hidden until launch — flip to true to restore the nav CTA.
+const SHOW_BOOK_A_DEMO = false;
 
 function BrandMark(props: { site: MarketingSite }) {
   const branding = useBrandingContext();
@@ -55,6 +59,7 @@ export function MarketingNav(props: {
   const products = props.products;
   const industries = props.industries;
   const site = props.site;
+  const t = useMarketingTranslations("nav");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [productsOpen, setProductsOpen] = useState(false);
   const [industriesOpen, setIndustriesOpen] = useState(false);
@@ -78,7 +83,7 @@ export function MarketingNav(props: {
               type="button"
               className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:text-white"
             >
-              Products
+              {t("products")}
               <ChevronDown className="h-4 w-4" />
             </button>
             {productsOpen ? (
@@ -109,7 +114,7 @@ export function MarketingNav(props: {
               type="button"
               className="flex items-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:text-white"
             >
-              Industries
+              {t("industries")}
               <ChevronDown className="h-4 w-4" />
             </button>
             {industriesOpen ? (
@@ -133,12 +138,13 @@ export function MarketingNav(props: {
               href={link.href}
               className="rounded-lg px-3 py-2 text-sm font-medium text-white/80 transition hover:text-white"
             >
-              {link.label}
+              {t(link.key)}
             </Link>
           ))}
         </div>
 
         <div className="hidden items-center gap-3 lg:flex">
+          <MarketingLanguageSwitcher variant="nav" />
           <div
             className="relative"
             onMouseEnter={() => setLoginOpen(true)}
@@ -149,7 +155,7 @@ export function MarketingNav(props: {
               className="flex items-center gap-1 rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
             >
               <LogIn className="h-4 w-4" />
-              Login
+              {t("login")}
               <ChevronDown className="h-4 w-4" />
             </button>
             {loginOpen ? (
@@ -166,6 +172,16 @@ export function MarketingNav(props: {
               </div>
             ) : null}
           </div>
+
+          {SHOW_BOOK_A_DEMO ? (
+            <Link
+              href="/contact"
+              className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-900 shadow-lg transition hover:opacity-90"
+              style={{ backgroundColor: "var(--brand-accent)" }}
+            >
+              {t("bookDemo")}
+            </Link>
+          ) : null}
         </div>
 
         <button
@@ -181,7 +197,7 @@ export function MarketingNav(props: {
       {mobileOpen ? (
         <div className="mx-4 rounded-2xl border border-white/10 bg-slate-900 px-4 py-4 lg:hidden">
           <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
-            Products
+            {t("products")}
           </div>
           {products.map((product) => {
             const href = product.comingSoon ? "/labs" : `/products/${product.detailSlug}`;
@@ -198,7 +214,7 @@ export function MarketingNav(props: {
           })}
           <div className="mt-3 border-t border-white/10 pt-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
-              Industries
+              {t("industries")}
             </div>
             {industries.map((item) => (
               <Link
@@ -219,13 +235,13 @@ export function MarketingNav(props: {
                 className="block rounded-lg px-3 py-2 text-sm text-white/80 hover:bg-white/5"
                 onClick={() => setMobileOpen(false)}
               >
-                {link.label}
+                {t(link.key)}
               </Link>
             ))}
           </div>
           <div className="mt-3 border-t border-white/10 pt-3">
             <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-white/40">
-              Login
+              {t("login")}
             </div>
             {portals.map((portal) => (
               <Link
@@ -238,6 +254,17 @@ export function MarketingNav(props: {
               </Link>
             ))}
           </div>
+          {SHOW_BOOK_A_DEMO ? (
+            <Link
+              href="/contact"
+              className="mt-3 block rounded-lg px-4 py-2 text-center text-sm font-semibold text-slate-900"
+              style={{ backgroundColor: "var(--brand-accent)" }}
+              onClick={() => setMobileOpen(false)}
+            >
+              {t("bookDemo")}
+            </Link>
+          ) : null}
+          <MarketingLanguageSwitcher variant="mobile" />
         </div>
       ) : null}
     </header>

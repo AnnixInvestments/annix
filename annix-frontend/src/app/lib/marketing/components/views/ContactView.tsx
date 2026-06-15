@@ -1,6 +1,10 @@
+"use client";
+
+import { useMarketingTranslations } from "@/app/lib/marketing/i18n";
 import { MarketingContactForm } from "../MarketingContactForm";
 
 export function ContactView(props: { heroImageUrl: string | null; bottomImageUrl: string | null }) {
+  const t = useMarketingTranslations("contact");
   const heroImageUrl = props.heroImageUrl ? props.heroImageUrl : "";
   const bottomImageUrl = props.bottomImageUrl ? props.bottomImageUrl : "";
   return (
@@ -35,11 +39,9 @@ export function ContactView(props: { heroImageUrl: string | null; bottomImageUrl
           className="text-4xl font-bold text-white sm:text-5xl"
           style={{ fontFamily: "var(--brand-font-display)" }}
         >
-          Let&apos;s talk.
+          {t("heading")}
         </h1>
-        <p className="mt-4 text-lg text-white/70">
-          Book a demo and we will show you the Annix products that fit your operation.
-        </p>
+        <p className="mt-4 text-lg text-white/70">{t("subheading")}</p>
         <div className="mt-10 rounded-2xl border border-white/10 bg-slate-900/70 p-6 backdrop-blur sm:p-8">
           <MarketingContactForm />
         </div>

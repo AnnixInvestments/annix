@@ -20,6 +20,12 @@ export class MarketingSiteContent {
   @Prop({ type: Object, required: true })
   published: MarketingSiteContentTree;
 
+  @Prop({ type: Object, required: false })
+  draftTranslations: Record<string, MarketingSiteContentTree> | null;
+
+  @Prop({ type: Object, required: false })
+  publishedTranslations: Record<string, MarketingSiteContentTree> | null;
+
   @Prop({ type: String, required: false })
   draftUpdatedAt: string | null;
 

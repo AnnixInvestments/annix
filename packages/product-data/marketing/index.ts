@@ -32,3 +32,12 @@ export type {
 } from "./content";
 export { RESOURCE_CATEGORIES } from "./content";
 export { defaultMarketingContent } from "./defaults";
+export type { MarketingLocale, MarketingLocaleMeta } from "./locales";
+export {
+  DEFAULT_MARKETING_LOCALE,
+  isMarketingLocale,
+  MARKETING_LOCALE_META,
+  MARKETING_LOCALES,
+  marketingLocaleMeta,
+  normaliseMarketingLocale,
+} from "./locales";

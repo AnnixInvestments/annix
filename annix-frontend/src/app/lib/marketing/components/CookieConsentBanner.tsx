@@ -10,6 +10,7 @@ import {
   readConsent,
   saveConsent,
 } from "@/app/lib/marketing/cookieConsent";
+import { useMarketingTranslations } from "@/app/lib/marketing/i18n";
 import { LegalModal } from "./LegalModal";
 
 function Toggle(props: { label: string; checked: boolean; onChange: (value: boolean) => void }) {
@@ -27,6 +28,7 @@ function Toggle(props: { label: string; checked: boolean; onChange: (value: bool
 }
 
 export function CookieConsentBanner(props: { cookiePolicy: MarketingLegalDoc }) {
+  const t = useMarketingTranslations("cookies");
   const [visible, setVisible] = useState(false);
   const [managing, setManaging] = useState(false);
   const [functional, setFunctional] = useState(true);
@@ -92,28 +94,26 @@ export function CookieConsentBanner(props: { cookiePolicy: MarketingLegalDoc }) 
             style={{ borderColor: "color-mix(in srgb, var(--brand-accent) 45%, transparent)" }}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="text-sm font-semibold text-white">We value your privacy</div>
+              <div className="text-sm font-semibold text-white">{t("title")}</div>
               {dismissable ? (
                 <button
                   type="button"
                   onClick={() => setVisible(false)}
                   className="rounded-lg p-1 text-white/50 transition hover:bg-white/10 hover:text-white"
-                  aria-label="Close"
+                  aria-label={t("close")}
                 >
                   <X className="h-4 w-4" />
                 </button>
               ) : null}
             </div>
             <p className="mt-2 text-sm text-white/60">
-              We use cookies to operate the site, remember your preferences, analyse traffic and,
-              where enabled, support marketing. You can accept all, reject non-essential cookies, or
-              manage your choices. See our{" "}
+              {t("body")}{" "}
               <button
                 type="button"
                 onClick={() => setPolicyOpen(true)}
                 className="font-medium text-[var(--brand-accent)] underline-offset-2 hover:underline"
               >
-                Cookie Policy
+                {t("cookiePolicy")}
               </button>
               .
             </p>
@@ -121,12 +121,12 @@ export function CookieConsentBanner(props: { cookiePolicy: MarketingLegalDoc }) 
             {managing ? (
               <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <label className="flex items-center justify-between gap-3 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white/50">
-                  <span>Strictly necessary (always on)</span>
+                  <span>{t("strictlyNecessary")}</span>
                   <input type="checkbox" checked disabled className="h-4 w-4" />
                 </label>
-                <Toggle label="Functional" checked={functional} onChange={setFunctional} />
-                <Toggle label="Analytics" checked={analytics} onChange={setAnalytics} />
-                <Toggle label="Marketing" checked={marketing} onChange={setMarketing} />
+                <Toggle label={t("functional")} checked={functional} onChange={setFunctional} />
+                <Toggle label={t("analytics")} checked={analytics} onChange={setAnalytics} />
+                <Toggle label={t("marketing")} checked={marketing} onChange={setMarketing} />
               </div>
             ) : null}
 
@@ -137,14 +137,14 @@ export function CookieConsentBanner(props: { cookiePolicy: MarketingLegalDoc }) 
                 className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-900"
                 style={{ backgroundColor: "var(--brand-accent)" }}
               >
-                Accept all
+                {t("acceptAll")}
               </button>
               <button
                 type="button"
                 onClick={rejectNonEssential}
                 className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
               >
-                Reject non-essential
+                {t("rejectNonEssential")}
               </button>
               {managing ? (
                 <button
@@ -152,7 +152,7 @@ export function CookieConsentBanner(props: { cookiePolicy: MarketingLegalDoc }) 
                   onClick={saveSelection}
                   className="rounded-lg border border-white/20 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/10"
                 >
-                  Save preferences
+                  {t("savePreferences")}
                 </button>
               ) : (
                 <button
@@ -160,7 +160,7 @@ export function CookieConsentBanner(props: { cookiePolicy: MarketingLegalDoc }) 
                   onClick={() => setManaging(true)}
                   className="rounded-lg px-4 py-2 text-sm font-medium text-white/70 transition hover:text-white"
                 >
-                  Manage preferences
+                  {t("managePreferences")}
                 </button>
               )}
             </div>

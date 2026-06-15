@@ -1,12 +1,18 @@
 import {
+  DEFAULT_MARKETING_LOCALE,
   defaultMarketingContent,
+  type MarketingLocale,
   type MarketingSiteContent as MarketingSiteContentTree,
   type MarketingSiteStatus,
+  normaliseMarketingLocale,
 } from "@annix/product-data/marketing";
 import { Injectable, Logger } from "@nestjs/common";
 import { cloneDeep, isArray, mergeWith } from "es-toolkit/compat";
 import { nowISO } from "../lib/datetime";
-import { MarketingSiteContent } from "./entities/marketing-site-content.entity";
+import {
+  type MarketingLocaleContentMap,
+  MarketingSiteContent,
+} from "./entities/marketing-site-content.entity";
 import { MarketingSiteContentRepository } from "./repositories/marketing-site-content.repository";
 
 const SINGLETON_ID = "annix";
@@ -47,20 +53,52 @@ function withDefaults(stored: MarketingSiteContentTree | null): MarketingSiteCon
   return merged;
 }
 
+// Overlay a locale's translated tree on top of the English base so that any field
+// the editors have not translated yet falls back to the English copy.
+function withLocaleFallback(
+  base: MarketingSiteContentTree,
+  override: MarketingSiteContentTree | null | undefined,
+): MarketingSiteContentTree {
+  if (!override) {
+    return base;
+  }
+  return mergeWith(cloneDeep(base), override, (_baseValue, value) =>
+    isArray(value) ? value : undefined,
+  ) as MarketingSiteContentTree;
+}
+
 @Injectable()
 export class MarketingSiteContentService {
   private readonly logger = new Logger(MarketingSiteContentService.name);
 
   constructor(private readonly repository: MarketingSiteContentRepository) {}
 
-  async draftContent(): Promise<MarketingSiteContentTree> {
+  async draftContent(locale?: string | null): Promise<MarketingSiteContentTree> {
+    const target = normaliseMarketingLocale(locale);
     const record = await this.ensure();
-    return withDefaults(record.draft);
+    const base = withDefaults(record.draft);
+    if (target === DEFAULT_MARKETING_LOCALE) {
+      return base;
+    }
+    return withLocaleFallback(base, record.draftTranslations?.[target]);
   }
 
-  async publishedContent(): Promise<MarketingSiteContentTree> {
+  async publishedContent(locale?: string | null): Promise<MarketingSiteContentTree> {
+    const target = normaliseMarketingLocale(locale);
     const record = await this.ensure();
-    return withDefaults(record.published);
+    const base = withDefaults(record.published);
+    if (target === DEFAULT_MARKETING_LOCALE) {
+      return base;
+    }
+    return withLocaleFallback(base, record.publishedTranslations?.[target]);
+  }
+
+  async publishedLocales(): Promise<MarketingLocale[]> {
+    const record = await this.ensure();
+    const translated = Object.keys(record.publishedTranslations ?? {}).filter(
+      (code): code is MarketingLocale => code !== DEFAULT_MARKETING_LOCALE,
+    );
+    return [DEFAULT_MARKETING_LOCALE, ...translated];
   }
 
   async status(): Promise<MarketingSiteStatus> {
@@ -73,18 +111,31 @@ export class MarketingSiteContentService {
     };
   }
 
-  async saveDraft(content: MarketingSiteContentTree): Promise<MarketingSiteContentTree> {
+  async saveDraft(
+    content: MarketingSiteContentTree,
+    locale?: string | null,
+  ): Promise<MarketingSiteContentTree> {
+    const target = normaliseMarketingLocale(locale);
     const record = await this.ensure();
-    record.draft = content;
+    if (target === DEFAULT_MARKETING_LOCALE) {
+      record.draft = content;
+    } else {
+      const map: MarketingLocaleContentMap = { ...(record.draftTranslations ?? {}) };
+      map[target] = content;
+      record.draftTranslations = map;
+    }
     record.draftUpdatedAt = nowISO();
     const saved = await this.repository.save(record);
-    this.logger.log("Saved marketing site draft");
-    return saved.draft;
+    this.logger.log(`Saved marketing site draft (${target})`);
+    return target === DEFAULT_MARKETING_LOCALE
+      ? saved.draft
+      : (saved.draftTranslations?.[target] ?? content);
   }
 
   async publish(publishedBy: string | null): Promise<MarketingSiteContentTree> {
     const record = await this.ensure();
     record.published = cloneDeep(record.draft);
+    record.publishedTranslations = cloneDeep(record.draftTranslations ?? {});
     record.lastPublishedAt = nowISO();
     record.lastPublishedBy = publishedBy;
     // Draft now equals published — clear the dirty flag so the CMS stops
@@ -98,6 +149,7 @@ export class MarketingSiteContentService {
   async discardDraft(): Promise<MarketingSiteContentTree> {
     const record = await this.ensure();
     record.draft = cloneDeep(record.published);
+    record.draftTranslations = cloneDeep(record.publishedTranslations ?? {});
     record.draftUpdatedAt = null;
     const saved = await this.repository.save(record);
     this.logger.log("Discarded marketing site draft");
@@ -114,6 +166,8 @@ export class MarketingSiteContentService {
       id: SINGLETON_ID,
       draft: cloneDeep(seed),
       published: cloneDeep(seed),
+      draftTranslations: {},
+      publishedTranslations: {},
       draftUpdatedAt: null,
       lastPublishedAt: nowISO(),
       lastPublishedBy: "system",

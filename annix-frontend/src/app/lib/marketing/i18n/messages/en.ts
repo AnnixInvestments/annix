@@ -1,0 +1,57 @@
+export const en = {
+  nav: {
+    products: "Products",
+    industries: "Industries",
+    login: "Login",
+    bookDemo: "Book a Demo",
+    resources: "Resources",
+    about: "About",
+    contact: "Contact",
+  },
+  language: {
+    label: "Language",
+    select: "Select language",
+  },
+  cookies: {
+    title: "We value your privacy",
+    body: "We use cookies to operate the site, remember your preferences, analyse traffic and, where enabled, support marketing. You can accept all, reject non-essential cookies, or manage your choices. See our",
+    cookiePolicy: "Cookie Policy",
+    strictlyNecessary: "Strictly necessary (always on)",
+    functional: "Functional",
+    analytics: "Analytics",
+    marketing: "Marketing",
+    acceptAll: "Accept all",
+    rejectNonEssential: "Reject non-essential",
+    savePreferences: "Save preferences",
+    managePreferences: "Manage preferences",
+    close: "Close",
+  },
+  contact: {
+    name: "Name",
+    email: "Email",
+    company: "Company",
+    phone: "Phone",
+    howCanWeHelp: "How can we help?",
+    messagePlaceholder: "Tell us about your operation and what you're looking for.",
+    sending: "Sending…",
+    sendEnquiry: "Send enquiry",
+    errorFallback: "Something went wrong — please try again.",
+    heading: "Let's talk.",
+    subheading: "Book a demo and we will show you the Annix products that fit your operation.",
+  },
+  footer: {
+    emailPlaceholder: "Enter your email",
+    newsletterConsentPrefix: "By subscribing you agree to receive marketing emails and accept our",
+    privacyPolicy: "Privacy Policy",
+    newsletterConsentSuffix: ". You can unsubscribe at any time.",
+    designedBy: "Designed by",
+    hostedBy: "Hosted by",
+    cookieSettings: "Cookie settings",
+  },
+  legal: {
+    lastUpdated: "Last updated:",
+    close: "Close",
+  },
+};
+
+export type MarketingMessages = typeof en;

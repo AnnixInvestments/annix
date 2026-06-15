@@ -1,40 +1,54 @@
 "use client";
 
-import type { MarketingSiteContent } from "@annix/product-data/marketing";
+import type { MarketingLocale, MarketingSiteContent } from "@annix/product-data/marketing";
 import type { ReactNode } from "react";
 import { BrandingProvider } from "@/app/lib/branding/BrandingProvider";
 import { MASTER_BRAND_CODE } from "@/app/lib/branding/branding";
+import { MarketingHreflangLinks, MarketingI18nProvider } from "@/app/lib/marketing/i18n";
 import { CookieConsentBanner } from "./CookieConsentBanner";
 import { MarketingFooter } from "./MarketingFooter";
 import { MarketingNav } from "./MarketingNav";
 
-export function MarketingShell(props: { content: MarketingSiteContent; children: ReactNode }) {
+export function MarketingShell(props: {
+  content: MarketingSiteContent;
+  children: ReactNode;
+  locale?: MarketingLocale;
+  initialLocale?: MarketingLocale;
+  onLocaleChange?: (locale: MarketingLocale) => void;
+}) {
   const content = props.content;
   const accent = content.site.accentColor ? content.site.accentColor : "var(--brand-accent)";
   return (
-    <BrandingProvider brand={MASTER_BRAND_CODE} surface={false}>
-      <div
-        className="relative min-h-screen overflow-hidden text-white"
-        style={
-          {
-            "--site-navy": "#0a1733",
-            "--brand-accent": accent,
-            "--brand-accent-light": `color-mix(in srgb, ${accent} 80%, white)`,
-            "--brand-accent-dark": `color-mix(in srgb, ${accent} 82%, black)`,
-            backgroundColor: "#0a1733",
-            backgroundImage: "linear-gradient(180deg, #0b1b3a 0%, #0a1733 45%, #070f24 100%)",
-          } as React.CSSProperties
-        }
-      >
-        <MarketingNav
-          products={content.ecosystem.products}
-          industries={content.industries.items}
-          site={content.site}
-        />
-        <main>{props.children}</main>
-        <MarketingFooter footer={content.footer} site={content.site} legal={content.legal} />
-        <CookieConsentBanner cookiePolicy={content.legal.cookies} />
-      </div>
-    </BrandingProvider>
+    <MarketingI18nProvider
+      locale={props.locale}
+      initialLocale={props.initialLocale}
+      onLocaleChange={props.onLocaleChange}
+    >
+      <BrandingProvider brand={MASTER_BRAND_CODE} surface={false}>
+        <MarketingHreflangLinks />
+        <div
+          className="relative min-h-screen overflow-hidden text-white"
+          style={
+            {
+              "--site-navy": "#0a1733",
+              "--brand-accent": accent,
+              "--brand-accent-light": `color-mix(in srgb, ${accent} 80%, white)`,
+              "--brand-accent-dark": `color-mix(in srgb, ${accent} 82%, black)`,
+              backgroundColor: "#0a1733",
+              backgroundImage: "linear-gradient(180deg, #0b1b3a 0%, #0a1733 45%, #070f24 100%)",
+            } as React.CSSProperties
+          }
+        >
+          <MarketingNav
+            products={content.ecosystem.products}
+            industries={content.industries.items}
+            site={content.site}
+          />
+          <main>{props.children}</main>
+          <MarketingFooter footer={content.footer} site={content.site} legal={content.legal} />
+          <CookieConsentBanner cookiePolicy={content.legal.cookies} />
+        </div>
+      </BrandingProvider>
+    </MarketingI18nProvider>
   );
 }

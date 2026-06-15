@@ -8,7 +8,33 @@ export const isLoginScreen = (pathname: string): boolean => {
   );
 };
 
+// The public CMS marketing site (annix.co.za) renders its own MarketingNav /
+// footer via MarketingShell, so the global Annix nav must never sit on top of
+// it. These are the marketing site's own routes — the launcher hub lives at
+// /portals and keeps the global nav.
+const MARKETING_SITE_PREFIXES = [
+  "/products",
+  "/industries",
+  "/resources",
+  "/contact",
+  "/about",
+  "/labs",
+];
+
+export const isMarketingSiteRoute = (pathname: string): boolean => {
+  if (pathname === "/") {
+    return true;
+  }
+  return MARKETING_SITE_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
+};
+
 export const shouldShowGlobalNavigation = (pathname: string): boolean => {
+  if (isMarketingSiteRoute(pathname)) {
+    return false;
+  }
+
   if (isLoginScreen(pathname)) {
     return true;
   }

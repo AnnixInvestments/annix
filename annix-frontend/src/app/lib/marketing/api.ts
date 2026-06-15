@@ -1,5 +1,7 @@
 import {
+  DEFAULT_MARKETING_LOCALE,
   defaultMarketingContent,
+  type MarketingLocale,
   type MarketingSiteContent,
   type MarketingSiteStatus,
 } from "@annix/product-data/marketing";
@@ -87,12 +89,15 @@ export interface SocialSharePayload {
   imageUrl: string;
 }
 
-export async function fetchPublishedMarketingContent(): Promise<MarketingSiteContent> {
+export async function fetchPublishedMarketingContent(
+  locale: MarketingLocale = DEFAULT_MARKETING_LOCALE,
+): Promise<MarketingSiteContent> {
   // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
   const isServer = typeof window === "undefined";
   const base = isServer ? ipv4LocalhostUrl(API_BASE_URL) : API_BASE_URL;
+  const query = locale === DEFAULT_MARKETING_LOCALE ? "" : `?locale=${locale}`;
   try {
-    const res = await fetch(`${base}/public/marketing/content`, {
+    const res = await fetch(`${base}/public/marketing/content${query}`, {
       next: { revalidate: 60 },
     });
     if (!res.ok) {
@@ -101,6 +106,23 @@ export async function fetchPublishedMarketingContent(): Promise<MarketingSiteCon
     return mergeMarketingDefaults((await res.json()) as MarketingSiteContent);
   } catch {
     return defaultMarketingContent();
+  }
+}
+
+export async function fetchPublishedMarketingLocales(): Promise<MarketingLocale[]> {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+  const isServer = typeof window === "undefined";
+  const base = isServer ? ipv4LocalhostUrl(API_BASE_URL) : API_BASE_URL;
+  try {
+    const res = await fetch(`${base}/public/marketing/locales`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) {
+      return [DEFAULT_MARKETING_LOCALE];
+    }
+    return (await res.json()) as MarketingLocale[];
+  } catch {
+    return [DEFAULT_MARKETING_LOCALE];
   }
 }
 
@@ -147,16 +169,29 @@ const adminClient = createApiClient({
 });
 
 class MarketingAdminApiClient {
-  draft(): Promise<MarketingSiteContent> {
-    return adminClient.get<MarketingSiteContent>("/admin/marketing/content");
+  draft(locale: MarketingLocale = DEFAULT_MARKETING_LOCALE): Promise<MarketingSiteContent> {
+    const query = locale === DEFAULT_MARKETING_LOCALE ? "" : `?locale=${locale}`;
+    return adminClient.get<MarketingSiteContent>(`/admin/marketing/content${query}`);
+  }
+
+  locales(): Promise<MarketingLocale[]> {
+    return adminClient.get<MarketingLocale[]>("/admin/marketing/locales");
   }
 
   status(): Promise<MarketingSiteStatus> {
     return adminClient.get<MarketingSiteStatus>("/admin/marketing/status");
   }
 
-  saveDraft(content: MarketingSiteContent): Promise<MarketingSiteContent> {
-    return adminClient.put<MarketingSiteContent>("/admin/marketing/content", content);
+  saveDraft(
+    content: MarketingSiteContent,
+    locale: MarketingLocale = DEFAULT_MARKETING_LOCALE,
+  ): Promise<MarketingSiteContent> {
+    const query = locale === DEFAULT_MARKETING_LOCALE ? "" : `?locale=${locale}`;
+    return adminClient.put<MarketingSiteContent>(`/admin/marketing/content${query}`, content);
+  }
+
+  translate(locale: MarketingLocale): Promise<MarketingSiteContent> {
+    return adminClient.post<MarketingSiteContent>(`/admin/marketing/translate?locale=${locale}`);
   }
 
   publish(): Promise<MarketingSiteContent> {

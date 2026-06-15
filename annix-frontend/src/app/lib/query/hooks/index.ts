@@ -1076,9 +1076,11 @@ export { useLicensingCatalog } from "./licensing/useLicensingCatalog";
 export {
   useDiscardMarketingDraft,
   useMarketingDraft,
+  useMarketingLocales,
   useMarketingStatus,
   usePublishMarketing,
   useSaveMarketingDraft,
+  useTranslateMarketing,
 } from "./marketing/useMarketingAdmin";
 export {
   type ConvertToJobCardInput,

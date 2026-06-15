@@ -1,5 +1,10 @@
-import type { MarketingSiteContent as MarketingSiteContentTree } from "@annix/product-data/marketing";
+import type {
+  MarketingLocale,
+  MarketingSiteContent as MarketingSiteContentTree,
+} from "@annix/product-data/marketing";
 import { Column, Entity, PrimaryColumn, UpdateDateColumn } from "typeorm";
+
+export type MarketingLocaleContentMap = Partial<Record<MarketingLocale, MarketingSiteContentTree>>;
 
 @Entity("marketing_site_content")
 export class MarketingSiteContent {
@@ -11,6 +16,12 @@ export class MarketingSiteContent {
 
   @Column({ type: "jsonb" })
   published: MarketingSiteContentTree;
+
+  @Column({ name: "draft_translations", type: "jsonb", nullable: true })
+  draftTranslations: MarketingLocaleContentMap | null;
+
+  @Column({ name: "published_translations", type: "jsonb", nullable: true })
+  publishedTranslations: MarketingLocaleContentMap | null;
 
   @Column({ name: "draft_updated_at", type: "varchar", length: 40, nullable: true })
   draftUpdatedAt: string | null;

@@ -1,20 +1,18 @@
 import type { Metadata } from "next";
 import { MarketingShell } from "@/app/lib/marketing/components/MarketingShell";
-import { AboutView } from "@/app/lib/marketing/components/views/AboutView";
+import { ContactView } from "@/app/lib/marketing/components/views/ContactView";
 import { loadMarketingContent } from "@/app/lib/marketing/serverContent";
 
 export const metadata: Metadata = {
-  title: "About — Annix",
-  description:
-    "Annix builds intelligent platforms for industry — operations, engineering, workforce, compliance and beyond, all on one shared foundation.",
+  title: "Contact — Annix",
+  description: "Book a demo and we will show you the Annix products that fit your operation.",
 };
 
-export default async function AboutPage() {
+export default async function ContactPage() {
   const { content, locale } = await loadMarketingContent();
   return (
     <MarketingShell content={content} initialLocale={locale}>
-      <AboutView
-        about={content.about}
+      <ContactView
         heroImageUrl={content.hero.imageUrl}
         bottomImageUrl={content.ctaBand.backgroundImageUrl}
       />

@@ -1,4 +1,8 @@
-import type { MarketingSiteContent as MarketingSiteContentTree } from "@annix/product-data/marketing";
+import {
+  MARKETING_LOCALES,
+  type MarketingLocale,
+  type MarketingSiteContent as MarketingSiteContentTree,
+} from "@annix/product-data/marketing";
 import {
   Body,
   Controller,
@@ -6,6 +10,7 @@ import {
   Inject,
   Post,
   Put,
+  Query,
   Req,
   UploadedFile,
   UseGuards,
@@ -23,6 +28,7 @@ import {
 import { AdminAuthGuard } from "../admin/guards/admin-auth.guard";
 import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storage.interface";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
+import { MarketingTranslationService } from "./marketing-translation.service";
 import type {
   SocialPlatform,
   SocialPlatformStatus,
@@ -47,15 +53,23 @@ interface SocialShareBody {
 export class AdminMarketingController {
   constructor(
     private readonly marketingService: MarketingSiteContentService,
+    private readonly translationService: MarketingTranslationService,
     private readonly socialService: SocialPublishingService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
   @Get("content")
-  @ApiOperation({ summary: "Get the editable draft marketing content" })
+  @ApiOperation({ summary: "Get the editable draft marketing content for a locale" })
   @ApiResponse({ status: 200 })
-  async draft(): Promise<MarketingSiteContentTree> {
-    return this.marketingService.draftContent();
+  async draft(@Query("locale") locale?: string): Promise<MarketingSiteContentTree> {
+    return this.marketingService.draftContent(locale);
+  }
+
+  @Get("locales")
+  @ApiOperation({ summary: "List the locales the marketing site supports" })
+  @ApiResponse({ status: 200 })
+  locales(): MarketingLocale[] {
+    return [...MARKETING_LOCALES];
   }
 
   @Get("status")
@@ -65,11 +79,24 @@ export class AdminMarketingController {
     return this.marketingService.status();
   }
 
-  @Put("content")
-  @ApiOperation({ summary: "Save the draft marketing content" })
+  @Post("translate")
+  @ApiOperation({
+    summary:
+      "Auto-translate the English draft into a locale (Gemini) and save it as that locale's draft",
+  })
   @ApiResponse({ status: 200 })
-  async saveDraft(@Body() content: MarketingSiteContentTree): Promise<MarketingSiteContentTree> {
-    return this.marketingService.saveDraft(content);
+  async translate(@Query("locale") locale: string): Promise<MarketingSiteContentTree> {
+    return this.translationService.translateDraftInto(locale);
+  }
+
+  @Put("content")
+  @ApiOperation({ summary: "Save the draft marketing content for a locale" })
+  @ApiResponse({ status: 200 })
+  async saveDraft(
+    @Body() content: MarketingSiteContentTree,
+    @Query("locale") locale?: string,
+  ): Promise<MarketingSiteContentTree> {
+    return this.marketingService.saveDraft(content, locale);
   }
 
   @Post("publish")

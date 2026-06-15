@@ -1,0 +1,57 @@
+import type { MarketingMessages } from "./en";
+
+export const zu: MarketingMessages = {
+  nav: {
+    products: "Imikhiqizo",
+    industries: "Izimboni",
+    login: "Ngena",
+    bookDemo: "Bhuka idemo",
+    resources: "Izinsiza",
+    about: "Mayelana",
+    contact: "Xhumana",
+  },
+  language: {
+    label: "Ulimi",
+    select: "Khetha ulimi",
+  },
+  cookies: {
+    title: "Siyakuhlonipha ubumfihlo bakho",
+    body: "Sisebenzisa amakhukhi ukuze sisebenzise isayithi, sikhumbule okuthandayo, sihlaziye ithrafikhi, futhi lapho kuvunyelwe, sisekele ukumaketha. Ungamukela konke, unqabe amakhukhi angabalulekile, noma uphathe izinketho zakho. Bona",
+    cookiePolicy: "Inqubomgomo Yamakhukhi",
+    strictlyNecessary: "Kudingeka ngokuqinile (kuhlala kuvuliwe)",
+    functional: "Okusebenzayo",
+    analytics: "Ukuhlaziya",
+    marketing: "Ukumaketha",
+    acceptAll: "Yamukela konke",
+    rejectNonEssential: "Nqaba okungabalulekile",
+    savePreferences: "Londoloza okuthandayo",
+    managePreferences: "Phatha okuthandayo",
+    close: "Vala",
+  },
+  contact: {
+    name: "Igama",
+    email: "I-imeyili",
+    company: "Inkampani",
+    phone: "Ifoni",
+    howCanWeHelp: "Singakusiza kanjani?",
+    messagePlaceholder: "Sitshele ngomsebenzi wakho nalokho okufunayo.",
+    sending: "Iyathumela…",
+    sendEnquiry: "Thumela umbuzo",
+    errorFallback: "Kukhona okungahambanga kahle — sicela uzame futhi.",
+    heading: "Asixoxe.",
+    subheading: "Bhuka idemo bese sikukhombisa imikhiqizo ye-Annix efanele umsebenzi wakho.",
+  },
+  footer: {
+    emailPlaceholder: "Faka i-imeyili yakho",
+    newsletterConsentPrefix: "Ngokubhalisa uyavuma ukuthola ama-imeyili okumaketha futhi wamukele",
+    privacyPolicy: "Inqubomgomo Yobumfihlo",
+    newsletterConsentSuffix: ". Ungakhansela noma nini.",
+    designedBy: "Kwakhiwe ngu",
+    hostedBy: "Kusingethwe ngu",
+    cookieSettings: "Izilungiselelo zamakhukhi",
+  },
+  legal: {
+    lastUpdated: "Kugcine ukubuyekezwa:",
+    close: "Vala",
+  },
+};
