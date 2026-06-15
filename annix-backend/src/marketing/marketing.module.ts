@@ -14,11 +14,14 @@ import { CookieConsentService } from "./cookie-consent.service";
 import { MarketingSiteContent } from "./entities/marketing-site-content.entity";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
 import { MarketingTranslationService } from "./marketing-translation.service";
+import { NewsletterService } from "./newsletter.service";
 import { PublicMarketingController } from "./public-marketing.controller";
 import { MarketingSiteContentRepository } from "./repositories/marketing-site-content.repository";
 import { MongoMarketingSiteContentRepository } from "./repositories/marketing-site-content.repository.mongo";
 import { PostgresMarketingSiteContentRepository } from "./repositories/marketing-site-content.repository.postgres";
 import { MarketingCookieConsentSchema } from "./schemas/marketing-cookie-consent.schema";
+import { MarketingNewsletterCampaignSchema } from "./schemas/marketing-newsletter-campaign.schema";
+import { MarketingNewsletterSubscriberSchema } from "./schemas/marketing-newsletter-subscriber.schema";
 import { MarketingSiteContentSchema } from "./schemas/marketing-site-content.schema";
 import { FacebookAdapter } from "./social/adapters/facebook.adapter";
 import { InstagramAdapter } from "./social/adapters/instagram.adapter";
@@ -33,6 +36,11 @@ import { SocialPublishingService } from "./social/social-publishing.service";
           MongooseModule.forFeature([
             { name: "MarketingSiteContent", schema: MarketingSiteContentSchema },
             { name: "MarketingCookieConsent", schema: MarketingCookieConsentSchema },
+            {
+              name: "MarketingNewsletterSubscriber",
+              schema: MarketingNewsletterSubscriberSchema,
+            },
+            { name: "MarketingNewsletterCampaign", schema: MarketingNewsletterCampaignSchema },
           ]),
         ]
       : [TypeOrmModule.forFeature([MarketingSiteContent])]),
@@ -48,6 +56,7 @@ import { SocialPublishingService } from "./social/social-publishing.service";
     MarketingSiteContentService,
     MarketingTranslationService,
     CookieConsentService,
+    NewsletterService,
     SocialPublishingService,
     LinkedInAdapter,
     FacebookAdapter,

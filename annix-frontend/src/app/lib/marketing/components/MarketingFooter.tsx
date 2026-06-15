@@ -15,8 +15,71 @@ import { brandHasAsset, resolveBrandAssetUrl } from "@/app/lib/branding/branding
 import { now } from "@/app/lib/datetime";
 import { openCookieSettings } from "@/app/lib/marketing/cookieConsent";
 import { useMarketingTranslations } from "@/app/lib/marketing/i18n";
+import { subscribeToNewsletter } from "../api";
 import { externalHref } from "../url";
 import { LegalModal } from "./LegalModal";
+
+function NewsletterSignup(props: { placeholder: string }) {
+  const [email, setEmail] = useState("");
+  const [state, setState] = useState<"idle" | "sending" | "done" | "error">("idle");
+  const [message, setMessage] = useState("");
+
+  async function submit() {
+    const trimmed = email.trim();
+    if (trimmed.length === 0 || !trimmed.includes("@")) {
+      setState("error");
+      setMessage("Please enter a valid email address.");
+      return;
+    }
+    setState("sending");
+    try {
+      const result = await subscribeToNewsletter(trimmed);
+      setState("done");
+      setMessage(result);
+      setEmail("");
+    } catch (error) {
+      setState("error");
+      const text =
+        error instanceof Error ? error.message : "Could not subscribe — please try again.";
+      setMessage(text);
+    }
+  }
+
+  if (state === "done") {
+    return <p className="mt-3 text-sm text-white/70">{message}</p>;
+  }
+
+  return (
+    <div>
+      <div className="mt-3 flex items-center gap-2">
+        <input
+          type="email"
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              void submit();
+            }
+          }}
+          placeholder={props.placeholder}
+          disabled={state === "sending"}
+          className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-white/30 focus:outline-none disabled:opacity-60"
+        />
+        <button
+          type="button"
+          onClick={() => void submit()}
+          disabled={state === "sending"}
+          aria-label="Subscribe"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-900 disabled:opacity-60"
+          style={{ backgroundColor: "var(--brand-accent)" }}
+        >
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
+      {state === "error" && <p className="mt-2 text-xs text-red-300">{message}</p>}
+    </div>
+  );
+}
 
 const SOCIAL_ICONS: Record<string, LucideIcon | undefined> = {
   LinkedIn: Linkedin,
@@ -138,19 +201,7 @@ export function MarketingFooter(props: {
               {footer.newsletterHeading}
             </div>
             <p className="text-sm text-white/50">{footer.newsletterBody}</p>
-            <div className="mt-3 flex items-center gap-2">
-              <input
-                type="email"
-                placeholder={t("emailPlaceholder")}
-                className="w-full rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-white/30 focus:outline-none"
-              />
-              <span
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-900"
-                style={{ backgroundColor: "var(--brand-accent)" }}
-              >
-                <Send className="h-4 w-4" />
-              </span>
-            </div>
+            <NewsletterSignup placeholder={t("emailPlaceholder")} />
             <p className="mt-2 text-xs text-white/40">
               {t("newsletterConsentPrefix")}{" "}
               <button

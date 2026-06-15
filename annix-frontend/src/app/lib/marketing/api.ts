@@ -164,6 +164,51 @@ export async function submitMarketingContact(payload: MarketingContactPayload): 
   return body && isString(body.message) ? body.message : "Thanks — your enquiry has been sent.";
 }
 
+export async function subscribeToNewsletter(email: string, source?: string): Promise<string> {
+  const res = await fetch(`${API_BASE_URL}/public/marketing/newsletter-signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email, source: source ?? "website-footer" }),
+  });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    const message =
+      body && isString(body.error) ? body.error : "Could not subscribe — please try again.";
+    throw new Error(message);
+  }
+  return body && isString(body.message) ? body.message : "Thanks for subscribing.";
+}
+
+export interface NewsletterSubscriber {
+  id: string;
+  email: string;
+  status: string;
+  source: string | null;
+  createdAt: string;
+  lastEmailedAt: string | null;
+}
+
+export interface NewsletterStats {
+  total: number;
+  subscribed: number;
+  unsubscribed: number;
+  today: number;
+  thisWeek: number;
+}
+
+export interface NewsletterCampaign {
+  id: string;
+  subject: string;
+  status: string;
+  scheduledAt: string | null;
+  recipientCount: number;
+  sentCount: number;
+  failedCount: number;
+  sentBy: string | null;
+  createdAt: string;
+  sentAt: string | null;
+}
+
 const adminClient = createApiClient({
   baseURL: API_BASE_URL,
   tokenStore: adminTokenStore,
@@ -214,6 +259,41 @@ class MarketingAdminApiClient {
 
   shareToSocials(payload: SocialSharePayload): Promise<SocialShareResult[]> {
     return adminClient.post<SocialShareResult[]>("/admin/marketing/social/share", payload);
+  }
+
+  newsletterSubscribers(): Promise<NewsletterSubscriber[]> {
+    return adminClient.get<NewsletterSubscriber[]>("/admin/marketing/newsletter/subscribers");
+  }
+
+  newsletterStats(): Promise<NewsletterStats> {
+    return adminClient.get<NewsletterStats>("/admin/marketing/newsletter/stats");
+  }
+
+  newsletterCampaigns(): Promise<NewsletterCampaign[]> {
+    return adminClient.get<NewsletterCampaign[]>("/admin/marketing/newsletter/campaigns");
+  }
+
+  sendNewsletter(subject: string, body: string): Promise<NewsletterCampaign> {
+    return adminClient.post<NewsletterCampaign>("/admin/marketing/newsletter/send", {
+      subject,
+      body,
+    });
+  }
+
+  scheduleNewsletter(
+    subject: string,
+    body: string,
+    scheduledAt: string,
+  ): Promise<NewsletterCampaign> {
+    return adminClient.post<NewsletterCampaign>("/admin/marketing/newsletter/schedule", {
+      subject,
+      body,
+      scheduledAt,
+    });
+  }
+
+  cancelNewsletterCampaign(id: string): Promise<{ ok: boolean }> {
+    return adminClient.post<{ ok: boolean }>(`/admin/marketing/newsletter/campaigns/${id}/cancel`);
   }
 }
 

@@ -23,6 +23,7 @@ import { ApiMessageResponse, messageResponse } from "../shared/dto";
 import { IStorageService, STORAGE_SERVICE } from "../storage/storage.interface";
 import { CookieConsentService } from "./cookie-consent.service";
 import { MarketingSiteContentService } from "./marketing-site-content.service";
+import { NewsletterService } from "./newsletter.service";
 
 function mimeFromKey(key: string): string {
   const lower = key.toLowerCase();
@@ -50,6 +51,11 @@ interface CookieConsentDto {
   marketing: boolean;
 }
 
+interface NewsletterSignupDto {
+  email: string;
+  source?: string;
+}
+
 @ApiTags("Public Marketing")
 @Controller("public/marketing")
 export class PublicMarketingController {
@@ -60,6 +66,7 @@ export class PublicMarketingController {
     private readonly companyProfileService: AdminCompanyProfileService,
     private readonly emailService: EmailService,
     private readonly cookieConsentService: CookieConsentService,
+    private readonly newsletterService: NewsletterService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -137,6 +144,35 @@ export class PublicMarketingController {
       userAgent ? userAgent : "",
     );
     return messageResponse("Consent recorded.");
+  }
+
+  @Post("newsletter-signup")
+  @ApiOperation({ summary: "Subscribe an email address to the marketing newsletter" })
+  @ApiResponse({ status: 201 })
+  async newsletterSignup(
+    @Body() dto: NewsletterSignupDto,
+    @Headers("user-agent") userAgent: string,
+  ): Promise<ApiMessageResponse> {
+    const email = (dto.email ?? "").trim();
+    if (email.length === 0 || !email.includes("@")) {
+      throw new BadRequestException("A valid email address is required.");
+    }
+    await this.newsletterService.subscribe(
+      email,
+      dto.source ? dto.source : "website-footer",
+      userAgent ? userAgent : null,
+    );
+    return messageResponse("Thanks for subscribing — you're on the list.");
+  }
+
+  @Get("newsletter-unsubscribe")
+  @Header("Content-Type", "text/html")
+  @ApiOperation({ summary: "Unsubscribe an email address from the marketing newsletter" })
+  async newsletterUnsubscribe(@Query("email") email?: string): Promise<string> {
+    if (email && email.includes("@")) {
+      await this.newsletterService.unsubscribe(email);
+    }
+    return `<!doctype html><html><head><meta charset="utf-8"><title>Unsubscribed</title></head><body style="font-family:Arial,sans-serif;text-align:center;padding:60px;color:#333;"><h2>You're unsubscribed</h2><p>You will no longer receive Annix newsletter emails.</p><p><a href="https://annix.co.za">Return to annix.co.za</a></p></body></html>`;
   }
 
   private escapeHtml(text: string): string {

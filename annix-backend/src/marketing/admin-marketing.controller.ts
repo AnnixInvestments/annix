@@ -8,6 +8,7 @@ import {
   Controller,
   Get,
   Inject,
+  Param,
   Post,
   Put,
   Query,
@@ -30,6 +31,12 @@ import { IStorageService, STORAGE_SERVICE, StorageArea } from "../storage/storag
 import { MarketingSiteContentService } from "./marketing-site-content.service";
 import { MarketingTranslationService } from "./marketing-translation.service";
 import type {
+  NewsletterCampaignView,
+  NewsletterStats,
+  NewsletterSubscriberView,
+} from "./newsletter.service";
+import { NewsletterService } from "./newsletter.service";
+import type {
   SocialPlatform,
   SocialPlatformStatus,
   SocialShareResult,
@@ -46,6 +53,17 @@ interface SocialShareBody {
   imageUrl: string;
 }
 
+interface SendNewsletterBody {
+  subject: string;
+  body: string;
+}
+
+interface ScheduleNewsletterBody {
+  subject: string;
+  body: string;
+  scheduledAt: string;
+}
+
 @ApiTags("Admin Marketing")
 @Controller("admin/marketing")
 @UseGuards(AdminAuthGuard)
@@ -55,6 +73,7 @@ export class AdminMarketingController {
     private readonly marketingService: MarketingSiteContentService,
     private readonly translationService: MarketingTranslationService,
     private readonly socialService: SocialPublishingService,
+    private readonly newsletterService: NewsletterService,
     @Inject(STORAGE_SERVICE) private readonly storageService: IStorageService,
   ) {}
 
@@ -141,5 +160,53 @@ export class AdminMarketingController {
     }
     const result = await this.storageService.upload(file, `${StorageArea.ANNIX_MARKETING}/images`);
     return { url: `/api/public/marketing/asset?key=${encodeURIComponent(result.path)}` };
+  }
+
+  @Get("newsletter/subscribers")
+  @ApiOperation({ summary: "List marketing newsletter subscribers" })
+  async newsletterSubscribers(): Promise<NewsletterSubscriberView[]> {
+    return this.newsletterService.listSubscribers();
+  }
+
+  @Get("newsletter/stats")
+  @ApiOperation({ summary: "Newsletter subscriber statistics" })
+  async newsletterStats(): Promise<NewsletterStats> {
+    return this.newsletterService.stats();
+  }
+
+  @Get("newsletter/campaigns")
+  @ApiOperation({ summary: "List newsletter campaigns (sent and scheduled)" })
+  async newsletterCampaigns(): Promise<NewsletterCampaignView[]> {
+    return this.newsletterService.listCampaigns();
+  }
+
+  @Post("newsletter/send")
+  @ApiOperation({ summary: "Send a newsletter to all subscribers immediately" })
+  async newsletterSend(
+    @Body() body: SendNewsletterBody,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<NewsletterCampaignView> {
+    return this.newsletterService.sendNow(body.subject, body.body, req.user?.email ?? null);
+  }
+
+  @Post("newsletter/schedule")
+  @ApiOperation({ summary: "Schedule a newsletter to send at a later time" })
+  async newsletterSchedule(
+    @Body() body: ScheduleNewsletterBody,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<NewsletterCampaignView> {
+    return this.newsletterService.schedule(
+      body.subject,
+      body.body,
+      body.scheduledAt,
+      req.user?.email ?? null,
+    );
+  }
+
+  @Post("newsletter/campaigns/:id/cancel")
+  @ApiOperation({ summary: "Cancel a pending scheduled newsletter" })
+  async newsletterCancel(@Param("id") id: string): Promise<{ ok: boolean }> {
+    await this.newsletterService.cancelCampaign(id);
+    return { ok: true };
   }
 }
