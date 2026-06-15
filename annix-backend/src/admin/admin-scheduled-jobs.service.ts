@@ -145,6 +145,11 @@ const JOB_METADATA: Record<string, { description: string; module: string; defaul
     module: "Annix Orbit",
     defaultCron: "0 8 * * *",
   },
+  "annix-orbit:outreach-dispatch": {
+    description: "Dispatch admin outreach emails scheduled for a future date/time",
+    module: "Annix Orbit",
+    defaultCron: "*/15 * * * *",
+  },
   "annix-orbit:retry-portal-postings": {
     description:
       "Retry failed external job-portal postings with exponential backoff (1h, 6h, 24h, 72h, then abandon)",

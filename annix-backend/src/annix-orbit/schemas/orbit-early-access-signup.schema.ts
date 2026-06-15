@@ -61,6 +61,9 @@ export class OrbitEarlyAccessSignup {
   @Prop({ type: String, required: false, default: null })
   platform: string | null;
 
+  @Prop({ type: String, required: false, default: null })
+  device: string | null;
+
   @Prop({ type: String, required: true })
   referralCode: string;
 
@@ -81,6 +84,9 @@ export class OrbitEarlyAccessSignup {
 
   @Prop({ type: Date, required: false, default: null })
   launchSentAt: Date | null;
+
+  @Prop({ type: Date, required: false, default: null })
+  adminEmailSentAt: Date | null;
 }
 
 export const OrbitEarlyAccessSignupSchema = SchemaFactory.createForClass(OrbitEarlyAccessSignup);

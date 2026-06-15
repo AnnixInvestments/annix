@@ -64,6 +64,7 @@ import { AdminOrbitDelistReportsController } from "./controllers/admin-orbit-del
 import { AdminOrbitDismissReasonsController } from "./controllers/admin-orbit-dismiss-reasons.controller";
 import { AdminOrbitEarlyAccessController } from "./controllers/admin-orbit-early-access.controller";
 import { AdminOrbitJobMarketController } from "./controllers/admin-orbit-job-market.controller";
+import { AdminOrbitOutreachController } from "./controllers/admin-orbit-outreach.controller";
 import { AdminOrbitSeekerController } from "./controllers/admin-orbit-seeker.controller";
 import { AdminOrbitSeekerTestingController } from "./controllers/admin-orbit-seeker-testing.controller";
 import { AdminOrbitTierCapabilitiesController } from "./controllers/admin-orbit-tier-capabilities.controller";
@@ -159,6 +160,8 @@ import { JobSuccessMetric } from "./entities/job-success-metric.entity";
 import { OrbitCredentialType } from "./entities/orbit-credential-type.entity";
 import { OrbitDismissReason } from "./entities/orbit-dismiss-reason.entity";
 import { OrbitEarlyAccessSignup } from "./entities/orbit-early-access-signup.entity";
+import { OrbitOutreachAsset } from "./entities/orbit-outreach-asset.entity";
+import { OrbitOutreachSchedule } from "./entities/orbit-outreach-schedule.entity";
 import { OrbitTierCapability } from "./entities/orbit-tier-capability.entity";
 import { PendingSeekerTier } from "./entities/pending-seeker-tier.entity";
 import { SalaryBenchmark } from "./entities/salary-benchmark.entity";
@@ -307,6 +310,12 @@ import { PostgresOrbitDismissReasonRepository } from "./repositories/orbit-dismi
 import { OrbitEarlyAccessSignupRepository } from "./repositories/orbit-early-access-signup.repository";
 import { MongoOrbitEarlyAccessSignupRepository } from "./repositories/orbit-early-access-signup.repository.mongo";
 import { PostgresOrbitEarlyAccessSignupRepository } from "./repositories/orbit-early-access-signup.repository.postgres";
+import { OrbitOutreachAssetRepository } from "./repositories/orbit-outreach-asset.repository";
+import { MongoOrbitOutreachAssetRepository } from "./repositories/orbit-outreach-asset.repository.mongo";
+import { PostgresOrbitOutreachAssetRepository } from "./repositories/orbit-outreach-asset.repository.postgres";
+import { OrbitOutreachScheduleRepository } from "./repositories/orbit-outreach-schedule.repository";
+import { MongoOrbitOutreachScheduleRepository } from "./repositories/orbit-outreach-schedule.repository.mongo";
+import { PostgresOrbitOutreachScheduleRepository } from "./repositories/orbit-outreach-schedule.repository.postgres";
 import { OrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository";
 import { MongoOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.mongo";
 import { PostgresOrbitTierCapabilityRepository } from "./repositories/orbit-tier-capability.repository.postgres";
@@ -401,6 +410,8 @@ import { JobSuccessMetricSchema } from "./schemas/job-success-metric.schema";
 import { OrbitCredentialTypeSchema } from "./schemas/orbit-credential-type.schema";
 import { OrbitDismissReasonSchema } from "./schemas/orbit-dismiss-reason.schema";
 import { OrbitEarlyAccessSignupSchema } from "./schemas/orbit-early-access-signup.schema";
+import { OrbitOutreachAssetSchema } from "./schemas/orbit-outreach-asset.schema";
+import { OrbitOutreachScheduleSchema } from "./schemas/orbit-outreach-schedule.schema";
 import { OrbitTierCapabilitySchema } from "./schemas/orbit-tier-capability.schema";
 import { PendingSeekerTierSchema } from "./schemas/pending-seeker-tier.schema";
 import { SalaryBenchmarkSchema } from "./schemas/salary-benchmark.schema";
@@ -480,6 +491,7 @@ import { OrbitCredentialTypeService } from "./services/orbit-credential-type.ser
 import { OrbitDismissReasonService } from "./services/orbit-dismiss-reason.service";
 import { OrbitEarlyAccessService } from "./services/orbit-early-access.service";
 import { OrbitJobDelistService } from "./services/orbit-job-delist.service";
+import { OrbitOutreachService } from "./services/orbit-outreach.service";
 import { OrbitTierCapabilityService } from "./services/orbit-tier-capability.service";
 import { PopiaService } from "./services/popia.service";
 import { PortalAdapterRegistry } from "./services/portal-adapter-registry.service";
@@ -562,6 +574,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "OrbitCredentialType", schema: OrbitCredentialTypeSchema },
               { name: "OrbitDismissReason", schema: OrbitDismissReasonSchema },
               { name: "OrbitEarlyAccessSignup", schema: OrbitEarlyAccessSignupSchema },
+              { name: "OrbitOutreachAsset", schema: OrbitOutreachAssetSchema },
+              { name: "OrbitOutreachSchedule", schema: OrbitOutreachScheduleSchema },
               { name: "OrbitTierCapability", schema: OrbitTierCapabilitySchema },
               { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
               { name: "CvEscoSkill", schema: CvEscoSkillSchema },
@@ -725,6 +739,8 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             OrbitCredentialType,
             OrbitDismissReason,
             OrbitEarlyAccessSignup,
+            OrbitOutreachAsset,
+            OrbitOutreachSchedule,
             OrbitTierCapability,
             SeekerUsageCounter,
             CvEscoSkill,
@@ -819,6 +835,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     AdminOrbitCredentialTypesController,
     AdminOrbitDismissReasonsController,
     AdminOrbitEarlyAccessController,
+    AdminOrbitOutreachController,
     PublicEarlyAccessController,
     AdminOrbitDelistReportsController,
     AdminOrbitTierCapabilitiesController,
@@ -913,6 +930,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
     OrbitCredentialTypeService,
     OrbitDismissReasonService,
     OrbitEarlyAccessService,
+    OrbitOutreachService,
     OrbitJobDelistService,
     OrbitTierCapabilityService,
     SeekerTelemetryService,
@@ -923,6 +941,16 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       OrbitEarlyAccessSignupRepository,
       PostgresOrbitEarlyAccessSignupRepository,
       MongoOrbitEarlyAccessSignupRepository,
+    ),
+    repositoryProvider(
+      OrbitOutreachAssetRepository,
+      PostgresOrbitOutreachAssetRepository,
+      MongoOrbitOutreachAssetRepository,
+    ),
+    repositoryProvider(
+      OrbitOutreachScheduleRepository,
+      PostgresOrbitOutreachScheduleRepository,
+      MongoOrbitOutreachScheduleRepository,
     ),
     repositoryProvider(
       SeekerTestPhaseRepository,

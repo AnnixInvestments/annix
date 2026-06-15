@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  OrbitEmailComposer,
+  type OrbitEmailComposerRecipient,
+} from "@/app/components/orbit/OrbitEmailComposer";
 import { adminApiClient, type OrbitEarlyAccessBucket } from "@/app/lib/api/adminApi";
 import { fromISO } from "@/app/lib/datetime";
 import { useAdminOrbitEarlyAccessList, useAdminOrbitEarlyAccessStats } from "@/app/lib/query/hooks";
@@ -66,7 +70,19 @@ export default function OrbitEarlyAccessAdminPage() {
   const topReferrers = stats ? stats.topReferrers : [];
 
   const rawRows = listQuery.data;
-  const rows = rawRows ? rawRows : [];
+  const rows = useMemo(() => (rawRows ? rawRows : []), [rawRows]);
+  const [composerOpen, setComposerOpen] = useState(false);
+
+  const recipients = useMemo<OrbitEmailComposerRecipient[]>(
+    () =>
+      rows.map((row) => ({
+        id: row.id,
+        email: row.email,
+        firstName: row.firstName,
+        device: row.device,
+      })),
+    [rows],
+  );
 
   const handleExport = async () => {
     setExporting(true);
@@ -81,22 +97,40 @@ export default function OrbitEarlyAccessAdminPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900 dark:text-white">
+          <h1 className="text-2xl font-semibold text-white [text-shadow:0_1px_3px_rgba(0,0,0,0.6)]">
             Orbit Early Access
           </h1>
-          <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+          <p className="mt-1 text-sm text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
             Pre-launch waiting list — your deduplicated marketing list of interested seekers.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={handleExport}
-          disabled={exporting || rows.length === 0}
-          className="rounded-lg bg-[#323288] px-4 py-2 text-sm font-medium text-white hover:bg-[#3d3da3] disabled:opacity-50"
-        >
-          {exporting ? "Exporting…" : "Export CSV"}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setComposerOpen(true)}
+            disabled={rows.length === 0}
+            className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-[#323288] shadow-sm ring-1 ring-[#323288]/20 hover:bg-gray-100 disabled:opacity-50"
+          >
+            Compose email
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting || rows.length === 0}
+            className="rounded-lg bg-[#323288] px-4 py-2 text-sm font-medium text-white hover:bg-[#3d3da3] disabled:opacity-50"
+          >
+            {exporting ? "Exporting…" : "Export CSV"}
+          </button>
+        </div>
       </div>
+
+      <OrbitEmailComposer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        recipients={recipients}
+        trackEarlyAccess={true}
+        contextLabel="Early Access"
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Total signups" value={total} />
@@ -165,6 +199,12 @@ export default function OrbitEarlyAccessAdminPage() {
                   const joined = row.createdAt
                     ? fromISO(row.createdAt).toFormat("yyyy/MM/dd")
                     : "—";
+                  const currentRole = row.currentRole;
+                  const industry = row.industry;
+                  const yearsExperience = row.yearsExperience;
+                  const ageRange = row.ageRange;
+                  const campaign = row.campaign;
+                  const referredBy = row.referredBy;
                   return (
                     <tr key={row.id} className="hover:bg-gray-50 dark:hover:bg-slate-700/30">
                       <td className="px-3 py-2 font-semibold text-gray-900 dark:text-gray-200">
@@ -178,26 +218,26 @@ export default function OrbitEarlyAccessAdminPage() {
                         {row.mobileNumber}
                       </td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
-                        {row.currentRole || "—"}
+                        {currentRole || "—"}
                       </td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
-                        {row.industry || "—"}
+                        {industry || "—"}
                       </td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                        {row.yearsExperience || "—"}
+                        {yearsExperience || "—"}
                       </td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">
-                        {row.ageRange || "—"}
+                        {ageRange || "—"}
                       </td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300 whitespace-nowrap">
                         {ethnicLabel(row.ethnicBackground)}
                       </td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300">{row.source}</td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
-                        {row.campaign || "—"}
+                        {campaign || "—"}
                       </td>
                       <td className="px-3 py-2 text-gray-600 dark:text-gray-300">
-                        {row.referredBy || "—"}
+                        {referredBy || "—"}
                       </td>
                       <td className="px-3 py-2 text-gray-900 dark:text-gray-200">
                         {row.referralCount}

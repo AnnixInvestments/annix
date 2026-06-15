@@ -21,6 +21,8 @@ export interface EarlyAccessSignupInput {
   source?: string | null;
   campaign?: string | null;
   platform?: string | null;
+  device?: string | null;
+  userAgent?: string | null;
   referredBy?: string | null;
 }
 
@@ -57,6 +59,29 @@ function normalizeMobile(mobile: string): string {
   return mobile.replace(/[^\d+]/g, "");
 }
 
+function inferDevice(userAgent: string | null | undefined): string | null {
+  if (!userAgent) {
+    return null;
+  }
+  const ua = userAgent.toLowerCase();
+  const isApple = ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod");
+  if (isApple) {
+    return "iphone";
+  }
+  if (ua.includes("android")) {
+    return "android";
+  }
+  return null;
+}
+
+function resolveDevice(
+  explicit: string | null | undefined,
+  userAgent: string | null | undefined,
+): string | null {
+  const chosen = explicit === "iphone" || explicit === "android" ? explicit : null;
+  return chosen ?? inferDevice(userAgent);
+}
+
 function bucket(values: Array<string | null>): CountBucket[] {
   const counts = new Map<string, number>();
   for (const raw of values) {
@@ -90,10 +115,12 @@ export class OrbitEarlyAccessService {
       ? null
       : await this.repo.findByMobileNormalized(mobileNormalized);
     const existing = existingByEmail ?? existingByMobile;
+    const device = resolveDevice(input.device, input.userAgent);
 
     if (existing) {
       existing.firstName = input.firstName;
       existing.lastName = input.lastName;
+      existing.device = device ?? existing.device;
       existing.currentRole = input.currentRole ?? existing.currentRole;
       existing.industry = input.industry ?? existing.industry;
       existing.yearsExperience = input.yearsExperience ?? existing.yearsExperience;
@@ -125,6 +152,7 @@ export class OrbitEarlyAccessService {
       source: input.source && input.source.trim() !== "" ? input.source : "direct",
       campaign: input.campaign ?? null,
       platform: input.platform ?? null,
+      device,
       referralCode,
       referredBy: input.referredBy ?? null,
       referralCount: 0,

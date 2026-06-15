@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, Post } from "@nestjs/common";
+import { BadRequestException, Body, Controller, Get, Headers, Post } from "@nestjs/common";
 import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
 import { EE_POPULATION_GROUP_VALUES } from "../dto/ee-disclosure.dto";
 import { OrbitEarlyAccessService } from "../services/orbit-early-access.service";
@@ -64,6 +64,10 @@ class EarlyAccessSignupDto {
   platform?: string;
 
   @IsOptional()
+  @IsIn(["iphone", "android"])
+  device?: string;
+
+  @IsOptional()
   @IsString()
   @MaxLength(24)
   referredBy?: string;
@@ -80,7 +84,7 @@ export class PublicEarlyAccessController {
   }
 
   @Post()
-  async signup(@Body() dto: EarlyAccessSignupDto) {
+  async signup(@Body() dto: EarlyAccessSignupDto, @Headers("user-agent") userAgent?: string) {
     if (!dto.consentToContact) {
       throw new BadRequestException("Consent is required to join the early-access list.");
     }
@@ -98,6 +102,8 @@ export class PublicEarlyAccessController {
       source: dto.source ?? null,
       campaign: dto.campaign ?? null,
       platform: dto.platform ?? null,
+      device: dto.device ?? null,
+      userAgent: userAgent ?? null,
       referredBy: dto.referredBy ?? null,
     });
   }

@@ -1226,6 +1226,49 @@ class AdminApiClient {
     );
   }
 
+  async orbitOutreachAssets(): Promise<OrbitOutreachAsset[]> {
+    return this.request("/admin/annix-orbit/outreach/assets");
+  }
+
+  async uploadOrbitOutreachAsset(
+    slot: string,
+    label: string | null,
+    file: File,
+  ): Promise<OrbitOutreachAsset> {
+    return apiClient.uploadFile<OrbitOutreachAsset>("/admin/annix-orbit/outreach/assets", file, {
+      slot,
+      ...(label ? { label } : {}),
+    });
+  }
+
+  async deleteOrbitOutreachAsset(id: string): Promise<{ ok: boolean }> {
+    return this.request(`/admin/annix-orbit/outreach/assets/${id}`, { method: "DELETE" });
+  }
+
+  async sendOrbitOutreach(payload: OrbitOutreachSendPayload): Promise<OrbitOutreachSendResult> {
+    return this.request("/admin/annix-orbit/outreach/send", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async scheduleOrbitOutreach(
+    payload: OrbitOutreachSchedulePayload,
+  ): Promise<OrbitOutreachScheduleView> {
+    return this.request("/admin/annix-orbit/outreach/schedule", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    });
+  }
+
+  async orbitOutreachSchedules(): Promise<OrbitOutreachScheduleView[]> {
+    return this.request("/admin/annix-orbit/outreach/schedules");
+  }
+
+  async cancelOrbitOutreachSchedule(id: string): Promise<{ ok: boolean }> {
+    return this.request(`/admin/annix-orbit/outreach/schedules/${id}`, { method: "DELETE" });
+  }
+
   async orbitJobMarketDuplicates(limit?: number): Promise<DuplicateJobPair[]> {
     const query = limit ? `?limit=${limit}` : "";
     return this.request(`/admin/annix-orbit/job-market/duplicates${query}`);
@@ -1657,7 +1700,58 @@ export interface OrbitEarlyAccessRow {
   referralCode: string;
   referredBy: string | null;
   referralCount: number;
+  device: string | null;
+  adminEmailSentAt: string | null;
   createdAt: string;
+}
+
+export interface OrbitOutreachAsset {
+  id: string;
+  slot: string;
+  label: string | null;
+  originalFilename: string;
+  contentType: string;
+  fileSize: number;
+  url: string;
+}
+
+export interface OrbitOutreachRecipient {
+  email: string;
+  firstName?: string | null;
+  device?: string | null;
+}
+
+export interface OrbitOutreachSendPayload {
+  subject: string;
+  body: string;
+  environment: "prod" | "test";
+  recipients: OrbitOutreachRecipient[];
+  includeDeviceGuide: boolean;
+  includeFbwGuide: boolean;
+  extraAssetIds: string[];
+  trackEarlyAccess: boolean;
+}
+
+export interface OrbitOutreachSendResult {
+  total: number;
+  sent: number;
+  failed: number;
+  failures: string[];
+}
+
+export interface OrbitOutreachSchedulePayload extends OrbitOutreachSendPayload {
+  scheduledAt: string;
+}
+
+export interface OrbitOutreachScheduleView {
+  id: string;
+  subject: string;
+  environment: string;
+  recipientCount: number;
+  scheduledAt: string;
+  status: string;
+  sentCount: number;
+  failedCount: number;
 }
 
 export interface OrbitEarlyAccessBucket {

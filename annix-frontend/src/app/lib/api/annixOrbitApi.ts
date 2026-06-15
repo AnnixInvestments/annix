@@ -22,6 +22,7 @@ export interface EarlyAccessSignupPayload {
   source?: string;
   campaign?: string;
   platform?: string;
+  device?: "iphone" | "android";
   referredBy?: string;
 }
 

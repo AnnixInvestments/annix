@@ -63,6 +63,9 @@ export class OrbitEarlyAccessSignup {
   @Column({ name: "platform", type: "varchar", length: 80, nullable: true })
   platform: string | null;
 
+  @Column({ name: "device", type: "varchar", length: 20, nullable: true })
+  device: string | null;
+
   @Column({ name: "referral_code", type: "varchar", length: 24 })
   referralCode: string;
 
@@ -83,6 +86,9 @@ export class OrbitEarlyAccessSignup {
 
   @Column({ name: "launch_sent_at", type: "timestamptz", nullable: true })
   launchSentAt: Date | null;
+
+  @Column({ name: "admin_email_sent_at", type: "timestamptz", nullable: true })
+  adminEmailSentAt: Date | null;
 
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;

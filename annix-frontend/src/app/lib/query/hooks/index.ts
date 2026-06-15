@@ -85,6 +85,15 @@ export {
   useAdminVetPendingOrbitJobs,
 } from "./admin/useAdminOrbitJobMarket";
 export {
+  useAdminOrbitOutreachAssets,
+  useAdminOrbitOutreachSchedules,
+  useCancelOrbitOutreachSchedule,
+  useDeleteOrbitOutreachAsset,
+  useScheduleOrbitOutreach,
+  useSendOrbitOutreach,
+  useUploadOrbitOutreachAsset,
+} from "./admin/useAdminOrbitOutreach";
+export {
   useAdminCreateSeekerTestingIssue,
   useAdminCreateSeekerTestingPhase,
   useAdminOrbitSeekerTestingErrorsLatency,

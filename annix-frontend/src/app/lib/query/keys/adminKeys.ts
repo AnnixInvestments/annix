@@ -109,6 +109,11 @@ export const adminKeys = {
     stats: () => [...adminKeys.orbitEarlyAccess.all, "stats"] as const,
     list: () => [...adminKeys.orbitEarlyAccess.all, "list"] as const,
   },
+  orbitOutreach: {
+    all: ["admin", "orbitOutreach"] as const,
+    assets: () => [...adminKeys.orbitOutreach.all, "assets"] as const,
+    schedules: () => [...adminKeys.orbitOutreach.all, "schedules"] as const,
+  },
   platformLimits: {
     all: ["admin", "platformLimits"] as const,
     breakdown: (cardId: string) => [...adminKeys.platformLimits.all, "breakdown", cardId] as const,

@@ -1,8 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
+import {
+  OrbitEmailComposer,
+  type OrbitEmailComposerRecipient,
+} from "@/app/components/orbit/OrbitEmailComposer";
 import { useToast } from "@/app/components/Toast";
 import type { OrbitUserRow, OrbitUserType } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -74,7 +78,7 @@ export default function OrbitUsersPage() {
   const resend = useAdminResendOrbitUserInvite();
 
   const data = usersQuery.data;
-  const rows = data ? data.rows : [];
+  const rows = useMemo(() => (data ? data.rows : []), [data]);
   const total = data ? data.total : 0;
   const isLoading = usersQuery.isLoading;
   const invitePending = invite.isPending;
@@ -82,7 +86,19 @@ export default function OrbitUsersPage() {
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<OrbitUserRow | null>(null);
+
+  const composerRecipients = useMemo<OrbitEmailComposerRecipient[]>(
+    () =>
+      rows.map((row) => ({
+        id: String(row.userId),
+        email: row.email,
+        firstName: row.firstName,
+        device: null,
+      })),
+    [rows],
+  );
   const [email, setEmail] = useState("");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -227,14 +243,32 @@ export default function OrbitUsersPage() {
             and students. Invited users receive an email to set their password and sign in.
           </p>
         </div>
-        <button
-          type="button"
-          onClick={openInvite}
-          className="shrink-0 px-4 py-2 text-sm font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700"
-        >
-          + Invite user
-        </button>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setComposerOpen(true)}
+            disabled={rows.length === 0}
+            className="px-4 py-2 text-sm font-medium rounded-lg border border-violet-600 text-violet-600 hover:bg-violet-50 disabled:opacity-50"
+          >
+            Compose email
+          </button>
+          <button
+            type="button"
+            onClick={openInvite}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-violet-600 text-white hover:bg-violet-700"
+          >
+            + Invite user
+          </button>
+        </div>
       </div>
+
+      <OrbitEmailComposer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        recipients={composerRecipients}
+        trackEarlyAccess={false}
+        contextLabel="Orbit users (this page)"
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         {TYPE_FILTERS.map((filter) => {

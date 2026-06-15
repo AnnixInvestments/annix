@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useTheme } from "@/app/components/ThemeProvider";
 import { annixOrbitApiClient, type EarlyAccessSignupPayload } from "@/app/lib/api/annixOrbitApi";
 import { useBrandingContext } from "@/app/lib/branding/BrandingProvider";
@@ -81,7 +81,17 @@ function RegisterInterestContent() {
   const [yearsExperience, setYearsExperience] = useState("");
   const [ageRange, setAgeRange] = useState("");
   const [ethnicBackground, setEthnicBackground] = useState("");
+  const [device, setDevice] = useState<"" | "iphone" | "android">("");
   const [consent, setConsent] = useState(false);
+
+  useEffect(() => {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("iphone") || ua.includes("ipad") || ua.includes("ipod")) {
+      setDevice("iphone");
+    } else if (ua.includes("android")) {
+      setDevice("android");
+    }
+  }, []);
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [queuePosition, setQueuePosition] = useState<number | null>(null);
   const [queueTotal, setQueueTotal] = useState(0);
@@ -123,6 +133,7 @@ function RegisterInterestContent() {
       yearsExperience: yearsExperience || undefined,
       ageRange: ageRange || undefined,
       ethnicBackground: ethnicBackground || undefined,
+      device: device || undefined,
       consentToContact: consent,
       source: source || undefined,
       campaign: campaign || undefined,
@@ -443,6 +454,32 @@ function RegisterInterestContent() {
             Age &amp; background are optional and used only to make sure our early-access testing is
             fair and representative (Employment Equity).
           </p>
+
+          <div className="mb-5">
+            <span className={labelClass}>Which phone do you use?</span>
+            <div className="grid grid-cols-2 gap-3">
+              {(["iphone", "android"] as const).map((option) => {
+                const isActive = device === option;
+                return (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setDevice(option)}
+                    className={`rounded-lg border px-4 py-3 text-sm font-medium transition ${
+                      isActive
+                        ? "border-[var(--brand-accent,#FF8A00)] bg-[var(--brand-accent,#FF8A00)]/15 text-white"
+                        : "border-white/15 bg-white/5 text-white/70 hover:border-white/30"
+                    }`}
+                  >
+                    {option === "iphone" ? "iPhone (iOS)" : "Android"}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-white/40 mt-1">
+              So we can send you the right install instructions for your device.
+            </p>
+          </div>
 
           <label className="flex items-start gap-3 mb-5 text-sm text-white/75 cursor-pointer">
             <input
