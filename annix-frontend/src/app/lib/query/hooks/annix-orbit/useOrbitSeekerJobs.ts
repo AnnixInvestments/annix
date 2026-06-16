@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   annixOrbitApiClient,
   type PublicJob,
@@ -101,6 +101,9 @@ export function useOrbitSeekerJobFacets(enabled: boolean, filters: SeekerRecomme
     queryFn: () => annixOrbitApiClient.seekerJobFacets(filters),
     enabled,
     staleTime: 60 * 1000,
+    // Keep the current options on screen while the cascade refetches so the
+    // open dropdown doesn't blank out for a frame each time a box is ticked.
+    placeholderData: keepPreviousData,
     ...SEEKER_JOBS_QUERY_POLICY,
   });
 }

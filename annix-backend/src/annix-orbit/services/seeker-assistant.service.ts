@@ -12,7 +12,14 @@ const MAX_HISTORY = 12;
 const ACTION_TYPES = new Set(["navigate", "highlight", "navigate-and-highlight", "walkthrough"]);
 
 // Predefined, multi-step guided tours the frontend runs event-driven.
-const KNOWN_WALKTHROUGHS = new Set(["apply-for-a-job", "finish-your-profile", "book-an-interview"]);
+const KNOWN_WALKTHROUGHS = new Set([
+  "apply-for-a-job",
+  "finish-your-profile",
+  "book-an-interview",
+  "sync-calendar",
+  "update-application-status",
+  "choose-a-plan",
+]);
 
 // Only on-screen anchors that actually exist may be pointed at.
 // nav-* are the persistent top-bar tabs; the rest are in-page anchors used as
@@ -27,6 +34,18 @@ const KNOWN_TARGETS = new Set([
   "nav-plans",
   "nav-help",
   "jobs-apply-card",
+  "jobs-filters",
+  "jobs-filter-province",
+  "jobs-filter-city",
+  "jobs-filter-category",
+  "jobs-filter-search",
+  "application-status",
+  "interview-sync-button",
+  "interview-add-button",
+  "interview-application-select",
+  "interview-date",
+  "interview-submit",
+  "interview-calendar",
   "cv-section",
   "nix-section",
   "qualifications",

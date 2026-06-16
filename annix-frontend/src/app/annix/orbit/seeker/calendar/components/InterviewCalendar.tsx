@@ -11,6 +11,7 @@ import { useConfirm } from "@/app/lib/hooks/useConfirm";
 import {
   useOrbitCreateSeekerInterviewEvent,
   useOrbitDeleteSeekerInterviewEvent,
+  useOrbitSeekerApplications,
   useOrbitSeekerInterviewEvents,
   useOrbitUpdateSeekerInterviewEvent,
 } from "@/app/lib/query/hooks";
@@ -90,12 +91,19 @@ export function InterviewCalendar(props: {
   const { alert, AlertDialog } = useAlert();
   const { confirm, ConfirmDialog } = useConfirm();
   const eventsQuery = useOrbitSeekerInterviewEvents();
+  const applicationsQuery = useOrbitSeekerApplications();
   const createMutation = useOrbitCreateSeekerInterviewEvent();
   const updateMutation = useOrbitUpdateSeekerInterviewEvent();
   const deleteMutation = useOrbitDeleteSeekerInterviewEvent();
 
   const eventsData = eventsQuery.data;
   const selfEvents = useMemo(() => (eventsData ? eventsData : []), [eventsData]);
+
+  const applicationsData = applicationsQuery.data;
+  const applications = useMemo(
+    () => (applicationsData ? applicationsData : []),
+    [applicationsData],
+  );
 
   const [monthAnchor, setMonthAnchor] = useState(() => now().startOf("month"));
   const [form, setForm] = useState<EventFormState | null>(null);
@@ -304,6 +312,7 @@ export function InterviewCalendar(props: {
         </div>
         <button
           type="button"
+          data-nix-target="interview-add-button"
           onClick={() => {
             const today = now().toISODate();
             openCreateForDay(today ? today : "");
@@ -320,7 +329,10 @@ export function InterviewCalendar(props: {
         ))}
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-gray-100 rounded-lg overflow-hidden">
+      <div
+        data-nix-target="interview-calendar"
+        className="grid grid-cols-7 gap-px bg-gray-100 rounded-lg overflow-hidden"
+      >
         {gridDays.map((day) => {
           const dayIso = day.toISODate();
           const dayKey = dayIso ? dayIso : "";
@@ -388,6 +400,7 @@ export function InterviewCalendar(props: {
           onSubmit={handleSubmit}
           title={editing ? "Edit interview" : "Add interview"}
           submitLabel={editing ? "Save changes" : "Add interview"}
+          submitDataNixTarget="interview-submit"
           loading={saving}
           headerRight={
             editing ? (
@@ -403,8 +416,42 @@ export function InterviewCalendar(props: {
           }
         >
           <div className="space-y-4">
+            {applications.length > 0 ? (
+              <label className="block" data-nix-target="interview-application-select">
+                <span className="text-sm text-gray-700">From your applications</span>
+                <select
+                  value={form.applyClickId != null ? String(form.applyClickId) : ""}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === "") {
+                      updateForm({ applyClickId: null });
+                      return;
+                    }
+                    const appId = Number.parseInt(value, 10);
+                    const application = applications.find((a) => a.id === appId);
+                    if (application) {
+                      updateForm({
+                        applyClickId: application.id,
+                        companyName: application.company ? application.company : "",
+                        roleTitle: application.title,
+                      });
+                    }
+                  }}
+                  className={inputClass}
+                >
+                  <option value="">Pick a job you applied for (or enter manually below)</option>
+                  {applications.map((application) => (
+                    <option key={application.id} value={String(application.id)}>
+                      {application.company
+                        ? `${application.title} — ${application.company}`
+                        : application.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <div className="grid grid-cols-2 gap-3">
-              <label className="block">
+              <label className="block" data-nix-target="interview-date">
                 <span className="text-sm text-gray-700">Date</span>
                 <DateInput
                   value={form.dateStr}

@@ -139,14 +139,14 @@ export class AdminOrbitSeekerTestingController {
       participantId: null,
       candidateId: null,
       label: prospect.name ? `${prospect.name} (${prospect.email})` : prospect.email,
-      registeredAt: prospect.hasLoggedIn ? prospect.lastLoginAt : null,
+      registeredAt: prospect.isRegistered ? prospect.invitedAt : null,
       cvUploadedAt: null,
       careerScoreGeneratedAt: null,
       firstJobsViewedAt: null,
       timeToFirstValueSeconds: null,
-      completedSteps: prospect.hasLoggedIn ? 1 : 0,
+      completedSteps: prospect.hasLoggedIn || prospect.isRegistered ? 1 : 0,
       lastActiveAt: prospect.lastLoginAt,
-      status: prospect.hasLoggedIn ? "registered" : "invited",
+      status: prospect.isRegistered || prospect.hasLoggedIn ? "registered" : "invited",
     }));
     return [...progressRows, ...prospectRows];
   }

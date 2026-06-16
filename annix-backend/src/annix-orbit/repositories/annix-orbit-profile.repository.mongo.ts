@@ -149,4 +149,13 @@ export class MongoAnnixOrbitProfileRepository
     const filter = userType ? { userType } : {};
     return this.documents.countDocuments(filter).exec();
   }
+
+  async findIndividualSeekers(): Promise<AnnixOrbitProfile[]> {
+    const docs = await this.documents
+      .find({ userType: { $in: [AnnixOrbitUserType.INDIVIDUAL, AnnixOrbitUserType.STUDENT] } })
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
 }

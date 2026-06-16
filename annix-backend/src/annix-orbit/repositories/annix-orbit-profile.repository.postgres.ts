@@ -104,4 +104,11 @@ export class PostgresAnnixOrbitProfileRepository
   adminCount(userType: AnnixOrbitUserType | null): Promise<number> {
     return this.repository.count({ where: userType ? { userType } : {} });
   }
+
+  findIndividualSeekers(): Promise<AnnixOrbitProfile[]> {
+    return this.repository.find({
+      where: { userType: In([AnnixOrbitUserType.INDIVIDUAL, AnnixOrbitUserType.STUDENT]) },
+      order: { createdAt: "DESC" },
+    });
+  }
 }

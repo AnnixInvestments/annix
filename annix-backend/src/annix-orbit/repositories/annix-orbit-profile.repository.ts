@@ -20,4 +20,8 @@ export abstract class AnnixOrbitProfileRepository extends CrudRepository<AnnixOr
     take: number;
   }): Promise<AnnixOrbitProfile[]>;
   abstract adminCount(userType: AnnixOrbitUserType | null): Promise<number>;
+  // All registered job-seeker profiles (individual + student). Surfaces
+  // self-registered seekers on the admin Seekers / seeker-testing pages even
+  // when they have no candidate record (no CV uploaded) or app-access row.
+  abstract findIndividualSeekers(): Promise<AnnixOrbitProfile[]>;
 }

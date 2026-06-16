@@ -2,7 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import {
+  OrbitEmailComposer,
+  type OrbitEmailComposerRecipient,
+} from "@/app/components/orbit/OrbitEmailComposer";
 import { useToast } from "@/app/components/Toast";
 import { adminApiClient } from "@/app/lib/api/adminApi";
 import { formatDateZA } from "@/app/lib/datetime";
@@ -31,10 +35,30 @@ export default function OrbitSeekersPage() {
   const [appliedSearch, setAppliedSearch] = useState("");
   const [page, setPage] = useState(1);
   const [isExporting, setIsExporting] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const seekersQuery = useAdminOrbitSeekers({ search: appliedSearch, page, limit: PAGE_SIZE });
   const queryData = seekersQuery.data;
   const seekers = queryData ? queryData.seekers : [];
+
+  // Bulk-email recipients = every seeker on the current view that has an email.
+  const composerRecipients = useMemo<OrbitEmailComposerRecipient[]>(
+    () =>
+      seekers
+        .filter((seeker) => Boolean(seeker.email))
+        .map((seeker) => {
+          const seekerName = seeker.name;
+          return {
+            id: String(seeker.id),
+            email: seeker.email as string,
+            firstName: seekerName ?? null,
+            lastName: null,
+            mobile: null,
+            device: null,
+          };
+        }),
+    [seekers],
+  );
   const total = queryData ? queryData.total : 0;
   const isLoading = seekersQuery.isLoading;
   const totalPages = total > 0 ? Math.ceil(total / PAGE_SIZE) : 1;
@@ -119,6 +143,14 @@ export default function OrbitSeekersPage() {
         <div className="flex items-center gap-2">
           <button
             type="button"
+            onClick={() => setComposerOpen(true)}
+            disabled={composerRecipients.length === 0}
+            className="px-4 py-2 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50 whitespace-nowrap"
+          >
+            Compose email
+          </button>
+          <button
+            type="button"
             onClick={handleExport}
             disabled={isExporting}
             className="px-4 py-2 text-sm font-medium rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
@@ -133,6 +165,14 @@ export default function OrbitSeekersPage() {
           </Link>
         </div>
       </div>
+
+      <OrbitEmailComposer
+        open={composerOpen}
+        onClose={() => setComposerOpen(false)}
+        recipients={composerRecipients}
+        trackEarlyAccess={false}
+        contextLabel="Orbit seekers (this page)"
+      />
 
       <form onSubmit={handleSearch} className="flex gap-2">
         <input

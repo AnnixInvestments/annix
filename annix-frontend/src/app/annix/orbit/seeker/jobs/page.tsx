@@ -146,6 +146,20 @@ export default function SeekerJobsPage() {
     return next;
   }, [appliedFilters]);
 
+  // Dropdown facets cascade off the pending selection so the city list opens up
+  // as soon as provinces are ticked — before Search is pressed. The free-text
+  // search is excluded so typing doesn't refetch facets on every keystroke.
+  const facetFilters = useMemo<SeekerRecommendedFilters>(() => {
+    const next: SeekerRecommendedFilters = {};
+    if (filters.providers.length > 0) next.providers = filters.providers;
+    if (filters.region) next.region = filters.region;
+    if (filters.provinces.length > 0) next.provinces = filters.provinces;
+    if (filters.cities.length > 0) next.cities = filters.cities;
+    if (filters.category) next.category = filters.category;
+    if (filters.minSalary) next.minSalary = filters.minSalary;
+    return next;
+  }, [filters]);
+
   const recommendedRefetchInterval: number | false =
     consentEnabled && !filtersActive ? 120_000 : false;
   const recommendedQuery = useOrbitSeekerRecommendedJobs(consentEnabled, {
@@ -254,8 +268,10 @@ export default function SeekerJobsPage() {
   // Facets: every dropdown lists only the provinces/cities/categories/sources that
   // actually have a match in the seeker's set, recomputed as filters narrow (each
   // facet excludes its own dimension server-side, so a choice never empties its
-  // own dropdown and no zero-result option is ever offered).
-  const facetsQuery = useOrbitSeekerJobFacets(consentEnabled && !nixSearching, serverFilters);
+  // own dropdown and no zero-result option is ever offered). Driven by the PENDING
+  // selection (not yet-applied), so picking provinces cascades the city list
+  // immediately — you don't have to press Search before refining by city.
+  const facetsQuery = useOrbitSeekerJobFacets(consentEnabled && !nixSearching, facetFilters);
   const facets = facetsQuery.data;
   const providers = facets ? facets.sources : [];
   const provinceOptions = facets ? facets.provinces : [];
@@ -909,20 +925,22 @@ export default function SeekerJobsPage() {
         </div>
       )}
 
-      <SeekerJobFilters
-        state={filters}
-        applied={appliedFilters}
-        onChange={setFilters}
-        onApply={(next) => {
-          setFilters(next);
-          setAppliedFilters(next);
-        }}
-        providers={providers}
-        regions={regionOptions}
-        provinces={provinceOptions}
-        cities={cityOptions}
-        categories={categoryOptions}
-      />
+      <div data-nix-target="jobs-filters">
+        <SeekerJobFilters
+          state={filters}
+          applied={appliedFilters}
+          onChange={setFilters}
+          onApply={(next) => {
+            setFilters(next);
+            setAppliedFilters(next);
+          }}
+          providers={providers}
+          regions={regionOptions}
+          provinces={provinceOptions}
+          cities={cityOptions}
+          categories={categoryOptions}
+        />
+      </div>
 
       {filtered.length === 0 ? (
         <div className="bg-white rounded-xl border border-gray-200 p-8 text-center text-gray-500">
@@ -930,20 +948,24 @@ export default function SeekerJobsPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {filtered.map((match) => (
-            <SeekerJobCard
+          {filtered.map((match, index) => (
+            <div
               key={match.matchId}
-              match={match}
-              onApply={handleApply}
-              onDismiss={handleDismiss}
-              dismissReasons={dismissReasons}
-              onMuteCompany={handleMuteCompany}
-              onMuteCategory={handleMuteCategory}
-              onReportDelisted={handleReportDelisted}
-              isDismissing={
-                dismissMutation.isPending && dismissMutation.variables?.matchId === match.matchId
-              }
-            />
+              {...(index === 0 ? { "data-nix-target": "jobs-apply-card" } : {})}
+            >
+              <SeekerJobCard
+                match={match}
+                onApply={handleApply}
+                onDismiss={handleDismiss}
+                dismissReasons={dismissReasons}
+                onMuteCompany={handleMuteCompany}
+                onMuteCategory={handleMuteCategory}
+                onReportDelisted={handleReportDelisted}
+                isDismissing={
+                  dismissMutation.isPending && dismissMutation.variables?.matchId === match.matchId
+                }
+              />
+            </div>
           ))}
         </div>
       )}

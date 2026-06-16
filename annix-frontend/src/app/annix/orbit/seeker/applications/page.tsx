@@ -469,6 +469,7 @@ function ApplicationCard(props: ApplicationCardProps) {
         </div>
         <div className="flex items-center gap-2 sm:shrink-0">
           <select
+            data-nix-target="application-status"
             aria-label={`Status for ${app.title}`}
             value={app.status}
             disabled={props.statusPending}

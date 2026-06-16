@@ -86,6 +86,7 @@ export function CalendarSyncButton() {
       {AlertDialog}
       <button
         type="button"
+        data-nix-target="interview-sync-button"
         onClick={() => setOpen(true)}
         className="px-3 py-1.5 text-sm font-medium rounded-lg border border-[var(--brand-navbar-100,#e0e0f5)] bg-white text-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-50,#f0f0fc)]"
       >

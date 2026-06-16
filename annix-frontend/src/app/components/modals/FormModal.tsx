@@ -17,6 +17,7 @@ export interface FormModalProps {
   maxWidth?: string;
   hideFooter?: boolean;
   headerRight?: ReactNode;
+  submitDataNixTarget?: string;
   children: ReactNode;
 }
 
@@ -120,6 +121,9 @@ export function FormModal(props: FormModalProps) {
               type="button"
               onClick={props.onSubmit}
               disabled={loading || submitDisabled}
+              {...(props.submitDataNixTarget
+                ? { "data-nix-target": props.submitDataNixTarget }
+                : {})}
               className={`px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 disabled:opacity-50 ${loading || submitDisabled ? "cursor-not-allowed" : ""}`}
             >
               {loading ? "Saving..." : submitLabel}

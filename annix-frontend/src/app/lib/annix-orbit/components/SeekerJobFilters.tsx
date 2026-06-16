@@ -63,6 +63,7 @@ function MultiSelectDropdown(props: {
   selected: string[];
   onChange: (next: string[]) => void;
   disabled?: boolean;
+  dataNixTarget?: string;
 }) {
   const { selected, options, onChange } = props;
   const [open, setOpen] = useState(false);
@@ -103,7 +104,11 @@ function MultiSelectDropdown(props: {
         : `${selected.length} ${props.pluralLabel}`;
 
   return (
-    <div ref={containerRef} className="relative">
+    <div
+      ref={containerRef}
+      className="relative"
+      {...(props.dataNixTarget ? { "data-nix-target": props.dataNixTarget } : {})}
+    >
       <button
         type="button"
         aria-label={props.ariaLabel}
@@ -249,6 +254,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         ) : null}
 
         <MultiSelectDropdown
+          dataNixTarget="jobs-filter-province"
           ariaLabel="Filter by province"
           placeholder="All provinces"
           pluralLabel="provinces"
@@ -260,6 +266,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         />
 
         <MultiSelectDropdown
+          dataNixTarget="jobs-filter-city"
           ariaLabel="Filter by city"
           placeholder="All cities"
           pluralLabel="cities"
@@ -270,6 +277,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         />
 
         <select
+          data-nix-target="jobs-filter-category"
           aria-label="Filter by category"
           value={state.category}
           onChange={(e) => update({ category: e.target.value })}
@@ -341,6 +349,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
         ) : null}
         <button
           type="submit"
+          data-nix-target="jobs-filter-search"
           className={`px-5 py-2 text-sm font-medium rounded-lg text-white bg-[var(--brand-navbar,#323288)] hover:bg-[var(--brand-navbar-active,#252560)] ${
             pendingChanges ? "ring-2 ring-offset-1 ring-[var(--brand-accent,#f97316)]" : ""
           }`}

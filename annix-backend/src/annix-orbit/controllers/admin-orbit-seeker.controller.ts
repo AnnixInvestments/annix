@@ -82,7 +82,7 @@ export class AdminOrbitSeekerController {
         email: prospect.email,
         matchTier: "none",
         matchScore: null,
-        status: prospect.hasLoggedIn ? "registered" : "invited",
+        status: prospect.isRegistered || prospect.hasLoggedIn ? "registered" : "invited",
         hasCv: prospect.hasCv,
         lastActiveAt: prospect.lastLoginAt,
         createdAt: prospect.invitedAt,

@@ -40,6 +40,10 @@ export interface OrbitSeekerProspect {
   invitedAt: string | null;
   hasCandidate: boolean;
   hasCv: boolean;
+  // True when the user has a registered individual/student profile (they
+  // completed sign-up), independent of whether they've logged in since.
+  // Drives the "registered" vs "invited" status badge on the admin pages.
+  isRegistered: boolean;
 }
 
 function parseUserType(value?: string | null): AnnixOrbitUserType | null {
@@ -102,10 +106,20 @@ export class AdminOrbitUserService {
   }
 
   async seekerProspects(): Promise<OrbitSeekerProspect[]> {
+    // Two sources, unioned: users granted annix-orbit app-access (admin-invited
+    // prospects who may not have registered yet) AND everyone with a registered
+    // individual/student profile (self-registered seekers via the early-access
+    // link — these have a profile but no app-access row, so they were invisible
+    // here before). Surfacing both keeps every seeker trackable in one place.
     const app = await this.appRepo.findByCode("annix-orbit");
-    if (!app) return [];
-    const accesses = await this.userAppAccessRepo.findManyByAppId(app.id);
-    const userIds = [...new Set(accesses.map((access) => access.userId))];
+    const accesses = app ? await this.userAppAccessRepo.findManyByAppId(app.id) : [];
+    const seekerProfiles = await this.profileRepo.findIndividualSeekers();
+    const userIds = [
+      ...new Set([
+        ...accesses.map((access) => access.userId),
+        ...seekerProfiles.map((profile) => profile.userId),
+      ]),
+    ];
     if (userIds.length === 0) return [];
     const users = await this.userRepo.findByIds(userIds);
     const profiles = await this.profileRepo.findByUserIds(userIds);
@@ -136,6 +150,10 @@ export class AdminOrbitUserService {
           invitedAt: user.createdAt ? user.createdAt.toISOString() : null,
           hasCandidate: candidates.length > 0,
           hasCv: profile ? profile.cvFilePath != null : false,
+          isRegistered:
+            profile != null &&
+            (profile.userType === AnnixOrbitUserType.INDIVIDUAL ||
+              profile.userType === AnnixOrbitUserType.STUDENT),
         };
       }),
     );
