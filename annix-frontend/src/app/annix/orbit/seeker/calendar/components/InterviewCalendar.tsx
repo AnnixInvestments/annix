@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { FormModal } from "@/app/components/modals/FormModal";
 import { useToast } from "@/app/components/Toast";
@@ -16,6 +17,12 @@ import {
   useOrbitUpdateSeekerInterviewEvent,
 } from "@/app/lib/query/hooks";
 import { AddToCalendarButtons, type CalendarLinkEvent } from "./calendarLinks";
+
+const GoogleMapLocationPicker = dynamic(() => import("@/app/components/GoogleMapLocationPicker"), {
+  ssr: false,
+});
+const rawMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+const GOOGLE_MAPS_API_KEY = rawMapsKey ? rawMapsKey : "";
 
 export interface InterviewCalendarPrefill {
   applyClickId: number | null;
@@ -100,14 +107,20 @@ export function InterviewCalendar(props: {
   const selfEvents = useMemo(() => (eventsData ? eventsData : []), [eventsData]);
 
   const applicationsData = applicationsQuery.data;
-  const applications = useMemo(
-    () => (applicationsData ? applicationsData : []),
-    [applicationsData],
-  );
+  const applications = useMemo(() => {
+    const all = applicationsData ? applicationsData : [];
+    // Drop placeholder rows with no real job title (older "Job application"
+    // records) so the picker only lists jobs you can actually identify.
+    return all.filter((application) => {
+      const title = application.title ? application.title.trim() : "";
+      return title !== "" && title.toLowerCase() !== "job application";
+    });
+  }, [applicationsData]);
 
   const [monthAnchor, setMonthAnchor] = useState(() => now().startOf("month"));
   const [form, setForm] = useState<EventFormState | null>(null);
   const [viewEvent, setViewEvent] = useState<CalendarLinkEvent | null>(null);
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
 
   const prefill = props.prefill;
   const [prefillConsumed, setPrefillConsumed] = useState(false);
@@ -202,6 +215,16 @@ export function InterviewCalendar(props: {
 
   const updateForm = (patch: Partial<EventFormState>) => {
     setForm((current) => (current ? { ...current, ...patch } : current));
+  };
+
+  const handleLocationSelect = (
+    location: { lat: number; lng: number },
+    addressComponents?: { address?: string },
+  ) => {
+    const selected = addressComponents ? addressComponents.address : null;
+    const value = selected ? selected : `${location.lat.toFixed(5)}, ${location.lng.toFixed(5)}`;
+    updateForm({ locationLabel: value });
+    setShowLocationPicker(false);
   };
 
   const handleSubmit = async () => {
@@ -459,7 +482,7 @@ export function InterviewCalendar(props: {
                   className={inputClass}
                 />
               </label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-2" data-nix-target="interview-time">
                 <label className="block">
                   <span className="text-sm text-gray-700">Start</span>
                   <input
@@ -500,17 +523,28 @@ export function InterviewCalendar(props: {
                 className={inputClass}
               />
             </label>
-            <label className="block">
+            <div className="block" data-nix-target="interview-location">
               <span className="text-sm text-gray-700">Location</span>
-              <input
-                type="text"
-                value={form.locationLabel}
-                onChange={(e) => updateForm({ locationLabel: e.target.value })}
-                placeholder="Address or video link"
-                className={inputClass}
-              />
-            </label>
-            <label className="block">
+              <div className="mt-1 flex gap-2">
+                <input
+                  type="text"
+                  value={form.locationLabel}
+                  onChange={(e) => updateForm({ locationLabel: e.target.value })}
+                  placeholder="Address or video link"
+                  className={`${inputClass} mt-0 min-w-0 flex-1`}
+                />
+                {GOOGLE_MAPS_API_KEY ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowLocationPicker(true)}
+                    className="shrink-0 rounded-lg bg-[var(--brand-navbar,#323288)] px-3 py-2 text-sm font-medium text-white hover:bg-[var(--brand-navbar-active,#252560)]"
+                  >
+                    Find on map
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            <label className="block" data-nix-target="interview-notes">
               <span className="text-sm text-gray-700">Notes</span>
               <textarea
                 value={form.notes}
@@ -527,6 +561,17 @@ export function InterviewCalendar(props: {
             ) : null}
           </div>
         </FormModal>
+      ) : null}
+
+      {showLocationPicker ? (
+        <div className="relative z-[10001]">
+          <GoogleMapLocationPicker
+            apiKey={GOOGLE_MAPS_API_KEY}
+            onLocationSelect={handleLocationSelect}
+            onClose={() => setShowLocationPicker(false)}
+            config="responsive"
+          />
+        </div>
       ) : null}
 
       {viewEvent ? (

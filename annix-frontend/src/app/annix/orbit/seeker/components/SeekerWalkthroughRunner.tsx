@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { setSeekerTourActive } from "@/app/lib/annix-orbit/seekerTourSignal";
 import { SeekerSpotlight } from "./SeekerSpotlight";
 import type { SeekerWalkthroughStep } from "./seekerWalkthroughs";
 
@@ -35,6 +36,11 @@ export function SeekerWalkthroughRunner(props: SeekerWalkthroughRunnerProps) {
 
   const advance = useCallback(() => {
     setIndex((prev) => prev + 1);
+  }, []);
+
+  useEffect(() => {
+    setSeekerTourActive(true);
+    return () => setSeekerTourActive(false);
   }, []);
 
   useEffect(() => {
@@ -97,6 +103,7 @@ export function SeekerWalkthroughRunner(props: SeekerWalkthroughRunnerProps) {
       label={step.body}
       hasNext={hasNext}
       ctaLabel={ctaLabel}
+      onLost={advance}
       onDismiss={advance}
     />
   );

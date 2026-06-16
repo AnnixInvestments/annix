@@ -3,6 +3,7 @@
 import { isEqual } from "es-toolkit/compat";
 import { useEffect, useRef, useState } from "react";
 import { providerLabel } from "../provider-labels";
+import { useSeekerTourActive } from "../seekerTourSignal";
 
 export const COUNTRY_LABELS: Record<string, string> = {
   za: "South Africa",
@@ -177,6 +178,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
   };
 
   const pendingChanges = !isEqual(state, props.applied);
+  const tourActive = useSeekerTourActive();
 
   const filtersActive =
     state.search !== "" ||
@@ -344,7 +346,7 @@ export function SeekerJobFilters(props: SeekerJobFiltersProps) {
       ) : null}
 
       <div className="flex items-center justify-end gap-3">
-        {pendingChanges ? (
+        {pendingChanges && !tourActive ? (
           <span className="text-xs text-gray-500">Filters changed — press Search to apply</span>
         ) : null}
         <button

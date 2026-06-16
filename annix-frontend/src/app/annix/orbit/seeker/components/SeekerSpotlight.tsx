@@ -10,6 +10,7 @@ interface SeekerSpotlightProps {
   hasNext?: boolean;
   ctaLabel?: string;
   onDismiss: () => void;
+  onLost?: () => void;
 }
 
 interface Rect {
@@ -38,6 +39,7 @@ function findTarget(target: string): HTMLElement | null {
 
 export function SeekerSpotlight(props: SeekerSpotlightProps) {
   const { target, label, onDismiss } = props;
+  const onLost = props.onLost;
   const hasNext = props.hasNext === true;
   const ctaLabelProp = props.ctaLabel;
   const ctaLabel = ctaLabelProp ? ctaLabelProp : hasNext ? "Next" : "Got it";
@@ -47,6 +49,7 @@ export function SeekerSpotlight(props: SeekerSpotlightProps) {
   const [recheckNonce, setRecheckNonce] = useState(0);
   const elementRef = useRef<HTMLElement | null>(null);
   const scrolledRef = useRef(false);
+  const everFoundRef = useRef(false);
   const timerRef = useRef<number | null>(null);
 
   const reposition = useCallback(() => {
@@ -105,6 +108,12 @@ export function SeekerSpotlight(props: SeekerSpotlightProps) {
     );
   }, []);
 
+  // Reset the "have we ever located this target" flag only when the target
+  // itself changes — not on a re-search nonce bump.
+  useEffect(() => {
+    everFoundRef.current = false;
+  }, [target]);
+
   // Watch for the target. The element may render late (an async list just after
   // navigation) or never (a screen variant without it) — so we keep looking and,
   // if it stays missing, fall back to a centred tooltip instead of skipping.
@@ -131,6 +140,7 @@ export function SeekerSpotlight(props: SeekerSpotlightProps) {
         reposition();
         setFallback(false);
         setFound(true);
+        everFoundRef.current = true;
         return;
       }
       attempts += 1;
@@ -150,9 +160,9 @@ export function SeekerSpotlight(props: SeekerSpotlightProps) {
     };
   }, [target, reposition, recheckNonce]);
 
-  // Self-heal: if the spotlit element is removed from the DOM (e.g. an action
-  // navigated to another screen), re-run the search so the highlight doesn't
-  // get stranded at a stale position — it re-finds the target or centres.
+  // Self-heal: if the spotlit element leaves the DOM (e.g. an action navigated
+  // to another screen), don't strand the highlight. If we'd already found it,
+  // the step is stale — advance the tour (onLost). Otherwise re-search.
   useEffect(() => {
     if (!found) {
       return;
@@ -160,11 +170,15 @@ export function SeekerSpotlight(props: SeekerSpotlightProps) {
     const interval = window.setInterval(() => {
       const element = elementRef.current;
       if (element && !element.isConnected) {
-        setRecheckNonce((nonce) => nonce + 1);
+        if (everFoundRef.current && onLost) {
+          onLost();
+        } else {
+          setRecheckNonce((nonce) => nonce + 1);
+        }
       }
     }, 400);
     return () => clearInterval(interval);
-  }, [found]);
+  }, [found, onLost]);
 
   // Keep the spotlight glued to the element while scrolling / resizing, and grow
   // it when a descendant panel opens (a MutationObserver catches the panel being
