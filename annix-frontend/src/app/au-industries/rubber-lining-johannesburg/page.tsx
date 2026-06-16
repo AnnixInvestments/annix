@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/rubber-lining-johannesburg`,
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/gallery/gallery02.jpg`,
+        alt: "Rubber lining services in Johannesburg — AU Industries",
+      },
+    ],
     title: "Rubber Lining Johannesburg | AU Industries",
     description:
       "Rubber lining services for Johannesburg mining and industrial customers from our Boksburg facility.",

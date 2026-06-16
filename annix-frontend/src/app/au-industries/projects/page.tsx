@@ -16,6 +16,12 @@ export const metadata: Metadata = {
     title: "Project Case Studies | AU Industries",
     description:
       "Real AU Industries projects across South African and Southern African mining customers — rubber lining, ceramic embedded rubber, HDPE piping, fabricated chutes, and mining solutions.",
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/AUI-banner8.jpg`,
+        alt: "AU Industries mining project case studies — rubber lining and HDPE",
+      },
+    ],
   },
 };
 

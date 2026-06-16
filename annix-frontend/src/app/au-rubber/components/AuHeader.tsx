@@ -244,6 +244,16 @@ const navSections: NavSection[] = [
         label: "Pages",
         permission: PAGE_PERMISSIONS["/au-rubber/portal/website"],
       },
+      {
+        href: "/au-rubber/portal/website/blog",
+        label: "Blog",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/website"],
+      },
+      {
+        href: "/au-rubber/portal/website/testimonials",
+        label: "Testimonials",
+        permission: PAGE_PERMISSIONS["/au-rubber/portal/website"],
+      },
     ],
   },
   {

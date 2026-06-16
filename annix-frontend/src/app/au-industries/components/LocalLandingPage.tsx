@@ -5,6 +5,14 @@ import { CASE_STUDIES, type CaseStudy } from "../caseStudies";
 
 const SITE_URL = "https://auind.co.za";
 
+const RUBBER_LINING_AREAS = [
+  { slug: "rubber-lining-boksburg", label: "Boksburg" },
+  { slug: "rubber-lining-johannesburg", label: "Johannesburg" },
+  { slug: "rubber-lining-witbank", label: "Witbank" },
+  { slug: "rubber-lining-benoni", label: "Benoni" },
+  { slug: "rubber-lining-germiston", label: "Germiston" },
+];
+
 export interface LocalLandingProps {
   pathSlug: string;
   serviceSlug: string;
@@ -181,6 +189,30 @@ export function LocalLandingPage(props: LocalLandingProps) {
             >
               Request a quote
             </Link>
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-[#fdf8e8] py-12 border-t border-[#B8860B]/20">
+        <div className="max-w-5xl mx-auto px-4 text-center">
+          <h2 className="text-xl font-bold text-[#B8860B] uppercase tracking-wide mb-2">
+            Other service areas
+          </h2>
+          <div className="w-16 h-[3px] bg-[#B8860B] mx-auto mb-6" />
+          <p className="text-gray-600 mb-6">
+            We rubber line for mining and industrial customers across Gauteng and the broader
+            Witwatersrand belt.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            {RUBBER_LINING_AREAS.filter((area) => area.slug !== props.pathSlug).map((area) => (
+              <Link
+                key={area.slug}
+                href={`/${area.slug}`}
+                className="inline-block px-5 py-2 border border-[#B8860B]/40 rounded-full text-gray-800 font-medium hover:border-[#B8860B] hover:text-[#B8860B] transition-colors"
+              >
+                Rubber Lining {area.label}
+              </Link>
+            ))}
           </div>
         </div>
       </section>

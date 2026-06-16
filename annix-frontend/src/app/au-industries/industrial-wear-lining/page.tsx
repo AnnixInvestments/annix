@@ -21,6 +21,12 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     title: "Industrial Wear Lining Solutions | AU Industries",
     description: PAGE_DESCRIPTION,
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/gallery/gallery22.jpg`,
+        alt: "Industrial wear lining — ceramic embedded rubber panels, AU Industries",
+      },
+    ],
   },
 };
 

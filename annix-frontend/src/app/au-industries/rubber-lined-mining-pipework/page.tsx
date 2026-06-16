@@ -21,6 +21,12 @@ export const metadata: Metadata = {
     url: PAGE_URL,
     title: "Rubber Lined Mining Pipework | AU Industries",
     description: PAGE_DESCRIPTION,
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/gallery/gallery41.jpg`,
+        alt: "Rubber lined mining pipework — AU Industries, Boksburg",
+      },
+    ],
   },
 };
 

@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/rubber-lining-benoni`,
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/gallery/gallery02.jpg`,
+        alt: "Rubber lining services in Benoni — AU Industries",
+      },
+    ],
     title: "Rubber Lining Benoni | AU Industries",
     description:
       "Rubber lining services for Benoni and East Rand mining and industrial customers from our neighbouring Boksburg facility.",

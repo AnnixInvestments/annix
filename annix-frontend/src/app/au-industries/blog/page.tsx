@@ -30,6 +30,12 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/blog`,
     title: "Blog & News | AU Industries",
     description: "Industry insights, project updates, and product news from AU Industries.",
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/AUI-banner8.jpg`,
+        alt: "AU Industries blog — rubber lining, HDPE and mining insights",
+      },
+    ],
   },
 };
 

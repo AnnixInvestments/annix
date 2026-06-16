@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/rubber-lining-witbank`,
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/gallery/gallery02.jpg`,
+        alt: "Rubber lining services in Witbank — AU Industries",
+      },
+    ],
     title: "Rubber Lining Witbank | AU Industries",
     description:
       "Rubber lining services for Witbank (eMalahleni) coal and platinum mining customers in Mpumalanga.",

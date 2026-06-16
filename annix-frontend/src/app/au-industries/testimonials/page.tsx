@@ -29,6 +29,12 @@ export const metadata: Metadata = {
     title: "Testimonials & Customer Reviews | AU Industries",
     description:
       "Reviews and testimonials from AU Industries customers across mining, processing, and industrial sectors in Southern Africa.",
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/AUI-banner8.jpg`,
+        alt: "AU Industries customer testimonials and reviews",
+      },
+    ],
   },
 };
 

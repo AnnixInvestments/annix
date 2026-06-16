@@ -11,6 +11,12 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     url: `${SITE_URL}/rubber-lining-germiston`,
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/gallery/gallery02.jpg`,
+        alt: "Rubber lining services in Germiston — AU Industries",
+      },
+    ],
     title: "Rubber Lining Germiston | AU Industries",
     description:
       "Rubber lining services for Germiston and East Rand industrial and mining customers from our nearby Boksburg facility.",
