@@ -12,6 +12,8 @@ const MAX_HISTORY = 12;
 const ACTION_TYPES = new Set(["navigate", "highlight", "navigate-and-highlight"]);
 
 // Only on-screen anchors that actually exist may be pointed at.
+// nav-* are the persistent top-bar tabs; the rest are in-page anchors used as
+// the second hop of a guided walk-through (nav tab -> the button to press).
 const KNOWN_TARGETS = new Set([
   "nav-dashboard",
   "nav-profile",
@@ -21,11 +23,25 @@ const KNOWN_TARGETS = new Set([
   "nav-interviews",
   "nav-plans",
   "nav-help",
+  "jobs-apply-card",
+  "cv-section",
+  "nix-section",
+  "qualifications",
+  "certificates",
+  "work-profile-section",
 ]);
+
+const MAX_TOUR_STEPS = 5;
 
 interface ChatTurn {
   role: "user" | "assistant";
   content: string;
+}
+
+export interface SeekerAssistantStep {
+  route?: string;
+  target?: string;
+  label?: string;
 }
 
 export interface SeekerAssistantAction {
@@ -33,6 +49,7 @@ export interface SeekerAssistantAction {
   route?: string;
   target?: string;
   label?: string;
+  steps?: SeekerAssistantStep[];
 }
 
 export interface SeekerAssistantReply {
@@ -113,11 +130,46 @@ export class SeekerAssistantService {
     if (typeof candidate.label === "string" && candidate.label.trim() !== "") {
       action.label = candidate.label.trim().slice(0, 160);
     }
+    const steps = this.sanitiseSteps(candidate.steps);
+    if (steps.length > 0) {
+      action.steps = steps;
+    }
     // Drop actions that have nothing actionable left after validation.
-    if (!action.route && !action.target) {
+    if (!action.route && !action.target && !action.steps) {
       return undefined;
     }
     return action;
+  }
+
+  private sanitiseSteps(raw: unknown): SeekerAssistantStep[] {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw
+      .map((entry) => this.sanitiseStep(entry))
+      .filter((step): step is SeekerAssistantStep => step !== undefined)
+      .slice(0, MAX_TOUR_STEPS);
+  }
+
+  private sanitiseStep(raw: unknown): SeekerAssistantStep | undefined {
+    if (!raw || typeof raw !== "object") {
+      return undefined;
+    }
+    const candidate = raw as Record<string, unknown>;
+    const step: SeekerAssistantStep = {};
+    if (typeof candidate.route === "string" && candidate.route.startsWith("/annix/orbit/seeker")) {
+      step.route = candidate.route;
+    }
+    if (typeof candidate.target === "string" && KNOWN_TARGETS.has(candidate.target)) {
+      step.target = candidate.target;
+    }
+    if (typeof candidate.label === "string" && candidate.label.trim() !== "") {
+      step.label = candidate.label.trim().slice(0, 160);
+    }
+    if (!step.target) {
+      return undefined;
+    }
+    return step;
   }
 
   private normaliseHistory(history?: Array<{ role?: string; content?: string }>): ChatTurn[] {

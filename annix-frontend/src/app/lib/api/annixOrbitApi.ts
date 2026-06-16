@@ -306,11 +306,18 @@ export interface SeekerAssistantChatPayload {
   context?: SeekerAssistantContext;
 }
 
+export interface SeekerAssistantStep {
+  route?: string;
+  target?: string;
+  label?: string;
+}
+
 export interface SeekerAssistantAction {
   type: "navigate" | "highlight" | "navigate-and-highlight";
   route?: string;
   target?: string;
   label?: string;
+  steps?: SeekerAssistantStep[];
 }
 
 export interface SeekerAssistantReply {

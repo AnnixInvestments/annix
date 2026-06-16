@@ -1306,13 +1306,17 @@ function BrowseAllJobsView(props: BrowseAllJobsViewProps) {
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {jobs.map((job) => (
-            <SeekerBrowseJobCard
+          {jobs.map((job, index) => (
+            <div
               key={`${job.kind}-${job.id}`}
-              job={job}
-              onApply={props.onApply}
-              onReportDelisted={props.onReportDelisted}
-            />
+              {...(index === 0 ? { "data-nix-target": "jobs-apply-card" } : {})}
+            >
+              <SeekerBrowseJobCard
+                job={job}
+                onApply={props.onApply}
+                onReportDelisted={props.onReportDelisted}
+              />
+            </div>
           ))}
         </div>
       )}

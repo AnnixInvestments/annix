@@ -8,6 +8,7 @@ import type {
   SeekerAssistantAction,
   SeekerAssistantChatTurn,
   SeekerAssistantContext,
+  SeekerAssistantStep,
 } from "@/app/lib/api/annixOrbitApi";
 import { useOrbitMyProfileStatus, useOrbitSeekerAssistantChat } from "@/app/lib/query/hooks";
 import { SeekerSpotlight } from "./SeekerSpotlight";
@@ -41,20 +42,17 @@ function currentPageLabel(pathname: string): string | undefined {
   return PAGE_LABELS[segment];
 }
 
-function applyAction(
-  action: SeekerAssistantAction,
-  router: ReturnType<typeof useRouter>,
-  setSpotlight: (value: { target: string; label: string } | null) => void,
-) {
-  const route = action.route;
-  if (route) {
-    router.push(route);
+interface Tour {
+  steps: SeekerAssistantStep[];
+  index: number;
+}
+
+function tourSteps(action: SeekerAssistantAction): SeekerAssistantStep[] {
+  const explicit = action.steps;
+  if (explicit && explicit.length > 0) {
+    return explicit;
   }
-  const target = action.target;
-  if (target) {
-    const label = action.label ? action.label : "Here's where to go next.";
-    setSpotlight({ target, label });
-  }
+  return [{ route: action.route, target: action.target, label: action.label }];
 }
 
 export function SeekerAssistant() {
@@ -63,7 +61,7 @@ export function SeekerAssistant() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [spotlight, setSpotlight] = useState<{ target: string; label: string } | null>(null);
+  const [tour, setTour] = useState<Tour | null>(null);
   const chat = useOrbitSeekerAssistantChat();
   const profileStatusQuery = useOrbitMyProfileStatus(open);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -88,6 +86,23 @@ export function SeekerAssistant() {
     return context;
   }
 
+  function goToStep(steps: SeekerAssistantStep[], index: number) {
+    const step = steps[index];
+    if (!step) {
+      setTour(null);
+      return;
+    }
+    const route = step.route;
+    if (route) {
+      router.push(route);
+    }
+    setTour({ steps, index });
+  }
+
+  function startTour(action: SeekerAssistantAction) {
+    goToStep(tourSteps(action), 0);
+  }
+
   async function send(text: string) {
     const trimmed = text.trim();
     if (trimmed === "" || pending) {
@@ -104,7 +119,7 @@ export function SeekerAssistant() {
       setMessages((prev) => [...prev, { role: "assistant", content: result.reply }]);
       const action = result.action;
       if (action) {
-        applyAction(action, router, setSpotlight);
+        startTour(action);
       }
     } catch {
       setMessages((prev) => [
@@ -117,11 +132,23 @@ export function SeekerAssistant() {
     }
   }
 
-  const overlay = spotlight ? (
+  const currentStep = tour ? tour.steps[tour.index] : null;
+  const currentTarget = currentStep ? currentStep.target : null;
+  const stepLabelRaw = currentStep ? currentStep.label : null;
+  const stepLabel = stepLabelRaw ? stepLabelRaw : "Here's where to go next.";
+  const stepHasNext = tour ? tour.index < tour.steps.length - 1 : false;
+  const overlay = currentTarget ? (
     <SeekerSpotlight
-      target={spotlight.target}
-      label={spotlight.label}
-      onDismiss={() => setSpotlight(null)}
+      target={currentTarget}
+      label={stepLabel}
+      hasNext={stepHasNext}
+      onDismiss={() => {
+        if (tour && tour.index < tour.steps.length - 1) {
+          goToStep(tour.steps, tour.index + 1);
+        } else {
+          setTour(null);
+        }
+      }}
     />
   ) : null;
 
