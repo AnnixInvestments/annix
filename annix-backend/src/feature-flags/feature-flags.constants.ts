@@ -171,7 +171,7 @@ export const FEATURE_FLAG_DESCRIPTIONS: Record<FeatureFlagKey, string> = {
   ANNIX_ORBIT_NIX_CV_BUILDER:
     "Annix Orbit — paid 'Get Nix to build my CV' feature: Nix generates a rewritten, improved CV for individual job seekers with a downloadable PDF.",
   ANNIX_ORBIT_SEEKER_ASSISTANT:
-    "Annix Orbit — in-app Nix helper for job seekers: a scoped chat that answers questions about the Seeker area and (later) guides the user around the screen. Default off while in development.",
+    "Annix Orbit — in-app Nix helper for job seekers: a scoped chat that answers questions about the Seeker area and guides the user around the screen (highlights the next step). On by default; toggle off to hide the 'Ask Nix' widget.",
 };
 
 export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
@@ -254,7 +254,7 @@ export const FEATURE_FLAG_DEFAULTS: Record<FeatureFlagKey, boolean> = {
   STOCK_MGMT_NIX_QUOTE_FROM_DOCUMENTS: true,
   ANNIX_ORBIT_EE_COMPLIANCE_ENABLED: false,
   ANNIX_ORBIT_NIX_CV_BUILDER: true,
-  ANNIX_ORBIT_SEEKER_ASSISTANT: false,
+  ANNIX_ORBIT_SEEKER_ASSISTANT: true,
 };
 
 export type FeatureFlagCategory =
