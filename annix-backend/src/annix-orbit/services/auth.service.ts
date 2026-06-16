@@ -38,10 +38,12 @@ import {
   isSeekerAgeGroup,
 } from "../entities/annix-orbit-profile.entity";
 import { AnnixOrbitRole } from "../entities/annix-orbit-user.entity";
+import { currentOrbitEnvironment } from "../orbit-environment";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import { AnnixOrbitEeConsentTextVersionRepository } from "../repositories/annix-orbit-ee-consent-text-version.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
 import { AnnixOrbitTeamInviteRepository } from "../repositories/annix-orbit-team-invite.repository";
+import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-access-signup.repository";
 
 const VERIFICATION_EXPIRY_HOURS = 24;
 
@@ -103,6 +105,7 @@ export class AnnixOrbitAuthService {
     email: string,
     userType: AnnixOrbitUserType,
   ): Promise<void> {
+    await this.assertInvitedEnvAllowsRegistration(email);
     const scope = this.orbitScope(userType);
     const scopedExisting = await this.userRepo.findOneByEmailAndScope(email, scope);
     if (scopedExisting) {
@@ -114,6 +117,33 @@ export class AnnixOrbitAuthService {
       if (legacyProfile && this.orbitScope(legacyProfile.userType) === scope) {
         throw new ConflictException("Email already registered");
       }
+    }
+  }
+
+  /**
+   * Early-access invites carry an environment selection (prod | test) that is
+   * persisted on the applicant's signup. The signup list lives only on prod, so
+   * this check is enforced where it can be: on prod it blocks a test-directed
+   * applicant from creating a prod account. If the applicant isn't on the list,
+   * or no env was recorded, registration proceeds unchanged.
+   */
+  private async assertInvitedEnvAllowsRegistration(email: string): Promise<void> {
+    let invitedEnv: string | null = null;
+    try {
+      const signup = await this.earlyAccessRepo.findByEmailNormalized(email.trim().toLowerCase());
+      invitedEnv = signup ? signup.invitedEnv : null;
+    } catch (error) {
+      this.logger.warn(`Could not check invited environment for ${email}: ${String(error)}`);
+      return;
+    }
+    if (!invitedEnv) {
+      return;
+    }
+    const env = currentOrbitEnvironment();
+    if (invitedEnv !== env) {
+      throw new BadRequestException(
+        `This early-access invite is for the ${invitedEnv} environment. Please use the invite link from the email we sent you.`,
+      );
     }
   }
 
@@ -145,6 +175,7 @@ export class AnnixOrbitAuthService {
     private readonly authConfigService: AuthConfigService,
     private readonly eeConsentTextVersionRepo: AnnixOrbitEeConsentTextVersionRepository,
     private readonly teamInviteRepo: AnnixOrbitTeamInviteRepository,
+    private readonly earlyAccessRepo: OrbitEarlyAccessSignupRepository,
   ) {}
 
   private isInviteExpired(expiresAt: string | null): boolean {

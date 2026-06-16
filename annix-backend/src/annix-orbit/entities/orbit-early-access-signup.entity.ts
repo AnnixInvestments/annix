@@ -90,6 +90,12 @@ export class OrbitEarlyAccessSignup {
   @Column({ name: "admin_email_sent_at", type: "timestamptz", nullable: true })
   adminEmailSentAt: Date | null;
 
+  // Environment the admin invite directed this applicant to ("prod" | "test").
+  // Applicants always live on prod; this drives which env monitors/registers
+  // them. Null until an admin sends an invite with an env selected.
+  @Column({ name: "invited_env", type: "varchar", length: 8, nullable: true })
+  invitedEnv: string | null;
+
   @CreateDateColumn({ name: "created_at" })
   createdAt: Date;
 

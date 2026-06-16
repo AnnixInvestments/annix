@@ -172,6 +172,7 @@ export default function OrbitSeekersPage() {
         recipients={composerRecipients}
         trackEarlyAccess={false}
         contextLabel="Orbit seekers (this page)"
+        variant="simple"
       />
 
       <form onSubmit={handleSearch} className="flex gap-2">

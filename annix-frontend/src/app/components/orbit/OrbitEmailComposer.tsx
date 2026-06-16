@@ -33,6 +33,11 @@ interface OrbitEmailComposerProps {
   recipients: OrbitEmailComposerRecipient[];
   trackEarlyAccess: boolean;
   contextLabel: string;
+  // "simple" trims the composer to subject/body + a single optional attachment.
+  // It hides the link-environment selector, the device/FBW install guides and
+  // the account-provisioning controls — those belong only on the early-access
+  // email page. Defaults to the full composer.
+  variant?: "full" | "simple";
 }
 
 const GUIDE_SLOTS: Array<{ slot: string; label: string }> = [
@@ -73,6 +78,7 @@ function formatBytes(bytes: number): string {
 
 export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
   const recipients = props.recipients;
+  const simple = props.variant === "simple";
   const { showToast } = useToast();
   const assetsQuery = useAdminOrbitOutreachAssets();
   const uploadAsset = useUploadOrbitOutreachAsset();
@@ -95,8 +101,8 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
   const [subject, setSubject] = useState(DEFAULT_SUBJECT);
   const [body, setBody] = useState(DEFAULT_BODY);
   const [environment, setEnvironment] = useState<"prod" | "test">("prod");
-  const [includeDeviceGuide, setIncludeDeviceGuide] = useState(true);
-  const [includeFbwGuide, setIncludeFbwGuide] = useState(true);
+  const [includeDeviceGuide, setIncludeDeviceGuide] = useState(!simple);
+  const [includeFbwGuide, setIncludeFbwGuide] = useState(!simple);
   const [selectedExtraIds, setSelectedExtraIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
   const [progress, setProgress] = useState({ done: 0, total: 0 });
@@ -461,25 +467,27 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
               </div>
             </div>
 
-            <div>
-              <span className={sectionTitle}>Link environment</span>
-              <div className="mt-2 flex gap-3">
-                {(["prod", "test"] as const).map((env) => (
-                  <label
-                    key={env}
-                    className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
-                  >
-                    <input
-                      type="radio"
-                      name="orbit-outreach-env"
-                      checked={environment === env}
-                      onChange={() => setEnvironment(env)}
-                    />
-                    {env === "prod" ? "Production" : "Test"}
-                  </label>
-                ))}
+            {!simple ? (
+              <div>
+                <span className={sectionTitle}>Link environment</span>
+                <div className="mt-2 flex gap-3">
+                  {(["prod", "test"] as const).map((env) => (
+                    <label
+                      key={env}
+                      className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300"
+                    >
+                      <input
+                        type="radio"
+                        name="orbit-outreach-env"
+                        checked={environment === env}
+                        onChange={() => setEnvironment(env)}
+                      />
+                      {env === "prod" ? "Production" : "Test"}
+                    </label>
+                  ))}
+                </div>
               </div>
-            </div>
+            ) : null}
 
             <div>
               <label className={sectionTitle} htmlFor="orbit-outreach-subject">
@@ -507,57 +515,72 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
               />
             </div>
 
-            <div className="space-y-2">
-              <span className={sectionTitle}>Attachments</span>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={includeDeviceGuide}
-                  onChange={(e) => setIncludeDeviceGuide(e.target.checked)}
-                />
-                Attach the matching device install guide (both as links if device unknown)
-              </label>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={includeFbwGuide}
-                  onChange={(e) => setIncludeFbwGuide(e.target.checked)}
-                />
-                Attach the Feedback Widget guide
-              </label>
-            </div>
+            {!simple ? (
+              <div className="space-y-2">
+                <span className={sectionTitle}>Attachments</span>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeDeviceGuide}
+                    onChange={(e) => setIncludeDeviceGuide(e.target.checked)}
+                  />
+                  Attach the matching device install guide (both as links if device unknown)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeFbwGuide}
+                    onChange={(e) => setIncludeFbwGuide(e.target.checked)}
+                  />
+                  Attach the Feedback Widget guide
+                </label>
+              </div>
+            ) : null}
 
             <div className="rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-3">
-              <span className={sectionTitle}>Manage guides &amp; attachments</span>
-              {GUIDE_SLOTS.map((guide) => {
-                const asset = assets.find((a) => a.slot === guide.slot);
-                const busy = uploadSlot === guide.slot;
-                return (
-                  <div key={guide.slot} className="flex items-center justify-between gap-3 text-sm">
-                    <div className="min-w-0">
-                      <p className="text-gray-900 dark:text-gray-200">{guide.label}</p>
-                      <p className="truncate text-xs text-gray-500">
-                        {asset
-                          ? `${asset.originalFilename} (${formatBytes(asset.fileSize)})`
-                          : "Not uploaded"}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => triggerUpload(guide.slot)}
-                      disabled={busy}
-                      className="shrink-0 rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 disabled:opacity-50"
-                    >
-                      {busy ? "Uploading…" : asset ? "Replace" : "Upload"}
-                    </button>
-                  </div>
-                );
-              })}
+              <span className={sectionTitle}>
+                {simple ? "Attachment" : "Manage guides & attachments"}
+              </span>
+              {!simple
+                ? GUIDE_SLOTS.map((guide) => {
+                    const asset = assets.find((a) => a.slot === guide.slot);
+                    const busy = uploadSlot === guide.slot;
+                    return (
+                      <div
+                        key={guide.slot}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
+                        <div className="min-w-0">
+                          <p className="text-gray-900 dark:text-gray-200">{guide.label}</p>
+                          <p className="truncate text-xs text-gray-500">
+                            {asset
+                              ? `${asset.originalFilename} (${formatBytes(asset.fileSize)})`
+                              : "Not uploaded"}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => triggerUpload(guide.slot)}
+                          disabled={busy}
+                          className="shrink-0 rounded-lg border border-gray-300 dark:border-slate-600 px-3 py-1.5 text-xs text-gray-700 dark:text-gray-200 disabled:opacity-50"
+                        >
+                          {busy ? "Uploading…" : asset ? "Replace" : "Upload"}
+                        </button>
+                      </div>
+                    );
+                  })
+                : null}
 
-              <div className="border-t border-gray-100 dark:border-slate-700 pt-3 space-y-2">
+              <div
+                className={
+                  simple
+                    ? "space-y-2"
+                    : "border-t border-gray-100 dark:border-slate-700 pt-3 space-y-2"
+                }
+              >
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-600 dark:text-gray-300">
-                    Extra attachments
+                    {simple ? "Optional file" : "Extra attachments"}
                   </span>
                   <button
                     type="button"
@@ -600,39 +623,41 @@ export function OrbitEmailComposer(props: OrbitEmailComposerProps) {
               </div>
             </div>
 
-            <div className="rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-2">
-              <span className={sectionTitle}>Orbit Seeker access</span>
-              <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
-                <input
-                  type="checkbox"
-                  checked={provisionAccount}
-                  onChange={(e) => setProvisionAccount(e.target.checked)}
-                />
-                Create an Annix Orbit Seeker account for each recipient at this tier
-              </label>
-              {provisionAccount ? (
-                <div className="space-y-1">
-                  <select
-                    className={inputClass}
-                    value={provisionTier}
-                    onChange={(e) => setProvisionTier(e.target.value)}
-                    aria-label="Orbit Seeker tier"
-                  >
-                    <option value="">Select a tier…</option>
-                    {tierPlans.map((plan) => (
-                      <option key={plan.tier} value={plan.tier}>
-                        {plan.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-400">
-                    Module: Annix Orbit Seeker. The "Open Annix Orbit" button becomes each
-                    recipient's account set-up link (set a password, then straight into Orbit).
-                    Skips anyone who already has an Orbit account.
-                  </p>
-                </div>
-              ) : null}
-            </div>
+            {!simple ? (
+              <div className="rounded-xl border border-gray-200 dark:border-slate-700 p-4 space-y-2">
+                <span className={sectionTitle}>Orbit Seeker access</span>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={provisionAccount}
+                    onChange={(e) => setProvisionAccount(e.target.checked)}
+                  />
+                  Create an Annix Orbit Seeker account for each recipient at this tier
+                </label>
+                {provisionAccount ? (
+                  <div className="space-y-1">
+                    <select
+                      className={inputClass}
+                      value={provisionTier}
+                      onChange={(e) => setProvisionTier(e.target.value)}
+                      aria-label="Orbit Seeker tier"
+                    >
+                      <option value="">Select a tier…</option>
+                      {tierPlans.map((plan) => (
+                        <option key={plan.tier} value={plan.tier}>
+                          {plan.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-400">
+                      Module: Annix Orbit Seeker. The "Open Annix Orbit" button becomes each
+                      recipient's account set-up link (set a password, then straight into Orbit).
+                      Skips anyone who already has an Orbit account.
+                    </p>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
 
             <div className="space-y-2">
               <span className={sectionTitle}>When</span>

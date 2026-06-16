@@ -87,6 +87,13 @@ export class OrbitEarlyAccessSignup {
 
   @Prop({ type: Date, required: false, default: null })
   adminEmailSentAt: Date | null;
+
+  // Which environment the admin invite directed this applicant to ("prod" |
+  // "test"). The applicant record itself always lives on prod; this drives
+  // which env's admin seeker pages monitor them and gates where they may
+  // register. Null until an admin sends an invite with an env selected.
+  @Prop({ type: String, required: false, default: null })
+  invitedEnv: string | null;
 }
 
 export const OrbitEarlyAccessSignupSchema = SchemaFactory.createForClass(OrbitEarlyAccessSignup);

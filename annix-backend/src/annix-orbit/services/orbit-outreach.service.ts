@@ -6,6 +6,7 @@ import { emailLayout } from "../../email/templates/layout";
 import { fromISO, now } from "../../lib/datetime";
 import { IStorageService, STORAGE_SERVICE } from "../../storage/storage.interface";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
+import { currentOrbitEnvironment } from "../orbit-environment";
 import { OrbitEarlyAccessSignupRepository } from "../repositories/orbit-early-access-signup.repository";
 import { OrbitOutreachAssetRepository } from "../repositories/orbit-outreach-asset.repository";
 import { OrbitOutreachScheduleRepository } from "../repositories/orbit-outreach-schedule.repository";
@@ -226,9 +227,23 @@ export class OrbitOutreachService {
           ? await this.unknownDeviceGuideLinks(iphoneGuide, androidGuide)
           : "";
 
-      const recipientLink = provisionTier
-        ? await this.provisionAccountLink(recipient, provisionTier, envBase, link)
-        : this.registerLink(recipient, envBase);
+      // Only provision (pre-create) an account when the invite targets the env
+      // this backend is actually running in. Provisioning runs locally, so a
+      // prod admin sending a "test" invite would otherwise create the account
+      // on PROD — the bug that put test-directed seekers on the prod clusters.
+      // For a cross-env invite we send the plain register link instead, so the
+      // recipient self-registers via the env-correct URL into the right cluster.
+      const canProvision =
+        Boolean(provisionTier) && input.environment === currentOrbitEnvironment();
+      if (provisionTier && !canProvision) {
+        this.logger.warn(
+          `Skipping account provisioning for ${recipient.email}: invite targets "${input.environment}" but this backend is "${currentOrbitEnvironment()}". Sending register link so they self-register in the correct environment.`,
+        );
+      }
+      const recipientLink =
+        canProvision && provisionTier
+          ? await this.provisionAccountLink(recipient, provisionTier, envBase, link)
+          : this.registerLink(recipient, envBase);
 
       const html = this.composeHtml(
         input.subject,
@@ -252,7 +267,7 @@ export class OrbitOutreachService {
       if (ok) {
         sent += 1;
         if (input.trackEarlyAccess) {
-          await this.markEarlyAccessSent(recipient.email);
+          await this.markEarlyAccessSent(recipient.email, input.environment);
         }
       } else {
         failures.push(recipient.email);
@@ -564,11 +579,17 @@ export class OrbitOutreachService {
     }
   }
 
-  private async markEarlyAccessSent(email: string): Promise<void> {
+  private async markEarlyAccessSent(
+    email: string,
+    environment: OutreachEnvironment,
+  ): Promise<void> {
     try {
       const signup = await this.earlyAccessRepo.findByEmailNormalized(email.trim().toLowerCase());
       if (signup) {
         signup.adminEmailSentAt = now().toJSDate();
+        // Persist which env this applicant was invited to, so the right env's
+        // admin seeker pages monitor them and registration is gated to it.
+        signup.invitedEnv = environment;
         await this.earlyAccessRepo.save(signup);
       }
     } catch (error) {
