@@ -313,11 +313,12 @@ export interface SeekerAssistantStep {
 }
 
 export interface SeekerAssistantAction {
-  type: "navigate" | "highlight" | "navigate-and-highlight";
+  type: "navigate" | "highlight" | "navigate-and-highlight" | "walkthrough";
   route?: string;
   target?: string;
   label?: string;
   steps?: SeekerAssistantStep[];
+  walkthrough?: string;
 }
 
 export interface SeekerAssistantReply {

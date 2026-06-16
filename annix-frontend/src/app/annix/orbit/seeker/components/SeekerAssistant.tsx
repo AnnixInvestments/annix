@@ -1,5 +1,6 @@
 "use client";
 
+import { isString } from "es-toolkit/compat";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
@@ -8,10 +9,10 @@ import type {
   SeekerAssistantAction,
   SeekerAssistantChatTurn,
   SeekerAssistantContext,
-  SeekerAssistantStep,
 } from "@/app/lib/api/annixOrbitApi";
 import { useOrbitMyProfileStatus, useOrbitSeekerAssistantChat } from "@/app/lib/query/hooks";
-import { SeekerSpotlight } from "./SeekerSpotlight";
+import { SeekerWalkthroughRunner } from "./SeekerWalkthroughRunner";
+import { type SeekerWalkthroughStep, seekerWalkthrough } from "./seekerWalkthroughs";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -19,9 +20,9 @@ interface ChatMessage {
 }
 
 const SUGGESTIONS = [
-  "How do I apply for a job?",
-  "How do I improve my profile?",
-  "Where do I see my interviews?",
+  "Walk me through applying for a job",
+  "Help me finish my profile",
+  "How do I book an interview?",
   "What does the dashboard show me?",
 ];
 
@@ -42,17 +43,30 @@ function currentPageLabel(pathname: string): string | undefined {
   return PAGE_LABELS[segment];
 }
 
-interface Tour {
-  steps: SeekerAssistantStep[];
-  index: number;
-}
-
-function tourSteps(action: SeekerAssistantAction): SeekerAssistantStep[] {
-  const explicit = action.steps;
-  if (explicit && explicit.length > 0) {
-    return explicit;
+function actionToSteps(action: SeekerAssistantAction): SeekerWalkthroughStep[] {
+  const walkthroughKey = action.walkthrough;
+  if (walkthroughKey) {
+    const predefined = seekerWalkthrough(walkthroughKey);
+    if (predefined) {
+      return predefined.steps;
+    }
   }
-  return [{ route: action.route, target: action.target, label: action.label }];
+  const explicit = action.steps;
+  const raw =
+    explicit && explicit.length > 0
+      ? explicit
+      : [{ route: action.route, target: action.target, label: action.label }];
+  return raw
+    .filter((entry) => isString(entry.target) && entry.target !== "")
+    .map(
+      (entry): SeekerWalkthroughStep => ({
+        kind: "instruction",
+        title: "Nix",
+        body: entry.label ? entry.label : "Here's where to go next.",
+        target: entry.target as string,
+        route: entry.route,
+      }),
+    );
 }
 
 export function SeekerAssistant() {
@@ -61,7 +75,8 @@ export function SeekerAssistant() {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
-  const [tour, setTour] = useState<Tour | null>(null);
+  const [walkthroughSteps, setWalkthroughSteps] = useState<SeekerWalkthroughStep[] | null>(null);
+  const [tourId, setTourId] = useState(0);
   const chat = useOrbitSeekerAssistantChat();
   const profileStatusQuery = useOrbitMyProfileStatus(open);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -86,21 +101,20 @@ export function SeekerAssistant() {
     return context;
   }
 
-  function goToStep(steps: SeekerAssistantStep[], index: number) {
-    const step = steps[index];
-    if (!step) {
-      setTour(null);
+  function startTour(action: SeekerAssistantAction) {
+    const steps = actionToSteps(action);
+    if (steps.length === 0) {
+      const route = action.route;
+      if (route) {
+        router.push(route);
+      }
       return;
     }
-    const route = step.route;
-    if (route) {
-      router.push(route);
+    if (action.walkthrough) {
+      setOpen(false);
     }
-    setTour({ steps, index });
-  }
-
-  function startTour(action: SeekerAssistantAction) {
-    goToStep(tourSteps(action), 0);
+    setTourId((prev) => prev + 1);
+    setWalkthroughSteps(steps);
   }
 
   async function send(text: string) {
@@ -132,23 +146,11 @@ export function SeekerAssistant() {
     }
   }
 
-  const currentStep = tour ? tour.steps[tour.index] : null;
-  const currentTarget = currentStep ? currentStep.target : null;
-  const stepLabelRaw = currentStep ? currentStep.label : null;
-  const stepLabel = stepLabelRaw ? stepLabelRaw : "Here's where to go next.";
-  const stepHasNext = tour ? tour.index < tour.steps.length - 1 : false;
-  const overlay = currentTarget ? (
-    <SeekerSpotlight
-      target={currentTarget}
-      label={stepLabel}
-      hasNext={stepHasNext}
-      onDismiss={() => {
-        if (tour && tour.index < tour.steps.length - 1) {
-          goToStep(tour.steps, tour.index + 1);
-        } else {
-          setTour(null);
-        }
-      }}
+  const overlay = walkthroughSteps ? (
+    <SeekerWalkthroughRunner
+      key={tourId}
+      steps={walkthroughSteps}
+      onComplete={() => setWalkthroughSteps(null)}
     />
   ) : null;
 

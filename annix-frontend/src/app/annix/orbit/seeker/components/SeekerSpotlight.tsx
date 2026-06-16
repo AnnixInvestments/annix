@@ -7,6 +7,7 @@ interface SeekerSpotlightProps {
   target: string;
   label: string;
   hasNext?: boolean;
+  ctaLabel?: string;
   onDismiss: () => void;
 }
 
@@ -36,6 +37,8 @@ function findTarget(target: string): HTMLElement | null {
 export function SeekerSpotlight(props: SeekerSpotlightProps) {
   const { target, label, onDismiss } = props;
   const hasNext = props.hasNext === true;
+  const ctaLabelProp = props.ctaLabel;
+  const ctaLabel = ctaLabelProp ? ctaLabelProp : hasNext ? "Next" : "Got it";
   const [rect, setRect] = useState<Rect | null>(null);
   const elementRef = useRef<HTMLElement | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -179,7 +182,7 @@ export function SeekerSpotlight(props: SeekerSpotlightProps) {
             className="rounded-full px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
             style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
           >
-            {hasNext ? "Next" : "Got it"}
+            {ctaLabel}
           </button>
         </div>
       </div>

@@ -9,7 +9,10 @@ import {
 const METRIC_CATEGORY = "orbit-seeker-assist";
 const MAX_HISTORY = 12;
 
-const ACTION_TYPES = new Set(["navigate", "highlight", "navigate-and-highlight"]);
+const ACTION_TYPES = new Set(["navigate", "highlight", "navigate-and-highlight", "walkthrough"]);
+
+// Predefined, multi-step guided tours the frontend runs event-driven.
+const KNOWN_WALKTHROUGHS = new Set(["apply-for-a-job", "finish-your-profile", "book-an-interview"]);
 
 // Only on-screen anchors that actually exist may be pointed at.
 // nav-* are the persistent top-bar tabs; the rest are in-page anchors used as
@@ -45,11 +48,12 @@ export interface SeekerAssistantStep {
 }
 
 export interface SeekerAssistantAction {
-  type: "navigate" | "highlight" | "navigate-and-highlight";
+  type: "navigate" | "highlight" | "navigate-and-highlight" | "walkthrough";
   route?: string;
   target?: string;
   label?: string;
   steps?: SeekerAssistantStep[];
+  walkthrough?: string;
 }
 
 export interface SeekerAssistantReply {
@@ -134,8 +138,14 @@ export class SeekerAssistantService {
     if (steps.length > 0) {
       action.steps = steps;
     }
+    if (
+      typeof candidate.walkthrough === "string" &&
+      KNOWN_WALKTHROUGHS.has(candidate.walkthrough)
+    ) {
+      action.walkthrough = candidate.walkthrough;
+    }
     // Drop actions that have nothing actionable left after validation.
-    if (!action.route && !action.target && !action.steps) {
+    if (!action.route && !action.target && !action.steps && !action.walkthrough) {
       return undefined;
     }
     return action;
