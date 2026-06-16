@@ -22,12 +22,16 @@ export const metadata: Metadata = {
     description: SITE_DESCRIPTION,
     images: [
       {
-        url: `${SITE_URL}/au-industries/logo.jpg`,
-        width: 400,
-        height: 200,
-        alt: "AU Industries Logo",
+        url: `${SITE_URL}/au-industries/AUI-banner8.jpg`,
+        alt: "AU Industries — rubber lining, sheeting and mining solutions, Boksburg",
       },
     ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AU Industries - Rubber Lining, Sheeting & Industrial Solutions",
+    description: SITE_DESCRIPTION,
+    images: [`${SITE_URL}/au-industries/AUI-banner8.jpg`],
   },
   alternates: {
     canonical: SITE_URL,

@@ -26,7 +26,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return [];
   }
 
-  const currentDate = DateTime.now().toJSDate();
+  // Stable lastmod for the static marketing pages. A request-time value changes
+  // on every crawl, so Google learns to ignore it — bump this when the static
+  // pages' content materially changes. CMS pages, blog posts and case studies
+  // below carry their own real dates.
+  const currentDate = DateTime.fromISO("2026-06-15T00:00:00.000Z").toJSDate();
   const hardcodedEntries: MetadataRoute.Sitemap = [
     {
       url: AUIND_SITE_URL,
@@ -68,7 +72,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       url: `${AUIND_SITE_URL}/testimonials`,
       lastModified: currentDate,
       changeFrequency: "weekly",
-      priority: 0.7,
+      priority: 0.8,
     },
     {
       url: `${AUIND_SITE_URL}/rubber-lining-boksburg`,

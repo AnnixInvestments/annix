@@ -14,6 +14,12 @@ export const metadata: Metadata = {
     url: `${SITE_URL}/products-and-services`,
     title: `${TITLE} | AU Industries`,
     description: DESCRIPTION,
+    images: [
+      {
+        url: `${SITE_URL}/au-industries/AUI-banner8.jpg`,
+        alt: "AU Industries products & services — rubber lining, HDPE piping, mining solutions",
+      },
+    ],
   },
 };
 

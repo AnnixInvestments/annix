@@ -9,7 +9,21 @@ interface WebsitePageDto {
   title: string;
   metaTitle: string | null;
   metaDescription: string | null;
+  heroImageUrl: string | null;
 }
+
+const DEFAULT_OG_IMAGE = `${SITE_URL}/au-industries/AUI-banner8.jpg`;
+const FALLBACK_DESCRIPTION =
+  "Rubber lining, sheeting, HDPE piping and mining solutions from AU Industries, Boksburg.";
+
+function resolveOgImage(heroImageUrl: string | null): string {
+  if (!heroImageUrl) {
+    return DEFAULT_OG_IMAGE;
+  }
+  return heroImageUrl.startsWith("http") ? heroImageUrl : `${SITE_URL}${heroImageUrl}`;
+}
+
+const SERVICE_AREAS = ["South Africa", "Mozambique", "Namibia", "Zambia", "Botswana", "Zimbabwe"];
 
 async function fetchPage(slug: string): Promise<WebsitePageDto | null> {
   const headersList = await headers();
@@ -54,6 +68,8 @@ export async function generateMetadata(props: {
   const title: Metadata["title"] = hasBrand ? { absolute: rawTitle } : rawTitle;
   const ogTitle = hasBrand ? rawTitle : `${rawTitle} | AU Industries`;
 
+  const ogImage = resolveOgImage(page.heroImageUrl);
+
   return {
     title,
     description,
@@ -63,6 +79,13 @@ export async function generateMetadata(props: {
       url: canonical,
       title: ogTitle,
       description,
+      images: [{ url: ogImage, alt: ogTitle }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: ogTitle,
+      description,
+      images: [ogImage],
     },
   };
 }
@@ -72,32 +95,54 @@ export default async function AuIndustriesSlugLayout(props: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await props.params;
+  const page = await fetchPage(slug);
   const faqs = SERVICE_FAQS[slug];
 
-  if (!faqs || faqs.length === 0) {
-    return <>{props.children}</>;
+  const jsonLdBlocks: Record<string, unknown>[] = [];
+
+  if (page) {
+    const metaDescription = page.metaDescription;
+    jsonLdBlocks.push({
+      "@context": "https://schema.org",
+      "@type": "Service",
+      name: page.title,
+      serviceType: page.title,
+      description: metaDescription || FALLBACK_DESCRIPTION,
+      url: `${SITE_URL}/${slug}`,
+      provider: {
+        "@type": "LocalBusiness",
+        name: "AU Industries",
+        url: SITE_URL,
+      },
+      areaServed: SERVICE_AREAS.map((name) => ({ "@type": "Country", name })),
+    });
   }
 
-  const faqJsonLd = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: faqs.map((faq) => ({
-      "@type": "Question",
-      name: faq.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: faq.answer,
-      },
-    })),
-  };
+  if (faqs && faqs.length > 0) {
+    jsonLdBlocks.push({
+      "@context": "https://schema.org",
+      "@type": "FAQPage",
+      mainEntity: faqs.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
+    });
+  }
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        // biome-ignore lint/security/noDangerouslySetInnerHtml: FAQPage JSON-LD must be inline JSON for Google to parse
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
-      />
+      {jsonLdBlocks.map((block) => (
+        <script
+          key={String(block["@type"])}
+          type="application/ld+json"
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: JSON-LD must be inline JSON for Google to parse
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(block) }}
+        />
+      ))}
       {props.children}
     </>
   );
