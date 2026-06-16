@@ -6,11 +6,17 @@ import { useEffect, useRef, useState } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type {
+  IndividualProfileStatus,
   SeekerAssistantAction,
   SeekerAssistantChatTurn,
   SeekerAssistantContext,
 } from "@/app/lib/api/annixOrbitApi";
-import { useOrbitMyProfileStatus, useOrbitSeekerAssistantChat } from "@/app/lib/query/hooks";
+import {
+  useOrbitMyInterviewInvites,
+  useOrbitMyProfileStatus,
+  useOrbitSeekerAssistantChat,
+  useOrbitSeekerJobStats,
+} from "@/app/lib/query/hooks";
 import { SeekerWalkthroughRunner } from "./SeekerWalkthroughRunner";
 import { type SeekerWalkthroughStep, seekerWalkthrough } from "./seekerWalkthroughs";
 
@@ -41,6 +47,64 @@ function currentPageLabel(pathname: string): string | undefined {
   const match = pathname.match(/\/seeker\/([^/]+)/);
   const segment = match ? match[1] : "";
   return PAGE_LABELS[segment];
+}
+
+interface SeekerNudge {
+  key: string;
+  message: string;
+  cta: string;
+  walkthrough?: string;
+  route?: string;
+}
+
+// Proactive nudges (#365 Phase 4): Nix notices something worth acting on and
+// offers a dismissible prompt. Highest priority first; returns at most one.
+function computeNudge(
+  status: IndividualProfileStatus | undefined,
+  pendingInvites: number,
+  newMatches: number,
+): SeekerNudge | null {
+  if (pendingInvites > 0) {
+    const plural = pendingInvites === 1 ? "" : "s";
+    return {
+      key: "invites",
+      message: `You've got ${pendingInvites} interview invite${plural} waiting — want to take a look?`,
+      cta: "Show me",
+      route: "/annix/orbit/seeker/calendar",
+    };
+  }
+  if (newMatches > 0) {
+    const plural = newMatches === 1 ? "" : "es";
+    return {
+      key: "matches",
+      message: `${newMatches} new job match${plural} this week — want to browse them?`,
+      cta: "Show me",
+      route: "/annix/orbit/seeker/jobs",
+    };
+  }
+  if (status) {
+    const hasCv = status.hasCv;
+    const complete = status.profileComplete;
+    if (!hasCv || !complete) {
+      return {
+        key: "profile",
+        message:
+          "Your profile isn't finished yet — a complete one gets you better matches. Want me to walk you through it?",
+        cta: "Let's do it",
+        walkthrough: "finish-your-profile",
+      };
+    }
+  }
+  return null;
+}
+
+function loadDismissedNudges(): string[] {
+  // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+  if (typeof window === "undefined") {
+    return [];
+  }
+  const raw = window.sessionStorage.getItem("seeker-nudges-dismissed");
+  return raw ? raw.split(",") : [];
 }
 
 function actionToSteps(action: SeekerAssistantAction): SeekerWalkthroughStep[] {
@@ -77,10 +141,27 @@ export function SeekerAssistant() {
   const [input, setInput] = useState("");
   const [walkthroughSteps, setWalkthroughSteps] = useState<SeekerWalkthroughStep[] | null>(null);
   const [tourId, setTourId] = useState(0);
+  const [dismissedNudges, setDismissedNudges] = useState<string[]>(loadDismissedNudges);
   const chat = useOrbitSeekerAssistantChat();
-  const profileStatusQuery = useOrbitMyProfileStatus(open);
+  const profileStatusQuery = useOrbitMyProfileStatus(true);
+  const invitesQuery = useOrbitMyInterviewInvites();
+  const jobStatsQuery = useOrbitSeekerJobStats();
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pending = chat.isPending;
+
+  function dismissNudge(key: string) {
+    setDismissedNudges((prev) => {
+      if (prev.includes(key)) {
+        return prev;
+      }
+      const next = [...prev, key];
+      // eslint-disable-next-line no-restricted-syntax -- SSR guard; isUndefined(window) would throw
+      if (typeof window !== "undefined") {
+        window.sessionStorage.setItem("seeker-nudges-dismissed", next.join(","));
+      }
+      return next;
+    });
+  }
 
   useEffect(() => {
     const node = scrollRef.current;
@@ -154,10 +235,74 @@ export function SeekerAssistant() {
     />
   ) : null;
 
+  const invitesData = invitesQuery.data;
+  const pendingInvites = invitesData ? invitesData.length : 0;
+  const jobStatsData = jobStatsQuery.data;
+  const newMatches = jobStatsData ? jobStatsData.matchesLast7Days : 0;
+  const candidateNudge = computeNudge(profileStatusQuery.data, pendingInvites, newMatches);
+  const nudgeRoute = candidateNudge ? candidateNudge.route : undefined;
+  const alreadyThere = nudgeRoute ? pathname.startsWith(nudgeRoute) : false;
+  const nudgeDismissed = candidateNudge ? dismissedNudges.includes(candidateNudge.key) : true;
+  const activeNudge =
+    candidateNudge && !nudgeDismissed && !alreadyThere && !walkthroughSteps ? candidateNudge : null;
+
+  function acceptNudge(nudge: SeekerNudge) {
+    dismissNudge(nudge.key);
+    const walkthrough = nudge.walkthrough;
+    if (walkthrough) {
+      startTour({ type: "walkthrough", walkthrough });
+      return;
+    }
+    const route = nudge.route;
+    if (route) {
+      router.push(route);
+    }
+  }
+
+  const nudgeBubble = activeNudge ? (
+    <div className="fixed bottom-20 right-5 z-[9998] w-72 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-black/10 bg-white p-3 shadow-2xl">
+      <div className="flex items-start gap-2">
+        <span
+          className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+          style={{ backgroundColor: "var(--brand-accent, #FF8A00)" }}
+        >
+          N
+        </span>
+        <p className="text-sm text-gray-700">{activeNudge.message}</p>
+        <button
+          type="button"
+          onClick={() => dismissNudge(activeNudge.key)}
+          aria-label="Dismiss"
+          className="ml-auto text-gray-400 transition hover:text-gray-600"
+        >
+          ✕
+        </button>
+      </div>
+      <div className="mt-2 flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => dismissNudge(activeNudge.key)}
+          className="rounded-full px-3 py-1.5 text-xs font-medium text-gray-500 transition hover:text-gray-700"
+        >
+          Not now
+        </button>
+        <button
+          type="button"
+          onClick={() => acceptNudge(activeNudge)}
+          className="rounded-full px-3 py-1.5 text-xs font-semibold text-white transition hover:opacity-90"
+          style={{ backgroundColor: "var(--brand-navbar, #323288)" }}
+        >
+          {activeNudge.cta}
+        </button>
+      </div>
+    </div>
+  ) : null;
+
   if (!open) {
     return (
       <>
         {overlay}
+        {nudgeBubble}
         <button
           type="button"
           onClick={() => setOpen(true)}
