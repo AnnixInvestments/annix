@@ -124,11 +124,48 @@ const PATH_COLUMNS: (keyof AppBranding)[] = ASSET_SLOTS.flatMap((slot) => [
 export class AppBrandingService {
   private readonly logger = new Logger(AppBrandingService.name);
 
+  // Public asset streaming (logos, hero images) is the hottest branding route
+  // and previously re-queried the DB twice and re-downloaded from object
+  // storage on every request (~2s p95). These assets are small and change
+  // rarely, so we cache the resolved bytes in-memory with a short TTL and
+  // invalidate on any branding write.
+  private static readonly ASSET_CACHE_TTL_MS = 5 * 60 * 1000;
+  private static readonly ASSET_CACHE_MAX_ENTRIES = 96;
+  private static readonly ASSET_CACHE_MAX_BYTES = 8 * 1024 * 1024;
+  private readonly assetCache = new Map<
+    string,
+    { buffer: Buffer; mimeType: string; expiresAt: number }
+  >();
+
   constructor(
     private readonly brandingRepo: AppBrandingRepository,
     @Inject(STORAGE_SERVICE)
     private readonly storageService: IStorageService,
   ) {}
+
+  private invalidateAssetCache(): void {
+    this.assetCache.clear();
+  }
+
+  private cacheAsset(key: string, buffer: Buffer, mimeType: string): void {
+    if (buffer.byteLength > AppBrandingService.ASSET_CACHE_MAX_BYTES) {
+      return;
+    }
+    // Refreshing the key keeps it newest for insertion-order eviction below.
+    this.assetCache.delete(key);
+    this.assetCache.set(key, {
+      buffer,
+      mimeType,
+      expiresAt: Date.now() + AppBrandingService.ASSET_CACHE_TTL_MS,
+    });
+    while (this.assetCache.size > AppBrandingService.ASSET_CACHE_MAX_ENTRIES) {
+      const oldest = this.assetCache.keys().next().value;
+      if (oldest === undefined) {
+        break;
+      }
+      this.assetCache.delete(oldest);
+    }
+  }
 
   private assertBrand(brand: string): BrandCode {
     if (!isBrandCode(brand)) {
@@ -322,6 +359,9 @@ export class AppBrandingService {
     }
 
     const saved = await this.brandingRepo.save(existing);
+    // A write may change asset paths (incl. master cascading to inheritors),
+    // so drop the whole asset cache rather than guess affected keys.
+    this.invalidateAssetCache();
     this.logger.log(`Branding updated for ${saved.brandCode}`);
     return this.branding(saved.brandCode);
   }
@@ -342,6 +382,12 @@ export class AppBrandingService {
     variant: BrandingAssetVariant = "light",
   ): Promise<{ buffer: Buffer; mimeType: string }> {
     const code = this.assertBrand(brand);
+    const cacheKey = `${code}:${slot}:${variant}`;
+    const cached = this.assetCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return { buffer: cached.buffer, mimeType: cached.mimeType };
+    }
+
     const column = SLOT_COLUMN[slot][variant];
     const app = await this.rawRow(code);
     const locked =
@@ -356,7 +402,9 @@ export class AppBrandingService {
       throw new NotFoundException(`No custom ${variant} asset set for ${brand}/${slot}`);
     }
     const buffer = await this.storageService.download(path);
-    return { buffer, mimeType: mimeTypeForPath(path) };
+    const mimeType = mimeTypeForPath(path);
+    this.cacheAsset(cacheKey, buffer, mimeType);
+    return { buffer, mimeType };
   }
 
   async listImages(brand: string): Promise<BrandingImageView[]> {
