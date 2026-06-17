@@ -192,18 +192,24 @@ export class FeedbackService {
       const suppressSupportChannels = this.configService.get<string>("FEEDBACK_ENV") === "test";
 
       if (!suppressSupportChannels) {
-        const conversationId = await this.createGeneralFeedbackConversation(
-          feedback,
-          submitter,
-          attachments,
-        );
+        try {
+          const conversationId = await this.createGeneralFeedbackConversation(
+            feedback,
+            submitter,
+            attachments,
+          );
 
-        if (conversationId) {
-          feedback.conversationId = conversationId;
-          await this.feedbackRepository.save(feedback);
+          if (conversationId) {
+            feedback.conversationId = conversationId;
+            await this.feedbackRepository.save(feedback);
+          }
+
+          await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
+        } catch (error) {
+          this.logger.error(
+            `Feedback support channel (conversation/email) failed for #${feedback.id}; continuing to GitHub routing: ${error instanceof Error ? error.message : error}`,
+          );
         }
-
-        await this.sendGeneralEmailNotification(submitter, dto, attachments.length);
       }
 
       this.createGithubIssueAsync(feedback.id);

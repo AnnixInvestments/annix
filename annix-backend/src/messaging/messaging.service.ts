@@ -76,6 +76,7 @@ export class MessagingService {
         conversationId: savedConversation.id,
         userId,
         role: userId === creatorId ? ParticipantRole.OWNER : ParticipantRole.PARTICIPANT,
+        joinedAt: now().toJSDate(),
         isActive: true,
         lastReadAt: null,
       }),
