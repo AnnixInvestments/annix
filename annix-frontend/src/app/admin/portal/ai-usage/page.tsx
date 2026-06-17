@@ -34,6 +34,12 @@ function formatMs(ms: number | null): string {
   return `${ms}ms`;
 }
 
+function formatUsd(usd: number | null): string {
+  if (usd === null || usd === 0) return "-";
+  if (usd < 0.01) return "<$0.01";
+  return `$${usd.toFixed(2)}`;
+}
+
 function appBadgeColor(app: string): string {
   const colors: Record<string, string> = {
     "au-rubber": "bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300",
@@ -98,7 +104,7 @@ export default function AiUsagePage() {
       </div>
 
       {data && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <div className="rounded-lg bg-white p-4 shadow dark:bg-slate-800">
             <p className="text-sm text-gray-500 dark:text-gray-400">Total Calls</p>
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -110,6 +116,24 @@ export default function AiUsagePage() {
             <p className="text-2xl font-bold text-gray-900 dark:text-white">
               {formatTokens(data.summary.totalTokens)}
             </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">
+              {formatTokens(data.summary.totalInputTokens)} in /{" "}
+              {formatTokens(data.summary.totalOutputTokens)} out
+            </p>
+          </div>
+          <div className="rounded-lg bg-white p-4 shadow dark:bg-slate-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Est. Cost</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {formatUsd(data.summary.totalCostUsd)}
+            </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">estimated USD</p>
+          </div>
+          <div className="rounded-lg bg-white p-4 shadow dark:bg-slate-800">
+            <p className="text-sm text-gray-500 dark:text-gray-400">Output Tokens</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              {formatTokens(data.summary.totalOutputTokens)}
+            </p>
+            <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">main cost driver</p>
           </div>
         </div>
       )}
@@ -165,7 +189,10 @@ export default function AiUsagePage() {
                   "Model",
                   "Calls",
                   "Pages",
+                  "Input",
+                  "Output",
                   "Tokens",
+                  "Cost",
                   "Time",
                 ].map((header) => (
                   <th
@@ -181,7 +208,7 @@ export default function AiUsagePage() {
               {isLoading ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={12}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     Loading...
@@ -190,7 +217,7 @@ export default function AiUsagePage() {
               ) : groups.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={9}
+                    colSpan={12}
                     className="px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
                   >
                     No usage logs found
@@ -237,11 +264,35 @@ export default function AiUsagePage() {
                         return rawTotalPages || "-";
                       })()}
                     </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-gray-500 dark:text-gray-400">
+                      {formatTokens(
+                        (() => {
+                          const rawInput = group.totalInputTokens;
+                          return rawInput || null;
+                        })(),
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-mono text-gray-500 dark:text-gray-400">
+                      {formatTokens(
+                        (() => {
+                          const rawOutput = group.totalOutputTokens;
+                          return rawOutput || null;
+                        })(),
+                      )}
+                    </td>
                     <td className="whitespace-nowrap px-4 py-3 text-sm font-mono font-medium text-gray-900 dark:text-gray-200">
                       {formatTokens(
                         (() => {
                           const rawTotalTokens = group.totalTokens;
                           return rawTotalTokens || null;
+                        })(),
+                      )}
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-sm font-mono font-medium text-emerald-700 dark:text-emerald-400">
+                      {formatUsd(
+                        (() => {
+                          const rawCost = group.totalCostUsd;
+                          return rawCost || null;
                         })(),
                       )}
                     </td>

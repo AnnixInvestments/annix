@@ -1,4 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from "@nestjs/common";
+import { AiUsageService } from "../../ai-usage/ai-usage.service";
+import { AiApp, AiProvider } from "../../ai-usage/entities/ai-usage-log.entity";
+import { nowMillis } from "../../lib/datetime";
 import {
   ChatMessage,
   ClaudeChatProvider,
@@ -6,12 +9,25 @@ import {
   ImageContent,
   StreamChunk,
 } from "./claude-chat.provider";
-import { type ChatGenerationOptions, GeminiChatProvider } from "./gemini-chat.provider";
+import {
+  type AiUsage,
+  type ChatGenerationOptions,
+  GeminiChatProvider,
+} from "./gemini-chat.provider";
 import { withRetry } from "./retry";
 
-export type { ChatGenerationOptions };
+export type { AiUsage, ChatGenerationOptions };
 
 export type AiChatProviderType = "gemini" | "auto";
+
+// Pass this to chat()/chatWithImage() to have AiChatService record the call in
+// ai_usage_logs with the real input/output token split — so no Gemini call
+// routed through here can silently bypass usage tracking (issue #367 #9).
+export interface AiUsageLogContext {
+  app: AiApp;
+  actionType: string;
+  contextInfo?: Record<string, unknown>;
+}
 
 interface ChatProvider {
   readonly name: string;
@@ -21,7 +37,7 @@ interface ChatProvider {
     messages: ChatMessage[],
     systemPrompt?: string,
     options?: ChatGenerationOptions,
-  ): Promise<{ content: string; tokensUsed?: number }>;
+  ): Promise<{ content: string; tokensUsed?: number; usage?: AiUsage }>;
 }
 
 @Injectable()
@@ -30,7 +46,7 @@ export class AiChatService implements OnModuleInit {
   private readonly providers: Map<string, ChatProvider> = new Map();
   private preferredProvider: AiChatProviderType;
 
-  constructor() {
+  constructor(private readonly aiUsageService: AiUsageService) {
     this.providers.set("gemini", new GeminiChatProvider());
     this.providers.set("claude", new ClaudeChatProvider());
 
@@ -97,7 +113,8 @@ export class AiChatService implements OnModuleInit {
     systemPrompt?: string,
     providerOverride?: AiChatProviderType,
     options?: ChatGenerationOptions,
-  ): Promise<{ content: string; providerUsed: string; tokensUsed?: number }> {
+    usageLog?: AiUsageLogContext,
+  ): Promise<{ content: string; providerUsed: string; tokensUsed?: number; usage?: AiUsage }> {
     const providerToUse = providerOverride || this.preferredProvider;
     const { provider, usedFallback } = await this.selectProviderWithFallback(providerToUse);
 
@@ -114,11 +131,20 @@ export class AiChatService implements OnModuleInit {
     this.logger.log(`Using chat provider: ${provider.name}`);
 
     try {
+      const startedAt = nowMillis();
       const result = await this.chatWithRetry(provider, messages, systemPrompt, options);
+      this.recordUsage(
+        provider.name,
+        result.usage,
+        usageLog,
+        nowMillis() - startedAt,
+        options?.model,
+      );
       return {
         content: result.content,
         providerUsed: provider.name,
         tokensUsed: result.tokensUsed,
+        usage: result.usage,
       };
     } catch (error) {
       this.logger.error(`Chat failed with ${provider.name}: ${error.message}`);
@@ -127,16 +153,25 @@ export class AiChatService implements OnModuleInit {
       if (fallbackProvider) {
         this.logger.log(`Attempting fallback to: ${fallbackProvider.name}`);
         try {
+          const startedAt = nowMillis();
           const result = await this.chatWithRetry(
             fallbackProvider,
             messages,
             systemPrompt,
             options,
           );
+          this.recordUsage(
+            fallbackProvider.name,
+            result.usage,
+            usageLog,
+            nowMillis() - startedAt,
+            options?.model,
+          );
           return {
             content: result.content,
             providerUsed: fallbackProvider.name,
             tokensUsed: result.tokensUsed,
+            usage: result.usage,
           };
         } catch (fallbackError) {
           this.logger.error(`Fallback also failed: ${fallbackError.message}`);
@@ -156,7 +191,8 @@ export class AiChatService implements OnModuleInit {
     prompt: string,
     systemPrompt?: string,
     options?: ChatGenerationOptions,
-  ): Promise<{ content: string; providerUsed: string; tokensUsed?: number }> {
+    usageLog?: AiUsageLogContext,
+  ): Promise<{ content: string; providerUsed: string; tokensUsed?: number; usage?: AiUsage }> {
     const fileContent: ImageContent | DocumentContent =
       mediaType === "application/pdf"
         ? {
@@ -187,7 +223,35 @@ export class AiChatService implements OnModuleInit {
       ],
     };
 
-    return this.chat([message], systemPrompt, undefined, options);
+    return this.chat([message], systemPrompt, undefined, options, usageLog);
+  }
+
+  private recordUsage(
+    providerName: string,
+    usage: AiUsage | undefined,
+    usageLog: AiUsageLogContext | undefined,
+    processingTimeMs: number,
+    modelOverride?: string,
+  ): void {
+    if (!usageLog) {
+      return;
+    }
+    const provider = providerName.startsWith("gemini") ? AiProvider.GEMINI : AiProvider.CLAUDE;
+    const model =
+      provider === AiProvider.GEMINI
+        ? (modelOverride ?? process.env.GEMINI_CHAT_MODEL ?? "gemini-2.5-flash")
+        : (process.env.ANTHROPIC_MODEL ?? null);
+    this.aiUsageService.log({
+      app: usageLog.app,
+      actionType: usageLog.actionType,
+      provider,
+      model: model ?? undefined,
+      inputTokens: usage?.inputTokens,
+      outputTokens: usage?.outputTokens,
+      tokensUsed: usage?.totalTokens,
+      processingTimeMs,
+      contextInfo: usageLog.contextInfo,
+    });
   }
 
   async *streamChat(
@@ -301,7 +365,7 @@ export class AiChatService implements OnModuleInit {
     messages: ChatMessage[],
     systemPrompt?: string,
     options?: ChatGenerationOptions,
-  ): Promise<{ content: string; tokensUsed?: number }> {
+  ): Promise<{ content: string; tokensUsed?: number; usage?: AiUsage }> {
     return withRetry(
       () => provider.chat(messages, systemPrompt, options),
       provider.name,

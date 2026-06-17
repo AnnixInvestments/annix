@@ -35,6 +35,15 @@ export class AiUsageLog {
   @Column({ name: "tokens_used", type: "int", nullable: true })
   tokensUsed: number | null;
 
+  @Column({ name: "input_tokens", type: "int", nullable: true })
+  inputTokens: number | null;
+
+  @Column({ name: "output_tokens", type: "int", nullable: true })
+  outputTokens: number | null;
+
+  @Column({ name: "cost_usd", type: "double precision", nullable: true })
+  costUsd: number | null;
+
   @Column({ name: "page_count", type: "int", nullable: true })
   pageCount: number | null;
 

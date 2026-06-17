@@ -29,6 +29,15 @@ export class AiUsageLog {
   tokensUsed: number;
 
   @Prop({ type: Number, required: false })
+  inputTokens: number;
+
+  @Prop({ type: Number, required: false })
+  outputTokens: number;
+
+  @Prop({ type: Number, required: false })
+  costUsd: number;
+
+  @Prop({ type: Number, required: false })
   pageCount: number;
 
   @Prop({ type: Number, required: false })

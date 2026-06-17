@@ -39,14 +39,27 @@ export class PostgresAiUsageLogRepository
       .select("to_char(log.created_at::date, 'YYYY-MM-DD')", "date")
       .addSelect("COUNT(*)::int", "calls")
       .addSelect("COALESCE(SUM(log.tokens_used), 0)::bigint", "tokens")
+      .addSelect("COALESCE(SUM(log.input_tokens), 0)::bigint", "inputTokens")
+      .addSelect("COALESCE(SUM(log.output_tokens), 0)::bigint", "outputTokens")
+      .addSelect("COALESCE(SUM(log.cost_usd), 0)", "costUsd")
       .where("log.createdAt >= :since", { since })
       .groupBy("log.created_at::date")
       .orderBy("log.created_at::date", "ASC")
-      .getRawMany<{ date: string; calls: number; tokens: string | number }>();
+      .getRawMany<{
+        date: string;
+        calls: number;
+        tokens: string | number;
+        inputTokens: string | number;
+        outputTokens: string | number;
+        costUsd: string | number;
+      }>();
     return rows.map((row) => ({
       date: row.date,
       calls: Number(row.calls),
       tokens: Number(row.tokens),
+      inputTokens: Number(row.inputTokens),
+      outputTokens: Number(row.outputTokens),
+      costUsd: Number(row.costUsd),
     }));
   }
 
@@ -70,6 +83,9 @@ export class PostgresAiUsageLogRepository
       .addSelect("MAX(log.model)", "model")
       .addSelect("COUNT(*)::int", "totalCalls")
       .addSelect("COALESCE(SUM(log.tokens_used), 0)::int", "totalTokens")
+      .addSelect("COALESCE(SUM(log.input_tokens), 0)::int", "totalInputTokens")
+      .addSelect("COALESCE(SUM(log.output_tokens), 0)::int", "totalOutputTokens")
+      .addSelect("COALESCE(SUM(log.cost_usd), 0)", "totalCostUsd")
       .addSelect("COALESCE(SUM(log.page_count), 0)::int", "totalPages")
       .addSelect("COALESCE(SUM(log.processing_time_ms), 0)::int", "totalTimeMs")
       .groupBy("log.created_at::date")
@@ -107,7 +123,13 @@ export class PostgresAiUsageLogRepository
     provider: string | null,
     from: string | null,
     to: string | null,
-  ): Promise<{ totalTokens: number; totalCalls: number }> {
+  ): Promise<{
+    totalTokens: number;
+    totalCalls: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCostUsd: number;
+  }> {
     const qb = this.repository.createQueryBuilder("log");
     if (app) qb.andWhere("log.app = :app", { app });
     if (provider) qb.andWhere("log.provider = :provider", { provider });
@@ -115,11 +137,23 @@ export class PostgresAiUsageLogRepository
     if (to) qb.andWhere("log.createdAt <= :to", { to });
     const result = await qb
       .select("COALESCE(SUM(log.tokensUsed), 0)", "totalTokens")
+      .addSelect("COALESCE(SUM(log.inputTokens), 0)", "totalInputTokens")
+      .addSelect("COALESCE(SUM(log.outputTokens), 0)", "totalOutputTokens")
+      .addSelect("COALESCE(SUM(log.costUsd), 0)", "totalCostUsd")
       .addSelect("COUNT(*)", "totalCalls")
-      .getRawOne<{ totalTokens: string | number; totalCalls: string | number }>();
+      .getRawOne<{
+        totalTokens: string | number;
+        totalCalls: string | number;
+        totalInputTokens: string | number;
+        totalOutputTokens: string | number;
+        totalCostUsd: string | number;
+      }>();
     return {
       totalTokens: Number(result?.totalTokens ?? 0),
       totalCalls: Number(result?.totalCalls ?? 0),
+      totalInputTokens: Number(result?.totalInputTokens ?? 0),
+      totalOutputTokens: Number(result?.totalOutputTokens ?? 0),
+      totalCostUsd: Number(result?.totalCostUsd ?? 0),
     };
   }
 }

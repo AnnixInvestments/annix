@@ -10,6 +10,9 @@ export interface AiUsageDailyPoint {
   date: string;
   calls: number;
   tokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
 }
 
 export interface AiUsageGroupRow {
@@ -20,6 +23,9 @@ export interface AiUsageGroupRow {
   model: string | null;
   totalCalls: number;
   totalTokens: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCostUsd: number;
   totalPages: number;
   totalTimeMs: number;
 }
@@ -46,5 +52,11 @@ export abstract class AiUsageLogRepository extends CrudRepository<AiUsageLog> {
     provider: string | null,
     from: string | null,
     to: string | null,
-  ): Promise<{ totalTokens: number; totalCalls: number }>;
+  ): Promise<{
+    totalTokens: number;
+    totalCalls: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCostUsd: number;
+  }>;
 }

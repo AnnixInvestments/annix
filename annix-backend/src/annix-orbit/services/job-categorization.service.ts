@@ -8,6 +8,7 @@ import {
 } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
 import { isString } from "es-toolkit/compat";
+import { AiApp } from "../../ai-usage/entities/ai-usage-log.entity";
 import { now } from "../../lib/datetime";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
@@ -171,6 +172,7 @@ export class JobCategorizationService {
           maxOutputTokens: 512,
           model: CLASSIFIER_MODEL,
         },
+        { app: AiApp.ANNIX_ORBIT, actionType: "orbit-job-analysis" },
       );
       const parsed = parseJsonFromAi<AiJobAnalysisResponse>(response.content);
       const rawCategory = parsed.category ? parsed.category.trim() : "";
@@ -270,6 +272,7 @@ export class JobCategorizationService {
           maxOutputTokens: 128,
           model: CLASSIFIER_MODEL,
         },
+        { app: AiApp.ANNIX_ORBIT, actionType: "orbit-candidate-category" },
       );
       const parsed = parseJsonFromAi<AiCategoriesResponse>(response.content);
       const raw = parsed.categories ?? [];
@@ -307,6 +310,7 @@ export class JobCategorizationService {
           maxOutputTokens: 64,
           model: CLASSIFIER_MODEL,
         },
+        { app: AiApp.ANNIX_ORBIT, actionType: "orbit-job-category" },
       );
       const parsed = parseJsonFromAi<AiCategoryResponse>(response.content);
       const candidate = parsed.category ? parsed.category.trim() : "";

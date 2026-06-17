@@ -23,6 +23,29 @@ export interface ChatGenerationOptions {
   thinkingBudget?: number;
 }
 
+// Real per-call token breakdown from Gemini's usageMetadata, so ai_usage_logs
+// can record input vs output (output is the cost driver). thinkingBudget output
+// counts as output tokens.
+export interface AiUsage {
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cachedInputTokens: number;
+}
+
+export function geminiUsage(usageMetadata: Record<string, number> | undefined): AiUsage {
+  const input = usageMetadata?.promptTokenCount ?? 0;
+  const output =
+    (usageMetadata?.candidatesTokenCount ?? 0) + (usageMetadata?.thoughtsTokenCount ?? 0);
+  const total = usageMetadata?.totalTokenCount ?? input + output;
+  return {
+    inputTokens: input,
+    outputTokens: output,
+    totalTokens: total,
+    cachedInputTokens: usageMetadata?.cachedContentTokenCount ?? 0,
+  };
+}
+
 @Injectable()
 export class GeminiChatProvider {
   readonly name = "gemini-chat";
@@ -101,7 +124,12 @@ export class GeminiChatProvider {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
-      let totalTokens = 0;
+      let usage: AiUsage = {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        cachedInputTokens: 0,
+      };
 
       try {
         while (true) {
@@ -129,8 +157,8 @@ export class GeminiChatProvider {
                 };
               }
 
-              if (data.usageMetadata?.totalTokenCount) {
-                totalTokens = data.usageMetadata.totalTokenCount;
+              if (data.usageMetadata) {
+                usage = geminiUsage(data.usageMetadata);
               }
             } catch (parseError) {
               this.logger.warn(`Failed to parse SSE event: ${parseError.message}`);
@@ -143,8 +171,8 @@ export class GeminiChatProvider {
           metadata: {
             model: this.model,
             usage: {
-              inputTokens: 0,
-              outputTokens: totalTokens,
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens,
             },
           },
         };
@@ -164,7 +192,7 @@ export class GeminiChatProvider {
     messages: ChatMessage[],
     systemPrompt?: string,
     options?: ChatGenerationOptions,
-  ): Promise<{ content: string; tokensUsed?: number }> {
+  ): Promise<{ content: string; tokensUsed?: number; usage?: AiUsage }> {
     if (!this.apiKey) {
       throw new Error("Gemini API key not configured");
     }
@@ -216,9 +244,11 @@ export class GeminiChatProvider {
     }
 
     const data = await response.json();
+    const usage = geminiUsage(data.usageMetadata);
     return {
       content: data.candidates?.[0]?.content?.parts?.[0]?.text || "",
       tokensUsed: data.usageMetadata?.totalTokenCount ?? undefined,
+      usage,
     };
   }
 
@@ -228,7 +258,7 @@ export class GeminiChatProvider {
     prompt: string,
     systemPrompt?: string,
     options?: ChatGenerationOptions,
-  ): Promise<{ content: string; tokensUsed?: number }> {
+  ): Promise<{ content: string; tokensUsed?: number; usage?: AiUsage }> {
     const fileContent: ImageContent | DocumentContent =
       mediaType === "application/pdf"
         ? {

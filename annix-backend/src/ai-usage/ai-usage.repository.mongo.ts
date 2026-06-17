@@ -52,16 +52,32 @@ export class MongoAiUsageLogRepository
           },
           calls: { $sum: 1 },
           tokens: { $sum: { $ifNull: ["$tokensUsed", 0] } },
+          inputTokens: { $sum: { $ifNull: ["$inputTokens", 0] } },
+          outputTokens: { $sum: { $ifNull: ["$outputTokens", 0] } },
+          costUsd: { $sum: { $ifNull: ["$costUsd", 0] } },
         },
       },
       { $sort: { _id: 1 } },
-      { $project: { _id: 0, date: "$_id", calls: 1, tokens: 1 } },
+      {
+        $project: {
+          _id: 0,
+          date: "$_id",
+          calls: 1,
+          tokens: 1,
+          inputTokens: 1,
+          outputTokens: 1,
+          costUsd: 1,
+        },
+      },
     ];
     const results = await this.documents.aggregate(pipeline).exec();
     return (results as AiUsageDailyPoint[]).map((row) => ({
       date: row.date,
       calls: Number(row.calls),
       tokens: Number(row.tokens),
+      inputTokens: Number(row.inputTokens),
+      outputTokens: Number(row.outputTokens),
+      costUsd: Number(row.costUsd),
     }));
   }
 
@@ -98,6 +114,9 @@ export class MongoAiUsageLogRepository
           model: { $max: "$model" },
           totalCalls: { $sum: 1 },
           totalTokens: { $sum: { $ifNull: ["$tokensUsed", 0] } },
+          totalInputTokens: { $sum: { $ifNull: ["$inputTokens", 0] } },
+          totalOutputTokens: { $sum: { $ifNull: ["$outputTokens", 0] } },
+          totalCostUsd: { $sum: { $ifNull: ["$costUsd", 0] } },
           totalPages: { $sum: { $ifNull: ["$pageCount", 0] } },
           totalTimeMs: { $sum: { $ifNull: ["$processingTimeMs", 0] } },
         },
@@ -115,6 +134,9 @@ export class MongoAiUsageLogRepository
           model: 1,
           totalCalls: 1,
           totalTokens: 1,
+          totalInputTokens: 1,
+          totalOutputTokens: 1,
+          totalCostUsd: 1,
           totalPages: 1,
           totalTimeMs: 1,
         },
@@ -168,7 +190,13 @@ export class MongoAiUsageLogRepository
     provider: string | null,
     from: string | null,
     to: string | null,
-  ): Promise<{ totalTokens: number; totalCalls: number }> {
+  ): Promise<{
+    totalTokens: number;
+    totalCalls: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCostUsd: number;
+  }> {
     const matchStage: Record<string, unknown> = {};
     if (app) matchStage.app = app;
     if (provider) matchStage.provider = provider;
@@ -185,16 +213,30 @@ export class MongoAiUsageLogRepository
         $group: {
           _id: null,
           totalTokens: { $sum: { $ifNull: ["$tokensUsed", 0] } },
+          totalInputTokens: { $sum: { $ifNull: ["$inputTokens", 0] } },
+          totalOutputTokens: { $sum: { $ifNull: ["$outputTokens", 0] } },
+          totalCostUsd: { $sum: { $ifNull: ["$costUsd", 0] } },
           totalCalls: { $sum: 1 },
         },
       },
     ];
 
     const results = await this.documents.aggregate(pipeline).exec();
-    const row = results[0] as { totalTokens: number; totalCalls: number } | undefined;
+    const row = results[0] as
+      | {
+          totalTokens: number;
+          totalCalls: number;
+          totalInputTokens: number;
+          totalOutputTokens: number;
+          totalCostUsd: number;
+        }
+      | undefined;
     return {
       totalTokens: Number(row?.totalTokens ?? 0),
       totalCalls: Number(row?.totalCalls ?? 0),
+      totalInputTokens: Number(row?.totalInputTokens ?? 0),
+      totalOutputTokens: Number(row?.totalOutputTokens ?? 0),
+      totalCostUsd: Number(row?.totalCostUsd ?? 0),
     };
   }
 }

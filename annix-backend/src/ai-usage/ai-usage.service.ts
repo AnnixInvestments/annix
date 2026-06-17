@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import { now } from "../lib/datetime";
+import { estimateAiCostUsd } from "./ai-pricing";
 import { AiUsageDailyPoint, AiUsageLogRepository } from "./ai-usage.repository";
 import { AiApp, AiProvider } from "./entities/ai-usage-log.entity";
 
@@ -9,6 +10,8 @@ export interface LogAiUsageDto {
   provider: AiProvider;
   model?: string;
   tokensUsed?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   pageCount?: number;
   processingTimeMs?: number;
   contextInfo?: Record<string, unknown>;
@@ -31,6 +34,9 @@ export interface AiUsageGroupRow {
   model: string | null;
   totalCalls: number;
   totalTokens: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCostUsd: number;
   totalPages: number;
   totalTimeMs: number;
 }
@@ -47,6 +53,9 @@ export interface AiUsageListResponse {
   summary: {
     totalTokens: number;
     totalCalls: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCostUsd: number;
   };
 }
 
@@ -57,13 +66,24 @@ export class AiUsageService {
   constructor(private readonly repo: AiUsageLogRepository) {}
 
   log(dto: LogAiUsageDto): void {
+    const inputTokens = dto.inputTokens ?? null;
+    const outputTokens = dto.outputTokens ?? null;
+    const tokensUsed =
+      dto.tokensUsed ??
+      (inputTokens !== null || outputTokens !== null
+        ? (inputTokens ?? 0) + (outputTokens ?? 0)
+        : null);
+    const costUsd = estimateAiCostUsd(dto.model, inputTokens, outputTokens, tokensUsed);
     this.repo
       .create({
         app: dto.app,
         actionType: dto.actionType,
         provider: dto.provider,
         model: dto.model ?? null,
-        tokensUsed: dto.tokensUsed ?? null,
+        tokensUsed,
+        inputTokens,
+        outputTokens,
+        costUsd,
         pageCount: dto.pageCount ?? null,
         processingTimeMs: dto.processingTimeMs ?? null,
         contextInfo: dto.contextInfo ?? null,
@@ -90,7 +110,16 @@ export class AiUsageService {
     const series = Array.from({ length: clamped }, (_, index) => {
       const date = start.plus({ days: index }).toFormat("yyyy-MM-dd");
       const existing = byDate.get(date);
-      return existing ?? { date, calls: 0, tokens: 0 };
+      return (
+        existing ?? {
+          date,
+          calls: 0,
+          tokens: 0,
+          inputTokens: 0,
+          outputTokens: 0,
+          costUsd: 0,
+        }
+      );
     });
     return { days: series };
   }
@@ -124,6 +153,9 @@ export class AiUsageService {
       summary: {
         totalTokens: summary.totalTokens,
         totalCalls: summary.totalCalls,
+        totalInputTokens: summary.totalInputTokens,
+        totalOutputTokens: summary.totalOutputTokens,
+        totalCostUsd: summary.totalCostUsd,
       },
     };
   }

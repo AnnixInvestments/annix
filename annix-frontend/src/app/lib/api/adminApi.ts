@@ -2104,6 +2104,9 @@ export interface AiUsageGroup {
   model: string | null;
   totalCalls: number;
   totalTokens: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCostUsd: number;
   totalPages: number;
   totalTimeMs: number;
 }
@@ -2116,6 +2119,9 @@ export interface AiUsageListResponse {
   summary: {
     totalTokens: number;
     totalCalls: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCostUsd: number;
   };
 }
 
@@ -2123,6 +2129,9 @@ export interface AiUsageDailyPoint {
   date: string;
   calls: number;
   tokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  costUsd: number;
 }
 
 export interface AiUsageDailySeriesResponse {
