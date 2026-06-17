@@ -166,6 +166,7 @@ export class JobCardImportController {
   }
 
   @Post("auto-detect")
+  @StockControlRoles("accounts", "manager", "admin")
   @ApiOperation({ summary: "Auto-detect column mapping using AI" })
   async autoDetect(@Body() body: { grid: string[][] }, @Req() req: any) {
     return this.jobCardImportService.autoDetectMapping(body.grid, req.user.companyId);
