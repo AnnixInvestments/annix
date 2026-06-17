@@ -123,6 +123,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.7,
     },
     {
+      url: `${AUIND_SITE_URL}/technical-data-sheets`,
+      lastModified: currentDate,
+      changeFrequency: "monthly",
+      priority: 0.85,
+    },
+    {
       url: `${AUIND_SITE_URL}/quote`,
       lastModified: currentDate,
       changeFrequency: "monthly",
@@ -156,6 +162,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "rubber-lined-mining-pipework",
     "industrial-wear-lining",
     "blog",
+    "technical-data-sheets",
     "quote",
     "faq",
     "contact",
@@ -207,6 +214,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         },
       );
       dynamicEntries.push(...blogEntries);
+    }
+  } catch {
+    // Ignore — fall through with what we have
+  }
+
+  try {
+    const sheetsRes = await fetch(`${apiBase}/public/au-industries/data-sheets`, {
+      next: { revalidate: 3600 },
+    });
+    if (sheetsRes.ok) {
+      const sheets = await sheetsRes.json();
+      const sheetEntries = sheets.map((sheet: { slug: string; updatedAt: string }) => ({
+        url: `${AUIND_SITE_URL}/technical-data-sheets/${sheet.slug}`,
+        lastModified: DateTime.fromISO(sheet.updatedAt).toJSDate(),
+        changeFrequency: "monthly" as const,
+        priority: 0.7,
+      }));
+      dynamicEntries.push(...sheetEntries);
     }
   } catch {
     // Ignore — fall through with what we have

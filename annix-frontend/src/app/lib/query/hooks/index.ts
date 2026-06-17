@@ -907,6 +907,8 @@ export {
   useAuRubberCompanies,
   useAuRubberCreateCocsFromAnalysis,
   useAuRubberCreateRole,
+  useAuRubberDataSheet,
+  useAuRubberDataSheets,
   useAuRubberDedupeActiveSupplierCocs,
   useAuRubberDeleteChemicalDocument,
   useAuRubberDeleteDeliveryNote,

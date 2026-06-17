@@ -5,7 +5,9 @@ import { CompanyProfile } from "../admin/entities/company-profile.entity";
 import { EmailService } from "../email/email.service";
 import { ApiMessageResponse, messageResponse } from "../shared/dto";
 import { BlogPostsService } from "./blog-posts.service";
+import { CompoundDataSheetsService } from "./compound-data-sheets.service";
 import { BlogPost } from "./entities/blog-post.entity";
+import { CompoundDataSheet } from "./entities/compound-data-sheet.entity";
 import { Testimonial } from "./entities/testimonial.entity";
 import { WebsitePage } from "./entities/website-page.entity";
 import { TestimonialsService } from "./testimonials.service";
@@ -27,6 +29,7 @@ export class PublicAuIndustriesController {
     private readonly websitePagesService: WebsitePagesService,
     private readonly testimonialsService: TestimonialsService,
     private readonly blogPostsService: BlogPostsService,
+    private readonly dataSheetsService: CompoundDataSheetsService,
     private readonly companyProfileService: AdminCompanyProfileService,
     private readonly emailService: EmailService,
   ) {}
@@ -73,6 +76,21 @@ export class PublicAuIndustriesController {
   @ApiResponse({ status: 200, type: BlogPost })
   async publishedBlogPostBySlug(@Param("slug") slug: string): Promise<BlogPost> {
     return this.blogPostsService.publishedPostBySlug(slug);
+  }
+
+  @Get("data-sheets")
+  @ApiOperation({ summary: "List published compound technical data sheets" })
+  @ApiResponse({ status: 200, type: [CompoundDataSheet] })
+  async publishedDataSheets(): Promise<CompoundDataSheet[]> {
+    return this.dataSheetsService.publishedSheets();
+  }
+
+  @Get("data-sheets/:slug")
+  @ApiOperation({ summary: "Get a published compound data sheet by slug" })
+  @ApiParam({ name: "slug", type: "string" })
+  @ApiResponse({ status: 200, type: CompoundDataSheet })
+  async publishedDataSheetBySlug(@Param("slug") slug: string): Promise<CompoundDataSheet> {
+    return this.dataSheetsService.publishedSheetBySlug(slug);
   }
 
   @Get("contact")

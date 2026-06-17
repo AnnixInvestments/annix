@@ -9,6 +9,7 @@ import {
   type BlogPostDto,
   type ChemicalSupplierDocumentDto,
   type CocProcessingStatus,
+  type CompoundDataSheetDto,
   type CompoundQualityDetailDto,
   type CompoundQualitySummaryDto,
   type DeliveryNoteStatus,
@@ -275,6 +276,21 @@ export function useAuRubberBlogPost(id: string) {
   return useQuery<BlogPostDto>({
     queryKey: rubberKeys.blogPosts.detail(id),
     queryFn: () => auRubberApiClient.blogPost(id),
+    enabled: !!id,
+  });
+}
+
+export function useAuRubberDataSheets() {
+  return useQuery<CompoundDataSheetDto[]>({
+    queryKey: rubberKeys.dataSheets.list(),
+    queryFn: () => auRubberApiClient.dataSheets(),
+  });
+}
+
+export function useAuRubberDataSheet(id: string) {
+  return useQuery<CompoundDataSheetDto>({
+    queryKey: rubberKeys.dataSheets.detail(id),
+    queryFn: () => auRubberApiClient.dataSheet(id),
     enabled: !!id,
   });
 }

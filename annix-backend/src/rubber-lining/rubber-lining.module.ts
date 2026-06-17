@@ -42,7 +42,10 @@ import { AuRubberLicensingRegistrar } from "./au-rubber-licensing.registrar";
 import { BlogPostsController } from "./blog-posts.controller";
 import { BlogPostsService } from "./blog-posts.service";
 import { AuRubberCapabilities } from "./capabilities/au-rubber.capabilities";
+import { CompoundDataSheetsController } from "./compound-data-sheets.controller";
+import { CompoundDataSheetsService } from "./compound-data-sheets.service";
 import { BlogPost } from "./entities/blog-post.entity";
+import { CompoundDataSheet } from "./entities/compound-data-sheet.entity";
 import { RubberAccountSignOff } from "./entities/rubber-account-sign-off.entity";
 import { RubberAppProfile } from "./entities/rubber-app-profile.entity";
 import {
@@ -103,6 +106,9 @@ import { PublicAuIndustriesController } from "./public-au-industries.controller"
 import { BlogPostRepository } from "./repositories/blog-post.repository";
 import { MongoBlogPostRepository } from "./repositories/blog-post.repository.mongo";
 import { PostgresBlogPostRepository } from "./repositories/blog-post.repository.postgres";
+import { CompoundDataSheetRepository } from "./repositories/compound-data-sheet.repository";
+import { MongoCompoundDataSheetRepository } from "./repositories/compound-data-sheet.repository.mongo";
+import { PostgresCompoundDataSheetRepository } from "./repositories/compound-data-sheet.repository.postgres";
 import { RubberAccountSignOffRepository } from "./repositories/rubber-account-sign-off.repository";
 import { MongoRubberAccountSignOffRepository } from "./repositories/rubber-account-sign-off.repository.mongo";
 import { PostgresRubberAccountSignOffRepository } from "./repositories/rubber-account-sign-off.repository.postgres";
@@ -283,6 +289,7 @@ import { RubberStockLocationService } from "./rubber-stock-location.service";
 import { RubberSupplierCocReminderService } from "./rubber-supplier-coc-reminder.service";
 import { RubberTaxInvoiceService } from "./rubber-tax-invoice.service";
 import { BlogPostSchema } from "./schemas/blog-post.schema";
+import { CompoundDataSheetSchema } from "./schemas/compound-data-sheet.schema";
 import { RubberAccountSignOffSchema } from "./schemas/rubber-account-sign-off.schema";
 import { RubberAdhesionRequirementSchema } from "./schemas/rubber-adhesion-requirement.schema";
 import { RubberAppProfileSchema } from "./schemas/rubber-app-profile.schema";
@@ -357,6 +364,7 @@ import { WebsitePagesService } from "./website-pages.service";
       ? [
           MongooseModule.forFeature([
             { name: "BlogPost", schema: BlogPostSchema },
+            { name: "CompoundDataSheet", schema: CompoundDataSheetSchema },
             { name: "RubberAccountSignOff", schema: RubberAccountSignOffSchema },
             { name: "RubberAdhesionRequirement", schema: RubberAdhesionRequirementSchema },
             { name: "RubberApplicationRating", schema: RubberApplicationRatingSchema },
@@ -494,6 +502,7 @@ import { WebsitePagesService } from "./website-pages.service";
             WebsitePage,
             Testimonial,
             BlogPost,
+            CompoundDataSheet,
             JobCard,
             JobCardLineItem,
           ]),
@@ -507,6 +516,7 @@ import { WebsitePagesService } from "./website-pages.service";
     WebsitePagesController,
     TestimonialsController,
     BlogPostsController,
+    CompoundDataSheetsController,
     PublicAuIndustriesController,
   ],
   providers: [
@@ -544,6 +554,7 @@ import { WebsitePagesService } from "./website-pages.service";
     WebsitePagesService,
     TestimonialsService,
     BlogPostsService,
+    CompoundDataSheetsService,
     ArEmailAdapterService,
     AuRubberDocumentFilerService,
     PdfPageCacheService,
@@ -555,6 +566,11 @@ import { WebsitePagesService } from "./website-pages.service";
     RubberStatementReconciliationService,
     AuRubberCapabilities,
     repositoryProvider(BlogPostRepository, PostgresBlogPostRepository, MongoBlogPostRepository),
+    repositoryProvider(
+      CompoundDataSheetRepository,
+      PostgresCompoundDataSheetRepository,
+      MongoCompoundDataSheetRepository,
+    ),
     repositoryProvider(
       RubberAccountSignOffRepository,
       PostgresRubberAccountSignOffRepository,

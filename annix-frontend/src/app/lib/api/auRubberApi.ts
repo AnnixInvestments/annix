@@ -2786,6 +2786,41 @@ class AuRubberApiClient {
       method: "DELETE",
     });
   }
+
+  dataSheets = createEndpoint<[], CompoundDataSheetDto[]>(apiClient, "GET", {
+    path: "/rubber-lining/data-sheets",
+  });
+
+  dataSheet = createEndpoint<[id: string], CompoundDataSheetDto>(apiClient, "GET", {
+    path: (id) => `/rubber-lining/data-sheets/${id}`,
+  });
+
+  createDataSheet = createEndpoint<[data: CreateCompoundDataSheetDto], CompoundDataSheetDto>(
+    apiClient,
+    "POST",
+    {
+      path: "/rubber-lining/data-sheets",
+      body: (data) => data,
+    },
+  );
+
+  updateDataSheet = createEndpoint<
+    [id: string, data: UpdateCompoundDataSheetDto],
+    CompoundDataSheetDto
+  >(apiClient, "PATCH", {
+    path: (id, _data) => `/rubber-lining/data-sheets/${id}`,
+    body: (_id, data) => data,
+  });
+
+  async deleteDataSheet(id: string): Promise<void> {
+    return this.request(`/rubber-lining/data-sheets/${id}`, {
+      method: "DELETE",
+    });
+  }
+
+  async uploadDataSheetPdf(file: File): Promise<{ url: string }> {
+    return this.requestWithFiles("/rubber-lining/data-sheets/upload-pdf", [file], {}, "file");
+  }
 }
 
 export interface WebsitePageDto {
@@ -2921,5 +2956,60 @@ export interface UpdateBlogPostDto {
   publishedAt?: string | null;
   isPublished?: boolean;
 }
+
+export interface CompoundSpecDto {
+  label: string;
+  value: string;
+  method?: string | null;
+}
+
+export interface CompoundDataSheetDto {
+  id: string;
+  slug: string;
+  name: string;
+  code: string;
+  category: string;
+  polymer: string;
+  shoreHardness: string;
+  colour: string;
+  cureMethod: string;
+  shortDescription: string;
+  applications: string[];
+  notRecommended: string;
+  specs: CompoundSpecDto[];
+  pdfUrl: string | null;
+  pdfStatus: string;
+  revision: string;
+  metaTitle: string | null;
+  metaDescription: string | null;
+  sortOrder: number;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateCompoundDataSheetDto {
+  slug: string;
+  name: string;
+  code?: string;
+  category?: string;
+  polymer?: string;
+  shoreHardness?: string;
+  colour?: string;
+  cureMethod?: string;
+  shortDescription?: string;
+  applications?: string[];
+  notRecommended?: string;
+  specs?: CompoundSpecDto[];
+  pdfUrl?: string | null;
+  pdfStatus?: string;
+  revision?: string;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  sortOrder?: number;
+  isPublished?: boolean;
+}
+
+export type UpdateCompoundDataSheetDto = Partial<CreateCompoundDataSheetDto>;
 
 export const auRubberApiClient = new AuRubberApiClient();
