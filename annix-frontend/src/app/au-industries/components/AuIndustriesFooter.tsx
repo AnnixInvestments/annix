@@ -152,6 +152,12 @@ export function AuIndustriesFooter(props: FooterProps) {
                 Gallery
               </Link>
               <Link
+                href="/technical-data-sheets"
+                className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
+              >
+                Data Sheets
+              </Link>
+              <Link
                 href="/contact"
                 className="block text-gray-700 hover:text-[#B8860B] underline-offset-2 hover:underline transition-colors"
               >

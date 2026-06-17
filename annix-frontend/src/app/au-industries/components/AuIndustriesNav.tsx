@@ -86,6 +86,17 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               Blog
             </Link>
             <Link
+              href="/technical-data-sheets"
+              className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
+                pathname === "/technical-data-sheets" ||
+                pathname.startsWith("/technical-data-sheets/")
+                  ? "text-gray-900 border-b-2 border-gray-900"
+                  : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              Data Sheets
+            </Link>
+            <Link
               href="/quote"
               className={`px-4 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
                 pathname === "/quote"
@@ -217,6 +228,18 @@ export function AuIndustriesNav(props: { pages: NavPage[] }) {
               }`}
             >
               Blog
+            </Link>
+            <Link
+              href="/technical-data-sheets"
+              onClick={() => setMenuOpen(false)}
+              className={`block px-3 py-2 text-base font-semibold uppercase ${
+                pathname === "/technical-data-sheets" ||
+                pathname.startsWith("/technical-data-sheets/")
+                  ? "text-gray-900"
+                  : "text-gray-800 hover:text-gray-900"
+              }`}
+            >
+              Data Sheets
             </Link>
             <Link
               href="/quote"
