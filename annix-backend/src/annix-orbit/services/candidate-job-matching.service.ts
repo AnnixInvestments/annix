@@ -27,11 +27,38 @@ import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capabi
 import { CvNotificationService } from "./cv-notification.service";
 import { haversineKm } from "./geocode.service";
 
-const WEIGHT_EMBEDDING = 0.45;
-const WEIGHT_SKILLS = 0.22;
-const WEIGHT_EXPERIENCE = 0.15;
-const WEIGHT_LOCATION = 0.08;
-const WEIGHT_SALARY = 0.1;
+// The five base-score weights. Live scoring uses DEFAULT_WEIGHTS; alternative
+// profiles exist only for A/B inspection via the explain harness — they do NOT
+// change production matching. Each profile should sum to 1.0.
+export interface MatchWeights {
+  embedding: number;
+  skills: number;
+  experience: number;
+  location: number;
+  salary: number;
+}
+
+export const DEFAULT_WEIGHTS: MatchWeights = {
+  embedding: 0.45,
+  skills: 0.22,
+  experience: 0.15,
+  location: 0.08,
+  salary: 0.1,
+};
+
+// Experimental profiles to compare against DEFAULT_WEIGHTS. Tune freely.
+export const WEIGHT_PROFILES: Record<string, MatchWeights> = {
+  default: DEFAULT_WEIGHTS,
+  // Lean less on the embedding, more on concrete skills/role evidence.
+  "skills-forward": { embedding: 0.35, skills: 0.3, experience: 0.15, location: 0.1, salary: 0.1 },
+  // A middle ground between the two.
+  balanced: { embedding: 0.4, skills: 0.25, experience: 0.15, location: 0.1, salary: 0.1 },
+};
+
+export function weightProfile(key: string): MatchWeights {
+  const found = WEIGHT_PROFILES[key];
+  return found ? found : DEFAULT_WEIGHTS;
+}
 
 const WORK_PROFILE_BOOST_CAP = 0.1;
 const FIELD_WEIGHT_WITHIN_BOOST = 0.6;
@@ -87,6 +114,75 @@ interface CategoryNarrowing {
 export const STRETCH_RESERVED_SLOTS = 3;
 export const STRETCH_SCORE_BAND_MIN = 0.6;
 export const STRETCH_SCORE_BAND_MAX = 0.79;
+
+// Experience band score when the CV's years-of-experience couldn't be read.
+// Neutral rather than punishing — a missing number shouldn't look like "no
+// experience" (raised from 0.3 → 0.5, ref matching-rules review).
+const UNKNOWN_EXPERIENCE_SCORE = 0.5;
+
+// Travel-radius penalty is graded, not a cliff: no penalty at/inside the radius,
+// tapering to OUTSIDE_RADIUS_PENALTY (the old flat multiplier) at TRAVEL_FULL_
+// PENALTY_FACTOR × the radius. A job 1 km past the radius is barely dinged.
+const TRAVEL_FULL_PENALTY_FACTOR = 2;
+
+// Common skill aliases → canonical form, so exact-equivalent skills written
+// differently still match. Kept small and general; the embedding already handles
+// fuzzy semantic overlap, this only collapses aliases the token matcher misses.
+const SKILL_ALIASES: Record<string, string> = {
+  js: "javascript",
+  ts: "typescript",
+  reactjs: "react",
+  "react.js": "react",
+  nodejs: "node",
+  "node.js": "node",
+  postgres: "postgresql",
+  postgre: "postgresql",
+  k8s: "kubernetes",
+  golang: "go",
+  csharp: "c#",
+  "c sharp": "c#",
+  dotnet: ".net",
+  "dot net": ".net",
+  "ms office": "microsoft office",
+  "ms excel": "excel",
+  "ms word": "word",
+};
+
+function normaliseSkill(skill: string): string {
+  const lowered = skill.toLowerCase().trim();
+  // Keep + # . (C++, C#, .net); collapse other punctuation to spaces.
+  const cleaned = lowered
+    .replace(/[^a-z0-9+#.]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const alias = SKILL_ALIASES[cleaned];
+  return alias ? alias : cleaned;
+}
+
+function skillTokens(normalised: string): string[] {
+  return normalised.split(" ").filter((token) => token.length >= 2 || /[+#]/.test(token));
+}
+
+// Two skills match if they normalise to the same string, or every significant
+// token of the shorter phrase appears as a WHOLE token in the longer one. This
+// replaces naive substring matching, so "java" no longer matches "javascript"
+// and "c" no longer matches "civil"/"c++".
+function skillsMatch(candidateSkill: string, jobSkill: string): boolean {
+  const candidate = normaliseSkill(candidateSkill);
+  const job = normaliseSkill(jobSkill);
+  if (candidate === job) {
+    return true;
+  }
+  const candidateTokens = skillTokens(candidate);
+  const jobTokens = skillTokens(job);
+  if (candidateTokens.length === 0 || jobTokens.length === 0) {
+    return false;
+  }
+  const shorter = candidateTokens.length <= jobTokens.length ? candidateTokens : jobTokens;
+  const longer = candidateTokens.length <= jobTokens.length ? jobTokens : candidateTokens;
+  const longerSet = new Set(longer);
+  return shorter.every((token) => longerSet.has(token));
+}
 const RECOMMENDED_FETCH_WINDOW = 200;
 
 export interface RecommendedJobFilters {
@@ -120,7 +216,7 @@ function roleAppearsInText(role: string, haystack: string): boolean {
 
 // Candidate years → base experience band (independent of the job).
 function experienceBandScore(years: number | null | undefined): number {
-  if (!years) return 0.3; // 0 / missing → "unknown", not zero-experience
+  if (!years) return UNKNOWN_EXPERIENCE_SCORE; // 0 / missing → neutral, not zero-experience
   if (years >= 5) return 1.0;
   if (years >= 3) return 0.8;
   if (years >= 1) return 0.5;
@@ -434,25 +530,20 @@ export class CandidateJobMatchingService {
     candidate: Candidate,
     job: ExternalJob,
   ): { score: number; matched: string[]; missing: string[] } {
-    const candidateSkills = (candidate.extractedData?.skills ?? []).map((s) => s.toLowerCase());
-    const jobSkills = job.extractedSkills.map((s) => s.toLowerCase());
+    const candidateSkills = candidate.extractedData?.skills ?? [];
+    const jobSkills = job.extractedSkills;
 
     if (jobSkills.length === 0) {
       return { score: candidateSkills.length > 0 ? 0.5 : 0, matched: [], missing: [] };
-    } else {
-      const matched = jobSkills.filter((js) =>
-        candidateSkills.some((cs) => cs.includes(js) || js.includes(cs)),
-      );
-      const missing = jobSkills.filter(
-        (js) => !candidateSkills.some((cs) => cs.includes(js) || js.includes(cs)),
-      );
-
-      return {
-        score: matched.length / jobSkills.length,
-        matched,
-        missing,
-      };
     }
+    const matched = jobSkills.filter((js) => candidateSkills.some((cs) => skillsMatch(cs, js)));
+    const missing = jobSkills.filter((js) => !candidateSkills.some((cs) => skillsMatch(cs, js)));
+
+    return {
+      score: matched.length / jobSkills.length,
+      matched,
+      missing,
+    };
   }
 
   calculateWorkProfileBoost(
@@ -529,15 +620,22 @@ export class CandidateJobMatchingService {
     );
   }
 
-  private async scoreAndSaveMatch(
+  // Pure scoring — every component, the weighted combine, boosts and penalties —
+  // with NO persistence. Shared by the live matcher and the read-only explain
+  // harness so they can never drift.
+  computeMatch(
     candidate: Candidate,
     job: ExternalJob,
     embeddingSimilarity: number,
-    candidateId: number,
-    externalJobId: number,
-    categoryBoost = 0,
-    dismissedVectors: number[][] = [],
-  ): Promise<CandidateJobMatch> {
+    categoryBoost: number,
+    dismissedVectors: number[][],
+    weights: MatchWeights = DEFAULT_WEIGHTS,
+  ): {
+    similarityScore: number;
+    structuredScore: number;
+    overallScore: number;
+    matchDetails: MatchDetails;
+  } {
     const skillsResult = this.calculateSkillsOverlap(candidate, job);
     const experienceMatch = this.calculateExperienceMatch(candidate, job);
     const locationMatch = this.calculateLocationMatch(candidate, job);
@@ -547,11 +645,11 @@ export class CandidateJobMatchingService {
     const outsideRadius = this.isOutsideTravelRadius(candidate, job);
 
     const baseScore =
-      embeddingSimilarity * WEIGHT_EMBEDDING +
-      skillsResult.score * WEIGHT_SKILLS +
-      experienceMatch * WEIGHT_EXPERIENCE +
-      locationMatch * WEIGHT_LOCATION +
-      salaryResult.score * WEIGHT_SALARY;
+      embeddingSimilarity * weights.embedding +
+      skillsResult.score * weights.skills +
+      experienceMatch * weights.experience +
+      locationMatch * weights.location +
+      salaryResult.score * weights.salary;
 
     const withWorkBoost =
       workBoost.score === null
@@ -560,9 +658,7 @@ export class CandidateJobMatchingService {
     const withBoost = Math.min(1, withWorkBoost + categoryBoost);
     const dismissPenalty = this.dismissPenaltyFor(job.embedding, dismissedVectors);
     const withDismissPenalty = Math.max(0, withBoost - dismissPenalty);
-    const overallScore = outsideRadius
-      ? withDismissPenalty * OUTSIDE_RADIUS_PENALTY
-      : withDismissPenalty;
+    const overallScore = withDismissPenalty * this.travelRadiusMultiplier(candidate, job);
 
     const matchDetails: MatchDetails = {
       embeddingSimilarity,
@@ -589,30 +685,98 @@ export class CandidateJobMatchingService {
       ),
     };
 
-    const existing = await this.matchRepo.findByCandidateAndJob(candidateId, externalJobId);
-
+    const nonEmbedding = 1 - weights.embedding;
     const structuredScore =
-      skillsResult.score * (WEIGHT_SKILLS / (1 - WEIGHT_EMBEDDING)) +
-      experienceMatch * (WEIGHT_EXPERIENCE / (1 - WEIGHT_EMBEDDING)) +
-      locationMatch * (WEIGHT_LOCATION / (1 - WEIGHT_EMBEDDING)) +
-      salaryResult.score * (WEIGHT_SALARY / (1 - WEIGHT_EMBEDDING));
+      skillsResult.score * (weights.skills / nonEmbedding) +
+      experienceMatch * (weights.experience / nonEmbedding) +
+      locationMatch * (weights.location / nonEmbedding) +
+      salaryResult.score * (weights.salary / nonEmbedding);
 
+    return { similarityScore: embeddingSimilarity, structuredScore, overallScore, matchDetails };
+  }
+
+  private async scoreAndSaveMatch(
+    candidate: Candidate,
+    job: ExternalJob,
+    embeddingSimilarity: number,
+    candidateId: number,
+    externalJobId: number,
+    categoryBoost = 0,
+    dismissedVectors: number[][] = [],
+  ): Promise<CandidateJobMatch> {
+    const scored = this.computeMatch(
+      candidate,
+      job,
+      embeddingSimilarity,
+      categoryBoost,
+      dismissedVectors,
+    );
+    const existing = await this.matchRepo.findByCandidateAndJob(candidateId, externalJobId);
     if (existing) {
-      existing.similarityScore = embeddingSimilarity;
-      existing.structuredScore = structuredScore;
-      existing.overallScore = overallScore;
-      existing.matchDetails = matchDetails;
+      existing.similarityScore = scored.similarityScore;
+      existing.structuredScore = scored.structuredScore;
+      existing.overallScore = scored.overallScore;
+      existing.matchDetails = scored.matchDetails;
       return this.matchRepo.save(existing);
     }
-
     return this.matchRepo.create({
       candidateId,
       externalJobId,
-      similarityScore: embeddingSimilarity,
-      structuredScore,
-      overallScore,
-      matchDetails,
+      similarityScore: scored.similarityScore,
+      structuredScore: scored.structuredScore,
+      overallScore: scored.overallScore,
+      matchDetails: scored.matchDetails,
     });
+  }
+
+  // Read-only diagnostic: score a candidate's top embedding-ranked jobs and
+  // return the full per-component breakdown WITHOUT persisting anything. Drives
+  // scripts/match-explain.ts so the matching rules can be inspected on live data.
+  async explainCandidateMatches(
+    candidateId: number,
+    limit = 15,
+    weights: MatchWeights = DEFAULT_WEIGHTS,
+  ): Promise<
+    Array<{
+      job: ExternalJob;
+      similarityScore: number;
+      structuredScore: number;
+      overallScore: number;
+      matchDetails: MatchDetails;
+    }>
+  > {
+    const candidate = await this.candidateRepo.findById(candidateId);
+    if (!candidate) {
+      return [];
+    }
+    const narrowing = this.resolveCategoryNarrowing(candidate);
+    const dismissedVectors = await this.loadDismissedJobVectors(candidateId);
+    const similarJobs = await this.findSimilarJobsByEmbedding(
+      candidate,
+      limit,
+      narrowing.pool,
+      targetCountriesOf(candidate.targetCountries),
+    );
+    const jobs = await this.externalJobRepo.findByIds(similarJobs.map((row) => row.jobId));
+    const jobsById = new Map(jobs.map((job) => [job.id, job]));
+    return similarJobs
+      .map((row) => {
+        const job = jobsById.get(row.jobId);
+        if (!job) {
+          return null;
+        }
+        const categoryBoost = this.categoryBoostFor(job, narrowing);
+        const scored = this.computeMatch(
+          candidate,
+          job,
+          row.similarity,
+          categoryBoost,
+          dismissedVectors,
+          weights,
+        );
+        return { job, ...scored };
+      })
+      .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
   }
 
   private calculateExperienceMatch(candidate: Candidate, job: ExternalJob): number {
@@ -730,6 +894,19 @@ export class CandidateJobMatchingService {
     const distance = this.calculateDistance(candidate, job);
     if (distance === null) return false;
     return distance > radius;
+  }
+
+  // Graded travel penalty: 1.0 (no penalty) at/inside the radius, tapering to
+  // OUTSIDE_RADIUS_PENALTY at TRAVEL_FULL_PENALTY_FACTOR× the radius — so a job
+  // just past the radius is barely dinged instead of falling off a 60% cliff.
+  travelRadiusMultiplier(candidate: Candidate, job: ExternalJob): number {
+    const radius = candidate.workProfile?.shared.willingToTravelKm;
+    if (radius == null || radius <= 0) return 1;
+    const distance = this.calculateDistance(candidate, job);
+    if (distance === null || distance <= radius) return 1;
+    const overshoot = (distance - radius) / (radius * (TRAVEL_FULL_PENALTY_FACTOR - 1));
+    const clamped = Math.min(1, Math.max(0, overshoot));
+    return 1 - clamped * (1 - OUTSIDE_RADIUS_PENALTY);
   }
 
   private buildReasoning(

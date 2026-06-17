@@ -68,6 +68,11 @@ export class ExternalJob {
   @Column({ name: "extracted_skills", type: "jsonb", default: "[]" })
   extractedSkills: string[];
 
+  // When the Gemini skill/category analysis last ran for this job. Set even when
+  // no skills were found, so empty-shell listings aren't re-analysed forever.
+  @Column({ name: "skills_analyzed_at", type: "timestamptz", nullable: true })
+  skillsAnalyzedAt: Date | null;
+
   @Column({ type: "varchar", length: 255, nullable: true })
   category: string | null;
 

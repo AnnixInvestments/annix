@@ -13,7 +13,13 @@ import { CandidateRepository } from "../repositories/candidate.repository";
 import { CandidateJobMatchRepository } from "../repositories/candidate-job-match.repository";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
 import { OrbitTierCapabilityRepository } from "../repositories/orbit-tier-capability.repository";
-import { CandidateJobMatchingService, inferJobSeniority } from "./candidate-job-matching.service";
+import {
+  CandidateJobMatchingService,
+  DEFAULT_WEIGHTS,
+  inferJobSeniority,
+  WEIGHT_PROFILES,
+  weightProfile,
+} from "./candidate-job-matching.service";
 import { CvNotificationService } from "./cv-notification.service";
 import { haversineKm } from "./geocode.service";
 
@@ -129,7 +135,7 @@ function job(over: Partial<ExternalJob>): ExternalJob {
 // ---------------------------------------------------------------------------
 
 function expectedExperience(years: number | null): number {
-  if (!years) return 0.3; // 0 and null/missing are both treated as "unknown"
+  if (!years) return 0.5; // 0 and null/missing are both treated as "unknown" (neutral)
   if (years >= 5) return 1.0;
   if (years >= 3) return 0.8;
   if (years >= 1) return 0.5;
@@ -149,7 +155,7 @@ const experienceCases = [
     const years = Math.max(0, age - 22);
     return { label: `age=${age} (≈${years}y)`, years, expected: expectedExperience(years) };
   }),
-  { label: "no years (null)", years: null, expected: 0.3 },
+  { label: "no years (null)", years: null, expected: 0.5 },
 ];
 
 describe("matching matrix — experience / age band", () => {
@@ -158,19 +164,19 @@ describe("matching matrix — experience / age band", () => {
     expect(internal.calculateExperienceMatch(c, job({}))).toBeCloseTo(expected, 6);
   });
 
-  it("a missing CV (null extractedData) scores as 'unknown' (0.3)", () => {
+  it("a missing CV (null extractedData) scores as 'unknown' (0.5)", () => {
     expect(
       internal.calculateExperienceMatch(candidate({ extractedData: null }), job({})),
-    ).toBeCloseTo(0.3, 6);
+    ).toBeCloseTo(0.5, 6);
   });
 
-  it("treats 0 / missing years as 'unknown' (0.3), not as zero-experience (0.2)", () => {
+  it("treats 0 / missing years as 'unknown' (0.5), not as zero-experience (0.2)", () => {
     expect(
       internal.calculateExperienceMatch(
         candidate({ extractedData: cv({ experienceYears: 0 }) }),
         job({}),
       ),
-    ).toBeCloseTo(0.3, 6);
+    ).toBeCloseTo(0.5, 6);
     expect(
       internal.calculateExperienceMatch(
         candidate({ extractedData: cv({ experienceYears: 0.5 }) }),
@@ -751,7 +757,7 @@ const SENIORITY_TITLE: Record<(typeof SENIORITIES)[number], string> = {
 };
 
 function expBand(years: number | null): number {
-  if (!years) return 0.3;
+  if (!years) return 0.5;
   if (years >= 5) return 1.0;
   if (years >= 3) return 0.8;
   if (years >= 1) return 0.5;
@@ -911,5 +917,58 @@ describe("matching matrix — willing-to-travel radius gate", () => {
         here,
       ),
     ).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11. Weight profiles (A/B) — alternative weight sets re-rank as intended
+// ---------------------------------------------------------------------------
+
+describe("matching matrix — weight profiles (A/B)", () => {
+  const seeker = candidate({
+    extractedData: cv({ skills: ["python", "sql", "react"], experienceYears: 5 }),
+    workProfile: null,
+  });
+
+  it("every profile's weights sum to 1.0", () => {
+    for (const profile of Object.values(WEIGHT_PROFILES)) {
+      const total =
+        profile.embedding + profile.skills + profile.experience + profile.location + profile.salary;
+      expect(total).toBeCloseTo(1, 6);
+    }
+  });
+
+  it("skills-forward lifts a low-embedding, high-skills job above default", () => {
+    const skillsStrong = job({ title: "Developer", extractedSkills: ["python", "sql", "react"] });
+    const lowSim = 0.3;
+    const def = service.computeMatch(seeker, skillsStrong, lowSim, 0, [], DEFAULT_WEIGHTS);
+    const sf = service.computeMatch(
+      seeker,
+      skillsStrong,
+      lowSim,
+      0,
+      [],
+      weightProfile("skills-forward"),
+    );
+    expect(sf.overallScore).toBeGreaterThan(def.overallScore);
+  });
+
+  it("default keeps a high-embedding, no-skills-overlap job above skills-forward", () => {
+    const embStrong = job({ title: "Welder", extractedSkills: ["welding", "fitting"] });
+    const highSim = 0.9;
+    const def = service.computeMatch(seeker, embStrong, highSim, 0, [], DEFAULT_WEIGHTS);
+    const sf = service.computeMatch(
+      seeker,
+      embStrong,
+      highSim,
+      0,
+      [],
+      weightProfile("skills-forward"),
+    );
+    expect(def.overallScore).toBeGreaterThan(sf.overallScore);
+  });
+
+  it("an unknown profile name falls back to the default weights", () => {
+    expect(weightProfile("nope")).toBe(DEFAULT_WEIGHTS);
   });
 });

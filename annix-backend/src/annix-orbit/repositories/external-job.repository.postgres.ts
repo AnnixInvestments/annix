@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { In, IsNull, LessThan, MoreThan, Repository } from "typeorm";
-import { DateTime } from "../../lib/datetime";
+import { DateTime, now } from "../../lib/datetime";
 import { TypeOrmCrudRepository } from "../../lib/persistence/typeorm-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
 import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
@@ -469,6 +469,17 @@ export class PostgresExternalJobRepository
 
   async updateCanonicalCategory(id: number, canonicalCategory: string | null): Promise<void> {
     await this.repository.update(id, { canonicalCategory });
+  }
+
+  async updateExtractedSkills(id: number, skills: string[]): Promise<void> {
+    await this.repository.update(id, {
+      extractedSkills: skills,
+      skillsAnalyzedAt: now().toJSDate(),
+    });
+  }
+
+  jobsMissingSkills(limit: number): Promise<ExternalJob[]> {
+    return this.repository.find({ where: { skillsAnalyzedAt: IsNull() }, take: limit });
   }
 
   findByIds(ids: number[]): Promise<ExternalJob[]> {

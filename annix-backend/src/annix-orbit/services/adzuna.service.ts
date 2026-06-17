@@ -26,11 +26,17 @@ const ADZUNA_OUTAGE_MS = 30 * 60 * 1000;
 const ADZUNA_TRANSIENT_RETRIES = 3;
 const ADZUNA_RETRY_DELAY_MS = 2_000;
 const ADZUNA_RETRYABLE_STATUSES = new Set([429, 500, 502, 503, 504]);
+// A single ingestion run fires ~100+ requests (29 categories x 4 pages).
+// Adzuna throttles bursts with 503s well before the daily quota is hit
+// (observed: ~110/250 used yet the run still 503'd), so we space every call
+// process-wide by a minimum interval to stay under the burst limit.
+const ADZUNA_MIN_REQUEST_INTERVAL_MS = 400;
 
 @Injectable()
 export class AdzunaService {
   private readonly logger = new Logger(AdzunaService.name);
   private unavailableUntilMs = 0;
+  private lastRequestMs = 0;
 
   async searchJobs(
     appId: string,
@@ -179,6 +185,7 @@ export class AdzunaService {
     const url = `${ADZUNA_BASE_URL}/${country}/categories?${params.toString()}`;
     this.assertAvailable();
 
+    await this.throttle();
     const response = await fetch(url);
 
     if (!response.ok) {
@@ -232,6 +239,7 @@ export class AdzunaService {
   // scheduled run looked dead (issue seen on test, 2026-06-12). Retry the
   // transient statuses with a short backoff before treating it as an outage.
   private async fetchWithRetry(url: string, attempt = 1): Promise<Response> {
+    await this.throttle();
     const response = await fetch(url);
     const retryable = !response.ok && ADZUNA_RETRYABLE_STATUSES.has(response.status);
     if (!retryable || attempt >= ADZUNA_TRANSIENT_RETRIES) {
@@ -248,6 +256,18 @@ export class AdzunaService {
     if (nowMillis() < this.unavailableUntilMs) {
       throw new Error("Adzuna API is temporarily unavailable. Ingestion will retry shortly.");
     }
+  }
+
+  // Space consecutive requests process-wide so a burst of ingestion calls
+  // stays under Adzuna's per-second throttle (which returns 503s long before
+  // the daily quota). Sequential by design — callers already await in series.
+  private async throttle(): Promise<void> {
+    const sinceLast = nowMillis() - this.lastRequestMs;
+    const wait = ADZUNA_MIN_REQUEST_INTERVAL_MS - sinceLast;
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait));
+    }
+    this.lastRequestMs = nowMillis();
   }
 
   private recordRetryableFailure(status: number): void {

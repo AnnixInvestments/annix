@@ -162,6 +162,8 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract marketJobsWithSkills(companyId: number): Promise<ExternalJob[]>;
   abstract findPendingCanonicalCategory(limit: number): Promise<PendingCategoryJob[]>;
   abstract updateCanonicalCategory(id: number, canonicalCategory: string | null): Promise<void>;
+  abstract updateExtractedSkills(id: number, skills: string[]): Promise<void>;
+  abstract jobsMissingSkills(limit: number): Promise<ExternalJob[]>;
   abstract findByIds(ids: number[]): Promise<ExternalJob[]>;
   abstract perSourceJobCounts(sourceIds: number[]): Promise<PerSourceJobCount[]>;
   abstract findDuplicateJobPairs(limit: number): Promise<DuplicateJobPair[]>;

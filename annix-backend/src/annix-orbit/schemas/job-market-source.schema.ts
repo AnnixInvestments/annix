@@ -55,6 +55,9 @@ export class JobMarketSource {
   @Prop({ type: String, required: false, default: null })
   lastIngestionError: string | null;
 
+  @Prop({ type: Number, required: true, default: 0 })
+  consecutiveIngestFailures: number;
+
   @Prop({ type: Number, required: true, default: 6 })
   ingestionIntervalHours: number;
 

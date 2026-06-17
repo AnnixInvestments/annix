@@ -73,6 +73,13 @@ export class JobMarketSource {
   @Column({ name: "last_ingestion_error", type: "text", nullable: true })
   lastIngestionError: string | null;
 
+  // Number of consecutive failed ingestion runs. Reset to 0 on any successful
+  // run. The health alert only fires once this crosses the threshold, so a
+  // single transient upstream blip (e.g. an Adzuna 503 that recovers next run)
+  // does not email.
+  @Column({ name: "consecutive_ingest_failures", type: "int", default: 0 })
+  consecutiveIngestFailures: number;
+
   @Column({ name: "ingestion_interval_hours", type: "int", default: 6 })
   ingestionIntervalHours: number;
 

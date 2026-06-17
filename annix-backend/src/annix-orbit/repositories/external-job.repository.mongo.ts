@@ -1,6 +1,7 @@
 import { Injectable, NotImplementedException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
+import { now } from "../../lib/datetime";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -557,6 +558,23 @@ export class MongoExternalJobRepository
 
   async updateCanonicalCategory(id: number, canonicalCategory: string | null): Promise<void> {
     await this.documents.findByIdAndUpdate(id, { canonicalCategory }).exec();
+  }
+
+  async updateExtractedSkills(id: number, skills: string[]): Promise<void> {
+    // Stamp skillsAnalyzedAt even when skills is empty, so empty-shell jobs (no
+    // extractable skills) aren't re-analysed forever.
+    await this.documents
+      .findByIdAndUpdate(id, { extractedSkills: skills, skillsAnalyzedAt: now().toJSDate() })
+      .exec();
+  }
+
+  async jobsMissingSkills(limit: number): Promise<ExternalJob[]> {
+    const docs = await this.documents
+      .find({ $or: [{ skillsAnalyzedAt: null }, { skillsAnalyzedAt: { $exists: false } }] })
+      .limit(limit)
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
   }
 
   async findByIds(ids: number[]): Promise<ExternalJob[]> {

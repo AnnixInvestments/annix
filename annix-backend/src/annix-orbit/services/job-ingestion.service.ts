@@ -12,6 +12,7 @@ import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting } from "../entities/job-posting.entity";
 import { resolveLocation } from "../lib/sa-locations";
+import { currentOrbitEnvironment } from "../orbit-environment";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import {
   DedupCandidateRow,
@@ -37,6 +38,10 @@ import { JoobleService, joobleLocationForCountry } from "./jooble.service";
 import { RemotiveService } from "./remotive.service";
 
 const HEALTH_ALERT_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+// Only email a health alert once a source has failed this many runs in a row,
+// so a single transient upstream blip (e.g. an Adzuna 503 that recovers next
+// run) does not page anyone.
+const ALERT_AFTER_CONSECUTIVE_FAILURES = 2;
 const ADZUNA_PAGE_SIZE = 50;
 const ADZUNA_PAGES_PER_CATEGORY = 4;
 const ADZUNA_CATEGORIES_PER_DAY = 29;
@@ -143,6 +148,11 @@ export class JobIngestionService {
       this.logger.warn(`Backfill canonical categories failed: ${message}`);
     });
 
+    await this.backfillJobSkills().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Backfill job skills failed: ${message}`);
+    });
+
     await this.autoResolveDuplicates().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Auto-resolve duplicates failed: ${message}`);
@@ -190,6 +200,35 @@ export class JobIngestionService {
     );
 
     return { updated: matched.length + aiResults.length };
+  }
+
+  // Gradual self-healing backfill of extractedSkills for existing jobs (and any
+  // new job whose ingest-time analysis failed). One Gemini analysis call per job,
+  // bounded by aiBudget so each 6-hourly run stays cheap; the bulk one-time
+  // backfill is the pnpm backfill:job-skills script.
+  async backfillJobSkills(limit = 200): Promise<{ updated: number }> {
+    const aiBudget = 25;
+    const pending = (await this.externalJobRepo.jobsMissingSkills(limit)).slice(0, aiBudget);
+    if (pending.length === 0) return { updated: 0 };
+
+    const results = await Promise.all(
+      pending.map(async (job) => {
+        const analysis = await this.jobCategorizationService.analyzeJob({
+          title: job.title,
+          providerCategory: job.category,
+          description: job.description,
+        });
+        return { id: job.id, skills: analysis.skills };
+      }),
+    );
+    // Stamp every analysed job (even those with no extractable skills) so they
+    // leave the queue and aren't re-analysed forever.
+    await Promise.all(
+      results.map((result) => this.externalJobRepo.updateExtractedSkills(result.id, result.skills)),
+    );
+    const withSkills = results.filter((result) => result.skills.length > 0).length;
+    this.logger.log(`Analysed ${results.length} job(s) for skills, ${withSkills} had skills`);
+    return { updated: withSkills };
   }
 
   // On-demand background pass that keeps categorizing pending jobs (rule-based,
@@ -328,9 +367,11 @@ export class JobIngestionService {
     if (totals.error) {
       this.lastIngestionErrorBySource.set(source.id, totals.error);
       source.lastIngestionError = totals.error;
+      source.consecutiveIngestFailures = (source.consecutiveIngestFailures ?? 0) + 1;
     } else {
       this.lastIngestionErrorBySource.delete(source.id);
       source.lastIngestionError = null;
+      source.consecutiveIngestFailures = 0;
     }
     await this.sourceRepo.save(source);
 
@@ -357,6 +398,21 @@ export class JobIngestionService {
     // is not alert-worthy; staleness is surfaced on the admin dashboard instead.
     const recordedError = this.lastIngestionErrorBySource.get(source.id) ?? null;
     if (!recordedError) {
+      return;
+    }
+
+    // Only prod is worth paging on — test/staging ingestion 503s are noise and
+    // were doubling these emails (prod + test both alerting to the same inbox).
+    if (currentOrbitEnvironment() !== "prod") {
+      return;
+    }
+
+    // Suppress until the failure is sustained: a single transient blip that
+    // recovers on the next scheduled run should not email.
+    if ((source.consecutiveIngestFailures ?? 0) < ALERT_AFTER_CONSECUTIVE_FAILURES) {
+      this.logger.warn(
+        `Source ${source.name} failed (${source.consecutiveIngestFailures ?? 0}/${ALERT_AFTER_CONSECUTIVE_FAILURES}) — holding alert until sustained`,
+      );
       return;
     }
 
@@ -1039,20 +1095,28 @@ export class JobIngestionService {
     const savedJobs = savedJobsRaw.filter((job): job is ExternalJob => job !== null);
 
     savedJobs.forEach((saved) => {
-      if (!saved.canonicalCategory) {
-        this.jobCategorizationService
-          .categorize({
-            title: saved.title,
-            providerCategory: saved.category,
-            description: saved.description,
-          })
-          .then((canonicalCategory) =>
-            this.externalJobRepo.updateCanonicalCategory(saved.id, canonicalCategory),
-          )
-          .catch((err) => {
-            this.logger.warn(`Failed to categorize job ${saved.id}: ${err.message}`);
-          });
-      }
+      // One Gemini pass per job → category (when rules didn't resolve it) AND the
+      // skills used for matching. Fire-and-forget so ingestion isn't blocked.
+      this.jobCategorizationService
+        .analyzeJob({
+          title: saved.title,
+          providerCategory: saved.category,
+          description: saved.description,
+        })
+        .then(({ category, skills }) => {
+          // Always persist skills (stamps skillsAnalyzedAt even when empty) so the
+          // job leaves the missing-skills queue; category only when rules missed it.
+          const updates: Promise<void>[] = [
+            this.externalJobRepo.updateExtractedSkills(saved.id, skills),
+          ];
+          if (!saved.canonicalCategory && category) {
+            updates.push(this.externalJobRepo.updateCanonicalCategory(saved.id, category));
+          }
+          return Promise.all(updates);
+        })
+        .catch((err) => {
+          this.logger.warn(`Failed to analyze job ${saved.id}: ${err.message}`);
+        });
 
       const addressForGeocode = saved.locationRaw ?? saved.locationArea;
       if (addressForGeocode) {

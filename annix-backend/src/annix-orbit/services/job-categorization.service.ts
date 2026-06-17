@@ -34,6 +34,18 @@ interface AiCategoriesResponse {
   categories?: string[];
 }
 
+interface AiJobAnalysisResponse {
+  category?: string;
+  skills?: string[];
+}
+
+export interface JobAnalysis {
+  category: JobCategoryKey | null;
+  skills: string[];
+}
+
+const MAX_JOB_SKILLS = 20;
+
 const ALLOWED_KEYS = JOB_CATEGORIES.map((category) => `${category.key} (${category.label})`).join(
   "\n",
 );
@@ -50,12 +62,61 @@ ${ALLOWED_KEYS}
 
 Use the fewest keys that genuinely fit. Never invent a key. Omit "other" unless nothing else fits.`;
 
+const ANALYZE_SYSTEM_PROMPT = `You read a South African job listing and return BOTH its category and the concrete skills it needs.
+Respond ONLY with JSON: {"category": "<key>", "skills": ["skill1", "skill2", ...]}.
+- "category": exactly one of these keys (use "other" only if nothing fits, never invent a key):
+${ALLOWED_KEYS}
+- "skills": ${MAX_JOB_SKILLS > 0 ? `up to ${MAX_JOB_SKILLS}` : "the"} specific, concrete skills/tools/competencies the role requires — e.g. "welding", "payroll", "fleet management", "sql", "forklift licence". Lowercase. Prefer hard, nameable skills over generic soft words ("communication", "teamwork"). Return an empty array if none are clear.`;
+
 @Injectable()
 export class JobCategorizationService {
   private readonly logger = new Logger(JobCategorizationService.name);
   private readonly aiCache = new Map<string, JobCategoryKey>();
+  private readonly analysisCache = new Map<string, JobAnalysis>();
 
   constructor(private readonly aiChatService: AiChatService) {}
+
+  // One Gemini pass over a job returning BOTH its category and its required
+  // skills, so ingestion populates extractedSkills without a second LLM call.
+  // Falls back to an empty result on any failure (ingestion must never break).
+  async analyzeJob(input: JobCategorizationInput): Promise<JobAnalysis> {
+    const title = (input.title ?? "").trim();
+    if (title.length === 0) {
+      return { category: null, skills: [] };
+    }
+    const description = (input.description ?? "").trim();
+    const cacheKey = `${title.toLowerCase()}::${description.slice(0, 80).toLowerCase()}`;
+    const cached = this.analysisCache.get(cacheKey);
+    if (cached) {
+      return cached;
+    }
+    try {
+      const response = await this.aiChatService.chat(
+        [{ role: "user", content: this.buildPrompt(input) }],
+        ANALYZE_SYSTEM_PROMPT,
+        undefined,
+        { temperature: 0, responseFormat: "json" },
+      );
+      const parsed = parseJsonFromAi<AiJobAnalysisResponse>(response.content);
+      const rawCategory = parsed.category ? parsed.category.trim() : "";
+      const category = isJobCategoryKey(rawCategory) ? rawCategory : null;
+      const skills = [
+        ...new Set(
+          (parsed.skills ?? [])
+            .filter((value): value is string => isString(value))
+            .map((value) => value.trim().toLowerCase())
+            .filter((value) => value.length > 1 && value.length <= 60),
+        ),
+      ].slice(0, MAX_JOB_SKILLS);
+      const result: JobAnalysis = { category, skills };
+      this.analysisCache.set(cacheKey, result);
+      return result;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`AI job analysis failed for "${title}": ${message}`);
+      return { category: null, skills: [] };
+    }
+  }
 
   ruleBased(input: JobCategorizationInput): JobCategoryKey | null {
     return matchJobCategoryRuleBased(input);
