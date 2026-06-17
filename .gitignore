@@ -17,6 +17,8 @@ annix-backend-latest.tar.gz
 .claude/*
 !.claude/skills/
 !.claude/skills/**
+!.claude/agents/
+!.claude/agents/**
 
 # Log files
 backend-dev.log
