@@ -29,9 +29,10 @@ Fly staging app — no per-PR provisioning.
 |----------|---------|--------------|
 | [`deploy-staging.yml`](../../.github/workflows/deploy-staging.yml) | PR open / synchronize / reopen, or `workflow_dispatch` with `pr_number` | Rebase check → test → build image → claim staging → deploy |
 | [`staging-release.yml`](../../.github/workflows/staging-release.yml) | `pull_request: closed` (when PR carries `on-staging` or `staging-queued`) | Removes labels from closing PR, wakes oldest queued PR via `workflow_dispatch` |
-| [`deploy.yml`](../../.github/workflows/deploy.yml) | `push` to main, or manual `workflow_dispatch` | Deploys main to prod / test / staging; staging filtered out when `on-staging` is held |
+| [`deploy.yml`](../../.github/workflows/deploy.yml) | `push` to main, or manual `workflow_dispatch` | Deploys staging first, then promotes to prod + test on a clean staging health check; the staging smoke-test is skipped (prod + test still deploy) when `on-staging` is held |
 | [`pr-hygiene.yml`](../../.github/workflows/pr-hygiene.yml) | `cron: 0 8 * * *` UTC, daily | Applies `behind-main` / `stale-7d` / `stale-14d`, auto-closes at 21d unless `keep` |
 | [`pr-rebase.yml`](../../.github/workflows/pr-rebase.yml) | `/rebase` comment, `needs-rebase` label, or `workflow_dispatch` | Attempts clean rebase; on conflict invokes the AI agent with PR context |
+| [`staging-claim-expiry.yml`](../../.github/workflows/staging-claim-expiry.yml) | `cron: 0 */2 * * *` | Releases any `on-staging` claim older than 8h so a forgotten label can't keep skipping the staging smoke-test on main pushes |
 
 ## Staging deploy lifecycle
 

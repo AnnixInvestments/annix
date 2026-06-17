@@ -1,0 +1,53 @@
+name: Expire stale staging claims
+
+# The on-staging label reserves the shared staging app for one PR. Under the
+# staging-promotion deploy model a held claim skips the staging smoke-test for
+# main pushes (prod + test still deploy), so a forgotten label quietly degrades
+# the prod safety signal. This releases any on-staging claim older than TTL_HOURS.
+#
+# Run manually any time: Actions -> "Expire stale staging claims" -> Run workflow.
+
+on:
+  schedule:
+    - cron: "0 */2 * * *"
+  workflow_dispatch:
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  expire:
+    name: Release on-staging claims past TTL
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      TTL_HOURS: "8"
+    steps:
+      - name: Release stale claims
+        run: |
+          NOW=$(date -u +%s)
+          TTL=$((TTL_HOURS * 3600))
+          PRS=$(gh pr list --repo "$REPO" --label on-staging --state open --json number --jq '.[].number')
+          if [ -z "$PRS" ]; then
+            echo "No PR holds the on-staging claim — nothing to do."
+            exit 0
+          fi
+          for PR in $PRS; do
+            APPLIED=$(gh api "repos/$REPO/issues/$PR/timeline" --paginate \
+              --jq '[.[] | select(.event == "labeled" and .label.name == "on-staging") | .created_at] | last')
+            if [ -z "$APPLIED" ] || [ "$APPLIED" = "null" ]; then
+              echo "PR #$PR: no on-staging labeled event found — skipping."
+              continue
+            fi
+            APPLIED_S=$(date -u -d "$APPLIED" +%s)
+            AGE=$((NOW - APPLIED_S))
+            if [ "$AGE" -ge "$TTL" ]; then
+              echo "PR #$PR: on-staging held for ${AGE}s (>= ${TTL}s) — releasing."
+              gh pr edit "$PR" --repo "$REPO" --remove-label on-staging
+              gh pr comment "$PR" --repo "$REPO" --body "Released the \`on-staging\` claim automatically after ${TTL_HOURS}h so it stops blocking the staging smoke-test on main pushes. Re-apply the label if you still need staging."
+            else
+              echo "PR #$PR: on-staging held for ${AGE}s (< ${TTL}s) — keeping."
+            fi
+          done

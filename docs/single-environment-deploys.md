@@ -33,7 +33,7 @@ When an open feedback-widget PR holds the `on-staging` label, the experimental r
 ### What to tell Claude
 
 - **"push to staging"** — push the current work to `pre-main`, deploying the staging environment only.
-- **"push"** — the normal full push to `main` (deploys prod, test and staging; prod waits for the release approval).
+- **"push"** — the normal full push to `main`. It deploys staging first, and once the staging health check passes it automatically promotes to prod + test. If staging fails, nothing is promoted. (When a PR holds the `on-staging` claim, the staging smoke-test is skipped and prod + test still deploy — see [#364](https://github.com/AnnixInvestments/annix/issues/364).)
 
 "Push to staging" authorizes exactly one push to `pre-main` and never to `main` — same per-push rules as every other push instruction.
 

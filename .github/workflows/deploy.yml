@@ -24,18 +24,25 @@ permissions:
   issues: write
   pull-requests: read
 
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   APP_IMAGE: ghcr.io/annixinvestments/annix/app
 
 jobs:
-  set-environments:
-    name: Set deploy matrix
+  plan:
+    name: Plan deploy
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      run_staging: ${{ steps.plan.outputs.run_staging }}
+      run_promote: ${{ steps.plan.outputs.run_promote }}
+      promote_matrix: ${{ steps.plan.outputs.promote_matrix }}
+      claim_pr: ${{ steps.plan.outputs.claim_pr }}
     steps:
-      - id: set-matrix
+      - id: plan
         env:
           GH_TOKEN: ${{ github.token }}
           INPUT_ENVS: ${{ inputs.environments }}
@@ -44,34 +51,49 @@ jobs:
         run: |
           PROD='{"environment":"prod","app_name":"annix-app"}'
           TEST='{"environment":"test","app_name":"annix-app-test"}'
-          STAGING='{"environment":"staging","app_name":"annix-app-staging"}'
-
-          if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "pre-main" ]; then
-            ENVS="[${STAGING}]"
-          elif [ "$EVENT_NAME" = "push" ] || [ "$INPUT_ENVS" = "all" ]; then
-            ENVS="[${PROD},${TEST},${STAGING}]"
-          elif [ "$INPUT_ENVS" = "staging" ]; then
-            ENVS="[${STAGING}]"
-          elif [ "$INPUT_ENVS" = "prod" ]; then
-            ENVS="[${PROD}]"
-          elif [ "$INPUT_ENVS" = "test" ]; then
-            ENVS="[${TEST}]"
-          else
-            ENVS="[${PROD}]"
-          fi
 
           HOLDER=$(gh pr list --repo "${{ github.repository }}" --label on-staging --state open --json number --jq '.[0].number')
-          if [ -n "$HOLDER" ] && [ "$HOLDER" != "null" ]; then
-            if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "pre-main" ]; then
+          [ "$HOLDER" = "null" ] && HOLDER=""
+
+          run_staging=false
+          run_promote=false
+          promote='[]'
+
+          if [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "pre-main" ]; then
+            if [ -n "$HOLDER" ]; then
               echo "::error title=Staging claimed::PR #${HOLDER} holds the \`on-staging\` claim, and experimental pushes deploy ONLY staging. Wait for that PR to release staging (or close it), then push again."
               exit 1
             fi
-            echo "::warning title=Staging claim held::PR #${HOLDER} holds the \`on-staging\` claim. Staging deploys will be skipped. Production and test deploys are unaffected."
-            ENVS=$(echo "$ENVS" | jq -c '[.[] | select(.environment != "staging")]')
+            run_staging=true
+          elif { [ "$EVENT_NAME" = "push" ] && [ "$REF_NAME" = "main" ]; } || { [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_ENVS" = "all" ]; }; then
+            run_promote=true
+            promote="[${PROD},${TEST}]"
+            if [ -n "$HOLDER" ]; then
+              echo "::warning title=Staging claim held::PR #${HOLDER} holds the \`on-staging\` claim. The staging smoke-test is SKIPPED for this run; prod + test still deploy."
+              run_staging=false
+            else
+              run_staging=true
+            fi
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_ENVS" = "staging" ]; then
+            run_staging=true
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_ENVS" = "prod" ]; then
+            run_promote=true
+            promote="[${PROD}]"
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ] && [ "$INPUT_ENVS" = "test" ]; then
+            run_promote=true
+            promote="[${TEST}]"
+          else
+            run_promote=true
+            promote="[${PROD}]"
           fi
 
-          echo "matrix=$ENVS" >> "$GITHUB_OUTPUT"
-          echo "Resolved deploy matrix: $ENVS"
+          {
+            echo "run_staging=$run_staging"
+            echo "run_promote=$run_promote"
+            echo "promote_matrix=$promote"
+            echo "claim_pr=$HOLDER"
+          } >> "$GITHUB_OUTPUT"
+          echo "Plan: run_staging=$run_staging run_promote=$run_promote promote=$promote claim_pr=${HOLDER:-none}"
 
   test:
     name: Run Tests
@@ -144,25 +166,77 @@ jobs:
           cache-from: type=gha,scope=app
           cache-to: type=gha,mode=max,scope=app
 
-  deploy:
-    name: Deploy (${{ matrix.environment }})
+  deploy-staging:
+    name: Deploy (staging)
     runs-on: ubuntu-latest
-    needs: [test, build-image, set-environments]
-    environment: ${{ matrix.environment }}
-    strategy:
-      fail-fast: true
-      max-parallel: 3
-      matrix:
-        include: ${{ fromJson(needs.set-environments.outputs.matrix) }}
+    needs: [plan, test, build-image]
+    if: needs.plan.outputs.run_staging == 'true'
+    environment: staging
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
 
       - name: Setup Fly.io CLI
-        # This step can transiently 504 while fetching the flyctl binary
-        # (e.g. GH Actions run 27123294429 failed the test deploy here). It is
-        # an infra hiccup, not a deploy problem — a re-run / re-push clears it,
-        # and the Deploy step below already retries the actual deploy.
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io (staging)
+        run: |
+          for i in 1 2 3; do
+            if flyctl deploy -a annix-app-staging \
+              --image registry.fly.io/annix-app:${{ github.sha }}; then
+              exit 0
+            fi
+            echo "Deploy attempt $i failed, retrying in 10s..."
+            sleep 10
+          done
+          echo "All deploy attempts failed"
+          exit 1
+
+      - name: Verify app is serving traffic (staging)
+        run: |
+          URL="https://annix-app-staging.fly.dev/health"
+          echo "Probing $URL until healthy..."
+          for i in $(seq 1 30); do
+            CODE=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || echo "000")
+            if [ "$CODE" = "200" ]; then
+              echo "App healthy after $i attempt(s) (HTTP $CODE)"
+              exit 0
+            fi
+            echo "Attempt $i: HTTP $CODE - not serving yet, retrying in 10s..."
+            sleep 10
+          done
+          echo "App did not return HTTP 200 on /health within timeout - staging deploy is unhealthy"
+          exit 1
+
+      - name: Get Logs on Failure
+        if: failure()
+        run: flyctl logs -a annix-app-staging --no-tail 2>&1 | tail -100 || echo "Could not fetch logs"
+
+  deploy-promote:
+    name: Deploy (${{ matrix.environment }})
+    runs-on: ubuntu-latest
+    needs: [plan, test, build-image, deploy-staging]
+    if: >-
+      always()
+      && needs.plan.outputs.run_promote == 'true'
+      && needs.test.result == 'success'
+      && needs.build-image.result == 'success'
+      && (needs.deploy-staging.result == 'success' || needs.deploy-staging.result == 'skipped')
+    strategy:
+      fail-fast: true
+      max-parallel: 2
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.promote_matrix) }}
+    environment: ${{ matrix.environment }}
+    steps:
+      - name: Note skipped staging smoke-test
+        if: needs.deploy-staging.result == 'skipped' && needs.plan.outputs.claim_pr != ''
+        run: echo "::warning title=Staging smoke-test skipped::Promoted to ${{ matrix.environment }} without a staging smoke-test because PR #${{ needs.plan.outputs.claim_pr }} holds the on-staging claim."
+
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Fly.io CLI
         uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Deploy to Fly.io (${{ matrix.environment }})
@@ -201,7 +275,7 @@ jobs:
   notify-failure:
     name: Notify Deploy Failure
     runs-on: ubuntu-latest
-    needs: [deploy]
+    needs: [deploy-staging, deploy-promote]
     if: failure() && github.ref == 'refs/heads/main'
     steps:
       - name: Create failure issue
