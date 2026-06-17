@@ -12,6 +12,9 @@ export interface ChatGenerationOptions {
   temperature?: number;
   maxOutputTokens?: number;
   responseFormat?: "json" | "text";
+  // Per-call model override (e.g. "gemini-2.5-flash-lite" for cheap, simple
+  // classification). Falls back to the provider's configured model when unset.
+  model?: string;
   // Gemini 2.5 thinking budget. Set to 0 to disable reasoning entirely so the
   // full output budget goes to the answer — required for large structured-JSON
   // extractions where thinking tokens would otherwise truncate the reply.
@@ -192,8 +195,9 @@ export class GeminiChatProvider {
       generationConfig.thinkingConfig = { thinkingBudget: options.thinkingBudget };
     }
 
+    const model = options?.model ?? this.model;
     const response = await fetch(
-      `${this.baseUrl}/models/${this.model}:generateContent?key=${this.apiKey}`,
+      `${this.baseUrl}/models/${model}:generateContent?key=${this.apiKey}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

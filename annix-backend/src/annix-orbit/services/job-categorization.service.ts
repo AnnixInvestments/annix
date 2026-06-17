@@ -8,8 +8,11 @@ import {
 } from "@annix/product-data/sa-market";
 import { Injectable, Logger } from "@nestjs/common";
 import { isString } from "es-toolkit/compat";
+import { now } from "../../lib/datetime";
 import { parseJsonFromAi } from "../../lib/json-from-ai";
 import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import { JobAnalysisCacheRepository } from "../repositories/job-analysis-cache.repository";
+import { EscoNormalisationService } from "./esco-normalisation.service";
 
 export interface JobCategorizationInput {
   title?: string | null;
@@ -42,9 +45,24 @@ interface AiJobAnalysisResponse {
 export interface JobAnalysis {
   category: JobCategoryKey | null;
   skills: string[];
+  // True when the daily analysis cap was hit and no AI call ran — callers should
+  // leave the job unanalysed (retry another day) rather than stamp it empty.
+  skipped?: boolean;
 }
 
 const MAX_JOB_SKILLS = 20;
+
+// Cheap model for simple category/skills classification. Full flash is reserved
+// for nuanced extraction (CV/document parsing). Override via env if needed.
+const CLASSIFIER_MODEL = process.env.ORBIT_CLASSIFIER_MODEL || "gemini-2.5-flash-lite";
+
+// Daily ceiling on Gemini job-analysis calls so a runaway backfill/ingestion
+// surge can't spike spend. Override via env.
+const DEFAULT_JOB_ANALYSIS_DAILY_CAP = 3000;
+
+// Skip the LLM only when rule-based classification is confident AND finds at
+// least this many concrete ESCO skills in the job text — protects match quality.
+const MIN_RULE_SKILLS = 4;
 
 const ALLOWED_KEYS = JOB_CATEGORIES.map((category) => `${category.key} (${category.label})`).join(
   "\n",
@@ -74,7 +92,33 @@ export class JobCategorizationService {
   private readonly aiCache = new Map<string, JobCategoryKey>();
   private readonly analysisCache = new Map<string, JobAnalysis>();
 
-  constructor(private readonly aiChatService: AiChatService) {}
+  private aiCallsToday = 0;
+  private aiCallsDate = "";
+  private readonly dailyAnalysisCap = (() => {
+    const raw = Number(process.env.ORBIT_JOB_ANALYSIS_DAILY_CAP);
+    return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_JOB_ANALYSIS_DAILY_CAP;
+  })();
+
+  constructor(
+    private readonly aiChatService: AiChatService,
+    private readonly analysisCacheRepo: JobAnalysisCacheRepository,
+    private readonly escoService: EscoNormalisationService,
+  ) {}
+
+  // Reserves one slot against the daily analysis cap (reset each day). Returns
+  // false once the cap is reached so callers skip the Gemini call.
+  private consumeDailyAnalysisBudget(): boolean {
+    const today = now().toISODate() ?? "";
+    if (today !== this.aiCallsDate) {
+      this.aiCallsDate = today;
+      this.aiCallsToday = 0;
+    }
+    if (this.aiCallsToday >= this.dailyAnalysisCap) {
+      return false;
+    }
+    this.aiCallsToday += 1;
+    return true;
+  }
 
   // One Gemini pass over a job returning BOTH its category and its required
   // skills, so ingestion populates extractedSkills without a second LLM call.
@@ -90,12 +134,43 @@ export class JobCategorizationService {
     if (cached) {
       return cached;
     }
+    const persisted = await this.analysisCacheRepo.findByKey(cacheKey).catch(() => null);
+    if (persisted) {
+      const persistedCategory = persisted.category;
+      const fromCache: JobAnalysis = {
+        category:
+          persistedCategory && isJobCategoryKey(persistedCategory) ? persistedCategory : null,
+        skills: persisted.skills,
+      };
+      this.analysisCache.set(cacheKey, fromCache);
+      return fromCache;
+    }
+    const ruleResult = await this.ruleBasedAnalysis(input, title, description);
+    if (ruleResult) {
+      this.analysisCache.set(cacheKey, ruleResult);
+      void this.analysisCacheRepo
+        .upsert({ key: cacheKey, category: ruleResult.category, skills: ruleResult.skills })
+        .catch(() => undefined);
+      return ruleResult;
+    }
+    if (!this.consumeDailyAnalysisBudget()) {
+      this.logger.warn(
+        `Daily job-analysis cap (${this.dailyAnalysisCap}) reached — skipping AI analysis for "${title}"`,
+      );
+      return { category: this.ruleBased(input), skills: [], skipped: true };
+    }
     try {
       const response = await this.aiChatService.chat(
         [{ role: "user", content: this.buildPrompt(input) }],
         ANALYZE_SYSTEM_PROMPT,
         undefined,
-        { temperature: 0, responseFormat: "json" },
+        {
+          temperature: 0,
+          responseFormat: "json",
+          thinkingBudget: 0,
+          maxOutputTokens: 512,
+          model: CLASSIFIER_MODEL,
+        },
       );
       const parsed = parseJsonFromAi<AiJobAnalysisResponse>(response.content);
       const rawCategory = parsed.category ? parsed.category.trim() : "";
@@ -110,11 +185,41 @@ export class JobCategorizationService {
       ].slice(0, MAX_JOB_SKILLS);
       const result: JobAnalysis = { category, skills };
       this.analysisCache.set(cacheKey, result);
+      void this.analysisCacheRepo
+        .upsert({ key: cacheKey, category, skills })
+        .catch(() => undefined);
       return result;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`AI job analysis failed for "${title}": ${message}`);
       return { category: null, skills: [] };
+    }
+  }
+
+  // Free pre-pass: a confident rule-based category plus enough concrete ESCO
+  // skills found in the job text lets us skip the Gemini call entirely. Returns
+  // null (fall back to the LLM) when the category is unclear or skills are thin,
+  // so match quality is never degraded for ambiguous listings.
+  private async ruleBasedAnalysis(
+    input: JobCategorizationInput,
+    title: string,
+    description: string,
+  ): Promise<JobAnalysis | null> {
+    try {
+      const category = matchJobCategoryRuleBased(input);
+      if (!category) {
+        return null;
+      }
+      const skills = await this.escoService.extractSkillsFromText(
+        `${title}\n${description}`,
+        MAX_JOB_SKILLS,
+      );
+      if (skills.length < MIN_RULE_SKILLS) {
+        return null;
+      }
+      return { category, skills };
+    } catch {
+      return null;
     }
   }
 
@@ -158,7 +263,13 @@ export class JobCategorizationService {
         [{ role: "user", content: profileText }],
         CANDIDATE_SYSTEM_PROMPT,
         undefined,
-        { temperature: 0, responseFormat: "json" },
+        {
+          temperature: 0,
+          responseFormat: "json",
+          thinkingBudget: 0,
+          maxOutputTokens: 128,
+          model: CLASSIFIER_MODEL,
+        },
       );
       const parsed = parseJsonFromAi<AiCategoriesResponse>(response.content);
       const raw = parsed.categories ?? [];
@@ -189,7 +300,13 @@ export class JobCategorizationService {
         [{ role: "user", content: this.buildPrompt(input) }],
         SYSTEM_PROMPT,
         undefined,
-        { temperature: 0, responseFormat: "json" },
+        {
+          temperature: 0,
+          responseFormat: "json",
+          thinkingBudget: 0,
+          maxOutputTokens: 64,
+          model: CLASSIFIER_MODEL,
+        },
       );
       const parsed = parseJsonFromAi<AiCategoryResponse>(response.content);
       const candidate = parsed.category ? parsed.category.trim() : "";

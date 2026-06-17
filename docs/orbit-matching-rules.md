@@ -29,13 +29,16 @@ The headline **"Match X%"** badge = `round(final × 100)` (the composite — thi
 ranks the list). The **"Profile similarity: X%"** line in the explanation = the
 embedding component alone, correctly labelled as a sub-metric.
 
+Ratings seeded 2026-06-17 from the explain harness on live test data (seeker #1, a
+27-yr Managing Director) after the job-skills backfill — adjust freely.
+
 | # | Weight / lever | Current | Rating (1–5) | Notes / ideas |
 |---|---|---|---|---|
-| 1 | Embedding (semantic CV↔job) | **45%** | | Dominant lever. Worth A/B-ing down if exact skill/title hits get out-ranked by vaguely-related jobs. |
-| 2 | Skills overlap | **22%** | | Matcher rewritten this pass (§3). |
-| 3 | Experience | **15%** | | |
-| 4 | Salary | **10%** | | |
-| 5 | Location | **8%** | | Low weight, but travel-radius penalty is separate & strong (§4). |
+| 1 | Embedding (semantic CV↔job) | **45%** | **3** | Still dominant (all matches 55–61% emb), but skills now share the load. A/B the weight down (skills-forward profile) and compare. |
+| 2 | Skills overlap | **22%** | **4** | Now working on live data: differentiates 0.00–0.63 and correctly demotes junior farm roles an MD can't fill. Minor near-misses (CV "Operations Management" vs job "operational efficiency"). |
+| 3 | Experience | **15%** | **2** | Flat 1.00 across *all* jobs for a 27-yr seeker — measures candidate years only, never penalises **over-qualification** (an MD shouldn't rate a junior role highly on experience-fit). Consider a fit band, not just a floor. |
+| 4 | Salary | **10%** | **n/a** | No floor set on this seeker → neutral 0.50. Re-rate against a seeker who set `expectedSalaryMin`. |
+| 5 | Location | **8%** | **1** | **Inert — every match `loc 0.30 (no coords)`.** Root cause: no backend geocode key anywhere, so the ingest geocode was a no-op. Job side now built (geocode-at-ingest stamps + `backfillJobCoords` cron + `pnpm backfill:job-coords` + `geocodeAttemptedAt` so misses aren't retried) — **needs `GOOGLE_GEOCODE_API_KEY` set as a backend Fly secret to actually run.** Candidate side (geocode CV/work-profile location → `candidate.locationLat/Lon`) still TODO; until then only seekers who set a home pin have coords. |
 
 ---
 

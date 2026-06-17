@@ -577,6 +577,33 @@ export class MongoExternalJobRepository
     return this.toDomainList(docs);
   }
 
+  async jobsMissingCoords(limit: number): Promise<ExternalJob[]> {
+    const docs = await this.documents
+      .find({
+        $and: [
+          { $or: [{ geocodeAttemptedAt: null }, { geocodeAttemptedAt: { $exists: false } }] },
+          {
+            $or: [{ locationRaw: { $nin: [null, ""] } }, { locationArea: { $nin: [null, ""] } }],
+          },
+        ],
+      })
+      .limit(limit)
+      .lean()
+      .exec();
+    return this.toDomainList(docs);
+  }
+
+  async markJobGeocoded(id: number, lat: number | null, lon: number | null): Promise<void> {
+    // Stamp geocodeAttemptedAt even on a miss, so ungeocodable addresses aren't
+    // re-sent to the paid geocode API. Only write coords when we got them.
+    const update: Record<string, unknown> = { geocodeAttemptedAt: now().toJSDate() };
+    if (lat !== null && lon !== null) {
+      update.locationLat = lat;
+      update.locationLon = lon;
+    }
+    await this.documents.findByIdAndUpdate(id, update).exec();
+  }
+
   async findByIds(ids: number[]): Promise<ExternalJob[]> {
     if (ids.length === 0) return [];
     const docs = await this.documents

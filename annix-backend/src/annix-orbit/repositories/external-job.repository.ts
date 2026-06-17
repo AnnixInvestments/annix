@@ -164,6 +164,8 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract updateCanonicalCategory(id: number, canonicalCategory: string | null): Promise<void>;
   abstract updateExtractedSkills(id: number, skills: string[]): Promise<void>;
   abstract jobsMissingSkills(limit: number): Promise<ExternalJob[]>;
+  abstract jobsMissingCoords(limit: number): Promise<ExternalJob[]>;
+  abstract markJobGeocoded(id: number, lat: number | null, lon: number | null): Promise<void>;
   abstract findByIds(ids: number[]): Promise<ExternalJob[]>;
   abstract perSourceJobCounts(sourceIds: number[]): Promise<PerSourceJobCount[]>;
   abstract findDuplicateJobPairs(limit: number): Promise<DuplicateJobPair[]>;

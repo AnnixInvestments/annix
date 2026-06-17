@@ -42,6 +42,7 @@
     "audit:rubber-missing-files": "ts-node --transpile-only -r tsconfig-paths/register scripts/audit-rubber-missing-files.ts",
     "match:explain": "ts-node --transpile-only -r tsconfig-paths/register scripts/match-explain.ts",
     "backfill:job-skills": "ts-node --transpile-only -r tsconfig-paths/register scripts/backfill-job-skills.ts",
+    "backfill:job-coords": "ts-node --transpile-only -r tsconfig-paths/register scripts/backfill-job-coords.ts",
     "migrate:fieldflow-recordings": "ts-node -r tsconfig-paths/register scripts/migrate-fieldflow-recordings.ts",
     "migrate:fieldflow-recordings:dry-run": "ts-node -r tsconfig-paths/register scripts/migrate-fieldflow-recordings.ts --dry-run",
     "migrate:cv-assistant-docs": "ts-node -r tsconfig-paths/register scripts/migrate-cv-assistant-docs.ts",

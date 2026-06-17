@@ -62,6 +62,9 @@ export class ExternalJob {
   @Prop({ type: Date, required: false, default: null })
   skillsAnalyzedAt: Date | null;
 
+  @Prop({ type: Date, required: false, default: null })
+  geocodeAttemptedAt: Date | null;
+
   @Prop({ type: String, required: false })
   category: string;
 

@@ -152,6 +152,7 @@ import { ExternalJobAlternate } from "./entities/external-job-alternate.entity";
 import { InterviewBooking } from "./entities/interview-booking.entity";
 import { InterviewInvite } from "./entities/interview-invite.entity";
 import { InterviewSlot } from "./entities/interview-slot.entity";
+import { JobAnalysisCache } from "./entities/job-analysis-cache.entity";
 import { JobMarketSource } from "./entities/job-market-source.entity";
 import { JobPosting } from "./entities/job-posting.entity";
 import { JobPostingPortalPosting } from "./entities/job-posting-portal-posting.entity";
@@ -284,6 +285,9 @@ import { PostgresInterviewInviteRepository } from "./repositories/interview-invi
 import { InterviewSlotRepository } from "./repositories/interview-slot.repository";
 import { MongoInterviewSlotRepository } from "./repositories/interview-slot.repository.mongo";
 import { PostgresInterviewSlotRepository } from "./repositories/interview-slot.repository.postgres";
+import { JobAnalysisCacheRepository } from "./repositories/job-analysis-cache.repository";
+import { MongoJobAnalysisCacheRepository } from "./repositories/job-analysis-cache.repository.mongo";
+import { PostgresJobAnalysisCacheRepository } from "./repositories/job-analysis-cache.repository.postgres";
 import { JobMarketSourceRepository } from "./repositories/job-market-source.repository";
 import { MongoJobMarketSourceRepository } from "./repositories/job-market-source.repository.mongo";
 import { PostgresJobMarketSourceRepository } from "./repositories/job-market-source.repository.postgres";
@@ -402,6 +406,7 @@ import { ExternalJobAlternateSchema } from "./schemas/external-job-alternate.sch
 import { InterviewBookingSchema } from "./schemas/interview-booking.schema";
 import { InterviewInviteSchema } from "./schemas/interview-invite.schema";
 import { InterviewSlotSchema } from "./schemas/interview-slot.schema";
+import { JobAnalysisCacheSchema } from "./schemas/job-analysis-cache.schema";
 import { JobMarketSourceSchema } from "./schemas/job-market-source.schema";
 import { JobPostingSchema } from "./schemas/job-posting.schema";
 import { JobPostingPortalPostingSchema } from "./schemas/job-posting-portal-posting.schema";
@@ -582,6 +587,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
               { name: "CvEscoSkill", schema: CvEscoSkillSchema },
               { name: "CvGeocodeCache", schema: CvGeocodeCacheSchema },
+              { name: "JobAnalysisCache", schema: JobAnalysisCacheSchema },
               { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
               { name: "AnnixOrbitClient", schema: AnnixOrbitClientSchema },
               { name: "AnnixOrbitPlacement", schema: AnnixOrbitPlacementSchema },
@@ -669,6 +675,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             { name: "SeekerUsageCounter", schema: SeekerUsageCounterSchema },
             { name: "CvEscoSkill", schema: CvEscoSkillSchema },
             { name: "CvGeocodeCache", schema: CvGeocodeCacheSchema },
+            { name: "JobAnalysisCache", schema: JobAnalysisCacheSchema },
             { name: "AnnixOrbitProfile", schema: AnnixOrbitProfileSchema },
             { name: "User", schema: UserSchema },
             { name: "Company", schema: CompanySchema },
@@ -747,6 +754,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             SeekerUsageCounter,
             CvEscoSkill,
             CvGeocodeCache,
+            JobAnalysisCache,
             SeekerTestPhase,
             SeekerTestParticipant,
             SeekerWorkflowProgress,
@@ -1236,6 +1244,11 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
       CvGeocodeCacheRepository,
       PostgresCvGeocodeCacheRepository,
       MongoCvGeocodeCacheRepository,
+    ),
+    repositoryProvider(
+      JobAnalysisCacheRepository,
+      PostgresJobAnalysisCacheRepository,
+      MongoJobAnalysisCacheRepository,
     ),
     repositoryProvider(
       CvPushSubscriptionRepository,

@@ -67,6 +67,34 @@ export class EscoNormalisationService implements OnModuleInit {
     return [...out];
   }
 
+  // Rule-based skills extraction: scan free text for ESCO skill labels/aliases
+  // (1–4 word phrases) and return the matched canonical skills. Lets callers skip
+  // an LLM analysis when a job's skills are already unambiguous in its text.
+  // Longest phrase at each position wins so "project management" beats "project".
+  async extractSkillsFromText(text: string, max: number): Promise<string[]> {
+    const tokens = text
+      .toLowerCase()
+      .replace(/[^a-z0-9+#.\s]/g, " ")
+      .split(/\s+/)
+      .filter((token) => token.length > 0);
+    if (tokens.length === 0) return [];
+    const cache = await this.cacheOrLoad();
+    if (cache.size === 0) return [];
+
+    const maxNgram = 4;
+    const found = new Set<string>();
+    for (let i = 0; i < tokens.length && found.size < max; i += 1) {
+      for (let n = Math.min(maxNgram, tokens.length - i); n >= 1; n -= 1) {
+        const hit = cache.get(tokens.slice(i, i + n).join(" "));
+        if (hit) {
+          found.add(hit.canonical.toLowerCase().trim());
+          break;
+        }
+      }
+    }
+    return [...found].slice(0, max);
+  }
+
   async invalidateCache(): Promise<void> {
     this.cache = null;
     this.cachePopulatedAt = 0;

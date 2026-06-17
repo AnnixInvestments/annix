@@ -73,6 +73,11 @@ export class ExternalJob {
   @Column({ name: "skills_analyzed_at", type: "timestamptz", nullable: true })
   skillsAnalyzedAt: Date | null;
 
+  // When geocoding last ran for this job. Set even when geocoding found nothing,
+  // so ungeocodable addresses aren't re-sent to the paid geocode API forever.
+  @Column({ name: "geocode_attempted_at", type: "timestamptz", nullable: true })
+  geocodeAttemptedAt: Date | null;
+
   @Column({ type: "varchar", length: 255, nullable: true })
   category: string | null;
 

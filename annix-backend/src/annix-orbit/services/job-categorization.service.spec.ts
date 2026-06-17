@@ -1,4 +1,6 @@
 import type { AiChatService } from "../../nix/ai-providers/ai-chat.service";
+import type { JobAnalysisCacheRepository } from "../repositories/job-analysis-cache.repository";
+import type { EscoNormalisationService } from "./esco-normalisation.service";
 import { JobCategorizationService } from "./job-categorization.service";
 
 function serviceWith(content: string | (() => Promise<{ content: string }>)): {
@@ -10,7 +12,14 @@ function serviceWith(content: string | (() => Promise<{ content: string }>)): {
       ? jest.fn().mockResolvedValue({ content })
       : jest.fn().mockImplementation(content);
   const ai = { chat } as unknown as AiChatService;
-  return { service: new JobCategorizationService(ai), chat };
+  const cacheRepo = {
+    findByKey: jest.fn().mockResolvedValue(null),
+    upsert: jest.fn().mockResolvedValue(undefined),
+  } as unknown as JobAnalysisCacheRepository;
+  const esco = {
+    extractSkillsFromText: jest.fn().mockResolvedValue([]),
+  } as unknown as EscoNormalisationService;
+  return { service: new JobCategorizationService(ai, cacheRepo, esco), chat };
 }
 
 describe("JobCategorizationService.analyzeJob", () => {

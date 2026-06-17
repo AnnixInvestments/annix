@@ -33,6 +33,7 @@ import {
   isSeekerAgeGroup,
 } from "../entities/annix-orbit-profile.entity";
 import { Candidate, CandidateStatus } from "../entities/candidate.entity";
+import { coordsForLocation } from "../lib/sa-locations";
 import { SEEKER_EVENTS } from "../lib/seeker-testing.constants";
 import { AnnixOrbitIndividualDocumentRepository } from "../repositories/annix-orbit-individual-document.repository";
 import { AnnixOrbitProfileRepository } from "../repositories/annix-orbit-profile.repository";
@@ -44,6 +45,7 @@ import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { CvAuditService } from "./cv-audit.service";
 import { CvExtractionService } from "./cv-extraction.service";
 import { EmbeddingService } from "./embedding.service";
+import { GeocodeService } from "./geocode.service";
 import { NixSeekerAssistService } from "./nix-seeker-assist.service";
 import { type EeAttributesView, PopiaService } from "./popia.service";
 import { SeekerTelemetryService } from "./seeker-telemetry.service";
@@ -169,6 +171,7 @@ export class IndividualProfileService {
     private readonly cvAuditService: CvAuditService,
     private readonly popiaService: PopiaService,
     private readonly embeddingService: EmbeddingService,
+    private readonly geocodeService: GeocodeService,
     private readonly candidateJobMatchingService: CandidateJobMatchingService,
     private readonly tierCapabilityRepo: OrbitTierCapabilityRepository,
     private readonly nixSeekerAssistService: NixSeekerAssistService,
@@ -232,6 +235,7 @@ export class IndividualProfileService {
     if (profile.selectedTier && isMatchTier(profile.selectedTier)) {
       candidate.matchTier = profile.selectedTier;
     }
+    await this.geocodeCandidateLocation(candidate, profile.extractedCvData.location);
     const saved = await this.candidateRepo.save(candidate);
 
     if (pendingTier) {
@@ -277,6 +281,32 @@ export class IndividualProfileService {
     }
 
     return saved.id;
+  }
+
+  // Turn the CV's free-text location into coordinates so the matcher's location
+  // component (and travel-radius penalty) works for this seeker. Free SA gazetteer
+  // first, paid Google fallback only for what it can't resolve.
+  private async geocodeCandidateLocation(
+    candidate: Candidate,
+    location: string | null,
+  ): Promise<void> {
+    const address = location?.trim();
+    if (!address) {
+      return;
+    }
+    try {
+      const coords = coordsForLocation(address) ?? (await this.geocodeService.geocode(address));
+      if (coords) {
+        candidate.locationLat = coords.lat;
+        candidate.locationLon = coords.lon;
+      }
+    } catch (err) {
+      this.logger.warn(
+        `Failed to geocode candidate location "${address}": ${
+          err instanceof Error ? err.message : String(err)
+        }`,
+      );
+    }
   }
 
   // "Use this CV": store the Nix-built PDF as the seeker's CV document, re-extract

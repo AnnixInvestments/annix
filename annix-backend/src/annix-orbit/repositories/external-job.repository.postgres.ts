@@ -482,6 +482,19 @@ export class PostgresExternalJobRepository
     return this.repository.find({ where: { skillsAnalyzedAt: IsNull() }, take: limit });
   }
 
+  jobsMissingCoords(limit: number): Promise<ExternalJob[]> {
+    return this.repository.find({ where: { geocodeAttemptedAt: IsNull() }, take: limit });
+  }
+
+  async markJobGeocoded(id: number, lat: number | null, lon: number | null): Promise<void> {
+    const update: Record<string, unknown> = { geocodeAttemptedAt: now().toJSDate() };
+    if (lat !== null && lon !== null) {
+      update.locationLat = lat;
+      update.locationLon = lon;
+    }
+    await this.repository.update(id, update);
+  }
+
   findByIds(ids: number[]): Promise<ExternalJob[]> {
     if (ids.length === 0) return Promise.resolve([]);
     return this.repository.find({ where: { id: In(ids) } });

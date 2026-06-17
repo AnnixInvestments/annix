@@ -11,7 +11,7 @@ import { resolveMonthlySalary } from "../config/salary-period";
 import { ExternalJob } from "../entities/external-job.entity";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { JobPosting } from "../entities/job-posting.entity";
-import { resolveLocation } from "../lib/sa-locations";
+import { coordsForLocation, resolveLocation } from "../lib/sa-locations";
 import { currentOrbitEnvironment } from "../orbit-environment";
 import { AnnixOrbitCompanyRepository } from "../repositories/annix-orbit-company.repository";
 import {
@@ -153,6 +153,11 @@ export class JobIngestionService {
       this.logger.warn(`Backfill job skills failed: ${message}`);
     });
 
+    await this.backfillJobCoords().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Backfill job coords failed: ${message}`);
+    });
+
     await this.autoResolveDuplicates().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Auto-resolve duplicates failed: ${message}`);
@@ -202,10 +207,39 @@ export class JobIngestionService {
     return { updated: matched.length + aiResults.length };
   }
 
-  // Gradual self-healing backfill of extractedSkills for existing jobs (and any
-  // new job whose ingest-time analysis failed). One Gemini analysis call per job,
-  // bounded by aiBudget so each 6-hourly run stays cheap; the bulk one-time
-  // backfill is the pnpm backfill:job-skills script.
+  // Lazy skills analysis: only jobs that matched a candidate (i.e. will be
+  // surfaced to a seeker) get the Gemini category+skills pass. After it lands we
+  // re-embed (so the vector includes the skills text) and re-match (so the skills
+  // score is reflected). Guarded by skillsAnalyzedAt so a re-match never
+  // re-triggers analysis. Jobs that match nobody are never analysed — this is the
+  // main lever that stops paying Gemini for jobs no one sees.
+  private async enrichMatchedJobSkills(job: ExternalJob): Promise<void> {
+    if (job.skillsAnalyzedAt) {
+      return;
+    }
+    const analysis = await this.jobCategorizationService.analyzeJob({
+      title: job.title,
+      providerCategory: job.category,
+      description: job.description,
+    });
+    if (analysis.skipped) {
+      // Daily analysis cap hit — leave unstamped so it's retried another day.
+      return;
+    }
+    await this.externalJobRepo.updateExtractedSkills(job.id, analysis.skills);
+    if (!job.canonicalCategory && analysis.category) {
+      await this.externalJobRepo.updateCanonicalCategory(job.id, analysis.category);
+    }
+    const embedded = await this.embeddingService.embedExternalJob(job.id);
+    if (embedded) {
+      await this.candidateJobMatchingService.matchJobToCandidates(job.id);
+    }
+  }
+
+  // Bounded safety net: re-analyses matched jobs whose ingest-time enrich failed.
+  // One Gemini analysis call per job, capped by aiBudget so each 6-hourly run
+  // stays cheap; jobs that got skills are re-embedded so the vector reflects them.
+  // The bulk one-time backfill is the pnpm backfill:job-skills script.
   async backfillJobSkills(limit = 200): Promise<{ updated: number }> {
     const aiBudget = 25;
     const pending = (await this.externalJobRepo.jobsMissingSkills(limit)).slice(0, aiBudget);
@@ -218,17 +252,63 @@ export class JobIngestionService {
           providerCategory: job.category,
           description: job.description,
         });
-        return { id: job.id, skills: analysis.skills };
+        return { id: job.id, skills: analysis.skills, skipped: analysis.skipped ?? false };
       }),
     );
     // Stamp every analysed job (even those with no extractable skills) so they
-    // leave the queue and aren't re-analysed forever.
+    // leave the queue and aren't re-analysed forever; re-embed the ones that
+    // gained skills so their vector reflects them. Skip jobs the daily cap
+    // deferred so they're retried another day.
+    const analysed = results.filter((result) => !result.skipped);
     await Promise.all(
-      results.map((result) => this.externalJobRepo.updateExtractedSkills(result.id, result.skills)),
+      analysed.map(async (result) => {
+        await this.externalJobRepo.updateExtractedSkills(result.id, result.skills);
+        if (result.skills.length > 0) {
+          await this.embeddingService.embedExternalJob(result.id);
+        }
+      }),
     );
-    const withSkills = results.filter((result) => result.skills.length > 0).length;
-    this.logger.log(`Analysed ${results.length} job(s) for skills, ${withSkills} had skills`);
+    const withSkills = analysed.filter((result) => result.skills.length > 0).length;
+    this.logger.log(`Analysed ${analysed.length} job(s) for skills, ${withSkills} had skills`);
     return { updated: withSkills };
+  }
+
+  // Gradual self-healing backfill of job coordinates (and any new job whose
+  // ingest-time geocode missed). The free static SA gazetteer resolves most jobs;
+  // only the misses hit the paid Google fallback, so each 6-hourly run is bounded
+  // by geocodeBudget. The bulk one-time backfill is the pnpm backfill:job-coords
+  // script. Every attempt is stamped so unresolved jobs aren't retried forever.
+  async backfillJobCoords(limit = 200): Promise<{ updated: number }> {
+    const geocodeBudget = 25;
+    const pending = (await this.externalJobRepo.jobsMissingCoords(limit)).slice(0, geocodeBudget);
+    if (pending.length === 0) return { updated: 0 };
+
+    const results = await Promise.all(
+      pending.map(async (job) => {
+        const address = job.locationRaw ?? job.locationArea;
+        const coords = address ? await this.resolveCoordinates(address) : null;
+        return { id: job.id, lat: coords?.lat ?? null, lon: coords?.lon ?? null };
+      }),
+    );
+    await Promise.all(
+      results.map((result) =>
+        this.externalJobRepo.markJobGeocoded(result.id, result.lat, result.lon),
+      ),
+    );
+    const located = results.filter((result) => result.lat !== null).length;
+    this.logger.log(`Geocoded ${results.length} job(s), ${located} located`);
+    return { updated: located };
+  }
+
+  // Free SA gazetteer first (city/province centroid, no API, no key), then the
+  // paid Google geocoder only for what it can't resolve (which no-ops to null
+  // until a backend geocode key is configured).
+  private async resolveCoordinates(address: string): Promise<{ lat: number; lon: number } | null> {
+    const staticCoords = coordsForLocation(address);
+    if (staticCoords) {
+      return staticCoords;
+    }
+    return this.geocodeService.geocode(address);
   }
 
   // On-demand background pass that keeps categorizing pending jobs (rule-based,
@@ -1095,52 +1175,35 @@ export class JobIngestionService {
     const savedJobs = savedJobsRaw.filter((job): job is ExternalJob => job !== null);
 
     savedJobs.forEach((saved) => {
-      // One Gemini pass per job → category (when rules didn't resolve it) AND the
-      // skills used for matching. Fire-and-forget so ingestion isn't blocked.
-      this.jobCategorizationService
-        .analyzeJob({
-          title: saved.title,
-          providerCategory: saved.category,
-          description: saved.description,
-        })
-        .then(({ category, skills }) => {
-          // Always persist skills (stamps skillsAnalyzedAt even when empty) so the
-          // job leaves the missing-skills queue; category only when rules missed it.
-          const updates: Promise<void>[] = [
-            this.externalJobRepo.updateExtractedSkills(saved.id, skills),
-          ];
-          if (!saved.canonicalCategory && category) {
-            updates.push(this.externalJobRepo.updateCanonicalCategory(saved.id, category));
-          }
-          return Promise.all(updates);
-        })
-        .catch((err) => {
-          this.logger.warn(`Failed to analyze job ${saved.id}: ${err.message}`);
-        });
-
       const addressForGeocode = saved.locationRaw ?? saved.locationArea;
       if (addressForGeocode) {
-        this.geocodeService
-          .geocode(addressForGeocode)
-          .then((coords) => {
-            if (!coords) return;
-            return this.externalJobRepo.updateLocation(saved.id, coords.lat, coords.lon);
-          })
+        this.resolveCoordinates(addressForGeocode)
+          .then((coords) =>
+            // Stamp geocodeAttemptedAt even on a miss so the backfill doesn't retry it.
+            this.externalJobRepo.markJobGeocoded(
+              saved.id,
+              coords?.lat ?? null,
+              coords?.lon ?? null,
+            ),
+          )
           .catch((err) => {
             this.logger.warn(`Failed to geocode job ${saved.id}: ${err.message}`);
           });
       }
 
+      // Embed + match every job (no AI cost), but only spend a Gemini skills
+      // analysis on jobs that actually matched a candidate — i.e. jobs a seeker
+      // will see. Jobs that match nobody (the bulk of ingestion) never cost an
+      // analysis call. The bounded backfill is the safety net for matched jobs
+      // whose ingest-time enrich failed.
       this.embeddingService
         .embedExternalJob(saved.id)
-        .then((embedded) => {
-          if (embedded) {
-            return this.candidateJobMatchingService.matchJobToCandidates(saved.id);
-          }
-          return null;
-        })
+        .then((embedded) =>
+          embedded ? this.candidateJobMatchingService.matchJobToCandidates(saved.id) : [],
+        )
+        .then((matches) => (matches.length > 0 ? this.enrichMatchedJobSkills(saved) : null))
         .catch((err) => {
-          this.logger.warn(`Failed to embed/match job ${saved.id}: ${err.message}`);
+          this.logger.warn(`Failed to embed/match/enrich job ${saved.id}: ${err.message}`);
         });
     });
 
