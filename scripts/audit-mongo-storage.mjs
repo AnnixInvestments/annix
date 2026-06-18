@@ -32,8 +32,8 @@ function loadEnv() {
 }
 
 const env = loadEnv();
-const MB = (b) => (b / 1024 / 1024).toFixed(1) + " MB";
-const KB = (b) => (b / 1024).toFixed(1) + " KB";
+const MB = (b) => `${(b / 1024 / 1024).toFixed(1)} MB`;
+const KB = (b) => `${(b / 1024).toFixed(1)} KB`;
 
 async function auditCluster(label, uri, dbFilter) {
   if (!uri) {

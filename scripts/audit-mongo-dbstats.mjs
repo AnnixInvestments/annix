@@ -16,7 +16,7 @@ for (const line of text.split(/\r?\n/)) {
   const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
   if (m) env[m[1]] = m[2].replace(/^['"]|['"]$/g, "");
 }
-const MB = (b) => (b / 1024 / 1024).toFixed(1).padStart(7) + " MB";
+const MB = (b) => `${(b / 1024 / 1024).toFixed(1).padStart(7)} MB`;
 
 async function run(label, uri) {
   const client = new MongoClient(uri, { serverSelectionTimeoutMS: 20000 });
@@ -51,7 +51,7 @@ async function run(label, uri) {
         MB(free),
     );
   }
-  console.log("  " + "TOTAL".padEnd(18) + MB(totData) + MB(totStore) + MB(totIdx) + MB(totFree));
+  console.log(`  ${"TOTAL".padEnd(18)}${MB(totData)}${MB(totStore)}${MB(totIdx)}${MB(totFree)}`);
   console.log(`  -> physical on disk (storage+index) = ${MB(totStore + totIdx)} of 512 MB cap`);
   console.log(`  -> reclaimable if compacted          = ${MB(totFree)}`);
   await client.close();
