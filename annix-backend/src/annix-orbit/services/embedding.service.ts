@@ -18,6 +18,8 @@ const GEMINI_EMBEDDING_MODEL = "gemini-embedding-001";
 const GEMINI_EMBEDDING_URL = "https://generativelanguage.googleapis.com/v1beta/models";
 const EMBEDDING_DIMENSIONS = 768;
 
+const JOB_EMBEDDING_BACKFILL_BATCH = 200;
+
 const DEFAULT_EMBEDDING_DAILY_CALLS_THRESHOLD = 5_000;
 const DEFAULT_EMBEDDING_DAILY_COST_USD_THRESHOLD = 5;
 const GEMINI_EMBEDDING_USD_PER_1K_TOKENS = 0.000025;
@@ -241,18 +243,30 @@ export class EmbeddingService {
   }
 
   async backfillExternalJobEmbeddings(): Promise<{ processed: number; failed: number }> {
-    const jobs = await this.externalJobRepo.jobsMissingEmbedding();
-
-    const result = await jobs.reduce(
-      async (accPromise, job) => {
-        const acc = await accPromise;
-        const success = await this.embedExternalJob(job.id);
-        return success
-          ? { processed: acc.processed + 1, failed: acc.failed }
-          : { processed: acc.processed, failed: acc.failed + 1 };
-      },
-      Promise.resolve({ processed: 0, failed: 0 }),
-    );
+    let result = { processed: 0, failed: 0 };
+    let batch = await this.externalJobRepo.jobsMissingEmbedding(JOB_EMBEDDING_BACKFILL_BATCH);
+    while (batch.length > 0) {
+      const batchResult = await batch.reduce(
+        async (accPromise, job) => {
+          const acc = await accPromise;
+          const success = await this.embedExternalJob(job.id);
+          return success
+            ? { processed: acc.processed + 1, failed: acc.failed }
+            : { processed: acc.processed, failed: acc.failed + 1 };
+        },
+        Promise.resolve({ processed: 0, failed: 0 }),
+      );
+      result = {
+        processed: result.processed + batchResult.processed,
+        failed: result.failed + batchResult.failed,
+      };
+      // Failures keep matching jobsMissingEmbedding, so stop once a batch makes no
+      // forward progress — otherwise the same un-embeddable jobs loop forever.
+      if (batchResult.processed === 0 || batch.length < JOB_EMBEDDING_BACKFILL_BATCH) {
+        break;
+      }
+      batch = await this.externalJobRepo.jobsMissingEmbedding(JOB_EMBEDDING_BACKFILL_BATCH);
+    }
 
     this.logger.log(
       `Backfilled job embeddings: ${result.processed} processed, ${result.failed} failed`,

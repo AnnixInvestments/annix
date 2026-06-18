@@ -8,6 +8,7 @@ import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
 import {
   CandidateJobMatchRepository,
+  type MatchScores,
   type RecommendedFacetRow,
   type RecommendedMatchCountFilters,
 } from "./candidate-job-match.repository";
@@ -84,6 +85,59 @@ export class MongoCandidateJobMatchRepository
   ): Promise<CandidateJobMatch | null> {
     const doc = await this.documents.findOne({ candidateId, externalJobId }).lean().exec();
     return this.toDomain(doc);
+  }
+
+  async upsertScoredMatch(
+    candidateId: number,
+    externalJobId: number,
+    scores: MatchScores,
+  ): Promise<CandidateJobMatch> {
+    const nextId = await this.nextMatchId();
+    const now = new Date();
+    const doc = await this.documents
+      .findOneAndUpdate(
+        { candidateId, externalJobId },
+        {
+          $set: {
+            similarityScore: scores.similarityScore,
+            structuredScore: scores.structuredScore,
+            overallScore: scores.overallScore,
+            matchDetails: scores.matchDetails,
+            updatedAt: now,
+          },
+          $setOnInsert: { _id: nextId, candidateId, externalJobId, createdAt: now },
+        },
+        { upsert: true, returnDocument: "after" },
+      )
+      .lean()
+      .exec();
+    return this.toDomain(doc) as CandidateJobMatch;
+  }
+
+  private async nextMatchId(): Promise<number> {
+    const database = this.model.db.db;
+    if (!database) {
+      throw new Error("Mongo connection is not ready for id sequencing");
+    }
+    const counters = database.collection<{ _id: string; seq: number }>("counters");
+    const name = this.model.collection.collectionName;
+    const incremented = await counters.findOneAndUpdate(
+      { _id: name },
+      { $inc: { seq: 1 } },
+      { returnDocument: "after" },
+    );
+    if (incremented) {
+      return incremented.seq;
+    }
+    const highest = await this.documents.findOne().sort({ _id: -1 }).lean().exec();
+    const start = highest ? Number(highest._id) : 0;
+    await counters.updateOne({ _id: name }, { $setOnInsert: { seq: start } }, { upsert: true });
+    const seeded = await counters.findOneAndUpdate(
+      { _id: name },
+      { $inc: { seq: 1 } },
+      { returnDocument: "after" },
+    );
+    return seeded ? seeded.seq : start + 1;
   }
 
   async recommendedJobsForCandidate(

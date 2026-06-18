@@ -47,6 +47,7 @@ const ADZUNA_PAGES_PER_CATEGORY = 4;
 const ADZUNA_CATEGORIES_PER_DAY = 29;
 const ADZUNA_MAX_DAYS_OLD = 45;
 const UPSERT_BATCH_SIZE = 50;
+const ENRICH_CONCURRENCY = 6;
 const CRAWL_MAX_PAGES_PER_RUN = 150;
 const ADZUNA_ZA_CATEGORIES = [
   "accounting-finance-jobs",
@@ -141,6 +142,14 @@ export class JobIngestionService {
         this.lastIngestionErrorBySource.set(source.id, message);
         this.logger.error(`Failed to ingest from source ${source.name} (${source.id}): ${message}`);
       }
+      // Interim cap guard: enforceRetentionCap is a cheap countDocuments({})
+      // check that no-ops below the cap, so at steady state this is one count
+      // per source and only trims when a source pushes the pool over the cap —
+      // bounding mid-cycle overshoot without re-trimming after every source.
+      await this.externalJobRepo.enforceRetentionCap().catch((error) => {
+        const message = error instanceof Error ? error.message : String(error);
+        this.logger.warn(`Interim retention-cap enforcement failed: ${message}`);
+      });
     }, Promise.resolve());
 
     await this.backfillCanonicalCategories().catch((error) => {
@@ -161,6 +170,11 @@ export class JobIngestionService {
     await this.autoResolveDuplicates().catch((error) => {
       const message = error instanceof Error ? error.message : String(error);
       this.logger.warn(`Auto-resolve duplicates failed: ${message}`);
+    });
+
+    await this.externalJobRepo.enforceRetentionCap().catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      this.logger.warn(`Retention-cap enforcement failed: ${message}`);
     });
 
     await this.expireStaleJobs().catch((error) => {
@@ -233,6 +247,40 @@ export class JobIngestionService {
     const embedded = await this.embeddingService.embedExternalJob(job.id);
     if (embedded) {
       await this.candidateJobMatchingService.matchJobToCandidates(job.id);
+    }
+  }
+
+  // Embed + match every job (no AI cost), but only spend a Gemini skills
+  // analysis on jobs that actually matched a candidate — i.e. jobs a seeker will
+  // see. Jobs that match nobody (the bulk of ingestion) never cost an analysis
+  // call. Runs in the background (not awaited by the upsert) but bounded to
+  // ENRICH_CONCURRENCY in-flight chains so a large cycle can't launch thousands
+  // of concurrent embed/match chains — capping memory and Mongo pool pressure.
+  private enrichSavedJobsInBackground(savedJobs: ExternalJob[]): void {
+    if (savedJobs.length === 0) return;
+    void chunk(savedJobs, ENRICH_CONCURRENCY)
+      .reduce(async (prev, batch) => {
+        await prev;
+        await Promise.all(batch.map((saved) => this.enrichSavedJob(saved)));
+      }, Promise.resolve())
+      .catch((err) => {
+        const message = err instanceof Error ? err.message : String(err);
+        this.logger.warn(`Background enrichment batch failed: ${message}`);
+      });
+  }
+
+  private async enrichSavedJob(saved: ExternalJob): Promise<void> {
+    try {
+      const embedded = await this.embeddingService.embedExternalJob(saved.id);
+      const matches = embedded
+        ? await this.candidateJobMatchingService.matchJobToCandidates(saved.id)
+        : [];
+      if (matches.length > 0) {
+        await this.enrichMatchedJobSkills(saved);
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`Failed to embed/match/enrich job ${saved.id}: ${message}`);
     }
   }
 
@@ -460,14 +508,6 @@ export class JobIngestionService {
     );
 
     await this.maybeEmitZeroJobsAlert(source);
-
-    // Hard-enforce the retention cap on every ingest run (manual or scheduled),
-    // not just the stale-sweep cron — otherwise the pool drifts over the cap
-    // between sweeps (or indefinitely on envs where the cron is disabled).
-    await this.externalJobRepo.enforceRetentionCap().catch((error) => {
-      const message = error instanceof Error ? error.message : String(error);
-      this.logger.warn(`Retention-cap enforcement failed after ingest: ${message}`);
-    });
 
     return totals;
   }
@@ -1190,22 +1230,9 @@ export class JobIngestionService {
             this.logger.warn(`Failed to geocode job ${saved.id}: ${err.message}`);
           });
       }
-
-      // Embed + match every job (no AI cost), but only spend a Gemini skills
-      // analysis on jobs that actually matched a candidate — i.e. jobs a seeker
-      // will see. Jobs that match nobody (the bulk of ingestion) never cost an
-      // analysis call. The bounded backfill is the safety net for matched jobs
-      // whose ingest-time enrich failed.
-      this.embeddingService
-        .embedExternalJob(saved.id)
-        .then((embedded) =>
-          embedded ? this.candidateJobMatchingService.matchJobToCandidates(saved.id) : [],
-        )
-        .then((matches) => (matches.length > 0 ? this.enrichMatchedJobSkills(saved) : null))
-        .catch((err) => {
-          this.logger.warn(`Failed to embed/match/enrich job ${saved.id}: ${err.message}`);
-        });
     });
+
+    this.enrichSavedJobsInBackground(savedJobs);
 
     if (vetInline) {
       await this.vetSavedJobs(savedJobs);

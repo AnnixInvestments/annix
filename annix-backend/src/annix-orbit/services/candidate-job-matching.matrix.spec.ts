@@ -941,13 +941,14 @@ describe("matching matrix — weight profiles (A/B)", () => {
   it("skills-forward lifts a low-embedding, high-skills job above default", () => {
     const skillsStrong = job({ title: "Developer", extractedSkills: ["python", "sql", "react"] });
     const lowSim = 0.3;
-    const def = service.computeMatch(seeker, skillsStrong, lowSim, 0, [], DEFAULT_WEIGHTS);
+    const def = service.computeMatch(seeker, skillsStrong, lowSim, 0, [], null, DEFAULT_WEIGHTS);
     const sf = service.computeMatch(
       seeker,
       skillsStrong,
       lowSim,
       0,
       [],
+      null,
       weightProfile("skills-forward"),
     );
     expect(sf.overallScore).toBeGreaterThan(def.overallScore);
@@ -956,13 +957,14 @@ describe("matching matrix — weight profiles (A/B)", () => {
   it("default keeps a high-embedding, no-skills-overlap job above skills-forward", () => {
     const embStrong = job({ title: "Welder", extractedSkills: ["welding", "fitting"] });
     const highSim = 0.9;
-    const def = service.computeMatch(seeker, embStrong, highSim, 0, [], DEFAULT_WEIGHTS);
+    const def = service.computeMatch(seeker, embStrong, highSim, 0, [], null, DEFAULT_WEIGHTS);
     const sf = service.computeMatch(
       seeker,
       embStrong,
       highSim,
       0,
       [],
+      null,
       weightProfile("skills-forward"),
     );
     expect(def.overallScore).toBeGreaterThan(sf.overallScore);

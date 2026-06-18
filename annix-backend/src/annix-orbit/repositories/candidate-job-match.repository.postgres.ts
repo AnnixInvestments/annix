@@ -7,6 +7,7 @@ import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
 import {
   CandidateJobMatchRepository,
+  type MatchScores,
   type RecommendedFacetRow,
   type RecommendedMatchCountFilters,
 } from "./candidate-job-match.repository";
@@ -25,6 +26,20 @@ export class PostgresCandidateJobMatchRepository
     externalJobId: number,
   ): Promise<CandidateJobMatch | null> {
     return this.repository.findOne({ where: { candidateId, externalJobId } });
+  }
+
+  async upsertScoredMatch(
+    candidateId: number,
+    externalJobId: number,
+    scores: MatchScores,
+  ): Promise<CandidateJobMatch> {
+    const existing = await this.repository.findOne({ where: { candidateId, externalJobId } });
+    const entity = existing ?? this.repository.create({ candidateId, externalJobId });
+    entity.similarityScore = scores.similarityScore;
+    entity.structuredScore = scores.structuredScore;
+    entity.overallScore = scores.overallScore;
+    entity.matchDetails = scores.matchDetails;
+    return this.repository.save(entity);
   }
 
   recommendedJobsForCandidate(

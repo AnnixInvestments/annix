@@ -19,8 +19,10 @@ import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import {
   BulkDeleteJobsDto,
   CreateJobMarketSourceDto,
+  SetRetentionCapDto,
   UpdateJobMarketSourceDto,
 } from "../dto/job-market.dto";
+import { DEFAULT_EXTERNAL_JOB_RETENTION_CAP } from "../repositories/external-job.repository.mongo";
 import { isSitemapCrawlProvider } from "../services/crawl/sitemap-crawl-profiles";
 import { EmbeddingService } from "../services/embedding.service";
 import { JobIngestionService } from "../services/job-ingestion.service";
@@ -31,7 +33,7 @@ import {
 import { JobMarketSourceService } from "../services/job-market-source.service";
 
 const ORBIT_SETTINGS_COLLECTION = "cv_assistant_orbit_settings";
-const DEFAULT_RETENTION_CAP = 15000;
+const DEFAULT_RETENTION_CAP = DEFAULT_EXTERNAL_JOB_RETENTION_CAP;
 
 @Controller("admin/annix-orbit/job-market")
 @UseGuards(AdminAuthGuard)
@@ -108,8 +110,8 @@ export class AdminOrbitJobMarketController {
   }
 
   @Put("retention-cap")
-  async setRetentionCap(@Body() body: { cap: number }) {
-    const cap = Math.max(0, Math.min(Math.floor(body.cap ?? DEFAULT_RETENTION_CAP), 1_000_000));
+  async setRetentionCap(@Body() body: SetRetentionCapDto) {
+    const cap = body.cap;
     const db = this.orbitConnection.db;
     if (db) {
       await db

@@ -18,6 +18,13 @@ export class BulkDeleteJobsDto {
   ids: number[];
 }
 
+export class SetRetentionCapDto {
+  @IsInt()
+  @Min(0)
+  @Max(1_000_000)
+  cap: number;
+}
+
 export class CreateJobMarketSourceDto {
   @IsEnum(JobSourceProvider)
   provider: JobSourceProvider;

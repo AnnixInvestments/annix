@@ -307,8 +307,13 @@ export class CandidateJobMatchingService {
 
       const matches: CandidateJobMatch[] = [];
       for (const batch of chunk(similarJobs, MATCH_PERSIST_CHUNK)) {
-        const jobs = await this.externalJobRepo.findByIds(batch.map((row) => row.jobId));
+        const jobIds = batch.map((row) => row.jobId);
+        const jobs = await this.externalJobRepo.findByIds(jobIds);
         const jobsById = new Map(jobs.map((job) => [job.id, job]));
+        const embeddingsById =
+          dismissedVectors.length > 0
+            ? await this.externalJobRepo.jobEmbeddings(jobIds)
+            : new Map<number, Buffer>();
         const batchResults = await Promise.all(
           batch.map(async (row) => {
             const job = jobsById.get(row.jobId);
@@ -324,6 +329,7 @@ export class CandidateJobMatchingService {
               job.id,
               categoryBoost,
               dismissedVectors,
+              embeddingsById.get(job.id) ?? null,
             );
           }),
         );
@@ -513,7 +519,8 @@ export class CandidateJobMatchingService {
     job: ExternalJob,
     limit: number,
   ): Promise<Array<{ candidateId: number; similarity: number }>> {
-    const jobVector = parseEmbedding(job.embedding);
+    const jobEmbedding = await this.externalJobRepo.jobEmbedding(job.id);
+    const jobVector = parseEmbedding(jobEmbedding);
     if (jobVector === null) {
       return [];
     }
@@ -588,11 +595,11 @@ export class CandidateJobMatchingService {
     if (dismissed.length === 0) {
       return [];
     }
-    const jobs = await Promise.all(
-      dismissed.map((match) => this.externalJobRepo.findById(match.externalJobId)),
+    const embeddings = await this.externalJobRepo.jobEmbeddings(
+      dismissed.map((match) => match.externalJobId),
     );
-    return jobs
-      .map((job) => parseEmbedding(job?.embedding ?? null))
+    return Array.from(embeddings.values())
+      .map((embedding) => parseEmbedding(embedding))
       .filter((vector): vector is number[] => vector !== null);
   }
 
@@ -629,6 +636,7 @@ export class CandidateJobMatchingService {
     embeddingSimilarity: number,
     categoryBoost: number,
     dismissedVectors: number[][],
+    jobEmbedding: Buffer | null = null,
     weights: MatchWeights = DEFAULT_WEIGHTS,
   ): {
     similarityScore: number;
@@ -656,7 +664,7 @@ export class CandidateJobMatchingService {
         ? baseScore
         : Math.min(1, baseScore + workBoost.score * WORK_PROFILE_BOOST_CAP);
     const withBoost = Math.min(1, withWorkBoost + categoryBoost);
-    const dismissPenalty = this.dismissPenaltyFor(job.embedding, dismissedVectors);
+    const dismissPenalty = this.dismissPenaltyFor(jobEmbedding, dismissedVectors);
     const withDismissPenalty = Math.max(0, withBoost - dismissPenalty);
     const overallScore = withDismissPenalty * this.travelRadiusMultiplier(candidate, job);
 
@@ -703,6 +711,7 @@ export class CandidateJobMatchingService {
     externalJobId: number,
     categoryBoost = 0,
     dismissedVectors: number[][] = [],
+    jobEmbedding: Buffer | null = null,
   ): Promise<CandidateJobMatch> {
     const scored = this.computeMatch(
       candidate,
@@ -710,18 +719,9 @@ export class CandidateJobMatchingService {
       embeddingSimilarity,
       categoryBoost,
       dismissedVectors,
+      jobEmbedding,
     );
-    const existing = await this.matchRepo.findByCandidateAndJob(candidateId, externalJobId);
-    if (existing) {
-      existing.similarityScore = scored.similarityScore;
-      existing.structuredScore = scored.structuredScore;
-      existing.overallScore = scored.overallScore;
-      existing.matchDetails = scored.matchDetails;
-      return this.matchRepo.save(existing);
-    }
-    return this.matchRepo.create({
-      candidateId,
-      externalJobId,
+    return this.matchRepo.upsertScoredMatch(candidateId, externalJobId, {
       similarityScore: scored.similarityScore,
       structuredScore: scored.structuredScore,
       overallScore: scored.overallScore,
@@ -757,8 +757,13 @@ export class CandidateJobMatchingService {
       narrowing.pool,
       targetCountriesOf(candidate.targetCountries),
     );
-    const jobs = await this.externalJobRepo.findByIds(similarJobs.map((row) => row.jobId));
+    const jobIds = similarJobs.map((row) => row.jobId);
+    const jobs = await this.externalJobRepo.findByIds(jobIds);
     const jobsById = new Map(jobs.map((job) => [job.id, job]));
+    const embeddingsById =
+      dismissedVectors.length > 0
+        ? await this.externalJobRepo.jobEmbeddings(jobIds)
+        : new Map<number, Buffer>();
     return similarJobs
       .map((row) => {
         const job = jobsById.get(row.jobId);
@@ -772,6 +777,7 @@ export class CandidateJobMatchingService {
           row.similarity,
           categoryBoost,
           dismissedVectors,
+          embeddingsById.get(job.id) ?? null,
           weights,
         );
         return { job, ...scored };

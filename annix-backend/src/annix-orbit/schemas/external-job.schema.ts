@@ -95,9 +95,6 @@ export class ExternalJob {
   @Prop({ type: Number, required: true })
   sourceId: number;
 
-  @Prop({ type: Buffer, required: false })
-  embedding: Buffer;
-
   @Prop({ type: Boolean, required: false, default: false })
   delisted: boolean;
 

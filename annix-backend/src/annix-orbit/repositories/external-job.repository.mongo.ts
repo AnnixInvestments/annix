@@ -1,4 +1,4 @@
-import { Injectable, NotImplementedException } from "@nestjs/common";
+import { Injectable, Logger, NotImplementedException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type { Model } from "mongoose";
 import { now } from "../../lib/datetime";
@@ -7,6 +7,9 @@ import { MongoCrudRepository } from "../../lib/persistence/mongo-crud-repository
 import { ExternalJob } from "../entities/external-job.entity";
 import { encodeEmbedding } from "../lib/embedding-codec";
 import type { EmbeddingSimilarityBatch } from "../lib/embedding-similarity";
+import { CandidateJobMatch } from "../schemas/candidate-job-match.schema";
+import { ExternalJobAlternate } from "../schemas/external-job-alternate.schema";
+import { ExternalJobEmbedding } from "../schemas/external-job-embedding.schema";
 import {
   DedupCandidateRow,
   DelistReportRow,
@@ -23,19 +26,42 @@ import {
   VettingUpdate,
 } from "./external-job.repository";
 
-const EXTERNAL_JOB_RETENTION_CAP = 15000;
+export const DEFAULT_EXTERNAL_JOB_RETENTION_CAP = 15000;
 
 @Injectable()
 export class MongoExternalJobRepository
   extends MongoCrudRepository<ExternalJob>
   implements ExternalJobRepository
 {
-  constructor(@InjectModel("ExternalJob", ORBIT_CONNECTION) model: Model<ExternalJob>) {
+  private readonly logger = new Logger(MongoExternalJobRepository.name);
+  private emptyCoverageWarned = false;
+
+  constructor(
+    @InjectModel("ExternalJob", ORBIT_CONNECTION) model: Model<ExternalJob>,
+    @InjectModel("ExternalJobEmbedding", ORBIT_CONNECTION)
+    private readonly embeddingDocuments: Model<ExternalJobEmbedding>,
+    @InjectModel("CandidateJobMatch", ORBIT_CONNECTION)
+    private readonly matchDocuments: Model<CandidateJobMatch>,
+    @InjectModel("ExternalJobAlternate", ORBIT_CONNECTION)
+    private readonly alternateDocuments: Model<ExternalJobAlternate>,
+  ) {
     super(model);
   }
 
+  private async deleteSiblings(ids: number[]): Promise<void> {
+    if (ids.length === 0) return;
+    await this.embeddingDocuments.deleteMany({ _id: { $in: ids } }).exec();
+    await this.matchDocuments.deleteMany({ externalJobId: { $in: ids } }).exec();
+    await this.alternateDocuments.deleteMany({ canonicalExternalJobId: { $in: ids } }).exec();
+  }
+
   async findByIdWithSource(id: number): Promise<ExternalJob | null> {
-    const doc = await this.documents.findById(id).populate("source").lean().exec();
+    const doc = await this.documents
+      .findById(id)
+      .select("-embedding")
+      .populate("source")
+      .lean()
+      .exec();
     return this.toDomain(doc);
   }
 
@@ -75,7 +101,7 @@ export class MongoExternalJobRepository
 
     const { items, total } = await this.findPage(
       {},
-      { page, limit, filter, sort: { postedAt: "DESC" } },
+      { page, limit, filter, excludeFields: ["embedding"], sort: { postedAt: "DESC" } },
     );
     return { jobs: items, total };
   }
@@ -106,18 +132,9 @@ export class MongoExternalJobRepository
 
     const { items, total } = await this.findPage(
       {},
-      { page, limit, filter, sort: { postedAt: "DESC" } },
+      { page, limit, filter, excludeFields: ["embedding"], sort: { postedAt: "DESC" } },
     );
     return { jobs: items, total };
-  }
-
-  async jobsWithEmbedding(
-    categoryPool: string[] | null,
-    countries: string[] | null = null,
-  ): Promise<ExternalJob[]> {
-    const filter = this.embeddingFilter(categoryPool, countries);
-    const docs = await this.documents.find(filter).lean().exec();
-    return this.toDomainList(docs);
   }
 
   async *jobEmbeddingBatches(
@@ -125,16 +142,29 @@ export class MongoExternalJobRepository
     countries: string[] | null = null,
     batchSize: number,
   ): AsyncGenerator<EmbeddingSimilarityBatch> {
-    const cursor = this.documents
-      .find(this.embeddingFilter(categoryPool, countries))
-      .select({ _id: 1, embedding: 1 })
-      .sort({ _id: 1 })
-      .lean()
-      .cursor();
+    const hasCategory = categoryPool !== null && categoryPool.length > 0;
+    const hasCountries = countries !== null && countries.length > 0;
+    const unfiltered = !hasCategory && !hasCountries;
 
+    const cursor = unfiltered
+      ? this.embeddingDocuments
+          .find({})
+          .select({ _id: 1, embedding: 1 })
+          .sort({ _id: 1 })
+          .lean()
+          .cursor()
+      : this.embeddingDocuments
+          .find({ _id: { $in: await this.eligibleJobIds(categoryPool, countries) } })
+          .select({ _id: 1, embedding: 1 })
+          .sort({ _id: 1 })
+          .lean()
+          .cursor();
+
+    let yielded = 0;
     let batch: EmbeddingSimilarityBatch = [];
     for await (const doc of cursor) {
       batch.push({ id: Number(doc._id), embedding: doc.embedding ?? null });
+      yielded += 1;
       if (batch.length >= batchSize) {
         yield batch;
         batch = [];
@@ -143,13 +173,45 @@ export class MongoExternalJobRepository
     if (batch.length > 0) {
       yield batch;
     }
+
+    if (unfiltered && yielded === 0) {
+      await this.warnOnEmptyEmbeddingCoverage();
+    }
+  }
+
+  private async warnOnEmptyEmbeddingCoverage(): Promise<void> {
+    if (this.emptyCoverageWarned) return;
+    const jobCount = await this.documents.countDocuments({}).exec();
+    if (jobCount > 0) {
+      this.emptyCoverageWarned = true;
+      this.logger.warn(
+        `Embedding coverage collapse: ${jobCount} external jobs exist but the embeddings collection is empty — matching will return zero matches until the embedding backfill runs.`,
+      );
+    }
+  }
+
+  private async eligibleJobIds(
+    categoryPool: string[] | null,
+    countries: string[] | null = null,
+  ): Promise<number[]> {
+    const rows = await this.documents
+      .find(this.embeddingFilter(categoryPool, countries))
+      .select({ _id: 1 })
+      .lean()
+      .exec();
+    return rows.map((row) => Number(row._id));
+  }
+
+  private async embeddedJobIds(): Promise<number[]> {
+    const rows = await this.embeddingDocuments.find({}).select({ _id: 1 }).lean().exec();
+    return rows.map((row) => Number(row._id));
   }
 
   private embeddingFilter(
     categoryPool: string[] | null,
     countries: string[] | null = null,
   ): Record<string, unknown> {
-    const filter: Record<string, unknown> = { embedding: { $ne: null } };
+    const filter: Record<string, unknown> = {};
     if (categoryPool !== null && categoryPool.length > 0) {
       filter.canonicalCategory = { $in: categoryPool };
     }
@@ -208,19 +270,38 @@ export class MongoExternalJobRepository
     return this.toDomainList(docs);
   }
 
-  async jobsMissingEmbedding(): Promise<ExternalJob[]> {
+  async jobsMissingEmbedding(limit: number): Promise<ExternalJob[]> {
+    const embeddedIds = await this.embeddedJobIds();
     const docs = await this.documents
-      .find({ $or: [{ embedding: null }, { embedding: { $exists: false } }] })
+      .find({ _id: { $nin: embeddedIds } })
+      .limit(limit)
       .lean()
       .exec();
     return this.toDomainList(docs);
   }
 
+  async jobEmbedding(id: number): Promise<Buffer | null> {
+    const doc = await this.embeddingDocuments.findById(id).select({ embedding: 1 }).lean().exec();
+    return doc?.embedding ?? null;
+  }
+
+  async jobEmbeddings(ids: number[]): Promise<Map<number, Buffer>> {
+    if (ids.length === 0) return new Map();
+    const docs = await this.embeddingDocuments
+      .find({ _id: { $in: ids } })
+      .select({ _id: 1, embedding: 1 })
+      .lean()
+      .exec();
+    return new Map(
+      docs
+        .filter((doc) => doc.embedding != null)
+        .map((doc) => [Number(doc._id), doc.embedding as Buffer]),
+    );
+  }
+
   async embeddingCoverage(): Promise<EmbeddingCoverageRow> {
     const total = await this.documents.countDocuments({}).exec();
-    const embedded = await this.documents
-      .countDocuments({ embedding: { $exists: true, $ne: null } })
-      .exec();
+    const embedded = await this.embeddingDocuments.countDocuments({}).exec();
     return { total, embedded };
   }
 
@@ -249,7 +330,13 @@ export class MongoExternalJobRepository
   }
 
   async setEmbeddingVector(id: number, values: number[]): Promise<void> {
-    await this.documents.findByIdAndUpdate(id, { embedding: encodeEmbedding(values) }).exec();
+    await this.embeddingDocuments
+      .updateOne(
+        { _id: id },
+        { $set: { embedding: encodeEmbedding(values), updatedAt: now().toJSDate() } },
+        { upsert: true },
+      )
+      .exec();
   }
 
   async updateLocation(id: number, lat: number, lon: number): Promise<void> {
@@ -614,29 +701,64 @@ export class MongoExternalJobRepository
     const sourceModel = this.model.db.model<Record<string, unknown>>("JobMarketSource");
     const sources = await sourceModel.find().select("provider").lean().exec();
     const providerById = new Map(sources.map((source) => [source._id as number, source.provider]));
-    const docs = await this.documents
-      .find({ locationArea: { $nin: [null, ""] } })
-      .select("title locationArea company sourceId description createdAt")
-      .lean()
+
+    const buckets = await this.documents
+      .aggregate<{
+        _id: { title: string; locationArea: string };
+        docs: Array<{
+          _id: number;
+          company: unknown;
+          sourceId: unknown;
+          descriptionLength: number;
+          createdAt: Date | null;
+        }>;
+      }>([
+        { $match: { locationArea: { $nin: [null, ""] } } },
+        {
+          $group: {
+            _id: {
+              title: { $toLower: { $ifNull: ["$title", ""] } },
+              locationArea: { $toLower: { $ifNull: ["$locationArea", ""] } },
+            },
+            docs: {
+              $push: {
+                _id: "$_id",
+                company: "$company",
+                sourceId: "$sourceId",
+                descriptionLength: { $strLenCP: { $ifNull: ["$description", ""] } },
+                createdAt: "$createdAt",
+              },
+            },
+            count: { $sum: 1 },
+          },
+        },
+        { $match: { count: { $gt: 1 } } },
+      ])
+      .allowDiskUse(true)
       .exec();
-    return docs.map((doc) => ({
-      id: Number(doc._id),
-      title: String(doc.title ?? "").toLowerCase(),
-      locationArea: String(doc.locationArea ?? "").toLowerCase(),
-      company: String(doc.company ?? "").toLowerCase(),
-      provider: String(providerById.get(doc.sourceId as number) ?? ""),
-      descriptionLength: String(doc.description ?? "").length,
-      createdAt: (doc.createdAt as Date | null) ?? null,
-    }));
+
+    return buckets.flatMap((bucket) =>
+      bucket.docs.map((doc) => ({
+        id: Number(doc._id),
+        title: bucket._id.title,
+        locationArea: bucket._id.locationArea,
+        company: String(doc.company ?? "").toLowerCase(),
+        provider: String(providerById.get(doc.sourceId as number) ?? ""),
+        descriptionLength: doc.descriptionLength,
+        createdAt: doc.createdAt ?? null,
+      })),
+    );
   }
 
   async deleteById(id: number): Promise<void> {
     await this.documents.findByIdAndDelete(id).exec();
+    await this.deleteSiblings([id]);
   }
 
   async deleteByIds(ids: number[]): Promise<void> {
     if (ids.length === 0) return;
     await this.documents.deleteMany({ _id: { $in: ids } }).exec();
+    await this.deleteSiblings(ids);
   }
 
   async idsLastSeenBefore(cutoff: Date): Promise<number[]> {
@@ -680,14 +802,20 @@ export class MongoExternalJobRepository
       )
       .exec();
 
-    const deletedExpired = await this.documents
-      .deleteMany({ expiresAt: { $ne: null, $lte: now } })
-      .exec();
+    const expiredIds = (
+      await this.documents
+        .find({ expiresAt: { $ne: null, $lte: now } })
+        .select({ _id: 1 })
+        .lean()
+        .exec()
+    ).map((doc) => doc._id as number);
+    const deletedExpired = await this.documents.deleteMany({ _id: { $in: expiredIds } }).exec();
+    await this.deleteSiblings(expiredIds);
 
-    const cap = await this.configuredRetentionCap();
-    const trimmed = await this.trimToFreshest(cap);
-
-    return (deletedExpired.deletedCount ?? 0) + trimmed;
+    // The retention cap is enforced once per cycle by enforceRetentionCap (the
+    // interim per-source guard plus the end-of-cycle backstop). The stale sweep
+    // no longer runs a second, different cap-trim here.
+    return deletedExpired.deletedCount ?? 0;
   }
 
   // Hard-enforce the retention cap right after ingestion (manual or scheduled),
@@ -706,9 +834,10 @@ export class MongoExternalJobRepository
       .allowDiskUse(true)
       .lean()
       .exec();
-    const ids = oldest.map((doc) => doc._id);
+    const ids = oldest.map((doc) => doc._id as number);
     if (ids.length === 0) return 0;
     const result = await this.documents.deleteMany({ _id: { $in: ids } }).exec();
+    await this.deleteSiblings(ids);
     return result.deletedCount ?? 0;
   }
 
@@ -716,28 +845,11 @@ export class MongoExternalJobRepository
   // env's Orbit DB by the job-market admin page); falls back to the default.
   private async configuredRetentionCap(): Promise<number> {
     const nativeDb = this.model.db.db;
-    if (!nativeDb) return EXTERNAL_JOB_RETENTION_CAP;
+    if (!nativeDb) return DEFAULT_EXTERNAL_JOB_RETENTION_CAP;
     const doc = await nativeDb
       .collection<{ _id: string; externalJobRetentionCap?: number }>("cv_assistant_orbit_settings")
       .findOne({ _id: "default" });
-    return typeof doc?.externalJobRetentionCap === "number"
-      ? doc.externalJobRetentionCap
-      : EXTERNAL_JOB_RETENTION_CAP;
-  }
-
-  private async trimToFreshest(cap: number): Promise<number> {
-    const total = await this.documents.countDocuments({});
-    if (total <= cap) return 0;
-    const keep = await this.documents
-      .find({}, { projection: { _id: 1 } })
-      .sort({ lastSeenAt: -1, _id: -1 })
-      .limit(cap)
-      .allowDiskUse(true)
-      .lean()
-      .exec();
-    const keepIds = keep.map((doc) => doc._id);
-    const result = await this.documents.deleteMany({ _id: { $nin: keepIds } }).exec();
-    return result.deletedCount ?? 0;
+    return sanitiseRetentionCap(doc?.externalJobRetentionCap);
   }
 
   async reportDelist(id: number, reportedBy: string | null, reportedAt: Date): Promise<void> {
@@ -802,4 +914,10 @@ export class MongoExternalJobRepository
 
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function sanitiseRetentionCap(cap: number | null | undefined): number {
+  return typeof cap === "number" && Number.isInteger(cap) && cap >= 0
+    ? cap
+    : DEFAULT_EXTERNAL_JOB_RETENTION_CAP;
 }

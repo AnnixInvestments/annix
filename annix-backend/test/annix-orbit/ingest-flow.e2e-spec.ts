@@ -1,21 +1,30 @@
 import { ConfigService } from "@nestjs/config";
 import { Test, TestingModule } from "@nestjs/testing";
-import { getRepositoryToken } from "@nestjs/typeorm";
-import { AnnixOrbitCompany } from "../../src/annix-orbit/entities/annix-orbit-company.entity";
 import { ExternalJob } from "../../src/annix-orbit/entities/external-job.entity";
-import { ExternalJobAlternate } from "../../src/annix-orbit/entities/external-job-alternate.entity";
 import {
   JobMarketSource,
   JobSourceProvider,
 } from "../../src/annix-orbit/entities/job-market-source.entity";
-import { JobPosting } from "../../src/annix-orbit/entities/job-posting.entity";
+import { AnnixOrbitCompanyRepository } from "../../src/annix-orbit/repositories/annix-orbit-company.repository";
+import { ExternalJobRepository } from "../../src/annix-orbit/repositories/external-job.repository";
+import { ExternalJobAlternateRepository } from "../../src/annix-orbit/repositories/external-job-alternate.repository";
+import { JobMarketSourceRepository } from "../../src/annix-orbit/repositories/job-market-source.repository";
+import { JobPostingRepository } from "../../src/annix-orbit/repositories/job-posting.repository";
+import { SourceRespectRankRepository } from "../../src/annix-orbit/repositories/source-respect-rank.repository";
 import { AdzunaService } from "../../src/annix-orbit/services/adzuna.service";
 import { CandidateJobMatchingService } from "../../src/annix-orbit/services/candidate-job-matching.service";
+import { CareerjetService } from "../../src/annix-orbit/services/careerjet.service";
 import { SitemapCrawlIngestionService } from "../../src/annix-orbit/services/crawl/sitemap-crawl-ingestion.service";
+import { DpsaCircularService } from "../../src/annix-orbit/services/dpsa-circular.service";
 import { EmbeddingService } from "../../src/annix-orbit/services/embedding.service";
+import { GeocodeService } from "../../src/annix-orbit/services/geocode.service";
+import { JobCategorizationService } from "../../src/annix-orbit/services/job-categorization.service";
 import { JobIngestionService } from "../../src/annix-orbit/services/job-ingestion.service";
+import { JobVettingService } from "../../src/annix-orbit/services/job-vetting.service";
+import { JoobleService } from "../../src/annix-orbit/services/jooble.service";
 import { RemotiveService } from "../../src/annix-orbit/services/remotive.service";
 import { EmailService } from "../../src/email/email.service";
+import { ExtractionMetricService } from "../../src/metrics/extraction-metric.service";
 
 interface ExternalJobRow {
   id: number;
@@ -64,6 +73,7 @@ function buildAdzunaSource(overrides: Partial<JobMarketSource> = {}): JobMarketS
     requestsToday: 0,
     apiId: "test-app-id",
     apiKeyEncrypted: "test-key",
+    requiresVetting: false,
     ingestionIntervalHours: 6,
     lastIngestedAt: null,
     requestsResetAt: null,
@@ -92,89 +102,96 @@ describe("Annix Orbit - JobIngestionService.ingestFromSource (mocked repos)", ()
     matchJobToCandidates = jest.fn().mockResolvedValue([]);
 
     const externalJobRepo = {
-      create: jest.fn((dto: Partial<ExternalJob>) => ({ ...dto })),
-      save: jest.fn(async (job: ExternalJobRow) => {
-        const next = { ...job, id: nextExternalJobId++ };
+      create: jest.fn(async (dto: Partial<ExternalJob>) => {
+        const next = { ...dto, id: nextExternalJobId++ } as unknown as ExternalJobRow;
         externalJobs.push(next);
         return next;
       }),
-      find: jest.fn(async (opts: { where?: { sourceExternalId?: unknown; sourceId?: number } }) => {
-        const where = opts?.where;
-        if (!where) return externalJobs;
-        const sourceFilter = where.sourceId;
-        const idFilter = extractInValues(where.sourceExternalId);
-        return externalJobs.filter(
-          (j) =>
-            (sourceFilter === undefined || j.sourceId === sourceFilter) &&
-            (idFilter === null || idFilter.includes(j.sourceExternalId)),
-        );
-      }),
-      findOne: jest.fn(
-        async ({ where }: { where: { id: number } }) =>
-          externalJobs.find((j) => j.id === where.id) ?? null,
+      findByExternalIds: jest.fn(async (externalIds: string[], sourceId: number) =>
+        externalJobs.filter(
+          (j) => j.sourceId === sourceId && externalIds.includes(j.sourceExternalId),
+        ),
       ),
-      count: jest.fn(async (opts?: { where?: { sourceId?: number } }) => {
-        const sid = opts?.where?.sourceId;
-        if (sid === undefined) return externalJobs.length;
-        return externalJobs.filter((j) => j.sourceId === sid).length;
-      }),
-      query: jest.fn().mockResolvedValue([]),
-      createQueryBuilder: jest.fn(() => ({
-        innerJoin: jest.fn().mockReturnThis(),
-        where: jest.fn().mockReturnThis(),
-        andWhere: jest.fn().mockReturnThis(),
-        orderBy: jest.fn().mockReturnThis(),
-        skip: jest.fn().mockReturnThis(),
-        take: jest.fn().mockReturnThis(),
-        getMany: jest.fn().mockResolvedValue(externalJobs),
-        getManyAndCount: jest.fn().mockResolvedValue([externalJobs, externalJobs.length]),
-        getCount: jest.fn().mockResolvedValue(externalJobs.length),
-      })),
+      findById: jest.fn(async (id: number) => externalJobs.find((j) => j.id === id) ?? null),
+      stampLastSeenByExternalIds: jest.fn().mockResolvedValue(undefined),
+      stampLastSeenByIds: jest.fn().mockResolvedValue(undefined),
+      findDuplicateCanonicalJob: jest.fn().mockResolvedValue(null),
+      markJobGeocoded: jest.fn().mockResolvedValue(undefined),
+      updateVetting: jest.fn().mockResolvedValue(undefined),
+      enforceRetentionCap: jest.fn().mockResolvedValue(0),
+      count: jest.fn(async () => externalJobs.length),
     };
 
     const alternateRepo = {
-      create: jest.fn((dto: Partial<AlternateRow>) => ({ ...dto })),
-      save: jest.fn(async (alt: AlternateRow) => {
-        const next = { ...alt, id: nextAlternateId++ };
+      create: jest.fn(async (dto: Partial<AlternateRow>) => {
+        const next = { ...dto, id: nextAlternateId++ } as AlternateRow;
         alternates.push(next);
         return next;
       }),
-      find: jest.fn(async (opts: { where?: { sourceExternalId?: unknown; sourceId?: number } }) => {
-        const where = opts?.where;
-        if (!where) return alternates;
-        const sourceFilter = where.sourceId;
-        const idFilter = extractInValues(where.sourceExternalId);
-        return alternates.filter(
-          (a) =>
-            (sourceFilter === undefined || a.sourceId === sourceFilter) &&
-            (idFilter === null || idFilter.includes(a.sourceExternalId)),
-        );
-      }),
+      findByExternalIds: jest.fn(async (externalIds: string[], sourceId: number) =>
+        alternates.filter(
+          (a) => a.sourceId === sourceId && externalIds.includes(a.sourceExternalId),
+        ),
+      ),
+      deleteByCanonicalId: jest.fn().mockResolvedValue(undefined),
+      deleteByCanonicalIds: jest.fn().mockResolvedValue(undefined),
     };
 
     const sourceRepo = {
       save: jest.fn(async (s) => s),
-      find: jest.fn().mockResolvedValue([]),
+      findEnabled: jest.fn().mockResolvedValue([]),
+      findById: jest.fn().mockResolvedValue(null),
+      findByIds: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         JobIngestionService,
-        { provide: getRepositoryToken(JobMarketSource), useValue: sourceRepo },
-        { provide: getRepositoryToken(ExternalJob), useValue: externalJobRepo },
-        { provide: getRepositoryToken(ExternalJobAlternate), useValue: alternateRepo },
-        { provide: getRepositoryToken(JobPosting), useValue: {} },
-        { provide: getRepositoryToken(AnnixOrbitCompany), useValue: {} },
+        { provide: JobMarketSourceRepository, useValue: sourceRepo },
+        { provide: ExternalJobRepository, useValue: externalJobRepo },
+        { provide: ExternalJobAlternateRepository, useValue: alternateRepo },
+        {
+          provide: SourceRespectRankRepository,
+          useValue: { findAll: jest.fn().mockResolvedValue([]) },
+        },
+        { provide: JobPostingRepository, useValue: {} },
+        { provide: AnnixOrbitCompanyRepository, useValue: {} },
         {
           provide: AdzunaService,
           useValue: { searchJobs: adzunaSearchJobs, estimateExpiry: () => null },
         },
-        { provide: RemotiveService, useValue: {} },
-        { provide: SitemapCrawlIngestionService, useValue: {} },
+        {
+          provide: RemotiveService,
+          useValue: { searchJobs: jest.fn(), estimateExpiry: () => null },
+        },
+        { provide: CareerjetService, useValue: { searchAcrossCategories: jest.fn() } },
+        { provide: JoobleService, useValue: { searchJobs: jest.fn() } },
         { provide: EmbeddingService, useValue: { embedExternalJob } },
         { provide: CandidateJobMatchingService, useValue: { matchJobToCandidates } },
         { provide: EmailService, useValue: { sendEmail: jest.fn().mockResolvedValue(true) } },
         { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue(undefined) } },
+        { provide: GeocodeService, useValue: { geocode: jest.fn().mockResolvedValue(null) } },
+        {
+          provide: JobVettingService,
+          useValue: { vet: jest.fn().mockResolvedValue({ acceptsZa: true, notes: "" }) },
+        },
+        {
+          provide: DpsaCircularService,
+          useValue: { ingestLatestCircular: jest.fn().mockResolvedValue({ ingested: 0 }) },
+        },
+        {
+          provide: JobCategorizationService,
+          useValue: {
+            ruleBased: jest.fn().mockReturnValue(null),
+            categorize: jest.fn().mockResolvedValue(null),
+            analyzeJob: jest.fn().mockResolvedValue({ skills: [], category: null }),
+          },
+        },
+        { provide: SitemapCrawlIngestionService, useValue: { crawl: jest.fn() } },
+        {
+          provide: ExtractionMetricService,
+          useValue: { time: jest.fn((_c, _o, fn: () => unknown) => fn()) },
+        },
       ],
     }).compile();
 
@@ -261,17 +278,6 @@ describe("Annix Orbit - JobIngestionService.ingestFromSource (mocked repos)", ()
     expect(externalJobs).toHaveLength(0);
   });
 });
-
-function extractInValues(value: unknown): string[] | null {
-  if (value === undefined || value === null) return null;
-  if (Array.isArray(value)) return value.map(String);
-  if (typeof value === "object" && value !== null && "_value" in value) {
-    const inner = (value as { _value: unknown })._value;
-    if (Array.isArray(inner)) return inner.map(String);
-  }
-  if (typeof value === "string") return [value];
-  return null;
-}
 
 function flushPromises(): Promise<void> {
   return new Promise((resolve) => setImmediate(resolve));

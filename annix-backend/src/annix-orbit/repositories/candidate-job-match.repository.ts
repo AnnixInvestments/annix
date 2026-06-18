@@ -1,7 +1,14 @@
 import { CrudRepository } from "../../lib/persistence/crud-repository";
 import type { Candidate } from "../entities/candidate.entity";
-import { CandidateJobMatch } from "../entities/candidate-job-match.entity";
+import { CandidateJobMatch, type MatchDetails } from "../entities/candidate-job-match.entity";
 import type { ExternalJob } from "../entities/external-job.entity";
+
+export interface MatchScores {
+  similarityScore: number;
+  structuredScore: number;
+  overallScore: number;
+  matchDetails: MatchDetails;
+}
 
 export interface RecommendedMatchCountFilters {
   // Multi-select: empty/absent arrays mean "no filter"; otherwise match ANY value.
@@ -35,6 +42,11 @@ export abstract class CandidateJobMatchRepository extends CrudRepository<Candida
     candidateId: number,
     externalJobId: number,
   ): Promise<CandidateJobMatch | null>;
+  abstract upsertScoredMatch(
+    candidateId: number,
+    externalJobId: number,
+    scores: MatchScores,
+  ): Promise<CandidateJobMatch>;
   abstract recommendedJobsForCandidate(
     candidateId: number,
     includeDismissed: boolean,

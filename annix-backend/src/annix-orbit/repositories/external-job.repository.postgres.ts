@@ -100,13 +100,6 @@ export class PostgresExternalJobRepository
     return { jobs, total };
   }
 
-  jobsWithEmbedding(
-    categoryPool: string[] | null,
-    countries: string[] | null = null,
-  ): Promise<ExternalJob[]> {
-    return this.jobsWithEmbeddingQuery(categoryPool, countries).getMany();
-  }
-
   async *jobEmbeddingBatches(
     categoryPool: string[] | null,
     countries: string[] | null = null,
@@ -184,8 +177,32 @@ export class PostgresExternalJobRepository
     });
   }
 
-  jobsMissingEmbedding(): Promise<ExternalJob[]> {
-    return this.repository.createQueryBuilder("j").where("j.embedding IS NULL").getMany();
+  jobsMissingEmbedding(limit: number): Promise<ExternalJob[]> {
+    return this.repository
+      .createQueryBuilder("j")
+      .where("j.embedding IS NULL")
+      .take(limit)
+      .getMany();
+  }
+
+  async jobEmbedding(id: number): Promise<Buffer | null> {
+    const row = await this.repository
+      .createQueryBuilder("j")
+      .select("j.embedding", "embedding")
+      .where("j.id = :id", { id })
+      .getRawOne<{ embedding: Buffer | null }>();
+    return row?.embedding ?? null;
+  }
+
+  async jobEmbeddings(ids: number[]): Promise<Map<number, Buffer>> {
+    if (ids.length === 0) return new Map();
+    const rows = await this.repository
+      .createQueryBuilder("j")
+      .select(["j.id AS id", "j.embedding AS embedding"])
+      .where("j.id IN (:...ids)", { ids })
+      .andWhere("j.embedding IS NOT NULL")
+      .getRawMany<{ id: number; embedding: Buffer }>();
+    return new Map(rows.map((row) => [Number(row.id), row.embedding]));
   }
 
   async embeddingCoverage(): Promise<EmbeddingCoverageRow> {

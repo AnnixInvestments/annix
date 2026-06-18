@@ -404,6 +404,7 @@ import { CvGeocodeCacheSchema } from "./schemas/cv-geocode-cache.schema";
 import { CvPushSubscriptionSchema } from "./schemas/cv-push-subscription.schema";
 import { ExternalJobSchema } from "./schemas/external-job.schema";
 import { ExternalJobAlternateSchema } from "./schemas/external-job-alternate.schema";
+import { ExternalJobEmbeddingSchema } from "./schemas/external-job-embedding.schema";
 import { InterviewBookingSchema } from "./schemas/interview-booking.schema";
 import { InterviewInviteSchema } from "./schemas/interview-invite.schema";
 import { InterviewSlotSchema } from "./schemas/interview-slot.schema";
@@ -536,6 +537,7 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
               { name: "JobMarketSource", schema: JobMarketSourceSchema },
               { name: "ExternalJob", schema: ExternalJobSchema },
               { name: "ExternalJobAlternate", schema: ExternalJobAlternateSchema },
+              { name: "ExternalJobEmbedding", schema: ExternalJobEmbeddingSchema },
               { name: "CandidateJobMatch", schema: CandidateJobMatchSchema },
               { name: "CvPushSubscription", schema: CvPushSubscriptionSchema },
               { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
@@ -629,9 +631,6 @@ import { WorkflowAutomationService } from "./services/workflow-automation.servic
             { name: "AnnixOrbitComplianceItem", schema: AnnixOrbitComplianceItemSchema },
             { name: "AnnixOrbitTeamInvite", schema: AnnixOrbitTeamInviteSchema },
             { name: "JobMarketSource", schema: JobMarketSourceSchema },
-            { name: "ExternalJob", schema: ExternalJobSchema },
-            { name: "ExternalJobAlternate", schema: ExternalJobAlternateSchema },
-            { name: "CandidateJobMatch", schema: CandidateJobMatchSchema },
             { name: "CvPushSubscription", schema: CvPushSubscriptionSchema },
             { name: "AnnixOrbitUser", schema: AnnixOrbitUserSchema },
             {

@@ -107,10 +107,6 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract publicExternalJobs(
     options: ExternalJobListOptions,
   ): Promise<{ jobs: ExternalJob[]; total: number }>;
-  abstract jobsWithEmbedding(
-    categoryPool: string[] | null,
-    countries?: string[] | null,
-  ): Promise<ExternalJob[]>;
   abstract jobEmbeddingBatches(
     categoryPool: string[] | null,
     countries: string[] | null,
@@ -119,7 +115,9 @@ export abstract class ExternalJobRepository extends CrudRepository<ExternalJob> 
   abstract findPendingVetting(limit: number): Promise<ExternalJob[]>;
   abstract updateVetting(id: number, update: VettingUpdate): Promise<void>;
   abstract findByExternalIds(externalIds: string[], sourceId: number): Promise<ExternalJob[]>;
-  abstract jobsMissingEmbedding(): Promise<ExternalJob[]>;
+  abstract jobsMissingEmbedding(limit: number): Promise<ExternalJob[]>;
+  abstract jobEmbedding(id: number): Promise<Buffer | null>;
+  abstract jobEmbeddings(ids: number[]): Promise<Map<number, Buffer>>;
   abstract embeddingCoverage(): Promise<EmbeddingCoverageRow>;
   abstract canonicalCategoryCoverage(): Promise<{ total: number; classified: number }>;
   abstract countForSourceSince(sourceId: number, since: Date): Promise<number>;
