@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { extractErrorMessage } from "@/app/lib/api/apiError";
 import { IssueStockConfirmStep } from "../components/IssueStockConfirmStep";
 import { type CartRow, IssueStockItemsStep } from "../components/IssueStockItemsStep";
 import { IssueStockTargetStep } from "../components/IssueStockTargetStep";
@@ -226,8 +227,7 @@ export function IssueStockPage() {
       setTimeout(resetForm, 3000);
     } catch (err) {
       console.error("Submit failed", err);
-      const msg = err instanceof Error ? err.message : "Submit failed";
-      setSubmitError(msg);
+      setSubmitError(extractErrorMessage(err, "Submit failed"));
     }
   };
 

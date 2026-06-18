@@ -1,4 +1,5 @@
-import { toPairs as entries, isArray } from "es-toolkit/compat";
+import { toPairs as entries } from "es-toolkit/compat";
+import { throwIfNotOk } from "@/app/lib/api/apiError";
 import type {
   CreateProductCategoryInput,
   CreateRubberCompoundInput,
@@ -458,10 +459,7 @@ export class StockManagementApiClient {
       body: formData,
       credentials: "include",
     });
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      throw new Error(`Photo identification failed: ${response.status} ${text}`);
-    }
+    await throwIfNotOk(response);
     return response.json();
   }
 
@@ -477,19 +475,7 @@ export class StockManagementApiClient {
       body: body !== undefined ? JSON.stringify(body) : undefined,
       credentials: "include",
     });
-    if (!response.ok) {
-      const text = await response.text().catch(() => "");
-      const parsed = (() => {
-        try {
-          return JSON.parse(text) as { message?: string | string[] };
-        } catch {
-          return null;
-        }
-      })();
-      const rawMessage = parsed?.message;
-      const message = isArray(rawMessage) ? rawMessage.join(", ") : rawMessage || text;
-      throw new Error(message || `Request failed (${response.status})`);
-    }
+    await throwIfNotOk(response);
     return response.json() as Promise<T>;
   }
 }

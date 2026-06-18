@@ -228,27 +228,29 @@ export class MongoCrudRepository<Entity extends PersistedEntity> extends CrudRep
       { $inc: { seq: 1 } },
       { returnDocument: "after", ...this.sessionOption },
     );
-    if (incremented) {
+    if (incremented && Number.isFinite(incremented.seq)) {
       return incremented.seq;
     }
+    return this.reseedSequence(name);
+  }
+
+  private async reseedSequence(name: string): Promise<number> {
     const highest = await this.documents
-      .findOne()
+      .find({ _id: { $type: "number" } })
       .sort({ _id: -1 })
+      .limit(1)
       .session(this.session)
       .lean()
       .exec();
-    const start = highest ? Number(highest._id) : 0;
-    await counters.updateOne(
+    const parsed = highest.length > 0 ? Number(highest[0]._id) : 0;
+    const start = Number.isFinite(parsed) ? parsed : 0;
+    const next = start + 1;
+    await this.counters().updateOne(
       { _id: name },
-      { $setOnInsert: { seq: start } },
+      { $set: { seq: next } },
       { upsert: true, ...this.sessionOption },
     );
-    const seeded = await counters.findOneAndUpdate(
-      { _id: name },
-      { $inc: { seq: 1 } },
-      { returnDocument: "after", ...this.sessionOption },
-    );
-    return seeded ? seeded.seq : start + 1;
+    return next;
   }
 
   private async withGeneratedId(shaped: MongoDocument): Promise<MongoDocument> {

@@ -69,6 +69,9 @@ export const isApiError = (error: unknown): error is ApiError =>
 export const FRIENDLY_BACKEND_UNREACHABLE_MESSAGE =
   "We're having trouble reaching the server. Please wait a moment and try again.";
 
+export const FRIENDLY_SERVER_ERROR_MESSAGE =
+  "Something went wrong on our end. Please wait a few minutes and try again — if it keeps happening, let us know via the feedback button.";
+
 export const FRIENDLY_UNAUTHORIZED_MESSAGE =
   "Your session has expired. Please sign in again to continue.";
 
@@ -91,6 +94,9 @@ export function extractErrorMessage(error: unknown, fallback: string): string {
   if (isApiError(error)) {
     if (TRANSIENT_SERVER_STATUSES.has(error.status)) {
       return FRIENDLY_BACKEND_UNREACHABLE_MESSAGE;
+    }
+    if (error.isServerError()) {
+      return FRIENDLY_SERVER_ERROR_MESSAGE;
     }
     if (error.status === 401) {
       return FRIENDLY_UNAUTHORIZED_MESSAGE;
@@ -139,27 +145,34 @@ export async function throwIfNotOk(response: Response): Promise<void> {
   }
 
   const isTransient = TRANSIENT_SERVER_STATUSES.has(response.status);
+  const isServerError = response.status >= 500;
 
   const fallbackMessage = isTransient
     ? FRIENDLY_BACKEND_UNREACHABLE_MESSAGE
-    : `Server error (HTTP ${response.status})`;
+    : isServerError
+      ? FRIENDLY_SERVER_ERROR_MESSAGE
+      : `Server error (HTTP ${response.status})`;
 
   const message = isTransient
     ? FRIENDLY_BACKEND_UNREACHABLE_MESSAGE
-    : parsed && isString(parsed.message)
-      ? parsed.message
-      : parsed && isArray(parsed.message)
-        ? (parsed.message as string[]).join(", ")
-        : parsed && isString(parsed.error)
-          ? (parsed.error as string)
-          : fallbackMessage;
+    : isServerError
+      ? FRIENDLY_SERVER_ERROR_MESSAGE
+      : parsed && isString(parsed.message)
+        ? parsed.message
+        : parsed && isArray(parsed.message)
+          ? (parsed.message as string[]).join(", ")
+          : parsed && isString(parsed.error)
+            ? (parsed.error as string)
+            : fallbackMessage;
 
   throw new ApiError({
     status: response.status,
     code: parsed && isString(parsed.code) ? (parsed.code as string) : undefined,
     message,
     detail:
-      isTransient || !(parsed && isString(parsed.detail)) ? undefined : (parsed.detail as string),
+      isTransient || isServerError || !(parsed && isString(parsed.detail))
+        ? undefined
+        : (parsed.detail as string),
     fieldErrors:
       parsed?.fieldErrors && isObject(parsed.fieldErrors)
         ? (parsed.fieldErrors as Record<string, string[]>)

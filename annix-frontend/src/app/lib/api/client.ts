@@ -274,13 +274,7 @@ class ApiClient {
           sessionExpiredEvent.emit();
           throw new SessionExpiredError();
         }
-        if (response.status === 502 || response.status === 503 || response.status === 504) {
-          throw new Error(
-            "We're having trouble reaching the server. Please wait a moment and try again.",
-          );
-        }
-        const errorText = await response.text();
-        throw new Error(`Server error (HTTP ${response.status}): ${errorText}`);
+        await throwIfNotOk(response);
       }
 
       // Handle empty responses gracefully

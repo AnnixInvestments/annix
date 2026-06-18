@@ -237,6 +237,7 @@ The pre-push hook runs `scripts/check-legal-risks.sh`, but catch these at author
     3. Cherry-pick **per commit**, not at end-of-session — the user must be able to test work-in-progress without waiting for a batch sync.
     4. If a cherry-pick conflicts (parallel session touched the same file), resolve it before the next commit so you never have a backlog of un-synced commits.
     5. At end-of-session, the worktree branch is fully reflected on `main`, so cleanup is just `git worktree remove`.
+    6. **Cherry-picking to `main` IS this session's handoff — treat the work as landed, not "pending".** Pushing `main` is owned by a separate session/process, never this one. Once a commit is cherry-picked, do not describe it as "not pushed", "pending deploy", or ask the user when to deploy — from this session's perspective the work is complete. (This is messaging only; the Critical Git Rules still forbid this session from pushing without an explicit instruction.)
 - **Never use `EnterWorktree` in `@annix/claude-swarm` worktrees**: if branch starts with `claude/`, work directly on the current branch — `@annix/claude-swarm` manages the worktree lifecycle, nesting puts commits on the wrong branch.
 
 ### Commit Discipline — defer to push, ONE commit (hard rule)
