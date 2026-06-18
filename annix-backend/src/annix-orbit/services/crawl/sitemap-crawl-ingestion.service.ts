@@ -4,6 +4,7 @@ import { stripHtmlToText } from "../../../lib/html-text";
 import { parseJsonFromAi } from "../../../lib/json-from-ai";
 import { ExtractionMetricService } from "../../../metrics/extraction-metric.service";
 import { AiChatService } from "../../../nix/ai-providers/ai-chat.service";
+import { DESCRIPTION_LIMIT } from "../../config/external-job-ingest";
 import { JobMarketSource } from "../../entities/job-market-source.entity";
 import { ExternalJobRepository } from "../../repositories/external-job.repository";
 import { IngestedJobResult } from "../ingested-job.types";
@@ -25,7 +26,6 @@ const RETRY_BACKOFF_MS = 2_500;
 const MAX_NESTED_SITEMAPS = 3;
 const MAX_DISCOVERY_URLS = 3_000;
 const HTML_TEXT_LIMIT = 14_000;
-const DESCRIPTION_LIMIT = 4_000;
 const EXTRACTION_MAX_TOKENS = 2_000;
 const METRIC_CATEGORY = "orbit-job-crawl";
 

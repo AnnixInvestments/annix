@@ -23,6 +23,9 @@ export class ExternalJob {
   @Column({ type: "varchar", length: 500 })
   title: string;
 
+  @Column({ name: "title_key", type: "varchar", length: 500, nullable: true })
+  titleKey: string | null;
+
   @Column({ type: "varchar", length: 500, nullable: true })
   company: string | null;
 

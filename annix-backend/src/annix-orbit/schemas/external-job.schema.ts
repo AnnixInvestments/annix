@@ -16,6 +16,9 @@ export class ExternalJob {
   @Prop({ type: String, required: true })
   title: string;
 
+  @Prop({ type: String, required: false, default: null })
+  titleKey: string | null;
+
   @Prop({ type: String, required: false })
   company: string;
 
@@ -56,8 +59,8 @@ export class ExternalJob {
   @Prop({ type: String, required: false })
   description: string;
 
-  @Prop({ type: Object, required: false, default: [] })
-  extractedSkills: Record<string, unknown>;
+  @Prop({ type: [String], default: [] })
+  extractedSkills: string[];
 
   @Prop({ type: Date, required: false, default: null })
   skillsAnalyzedAt: Date | null;

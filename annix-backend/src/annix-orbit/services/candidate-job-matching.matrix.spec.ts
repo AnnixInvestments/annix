@@ -974,3 +974,141 @@ describe("matching matrix — weight profiles (A/B)", () => {
     expect(weightProfile("nope")).toBe(DEFAULT_WEIGHTS);
   });
 });
+
+// ---------------------------------------------------------------------------
+// 12. Read-time reasoning rendering equals the previously-persisted string (M4)
+// ---------------------------------------------------------------------------
+
+// The exact prose the matcher used to persist into matchDetails.reasoning, kept
+// here verbatim so the read-time renderer can be proven byte-identical to it.
+function legacyReasoning(
+  embeddingSimilarity: number,
+  skillsResult: { matched: string[]; missing: string[] },
+  experienceMatch: number,
+  locationMatch: number,
+  salaryFitNote: string | null,
+  locationArea: string | null,
+  workBoost: { fieldMatched: boolean; roleMatched: boolean },
+  distanceKm: number | null,
+  outsideRadius: boolean,
+): string {
+  const simPct = Math.round(embeddingSimilarity * 100);
+  const experienceLevel =
+    experienceMatch >= 0.8
+      ? "strong match"
+      : experienceMatch >= 0.5
+        ? "moderate match"
+        : "limited match";
+  const locationLabel = locationArea ? locationArea : "unspecified";
+  const distanceSuffix = distanceKm !== null ? `, ${Math.round(distanceKm)}km away` : "";
+  const locationPart =
+    locationMatch >= 0.7
+      ? `Location: good match (${locationLabel}${distanceSuffix})`
+      : `Location: ${locationLabel}${distanceSuffix}`;
+  const parts = [
+    `Profile similarity: ${simPct}%`,
+    ...(skillsResult.matched.length > 0
+      ? [`Matching skills: ${skillsResult.matched.join(", ")}`]
+      : []),
+    ...(skillsResult.missing.length > 0
+      ? [`Missing skills: ${skillsResult.missing.join(", ")}`]
+      : []),
+    `Experience level: ${experienceLevel}`,
+    locationPart,
+    ...(salaryFitNote ? [`Salary: ${salaryFitNote}`] : []),
+    ...(workBoost.fieldMatched ? ["Field match for your selected industry"] : []),
+    ...(workBoost.roleMatched ? ["Role title matches your profile"] : []),
+    ...(outsideRadius ? ["Outside your stated travel radius — score reduced"] : []),
+  ];
+  return parts.join(". ");
+}
+
+describe("matching — read-time reasoning equals the previously-persisted string", () => {
+  const cases = [
+    {
+      label: "rich match with skills, salary note, field+role boost, distance",
+      embeddingSimilarity: 0.87,
+      skillsMatched: ["python", "sql"],
+      skillsMissing: ["kubernetes"],
+      experienceMatch: 0.9,
+      locationMatch: 0.85,
+      salaryFitNote: "Pay meets or beats your expectation",
+      locationArea: "Cape Town",
+      fieldMatched: true,
+      roleMatched: true,
+      distanceKm: 12,
+      outsideTradeRadius: false,
+    },
+    {
+      label: "no skills, no salary note, unspecified location, outside radius",
+      embeddingSimilarity: 0.42,
+      skillsMatched: [] as string[],
+      skillsMissing: [] as string[],
+      experienceMatch: 0.4,
+      locationMatch: 0.3,
+      salaryFitNote: null as string | null,
+      locationArea: null as string | null,
+      fieldMatched: false,
+      roleMatched: false,
+      distanceKm: 530,
+      outsideTradeRadius: true,
+    },
+    {
+      label: "moderate experience, missing skills only, no distance",
+      embeddingSimilarity: 0.6,
+      skillsMatched: [] as string[],
+      skillsMissing: ["welding", "fitting"],
+      experienceMatch: 0.5,
+      locationMatch: 0.7,
+      salaryFitNote: "Pay is below your expected range",
+      locationArea: "Johannesburg",
+      fieldMatched: true,
+      roleMatched: false,
+      distanceKm: null as number | null,
+      outsideTradeRadius: false,
+    },
+  ];
+
+  it.each(cases)("$label", (c) => {
+    const details = {
+      embeddingSimilarity: c.embeddingSimilarity,
+      skillsOverlap: 0,
+      skillsMatched: c.skillsMatched,
+      skillsMissing: c.skillsMissing,
+      experienceMatch: c.experienceMatch,
+      locationMatch: c.locationMatch,
+      salaryFitNote: c.salaryFitNote,
+      distanceKm: c.distanceKm,
+      outsideTradeRadius: c.outsideTradeRadius,
+      fieldMatched: c.fieldMatched,
+      roleMatched: c.roleMatched,
+    };
+    const expected = legacyReasoning(
+      c.embeddingSimilarity,
+      { matched: c.skillsMatched, missing: c.skillsMissing },
+      c.experienceMatch,
+      c.locationMatch,
+      c.salaryFitNote,
+      c.locationArea,
+      { fieldMatched: c.fieldMatched, roleMatched: c.roleMatched },
+      c.distanceKm,
+      c.outsideTradeRadius,
+    );
+    expect(service.buildReasoning(details, c.locationArea)).toBe(expected);
+  });
+
+  it("withRenderedReasoning returns null for a null detail bag and re-attaches reasoning otherwise", () => {
+    expect(service.withRenderedReasoning(null, "Durban")).toBeNull();
+    const details = {
+      embeddingSimilarity: 0.5,
+      skillsOverlap: 0,
+      skillsMatched: [] as string[],
+      skillsMissing: [] as string[],
+      experienceMatch: 0.5,
+      locationMatch: 0.5,
+    };
+    const rendered = service.withRenderedReasoning(details, "Durban");
+    expect(rendered?.reasoning).toBe(service.buildReasoning(details, "Durban"));
+    expect(rendered?.embeddingSimilarity).toBe(0.5);
+  });
+});

@@ -20,10 +20,13 @@ export interface MatchDetails {
   locationMatch: number;
   salaryMatch?: number;
   salaryFitNote?: string | null;
-  reasoning: string;
+  // Rendered on read from the numeric/structured fields — never persisted (M4).
+  reasoning?: string;
   distanceKm?: number | null;
   outsideTradeRadius?: boolean;
   dismissPenalty?: number;
+  fieldMatched?: boolean;
+  roleMatched?: boolean;
 }
 
 @Entity("cv_assistant_candidate_job_matches")

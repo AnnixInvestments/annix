@@ -191,6 +191,7 @@ function buildHarness(retentionCap: number | null = null): Harness {
 
   const jobModel = {
     ...asModel(jobs),
+    schema: { paths: {}, virtuals: {} },
     db: {
       db: { collection: () => settingsCollection },
       model: () => ({ find: () => buildQuery(() => []) }),
@@ -389,6 +390,68 @@ describe("MongoExternalJobRepository — retention final-state invariant (H-2)",
 
     expect(deleted).toBe(0);
     expect(h.jobs.rows).toHaveLength(10);
+  });
+});
+
+describe("MongoExternalJobRepository — findDuplicateCanonicalJob (indexed titleKey lookup, M1)", () => {
+  it("matches an exact titleKey + country across a different source with a location match", async () => {
+    const { repo, jobs } = buildHarness();
+    jobs.seed([
+      {
+        _id: 1,
+        title: "Senior Boilermaker",
+        titleKey: "senior boilermaker",
+        country: "za",
+        locationArea: "Johannesburg",
+        company: "Acme Steel",
+        sourceId: 5,
+      },
+    ]);
+
+    const match = await repo.findDuplicateCanonicalJob(
+      "Senior Boilermaker",
+      9,
+      "za",
+      "johannesburg",
+      "",
+    );
+    expect(match?.id).toBe(1);
+  });
+
+  it("excludes the same source even when the titleKey is identical", async () => {
+    const { repo, jobs } = buildHarness();
+    jobs.seed([
+      {
+        _id: 1,
+        title: "Boilermaker",
+        titleKey: "boilermaker",
+        country: "za",
+        locationArea: "Durban",
+        company: "Acme",
+        sourceId: 9,
+      },
+    ]);
+
+    const match = await repo.findDuplicateCanonicalJob("Boilermaker", 9, "za", "durban", "");
+    expect(match).toBeNull();
+  });
+
+  it("does not match when the titleKey differs", async () => {
+    const { repo, jobs } = buildHarness();
+    jobs.seed([
+      {
+        _id: 1,
+        title: "Welder",
+        titleKey: "welder",
+        country: "za",
+        locationArea: "Durban",
+        company: "Acme",
+        sourceId: 5,
+      },
+    ]);
+
+    const match = await repo.findDuplicateCanonicalJob("Boilermaker", 9, "za", "durban", "");
+    expect(match).toBeNull();
   });
 });
 

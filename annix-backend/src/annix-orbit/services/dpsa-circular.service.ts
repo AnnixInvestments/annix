@@ -8,6 +8,7 @@ import { AiChatService } from "../../nix/ai-providers/ai-chat.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
 import { JobMarketSource, JobSourceProvider } from "../entities/job-market-source.entity";
 import { ExternalJobRepository } from "../repositories/external-job.repository";
+import { normaliseTitleKey } from "../repositories/external-job.repository.mongo";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 import { CandidateJobMatchingService } from "./candidate-job-matching.service";
 import { EmbeddingService } from "./embedding.service";
@@ -124,6 +125,7 @@ export class DpsaCircularService {
       fresh.map((v) =>
         this.externalJobRepo.create({
           title: truncate(v.title, 500),
+          titleKey: normaliseTitleKey(v.title),
           company: truncate(v.department ?? "Department of Public Service and Administration", 500),
           country: "za",
           locationRaw: truncate(v.centre, 500),

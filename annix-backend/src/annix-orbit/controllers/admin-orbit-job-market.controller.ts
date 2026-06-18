@@ -14,6 +14,8 @@ import {
 import { InjectConnection } from "@nestjs/mongoose";
 import type { Connection } from "mongoose";
 import { AdminAuthGuard } from "../../admin/guards/admin-auth.guard";
+import { Roles } from "../../auth/roles.decorator";
+import { RolesGuard } from "../../auth/roles.guard";
 import { ORBIT_CONNECTION } from "../../lib/persistence/mongo-connections";
 import { JOB_SOURCE_PROVIDERS } from "../config/job-source-providers";
 import {
@@ -36,7 +38,7 @@ const ORBIT_SETTINGS_COLLECTION = "cv_assistant_orbit_settings";
 const DEFAULT_RETENTION_CAP = DEFAULT_EXTERNAL_JOB_RETENTION_CAP;
 
 @Controller("admin/annix-orbit/job-market")
-@UseGuards(AdminAuthGuard)
+@UseGuards(AdminAuthGuard, RolesGuard)
 export class AdminOrbitJobMarketController {
   private readonly logger = new Logger(AdminOrbitJobMarketController.name);
 
@@ -58,6 +60,7 @@ export class AdminOrbitJobMarketController {
   }
 
   @Put("enabled-countries")
+  @Roles("admin")
   async setEnabledCountries(@Body() body: { countries: string[] }) {
     const enabled = await this.countriesService.setEnabledCountries(body.countries ?? []);
     this.logger.log(`Enabled job countries set to [${enabled.join(", ")}]`);
@@ -110,6 +113,7 @@ export class AdminOrbitJobMarketController {
   }
 
   @Put("retention-cap")
+  @Roles("admin")
   async setRetentionCap(@Body() body: SetRetentionCapDto) {
     const cap = body.cap;
     const db = this.orbitConnection.db;
@@ -137,6 +141,7 @@ export class AdminOrbitJobMarketController {
   }
 
   @Post("sources")
+  @Roles("admin")
   async createSource(@Body() dto: CreateJobMarketSourceDto) {
     return this.sourceService.createPlatformGlobal(dto);
   }
@@ -147,23 +152,27 @@ export class AdminOrbitJobMarketController {
   }
 
   @Put("sources/:id")
+  @Roles("admin")
   async updateSource(@Param("id", ParseIntPipe) id: number, @Body() dto: UpdateJobMarketSourceDto) {
     return this.sourceService.updatePlatformGlobal(id, dto);
   }
 
   @Delete("sources/:id")
+  @Roles("admin")
   async removeSource(@Param("id", ParseIntPipe) id: number) {
     await this.sourceService.removePlatformGlobal(id);
     return { message: "Source deleted" };
   }
 
   @Post("sources/:id/ingest")
+  @Roles("admin")
   async triggerIngestion(@Param("id", ParseIntPipe) id: number) {
     await this.sourceService.findByIdPlatformGlobal(id);
     return this.ingestionService.triggerIngestion(id);
   }
 
   @Post("sources/:id/fetch")
+  @Roles("admin")
   async fetchOnly(@Param("id", ParseIntPipe) id: number) {
     const source = await this.sourceService.findByIdPlatformGlobal(id);
 
@@ -189,6 +198,7 @@ export class AdminOrbitJobMarketController {
   }
 
   @Post("jobs/:id/vet")
+  @Roles("admin")
   async vetJob(@Param("id", ParseIntPipe) id: number) {
     return this.ingestionService.vetSingleJob(id);
   }
@@ -218,16 +228,19 @@ export class AdminOrbitJobMarketController {
   }
 
   @Post("duplicates/auto-resolve")
+  @Roles("admin")
   async autoResolveDuplicates() {
     return this.ingestionService.autoResolveDuplicates();
   }
 
   @Post("jobs/bulk-delete")
+  @Roles("admin")
   async bulkDeleteJobs(@Body() dto: BulkDeleteJobsDto) {
     return this.ingestionService.deleteExternalJobs(dto.ids);
   }
 
   @Delete("jobs/:id")
+  @Roles("admin")
   async deleteJob(@Param("id", ParseIntPipe) id: number) {
     await this.ingestionService.deleteExternalJob(id);
     return { message: "Job deleted" };
@@ -239,6 +252,7 @@ export class AdminOrbitJobMarketController {
   }
 
   @Post("vet-pending")
+  @Roles("admin")
   async vetPending(@Query("limit") limit?: string) {
     return this.ingestionService.vetPendingJobs(limit ? Number.parseInt(limit, 10) : undefined);
   }
@@ -247,6 +261,7 @@ export class AdminOrbitJobMarketController {
   // proxy timeout (sequential Gemini calls over ~1,300+ jobs), so kick it off in
   // the background and let the client poll coverage for progress.
   @Post("embeddings/backfill")
+  @Roles("admin")
   backfillEmbeddings() {
     return this.embeddingService.startBackfillInBackground();
   }
@@ -259,6 +274,7 @@ export class AdminOrbitJobMarketController {
   // Categorizing the backlog runs sequential Gemini calls over hundreds of jobs,
   // far past the HTTP proxy timeout, so background it and poll coverage.
   @Post("categories/backfill")
+  @Roles("admin")
   backfillCategories() {
     return this.ingestionService.startCategoryBackfillInBackground();
   }

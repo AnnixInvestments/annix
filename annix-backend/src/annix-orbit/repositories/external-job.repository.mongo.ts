@@ -27,6 +27,7 @@ import {
 } from "./external-job.repository";
 
 export const DEFAULT_EXTERNAL_JOB_RETENTION_CAP = 15000;
+const SEARCH_TERM_MAX_LENGTH = 100;
 
 @Injectable()
 export class MongoExternalJobRepository
@@ -93,10 +94,8 @@ export class MongoExternalJobRepository
     if (options.country) filter.country = options.country;
     if (options.category) filter.category = options.category;
     if (options.search) {
-      filter.$or = [
-        { title: { $regex: options.search, $options: "i" } },
-        { company: { $regex: options.search, $options: "i" } },
-      ];
+      const clauses = searchTermClauses(options.search);
+      if (clauses) filter.$or = clauses;
     }
 
     const { items, total } = await this.findPage(
@@ -124,10 +123,8 @@ export class MongoExternalJobRepository
     if (options.country) filter.country = options.country;
     if (options.category) filter.category = options.category;
     if (options.search) {
-      filter.$or = [
-        { title: { $regex: options.search, $options: "i" } },
-        { company: { $regex: options.search, $options: "i" } },
-      ];
+      const clauses = searchTermClauses(options.search);
+      if (clauses) filter.$or = clauses;
     }
 
     const { items, total } = await this.findPage(
@@ -249,10 +246,8 @@ export class MongoExternalJobRepository
     if (options.country) filter.country = options.country;
     if (options.category) filter.category = options.category;
     if (options.search) {
-      filter.$or = [
-        { title: { $regex: options.search, $options: "i" } },
-        { company: { $regex: options.search, $options: "i" } },
-      ];
+      const clauses = searchTermClauses(options.search);
+      if (clauses) filter.$or = clauses;
     }
     const { items, total } = await this.findPage(
       {},
@@ -350,12 +345,16 @@ export class MongoExternalJobRepository
     normalisedLocation: string,
     normalisedCompany: string,
   ): Promise<ExternalJob | null> {
+    const titleKey = normaliseTitleKey(title);
+    if (titleKey === "") {
+      return null;
+    }
     const titleLower = title.toLowerCase();
     const candidates = await this.documents
       .find({
-        country: { $regex: `^${escapeRegex(country)}$`, $options: "i" },
+        country: country.toLowerCase(),
+        titleKey,
         sourceId: { $ne: sourceId },
-        title: { $regex: escapeRegex(title), $options: "i" },
       })
       .lean()
       .exec();
@@ -912,8 +911,23 @@ export class MongoExternalJobRepository
   }
 }
 
+export function normaliseTitleKey(title: string | null | undefined): string {
+  if (!title) return "";
+  return title.toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function searchTermClauses(search: string): Array<Record<string, unknown>> | null {
+  const bounded = search.trim().slice(0, SEARCH_TERM_MAX_LENGTH);
+  if (bounded === "") return null;
+  const pattern = escapeRegex(bounded);
+  return [
+    { title: { $regex: pattern, $options: "i" } },
+    { company: { $regex: pattern, $options: "i" } },
+  ];
 }
 
 function sanitiseRetentionCap(cap: number | null | undefined): number {

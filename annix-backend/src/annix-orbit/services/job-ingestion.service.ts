@@ -6,6 +6,7 @@ import { EmailService } from "../../email/email.service";
 import { DateTime, fromISO, now, nowMillis } from "../../lib/datetime";
 import { ExtractionMetricService } from "../../metrics/extraction-metric.service";
 import { isAnnixOrbitCronEnabled } from "../annix-orbit-cron.config";
+import { DESCRIPTION_LIMIT } from "../config/external-job-ingest";
 import { sourceRespectRank } from "../config/job-source-providers";
 import { resolveMonthlySalary } from "../config/salary-period";
 import { ExternalJob } from "../entities/external-job.entity";
@@ -19,6 +20,7 @@ import {
   DuplicateJobPair,
   ExternalJobRepository,
 } from "../repositories/external-job.repository";
+import { normaliseTitleKey } from "../repositories/external-job.repository.mongo";
 import { ExternalJobAlternateRepository } from "../repositories/external-job-alternate.repository";
 import { JobMarketSourceRepository } from "../repositories/job-market-source.repository";
 import { JobPostingRepository } from "../repositories/job-posting.repository";
@@ -1178,6 +1180,7 @@ export class JobIngestionService {
           const monthly = resolveMonthlySalary(source.provider, job.salaryMin, job.salaryMax);
           return await this.externalJobRepo.create({
             title: job.title,
+            titleKey: normaliseTitleKey(job.title),
             company: job.company,
             country,
             locationRaw: job.locationDisplayName,
@@ -1188,7 +1191,7 @@ export class JobIngestionService {
             salaryPeriod: monthly.salaryPeriod,
             salaryMonthlyMin: monthly.salaryMonthlyMin,
             salaryMonthlyMax: monthly.salaryMonthlyMax,
-            description: job.description,
+            description: capDescription(job.description),
             category: job.category,
             canonicalCategory: this.jobCategorizationService.ruleBased({
               title: job.title,
@@ -1353,6 +1356,13 @@ function normaliseCompanyName(raw: string | null): string {
     .replace(/[\s.,'"]+$/u, "")
     .trim();
   return stripped;
+}
+
+function capDescription(description: string | null): string | null {
+  if (description === null) return null;
+  return description.length > DESCRIPTION_LIMIT
+    ? description.slice(0, DESCRIPTION_LIMIT)
+    : description;
 }
 
 function isDuplicateKeyError(error: unknown): boolean {

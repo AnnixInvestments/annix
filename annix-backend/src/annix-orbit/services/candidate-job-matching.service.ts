@@ -415,7 +415,15 @@ export class CandidateJobMatchingService {
       options.filters ?? null,
     );
 
-    return this.applyStretchMatchDiversity(allMatches, limit);
+    const hydrated = allMatches.map((match) => ({
+      ...match,
+      matchDetails: this.withRenderedReasoning(
+        match.matchDetails,
+        match.externalJob?.locationArea ?? null,
+      ),
+    }));
+
+    return this.applyStretchMatchDiversity(hydrated, limit);
   }
 
   applyStretchMatchDiversity<T extends Pick<CandidateJobMatch, "overallScore">>(
@@ -456,7 +464,16 @@ export class CandidateJobMatchingService {
   async matchingCandidatesForJob(
     externalJobId: number,
   ): Promise<Array<CandidateJobMatch & { candidate: Candidate }>> {
-    return this.matchRepo.matchingCandidatesForJob(externalJobId, TOP_MATCHES_LIMIT);
+    const matches = await this.matchRepo.matchingCandidatesForJob(externalJobId, TOP_MATCHES_LIMIT);
+    if (matches.length === 0) {
+      return matches;
+    }
+    const job = await this.externalJobRepo.findById(externalJobId);
+    const locationArea = job?.locationArea ?? null;
+    return matches.map((match) => ({
+      ...match,
+      matchDetails: this.withRenderedReasoning(match.matchDetails, locationArea),
+    }));
   }
 
   async dismissMatch(matchId: number, reason?: string | null): Promise<void> {
@@ -680,17 +697,8 @@ export class CandidateJobMatchingService {
       distanceKm: distanceKm === null ? null : Math.round(distanceKm),
       outsideTradeRadius: outsideRadius,
       dismissPenalty,
-      reasoning: this.buildReasoning(
-        embeddingSimilarity,
-        skillsResult,
-        experienceMatch,
-        locationMatch,
-        salaryResult.note,
-        job,
-        workBoost,
-        distanceKm,
-        outsideRadius,
-      ),
+      fieldMatched: workBoost.fieldMatched,
+      roleMatched: workBoost.roleMatched,
     };
 
     const nonEmbedding = 1 - weights.embedding;
@@ -780,7 +788,14 @@ export class CandidateJobMatchingService {
           embeddingsById.get(job.id) ?? null,
           weights,
         );
-        return { job, ...scored };
+        return {
+          job,
+          ...scored,
+          matchDetails: {
+            ...scored.matchDetails,
+            reasoning: this.buildReasoning(scored.matchDetails, job.locationArea),
+          },
+        };
       })
       .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
   }
@@ -915,50 +930,56 @@ export class CandidateJobMatchingService {
     return 1 - clamped * (1 - OUTSIDE_RADIUS_PENALTY);
   }
 
-  private buildReasoning(
-    embeddingSimilarity: number,
-    skillsResult: { score: number; matched: string[]; missing: string[] },
-    experienceMatch: number,
-    locationMatch: number,
-    salaryFitNote: string | null,
-    job: ExternalJob,
-    workBoost: { score: number | null; fieldMatched: boolean; roleMatched: boolean },
-    distanceKm: number | null,
-    outsideRadius: boolean,
-  ): string {
-    const simPct = Math.round(embeddingSimilarity * 100);
+  // The reasoning prose is fully derivable from the stored numeric/structured
+  // match fields plus the job's location label, so it is rendered on read rather
+  // than persisted on every match row (architect finding M4).
+  buildReasoning(details: MatchDetails, locationArea: string | null): string {
+    const simPct = Math.round(details.embeddingSimilarity * 100);
 
     const experienceLevel =
-      experienceMatch >= 0.8
+      details.experienceMatch >= 0.8
         ? "strong match"
-        : experienceMatch >= 0.5
+        : details.experienceMatch >= 0.5
           ? "moderate match"
           : "limited match";
 
-    const locationArea = job.locationArea;
     const locationLabel = locationArea ? locationArea : "unspecified";
+    const distanceKm = details.distanceKm ?? null;
     const distanceSuffix = distanceKm !== null ? `, ${Math.round(distanceKm)}km away` : "";
     const locationPart =
-      locationMatch >= 0.7
+      details.locationMatch >= 0.7
         ? `Location: good match (${locationLabel}${distanceSuffix})`
         : `Location: ${locationLabel}${distanceSuffix}`;
 
     const parts = [
       `Profile similarity: ${simPct}%`,
-      ...(skillsResult.matched.length > 0
-        ? [`Matching skills: ${skillsResult.matched.join(", ")}`]
+      ...(details.skillsMatched.length > 0
+        ? [`Matching skills: ${details.skillsMatched.join(", ")}`]
         : []),
-      ...(skillsResult.missing.length > 0
-        ? [`Missing skills: ${skillsResult.missing.join(", ")}`]
+      ...(details.skillsMissing.length > 0
+        ? [`Missing skills: ${details.skillsMissing.join(", ")}`]
         : []),
       `Experience level: ${experienceLevel}`,
       locationPart,
-      ...(salaryFitNote ? [`Salary: ${salaryFitNote}`] : []),
-      ...(workBoost.fieldMatched ? ["Field match for your selected industry"] : []),
-      ...(workBoost.roleMatched ? ["Role title matches your profile"] : []),
-      ...(outsideRadius ? ["Outside your stated travel radius — score reduced"] : []),
+      ...(details.salaryFitNote ? [`Salary: ${details.salaryFitNote}`] : []),
+      ...(details.fieldMatched ? ["Field match for your selected industry"] : []),
+      ...(details.roleMatched ? ["Role title matches your profile"] : []),
+      ...(details.outsideTradeRadius ? ["Outside your stated travel radius — score reduced"] : []),
     ];
 
     return parts.join(". ");
+  }
+
+  // Returns a copy of the stored match details with the regenerable `reasoning`
+  // prose rendered from the numeric fields, so API consumers see the identical
+  // shape they did when reasoning was persisted.
+  withRenderedReasoning(
+    details: MatchDetails | null,
+    locationArea: string | null,
+  ): MatchDetails | null {
+    if (details === null) {
+      return null;
+    }
+    return { ...details, reasoning: this.buildReasoning(details, locationArea) };
   }
 }
